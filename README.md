@@ -146,6 +146,44 @@ Rollback itself never re-runs the migration step, because it never re-invokes
 `deploy.sh` at all — it is inline code at the bottom of the same run that
 restores the previous image directly and returns.
 
+**Nightly maintenance runs inside the database, not on the LXC.**
+`sqdcp_maintenance()` — defined in the baseline, scheduled by
+`migrations/1756000000001_schedule-maintenance.js` — creates the next three
+months of partitions for `measurements` and `audit_log`, then refreshes
+`mv_daily_oee`. `pg_cron` runs it at 03:17 UTC every day, inside the Supabase
+project itself; there is no CronJob or scheduler process on the LXC, because
+none of this depends on the API being up. A fixed UTC time is correct here —
+neither partition creation nor rollup refresh is Site-specific, unlike shift
+and production-day attribution.
+
+If this stops running, nothing looks broken at first. Inserts keep succeeding
+into a `DEFAULT` partition instead of a monthly one, and the tier board keeps
+showing whatever `mv_daily_oee` last held — a wrong number, not a missing one.
+The partition gap is the expensive half: once a month's rows have landed in
+the default partition, that month can no longer get its own partition
+(`CREATE TABLE ... PARTITION OF` refuses once matching rows already exist
+elsewhere), and recovering means moving rows by hand. Check for it with:
+
+```sql
+SELECT status, return_message, start_time, end_time
+  FROM cron.job_run_details
+ WHERE jobid = (SELECT jobid FROM cron.job WHERE jobname = 'sqdcp-maintenance')
+ ORDER BY start_time DESC
+ LIMIT 20;
+```
+
+A run with `status <> 'succeeded'`, or no run at all for last night, means the
+board is stale and partitions may be running out.
+
+The migration that schedules this only installs `pg_cron` where
+`pg_available_extensions` says it exists — Supabase Cloud has it, stock
+`postgres:17-alpine` (CI, local `docker compose`) does not — and says so with
+a `RAISE NOTICE` where it skips. CI cannot exercise the schedule itself for
+that reason, so it calls `sqdcp_maintenance()` directly instead (see the
+"Maintenance smoke test" step), which is what actually catches a
+schema-qualification or partition-window regression before it reaches a
+database that would have run it nightly for months before anyone noticed.
+
 The proxy runs as its own Compose project, `platform-edge`. That is not
 cosmetic: the application deploy passes `--remove-orphans`, which deletes any
 container in *its* project that its compose file does not define — so a shared

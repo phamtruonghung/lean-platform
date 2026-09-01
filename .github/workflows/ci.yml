@@ -93,20 +93,31 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lean_platform_test
         run: npm run migrate
 
-      # refresh_sqdcp_rollups() runs nightly in production, but until now no
-      # test or CI step had ever called it. On PostgreSQL 17 it — like any
-      # REFRESH MATERIALIZED VIEW — runs with search_path forced to
+      # sqdcp_maintenance() runs nightly in production via pg_cron (see
+      # migrations/1756000000001_schedule-maintenance.js), but until now no
+      # test or CI step had ever called it directly. It calls
+      # refresh_sqdcp_rollups() and then ensure_time_partitions() for both
+      # partitioned tables, so calling it here covers strictly more than the
+      # rollup-only smoke test this step used to run, in one statement. On
+      # PostgreSQL 17, refresh_sqdcp_rollups()'s REFRESH MATERIALIZED VIEW —
+      # like any maintenance operation — runs with search_path forced to
       # pg_catalog, pg_temp, which is a different failure mode than the
       # migration succeeding: a schema-qualification bug in a function this
       # calls can pass "Run migrations" and still fail every night. On an
       # empty database this costs milliseconds, and it will keep catching
-      # this bug class for every matview added after this one, long after the
-      # migration that created it went green.
-      - name: Rollup refresh smoke test
+      # this bug class for every matview or partitioned table added after
+      # this one, long after the migration that created it went green.
+      #
+      # This does not exercise the pg_cron schedule itself — postgres:17-alpine
+      # has no pg_cron, so the migration above takes its "unavailable, skip"
+      # path here rather than actually scheduling anything. It exercises the
+      # function pg_cron calls nightly, which is what a schema-qualification
+      # or partition-window bug would actually break.
+      - name: Maintenance smoke test (partitions + rollup refresh)
         working-directory: backend
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lean_platform_test
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'SELECT refresh_sqdcp_rollups()'
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'SELECT sqdcp_maintenance()'
 
       - name: Integration tests
         working-directory: backend

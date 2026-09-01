@@ -268,3 +268,78 @@ test('document numbers are scoped by Site: two Sites issue independent, non-inte
 test('refresh_sqdcp_rollups() succeeds against the schema as migrated', async () => {
   await pool.query('SELECT refresh_sqdcp_rollups()');
 });
+
+// ---------------------------------------------------------------------------
+// 7. sqdcp_maintenance() is what pg_cron runs nightly in production — see
+//    migrations/1756000000001_schedule-maintenance.js and issue #19. It calls
+//    refresh_sqdcp_rollups() (asserted above) and then ensure_time_partitions()
+//    for measurements and audit_log. This is the assertion issue #19 asked
+//    for: that calling it actually produces the next month's partition for
+//    both tables, not merely that the call returns.
+//
+//    Right after a fresh migration, both tables already have partitions for
+//    months well beyond next month — the baseline creates twelve months
+//    ahead on its own — so asserting existence alone would pass whether or
+//    not sqdcp_maintenance() does anything. This drops next month's
+//    partition first, which is exactly the state the issue describes months
+//    from now once nobody has been running the maintenance job: a real gap
+//    that only sqdcp_maintenance() (never the baseline, which only runs
+//    once) can fill back in.
+//
+//    No withRollback here, for the same reason as the test above: it calls
+//    refresh_sqdcp_rollups(), and REFRESH MATERIALIZED VIEW CONCURRENTLY
+//    cannot run inside a transaction block.
+//
+//    Forcing the gap means dropping next month's partition, and measurements
+//    and audit_log are the two tables in this schema actually built to carry
+//    volume. Nothing in *this suite* puts rows there, but DATABASE_URL is
+//    just a connection string — nothing stops it pointing at a database that
+//    does, and the README leaves that choice to whoever runs the integration
+//    tier. So this counts the partition's own rows (not the parent table's —
+//    that would count rows a drop of this one partition would not touch)
+//    before going anywhere near DROP TABLE, and refuses to drop anything
+//    that is not empty. On a database with real data here, the failure this
+//    produces is a named table and a row count, not silently discarded
+//    measurements.
+// ---------------------------------------------------------------------------
+
+test('sqdcp_maintenance() creates next month\'s partition for measurements and audit_log', async () => {
+  const { rows: [{ month_label }] } = await pool.query(
+    `SELECT to_char(date_trunc('month', now()) + INTERVAL '1 month', 'YYYYMM') AS month_label`
+  );
+
+  const tables = ['measurements', 'audit_log'];
+
+  // Force the gap: drop next month's partition if the baseline (or an
+  // earlier run of this suite) already created it — but only once its own
+  // row count is confirmed to be zero. See the section header above for why
+  // this check exists rather than dropping unconditionally.
+  for (const table of tables) {
+    const partition = `${table}_${month_label}`;
+    const { rows: [{ r }] } = await pool.query('SELECT to_regclass($1) AS r', [partition]);
+    if (r === null) {
+      continue;
+    }
+
+    const { rows: [{ n }] } = await pool.query(`SELECT count(*)::int AS n FROM ${partition}`);
+    assert.strictEqual(
+      n,
+      0,
+      `refusing to drop ${partition}: it holds ${n} row(s). This test only forces a ` +
+        `partition gap on an empty partition, and declines to touch one that is not.`
+    );
+
+    await pool.query(`DROP TABLE ${partition}`);
+  }
+  for (const table of tables) {
+    const { rows: [{ r }] } = await pool.query('SELECT to_regclass($1) AS r', [`${table}_${month_label}`]);
+    assert.strictEqual(r, null, `expected ${table}_${month_label} to be gone before sqdcp_maintenance() runs`);
+  }
+
+  await pool.query('SELECT sqdcp_maintenance()');
+
+  for (const table of tables) {
+    const { rows: [{ r }] } = await pool.query('SELECT to_regclass($1) AS r', [`${table}_${month_label}`]);
+    assert.strictEqual(r, `${table}_${month_label}`, `expected sqdcp_maintenance() to recreate ${table}_${month_label}`);
+  }
+});
