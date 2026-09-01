@@ -34,6 +34,15 @@ KPI is measured against, what a person is granted access to, and where an Asset
 sits are all Org Units.
 _Avoid_: Department (that is one kind of Org Unit), team, group, node
 
+**Entry point**:
+The topmost Org Unit an Account is granted in a Site — where its own scope
+begins when browsing the tree down from the top, since a grant reaches
+downward only and a deep grant's own ancestors are not themselves granted. An
+Account may hold several entry points in one Site; one granted a Site's root
+has exactly one, the root itself.
+_Avoid_: Root Org Unit (a property of the tree, not of a particular Account's
+grants)
+
 ### The people
 
 **Employee**:

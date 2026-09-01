@@ -35,9 +35,14 @@
  *     in this Site" apart from "this Site does not exist" by status code,
  *     even though the Site would never appear in their own filtered GET
  *     /sites list. GET /sites/:siteId/org-units layers a second, narrower
- *     check on top once past that gate: the returned Org Units are filtered
- *     per-row via authorization.canAct, since being able to see a Site does
- *     not mean every Org Unit within it is in scope too.
+ *     check on top once past that gate: for an explicit parentId, the
+ *     returned Org Units are filtered per-row via authorization.canAct,
+ *     since being able to see a Site does not mean every Org Unit within it
+ *     is in scope too. At the root level (no parentId), a non-administrator
+ *     is shown their own entry points into the Site's tree rather than the
+ *     Site's root Org Units — issue #24, since a grant reaches downward only
+ *     and the Site's roots may not be reachable from it at all. See
+ *     authorization.grantedEntryPointIds's own header, and ADR-0008, for why.
  *
  * plant.js itself stays unaware of any of this — see that file's own
  * header.
@@ -141,7 +146,10 @@ router.get('/sites/:siteId', authenticate, requireActive, authorization.requireS
   res.json({ site: req.site });
 });
 
-// GET /sites/:siteId/org-units             -> the Site's root Org Units
+// GET /sites/:siteId/org-units             -> see below: an administrator's
+//                                              root Org Units, or a
+//                                              non-administrator's own entry
+//                                              points (issue #24)
 // GET /sites/:siteId/org-units?parentId=42 -> Org Unit 42's direct children
 // One level per call, which is what "browsed from a Site down to a work
 // centre" means here — see getOrgUnitSubtree below for "everything at once".
@@ -149,12 +157,31 @@ router.get('/sites/:siteId', authenticate, requireActive, authorization.requireS
 // requireSiteScope already resolved existence-before-scope (404 for a Site
 // that does not exist, 403 for one the caller holds no grant within at all)
 // before this handler runs, closing off a caller telling those two cases
-// apart by whether they get an empty 200 list. Past that gate, the returned
-// Org Units are further filtered per-row via authorization.canAct, the same
-// reasoning as GET /sites above: a Site being visible does not mean every
-// Org Unit within it is, so a caller who passed the gate can still
-// legitimately see an empty list here if their grants do not reach the
-// requested level of the tree.
+// apart by whether they get an empty 200 list.
+//
+// Past that gate, an explicit parentId is unchanged from issue #7/#8: the
+// direct children, filtered per-row via authorization.canAct for anyone but
+// an administrator, on the same reasoning as GET /sites above — a Site being
+// visible does not mean every Org Unit within it is, so a caller who passed
+// the gate can still legitimately see an empty list here if their grants do
+// not reach the requested level of the tree.
+//
+// The root level (no parentId) is where issue #24 changes the contract for a
+// non-administrator: filtering the Site's own root Org Units by canAct the
+// same way would leave a caller with only a deep grant seeing nothing, since
+// a grant reaches downward only and none of the Site's roots is at or beneath
+// it — their own branch unreachable by navigating down from the top, even
+// though it is real and reachable directly by id. Rather than filter the
+// Site's roots for such a caller, the root level hands back their own entry
+// points instead — authorization.grantedEntryPointIds decides which Org
+// Unit ids those are (topmost-only, per that function's own header),
+// plant.listOrgUnitsByIds turns those ids into rows, two indexed queries
+// total. This is a strict generalisation, not a fallback: an Account granted
+// a Site's root Org Unit still gets exactly that root back (their one entry
+// point is the root itself), so today's behaviour for a shallowly-granted
+// Account is unchanged. See ADR-0008 for the full decision and its
+// consequences, including that a client can no longer assume a root-level
+// row's parentId is null.
 router.get('/sites/:siteId/org-units', authenticate, requireActive, authorization.requireSiteScope(), async (req, res, next) => {
   try {
     const siteId = req.site.id;
@@ -165,6 +192,13 @@ router.get('/sites/:siteId/org-units', authenticate, requireActive, authorizatio
         return res.status(400).json({ message: 'parentId must be a valid Org Unit id' });
       }
     }
+
+    if (parentId === undefined && !authorization.isAdmin(req.account)) {
+      const entryPointIds = await authorization.grantedEntryPointIds({ account: req.account, siteId });
+      const orgUnits = await plant.listOrgUnitsByIds(entryPointIds);
+      return res.json({ orgUnits });
+    }
+
     const orgUnits = await plant.listOrgUnits(siteId, parentId);
     if (authorization.isAdmin(req.account)) {
       return res.json({ orgUnits });
