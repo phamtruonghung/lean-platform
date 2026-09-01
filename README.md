@@ -184,6 +184,21 @@ that reason, so it calls `sqdcp_maintenance()` directly instead (see the
 schema-qualification or partition-window regression before it reaches a
 database that would have run it nightly for months before anyone noticed.
 
+**Row Level Security is enabled on every table, with no policies, and a
+dedicated read-only role reads through it.**
+([ADR-0004](./docs/adr/0004-deny-all-rls-with-two-database-clients.md)). Two
+clients reach this database: the API, which connects as `postgres` —
+unaffected by deny-all RLS because it owns every table in this schema and
+holds `rolbypassrls = true`, not because of any "service role" (Supabase's
+`service_role` is `NOLOGIN`; it is a PostgREST-level JWT claim, not a
+Postgres login role a `DATABASE_URL` could ever connect as) — and owns every
+write; and Power BI, over `powerbi_reader`, created by
+`migrations/1756000000002_deny-all-rls.js`, which can `SELECT` everywhere in
+`public` and nothing more. See
+[`docs/power-bi-connection.md`](./docs/power-bi-connection.md) for the
+connection string, the username format, and where the password lives (not
+here).
+
 The proxy runs as its own Compose project, `platform-edge`. That is not
 cosmetic: the application deploy passes `--remove-orphans`, which deletes any
 container in *its* project that its compose file does not define — so a shared
