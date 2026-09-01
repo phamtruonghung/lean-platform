@@ -20,10 +20,13 @@
 }
 
 {$APP_HOSTNAME} {
-	# `handle /api*` matches bare /api as well as /api/..., so a caller who drops
-	# the trailing slash still reaches the API and gets JSON, rather than being
-	# redirected into the Flutter app and handed HTML.
-	handle /api* {
+	# Matches bare /api and anything beneath it, and nothing else. A caller who
+	# drops the trailing slash still reaches the API and gets JSON rather than
+	# being handed the Flutter app's HTML — while a path that merely starts with
+	# those characters, /apiary say, does not. `handle /api*` would catch that
+	# too, and would stop mirroring dev/edge.nginx.conf's `^/api(/|$)`.
+	@api path /api /api/*
+	handle @api {
 		reverse_proxy backend:8000
 	}
 

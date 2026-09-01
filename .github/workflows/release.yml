@@ -34,8 +34,17 @@ permissions:
   packages: write
 
 jobs:
+  # Publishing and deploying are gated on the same checks a pull request has to
+  # pass. Without this, a red suite on main still ships to the LXC — the branch
+  # protection that would otherwise catch it is not something this repository
+  # can assume.
+  test:
+    name: Tests
+    uses: ./.github/workflows/ci.yml
+
   build:
     name: Build and publish
+    needs: test
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
@@ -73,11 +82,20 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: true
-          # The owner must be lowercase: GHCR rejects a path with capitals, and
-          # the account is PhamTruongHung.
-          tags: ghcr.io/phamtruonghung/${{ matrix.image }}:${{ steps.meta.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # The LXC is x86_64. Stating the platform means an ARM runner would
+          # still produce an image it can actually run, instead of one that
+          # fails with "exec format error" after a deploy.
+          platforms: linux/amd64
+          # The registry path must be lowercase; GHCR rejects capitals. GitHub
+          # normalises repository_owner to lowercase, so this always produces a
+          # valid path — and moving the repository does not mean editing five
+          # files to match.
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ steps.meta.outputs.tag }}
+          # Scoped per image. Unscoped, the two matrix legs share one cache and
+          # clobber each other's layers on every run.
+          cache-from: type=gha,scope=release-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.name }}
+          provenance: false
 
   deploy:
     name: Deploy to the LXC
@@ -89,6 +107,7 @@ jobs:
       - name: Deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GHCR_OWNER: ${{ github.repository_owner }}
           # The recorded tag lives outside the runner's workspace, which is
           # wiped between runs. Losing it would leave a deploy with nothing to
           # roll back to.

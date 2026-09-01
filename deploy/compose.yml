@@ -5,10 +5,14 @@
 #
 # The service names matter: Caddy reaches these by the network aliases Compose
 # creates from them, so renaming a service here silently breaks the proxy.
+#
+# GHCR_OWNER defaults to the account these images are published under, and the
+# deploy passes GitHub's own value, so moving the repository does not mean
+# editing image paths by hand.
 
 services:
   backend:
-    image: ghcr.io/phamtruonghung/lean-platform-backend:${IMAGE_TAG:?set IMAGE_TAG}
+    image: ghcr.io/${GHCR_OWNER:-phamtruonghung}/lean-platform-backend:${IMAGE_TAG:?set IMAGE_TAG}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
@@ -23,7 +27,7 @@ services:
       - platform
 
   frontend:
-    image: ghcr.io/phamtruonghung/lean-platform-frontend:${IMAGE_TAG:?set IMAGE_TAG}
+    image: ghcr.io/${GHCR_OWNER:-phamtruonghung}/lean-platform-frontend:${IMAGE_TAG:?set IMAGE_TAG}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz || exit 1"]

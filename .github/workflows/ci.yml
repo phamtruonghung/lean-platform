@@ -1,9 +1,18 @@
 name: CI
 
 on:
+  # Every push, not just main. A branch with no pull request open yet is exactly
+  # where a broken change is cheapest to find.
+  #
+  # main is excluded here only because Release calls this same workflow before
+  # it builds anything, so a push to main still runs the whole suite — once,
+  # rather than twice in parallel with itself.
   push:
-    branches: [main]
+    branches-ignore: [main]
   pull_request:
+  # Called by Release, so that publishing and deploying are gated on the same
+  # checks a pull request had to pass.
+  workflow_call:
 
 jobs:
   backend:
@@ -124,18 +133,23 @@ jobs:
   # meant to deploy it.
   images:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            context: ./backend
+          - name: frontend
+            context: ./frontend
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build backend image
+      - name: Build ${{ matrix.name }} image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: ${{ matrix.context }}
           push: false
-
-      - name: Build frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: false
+          # Scoped per image. Unscoped, the two matrix legs write the same GitHub
+          # Actions cache and overwrite each other's layers every run.
+          cache-from: type=gha,scope=ci-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=ci-${{ matrix.name }}

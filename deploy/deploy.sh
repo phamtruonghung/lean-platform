@@ -50,6 +50,11 @@ command -v docker >/dev/null 2>&1 || die "docker is not installed"
 # runner workspace would start a SECOND stack alongside the one already serving
 # instead of replacing it — two sets of containers, both claiming the same
 # network aliases.
+#
+# It must NOT match the proxy's project name. `--remove-orphans` deletes any
+# container in this project that this file does not define, so a shared name
+# means the first deploy removes the TLS terminator and takes the site down for
+# good. The proxy runs as its own project, `platform-edge`.
 compose() {
   IMAGE_TAG="$1" COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-lean-platform}" \
     docker compose -f "$COMPOSE_FILE" "${@:2}"
@@ -63,7 +68,10 @@ await_healthy() {
 
   while (( SECONDS < deadline )); do
     local ids all_healthy=1 unhealthy=""
-    ids=$(compose "$tag" ps -q 2>/dev/null || true)
+    # -qa, not -q: `ps -q` lists only RUNNING containers, so a service that
+    # exits on startup simply vanishes from the list and its healthy siblings
+    # satisfy the loop. That is the failure this gate exists to catch.
+    ids=$(compose "$tag" ps -qa 2>/dev/null || true)
 
     if [[ -z "$ids" ]]; then
       all_healthy=0
@@ -98,6 +106,21 @@ await_healthy() {
 PREVIOUS_TAG=""
 [[ -f "$STATE_FILE" ]] && PREVIOUS_TAG=$(<"$STATE_FILE")
 
+# The state file can be missing on a fresh runner, a rebuilt box, or after a
+# deploy done by hand. The containers that are serving right now still know
+# which tag they came from, and asking them is far better than concluding there
+# is nothing to roll back to — that conclusion tears down a working Platform.
+if [[ -z "$PREVIOUS_TAG" ]]; then
+  running_image=$(docker ps \
+    --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME:-lean-platform}" \
+    --filter "label=com.docker.compose.service=backend" \
+    --format '{{.Image}}' | head -1)
+  if [[ -n "$running_image" ]]; then
+    PREVIOUS_TAG="${running_image##*:}"
+    warn "no recorded tag; recovered ${PREVIOUS_TAG} from the running containers"
+  fi
+fi
+
 log "deploying ${NEW_TAG}"
 [[ -n "$PREVIOUS_TAG" ]] && log "currently deployed: ${PREVIOUS_TAG}"
 
@@ -129,7 +152,7 @@ if (( ROLLBACK )); then
   warn "rolling back to ${PREVIOUS_TAG}"
   # No pull: the previous images are already on this box, and the registry may
   # be exactly what is broken.
-  compose "$PREVIOUS_TAG" up -d --remove-orphans \
+  compose "$PREVIOUS_TAG" up -d --remove-orphans --pull never \
     || die "ROLLBACK FAILED — the Platform is down and needs a person"
 
   if await_healthy "$PREVIOUS_TAG"; then

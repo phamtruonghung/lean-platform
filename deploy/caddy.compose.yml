@@ -1,6 +1,15 @@
 # The reverse proxy. Deployed once and left alone: application deploys replace
 # the containers behind it without touching TLS termination.
 #
+# Run it as its own Compose project:
+#
+#     COMPOSE_PROJECT_NAME=platform-edge docker compose -f caddy.compose.yml up -d
+#
+# The name matters. The application deploy uses `--remove-orphans`, which
+# deletes any container in ITS project that its compose file does not define.
+# Share a project name with the application and the first deploy removes this
+# container, taking TLS termination and the whole site down with it.
+#
 # caddy_data holds the certificates. Without that volume Caddy re-requests them
 # on every restart and quickly hits Let's Encrypt's rate limit — the same trap
 # the k3s platform had to work around by giving Traefik persistent storage for

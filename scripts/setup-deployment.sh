@@ -211,7 +211,8 @@ say "and your LXC will most likely reach it over IPv4."
 step "Replace [YOUR-PASSWORD] in the string with the password you just saved."
 ask_secret DATABASE_URL "Paste the session pooler connection string:"
 write_env DATABASE_URL "$DATABASE_URL"
-# CI runs migrations against this before a new version takes traffic.
+# The deploy passes this to the API. It is also what migrations will run
+# against once the schema baseline lands.
 set_secret DATABASE_URL "$DATABASE_URL"
 
 # ── 2 ─────────────────────────────────────────────────────────────────────
@@ -324,8 +325,11 @@ say "  the top of /opt/lean-platform/Caddyfile:"
 say "    acme_ca https://acme-staging-v02.api.letsencrypt.org/directory"
 step "Start the proxy:"
 say "    cd /opt/lean-platform"
-say "    APP_HOSTNAME=$APP_HOSTNAME ACME_EMAIL=$ACME_EMAIL \\"
+say "    COMPOSE_PROJECT_NAME=platform-edge \\"
+say "      APP_HOSTNAME=$APP_HOSTNAME ACME_EMAIL=$ACME_EMAIL \\"
 say "      docker compose -f caddy.compose.yml up -d"
+say "The project name matters: application deploys remove any container in THEIR"
+say "project that they do not define, so sharing a name would delete the proxy."
 step "Watch it request a certificate:"
 say "    docker logs -f platform-caddy"
 say "Nothing is behind the proxy yet, so a 502 from outside is the correct answer"
@@ -357,7 +361,8 @@ say "  /opt/lean-platform/Caddyfile, returning it to how the repository ships it
 say "    #acme_ca https://acme-staging-v02.api.letsencrypt.org/directory"
 step "Restart the proxy so it requests from the production service:"
 say "    cd /opt/lean-platform"
-say "    APP_HOSTNAME=$APP_HOSTNAME ACME_EMAIL=$ACME_EMAIL \\"
+say "    COMPOSE_PROJECT_NAME=platform-edge \\"
+say "      APP_HOSTNAME=$APP_HOSTNAME ACME_EMAIL=$ACME_EMAIL \\"
 say "      docker compose -f caddy.compose.yml restart"
 step "Confirm the certificate is trusted:"
 say "    curl -I https://$APP_HOSTNAME"
@@ -370,5 +375,5 @@ confirm "Ready to finish and show the summary?"
 finish
 
 note "Production values are in .env.production, which is gitignored. Keep it."
-note "Next: ticket #3 adds the workflows that build images and deploy to the"
-note "runner you just registered, targeting the 'lean-platform' label."
+note "Push to main and the Release workflow builds both images, publishes them"
+note "to GHCR and deploys them on the runner you just registered."

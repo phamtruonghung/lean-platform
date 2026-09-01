@@ -24,10 +24,10 @@ lean-platform/
 └── docker-compose.yml
 ```
 
-The Flutter version is pinned in the base image in `frontend/Dockerfile`, and
-`frontend/pubspec.lock` pins what it resolves. When CI arrives it will pin the
-same Flutter version a second time, and the two must agree — if they drift, CI
-passes against a toolchain that never builds the image.
+The Flutter version is pinned in two places that must agree: `FLUTTER_VERSION`
+in `.github/workflows/ci.yml` and the base image in `frontend/Dockerfile`. If
+they drift, CI passes against a toolchain that never builds the image.
+`frontend/pubspec.lock` pins what that toolchain resolves.
 
 ## Local development
 
@@ -81,13 +81,23 @@ deploy/
 └── deploy.sh           deploys a tag, and puts the old one back if it fails
 ```
 
-**A failed deploy leaves the previous version serving.** The k3s platform got
-that from Helm's `--atomic`; Compose has no equivalent, so `deploy.sh` does it
-by hand: it pulls before touching anything running, starts the new tag, waits
-for every container to report healthy, and on failure restores the tag it
-recorded last time. A rollback never pulls — the previous images are already on
-the box, and an unreachable registry is one of the things that makes a deploy
-fail in the first place.
+**A failed deploy restores the previous version automatically.** The k3s
+platform got that from Helm's `--atomic`; Compose has no equivalent, so
+`deploy.sh` does it by hand: it pulls before touching anything running, starts
+the new tag, waits for every container to report healthy, and on failure brings
+the previous tag back. The rollback passes `--pull never` — the previous images
+are already on the box, and an unreachable registry is one of the things that
+makes a deploy fail in the first place.
+
+This is a replace-then-check, not a blue/green swap: the new containers take
+over first, so there is a window of up to the health timeout during which the
+site is down before the old version returns. Removing that window needs two
+stacks and a proxy switch, which is more machinery than the plant needs today.
+
+The proxy runs as its own Compose project, `platform-edge`. That is not
+cosmetic: the application deploy passes `--remove-orphans`, which deletes any
+container in *its* project that its compose file does not define — so a shared
+project name means the first deploy removes TLS termination.
 
 Images are tagged `sha-<commit>`, never `latest`. A floating tag would make a
 rollback meaningless, because the tag it rolls back to may since have moved.
@@ -116,9 +126,6 @@ nothing else yet.
   step that runs migrations before a new version takes traffic. Until then
   `src/platform/db.js` sets no type parsers: how BIGINT and NUMERIC cross the
   wire is a decision about tables that do not exist yet.
-- **No CI.** Nothing runs `npm test` or `npm run lint` automatically, so the
-  Module boundary rule is enforced only by someone running it. That lands with
-  the deployment pipeline.
 - **No authentication.** Sign-in through Supabase Auth lands with the People
   Module.
 - **Fonts are fetched from a public CDN.** `--no-web-resources-cdn` keeps
