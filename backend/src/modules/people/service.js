@@ -21,13 +21,7 @@
 
 const { getPool, withActor } = require('../../platform/db');
 const { ROLES } = require('./authorization');
-const { parseId } = require('./plant');
-
-function httpError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
-}
+const { httpError, parseId } = require('./errors');
 
 function notFoundAccount() {
   return httpError(404, 'Account not found');

@@ -29,41 +29,17 @@
  */
 
 const { getPool, withActor } = require('../../platform/db');
+const { httpError, notFound, parseId } = require('./errors');
 
 // Mirrors the CHECK constraint on org_units.unit_type in the baseline.
 // Validated here too so a bad value comes back as a 400 with a clear
 // message instead of a raw constraint-violation error.
 const UNIT_TYPES = ['area', 'department', 'line', 'cell', 'work_center'];
 
-function httpError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
-}
-
-function notFound(what) {
-  return httpError(404, `${what} not found`);
-}
-
 function requireNonEmptyString(field, value) {
   if (typeof value !== 'string' || value.trim() === '') {
     throw httpError(400, `${field} is required`);
   }
-}
-
-// Route params, query strings and JSON bodies all carry an id as *some*
-// primitive, but ids are BIGINT, which `db.js` deliberately leaves
-// unparsed (see that file's own header) — `pg` hands one back as a decimal
-// string, not a `number`, since a `number` cannot hold every int64. Coercing
-// through `Number` here would make an id compared against a row's own id
-// (e.g. "is this Org Unit's parent at the same Site") silently false —
-// `52 !== "52"` — so this validates and returns a string, never a number,
-// which is also what keeps a route param and a column value the same type
-// wherever this module compares the two.
-function parseId(value) {
-  if (value === undefined || value === null) return null;
-  const str = String(value).trim();
-  return /^[1-9][0-9]*$/.test(str) ? str : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,7 +261,6 @@ async function setOrgUnitActive(id, isActive, accountId) {
 }
 
 module.exports = {
-  parseId,
   createSite,
   listSites,
   getSite,

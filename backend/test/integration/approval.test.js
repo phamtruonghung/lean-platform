@@ -334,6 +334,24 @@ test('rejecting an already-approved Account is allowed, and is distinguishable f
   assert.notStrictEqual(meBody.status, 'deactivated');
 });
 
+// The real consequence of rejection is not merely a changed /me status — it
+// is that the Account can no longer act at all. Same pattern as
+// accounts.test.js's "an inactive Account is refused everywhere else" (there,
+// for a pending Account); here for a rejected one, whose refusal must carry
+// its own distinguishable status rather than the generic pending one.
+test('a rejected Account is refused a protected route with 403 and its own distinguishable status', async () => {
+  const { token, account } = await approveFreshAccount('operator', []);
+
+  const rejection = await reject(account.id);
+  assert.strictEqual(rejection.status, 200);
+
+  const response = await fetch(`${base}/api/people/accounts/pending`, { headers: token });
+  assert.strictEqual(response.status, 403);
+  const body = await response.json();
+  assert.strictEqual(body.status, 'rejected');
+  assert.notStrictEqual(body.status, 'pending_approval');
+});
+
 test('an admitted Account can be deactivated without being deleted, and reactivated', async () => {
   const { token, account } = await approveFreshAccount('operator', []);
 
@@ -355,6 +373,21 @@ test('an admitted Account can be deactivated without being deleted, and reactiva
   assert.strictEqual(reactivate.status, 200);
   const meAfterReactivation = await (await me(token)).json();
   assert.strictEqual(meAfterReactivation.status, 'active');
+});
+
+// As above, for deactivation: the real consequence is that the Account can no
+// longer act, not merely that /me reports a different status.
+test('a deactivated Account is refused a protected route with 403 and its own distinguishable status', async () => {
+  const { token, account } = await approveFreshAccount('operator', []);
+
+  const deactivate = await patchAccount(account.id, { isActive: false });
+  assert.strictEqual(deactivate.status, 200);
+
+  const response = await fetch(`${base}/api/people/accounts/pending`, { headers: token });
+  assert.strictEqual(response.status, 403);
+  const body = await response.json();
+  assert.strictEqual(body.status, 'deactivated');
+  assert.notStrictEqual(body.status, 'pending_approval');
 });
 
 test('an Account not yet approved cannot be activated or deactivated through PATCH /accounts/:id', async () => {
@@ -380,7 +413,6 @@ test('an Org Unit that does not exist is a 404; one that exists but is outside t
   assert.strictEqual(outOfScope.status, 403);
   const outOfScopeBody = await outOfScope.json();
 
-  assert.notStrictEqual(notFound.status, outOfScope.status);
   assert.notDeepStrictEqual(notFoundBody, outOfScopeBody);
 });
 
@@ -413,7 +445,6 @@ test('a request for a Site id that does not exist at all gets 404, distinguishab
   assert.strictEqual(outOfScope.status, 403);
   const outOfScopeBody = await outOfScope.json();
 
-  assert.notStrictEqual(notFound.status, outOfScope.status);
   assert.notDeepStrictEqual(notFoundBody, outOfScopeBody);
 });
 
@@ -528,6 +559,16 @@ test('a role change in the database takes effect on the next request, with no ca
   await pool.query("UPDATE app_users SET role = 'operator' WHERE id = $1", [account.id]);
 });
 
+// GET /accounts exposes every Account's email, role and external_subject —
+// narrowed to administrator-only by this issue's review (it predates issue
+// #8, from issue #6, back when role was not yet a first-class concept).
+test('listing every Account (GET /accounts) requires the administrator role', async () => {
+  const { token } = await approveFreshAccount('operator', []);
+
+  const response = await fetch(`${base}/api/people/accounts`, { headers: token });
+  assert.strictEqual(response.status, 403);
+});
+
 // ---------------------------------------------------------------------------
 // 8. An administrator can act across every Site.
 // ---------------------------------------------------------------------------
@@ -607,7 +648,7 @@ test('creating an Org Unit under a parent requires write scope on that parent (o
   assert.strictEqual(notFound.status, 404);
 });
 
-test('GET /sites and GET .../org-units filter to what the caller can see; an administrator sees everything', async () => {
+test('GET /sites filters to what the caller can see; an administrator sees everything', async () => {
   const siteA = await createSiteWithTree();
   const siteB = await createSiteWithTree();
   const { token } = await approveFreshAccount('operator', [{ orgUnitId: siteA.root.id, canWrite: false }]);
@@ -617,15 +658,46 @@ test('GET /sites and GET .../org-units filter to what the caller can see; an adm
   assert.ok(sites.some((s) => s.id === siteA.site.id));
   assert.ok(!sites.some((s) => s.id === siteB.site.id));
 
-  const orgUnitsResponse = await fetch(
-    `${base}/api/people/sites/${siteA.site.id}/org-units?parentId=${siteA.root.id}`,
-    { headers: token }
-  );
-  const { orgUnits } = await orgUnitsResponse.json();
-  assert.ok(orgUnits.some((ou) => ou.id === siteA.child.id));
-
   const adminSitesResponse = await fetch(`${base}/api/people/sites`, { headers: adminToken });
   const { sites: adminSites } = await adminSitesResponse.json();
   assert.ok(adminSites.some((s) => s.id === siteA.site.id));
   assert.ok(adminSites.some((s) => s.id === siteB.site.id));
+});
+
+// Unlike the Site-level test above, this pins the per-row filter for real:
+// the caller is granted one child of `root` and nothing on its sibling, and
+// both are in the list this request returns (root's own children) — so the
+// filter has actual work to do here, unlike granting siteA.root and then
+// listing beneath siteA.root, where every returned row is beneath the grant
+// regardless of whether the per-row filter runs at all. Deliberately checked
+// by neutralizing plant-routes.js's per-row authorization.canAt filter and
+// re-running this test to confirm it fails, then restoring it.
+test("GET .../org-units filters to what the caller can see, not merely to what is beneath their grant", async () => {
+  const { site, root, child } = await createSiteWithTree();
+
+  const siblingResponse = await fetch(`${base}/api/people/sites/${site.id}/org-units`, {
+    method: 'POST',
+    headers: { ...adminToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ code: uniqueCode('SIB'), name: 'Sibling', unitType: 'department', parentId: root.id })
+  });
+  const { orgUnit: sibling } = await siblingResponse.json();
+
+  // Granted on `child` only — not on `root`, and not on `sibling`.
+  const { token } = await approveFreshAccount('operator', [{ orgUnitId: child.id, canWrite: false }]);
+
+  const orgUnitsResponse = await fetch(
+    `${base}/api/people/sites/${site.id}/org-units?parentId=${root.id}`,
+    { headers: token }
+  );
+  const { orgUnits } = await orgUnitsResponse.json();
+  assert.ok(orgUnits.some((ou) => ou.id === child.id));
+  assert.ok(!orgUnits.some((ou) => ou.id === sibling.id));
+
+  const adminOrgUnitsResponse = await fetch(
+    `${base}/api/people/sites/${site.id}/org-units?parentId=${root.id}`,
+    { headers: adminToken }
+  );
+  const { orgUnits: adminOrgUnits } = await adminOrgUnitsResponse.json();
+  assert.ok(adminOrgUnits.some((ou) => ou.id === child.id));
+  assert.ok(adminOrgUnits.some((ou) => ou.id === sibling.id));
 });

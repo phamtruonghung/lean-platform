@@ -64,10 +64,10 @@ health checks do not touch the schema, but these two files do.
 
 `test:integration` runs its files with `--test-concurrency=1`: several files
 share the same tables in the same real database (`app_users` for
-accounts.test.js and plant.test.js, for instance), and at least one of them
-needs sole ownership of its table for the length of its own run — `node
---test`'s default is to run separate files in parallel, which raced two
-files' own cleanup against each other before this flag was added.
+accounts.test.js, plant.test.js and approval.test.js, for instance), and at
+least one of them needs sole ownership of its table for the length of its own
+run — `node --test`'s default is to run separate files in parallel, which
+raced two files' own cleanup against each other before this flag was added.
 
 ```bash
 cd backend
@@ -238,12 +238,18 @@ request. `backend/src/platform/tokens.js` verifies it against the project's
 JWKS and resolves it to a Supabase subject; `backend/src/modules/people`
 resolves that subject to an Account (`app_users.external_subject`), creating
 one, inactive, on a subject's first sign-in. Every endpoint except an
-Account's own status (`GET /api/people/me`) refuses an inactive Account with
-`403 {"status": "pending_approval"}`, which is what the Flutter app's
-awaiting-Approval screen distinguishes from a real failure. The very first
-Account created on an empty database is the one exception: it is activated
-immediately, as an administrator, granted every Site that exists at that
-moment. See issue #6 and `CONTEXT.md`'s Account/Approval entries.
+Account's own status (`GET /api/people/me`) refuses an inactive Account with a
+403 and a `status` the Flutter app can distinguish from a real failure —
+`"pending_approval"` for an Account nobody has decided about yet,
+`"rejected"` for one an administrator turned away, and `"deactivated"` for one
+that was approved and later deactivated (`backend/src/modules/people/
+middleware.js`'s `statusFor`). The very first Account created on an empty
+database is the one exception: it is activated immediately, as an
+administrator, granted every Site that exists at that moment. Approval itself
+— an administrator admitting an Account, setting its role and granting its
+Org Units, or rejecting or deactivating one — and role/Org Unit scope
+enforcement on every other route are issue #8. See issues #6 and #8 and
+`CONTEXT.md`'s Account/Approval entries.
 
 Configuration — `SUPABASE_JWKS_URL`/`SUPABASE_JWT_ISSUER` for the backend,
 `SUPABASE_URL`/`SUPABASE_ANON_KEY` for the frontend — lives in `.env.example`,
@@ -253,10 +259,10 @@ Supabase project. The test suite does not depend on one — see
 
 ## Known gaps
 
-This is the walking skeleton, plus sign-in. It proves the path from browser to
-database and lets a person sign up, sign in, and wait for Approval — Approval
-itself (an administrator activating another Account, role and Org Unit scope
-enforcement) is issue #8, not yet built.
+This is the walking skeleton, plus sign-in, plus Approval. It proves the path
+from browser to database and lets a person sign up, sign in, wait for
+Approval, and — once an administrator approves them — act within the Org
+Units they were granted (issue #8).
 
 - **Fonts are fetched from a public CDN.** `--no-web-resources-cdn` keeps
   CanvasKit local, but Flutter still fetches Roboto from `fonts.gstatic.com`.

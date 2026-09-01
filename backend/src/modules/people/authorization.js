@@ -33,6 +33,7 @@
  */
 
 const { getPool } = require('../../platform/db');
+const { parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 const plant = require('./plant');
 
 // Mirrors the CHECK constraint on app_users.role in the baseline
@@ -43,6 +44,15 @@ const plant = require('./plant');
 // as a 400 with a clear message, not a raw constraint-violation error.
 const ROLES = ['operator', 'supervisor', 'engineer', 'manager', 'admin'];
 
+// The one place "is this Account an administrator?" is spelled out as a role
+// comparison — canAct, canSeeSite and requireAdmin below, and the two route
+// handlers (plant-routes.js) that need to know whether to skip their own
+// per-row filter, all call this rather than writing `role === 'admin'` a
+// fifth and sixth time.
+function isAdmin(account) {
+  return account.role === 'admin';
+}
+
 // `true` for role `admin` unconditionally, with no query at all — see the
 // file header. Otherwise, a single indexed query: does the caller hold a
 // grant, anywhere in `app_user_org_units`, whose Org Unit is `orgUnitId`
@@ -51,7 +61,7 @@ const ROLES = ['operator', 'supervisor', 'engineer', 'manager', 'admin'];
 // since read and write are grantable separately (issue #8's own criterion)
 // and a write grant implies read rather than needing its own separate row.
 async function canAct({ account, orgUnitId, write = false }) {
-  if (account.role === 'admin') return true;
+  if (isAdmin(account)) return true;
   if (orgUnitId === null || orgUnitId === undefined) return false;
 
   const { rows } = await getPool().query(
@@ -76,7 +86,7 @@ async function canAct({ account, orgUnitId, write = false }) {
 // its root, since a grant deeper in the tree still means "I work somewhere
 // in this Site" even though it does not reach the whole thing.
 async function canSeeSite({ account, siteId }) {
-  if (account.role === 'admin') return true;
+  if (isAdmin(account)) return true;
 
   const { rows } = await getPool().query(
     `SELECT 1
@@ -95,7 +105,7 @@ async function canSeeSite({ account, siteId }) {
 // gated on the role alone; no Org Unit is in play yet, so this needs no
 // database query of its own. Must run after authenticate() (req.account).
 function requireAdmin(req, res, next) {
-  if (req.account.role !== 'admin') {
+  if (!isAdmin(req.account)) {
     return res.status(403).json({ message: 'This action requires the administrator role.' });
   }
   return next();
@@ -116,21 +126,18 @@ function requireAdmin(req, res, next) {
 function requireOrgUnitScope({ write = false, paramName = 'id' } = {}) {
   return async (req, res, next) => {
     try {
-      const orgUnitId = plant.parseId(req.params[paramName]);
+      const orgUnitId = parseId(req.params[paramName]);
       const orgUnit = await plant.getOrgUnit(orgUnitId); // throws the 404.
       const allowed = await canAct({ account: req.account, orgUnitId: orgUnit.id, write });
       if (!allowed) {
-        return res.status(403).json({ message: "Outside the caller's granted Org Units" });
+        return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
       }
       // The route handler would otherwise re-fetch the exact row this
       // middleware just resolved — stashed here so it does not have to.
       req.orgUnit = orgUnit;
       return next();
     } catch (error) {
-      if (error.status) {
-        return res.status(error.status).json({ message: error.message });
-      }
-      return next(error);
+      return handleError(error, res, next);
     }
   };
 }
@@ -149,23 +156,20 @@ function requireOrgUnitScope({ write = false, paramName = 'id' } = {}) {
 function requireSiteScope({ paramName = 'siteId' } = {}) {
   return async (req, res, next) => {
     try {
-      const siteId = plant.parseId(req.params[paramName]);
+      const siteId = parseId(req.params[paramName]);
       const site = await plant.getSite(siteId); // throws the 404.
       const allowed = await canSeeSite({ account: req.account, siteId: site.id });
       if (!allowed) {
-        return res.status(403).json({ message: "Outside the caller's granted Org Units" });
+        return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
       }
       // The route handler would otherwise re-fetch the exact row this
       // middleware just resolved — stashed here so it does not have to.
       req.site = site;
       return next();
     } catch (error) {
-      if (error.status) {
-        return res.status(error.status).json({ message: error.message });
-      }
-      return next(error);
+      return handleError(error, res, next);
     }
   };
 }
 
-module.exports = { ROLES, canAct, canSeeSite, requireAdmin, requireOrgUnitScope, requireSiteScope };
+module.exports = { ROLES, isAdmin, canAct, canSeeSite, requireAdmin, requireOrgUnitScope, requireSiteScope };

@@ -12,7 +12,7 @@
 const express = require('express');
 const { authenticate, requireActive, statusFor } = require('./middleware');
 const { requireAdmin } = require('./authorization');
-const { parseId } = require('./plant');
+const { parseId, httpError, handleError } = require('./errors');
 const {
   listAccounts,
   listPendingAccounts,
@@ -23,22 +23,15 @@ const {
 
 const router = express.Router();
 
-// A domain error carries its own status (service.js's httpError) and is the
-// expected shape for a bad request or a missing Account; anything else is a
-// genuine failure and goes to the app's own unhandled-error handler via
-// next() — the same split plant-routes.js's own handleError makes.
-function handleError(error, res, next) {
-  if (error.status) {
-    return res.status(error.status).json({ message: error.message });
-  }
-  return next(error);
-}
-
-function requireAccountId(req, res) {
+// Throws rather than writing the response itself, following plant.js's own
+// requireNonEmptyString convention — the surrounding route's try/catch and
+// this file's own handleError (above) are what turn the thrown httpError
+// into the 400 response; a caller of this function no longer needs its own
+// `if (id === null) return;` guard.
+function requireAccountId(req) {
   const id = parseId(req.params.id);
   if (id === null) {
-    res.status(400).json({ message: 'id must be a valid Account id' });
-    return null;
+    throw httpError(400, 'id must be a valid Account id');
   }
   return id;
 }
@@ -58,7 +51,14 @@ router.get('/me', authenticate, (req, res) => {
 // Everything else sits behind requireActive. A directory listing is the
 // first thing worth protecting this way: real, useful once approved, and
 // exactly what an inactive Account must not see.
-router.get('/accounts', authenticate, requireActive, async (_req, res, next) => {
+//
+// requireAdmin (issue #8 review): every Account's email, role and
+// external_subject (the identity-provider subject) is not something a
+// non-admin should be able to enumerate — narrowed here to admin-only rather
+// than left open to any active Account. This is a lockdown, not the final
+// design; issue #9 ("The directory") is where a wider, deliberate visibility
+// rule belongs.
+router.get('/accounts', authenticate, requireActive, requireAdmin, async (_req, res, next) => {
   try {
     const accounts = await listAccounts();
     res.json({ accounts });
@@ -87,8 +87,7 @@ router.get('/accounts/pending', authenticate, requireActive, requireAdmin, async
 // partial Approval unobservable).
 router.post('/accounts/:id/approval', authenticate, requireActive, requireAdmin, async (req, res, next) => {
   try {
-    const id = requireAccountId(req, res);
-    if (id === null) return;
+    const id = requireAccountId(req);
 
     const { role, grants } = req.body ?? {};
     const account = await approveAccount(id, { role, grants: grants ?? [] }, req.account.id);
@@ -100,8 +99,7 @@ router.post('/accounts/:id/approval', authenticate, requireActive, requireAdmin,
 
 router.post('/accounts/:id/rejection', authenticate, requireActive, requireAdmin, async (req, res, next) => {
   try {
-    const id = requireAccountId(req, res);
-    if (id === null) return;
+    const id = requireAccountId(req);
 
     const account = await rejectAccount(id, req.account.id);
     res.json({ account });
@@ -114,8 +112,7 @@ router.post('/accounts/:id/rejection', authenticate, requireActive, requireAdmin
 // restricted to an already-approved Account (service.js's setAccountActive).
 router.patch('/accounts/:id', authenticate, requireActive, requireAdmin, async (req, res, next) => {
   try {
-    const id = requireAccountId(req, res);
-    if (id === null) return;
+    const id = requireAccountId(req);
 
     if (typeof req.body?.isActive !== 'boolean') {
       return res.status(400).json({ message: 'isActive (boolean) is required' });

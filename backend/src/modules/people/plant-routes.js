@@ -47,19 +47,9 @@ const express = require('express');
 const { authenticate, requireActive } = require('./middleware');
 const authorization = require('./authorization');
 const plant = require('./plant');
+const { parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
-
-// A domain error carries its own status (plant.js's httpError) and is the
-// expected shape for a bad request, a missing id, or a conflict; anything
-// else is a genuine failure and goes to the app's own unhandled-error
-// handler via next().
-function handleError(error, res, next) {
-  if (error.status) {
-    return res.status(error.status).json({ message: error.message });
-  }
-  return next(error);
-}
 
 // Creating an Org Unit is one route with two different authorization rules,
 // which is why this is its own middleware rather than a call to
@@ -87,7 +77,7 @@ async function requireOrgUnitCreateScope(req, res, next) {
       return authorization.requireAdmin(req, res, next);
     }
 
-    const orgUnitId = plant.parseId(parentId);
+    const orgUnitId = parseId(parentId);
     if (orgUnitId === null) {
       return res.status(400).json({ message: 'parentId must be a valid Org Unit id' });
     }
@@ -95,14 +85,11 @@ async function requireOrgUnitCreateScope(req, res, next) {
     const parent = await plant.getOrgUnit(orgUnitId); // throws the 404.
     const allowed = await authorization.canAct({ account: req.account, orgUnitId: parent.id, write: true });
     if (!allowed) {
-      return res.status(403).json({ message: "Outside the caller's granted Org Units" });
+      return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
     }
     return next();
   } catch (error) {
-    if (error.status) {
-      return res.status(error.status).json({ message: error.message });
-    }
-    return next(error);
+    return handleError(error, res, next);
   }
 }
 
@@ -123,7 +110,7 @@ router.post('/sites', authenticate, requireActive, authorization.requireAdmin, a
 router.get('/sites', authenticate, requireActive, async (req, res, next) => {
   try {
     const sites = await plant.listSites();
-    if (req.account.role === 'admin') {
+    if (authorization.isAdmin(req.account)) {
       return res.json({ sites });
     }
 
@@ -173,13 +160,13 @@ router.get('/sites/:siteId/org-units', authenticate, requireActive, authorizatio
     const siteId = req.site.id;
     let parentId;
     if (req.query.parentId !== undefined) {
-      parentId = plant.parseId(req.query.parentId);
+      parentId = parseId(req.query.parentId);
       if (parentId === null) {
         return res.status(400).json({ message: 'parentId must be a valid Org Unit id' });
       }
     }
     const orgUnits = await plant.listOrgUnits(siteId, parentId);
-    if (req.account.role === 'admin') {
+    if (authorization.isAdmin(req.account)) {
       return res.json({ orgUnits });
     }
 
@@ -198,7 +185,7 @@ router.get('/sites/:siteId/org-units', authenticate, requireActive, authorizatio
 
 router.post('/sites/:siteId/org-units', authenticate, requireActive, requireOrgUnitCreateScope, async (req, res, next) => {
   try {
-    const siteId = plant.parseId(req.params.siteId);
+    const siteId = parseId(req.params.siteId);
     const orgUnit = await plant.createOrgUnit(siteId, req.body ?? {}, req.account.id);
     res.status(201).json({ orgUnit });
   } catch (error) {
