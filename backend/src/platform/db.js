@@ -60,4 +60,46 @@ async function closePool() {
   }
 }
 
-module.exports = { getPool, closePool };
+// Runs `fn` inside one transaction, with the audit actor set transaction
+// -locally first — `SET LOCAL`, not a plain session `SET`, because this pool
+// (and Supabase's own transaction-mode pooler in production, per ADR-0002's
+// Consequences) hands the same physical connection to different requests
+// between transactions. A session-level setting would leak into whichever
+// request happens to reuse the connection next and misattribute its writes;
+// `SET LOCAL` is scoped to this transaction alone and is cleared automatically
+// at COMMIT/ROLLBACK. The schema's audit triggers (`audit_row_change()`,
+// `set_actor_columns()`, both in the baseline) read exactly this setting —
+// `current_setting('app.user_id', true)` — to fill `audit_log.changed_by` and
+// each table's `created_by`/`updated_by`.
+//
+// `SET LOCAL app.user_id = $1` is not itself parameterizable — `SET` does not
+// accept a bind parameter — so this goes through `set_config()`, the
+// documented function form: `set_config('app.user_id', value, true)` is
+// exactly `SET LOCAL app.user_id = value` with `true` meaning "local to this
+// transaction", but as an ordinary function call any driver can parameterize
+// safely.
+//
+// `accountId` may be null — a caller with no acting Account yet (the request
+// that creates its own Account has no one to record as its author) simply
+// runs the transaction without ever calling `set_config`, and the audit
+// triggers' own `NULLIF(current_setting(...), '')::BIGINT` reads that as
+// "no actor", which is the honest answer, not a guess.
+async function withActor(accountId, fn) {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    if (accountId != null) {
+      await client.query("SELECT set_config('app.user_id', $1, true)", [String(accountId)]);
+    }
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { getPool, closePool, withActor };

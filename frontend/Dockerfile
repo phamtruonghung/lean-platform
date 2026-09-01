@@ -22,11 +22,24 @@ RUN flutter pub get
 
 COPY . .
 
+# Supabase project config (ADR-0002), baked into the bundle at build time —
+# see lib/supabase_config.dart for why this is --dart-define rather than a
+# file read at runtime. Both default to empty, matching
+# String.fromEnvironment's own default when a define is omitted, so a build
+# with neither ARG supplied still succeeds — that is what lets CI keep
+# building this image on every push without needing the real project's
+# secrets (see the frontend CI job). Deploying against a real Supabase
+# project means passing both as --build-arg.
+ARG SUPABASE_URL=""
+ARG SUPABASE_ANON_KEY=""
+
 # --no-web-resources-cdn makes the app load CanvasKit from its own origin
 # instead of www.gstatic.com. The engine bundles CanvasKit into the build either
 # way; without this flag the copy in the image is never used, and the app cannot
 # start without reaching a public CDN.
-RUN flutter build web --release --no-web-resources-cdn
+RUN flutter build web --release --no-web-resources-cdn \
+      --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
+      --dart-define=SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}"
 
 # ------------------------------------------------------------------------------
 # Serve the built files.

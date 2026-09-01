@@ -48,6 +48,11 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-platform}:${POSTGRES_PASSWORD:-localdev}@postgres:5432/${POSTGRES_DB:-platform}
       BACKEND_PORT: 8000
+      # No local default: verifying a real Supabase session needs a real
+      # Supabase project. See .env.example.
+      SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:-}
+      SUPABASE_JWT_ISSUER: ${SUPABASE_JWT_ISSUER:-}
+      SUPABASE_JWT_AUDIENCE: ${SUPABASE_JWT_AUDIENCE:-authenticated}
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,6 +62,11 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        # No local default (see .env.example): sign-in only works here once
+        # these point at a real Supabase project.
+        SUPABASE_URL: ${SUPABASE_URL:-}
+        SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
     container_name: lean-platform-frontend
     restart: unless-stopped
 
