@@ -11,7 +11,7 @@
     "migrate:down": "node-pg-migrate down --migrations-dir migrations",
     "migrate:create": "node-pg-migrate create --migrations-dir migrations",
     "test": "node --test test/*.test.js",
-    "test:integration": "node --test test/integration/*.test.js",
+    "test:integration": "node --test --test-concurrency=1 test/integration/*.test.js",
     "lint": "node scripts/check-module-boundaries.js && node scripts/check-syntax.js"
   },
   "dependencies": {
