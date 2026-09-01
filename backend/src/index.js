@@ -17,6 +17,7 @@ const express = require('express');
 const { closePool } = require('./platform/db');
 const { log } = require('./platform/log');
 const health = require('./platform/health');
+const lifecycle = require('./platform/lifecycle');
 
 const app = express();
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
@@ -27,8 +28,9 @@ app.set('trust proxy', 1);
 
 app.use(express.json({ limit: '100kb' }));
 
-// Probes first, so nothing mounted later can throttle or intercept them.
-health.mountProbes(app);
+// Probes are mounted first, so nothing added later can intercept them. The same
+// call returns the API's own health router.
+const healthRoutes = health.mount(app);
 
 // ---------------------------------------------------------------------------
 // API
@@ -37,7 +39,7 @@ health.mountProbes(app);
 // so the browser calls /api/... relatively and there is no CORS to configure.
 // That is why no CORS middleware appears here: its absence is the design, not
 // an omission (ADR-0002).
-app.use('/api', health.router);
+app.use('/api', healthRoutes);
 
 // An unknown path under /api answers in JSON. Express's default 404 is an HTML
 // page, which a client that asked for JSON cannot parse — so a typo in a URL
@@ -66,8 +68,8 @@ const server = app.listen(port, '0.0.0.0', () => {
 // invisible to whoever is using the app: in-flight requests finish instead of
 // being cut off mid-response.
 function shutdown(signal) {
-  if (health.isShuttingDown()) return;
-  health.beginShutdown();
+  if (lifecycle.isShuttingDown()) return;
+  lifecycle.beginShutdown();
   log('info', 'shutting down', { signal });
 
   // fetch() and most clients hold the connection open. Without this, close()

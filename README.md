@@ -24,16 +24,19 @@ lean-platform/
 └── docker-compose.yml
 ```
 
-The Flutter version is pinned in two places that must agree: the CI workflow and
-the base image in `frontend/Dockerfile`. If they drift, CI passes against a
-toolchain that never builds the image.
+The Flutter version is pinned in the base image in `frontend/Dockerfile`, and
+`frontend/pubspec.lock` pins what it resolves. When CI arrives it will pin the
+same Flutter version a second time, and the two must agree — if they drift, CI
+passes against a toolchain that never builds the image.
 
 ## Local development
 
 ```bash
-cp .env.example .env
 docker compose up -d --build
 ```
+
+Every variable has a local default, so that is the whole thing on a clean
+checkout. Copy `.env.example` to `.env` to override them.
 
 Then open <http://localhost:3002>. The edge container mirrors production
 routing: `/api/*` goes to the backend, everything else to the Flutter app.
@@ -81,7 +84,12 @@ This is the walking skeleton. It proves the path from browser to database and
 nothing else yet.
 
 - **No schema.** The squashed baseline lands separately, along with the deploy
-  step that runs migrations before a new version takes traffic.
+  step that runs migrations before a new version takes traffic. Until then
+  `src/platform/db.js` sets no type parsers: how BIGINT and NUMERIC cross the
+  wire is a decision about tables that do not exist yet.
+- **No CI.** Nothing runs `npm test` or `npm run lint` automatically, so the
+  Module boundary rule is enforced only by someone running it. That lands with
+  the deployment pipeline.
 - **No authentication.** Sign-in through Supabase Auth lands with the People
   Module.
 - **Fonts are fetched from a public CDN.** `--no-web-resources-cdn` keeps

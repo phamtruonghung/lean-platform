@@ -16,60 +16,55 @@
 const express = require('express');
 const { getPool } = require('./db');
 const { log } = require('./log');
+const { isShuttingDown } = require('./lifecycle');
 
-// Set once SIGTERM has arrived. Readiness reports it before consulting the
-// database, so the proxy can stop routing here while in-flight requests finish.
-let shuttingDown = false;
-
-function beginShutdown() {
-  shuttingDown = true;
+// Round-trips a value through Postgres. Returning the value rather than a
+// boolean is the point: a check that only proves a query did not throw would
+// still pass against a database returning nothing useful.
+async function askDatabase() {
+  const result = await getPool().query('SELECT 1 AS answer');
+  return result.rows[0].answer;
 }
 
-function isShuttingDown() {
-  return shuttingDown;
-}
-
-// Liveness and readiness are mounted at the root rather than under /api,
-// because they are the deployment's business and not the API's. Keeping them
-// off /api also keeps probe traffic clear of anything mounted there later.
-function mountProbes(app) {
+// Everything health serves, mounted in one call so there is one idiom rather
+// than two. The probes sit at the root because they are the deployment's
+// business, not the API's; keeping them off /api also keeps probe traffic clear
+// of anything mounted there later.
+function mount(app) {
   app.get('/healthz', (_req, res) => {
     res.json({ status: 'ok' });
   });
 
   app.get('/readyz', async (_req, res) => {
-    if (shuttingDown) {
+    // Reported before the database is consulted. Once SIGTERM has arrived this
+    // process is going away, and saying so immediately is what lets the proxy
+    // stop routing here before the listener actually closes.
+    if (isShuttingDown()) {
       return res.status(503).json({ status: 'error', message: 'shutting down' });
     }
 
     try {
-      await getPool().query('SELECT 1');
+      await askDatabase();
       return res.json({ status: 'ok', database: 'connected' });
     } catch (error) {
       log('error', 'readiness check failed', { err: error.message });
       return res.status(503).json({ status: 'error', message: 'database unavailable' });
     }
   });
+
+  const api = express.Router();
+
+  api.get('/health', async (_req, res) => {
+    try {
+      const answer = await askDatabase();
+      return res.json({ status: 'ok', database: 'connected', answer });
+    } catch (error) {
+      log('error', 'api health check failed', { err: error.message });
+      return res.status(503).json({ status: 'error', database: 'unavailable' });
+    }
+  });
+
+  return api;
 }
 
-const router = express.Router();
-
-router.get('/health', async (_req, res) => {
-  try {
-    // The value is round-tripped through Postgres on purpose. A health check
-    // that only proves a query did not throw would still pass against a
-    // database returning nothing useful; carrying a value back proves the
-    // whole path end to end, which is the one thing this endpoint is for.
-    const result = await getPool().query('SELECT 1 AS answer');
-    return res.json({
-      status: 'ok',
-      database: 'connected',
-      answer: result.rows[0].answer
-    });
-  } catch (error) {
-    log('error', 'api health check failed', { err: error.message });
-    return res.status(503).json({ status: 'error', database: 'unavailable' });
-  }
-});
-
-module.exports = { router, mountProbes, beginShutdown, isShuttingDown };
+module.exports = { mount };

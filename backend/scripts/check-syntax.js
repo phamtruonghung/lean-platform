@@ -6,18 +6,9 @@
  * Node's own parser rather than a linter.
  */
 
-const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-
-function listJsFiles(dir) {
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return listJsFiles(full);
-    return entry.isFile() && full.endsWith('.js') ? [full] : [];
-  });
-}
+const { listJsFiles } = require('./lib/files');
 
 const root = path.join(__dirname, '..');
 const files = ['src', 'test', 'scripts'].flatMap((dir) => listJsFiles(path.join(root, dir)));

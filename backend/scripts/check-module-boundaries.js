@@ -20,6 +20,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { listJsFiles } = require('./lib/files');
 
 const MODULES_DIR = 'modules';
 const PLATFORM_DIR = 'platform';
@@ -29,16 +30,6 @@ const PLATFORM_DIR = 'platform';
 // a package from node_modules and is never this rule's business.
 const SPECIFIER_PATTERN =
   /(?:require\(\s*['"](\.[^'"]*)['"]\s*\)|from\s*['"](\.[^'"]*)['"]|import\(\s*['"](\.[^'"]*)['"]\s*\))/g;
-
-function listJsFiles(dir) {
-  if (!fs.existsSync(dir)) return [];
-
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return listJsFiles(full);
-    return entry.isFile() && full.endsWith('.js') ? [full] : [];
-  });
-}
 
 // Which Module a file belongs to, or null if it is not inside one. Compared on
 // path segments rather than string prefixes so that a directory named
