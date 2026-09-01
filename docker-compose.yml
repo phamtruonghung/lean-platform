@@ -1,0 +1,76 @@
+# ==============================================================================
+# Local development.
+#
+#     cp .env.example .env
+#     docker compose up -d --build
+#
+# Then open http://localhost:3002.
+#
+# The host ports sit one above maintenance-management's (3001, 8001, 5433),
+# which sit one above employee-management's. All three are routinely run side by
+# side on one machine, and sharing a port means whichever starts second fails to
+# bind — which reads as a broken compose file rather than as a clash. Container
+# ports are unchanged, so nothing inside the network differs from production.
+#
+# The layout mirrors production: an edge router splits /api to the backend and
+# everything else to the frontend, exactly as the reverse proxy on the LXC does.
+#
+# Postgres here is local and disposable. Production is Supabase Cloud (ADR-0002);
+# nothing in this file is deployed.
+# ==============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lean-platform-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: lean-platform-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BACKEND_PORT: 8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8002:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: lean-platform-frontend
+    restart: unless-stopped
+
+  # Mirrors production routing so the app is developed against the same shape it
+  # is deployed behind: one origin, /api split off by path.
+  edge:
+    image: nginx:1.27-alpine
+    container_name: lean-platform-edge
+    restart: unless-stopped
+    volumes:
+      - ./dev/edge.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "3002:80"
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:

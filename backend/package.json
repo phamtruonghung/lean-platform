@@ -1,0 +1,19 @@
+{
+  "name": "lean-platform-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Platform API: one application over one database, serving several plants.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test test/*.test.js",
+    "test:integration": "node --test test/integration/*.test.js",
+    "lint": "node scripts/check-module-boundaries.js && node scripts/check-syntax.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
+  }
+}
