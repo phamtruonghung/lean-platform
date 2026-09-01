@@ -62,6 +62,13 @@ Module owns a table, its behaviour belongs in an HTTP-level test instead.
 The integration tier needs the baseline migration applied first; the API's own
 health checks do not touch the schema, but these two files do.
 
+`test:integration` runs its files with `--test-concurrency=1`: several files
+share the same tables in the same real database (`app_users` for
+accounts.test.js and plant.test.js, for instance), and at least one of them
+needs sole ownership of its table for the length of its own run — `node
+--test`'s default is to run separate files in parallel, which raced two
+files' own cleanup against each other before this flag was added.
+
 ```bash
 cd backend
 
