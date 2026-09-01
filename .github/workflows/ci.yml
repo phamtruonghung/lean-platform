@@ -73,6 +73,18 @@ jobs:
           echo "::error::Postgres never accepted a TCP connection"
           exit 1
 
+      # Applies the baseline (and everything after it) to the empty database
+      # the service container just created. This is also the acceptance test
+      # for "the baseline applies cleanly to an empty database" — there is no
+      # separate check for that claim, this step failing IS that check
+      # failing. It has to run before the integration tests below, which drive
+      # the API over HTTP and need the schema those requests assume to exist.
+      - name: Run migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lean_platform_test
+        run: npm run migrate
+
       - name: Integration tests
         working-directory: backend
         env:
