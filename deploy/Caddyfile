@@ -1,0 +1,36 @@
+# ==============================================================================
+# The Platform's public edge.
+#
+# One hostname, split by path: /api to the API, everything else to the Flutter
+# app. The browser therefore sees a single origin, the frontend's URLs stay
+# relative, and there is no CORS anywhere in this repository (ADR-0002).
+#
+# Runs on the LXC, separately from the application, so that redeploying the
+# Platform never restarts TLS termination.
+# ==============================================================================
+
+{
+	email {$ACME_EMAIL}
+
+	# Uncomment to use the Let's Encrypt STAGING service. Production allows only
+	# 5 failures per hostname per hour, so a wrong DNS record or an unforwarded
+	# port can lock you out; staging does not care, which is what makes it safe
+	# to get the setup wrong. Browsers warn about staging certificates.
+	#acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+{$APP_HOSTNAME} {
+	# Matches bare /api and anything beneath it, and nothing else. A caller who
+	# drops the trailing slash still reaches the API and gets JSON rather than
+	# being handed the Flutter app's HTML — while a path that merely starts with
+	# those characters, /apiary say, does not. `handle /api*` would catch that
+	# too, and would stop mirroring dev/edge.nginx.conf's `^/api(/|$)`.
+	@api path /api /api/*
+	handle @api {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:8080
+	}
+}

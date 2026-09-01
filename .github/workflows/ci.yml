@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  # Every push, not just main. A branch with no pull request open yet is exactly
+  # where a broken change is cheapest to find.
+  #
+  # main is excluded here only because Release calls this same workflow before
+  # it builds anything, so a push to main still runs the whole suite — once,
+  # rather than twice in parallel with itself.
+  push:
+    branches-ignore: [main]
+  pull_request:
+  # Called by Release, so that publishing and deploying are gated on the same
+  # checks a pull request had to pass.
+  workflow_call:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    # The integration tests drive the API over HTTP against a real PostgreSQL,
+    # which is the Platform's one test seam. A stub here would prove the routes
+    # are mounted and nothing about whether they can reach a database.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lean_platform_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        working-directory: backend
+        run: npm ci
+
+      # Includes the Module boundary rule from ADR-0006. It is a convention, so
+      # something has to enforce it; leaving it to review is how it decays.
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
+
+      - name: Tests
+        working-directory: backend
+        run: npm test
+
+      # The service container's own health check runs inside the container,
+      # where Postgres answers on a unix socket during initialisation before it
+      # is listening on TCP. Waiting on the port the tests actually connect to
+      # closes that race rather than trusting a readiness signal from the wrong
+      # side of it.
+      - name: Wait for Postgres to accept TCP connections
+        run: |
+          for _ in $(seq 1 30); do
+            pg_isready -h 127.0.0.1 -p 5432 -U postgres && exit 0
+            sleep 1
+          done
+          echo "::error::Postgres never accepted a TCP connection"
+          exit 1
+
+      - name: Integration tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lean_platform_test
+        run: npm run test:integration
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This version must match the base image in frontend/Dockerfile. If the
+      # two drift, CI passes against a toolchain that never builds the image.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+
+      - name: Resolve dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: frontend
+        run: flutter analyze
+
+      # No `flutter test` step: the Platform tests at one seam, HTTP against the
+      # running API, and there are no widget tests to run. Adding the step now
+      # would fail the build for having nothing to do.
+
+      - name: Build web
+        working-directory: frontend
+        run: flutter build web --release --no-web-resources-cdn
+
+      # The app must serve from one origin. A build that fetches CanvasKit from
+      # a Google CDN renders as empty boxes on a deployment with no egress — a
+      # deploy-time surprise that no other check would catch.
+      #
+      # The checks are specific on purpose: a blanket grep for "gstatic.com"
+      # fails on a correct build, because the loader carries the CDN URL as a
+      # dead branch that `useLocalCanvasKit: true` never takes.
+      #
+      # There is deliberately no check that Roboto is bundled. It is not, yet —
+      # see "Known gaps" in the README. That check belongs with the commit that
+      # bundles the font, not before it, or it would fail every build until then.
+      - name: Web build is self-contained
+        working-directory: frontend
+        run: |
+          if grep -rlq 'gstatic\.com/flutter-canvaskit' build/web/main.dart.js; then
+            echo "::error::the build references the CanvasKit CDN"
+            exit 1
+          fi
+          test -f build/web/canvaskit/canvaskit.wasm
+          echo "CanvasKit is served from the app's own origin"
+
+  # Builds both images without publishing them, so a Dockerfile that no longer
+  # builds fails on the pull request rather than on the push to main that was
+  # meant to deploy it.
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            context: ./backend
+          - name: frontend
+            context: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.name }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          # Scoped per image. Unscoped, the two matrix legs write the same GitHub
+          # Actions cache and overwrite each other's layers every run.
+          cache-from: type=gha,scope=ci-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=ci-${{ matrix.name }}
