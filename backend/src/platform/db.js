@@ -1,12 +1,19 @@
 /*
  * The Platform's connection to Postgres.
  *
- * The database is Supabase Cloud (ADR-0002) and the API reaches it with the
- * service role, because the API owns every write and the database itself is a
- * deny-all floor (ADR-0004). Nothing here creates schema: the schema is owned
- * by migrations and applied as a deploy step before a new version takes
- * traffic, so that a failed migration fails the deploy instead of leaving a
- * running API in front of a database it does not understand.
+ * The database is Supabase Cloud (ADR-0002) and the API reaches it as
+ * `postgres`, the role that ran the baseline and every migration since — it
+ * owns every table in this schema and holds `rolbypassrls = true`, which is
+ * what actually lets it keep reading and writing under the deny-all RLS
+ * floor (ADR-0004), not any "service role": Supabase's `service_role` is
+ * `NOLOGIN` and exists as a PostgREST-level JWT claim, not a Postgres login
+ * role a connection string could ever authenticate as. See
+ * migrations/1756000000002_deny-all-rls.js's own file header for the same
+ * fact, stated where the RLS floor itself is defined. Nothing here creates
+ * schema: the schema is owned by migrations and applied as a deploy step
+ * before a new version takes traffic, so that a failed migration fails the
+ * deploy instead of leaving a running API in front of a database it does not
+ * understand.
  *
  * There is deliberately no type parser here yet. How BIGINT and NUMERIC come
  * back across the wire is a real decision — a JavaScript Number cannot hold
