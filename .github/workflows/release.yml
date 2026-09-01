@@ -1,0 +1,103 @@
+# ==============================================================================
+# Build, publish and deploy.
+#
+# On every push to main:
+#   1. Build both images on GitHub's runners and push them to GHCR.
+#   2. Deploy them from a runner inside your own network.
+#
+# The deploy job needs a self-hosted runner registered against this repository
+# and labelled `lean-platform`. `scripts/setup-deployment.sh` walks through
+# registering it. A runner without that label is never chosen, and deploys queue
+# forever with nothing to say why.
+#
+# Nothing inbound is exposed: the runner polls GitHub outbound, so there is no
+# SSH key here and no port open on the LXC.
+# ==============================================================================
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time. Two overlapping deploys would race over the same
+# containers and the same recorded tag, and the loser would roll back the
+# winner. Not cancel-in-progress: a half-finished deploy should be allowed to
+# finish or roll back, not be killed partway.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: backend
+            context: ./backend
+            image: lean-platform-backend
+          - name: frontend
+            context: ./frontend
+            image: lean-platform-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the image tag
+        id: meta
+        # An immutable tag derived from the commit, never ":latest". A floating
+        # tag makes a rollout non-deterministic and makes rollback meaningless,
+        # because the tag it rolls back to may now point at different content.
+        run: echo "tag=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          # The owner must be lowercase: GHCR rejects a path with capitals, and
+          # the account is PhamTruongHung.
+          tags: ghcr.io/phamtruonghung/${{ matrix.image }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to the LXC
+    needs: build
+    runs-on: [self-hosted, lean-platform]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # The recorded tag lives outside the runner's workspace, which is
+          # wiped between runs. Losing it would leave a deploy with nothing to
+          # roll back to.
+          STATE_FILE: /opt/lean-platform/.deployed-tag
+        run: |
+          mkdir -p /opt/lean-platform
+          ./deploy/deploy.sh "${{ needs.build.outputs.tag }}"
+
+      - name: Report what is serving
+        if: always()
+        run: |
+          echo "deployed tag: $(cat /opt/lean-platform/.deployed-tag 2>/dev/null || echo none)"

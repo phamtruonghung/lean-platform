@@ -1,0 +1,39 @@
+# The Platform on the LXC.
+#
+# Both images come from GHCR, tagged with the commit that built them. IMAGE_TAG
+# is what a deploy changes, and what a rollback changes back — see deploy.sh.
+#
+# The service names matter: Caddy reaches these by the network aliases Compose
+# creates from them, so renaming a service here silently breaks the proxy.
+
+services:
+  backend:
+    image: ghcr.io/phamtruonghung/lean-platform-backend:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      BACKEND_PORT: 8000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    networks:
+      - platform
+
+  frontend:
+    image: ghcr.io/phamtruonghung/lean-platform-frontend:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - platform
+
+networks:
+  platform:
+    external: true

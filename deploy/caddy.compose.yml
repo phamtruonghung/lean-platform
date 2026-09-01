@@ -1,0 +1,33 @@
+# The reverse proxy. Deployed once and left alone: application deploys replace
+# the containers behind it without touching TLS termination.
+#
+# caddy_data holds the certificates. Without that volume Caddy re-requests them
+# on every restart and quickly hits Let's Encrypt's rate limit — the same trap
+# the k3s platform had to work around by giving Traefik persistent storage for
+# acme.json.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: platform-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_HOSTNAME: ${APP_HOSTNAME:?set APP_HOSTNAME}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - platform
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  platform:
+    external: true

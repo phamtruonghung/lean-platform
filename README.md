@@ -66,6 +66,35 @@ DATABASE_URL=postgresql://platform:localdev@127.0.0.1:5434/platform npm run test
 Node's built-in test runner, and **no test framework**. The backend carries no
 development dependencies, matching its predecessors.
 
+## Deployment
+
+Push to `main` and CI builds both images, publishes them to GHCR tagged with the
+commit, and a self-hosted runner on the LXC deploys them. Nothing inbound is
+exposed: the runner polls GitHub outbound, so there is no SSH key in this
+repository and no port open on the box.
+
+```
+deploy/
+├── compose.yml         the Platform: backend and frontend, from GHCR
+├── caddy.compose.yml   the reverse proxy, deployed once and left alone
+├── Caddyfile           one hostname, /api split from everything else
+└── deploy.sh           deploys a tag, and puts the old one back if it fails
+```
+
+**A failed deploy leaves the previous version serving.** The k3s platform got
+that from Helm's `--atomic`; Compose has no equivalent, so `deploy.sh` does it
+by hand: it pulls before touching anything running, starts the new tag, waits
+for every container to report healthy, and on failure restores the tag it
+recorded last time. A rollback never pulls — the previous images are already on
+the box, and an unreachable registry is one of the things that makes a deploy
+fail in the first place.
+
+Images are tagged `sha-<commit>`, never `latest`. A floating tag would make a
+rollback meaningless, because the tag it rolls back to may since have moved.
+
+First-time setup — Supabase, DNS, Docker, certificates and the runner — is
+walked through by `scripts/setup-deployment.sh`.
+
 ## Modules
 
 A **Module** is a functional area that records real work and produces the
