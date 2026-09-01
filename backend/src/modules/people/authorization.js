@@ -2,7 +2,7 @@
  * Role and Org Unit scope enforcement (issue #8, CONTEXT.md's Account,
  * Approval and Org Unit definitions).
  *
- * Two questions this file answers, and nowhere else in the People Module
+ * Three questions this file answers, and nowhere else in the People Module
  * does:
  *
  *   - "Is this Account an administrator?" — role alone, no grant row in
@@ -16,6 +16,13 @@
  *     any descendant of it, which is what "a grant on a Site's root Org
  *     Unit reaches every unit beneath it" means as a single indexed (GiST)
  *     lookup rather than a recursive walk up or down the tree.
+ *   - "Where does this Account's own scope begin in a given Site's tree?" —
+ *     a structurally different question from the two above: not "may the
+ *     caller act on this one Org Unit" but "which Org Units, in this Site,
+ *     are the caller's own entry points into it" (CONTEXT.md's Entry point,
+ *     issue #24, ADR-0008) — grantedEntryPointIds below, which
+ *     plant-routes.js calls only for a non-administrator browsing a Site's
+ *     tree from its root.
  *
  * Nothing here is cached, memoised, or stashed on the token: `canAct` and
  * `canSeeSite` query `app_user_org_units` fresh on every call, the same
@@ -100,6 +107,65 @@ async function canSeeSite({ account, siteId }) {
   return rows.length > 0;
 }
 
+// Issue #24: a grant reaches downward only (canAct's `target.path <@
+// granted.path`), so an Account granted a single deep Org Unit is invisible
+// at the Site's root level — none of the Site's roots are at or beneath
+// their grant, so browsing from the top is a dead end even though their own
+// branch is real and GET /org-units/:id already honours it once they know
+// its id. This answers a different question than canAct: not "can the
+// caller act on this one Org Unit" but "where does the caller's own scope
+// begin in this Site's tree" — every Org Unit in the Site the caller holds
+// any grant on, read or write alike (an entry point is about reaching the
+// tree at all, not about what the caller may do once there), that has no
+// *other* granted Org Unit of theirs as a proper ancestor.
+//
+// The NOT EXISTS clause is the overlapping-grants answer issue #24 asks for:
+// when the caller holds both a unit and a grant on one of its own
+// descendants, the descendant is already reachable by walking down from the
+// ancestor, so it is not its own entry point — only the topmost of a chain
+// of grants comes back, and each entry point therefore comes back exactly
+// once. `ou.path <@ ancestor.path` is the same downward-reachability test
+// canAct uses, just asked in the other direction: "is some other granted Org
+// Unit an ancestor of this one" rather than "is this Org Unit reachable from
+// a grant".
+//
+// Deliberately no isAdmin short-circuit here, unlike canAct/canSeeSite:
+// whether an administrator ever asks this question at all is the caller's
+// call to make, not this module's — plant-routes.js's root-level Org Units
+// listing already branches on isAdmin before reaching for this at all, so
+// this function only ever answers honestly for the Account it is given.
+// Returns a plain array of Org Unit ids, no formatted domain rows and no
+// ordering: plant.js's listOrgUnitsByIds owns both the row shape and the
+// sort_order, name ordering the rest of this Module's list endpoints use —
+// this file's own boundary (see the file header) stops here.
+async function grantedEntryPointIds({ account, siteId }) {
+  const { rows } = await getPool().query(
+    `SELECT ou.id
+       FROM org_units ou
+       JOIN app_user_org_units auo
+         ON auo.org_unit_id = ou.id AND auo.app_user_id = $1
+      WHERE ou.site_id = $2
+        AND NOT EXISTS (
+              SELECT 1
+                FROM app_user_org_units ancestor_grant
+                JOIN org_units ancestor ON ancestor.id = ancestor_grant.org_unit_id
+               WHERE ancestor_grant.app_user_id = $1
+                 AND ancestor.id <> ou.id
+                 -- Belt-and-braces, not load-bearing: ou.site_id = $2 already
+                 -- pins the outer row to one Site, and path <@ is only ever
+                 -- true within a Site today (an Org Unit's path is a chain
+                 -- of its own ancestors' ids, so no cross-Site path can be a
+                 -- prefix of another's). Stated explicitly anyway so the two
+                 -- halves of this query cannot disagree if an Org Unit were
+                 -- ever reparented across Sites in the future.
+                 AND ancestor.site_id = ou.site_id
+                 AND ou.path <@ ancestor.path
+            )`,
+    [account.id, siteId]
+  );
+  return rows.map((row) => row.id);
+}
+
 // "Must be an administrator" — the Approval queue, approving/rejecting an
 // Account, deactivating one, and creating a Site or a root Org Unit are all
 // gated on the role alone; no Org Unit is in play yet, so this needs no
@@ -172,4 +238,13 @@ function requireSiteScope({ paramName = 'siteId' } = {}) {
   };
 }
 
-module.exports = { ROLES, isAdmin, canAct, canSeeSite, requireAdmin, requireOrgUnitScope, requireSiteScope };
+module.exports = {
+  ROLES,
+  isAdmin,
+  canAct,
+  canSeeSite,
+  grantedEntryPointIds,
+  requireAdmin,
+  requireOrgUnitScope,
+  requireSiteScope
+};

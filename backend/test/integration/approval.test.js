@@ -701,3 +701,147 @@ test("GET .../org-units filters to what the caller can see, not merely to what i
   assert.ok(adminOrgUnits.some((ou) => ou.id === child.id));
   assert.ok(adminOrgUnits.some((ou) => ou.id === sibling.id));
 });
+
+// ---------------------------------------------------------------------------
+// 9. Root-level GET .../org-units returns a non-administrator's own entry
+//    points into the Site's tree, not the Site's root Org Units — issue #24,
+//    ADR-0008. A grant reaches downward only, so an Account granted a single
+//    deep Org Unit would otherwise have every root filtered out by canAct
+//    and see an empty list: their own branch, unreachable by navigating down
+//    from the top even though it is real and reachable directly by id.
+// ---------------------------------------------------------------------------
+
+test('an Account granted only a deep Org Unit gets it back as an entry point at root level, and can navigate downward from it', async () => {
+  const { site, grandchild } = await createSiteWithTree();
+
+  const leafResponse = await fetch(`${base}/api/people/sites/${site.id}/org-units`, {
+    method: 'POST',
+    headers: { ...adminToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ code: uniqueCode('LEAF'), name: 'Leaf', unitType: 'work_center', parentId: grandchild.id })
+  });
+  const { orgUnit: leaf } = await leafResponse.json();
+
+  const { token } = await approveFreshAccount('operator', [{ orgUnitId: grandchild.id, canWrite: false }]);
+
+  const rootLevel = await fetch(`${base}/api/people/sites/${site.id}/org-units`, { headers: token });
+  assert.strictEqual(rootLevel.status, 200);
+  const rootLevelBody = await rootLevel.json();
+  assert.deepStrictEqual(rootLevelBody.orgUnits.map((ou) => ou.id), [grandchild.id]);
+
+  // Navigating downward from the entry point works exactly like navigating
+  // down from any other Org Unit's id.
+  const children = await fetch(
+    `${base}/api/people/sites/${site.id}/org-units?parentId=${grandchild.id}`,
+    { headers: token }
+  );
+  assert.strictEqual(children.status, 200);
+  const childrenBody = await children.json();
+  assert.deepStrictEqual(childrenBody.orgUnits.map((ou) => ou.id), [leaf.id]);
+});
+
+// Neither `child` nor `grandchild` is the Site's own root, so this pins the
+// dedup logic itself rather than something the old root-Org-Units filter
+// would happen to get right anyway: granted only `root`, the old behaviour
+// (Site roots filtered by canAct) would already answer `[root]` by
+// coincidence, telling nothing apart from a correct entry-points
+// implementation. Granted `child` and its own descendant `grandchild`
+// instead, the old behaviour returns an empty list (neither is a Site
+// root), and a naive entry-points implementation with no dedup would return
+// both — only the fixed, topmost-only behaviour answers `[child]` alone.
+test('overlapping grants — a unit and one of its own descendants both granted directly — return only the topmost entry point', async () => {
+  const { site, child, grandchild } = await createSiteWithTree();
+  const { token } = await approveFreshAccount('operator', [
+    { orgUnitId: child.id, canWrite: false },
+    { orgUnitId: grandchild.id, canWrite: true }
+  ]);
+
+  const response = await fetch(`${base}/api/people/sites/${site.id}/org-units`, { headers: token });
+  assert.strictEqual(response.status, 200);
+  const { orgUnits } = await response.json();
+  assert.deepStrictEqual(orgUnits.map((ou) => ou.id), [child.id]);
+});
+
+test("an administrator's root-level view is unchanged: the Site's root Org Units, regardless of any grant", async () => {
+  const { site, root, grandchild } = await createSiteWithTree();
+  // Irrelevant to an administrator's own view — present only to prove the
+  // administrator branch never even asks about it.
+  await approveFreshAccount('operator', [{ orgUnitId: grandchild.id, canWrite: false }]);
+
+  const response = await fetch(`${base}/api/people/sites/${site.id}/org-units`, { headers: adminToken });
+  assert.strictEqual(response.status, 200);
+  const { orgUnits } = await response.json();
+  assert.deepStrictEqual(orgUnits.map((ou) => ou.id), [root.id]);
+});
+
+test("an Account granted a Site's root Org Unit still gets that root back at root level (no regression)", async () => {
+  const { site, root } = await createSiteWithTree();
+  const { token } = await approveFreshAccount('operator', [{ orgUnitId: root.id, canWrite: false }]);
+
+  const response = await fetch(`${base}/api/people/sites/${site.id}/org-units`, { headers: token });
+  assert.strictEqual(response.status, 200);
+  const { orgUnits } = await response.json();
+  assert.deepStrictEqual(orgUnits.map((ou) => ou.id), [root.id]);
+});
+
+// This pins that the new entry-points branch sits *behind* requireSiteScope
+// and does not bypass its gate: an Account with no grant anywhere in this
+// Site is refused there before ever reaching authorization.
+// grantedEntryPointIds, not handed an empty 200 list by it. The broader
+// 403-vs-empty-200 rule itself is already pinned earlier in this file ("a
+// non-admin granted scope only in Site A gets 403 listing Site B's Org
+// Units, not an empty 200 list") — this test is a guard on the new
+// root-level branch specifically, not a restatement of that one.
+test('an Account with no grant anywhere in the Site still gets 403 at root level, not an empty 200 (requireSiteScope unaffected)', async () => {
+  const { site } = await createSiteWithTree();
+  const { token } = await approveFreshAccount('operator', []); // no grants at all.
+
+  const response = await fetch(`${base}/api/people/sites/${site.id}/org-units`, { headers: token });
+  assert.strictEqual(response.status, 403);
+});
+
+// ADR-0008's own worked example: the one case where this generalisation
+// actually changes output, not merely restates the old behaviour or lands on
+// an empty list either way. Granted rootA (already a Site root — unaffected
+// on its own, per the no-regression test above) plus a deep unit under a
+// second, ungranted root B in the same Site, the old code answered [rootA]
+// only: rootB was never granted so never passed canAct, and the deep grant
+// beneath it was invisible for the same downward-only reason issue #24
+// raises in the first place. Both are genuine entry points now — the deep
+// grant under the ungranted root B is exactly the branch that used to be a
+// dead end — while rootB itself, never granted, still is not returned.
+test('an Account granted a Site root plus a deep unit under a second, ungranted root sees both entry points', async () => {
+  const { site, root: rootA } = await createSiteWithTree();
+
+  const rootBResponse = await fetch(`${base}/api/people/sites/${site.id}/org-units`, {
+    method: 'POST',
+    headers: { ...adminToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ code: uniqueCode('ROOTB'), name: 'Root B', unitType: 'area' })
+  });
+  const { orgUnit: rootB } = await rootBResponse.json();
+
+  const deepUnderBResponse = await fetch(`${base}/api/people/sites/${site.id}/org-units`, {
+    method: 'POST',
+    headers: { ...adminToken, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      code: uniqueCode('DEEPB'),
+      name: 'Deep Under Root B',
+      unitType: 'department',
+      parentId: rootB.id
+    })
+  });
+  const { orgUnit: deepUnderB } = await deepUnderBResponse.json();
+
+  const { token } = await approveFreshAccount('operator', [
+    { orgUnitId: rootA.id, canWrite: false },
+    { orgUnitId: deepUnderB.id, canWrite: false }
+  ]);
+
+  const response = await fetch(`${base}/api/people/sites/${site.id}/org-units`, { headers: token });
+  assert.strictEqual(response.status, 200);
+  const { orgUnits } = await response.json();
+  const ids = orgUnits.map((ou) => ou.id);
+  assert.ok(ids.includes(rootA.id));
+  assert.ok(ids.includes(deepUnderB.id));
+  assert.ok(!ids.includes(rootB.id));
+  assert.strictEqual(ids.length, 2);
+});

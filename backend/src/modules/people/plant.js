@@ -189,6 +189,29 @@ async function listOrgUnits(siteId, parentId) {
   return rows.map(toOrgUnit);
 }
 
+// The rows behind a set of Org Unit ids the caller already chose —
+// plant-routes.js is the one caller today, composing "which ids"
+// (authorization.grantedEntryPointIds, issue #24 — that module's own
+// decision) with "what those ids look like" (this module's column mapping
+// and ordering), so a scoped caller's entry points into a Site's tree still
+// cost one indexed lookup there and one here, never a row-at-a-time N+1.
+// Like listOrgUnits, this file stays unaware of *why* these particular ids
+// were asked for or who is asking — an id reaching here is one the caller
+// already decided to show. An empty `ids` never reaches Postgres at all:
+// there is no caller this file needs to round-trip a query for just to
+// learn "nothing".
+async function listOrgUnitsByIds(ids) {
+  if (ids.length === 0) return [];
+
+  const { rows } = await getPool().query(
+    `SELECT ${ORG_UNIT_COLUMNS} FROM org_units
+      WHERE id = ANY($1::bigint[])
+      ORDER BY sort_order, name`,
+    [ids]
+  );
+  return rows.map(toOrgUnit);
+}
+
 // Everything beneath a given Org Unit, itself included, as one request —
 // the issue's own "single request" acceptance criterion. `path <@ $1::ltree`
 // is a GiST index lookup (org_units_path_idx), not a recursive query.
@@ -266,6 +289,7 @@ module.exports = {
   getSite,
   createOrgUnit,
   listOrgUnits,
+  listOrgUnitsByIds,
   getOrgUnit,
   getOrgUnitSubtree,
   setOrgUnitActive
