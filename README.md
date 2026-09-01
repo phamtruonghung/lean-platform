@@ -53,13 +53,26 @@ function was called tests the implementation, not the behaviour — and the thin
 that actually break, a route that was never mounted or a pool that cannot reach
 Postgres, are invisible from below HTTP.
 
+`test/integration/schema.test.js` and `test/integration/views.test.js` are a
+named exception: they assert the baseline migration directly against Postgres
+rather than over HTTP, because there are no endpoints over most of that schema
+yet — they arrive with the People, Maintenance and Tier Board Modules. Once a
+Module owns a table, its behaviour belongs in an HTTP-level test instead.
+
+The integration tier needs the baseline migration applied first; the API's own
+health checks do not touch the schema, but these two files do.
+
 ```bash
 cd backend
 
 # Needs no database: shutdown, and the Module boundary rule.
 npm test
 
-# Needs a database. Point it at one and drive the API over HTTP.
+# Needs a database with the baseline migration applied.
+DATABASE_URL=postgresql://platform:localdev@127.0.0.1:5434/platform npm run migrate
+
+# Drives the API over HTTP, and — for the schema/views exception above —
+# queries Postgres directly.
 DATABASE_URL=postgresql://platform:localdev@127.0.0.1:5434/platform npm run test:integration
 ```
 
@@ -94,6 +107,45 @@ over first, so there is a window of up to the health timeout during which the
 site is down before the old version returns. Removing that window needs two
 stacks and a proxy switch, which is more machinery than the plant needs today.
 
+**Migrations run as their own step, before anything running is touched.**
+After the pull (if any — see below), `deploy.sh` runs a one-off container from
+the *new* backend image — `npm run migrate` against `DATABASE_URL` — before it
+starts a single new container. This is what replaces the k3s platform's
+pre-upgrade migration Job. A migration failure `die`s right there: no
+container has been started or stopped, and whatever was serving before this
+run is still serving exactly as it was.
+
+This step runs unconditionally, on every invocation, including `--no-pull`.
+That flag means "the images are already on the box", not "this is a
+rollback" — a re-deploy of a tag that happens to be local already (after a
+runner wipe, an air-gapped push, debugging by hand on the box) still needs its
+schema current before it starts. `node-pg-migrate up` against an
+already-current schema is a no-op, so running it on every invocation costs one
+extra container start and nothing more.
+
+Because migrations land before the new code does, there is a window — this
+step plus however long the new containers take to report healthy — during
+which the *old* version runs against the *new* schema. Every migration must
+therefore be safe for the version it is replacing to run against: add a column
+and start filling it in one deploy, drop what nothing reads any more only in a
+later deploy once nothing depends on it. **Expand now, contract later** — this
+applies to every migration written after this one, not just the baseline.
+
+**A failed deploy rolls the image back, never the schema**
+([ADR-0007](./docs/adr/0007-migrations-run-forward-only-as-a-deploy-step.md)).
+There is no `node-pg-migrate down` anywhere in this script, and there is not
+meant to be one: an automatic schema rollback run under deploy-failure pressure
+is more dangerous than the forward state it would undo — it can drop a column
+or table the previous version's own queries still reference. The
+expand/contract rule above is what makes an image-only rollback *safe* rather
+than reckless: because a migration is never a breaking change for the version
+it replaces, the previous image can simply keep serving the migrated schema,
+which is exactly what rollback asks it to do. Migrations are forward-only; the
+only way back from a bad one is a further migration that fixes it forward.
+Rollback itself never re-runs the migration step, because it never re-invokes
+`deploy.sh` at all — it is inline code at the bottom of the same run that
+restores the previous image directly and returns.
+
 The proxy runs as its own Compose project, `platform-edge`. That is not
 cosmetic: the application deploy passes `--remove-orphans`, which deletes any
 container in *its* project that its compose file does not define — so a shared
@@ -122,10 +174,6 @@ must not depend on what is built on it.
 This is the walking skeleton. It proves the path from browser to database and
 nothing else yet.
 
-- **No schema.** The squashed baseline lands separately, along with the deploy
-  step that runs migrations before a new version takes traffic. Until then
-  `src/platform/db.js` sets no type parsers: how BIGINT and NUMERIC cross the
-  wire is a decision about tables that do not exist yet.
 - **No authentication.** Sign-in through Supabase Auth lands with the People
   Module.
 - **Fonts are fetched from a public CDN.** `--no-web-resources-cdn` keeps

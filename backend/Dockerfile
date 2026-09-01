@@ -15,6 +15,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY src ./src
+COPY migrations ./migrations
 
 # Run as an unprivileged user. Setting it here means `docker run` locally
 # behaves the same way as the deployment does.

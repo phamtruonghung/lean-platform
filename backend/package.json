@@ -7,6 +7,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "migrate": "node-pg-migrate up --migrations-dir migrations",
+    "migrate:down": "node-pg-migrate down --migrations-dir migrations",
+    "migrate:create": "node-pg-migrate create --migrations-dir migrations",
     "test": "node --test test/*.test.js",
     "test:integration": "node --test test/integration/*.test.js",
     "lint": "node scripts/check-module-boundaries.js && node scripts/check-syntax.js"
@@ -14,6 +17,7 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "node-pg-migrate": "^7.9.0",
     "pg": "^8.16.3"
   }
 }

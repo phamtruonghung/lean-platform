@@ -10,10 +10,17 @@
 #
 #     ./deploy.sh <image-tag> [--no-pull]
 #
-# --no-pull uses images already on the box. A rollback always uses it: the
-# previous images are local by definition, and a rollback must not depend on the
-# registry being reachable — the registry being unreachable is one of the things
-# that makes a deploy fail in the first place.
+# --no-pull uses images already on the box, for a tag that is local already: a
+# re-deploy after a runner wipe, an air-gapped push, debugging by hand. The
+# rollback below has the same need — the previous images are local by
+# definition, and a rollback must not depend on the registry being reachable,
+# since an unreachable registry is one of the things that makes a deploy fail
+# in the first place — but it meets that need inline, with `--pull never` to
+# compose, rather than by re-entering this script with this flag.
+#
+# It does NOT skip the migration step below, and must not: it says where the
+# images come from, not that this is a rollback, and a tag re-deployed from the
+# box still needs its schema current before it starts.
 
 set -euo pipefail
 
@@ -26,6 +33,12 @@ COMPOSE_FILE="${COMPOSE_FILE:-compose.yml}"
 STATE_FILE="${STATE_FILE:-.deployed-tag}"
 # How long the new version has to report healthy before it is judged a failure.
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-120}"
+
+# Must agree with compose.yml's own default and with the GHCR_OWNER Release
+# passes in, so the migration step below runs the exact image compose.yml is
+# about to start rather than guessing at a different path.
+GHCR_OWNER="${GHCR_OWNER:-phamtruonghung}"
+BACKEND_IMAGE="ghcr.io/${GHCR_OWNER}/lean-platform-backend"
 
 RED=$(tput setaf 1 2>/dev/null || true)
 GREEN=$(tput setaf 2 2>/dev/null || true)
@@ -132,6 +145,46 @@ if (( PULL )); then
   ok "images present"
 fi
 
+# This is the deploy step the spec asks for, and what replaces the k3s
+# platform's pre-upgrade migration Job: the schema changes, and is proven to
+# apply cleanly, before a single new container exists — let alone takes
+# traffic. It runs from the NEW backend image, not whatever happens to be
+# checked out on the runner, because that image is what carries
+# node-pg-migrate and the migrations directory (see backend/Dockerfile); the
+# runner's checkout is not guaranteed to match it. No --network flag: this
+# talks to DATABASE_URL over the same public internet path the pull above
+# just used, not to anything reachable only via container networking.
+#
+# Deliberately NOT gated on PULL. --no-pull means "the images are already on
+# the box", not "this is a rollback" — the rollback path below never re-enters
+# this script, it restores the previous image inline. A tag re-deployed with
+# --no-pull still needs its schema current before it starts, so this runs on
+# every invocation. `node-pg-migrate up` against an already-current schema is a
+# no-op — it reads its migrations table and applies nothing — so running it
+# unconditionally costs one container start and is safe to repeat.
+#
+# Ordering matters beyond this script. Migrations land before the new code
+# does, so for the length of this step plus however long the new containers
+# take to report healthy, the OLD version is still the one serving requests —
+# now against the NEW schema. That is only safe if every migration is
+# backward-compatible with the version it is replacing: add a column and
+# start filling it in one deploy, drop what nothing reads any more only in a
+# LATER deploy once nothing depends on it. Expand now, contract later. A
+# migration that isn't safe for the old code to run against — dropping a
+# column it still selects, renaming one it still writes — breaks the running
+# Platform in this window even though the deploy itself goes on to succeed.
+#
+# A failure here `die`s with nothing running touched yet: at most the pull
+# happened, but no container has been started or stopped. The old version,
+# whatever it was, is still serving exactly as it was before this script ran.
+log "running migrations"
+docker run --rm \
+  -e DATABASE_URL="$DATABASE_URL" \
+  "${BACKEND_IMAGE}:${NEW_TAG}" \
+  npm run migrate \
+  || die "migration for ${NEW_TAG} failed; nothing was changed"
+ok "schema is current for ${NEW_TAG}"
+
 log "starting ${NEW_TAG}"
 if ! compose "$NEW_TAG" up -d --remove-orphans; then
   warn "failed to start ${NEW_TAG}"
@@ -143,6 +196,17 @@ else
   ROLLBACK=0
 fi
 
+# Rollback puts the previous IMAGE back. It does not, and must not, touch the
+# schema — there is no `node-pg-migrate down` anywhere in this script. Running
+# one automatically, under deploy-failure pressure, would be more dangerous
+# than the forward state it was undoing: it can drop a column or table the
+# previous version's own queries still reference, or discard data written under
+# the new schema in the meantime. The expand/contract rule above is what makes
+# this safe instead of reckless — because a migration is never a breaking
+# change for the version it replaces, the previous image can simply keep
+# serving the migrated schema, which is exactly what rollback is about to ask it
+# to do. Migrations are forward-only; the only way back from a bad one is a
+# further migration that fixes it forward, deployed like any other change.
 if (( ROLLBACK )); then
   if [[ -z "$PREVIOUS_TAG" ]]; then
     compose "$NEW_TAG" down --remove-orphans >/dev/null 2>&1 || true
