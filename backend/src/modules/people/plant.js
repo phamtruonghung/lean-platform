@@ -19,12 +19,13 @@
  * timezone through the API untouched and round-trippable; nothing here
  * resolves a shift or a day.
  *
- * Role/scope enforcement — only an administrator may write here — is issue
- * #8's (Approval and role checks land there). Until then, writes sit behind
- * `authenticate` + `requireActive` only, the same as every other active
- * Account can reach; reads sit behind the same pair rather than being made
- * public, since "browsing the tree" is still something only a signed-in,
- * approved Account should do. See plant-routes.js.
+ * Role and Org Unit scope enforcement (issue #8) lives one layer up, in
+ * plant-routes.js, via authorization.js's requireAdmin and
+ * requireOrgUnitScope — this file stays unaware of who is calling or what
+ * they are scoped to, the same way it stays unaware of HTTP. Every function
+ * here still assumes its caller already settled that question; a `siteId`
+ * or `orgUnitId` reaching this file is one the caller was already entitled
+ * to name.
  */
 
 const { getPool, withActor } = require('../../platform/db');
