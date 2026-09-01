@@ -222,13 +222,35 @@ Module's internals — it calls that Module's service.
 Modules stand on lives in `src/platform` and is not a Module; the foundation
 must not depend on what is built on it.
 
+## Authentication
+
+Supabase Auth is the identity provider (ADR-0002); this Platform never sees a
+password. The Flutter app signs up/in against Supabase directly — password or
+Google — and sends the session's JWT to the API as a bearer token on every
+request. `backend/src/platform/tokens.js` verifies it against the project's
+JWKS and resolves it to a Supabase subject; `backend/src/modules/people`
+resolves that subject to an Account (`app_users.external_subject`), creating
+one, inactive, on a subject's first sign-in. Every endpoint except an
+Account's own status (`GET /api/people/me`) refuses an inactive Account with
+`403 {"status": "pending_approval"}`, which is what the Flutter app's
+awaiting-Approval screen distinguishes from a real failure. The very first
+Account created on an empty database is the one exception: it is activated
+immediately, as an administrator, granted every Site that exists at that
+moment. See issue #6 and `CONTEXT.md`'s Account/Approval entries.
+
+Configuration — `SUPABASE_JWKS_URL`/`SUPABASE_JWT_ISSUER` for the backend,
+`SUPABASE_URL`/`SUPABASE_ANON_KEY` for the frontend — lives in `.env.example`,
+with no local default: verifying or issuing a real session needs a real
+Supabase project. The test suite does not depend on one — see
+`backend/test/helpers/jwks.js`.
+
 ## Known gaps
 
-This is the walking skeleton. It proves the path from browser to database and
-nothing else yet.
+This is the walking skeleton, plus sign-in. It proves the path from browser to
+database and lets a person sign up, sign in, and wait for Approval — Approval
+itself (an administrator activating another Account, role and Org Unit scope
+enforcement) is issue #8, not yet built.
 
-- **No authentication.** Sign-in through Supabase Auth lands with the People
-  Module.
 - **Fonts are fetched from a public CDN.** `--no-web-resources-cdn` keeps
   CanvasKit local, but Flutter still fetches Roboto from `fonts.gstatic.com`.
   On a private deployment that request can fail, and the app then renders with
