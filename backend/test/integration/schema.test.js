@@ -251,3 +251,20 @@ test('document numbers are scoped by Site: two Sites issue independent, non-inte
     assert.strictEqual(b2.rows[0].n, `WO-${codeB}-2026-00002`);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 6. refresh_sqdcp_rollups() runs nightly in production. PostgreSQL 17 forces
+//    search_path to pg_catalog, pg_temp for the duration of REFRESH
+//    MATERIALIZED VIEW, which re-parses every LANGUAGE sql function the
+//    matview's definition inlines — so an unqualified table or ltree function
+//    reference inside one of those functions can pass `npm run migrate` and
+//    still fail here, every night, in production. This is not view
+//    arithmetic (out of scope per the file header above): it asserts that the
+//    refresh executes at all, not what numbers it produces. No withRollback
+//    here — REFRESH MATERIALIZED VIEW CONCURRENTLY cannot run inside a
+//    transaction block.
+// ---------------------------------------------------------------------------
+
+test('refresh_sqdcp_rollups() succeeds against the schema as migrated', async () => {
+  await pool.query('SELECT refresh_sqdcp_rollups()');
+});

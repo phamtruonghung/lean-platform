@@ -49,10 +49,54 @@ exports.up = (pgm) => {
   //   ltree       stores the org hierarchy path so a plant-level rollup is one
   //               indexed lookup rather than a recursive CTE inside every KPI.
   //   citext      case-insensitive email, so Bob@... and bob@... are one user.
+  //
+  // All three are pinned to the `public` schema explicitly rather than left to
+  // land wherever `search_path` happens to put them. This matters because
+  // PostgreSQL 17 runs maintenance operations — CREATE/REFRESH MATERIALIZED
+  // VIEW, CREATE INDEX, REINDEX, CLUSTER, VACUUM FULL — with `search_path`
+  // forced to `pg_catalog, pg_temp`. A `LANGUAGE sql` function is stored as
+  // text and re-parsed at plan time whenever the planner inlines it, so an
+  // unqualified call to `nlevel()` (below, in `shift_instance_at` and
+  // `resolve_cost_rate`) resolves fine at CREATE FUNCTION time and fails at
+  // inline time unless it is written as `public.nlevel()` and `public` really
+  // is where `ltree` lives. No production data exists yet, so this is the one
+  // point where we get to settle that rather than discover it later.
   // ============================================================================
-  pgm.sql('CREATE EXTENSION IF NOT EXISTS btree_gist');
-  pgm.sql('CREATE EXTENSION IF NOT EXISTS ltree');
-  pgm.sql('CREATE EXTENSION IF NOT EXISTS citext');
+  pgm.sql('CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA public');
+  pgm.sql('CREATE EXTENSION IF NOT EXISTS ltree WITH SCHEMA public');
+  pgm.sql('CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public');
+
+  // --------------------------------------------------------------------------
+  // Guard: the schema-qualified calls below (public.nlevel, and anything a
+  // later migration adds) are only correct while these three extensions
+  // really live in `public`. `CREATE EXTENSION IF NOT EXISTS` silently does
+  // nothing if the extension is already installed somewhere else — Supabase
+  // Cloud, for instance, has been known to preinstall trusted extensions into
+  // its own `extensions` schema — which would leave `public.nlevel` calling a
+  // function that does not exist there, with no error until the first nightly
+  // `refresh_sqdcp_rollups()` run. Failing the migration immediately turns
+  // that silent, delayed failure into a loud, immediate one.
+  // --------------------------------------------------------------------------
+  pgm.sql(`
+    DO $$
+    DECLARE
+      v_bad_extension TEXT;
+    BEGIN
+      SELECT e.extname INTO v_bad_extension
+        FROM pg_extension e
+        JOIN pg_namespace n ON n.oid = e.extnamespace
+       WHERE e.extname IN ('btree_gist', 'ltree', 'citext')
+         AND n.nspname <> 'public'
+       LIMIT 1;
+
+      IF v_bad_extension IS NOT NULL THEN
+        RAISE EXCEPTION
+          'Extension "%" is installed outside the public schema. This baseline schema-qualifies calls into btree_gist/ltree/citext as public.<fn>() so that they survive planner inlining under PostgreSQL 17''s restricted search_path during maintenance operations; that assumption must hold for every one of the three, or those calls break silently.',
+          v_bad_extension;
+      END IF;
+    END;
+    $$;
+  `);
 
   // --------------------------------------------------------------------------
   // updated_at
@@ -833,14 +877,14 @@ exports.up = (pgm) => {
       -- Walks up the hierarchy: an event on a work centre resolves to the shift
       -- instance generated for its line.
       SELECT si.id
-        FROM shift_instances si
-        JOIN org_units target ON target.id = p_org_unit_id
-        JOIN org_units owner  ON owner.id = si.org_unit_id
+        FROM public.shift_instances si
+        JOIN public.org_units target ON target.id = p_org_unit_id
+        JOIN public.org_units owner  ON owner.id = si.org_unit_id
        WHERE target.path <@ owner.path
          AND si.starts_at <= p_at
          AND si.ends_at   >  p_at
          AND si.status <> 'cancelled'
-       ORDER BY nlevel(owner.path) DESC
+       ORDER BY public.nlevel(owner.path) DESC
        LIMIT 1;
     $$
   `);
@@ -871,8 +915,8 @@ exports.up = (pgm) => {
     STABLE
     AS $$
       SELECT (p_at AT TIME ZONE COALESCE(s.timezone, 'UTC'))::date
-        FROM org_units ou
-        JOIN sites s ON s.id = ou.site_id
+        FROM public.org_units ou
+        JOIN public.sites s ON s.id = ou.site_id
        WHERE ou.id = p_org_unit_id;
     $$
   `);
@@ -1130,7 +1174,7 @@ exports.up = (pgm) => {
     STABLE
     AS $$
       SELECT pc.standard_cost
-        FROM product_costs pc
+        FROM public.product_costs pc
        WHERE pc.product_id = p_product_id
          AND pc.effective_from <= p_at
          AND (pc.effective_to IS NULL OR pc.effective_to > p_at)
@@ -1149,7 +1193,7 @@ exports.up = (pgm) => {
     STABLE
     AS $$
       SELECT ct.ideal_cycle_seconds
-        FROM product_cycle_times ct
+        FROM public.product_cycle_times ct
        WHERE ct.product_id = p_product_id
          AND (ct.asset_id = p_asset_id OR ct.asset_id IS NULL)
          AND ct.effective_from <= p_at
@@ -2877,13 +2921,13 @@ exports.up = (pgm) => {
     AS $$
       WITH target AS (
         SELECT ou.id, ou.path, ou.site_id
-          FROM org_units ou
+          FROM public.org_units ou
          WHERE ou.id = p_org_unit_id
       ),
       candidates AS (
         -- The asset itself: rank 0, the most specific scope there is.
         SELECT cr.amount, 0 AS rank
-          FROM cost_rates cr
+          FROM public.cost_rates cr
          WHERE p_asset_id IS NOT NULL
            AND cr.scope_type = 'asset'
            AND cr.scope_id = p_asset_id
@@ -2895,9 +2939,9 @@ exports.up = (pgm) => {
 
         -- Any ancestor org unit, deepest first. nlevel gives the depth, and
         -- negating it keeps "more specific = lower rank".
-        SELECT cr.amount, 1000 - nlevel(ancestor.path) AS rank
-          FROM cost_rates cr
-          JOIN org_units ancestor ON ancestor.id = cr.scope_id
+        SELECT cr.amount, 1000 - public.nlevel(ancestor.path) AS rank
+          FROM public.cost_rates cr
+          JOIN public.org_units ancestor ON ancestor.id = cr.scope_id
           JOIN target t ON t.path <@ ancestor.path
          WHERE cr.scope_type = 'org_unit'
            AND cr.rate_type = p_rate_type
@@ -2908,7 +2952,7 @@ exports.up = (pgm) => {
 
         -- The site: the last resort.
         SELECT cr.amount, 2000 AS rank
-          FROM cost_rates cr
+          FROM public.cost_rates cr
           JOIN target t ON t.site_id = cr.scope_id
          WHERE cr.scope_type = 'site'
            AND cr.rate_type = p_rate_type
@@ -5716,10 +5760,10 @@ exports.up = (pgm) => {
     RETURNS TEXT
     LANGUAGE sql
     AS $$
-      INSERT INTO document_sequences (scope, next_value)
+      INSERT INTO public.document_sequences (scope, next_value)
       VALUES (p_prefix || '-' || p_site_code || '-' || p_year, 2)
       ON CONFLICT (scope)
-        DO UPDATE SET next_value = document_sequences.next_value + 1
+        DO UPDATE SET next_value = public.document_sequences.next_value + 1
       RETURNING p_prefix || '-' || p_site_code || '-' || p_year || '-' ||
                 lpad((next_value - 1)::text, 5, '0');
     $$
