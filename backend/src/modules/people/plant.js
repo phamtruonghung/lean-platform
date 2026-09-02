@@ -30,6 +30,7 @@
 
 const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
+const { escapeLikePattern } = require('./sql');
 
 // Mirrors the CHECK constraint on org_units.unit_type in the baseline.
 // Validated here too so a bad value comes back as a 400 with a clear
@@ -230,6 +231,66 @@ async function getOrgUnitSubtree(id) {
   return rows.map((row) => ({ ...toOrgUnit(row), depth: row.depth }));
 }
 
+// `withinOrgUnitIds` is a tree filter, not an authorization concept — the
+// same "everything at or beneath this Org Unit" question getOrgUnitSubtree
+// asks, widened to a set. Absent (undefined) means no containment filter at
+// all; an array restricts results to rows at or beneath one of those units.
+// plant-routes.js is the one caller and decides which, per ADR-0008's seam.
+const ORG_UNIT_SEARCH_LIMIT = 50;
+
+// Issue #35: search a Site's Org Units by partial, case-insensitive name, in
+// one call regardless of depth — path <@ containment (see this file's own
+// header) is what makes "everything at or beneath a granted Org Unit" a
+// single indexed EXISTS rather than a per-level walk. The scope filter lives
+// INSIDE this query, combined with the LIMIT, not applied afterward in JS:
+// a post-filter over an unscoped LIMIT'd result would drop a non-
+// administrator's real matches whenever they sit past the first
+// ORG_UNIT_SEARCH_LIMIT *global* matches. This is grant containment
+// (path <@ against every one of the caller's granted Org Units, unioned via
+// EXISTS), deliberately not authorization.grantedEntryPointIds's entry-point
+// dedup — search asks "is this row inside my reach", not "where does my
+// reach begin", so no dedup is wanted or correct here.
+async function searchOrgUnits(siteId, { search, withinOrgUnitIds } = {}) {
+  await getSite(siteId); // 404s if the Site itself does not exist.
+
+  const term = typeof search === 'string' ? search.trim() : '';
+  if (term === '') return { orgUnits: [], truncated: false };
+  // A caller restricted to nothing reaches nothing: no round trip needed,
+  // the same short-circuit listOrgUnitsByIds makes for an empty id list.
+  if (withinOrgUnitIds !== undefined && withinOrgUnitIds.length === 0) {
+    return { orgUnits: [], truncated: false };
+  }
+
+  const params = [siteId, `%${escapeLikePattern(term)}%`];
+  let scopeClause = '';
+  if (withinOrgUnitIds !== undefined) {
+    params.push(withinOrgUnitIds);
+    scopeClause = `
+       AND EXISTS (
+             SELECT 1 FROM org_units granted
+              WHERE granted.id = ANY($${params.length}::bigint[])
+                AND ou.path <@ granted.path
+           )`;
+  }
+  params.push(ORG_UNIT_SEARCH_LIMIT + 1); // one extra row: the truncation probe.
+
+  const { rows } = await getPool().query(
+    `SELECT ${ORG_UNIT_COLUMNS} FROM org_units ou
+      WHERE ou.site_id = $1
+        AND ou.name ILIKE $2 ESCAPE '\\'
+        ${scopeClause}
+      ORDER BY ou.name, ou.id
+      LIMIT $${params.length}`,
+    params
+  );
+
+  const truncated = rows.length > ORG_UNIT_SEARCH_LIMIT;
+  return {
+    orgUnits: rows.slice(0, ORG_UNIT_SEARCH_LIMIT).map(toOrgUnit),
+    truncated
+  };
+}
+
 async function createOrgUnit(siteId, { parentId, code, name, unitType, sortOrder }, accountId) {
   await getSite(siteId); // 404s if the Site itself does not exist.
 
@@ -292,6 +353,7 @@ module.exports = {
   listOrgUnitsByIds,
   getOrgUnit,
   getOrgUnitSubtree,
+  searchOrgUnits,
   setOrgUnitActive,
   // Exported for org-unit-import.js (issue #12) only, which inserts rows
   // directly inside its own single transaction rather than calling

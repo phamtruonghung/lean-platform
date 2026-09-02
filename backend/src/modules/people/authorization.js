@@ -25,12 +25,15 @@
  *     tree from its root.
  *   - "Where may this Account work, across the whole Platform?" — issue #43,
  *     the caller's own answer to itself rather than a question about one
- *     Org Unit or one Site: orgUnitScopeFor below, called only by GET
- *     /people/me (routes.js) to tell a caller its own reach. Deliberately
- *     not entry points: an administrator holds no grant rows (the first
- *     bullet above), so entry points for one would come back empty — exactly
- *     the "empty reads as nowhere" reading this function exists to rule out
- *     with an explicit `everywhere` flag instead.
+ *     Org Unit or one Site: orgUnitScopeFor below, with two callers now — GET
+ *     /people/me (routes.js), to tell a caller its own reach, and issue #35's
+ *     GET /sites/:siteId/org-units/search (plant-routes.js), which reuses the
+ *     same raw Grant rows as its scope filter rather than a second, narrower
+ *     query of its own. Deliberately not entry points: an administrator
+ *     holds no grant rows (the first bullet above), so entry points for one
+ *     would come back empty — exactly the "empty reads as nowhere" reading
+ *     this function exists to rule out with an explicit `everywhere` flag
+ *     instead.
  *
  * Nothing here is cached, memoised, or stashed on the token: `canAct` and
  * `canSeeSite` query `app_user_org_units` fresh on every call, the same
@@ -178,7 +181,9 @@ async function grantedEntryPointIds({ account, siteId }) {
 // not "may the caller act on this one Org Unit" (canAct) and not "which Org
 // Units are the caller's entry points into this one Site"
 // (grantedEntryPointIds), but "where does this Account work at all",
-// answered once for GET /people/me (routes.js) rather than per-Site.
+// answered once for GET /people/me (routes.js) rather than per-Site. Issue
+// #35's Org Unit search reuses the exact same answer as its scope filter —
+// see this file's own header for both callers.
 //
 // Short-circuits on the role, the same way canAct and canSeeSite do and
 // unlike grantedEntryPointIds: an administrator holds no grant rows and

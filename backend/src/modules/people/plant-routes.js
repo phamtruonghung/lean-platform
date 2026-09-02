@@ -43,6 +43,13 @@
  *     Site's root Org Units — issue #24, since a grant reaches downward only
  *     and the Site's roots may not be reachable from it at all. See
  *     authorization.grantedEntryPointIds's own header, and ADR-0008, for why.
+ *   - GET /sites/:siteId/org-units/search (issue #35) is gated the same way
+ *     as GET /sites/:siteId/org-units above, but its per-row scope filter is
+ *     built from authorization.orgUnitScopeFor's raw Grant rows (issue #43)
+ *     rather than canAct or grantedEntryPointIds — see plant.searchOrgUnits's
+ *     own header for why a search wants grant containment, not entry-point
+ *     dedup, and why that filter has to live inside the SQL rather than
+ *     after it.
  *
  * plant.js itself stays unaware of any of this — see that file's own
  * header.
@@ -217,6 +224,50 @@ router.get('/sites/:siteId/org-units', authenticate, requireActive, authorizatio
     handleError(error, res, next);
   }
 });
+
+// Issue #35: search a Site's Org Units by partial, case-insensitive name, in
+// one call regardless of depth — the gap this ticket exists to close, since
+// GET /sites/:siteId/org-units above only ever walks one level at a time. A
+// distinct path segment, not a second meaning for the same route — the same
+// house reasoning POST /sites/:siteId/org-units/import (below) already
+// states for itself: registered right next to the route it is a search
+// counterpart to, for a reader.
+//
+// Gated the same way GET /sites/:siteId/org-units is at the Site level —
+// authorization.requireSiteScope, existence-before-scope (404 for a Site
+// that does not exist, 403 for one the caller holds no grant within at all)
+// — before this handler, or plant.searchOrgUnits, ever runs. Past that gate,
+// the scope filter is per-row, same idea as GET /sites/:siteId/org-units's
+// own per-row canAct filtering, but pushed inside plant.searchOrgUnits's own
+// SQL (see that function's own header for why a post-filter in JS would be
+// wrong here) rather than applied to each row returned. An administrator's
+// `scope.everywhere` (authorization.orgUnitScopeFor) means no containment
+// filter at all — everywhere === true implies grants is always empty and
+// vice versa (orgUnitScopeFor's own stated invariant), so this ternary is
+// the whole administrator/non-administrator branch.
+//
+// The query parameter is named `search`, matching the one existing
+// name-search convention in this codebase (GET /api/people/employees
+// ?search=, directory-routes.js, issue #9) — not a second, differently-named
+// parameter.
+router.get(
+  '/sites/:siteId/org-units/search',
+  authenticate,
+  requireActive,
+  authorization.requireSiteScope(),
+  async (req, res, next) => {
+    try {
+      const scope = await authorization.orgUnitScopeFor({ account: req.account });
+      const { orgUnits, truncated } = await plant.searchOrgUnits(req.site.id, {
+        search: typeof req.query.search === 'string' ? req.query.search : undefined,
+        withinOrgUnitIds: scope.everywhere ? undefined : scope.grants.map((g) => g.orgUnitId)
+      });
+      res.json({ orgUnits, truncated });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
 
 router.post('/sites/:siteId/org-units', authenticate, requireActive, requireOrgUnitCreateScope, async (req, res, next) => {
   try {
