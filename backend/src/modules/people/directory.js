@@ -56,6 +56,7 @@ const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
 const { getOrgUnit } = require('./plant');
 const { getJobRole } = require('./job-roles');
+const { escapeLikePattern } = require('./sql');
 
 function requireNonEmptyString(field, value) {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -118,15 +119,6 @@ function toEmployee(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
-}
-
-// Postgres's own LIKE/ILIKE escape rules: `\` must be escaped first, so a
-// literal backslash in the search text does not turn the `%`/`_` escapes
-// added after it into something else. The `ESCAPE '\'` clause below is what
-// makes these three characters, and only these three, special in the pattern
-// this function builds.
-function escapeLikePattern(value) {
-  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
 }
 
 // Active Employees by default (issue #9's own default), ordered by
