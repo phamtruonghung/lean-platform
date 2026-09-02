@@ -18,18 +18,28 @@
  * `employee_assignments` and `employee_skills`, is deleted again in
  * `test.after()`.
  *
- * There are no HTTP endpoints yet for `job_roles`, `skills`,
- * `employee_skills` or `employee_assignments` — issues #10 and #11 own those
- * write surfaces later — so those fixtures are inserted directly via SQL
- * (`pool.query`). Employees are ALSO inserted via direct SQL: this pass of
- * issue #9 is read-only (criteria 5 and 6, adding/editing/departing/
- * reinstating an Employee, are a later pass), so there is no POST /employees
- * to drive them through instead.
+ * There are no HTTP endpoints yet for `skills` or `employee_skills` — issue
+ * #11 owns that write surface later — so those fixtures are still inserted
+ * directly via SQL (`pool.query`). `job_roles` and `employee_assignments` DO
+ * have HTTP endpoints now (issue #10, sections 19 onward, below), and
+ * `employees` has had one since issue #9 (section 10 onward). The shared
+ * fixtures built once in test.before — sites, Org Units, the job role, the
+ * skill, and every Employee sections 1-9 read — still go in directly via SQL
+ * regardless: those sections' assertions depend on the fixtures' exact,
+ * stable shape, and routing them through the write surface this file itself
+ * is exercising would make a fixture failure indistinguishable from a test
+ * failure. Every Employee, job role and assignment a section 10-onward test
+ * needs is instead created through the real route it means to exercise
+ * (POST /employees, POST /job-roles, POST /employees/:id/assignments), never
+ * direct SQL, and cleaned up by that same test.
  *
  * Every route this file exercises sits behind `authenticate` + `requireActive`
  * only — no Org Unit scope, no grants needed anywhere below (ADR-0009: the
  * directory is deliberately not Org-Unit-scoped), which is also why this
- * file never inserts an `app_user_org_units` row.
+ * file never inserts an `app_user_org_units` row. Issue #10's write routes
+ * (POST /job-roles, PATCH /job-roles/:id, POST /employees/:id/assignments)
+ * are administrator-only instead (same reasoning as issue #9's own write
+ * surface — see directory-routes.js's own header).
  *
  * Needs a database with every migration applied. Set DATABASE_URL first —
  * see the README's Tests section.
@@ -284,17 +294,26 @@ test.after(async () => {
   await pool.query('DELETE FROM employee_assignments WHERE employee_id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
+
+  // Belt and braces: any Employee a write-surface test (issue #9's own pass,
+  // or issue #10's assignment tests below) failed to clean up itself is
+  // still removed here, so a failing assertion mid-test never leaks a row
+  // into the next run's UNIQUE-constraint namespace. This must happen BEFORE
+  // job_roles/org_units/sites are deleted below: an employee created by an
+  // issue #10 test may still have an employee_assignments row naming one of
+  // this file's own job roles or Org Units, and employee_assignments has no
+  // ON DELETE on job_role_id/org_unit_id (only on employee_id, which cascades
+  // employee_assignments away the moment the employee itself is deleted here).
+  // Deleting job_roles/org_units first would hit that FK and fail the whole
+  // hook.
+  if (writeTestEmployeeIds.length > 0) {
+    await pool.query('DELETE FROM employees WHERE id = ANY($1)', [writeTestEmployeeIds]);
+  }
+
   await pool.query('DELETE FROM skills WHERE id = ANY($1)', [insertedSkillIds]);
   await pool.query('DELETE FROM job_roles WHERE id = ANY($1)', [insertedJobRoleIds]);
   await pool.query('DELETE FROM org_units WHERE id = ANY($1)', [insertedOrgUnitIds]);
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
-
-  // Belt and braces: any Employee a write-surface test below failed to clean
-  // up itself is still removed here, so a failing assertion mid-test never
-  // leaks a row into the next run's UNIQUE-constraint namespace.
-  if (writeTestEmployeeIds.length > 0) {
-    await pool.query('DELETE FROM employees WHERE id = ANY($1)', [writeTestEmployeeIds]);
-  }
 
   await new Promise((resolve) => server.close(resolve));
   await closePool();
@@ -712,4 +731,485 @@ test('an Employee id that does not exist is a 404 on edit, departure and reinsta
 
   const reinstateResponse = await reinstateEmployeeRequest(missingId);
   assert.strictEqual(reinstateResponse.status, 404);
+});
+
+// ---------------------------------------------------------------------------
+// Issue #10 (job roles and Org Unit assignments) — administrator-only writes,
+// same reasoning as issue #9's own write surface (see directory-routes.js's
+// own header). As with the section above, every Employee, job role and
+// assignment a test below creates is its own — never a shared fixture from
+// test.before — and is cleaned up via writeTestEmployeeIds/insertedJobRoleIds/
+// insertedOrgUnitIds/insertedSiteIds, which this file's one test.after
+// already sweeps.
+// ---------------------------------------------------------------------------
+
+async function createJobRoleRequest(body, token = adminToken) {
+  return fetch(`${base}/api/people/job-roles`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function patchJobRoleRequest(id, body, token = adminToken) {
+  return fetch(`${base}/api/people/job-roles/${id}`, {
+    method: 'PATCH',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function assignEmployeeRequest(employeeId, body, token = adminToken) {
+  return fetch(`${base}/api/people/employees/${employeeId}/assignments`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function getEmployeeDetailRequest(id, token = readerToken) {
+  return fetch(`${base}/api/people/employees/${id}`, { headers: token });
+}
+
+async function newTestEmployee(overrides = {}) {
+  const response = await createEmployeeRequest(newEmployeeBody(overrides));
+  const { employee } = await response.json();
+  writeTestEmployeeIds.push(employee.id);
+  return employee.id;
+}
+
+// A second Site and a root Org Unit within it, for the one test that needs
+// to prove a job role is usable across two different Sites (criterion 1) —
+// none of the shared test.before fixtures are at a second Site, so this
+// builds its own, the same direct-SQL device test.before itself uses.
+async function insertSecondSiteOrgUnit() {
+  const { rows: [siteRow] } = await pool.query(
+    `INSERT INTO sites (code, name, timezone) VALUES ($1, 'Directory Test Second Site', 'Asia/Ho_Chi_Minh') RETURNING id`,
+    [uniqueCode('ST2')]
+  );
+  insertedSiteIds.push(siteRow.id);
+
+  const { rows: [orgUnitRow] } = await pool.query(
+    `INSERT INTO org_units (site_id, code, name, unit_type) VALUES ($1, $2, 'Second Site Area', 'area') RETURNING id`,
+    [siteRow.id, uniqueCode('OU2')]
+  );
+  insertedOrgUnitIds.push(orgUnitRow.id);
+  return orgUnitRow.id;
+}
+
+// ---------------------------------------------------------------------------
+// 19. Job roles are defined once and shared by every Site (criterion 1) —
+//     the same job role id is usable for Employees at two different Sites.
+// ---------------------------------------------------------------------------
+
+test('a job role is created once and is visible when assigning an Employee at any Site', async () => {
+  const roleResponse = await createJobRoleRequest({ code: uniqueCode('JR'), name: 'Shared Fitter' });
+  assert.strictEqual(roleResponse.status, 201);
+  const { jobRole: sharedRole } = await roleResponse.json();
+  insertedJobRoleIds.push(sharedRole.id);
+
+  const secondSiteOrgUnit = await insertSecondSiteOrgUnit();
+
+  const employeeAtFirstSite = await newTestEmployee();
+  const employeeAtSecondSite = await newTestEmployee();
+
+  const firstResponse = await assignEmployeeRequest(employeeAtFirstSite, {
+    orgUnitId: grandchildUnit,
+    jobRoleId: sharedRole.id
+  });
+  assert.strictEqual(firstResponse.status, 201);
+  const { assignment: firstAssignment } = await firstResponse.json();
+  assert.strictEqual(firstAssignment.jobRole.id, sharedRole.id);
+
+  const secondResponse = await assignEmployeeRequest(employeeAtSecondSite, {
+    orgUnitId: secondSiteOrgUnit,
+    jobRoleId: sharedRole.id
+  });
+  assert.strictEqual(secondResponse.status, 201);
+  const { assignment: secondAssignment } = await secondResponse.json();
+  assert.strictEqual(secondAssignment.jobRole.id, sharedRole.id);
+});
+
+// ---------------------------------------------------------------------------
+// 20. An Employee can be assigned to an Org Unit, and it shows on their
+//     record (criterion 2).
+// ---------------------------------------------------------------------------
+
+test('an administrator assigns an Employee to an Org Unit, and it shows on their record', async () => {
+  const employeeId = await newTestEmployee();
+
+  const response = await assignEmployeeRequest(employeeId, { orgUnitId: grandchildUnit });
+  assert.strictEqual(response.status, 201);
+  const { assignment } = await response.json();
+  assert.strictEqual(assignment.orgUnit.id, grandchildUnit);
+
+  const detailResponse = await getEmployeeDetailRequest(employeeId);
+  const { employee } = await detailResponse.json();
+  assert.strictEqual(employee.assignments.length, 1);
+  assert.strictEqual(employee.assignments[0].orgUnit.id, grandchildUnit);
+});
+
+// ---------------------------------------------------------------------------
+// 21. A transfer records a new assignment and leaves the previous one intact
+//     (criterion 3): the old row keeps its own effective_from and gains an
+//     effective_to equal to the new assignment's effective_from; the new one
+//     is current.
+// ---------------------------------------------------------------------------
+
+test('a transfer records a new assignment and leaves the previous one intact', async () => {
+  const employeeId = await newTestEmployee();
+
+  const firstResponse = await assignEmployeeRequest(employeeId, {
+    orgUnitId: ancestorUnit,
+    effectiveFrom: '2020-01-01'
+  });
+  assert.strictEqual(firstResponse.status, 201);
+
+  const transferResponse = await assignEmployeeRequest(employeeId, {
+    orgUnitId: grandchildUnit,
+    effectiveFrom: '2021-06-01'
+  });
+  assert.strictEqual(transferResponse.status, 201);
+  const { assignment: transfer } = await transferResponse.json();
+  assert.strictEqual(transfer.effectiveFrom, '2021-06-01');
+  assert.strictEqual(transfer.effectiveTo, null);
+  assert.strictEqual(transfer.orgUnit.id, grandchildUnit);
+
+  const detailResponse = await getEmployeeDetailRequest(employeeId);
+  const { employee } = await detailResponse.json();
+  assert.strictEqual(employee.assignments.length, 2);
+
+  // Newest first: the transfer, then the original, now closed.
+  assert.strictEqual(employee.assignments[0].orgUnit.id, grandchildUnit);
+  assert.strictEqual(employee.assignments[0].effectiveFrom, '2021-06-01');
+  assert.strictEqual(employee.assignments[0].effectiveTo, null);
+
+  assert.strictEqual(employee.assignments[1].orgUnit.id, ancestorUnit);
+  assert.strictEqual(employee.assignments[1].effectiveFrom, '2020-01-01');
+  assert.strictEqual(employee.assignments[1].effectiveTo, '2021-06-01');
+});
+
+// ---------------------------------------------------------------------------
+// 22. The directory can be filtered by job role, and an Employee holding a
+//     different role is excluded (criterion 4).
+// ---------------------------------------------------------------------------
+
+test('the directory can be filtered by job role, and an Employee holding a different role is excluded', async () => {
+  const roleAResponse = await createJobRoleRequest({ code: uniqueCode('JR'), name: 'Filter Role A' });
+  const { jobRole: roleA } = await roleAResponse.json();
+  insertedJobRoleIds.push(roleA.id);
+
+  const roleBResponse = await createJobRoleRequest({ code: uniqueCode('JR'), name: 'Filter Role B' });
+  const { jobRole: roleB } = await roleBResponse.json();
+  insertedJobRoleIds.push(roleB.id);
+
+  const employeeWithRoleA = await newTestEmployee();
+  const employeeWithRoleB = await newTestEmployee();
+
+  await assignEmployeeRequest(employeeWithRoleA, { orgUnitId: grandchildUnit, jobRoleId: roleA.id });
+  await assignEmployeeRequest(employeeWithRoleB, { orgUnitId: grandchildUnit, jobRoleId: roleB.id });
+
+  const response = await listEmployeesRequest(`?jobRoleId=${roleA.id}`);
+  assert.strictEqual(response.status, 200);
+  const { employees } = await response.json();
+  const ids = employees.map((e) => e.id);
+
+  assert.ok(ids.includes(employeeWithRoleA), 'an Employee currently holding the filtered role should match');
+  assert.ok(!ids.includes(employeeWithRoleB), 'an Employee holding a different role should not match');
+});
+
+// ---------------------------------------------------------------------------
+// 23. An Employee with no current assignment does not match a job-role
+//     filter — there is no default job role to fall back to.
+// ---------------------------------------------------------------------------
+
+test('an Employee with no current assignment does not match a job-role filter', async () => {
+  const roleResponse = await createJobRoleRequest({ code: uniqueCode('JR'), name: 'Unassigned Filter Role' });
+  const { jobRole: role } = await roleResponse.json();
+  insertedJobRoleIds.push(role.id);
+
+  const unassignedEmployee = await newTestEmployee();
+
+  const response = await listEmployeesRequest(`?jobRoleId=${role.id}`);
+  assert.strictEqual(response.status, 200);
+  const { employees } = await response.json();
+  assert.ok(!employees.map((e) => e.id).includes(unassignedEmployee));
+});
+
+// ---------------------------------------------------------------------------
+// 24. An Employee's assignment history is visible on their record, newest
+//     first, each with its Org Unit and job role named (criterion 5 — this
+//     verifies getEmployeeDetail's existing behaviour and needed no new
+//     production code; see the write-up in the final report).
+// ---------------------------------------------------------------------------
+
+test("an Employee's assignment history is visible on their record, newest first, each with its Org Unit and job role named", async () => {
+  const roleResponse = await createJobRoleRequest({ code: uniqueCode('JR'), name: 'History Role' });
+  const { jobRole: role } = await roleResponse.json();
+  insertedJobRoleIds.push(role.id);
+
+  const employeeId = await newTestEmployee();
+
+  await assignEmployeeRequest(employeeId, { orgUnitId: ancestorUnit, effectiveFrom: '2019-01-01' });
+  await assignEmployeeRequest(employeeId, {
+    orgUnitId: grandchildUnit,
+    jobRoleId: role.id,
+    effectiveFrom: '2020-01-01'
+  });
+
+  const detailResponse = await getEmployeeDetailRequest(employeeId);
+  assert.strictEqual(detailResponse.status, 200);
+  const { employee } = await detailResponse.json();
+
+  assert.strictEqual(employee.assignments.length, 2);
+  assert.strictEqual(employee.assignments[0].orgUnit.id, grandchildUnit);
+  assert.strictEqual(employee.assignments[0].jobRole.id, role.id);
+  assert.strictEqual(employee.assignments[0].jobRole.code, role.code);
+  assert.strictEqual(employee.assignments[1].orgUnit.id, ancestorUnit);
+  assert.strictEqual(employee.assignments[1].jobRole, null);
+});
+
+// ---------------------------------------------------------------------------
+// 25. A non-administrator gets 403 from POST /job-roles, PATCH
+//     /job-roles/:id and POST /employees/:id/assignments.
+// ---------------------------------------------------------------------------
+
+test('a non-administrator gets 403 from POST /job-roles, PATCH /job-roles/:id and POST /employees/:id/assignments', async () => {
+  const createResponse = await createJobRoleRequest({ code: uniqueCode('JR'), name: 'Should Not Exist' }, memberToken);
+  assert.strictEqual(createResponse.status, 403);
+
+  // jobRole is a shared read fixture, but a 403 refusal never reaches the
+  // database write path, so this never mutates it.
+  const patchResponse = await patchJobRoleRequest(jobRole.id, { isActive: false }, memberToken);
+  assert.strictEqual(patchResponse.status, 403);
+
+  // richEmployee is a shared read fixture; same reasoning.
+  const assignResponse = await assignEmployeeRequest(richEmployee, { orgUnitId: grandchildUnit }, memberToken);
+  assert.strictEqual(assignResponse.status, 403);
+});
+
+// ---------------------------------------------------------------------------
+// 26. A duplicate job role code is a 409.
+// ---------------------------------------------------------------------------
+
+test('a duplicate job role code is a 409', async () => {
+  const code = uniqueCode('JR');
+  const first = await createJobRoleRequest({ code, name: 'First Of Its Code' });
+  assert.strictEqual(first.status, 201);
+  const { jobRole: firstRole } = await first.json();
+  insertedJobRoleIds.push(firstRole.id);
+
+  const second = await createJobRoleRequest({ code, name: 'Second Of Its Code' });
+  assert.strictEqual(second.status, 409);
+  const secondBody = await second.json();
+  assert.match(secondBody.message, /job role/i);
+});
+
+// ---------------------------------------------------------------------------
+// 27. A backdated assignment overlapping existing history is a 409, not a
+//     500 (employee_assignments_no_overlap, SQLSTATE 23P01).
+// ---------------------------------------------------------------------------
+
+test('a backdated assignment overlapping existing history is a 409, not a 500', async () => {
+  const employeeId = await newTestEmployee();
+
+  const firstResponse = await assignEmployeeRequest(employeeId, {
+    orgUnitId: grandchildUnit,
+    effectiveFrom: '2020-01-01'
+  });
+  assert.strictEqual(firstResponse.status, 201);
+
+  // Backdated well before the existing (still open-ended) assignment began —
+  // this does not qualify as "a current assignment as of effectiveFrom" (the
+  // 2020 row starts after it), so assignEmployee inserts outright rather than
+  // closing anything first, and the two open-ended ranges collide.
+  const overlapResponse = await assignEmployeeRequest(employeeId, {
+    orgUnitId: ancestorUnit,
+    effectiveFrom: '2019-06-01'
+  });
+  assert.strictEqual(overlapResponse.status, 409);
+  const overlapBody = await overlapResponse.json();
+  assert.match(overlapBody.message, /assignment/i);
+});
+
+// ---------------------------------------------------------------------------
+// 28. Assigning to an Org Unit that does not exist, or an Employee that does
+//     not exist, is a 404.
+// ---------------------------------------------------------------------------
+
+test('assigning to an Org Unit that does not exist, or an Employee that does not exist, is a 404', async () => {
+  const employeeId = await newTestEmployee();
+  const missingId = '999999999';
+
+  const missingOrgUnitResponse = await assignEmployeeRequest(employeeId, { orgUnitId: missingId });
+  assert.strictEqual(missingOrgUnitResponse.status, 404);
+
+  const missingEmployeeResponse = await assignEmployeeRequest(missingId, { orgUnitId: grandchildUnit });
+  assert.strictEqual(missingEmployeeResponse.status, 404);
+});
+
+// ---------------------------------------------------------------------------
+// 29. Assigning with a jobRoleId that does not exist is a 404, the same as
+//     an unknown orgUnitId — not the unmapped foreign-key 500 a review of
+//     this ticket's first pass caught.
+// ---------------------------------------------------------------------------
+
+test('assigning with a jobRoleId that does not exist is a 404', async () => {
+  const employeeId = await newTestEmployee();
+  const missingId = '999999999';
+
+  const response = await assignEmployeeRequest(employeeId, { orgUnitId: grandchildUnit, jobRoleId: missingId });
+  assert.strictEqual(response.status, 404);
+});
+
+// ---------------------------------------------------------------------------
+// 30. Assigning twice with the same effectiveFrom is a clean 400 (the
+//     equal-bounds guard), not left to fall through to Postgres's own
+//     employee_assignments_range_valid CHECK violation.
+// ---------------------------------------------------------------------------
+
+test('assigning again with the same effectiveFrom as the current assignment is a 400, not a 500', async () => {
+  const employeeId = await newTestEmployee();
+
+  const firstResponse = await assignEmployeeRequest(employeeId, {
+    orgUnitId: ancestorUnit,
+    effectiveFrom: '2022-01-01'
+  });
+  assert.strictEqual(firstResponse.status, 201);
+
+  const sameDateResponse = await assignEmployeeRequest(employeeId, {
+    orgUnitId: grandchildUnit,
+    effectiveFrom: '2022-01-01'
+  });
+  assert.strictEqual(sameDateResponse.status, 400);
+  const body = await sameDateResponse.json();
+  assert.match(body.message, /current assignment began/i);
+});
+
+// ---------------------------------------------------------------------------
+// 31. A postdated (future-effective) transfer closes the currently-open
+//     assignment at that future date, but the record still reflects the OLD
+//     assignment as current today, and the NEW one as not yet started. This
+//     is the "current as of effectiveFrom" rule doing real work: a naive
+//     "whichever row has no effective_to, or was inserted most recently, is
+//     current" implementation would get this wrong.
+// ---------------------------------------------------------------------------
+
+test('a postdated (future-dated) transfer closes the open assignment at that future date, without changing who is current today', async () => {
+  const employeeId = await newTestEmployee();
+  const futureDate = '2099-01-01'; // far enough out to never collide with CURRENT_DATE.
+
+  const openResponse = await assignEmployeeRequest(employeeId, {
+    orgUnitId: ancestorUnit,
+    effectiveFrom: '2020-01-01'
+  });
+  assert.strictEqual(openResponse.status, 201);
+
+  const futureResponse = await assignEmployeeRequest(employeeId, {
+    orgUnitId: grandchildUnit,
+    effectiveFrom: futureDate
+  });
+  assert.strictEqual(futureResponse.status, 201);
+  const { assignment: futureAssignment } = await futureResponse.json();
+  assert.strictEqual(futureAssignment.effectiveFrom, futureDate);
+  assert.strictEqual(futureAssignment.effectiveTo, null);
+
+  const detailResponse = await getEmployeeDetailRequest(employeeId);
+  const { employee } = await detailResponse.json();
+  assert.strictEqual(employee.assignments.length, 2);
+  // Newest effective_from first — the future row — but its effective_to is
+  // still null (it is the new open end of the Employee's history); the old
+  // row is now closed exactly at the future row's own effectiveFrom.
+  assert.strictEqual(employee.assignments[0].orgUnit.id, grandchildUnit);
+  assert.strictEqual(employee.assignments[0].effectiveTo, null);
+  assert.strictEqual(employee.assignments[1].orgUnit.id, ancestorUnit);
+  assert.strictEqual(employee.assignments[1].effectiveTo, futureDate);
+
+  // As of TODAY, the old (ancestorUnit) assignment is still the current one
+  // — its effective_to is in the future — and the new (grandchildUnit) one
+  // has not started yet. Checked through the same "current" rule the Org
+  // Unit filter uses, not by reading effectiveFrom/effectiveTo directly.
+  const stillAtAncestor = await listEmployeesRequest(`?orgUnitId=${ancestorUnit}`);
+  const { employees: stillAtAncestorList } = await stillAtAncestor.json();
+  assert.ok(
+    stillAtAncestorList.map((e) => e.id).includes(employeeId),
+    'the Employee should still resolve as currently at the old Org Unit today'
+  );
+
+  const notYetAtGrandchild = await listEmployeesRequest(`?orgUnitId=${grandchildUnit}`);
+  const { employees: notYetAtGrandchildList } = await notYetAtGrandchild.json();
+  assert.ok(
+    !notYetAtGrandchildList.map((e) => e.id).includes(employeeId),
+    'the Employee should not yet resolve as currently at the new Org Unit before the future date arrives'
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 32. effectiveFrom defaults to today (CURRENT_DATE) when omitted — checked
+//     against Postgres's own clock, not a JS Date computed in this test, so
+//     a timezone slip in the production toDateString(today) conversion would
+//     actually be caught rather than incidentally matched.
+// ---------------------------------------------------------------------------
+
+async function currentDateStringFromDatabase() {
+  const { rows: [{ today }] } = await pool.query('SELECT CURRENT_DATE AS today');
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+test('omitting effectiveFrom defaults the new assignment to today', async () => {
+  const employeeId = await newTestEmployee();
+  const expectedToday = await currentDateStringFromDatabase();
+
+  const response = await assignEmployeeRequest(employeeId, { orgUnitId: grandchildUnit });
+  assert.strictEqual(response.status, 201);
+  const { assignment } = await response.json();
+  assert.strictEqual(assignment.effectiveFrom, expectedToday);
+});
+
+// ---------------------------------------------------------------------------
+// 33. GET /job-roles lists a created job role.
+// ---------------------------------------------------------------------------
+
+async function listJobRolesRequest(query = '', token = readerToken) {
+  return fetch(`${base}/api/people/job-roles${query}`, { headers: token });
+}
+
+test('GET /job-roles lists a job role once it is created', async () => {
+  const createResponse = await createJobRoleRequest({ code: uniqueCode('JR'), name: 'Catalogue Listing Role' });
+  assert.strictEqual(createResponse.status, 201);
+  const { jobRole: created } = await createResponse.json();
+  insertedJobRoleIds.push(created.id);
+
+  const listResponse = await listJobRolesRequest();
+  assert.strictEqual(listResponse.status, 200);
+  const { jobRoles } = await listResponse.json();
+  assert.ok(jobRoles.map((r) => r.id).includes(created.id));
+});
+
+// ---------------------------------------------------------------------------
+// 34. Deactivating a job role removes it from the default listing, and it
+//     still shows under ?includeInactive=true — the same shape as an Org
+//     Unit's own deactivation.
+// ---------------------------------------------------------------------------
+
+test('deactivating a job role removes it from the default listing, and includeInactive=true still shows it', async () => {
+  const createResponse = await createJobRoleRequest({ code: uniqueCode('JR'), name: 'Soon Deactivated Role' });
+  const { jobRole: created } = await createResponse.json();
+  insertedJobRoleIds.push(created.id);
+
+  const patchResponse = await patchJobRoleRequest(created.id, { isActive: false });
+  assert.strictEqual(patchResponse.status, 200);
+  const { jobRole: patched } = await patchResponse.json();
+  assert.strictEqual(patched.isActive, false);
+
+  const defaultList = await listJobRolesRequest();
+  const { jobRoles: defaultJobRoles } = await defaultList.json();
+  assert.ok(!defaultJobRoles.map((r) => r.id).includes(created.id));
+
+  const withInactive = await listJobRolesRequest('?includeInactive=true');
+  const { jobRoles: withInactiveJobRoles } = await withInactive.json();
+  assert.ok(withInactiveJobRoles.map((r) => r.id).includes(created.id));
 });
