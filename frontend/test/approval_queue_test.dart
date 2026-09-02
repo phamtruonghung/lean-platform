@@ -30,6 +30,28 @@ Map<String, dynamic> pendingJson(String id, String email, DateTime since) => {
       'createdAt': since.toUtc().toIso8601String(),
     };
 
+Map<String, dynamic> siteJson(String id, String code, String name) =>
+    {'id': id, 'code': code, 'name': name, 'timezone': 'Europe/London'};
+
+/// An Org Unit row exactly as `plant.js` sends one — `parentId` included,
+/// because a root-level response can legitimately carry a non-null one.
+Map<String, dynamic> orgUnitJson(
+  String id,
+  String name, {
+  String? parentId,
+  String unitType = 'area',
+}) =>
+    {
+      'id': id,
+      'parentId': parentId,
+      'code': name.toUpperCase().replaceAll(' ', '-'),
+      'name': name,
+      'unitType': unitType,
+      'path': id,
+      'sortOrder': 0,
+      'isActive': true,
+    };
+
 /// The wire, faked: `/me` answers the role under test, and the queue endpoints
 /// answer whatever the test scripted. Every request is recorded so a test can
 /// assert what was — and was not — sent.
@@ -41,7 +63,13 @@ class FakeWire {
     this.rejectStatus = 200,
     this.approveStatus = 200,
     this.approveMessage = 'The Platform could not admit that Account.',
-  }) : queue = queue ?? [];
+    List<Map<String, dynamic>>? sites,
+    Map<String?, List<Map<String, dynamic>>>? orgUnits,
+    this.sitesStatus = 200,
+    this.orgUnitsStatus = 200,
+  })  : queue = queue ?? [],
+        sites = sites ?? [],
+        orgUnits = orgUnits ?? {};
 
   final String role;
   List<Map<String, dynamic>> queue;
@@ -49,6 +77,20 @@ class FakeWire {
   int rejectStatus;
   int approveStatus;
   String approveMessage;
+
+  /// `GET /api/people/sites`.
+  List<Map<String, dynamic>> sites;
+  int sitesStatus;
+
+  /// `GET /api/people/sites/:id/org-units`, keyed by the `parentId` asked for
+  /// — the null key is the root level, which is a different request, not a
+  /// different filter over the same one.
+  Map<String?, List<Map<String, dynamic>>> orgUnits;
+  int orgUnitsStatus;
+
+  /// Every Org Unit request as `(siteId, parentId)`, so a test can prove
+  /// children were asked for by parent and only on expansion.
+  final List<(String, String?)> orgUnitRequests = [];
 
   /// When set, an Approval hangs until the test completes it — which is what
   /// "in flight" means to a widget test.
@@ -64,6 +106,24 @@ class FakeWire {
         requests.add('${request.method} $path');
         if (path == '/api/people/me') {
           return http.Response(jsonEncode(_meBody(role)), 200);
+        }
+        if (path == '/api/people/sites') {
+          if (sitesStatus != 200) {
+            return http.Response(jsonEncode({'message': 'Sites are unavailable.'}), sitesStatus);
+          }
+          return http.Response(jsonEncode({'sites': sites}), 200);
+        }
+        if (path.startsWith('/api/people/sites/') && path.endsWith('/org-units')) {
+          final siteId = path.split('/')[4];
+          final parentId = request.url.queryParameters['parentId'];
+          orgUnitRequests.add((siteId, parentId));
+          if (orgUnitsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The tree is unavailable.'}),
+              orgUnitsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'orgUnits': orgUnits[parentId] ?? []}), 200);
         }
         if (path == '/api/people/accounts/pending') {
           if (queueStatus != 200) {
