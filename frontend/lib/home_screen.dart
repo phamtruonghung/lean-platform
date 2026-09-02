@@ -1,14 +1,13 @@
 /// What an active Account sees. There is no real Module screen yet — People,
 /// Maintenance and the Tier Board's own screens land with their respective
 /// issues — so this is a placeholder that proves the whole authenticated
-/// path works: the app knows who signed in, and can end that session again.
+/// path works: the app knows who signed in. It no longer ends the session
+/// itself — the Shell's footer does that (issue #39).
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'people_api.dart';
-import 'platform/account_bloc.dart';
 import 'theme.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -21,23 +20,6 @@ class HomeScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Platform'),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            // Ends the session Supabase issued — the refresh token is
-            // revoked server-side and the locally persisted session is
-            // cleared, which is what "signing out ends the session" means:
-            // a reload after this shows the sign-in screen again, not a
-            // restored session. Dispatched through AccountBloc, not called on
-            // Supabase directly (issue #38): the Bloc is the only place the
-            // session is resolved, so it must also be the only place it ends.
-            onPressed: () => context.read<AccountBloc>().add(const AccountSignOutRequested()),
-          ),
-        ],
-      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),

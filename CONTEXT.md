@@ -139,6 +139,14 @@ queue. A Screen is what a person navigates to and can bookmark or link to; a
 dialog, a card or a panel inside one is not a Screen.
 _Avoid_: Page, view
 
+**Destination**:
+An entry in the Shell's sidebar — a Screen an Account can reach directly, named
+for what a person does there (the Directory, the Approval queue), never for the
+Module behind it. Every Destination is a Screen; not every Screen is one, since
+sign-in and awaiting-Approval are reached without ever being offered. Which
+Destinations an Account is offered follows from its role.
+_Avoid_: Menu item, tab, nav link, Module
+
 **Shell**:
 The persistent chrome around every Screen: the sidebar carrying the
 destinations, the brand header, and the account footer with sign-out. The Shell
