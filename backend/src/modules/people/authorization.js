@@ -2,7 +2,7 @@
  * Role and Org Unit scope enforcement (issue #8, CONTEXT.md's Account,
  * Approval and Org Unit definitions).
  *
- * Three questions this file answers, and nowhere else in the People Module
+ * Four questions this file answers, and nowhere else in the People Module
  * does:
  *
  *   - "Is this Account an administrator?" — role alone, no grant row in
@@ -23,6 +23,14 @@
  *     issue #24, ADR-0008) — grantedEntryPointIds below, which
  *     plant-routes.js calls only for a non-administrator browsing a Site's
  *     tree from its root.
+ *   - "Where may this Account work, across the whole Platform?" — issue #43,
+ *     the caller's own answer to itself rather than a question about one
+ *     Org Unit or one Site: orgUnitScopeFor below, called only by GET
+ *     /people/me (routes.js) to tell a caller its own reach. Deliberately
+ *     not entry points: an administrator holds no grant rows (the first
+ *     bullet above), so entry points for one would come back empty — exactly
+ *     the "empty reads as nowhere" reading this function exists to rule out
+ *     with an explicit `everywhere` flag instead.
  *
  * Nothing here is cached, memoised, or stashed on the token: `canAct` and
  * `canSeeSite` query `app_user_org_units` fresh on every call, the same
@@ -166,6 +174,48 @@ async function grantedEntryPointIds({ account, siteId }) {
   return rows.map((row) => row.id);
 }
 
+// Issue #43: the caller's own Org Unit scope, across the whole Platform —
+// not "may the caller act on this one Org Unit" (canAct) and not "which Org
+// Units are the caller's entry points into this one Site"
+// (grantedEntryPointIds), but "where does this Account work at all",
+// answered once for GET /people/me (routes.js) rather than per-Site.
+//
+// Short-circuits on the role, the same way canAct and canSeeSite do and
+// unlike grantedEntryPointIds: an administrator holds no grant rows and
+// needs none (see the file header), so an empty grant list would read as
+// "nowhere" for the one Account that reaches everywhere. The bootstrap
+// administrator (service.js) does hold rows, incidentally, for whichever
+// Sites existed at its first sign-in — those are a leftover, not the
+// source of its reach, so they are deliberately not returned either. The
+// invariant a caller may rely on: everywhere === true implies grants is
+// always empty, and vice versa.
+//
+// Returns the caller's raw Grant rows — both a line and a cell beneath it
+// can both appear if both are individually granted — deliberately not
+// collapsed to entry points; that stays grantedEntryPointIds's own job,
+// answered per-Site on demand by GET /sites/:siteId/org-units (ADR-0008).
+async function orgUnitScopeFor({ account }) {
+  if (isAdmin(account)) return { everywhere: true, grants: [] };
+
+  const { rows } = await getPool().query(
+    `SELECT auo.org_unit_id, ou.site_id, auo.can_write
+       FROM app_user_org_units auo
+       JOIN org_units ou ON ou.id = auo.org_unit_id
+      WHERE auo.app_user_id = $1
+      ORDER BY ou.site_id, auo.org_unit_id`,
+    [account.id]
+  );
+
+  return {
+    everywhere: false,
+    grants: rows.map((row) => ({
+      orgUnitId: row.org_unit_id,
+      siteId: row.site_id,
+      canWrite: row.can_write
+    }))
+  };
+}
+
 // "Must be an administrator" — the Approval queue, approving/rejecting an
 // Account, deactivating one, and creating a Site or a root Org Unit are all
 // gated on the role alone; no Org Unit is in play yet, so this needs no
@@ -244,6 +294,7 @@ module.exports = {
   canAct,
   canSeeSite,
   grantedEntryPointIds,
+  orgUnitScopeFor,
   requireAdmin,
   requireOrgUnitScope,
   requireSiteScope

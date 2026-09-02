@@ -78,5 +78,87 @@ void main() {
         throwsA(isA<PeopleApiException>().having((e) => e.statusCode, 'statusCode', 500)),
       );
     });
+
+    test('an admin-shaped orgUnitScope (everywhere: true, no grants) parses correctly', () async {
+      final client = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'status': 'active',
+            'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'admin'},
+            'orgUnitScope': {'everywhere': true, 'grants': []},
+          }),
+          200,
+        );
+      });
+      final api = PeopleApi(client: client);
+
+      final status = await api.fetchMe('the-token');
+
+      final active = status as AccountActive;
+      expect(active.orgUnitScope.everywhere, isTrue);
+      expect(active.orgUnitScope.grants, isEmpty);
+      expect(active.orgUnitScope.canWriteSomewhere, isTrue);
+    });
+
+    test(
+      'a scoped orgUnitScope parses grant ids sent as JSON numbers and as JSON strings alike',
+      () async {
+        final client = MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'status': 'active',
+              'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'supervisor'},
+              'orgUnitScope': {
+                'everywhere': false,
+                'grants': [
+                  {'orgUnitId': 101, 'siteId': 201, 'canWrite': true},
+                  {'orgUnitId': '102', 'siteId': '202', 'canWrite': false},
+                ],
+              },
+            }),
+            200,
+          );
+        });
+        final api = PeopleApi(client: client);
+
+        final status = await api.fetchMe('the-token');
+
+        final active = status as AccountActive;
+        expect(active.orgUnitScope.everywhere, isFalse);
+        expect(active.orgUnitScope.grants, hasLength(2));
+
+        final numericGrant = active.orgUnitScope.grants[0];
+        expect(numericGrant.orgUnitId, '101');
+        expect(numericGrant.siteId, '201');
+        expect(numericGrant.canWrite, isTrue);
+
+        final stringGrant = active.orgUnitScope.grants[1];
+        expect(stringGrant.orgUnitId, '102');
+        expect(stringGrant.siteId, '202');
+        expect(stringGrant.canWrite, isFalse);
+
+        expect(active.orgUnitScope.canWriteSomewhere, isTrue);
+      },
+    );
+
+    test('a body with no orgUnitScope key at all yields OrgUnitScope.nowhere()', () async {
+      final client = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'status': 'active',
+            'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
+          }),
+          200,
+        );
+      });
+      final api = PeopleApi(client: client);
+
+      final status = await api.fetchMe('the-token');
+
+      final active = status as AccountActive;
+      expect(active.orgUnitScope.everywhere, isFalse);
+      expect(active.orgUnitScope.grants, isEmpty);
+      expect(active.orgUnitScope.canWriteSomewhere, isFalse);
+    });
   });
 }

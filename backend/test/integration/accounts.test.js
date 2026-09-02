@@ -154,6 +154,14 @@ test('the first Account ever created is activated as an administrator and grante
   assert.strictEqual(grants.length, 1);
   assert.strictEqual(grants[0].org_unit_id, rootOrgUnit.id);
   assert.strictEqual(grants[0].can_write, true);
+
+  // The one Account in this suite that genuinely holds a real grant row
+  // (the bootstrap grant above) and is still an administrator — so this is
+  // what actually proves orgUnitScopeFor's isAdmin short-circuit suppresses
+  // it, rather than "everywhere implies empty grants" just happening to hold
+  // by coincidence everywhere else this is tested.
+  assert.strictEqual(body.orgUnitScope.everywhere, true);
+  assert.strictEqual(body.orgUnitScope.grants.length, 0);
 });
 
 // ---------------------------------------------------------------------------
@@ -172,6 +180,12 @@ test('the second sign-in ever creates an inactive Account, not an administrator'
   assert.strictEqual(body.status, 'pending_approval');
   assert.strictEqual(body.account.role, 'operator');
   assert.strictEqual(body.account.isActive, false);
+
+  // /me computes orgUnitScope even for a caller requireActive would
+  // otherwise block from everything else — a pending Account holds no
+  // grants, and is not an administrator either, so both fields say so.
+  assert.strictEqual(body.orgUnitScope.everywhere, false);
+  assert.strictEqual(body.orgUnitScope.grants.length, 0);
 });
 
 test('an inactive Account may still read its own status', async () => {
