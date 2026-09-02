@@ -6,8 +6,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../platform/account_bloc.dart';
 import '../theme.dart';
 
 class AwaitingApprovalScreen extends StatelessWidget {
@@ -46,7 +47,11 @@ class AwaitingApprovalScreen extends StatelessWidget {
                     // would change this layout, which this ticket forbids.
                     const SizedBox(height: 20),
                     OutlinedButton(
-                      onPressed: () => Supabase.instance.client.auth.signOut(),
+                      // Dispatched through AccountBloc, not called on
+                      // Supabase directly (issue #38): the Bloc is the only
+                      // place the session is resolved, so it must also be the
+                      // only place it ends.
+                      onPressed: () => context.read<AccountBloc>().add(const AccountSignOutRequested()),
                       child: const Text('Sign out'),
                     ),
                   ],

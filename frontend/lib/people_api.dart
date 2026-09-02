@@ -33,9 +33,12 @@ class AccountActive extends AccountStatus {
 /// [AccountPendingApproval]: per issue #6, "awaiting Approval" is not a
 /// failure, and the app must be able to tell the two apart.
 class PeopleApiException implements Exception {
-  PeopleApiException(this.message);
+  PeopleApiException(this.message, {this.statusCode});
 
   final String message;
+
+  /// The HTTP status, when the request reached the API at all.
+  final int? statusCode;
 
   @override
   String toString() => message;
@@ -61,7 +64,10 @@ class PeopleApi {
     }
 
     if (response.statusCode != 200) {
-      throw PeopleApiException('The API answered ${response.statusCode} for /api/people/me.');
+      throw PeopleApiException(
+        'The API answered ${response.statusCode} for /api/people/me.',
+        statusCode: response.statusCode,
+      );
     }
 
     final Map<String, dynamic> body;

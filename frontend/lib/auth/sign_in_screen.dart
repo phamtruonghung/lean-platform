@@ -4,8 +4,10 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
+import '../platform/auth_gateway.dart';
 import '../theme.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -38,7 +40,7 @@ class _SignInScreenState extends State<SignInScreen> {
     });
     try {
       await action();
-      // On success the app moves on via AuthGate's own auth-state
+      // On success the app moves on via AccountBloc's own access-token
       // listener — nothing to navigate to here.
     } on AuthException catch (error) {
       setState(() => _error = error.message);
@@ -52,7 +54,7 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _signIn() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     await _run(
-      () => Supabase.instance.client.auth.signInWithPassword(
+      () => context.read<AuthGateway>().signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       ),
@@ -62,7 +64,7 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _signUp() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     await _run(
-      () => Supabase.instance.client.auth.signUp(
+      () => context.read<AuthGateway>().signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       ),
@@ -73,9 +75,9 @@ class _SignInScreenState extends State<SignInScreen> {
     // On Flutter Web this navigates the browser to Google and back via
     // Supabase's own redirect — there is no separate "callback screen" to
     // build: the app reloads at this same URL with a session already
-    // established, and AuthGate's listener picks it up like any other sign
-    // -in.
-    await _run(() => Supabase.instance.client.auth.signInWithOAuth(OAuthProvider.google));
+    // established, and AccountBloc's listener picks it up like any other
+    // sign-in.
+    await _run(() => context.read<AuthGateway>().signInWithGoogle());
   }
 
   @override
