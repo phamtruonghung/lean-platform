@@ -302,8 +302,13 @@ async function getEmployeeDetail(id) {
   const skills = skillRows.map((row) => ({
     id: row.id,
     proficiencyLevel: row.proficiency_level,
-    assessedOn: row.assessed_on,
-    expiresOn: row.expires_on,
+    // Through toDateString, same as hiredOn/terminatedOn above — assessed_on
+    // and expires_on are DATE columns too, and were crossing the wire as a
+    // locale-shifted UTC instant instead of a calendar date before this fix
+    // (issue #11's own detail-view test caught it: a past expiresOn landing
+    // on the wrong calendar day depending on the server's local time zone).
+    assessedOn: toDateString(row.assessed_on),
+    expiresOn: toDateString(row.expires_on),
     skill: { id: row.skill_id, code: row.skill_code, name: row.skill_name }
   }));
 
