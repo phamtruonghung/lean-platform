@@ -98,8 +98,10 @@ _Avoid_: Activation, verification, registration, onboarding
 **Grant**:
 The record that an Account may work in one Org Unit, at one of two levels: view,
 or view and edit. A Grant reaches downward, so one on a department covers every
-line beneath it, and an Account holds as many Grants as Approval gave it. This is
-the record Account, Approval and Entry point each already gesture at.
+line beneath it, and an Account holds exactly the Grants its last Approval gave
+it — Approval sets the whole set at once, replacing what was there before, never
+adding to it. This is the record Account, Approval and Entry point each already
+gesture at.
 _Avoid_: Permission, scope (scope is the reach a Grant produces, not the record),
 access
 

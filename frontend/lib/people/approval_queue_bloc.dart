@@ -25,13 +25,18 @@ class ApprovalQueueRejectionConfirmed extends ApprovalQueueEvent {
 /// contract as the rejection above: the dialog decides, and the Bloc only ever
 /// sees a decision already made.
 ///
-/// The Grant set is not on this event because it is empty for every Approval
-/// this Screen sends today — see PeopleApi.approvePendingAccount. The Org Unit
-/// picker is what will put it here.
+/// [grants] is the complete Grant set the Account will hold — the server
+/// replaces the whole set on every Approval — already carrying each entry's
+/// level as `canWrite`. Empty is a real answer, not a missing one.
 class ApprovalQueueAdmissionConfirmed extends ApprovalQueueEvent {
-  const ApprovalQueueAdmissionConfirmed({required this.accountId, required this.role});
+  const ApprovalQueueAdmissionConfirmed({
+    required this.accountId,
+    required this.role,
+    this.grants = const [],
+  });
   final String accountId;
   final String role;
+  final List<Map<String, Object?>> grants;
 }
 
 sealed class ApprovalQueueState {
@@ -101,10 +106,13 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
   static const String alreadyDecidedMessage =
       'Another administrator has already dealt with that Account. The queue has been refreshed.';
 
-  /// Confirms the outcome, and says what was actually granted — the role is
-  /// the whole of the decision, so it is the whole of the confirmation.
-  static String admittedMessage(String role) =>
-      'Admitted to the Platform as $role.';
+  /// Confirms the outcome, and says what was actually granted: the role, and
+  /// how much of the plant it was given — an admission with no Grants at all
+  /// is a real outcome and should not read like a complete one.
+  static String admittedMessage(String role, int grantCount) => grantCount == 0
+      ? 'Admitted to the Platform as $role, with no Org Unit Grants.'
+      : 'Admitted to the Platform as $role, with $grantCount Org Unit '
+          '${grantCount == 1 ? 'Grant' : 'Grants'}.';
 
   Future<void> _onRequested(
     ApprovalQueueRequested event,
@@ -171,7 +179,12 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
     emit(ApprovalQueueLoaded(accounts: current.accounts, admittingId: event.accountId));
 
     try {
-      await _api.approvePendingAccount(token, accountId: event.accountId, role: event.role);
+      await _api.approvePendingAccount(
+        token,
+        accountId: event.accountId,
+        role: event.role,
+        grants: event.grants,
+      );
       // The row is gone because this request is what removed it — the same
       // reasoning as the rejection above: no refetch for the ordinary case.
       emit(
@@ -180,7 +193,7 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
             for (final account in current.accounts)
               if (account.id != event.accountId) account,
           ],
-          notice: admittedMessage(event.role),
+          notice: admittedMessage(event.role, event.grants.length),
         ),
       );
     } on PeopleApiException catch (error) {

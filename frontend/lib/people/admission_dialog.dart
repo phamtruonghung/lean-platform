@@ -1,19 +1,27 @@
-/// Admitting an Account: choosing the role it will hold, and submitting that
-/// as one act.
+/// Admitting an Account: choosing the role it will hold and the Org Units it
+/// may work in, and submitting both as one act.
 ///
-/// The Grant picker is issue #42 and is deliberately not here — the Approval
-/// this dialog sends carries an empty Grant set, which for the administrator
-/// role is not a shortfall but exactly right: an administrator acts everywhere
-/// by virtue of the role and holds no Grant rows at all
+/// The Grant half is `OrgUnitPicker`, which this dialog composes and does not
+/// own: its state lives in its own `OrgUnitPickerBloc`, built here for the
+/// life of the dialog and read once, at submission. For the administrator role
+/// the picker is not shown at all and the Grant set sent is empty — not a
+/// shortfall but exactly right: an administrator acts everywhere by virtue of
+/// the role and holds no Grant rows at all
 /// (`backend/src/modules/people/authorization.js`).
 library;
+
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../people_api.dart';
+import '../platform/auth_gateway.dart';
 import '../platform/destinations.dart';
 import '../theme.dart';
 import 'approval_queue_bloc.dart';
+import 'org_unit_picker.dart';
+import 'org_unit_picker_bloc.dart';
 import 'pending_account.dart';
 
 /// One offerable role: the string the server knows it by, and what it means to
@@ -75,14 +83,25 @@ class AdmissionDialog extends StatefulWidget {
   /// Bloc is handed across explicitly rather than looked up from inside.
   static Future<void> open(BuildContext context, PendingAccount account) {
     final bloc = context.read<ApprovalQueueBloc>();
+    final peopleApi = context.read<PeopleApi>();
+    final authGateway = context.read<AuthGateway>();
     return showDialog<void>(
       context: context,
       // A submission is in flight behind this barrier; dismissing it by
       // tapping away would leave the administrator with no report of how it
       // went.
       barrierDismissible: false,
-      builder: (dialogContext) => BlocProvider<ApprovalQueueBloc>.value(
-        value: bloc,
+      builder: (dialogContext) => MultiBlocProvider(
+        providers: [
+          BlocProvider<ApprovalQueueBloc>.value(value: bloc),
+          // Dialog-scoped: created here, closed when this route is popped.
+          // The picker is reusable because widget and Bloc travel together,
+          // not because either outlives the Screen that mounted it.
+          BlocProvider<OrgUnitPickerBloc>(
+            create: (_) => OrgUnitPickerBloc(peopleApi: peopleApi, authGateway: authGateway)
+              ..add(const OrgUnitPickerStarted()),
+          ),
+        ],
         child: AdmissionDialog(account: account),
       ),
     );
@@ -116,9 +135,19 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
       _awaiting = true;
       _failure = null;
     });
-    context
-        .read<ApprovalQueueBloc>()
-        .add(ApprovalQueueAdmissionConfirmed(accountId: widget.account.id, role: role));
+    // Read once, here: the picker's state is the whole Grant set at the moment
+    // of submitting, and an administrator's is empty regardless of what was
+    // picked, because the role holds no Grant rows.
+    final grants = role == Roles.admin
+        ? const <Map<String, Object?>>[]
+        : context.read<OrgUnitPickerBloc>().state.grantsPayload;
+    context.read<ApprovalQueueBloc>().add(
+          ApprovalQueueAdmissionConfirmed(
+            accountId: widget.account.id,
+            role: role,
+            grants: grants,
+          ),
+        );
   }
 
   void _onQueueChanged(BuildContext context, ApprovalQueueState state) {
@@ -148,7 +177,15 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
         return AlertDialog(
           title: const Text('Admit this Account'),
           content: SizedBox(
-            width: 460,
+            // Two panes side by side need materially more than the 460 this
+            // dialog held when it was a role list alone. Bounded by the window
+            // so the dialog never overflows a narrow one — 800 wide is what a
+            // widget test's default surface gives, which this must fit inside.
+            // Floored at 280 (Material's own AlertDialog minimum) rather than
+            // left to go negative on a viewport narrower than 160: a negative
+            // SizedBox width is a hard constraint-assertion crash, not merely
+            // an overflow the way the old fixed 460 would have failed.
+            width: math.max(280, math.min(MediaQuery.sizeOf(context).width - 160, 880)),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,19 +233,26 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
                           'to admit other Accounts. No Org Unit Grants are given, and '
                           'none are needed.',
                     )
-                  else if (_role != null)
-                    // Beyond the literal ACs: an honest statement of what this
-                    // ticket's Approval actually does for every non-admin role
-                    // (an empty Grant set, always) — staying silent about that
-                    // would be misleading.
-                    _Callout(
-                      key: AdmissionDialog.noGrantsNoticeKey,
-                      icon: Icons.info_outline,
-                      background: theme.colorScheme.secondaryContainer,
-                      foreground: theme.colorScheme.onSecondaryContainer,
-                      message: 'This Account will be admitted with no Org Unit Grants, '
-                          'so it can sign in but cannot yet act in any Org Unit.',
-                    ),
+                  else ...[
+                    const SizedBox(height: Spacing.md),
+                    // Hidden for the administrator role, and only for it: an
+                    // administrator's Grant set is empty by definition, so
+                    // offering a picker there would contradict the warning
+                    // directly above.
+                    OrgUnitPicker(enabled: !_awaiting),
+                    // An empty Grant set is allowed, and said out loud rather
+                    // than left for the administrator to notice afterwards.
+                    if (_role != null &&
+                        context.watch<OrgUnitPickerBloc>().state.granted.isEmpty)
+                      _Callout(
+                        key: AdmissionDialog.noGrantsNoticeKey,
+                        icon: Icons.info_outline,
+                        background: theme.colorScheme.secondaryContainer,
+                        foreground: theme.colorScheme.onSecondaryContainer,
+                        message: 'This Account will be admitted with no Org Unit Grants, '
+                            'so it can sign in but cannot yet act in any Org Unit.',
+                      ),
+                  ],
                   if (_failure != null)
                     _Callout(
                       key: AdmissionDialog.failureKey,

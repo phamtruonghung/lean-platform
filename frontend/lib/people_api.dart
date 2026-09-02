@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'people/org_unit.dart';
 import 'people/pending_account.dart';
 
 /// What the API answered for the caller's own Account: either it is still
@@ -139,17 +140,83 @@ class PeopleApi {
     );
   }
 
+  /// Every Site this Account can see (`GET /api/people/sites`). The API
+  /// filters the list itself — an administrator sees every Site, anyone else
+  /// only the Sites they hold a Grant within.
+  Future<List<Site>> fetchSites(String accessToken) async {
+    final response = await _send(
+      () => _client.get(
+        Uri.parse('/api/people/sites'),
+        headers: {'authorization': 'Bearer $accessToken'},
+      ),
+      '/api/people/sites',
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final site in body['sites'] as List<dynamic>)
+          Site(
+            id: (site as Map<String, dynamic>)['id'].toString(),
+            code: site['code'] as String,
+            name: site['name'] as String,
+          ),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One level of a Site's Org Unit tree
+  /// (`GET /api/people/sites/:siteId/org-units[?parentId=]`).
+  ///
+  /// With no [parentId] this is the root level, and what comes back depends on
+  /// the *caller*: an administrator gets the Site's own root Org Units; anyone
+  /// else gets their own entry points, which can sit several levels deep and
+  /// carry a real, non-null `parentId` (ADR-0008). Either way these rows are
+  /// the top of what this caller can browse, so nothing here or above reads
+  /// `parentId` to decide that.
+  Future<List<OrgUnitNode>> fetchOrgUnits(
+    String accessToken, {
+    required String siteId,
+    String? parentId,
+  }) async {
+    final path = '/api/people/sites/$siteId/org-units';
+    final uri = Uri.parse(path).replace(
+      queryParameters: parentId == null ? null : {'parentId': parentId},
+    );
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final orgUnit in body['orgUnits'] as List<dynamic>)
+          OrgUnitNode(
+            id: (orgUnit as Map<String, dynamic>)['id'].toString(),
+            parentId: orgUnit['parentId']?.toString(),
+            code: orgUnit['code'] as String,
+            name: orgUnit['name'] as String,
+            unitType: orgUnit['unitType'] as String,
+          ),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// Admits an Account: sets its role and its Grants in one act
   /// (`POST /api/people/accounts/:id/approval`, administrator only). The
   /// server writes both in one transaction, so no Account is observably left
   /// with a new role and the old Grants, or the reverse.
   ///
-  /// [grants] is empty, and that is the whole of this call's Grant set today
-  /// — not a placeholder. An administrator acts everywhere by virtue of the
-  /// role and holds no Grant rows at all. When the Org Unit picker arrives it
-  /// fills this list with `{'orgUnitId': <int>, 'canWrite': <bool>}` entries,
-  /// the shape `approveAccount` validates in
-  /// `backend/src/modules/people/service.js`.
+  /// [grants] is the *whole* Grant set the Account will hold, not an addition
+  /// to one: `approveAccount` deletes every existing row and re-inserts this
+  /// list (`backend/src/modules/people/service.js`), so an empty list means
+  /// "no Grants at all", which is exactly right for an administrator. Each
+  /// entry is `{'orgUnitId': <id>, 'canWrite': <bool>}`; the id is sent as the
+  /// string the API answered with, which is what `parseId` accepts and what
+  /// BIGINT columns come back as over JSON.
   ///
   /// `expectedApprovalStatus` is the same precondition [rejectPendingAccount]
   /// sends, for the same reason: a 409 rather than a silent overwrite of a
