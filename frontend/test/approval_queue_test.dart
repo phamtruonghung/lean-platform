@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -23,7 +24,7 @@ Map<String, dynamic> _meBody(String role) => {
 final DateTime _twoDaysAgo = DateTime.now().subtract(const Duration(days: 2, hours: 1));
 final DateTime _threeHoursAgo = DateTime.now().subtract(const Duration(hours: 3, minutes: 1));
 
-Map<String, dynamic> _pending(String id, String email, DateTime since) => {
+Map<String, dynamic> pendingJson(String id, String email, DateTime since) => {
       'id': id,
       'email': email,
       'createdAt': since.toUtc().toIso8601String(),
@@ -38,14 +39,25 @@ class FakeWire {
     List<Map<String, dynamic>>? queue,
     this.queueStatus = 200,
     this.rejectStatus = 200,
+    this.approveStatus = 200,
+    this.approveMessage = 'The Platform could not admit that Account.',
   }) : queue = queue ?? [];
 
   final String role;
   List<Map<String, dynamic>> queue;
   int queueStatus;
   int rejectStatus;
+  int approveStatus;
+  String approveMessage;
+
+  /// When set, an Approval hangs until the test completes it — which is what
+  /// "in flight" means to a widget test.
+  Completer<void>? approvalGate;
 
   final List<String> requests = [];
+
+  /// Every Approval body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> approvals = [];
 
   http.Client get client => MockClient((request) async {
         final path = request.url.path;
@@ -58,6 +70,16 @@ class FakeWire {
             return http.Response(jsonEncode({'message': 'The queue is unavailable.'}), queueStatus);
           }
           return http.Response(jsonEncode({'accounts': queue}), 200);
+        }
+        if (path.endsWith('/approval')) {
+          approvals.add(jsonDecode(request.body) as Map<String, dynamic>);
+          if (approvalGate != null) await approvalGate!.future;
+          if (approveStatus != 200) {
+            return http.Response(jsonEncode({'message': approveMessage}), approveStatus);
+          }
+          final id = path.split('/')[4];
+          queue = [for (final a in queue) if (a['id'] != id) a];
+          return http.Response(jsonEncode({'account': {'id': id}}), 200);
         }
         if (path.endsWith('/rejection')) {
           if (rejectStatus != 200) {
@@ -74,7 +96,7 @@ class FakeWire {
       });
 }
 
-Future<void> _open(WidgetTester tester, FakeWire wire) => pumpApp(
+Future<void> openApprovals(WidgetTester tester, FakeWire wire) => pumpApp(
       tester,
       gateway: FakeAuthGateway(accessToken: 'a-token'),
       client: wire.client,
@@ -84,10 +106,10 @@ Future<void> _open(WidgetTester tester, FakeWire wire) => pumpApp(
 void main() {
   testWidgets('the queue renders the Accounts it is given', (tester) async {
     final wire = FakeWire(queue: [
-      _pending('7', 'first@b.c', _twoDaysAgo),
-      _pending('8', 'second@b.c', _threeHoursAgo),
+      pendingJson('7', 'first@b.c', _twoDaysAgo),
+      pendingJson('8', 'second@b.c', _threeHoursAgo),
     ]);
-    await _open(tester, wire);
+    await openApprovals(tester, wire);
 
     expect(find.byType(ApprovalQueueScreen), findsOneWidget);
     expect(find.text('first@b.c'), findsOneWidget);
@@ -97,7 +119,7 @@ void main() {
   });
 
   testWidgets('an empty queue says plainly that nothing is waiting', (tester) async {
-    await _open(tester, FakeWire(queue: []));
+    await openApprovals(tester, FakeWire(queue: []));
 
     expect(find.text('Nobody is waiting'), findsOneWidget);
     expect(find.text('The queue could not be loaded'), findsNothing);
@@ -105,14 +127,14 @@ void main() {
 
   testWidgets('a failed load explains itself and the retry works', (tester) async {
     final wire = FakeWire(queueStatus: 500);
-    await _open(tester, wire);
+    await openApprovals(tester, wire);
 
     expect(find.text('The queue could not be loaded'), findsOneWidget);
     expect(find.text('The queue is unavailable.'), findsOneWidget);
     expect(find.text('Nobody is waiting'), findsNothing);
 
     wire.queueStatus = 200;
-    wire.queue = [_pending('7', 'first@b.c', _twoDaysAgo)];
+    wire.queue = [pendingJson('7', 'first@b.c', _twoDaysAgo)];
     await tester.tap(find.byKey(const ValueKey('approval-queue-retry')));
     await tester.pumpAndSettle();
 
@@ -121,8 +143,8 @@ void main() {
   });
 
   testWidgets('rejecting asks first, and cancelling sends nothing', (tester) async {
-    final wire = FakeWire(queue: [_pending('7', 'first@b.c', _twoDaysAgo)]);
-    await _open(tester, wire);
+    final wire = FakeWire(queue: [pendingJson('7', 'first@b.c', _twoDaysAgo)]);
+    await openApprovals(tester, wire);
 
     await tester.tap(find.byKey(const ValueKey('approval-queue-reject-7')));
     await tester.pumpAndSettle();
@@ -138,10 +160,10 @@ void main() {
 
   testWidgets('confirming sends the rejection and the row leaves the queue', (tester) async {
     final wire = FakeWire(queue: [
-      _pending('7', 'first@b.c', _twoDaysAgo),
-      _pending('8', 'second@b.c', _threeHoursAgo),
+      pendingJson('7', 'first@b.c', _twoDaysAgo),
+      pendingJson('8', 'second@b.c', _threeHoursAgo),
     ]);
-    await _open(tester, wire);
+    await openApprovals(tester, wire);
 
     await tester.tap(find.byKey(const ValueKey('approval-queue-reject-7')));
     await tester.pumpAndSettle();
@@ -159,13 +181,13 @@ void main() {
   testWidgets('an Account another administrator already dealt with is reported, and the queue refreshes',
       (tester) async {
     final wire = FakeWire(queue: [
-      _pending('7', 'first@b.c', _twoDaysAgo),
-      _pending('8', 'second@b.c', _threeHoursAgo),
+      pendingJson('7', 'first@b.c', _twoDaysAgo),
+      pendingJson('8', 'second@b.c', _threeHoursAgo),
     ], rejectStatus: 409);
-    await _open(tester, wire);
+    await openApprovals(tester, wire);
 
     // Somebody else dealt with row 7 while this queue was on screen.
-    wire.queue = [_pending('8', 'second@b.c', _threeHoursAgo)];
+    wire.queue = [pendingJson('8', 'second@b.c', _threeHoursAgo)];
 
     await tester.tap(find.byKey(const ValueKey('approval-queue-reject-7')));
     await tester.pumpAndSettle();
@@ -188,8 +210,8 @@ void main() {
   });
 
   testWidgets('a non-administrator sees neither the destination nor the Screen', (tester) async {
-    final wire = FakeWire(role: Roles.supervisor, queue: [_pending('7', 'first@b.c', _twoDaysAgo)]);
-    await _open(tester, wire);
+    final wire = FakeWire(role: Roles.supervisor, queue: [pendingJson('7', 'first@b.c', _twoDaysAgo)]);
+    await openApprovals(tester, wire);
 
     expect(find.byType(ApprovalQueueScreen), findsNothing);
     expect(find.byType(AccessDeniedScreen), findsOneWidget);
@@ -201,7 +223,7 @@ void main() {
   });
 
   testWidgets('an administrator gets the destination in the sidebar', (tester) async {
-    await _open(tester, FakeWire(queue: []));
+    await openApprovals(tester, FakeWire(queue: []));
     expect(find.text('Approvals'), findsOneWidget);
   });
 

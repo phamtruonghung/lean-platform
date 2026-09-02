@@ -1,9 +1,11 @@
-/// The Approval queue: who is waiting to be let in, and turning one away.
+/// The Approval queue: who is waiting to be let in, admitting one, and turning
+/// one away.
 ///
-/// Approving — choosing a role and granting Org Units — is issue #41 and is
-/// deliberately not here. A row carries an email address and a wait, and
-/// nothing else: an Account need not correspond to an Employee, so there is
-/// no name to show and inventing one would be a lie.
+/// The role an admission carries is chosen in `admission_dialog.dart`; the Org
+/// Unit Grant picker that dialog will grow is issue #42. A row carries an
+/// email address and a wait, and nothing else: an Account need not correspond
+/// to an Employee, so there is no name to show and inventing one would be a
+/// lie.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/skeleton_list.dart';
+import 'admission_dialog.dart';
 import 'approval_queue_bloc.dart';
 import 'pending_account.dart';
 
@@ -36,8 +39,16 @@ class ApprovalQueueScreen extends StatelessWidget {
               ApprovalQueueUnavailable(message: final message) => _QueueFailed(message: message),
               ApprovalQueueLoaded(accounts: final accounts) when accounts.isEmpty =>
                 const _QueueEmpty(),
-              ApprovalQueueLoaded(accounts: final accounts, rejectingId: final rejectingId) =>
-                _QueueList(accounts: accounts, rejectingId: rejectingId),
+              ApprovalQueueLoaded(
+                accounts: final accounts,
+                rejectingId: final rejectingId,
+                admittingId: final admittingId,
+              ) =>
+                _QueueList(
+                  accounts: accounts,
+                  rejectingId: rejectingId,
+                  admittingId: admittingId,
+                ),
             },
           ),
         ],
@@ -118,10 +129,15 @@ class _Notice extends StatelessWidget {
 }
 
 class _QueueList extends StatelessWidget {
-  const _QueueList({required this.accounts, required this.rejectingId});
+  const _QueueList({
+    required this.accounts,
+    required this.rejectingId,
+    required this.admittingId,
+  });
 
   final List<PendingAccount> accounts;
   final String? rejectingId;
+  final String? admittingId;
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +151,7 @@ class _QueueList extends StatelessWidget {
           itemBuilder: (context, index) => _QueueRow(
             account: accounts[index],
             rejecting: accounts[index].id == rejectingId,
+            admitting: accounts[index].id == admittingId,
           ),
         ),
       ),
@@ -143,13 +160,17 @@ class _QueueList extends StatelessWidget {
 }
 
 class _QueueRow extends StatelessWidget {
-  const _QueueRow({required this.account, required this.rejecting});
+  const _QueueRow({required this.account, required this.rejecting, required this.admitting});
 
   final PendingAccount account;
   final bool rejecting;
+  final bool admitting;
 
   static ValueKey<String> rejectKey(String accountId) =>
       ValueKey<String>('approval-queue-reject-$accountId');
+
+  static ValueKey<String> admitKey(String accountId) =>
+      ValueKey<String>('approval-queue-admit-$accountId');
 
   @override
   Widget build(BuildContext context) {
@@ -188,8 +209,15 @@ class _QueueRow extends StatelessWidget {
             const SizedBox(width: Spacing.md),
             OutlinedButton(
               key: rejectKey(account.id),
-              onPressed: rejecting ? null : () => _confirmRejection(context, account),
+              onPressed: rejecting || admitting ? null : () => _confirmRejection(context, account),
               child: Text(rejecting ? 'Rejecting…' : 'Reject'),
+            ),
+            const SizedBox(width: Spacing.sm),
+            FilledButton(
+              key: admitKey(account.id),
+              onPressed:
+                  rejecting || admitting ? null : () => AdmissionDialog.open(context, account),
+              child: Text(admitting ? 'Admitting…' : 'Admit'),
             ),
           ],
         ),

@@ -90,7 +90,12 @@ router.post('/accounts/:id/approval', authenticate, requireActive, requireAdmin,
     const id = requireAccountId(req);
 
     const { role, grants } = req.body ?? {};
-    const account = await approveAccount(id, { role, grants: grants ?? [] }, req.account.id);
+    // `expectedApprovalStatus` is optional, exactly as on the rejection route
+    // below — see service.js's rejectAccount for what sending it buys an
+    // administrator working the queue.
+    const account = await approveAccount(id, { role, grants: grants ?? [] }, req.account.id, {
+      expectedApprovalStatus: req.body?.expectedApprovalStatus
+    });
     res.json({ account });
   } catch (error) {
     handleError(error, res, next);

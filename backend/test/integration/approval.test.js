@@ -922,3 +922,88 @@ test('an unknown expectedApprovalStatus is a 400, not a silent unconditional rej
   );
   assert.strictEqual(row.approval_status, 'pending');
 });
+
+// The same precondition, on the *approval* side (issue #41): admitting an
+// Account is the other half of the queue's race, and a stale row must not let
+// one administrator's Approval silently overwrite another's decision.
+test('approving with a precondition that still holds succeeds', async () => {
+  const { account: pending } = await createPendingAccount('appr-precond-ok');
+
+  const response = await approve(pending.id, {
+    role: 'admin',
+    grants: [],
+    expectedApprovalStatus: 'pending'
+  });
+  assert.strictEqual(response.status, 200);
+  const { account } = await response.json();
+  assert.strictEqual(account.approvalStatus, 'approved');
+  assert.strictEqual(account.role, 'admin');
+  assert.strictEqual(account.isActive, true);
+
+  const { rows } = await pool.query(
+    'SELECT 1 FROM app_user_org_units WHERE app_user_id = $1',
+    [pending.id]
+  );
+  assert.strictEqual(rows.length, 0, 'an administrator is admitted with no Grants at all');
+});
+
+test('approving an Account another administrator already dealt with is a 409, and changes nothing', async () => {
+  const { account: pending } = await createPendingAccount('appr-precond-race');
+
+  const rejected = await reject(pending.id);
+  assert.strictEqual(rejected.status, 200);
+
+  const response = await approve(pending.id, {
+    role: 'manager',
+    grants: [],
+    expectedApprovalStatus: 'pending'
+  });
+  assert.strictEqual(response.status, 409);
+  const body = await response.json();
+  assert.match(body.message, /already dealt with/);
+
+  const { rows: [row] } = await pool.query(
+    'SELECT approval_status, is_active, role FROM app_users WHERE id = $1',
+    [pending.id]
+  );
+  assert.strictEqual(row.approval_status, 'rejected');
+  assert.strictEqual(row.is_active, false);
+  assert.strictEqual(row.role, 'operator');
+});
+
+test('the approval precondition is optional — an unconditional Approval is unchanged', async () => {
+  const { account: pending } = await createPendingAccount('appr-precond-absent');
+
+  const response = await approve(pending.id, { role: 'engineer', grants: [] });
+  assert.strictEqual(response.status, 200);
+  const { account } = await response.json();
+  assert.strictEqual(account.approvalStatus, 'approved');
+  assert.strictEqual(account.role, 'engineer');
+});
+
+test('an unknown expectedApprovalStatus on an Approval is a 400, not a silent unconditional Approval', async () => {
+  const { account: pending } = await createPendingAccount('appr-precond-bad');
+
+  const response = await approve(pending.id, {
+    role: 'manager',
+    grants: [],
+    expectedApprovalStatus: 'maybe'
+  });
+  assert.strictEqual(response.status, 400);
+
+  const { rows: [row] } = await pool.query(
+    'SELECT approval_status, role FROM app_users WHERE id = $1',
+    [pending.id]
+  );
+  assert.strictEqual(row.approval_status, 'pending');
+  assert.strictEqual(row.role, 'operator');
+});
+
+test('re-approving an already-approved Account still works when no precondition is sent', async () => {
+  const { account } = await approveFreshAccount('operator', []);
+
+  const response = await approve(account.id, { role: 'manager', grants: [] });
+  assert.strictEqual(response.status, 200);
+  const body = await response.json();
+  assert.strictEqual(body.account.role, 'manager');
+});

@@ -52,6 +52,27 @@ const ACCOUNT_COLUMNS =
 // (migrations/1788295040758_account-approval-status.js).
 const APPROVAL_STATUSES = ['pending', 'approved', 'rejected'];
 
+// The optional `expectedApprovalStatus` precondition both approveAccount and
+// rejectAccount below accept, in the one place its two halves are spelled
+// out: the value check (a 400, before any transaction opens) and the
+// comparison against the row this transaction has already locked FOR UPDATE
+// (a 409). See rejectAccount's own comment for what sending it buys a
+// caller acting on a queue it read earlier.
+function requireKnownApprovalStatus(expectedApprovalStatus) {
+  if (expectedApprovalStatus !== undefined && !APPROVAL_STATUSES.includes(expectedApprovalStatus)) {
+    throw httpError(400, `expectedApprovalStatus must be one of: ${APPROVAL_STATUSES.join(', ')}`);
+  }
+}
+
+function requireApprovalStatusUnchanged(current, expectedApprovalStatus) {
+  if (expectedApprovalStatus !== undefined && current.approval_status !== expectedApprovalStatus) {
+    throw httpError(
+      409,
+      `This Account is no longer ${expectedApprovalStatus} — another administrator has already dealt with it.`
+    );
+  }
+}
+
 async function findAccountBySubject(subject) {
   const { rows } = await getPool().query(
     `SELECT ${ACCOUNT_COLUMNS} FROM app_users WHERE external_subject = $1`,
@@ -187,7 +208,8 @@ async function listPendingAccounts() {
 // `approval_status` must never do is go stale relative to `is_active` — see
 // the migration's own header for the mapping every write in this section
 // keeps true.
-async function approveAccount(id, { role, grants }, actingAccountId) {
+async function approveAccount(id, { role, grants }, actingAccountId, { expectedApprovalStatus } = {}) {
+  requireKnownApprovalStatus(expectedApprovalStatus);
   if (!ROLES.includes(role)) {
     throw httpError(400, `role must be one of: ${ROLES.join(', ')}`);
   }
@@ -207,11 +229,12 @@ async function approveAccount(id, { role, grants }, actingAccountId) {
     // Locks the row for the length of this transaction, same reasoning as
     // the bootstrap's advisory lock: two administrators approving the same
     // Account at once should serialize, not race each other's grant writes.
-    const { rows: [existing] } = await client.query(
-      'SELECT id FROM app_users WHERE id = $1 FOR UPDATE',
+    const { rows: [current] } = await client.query(
+      'SELECT approval_status FROM app_users WHERE id = $1 FOR UPDATE',
       [id]
     );
-    if (!existing) throw notFoundAccount();
+    if (!current) throw notFoundAccount();
+    requireApprovalStatusUnchanged(current, expectedApprovalStatus);
 
     if (parsedGrants.length > 0) {
       const { rows: found } = await client.query(
@@ -265,9 +288,7 @@ async function approveAccount(id, { role, grants }, actingAccountId) {
 // invisible, wrong write. The row is locked FOR UPDATE first, so the check
 // and the write cannot straddle another transaction's commit.
 async function rejectAccount(id, actingAccountId, { expectedApprovalStatus } = {}) {
-  if (expectedApprovalStatus !== undefined && !APPROVAL_STATUSES.includes(expectedApprovalStatus)) {
-    throw httpError(400, `expectedApprovalStatus must be one of: ${APPROVAL_STATUSES.join(', ')}`);
-  }
+  requireKnownApprovalStatus(expectedApprovalStatus);
 
   return withActor(actingAccountId, async (client) => {
     const { rows: [current] } = await client.query(
@@ -275,12 +296,7 @@ async function rejectAccount(id, actingAccountId, { expectedApprovalStatus } = {
       [id]
     );
     if (!current) throw notFoundAccount();
-    if (expectedApprovalStatus !== undefined && current.approval_status !== expectedApprovalStatus) {
-      throw httpError(
-        409,
-        `This Account is no longer ${expectedApprovalStatus} — another administrator has already dealt with it.`
-      );
-    }
+    requireApprovalStatusUnchanged(current, expectedApprovalStatus);
 
     const { rows: [updated] } = await client.query(
       `UPDATE app_users

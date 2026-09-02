@@ -16,6 +16,8 @@ class AwaitingApprovalScreen extends StatelessWidget {
 
   final String email;
 
+  static const ValueKey<String> checkAgainKey = ValueKey<String>('awaiting-approval-check-again');
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -46,6 +48,17 @@ class AwaitingApprovalScreen extends StatelessWidget {
                     // 20 is not on the Spacing scale; rounding it to 16 or 24
                     // would change this layout, which this ticket forbids.
                     const SizedBox(height: 20),
+                    // Being admitted changes nothing in this browser — the
+                    // Account's role and is_active are re-read from the server
+                    // on every request, so asking again is all it takes. No
+                    // signing out, no clearing anything (issue #41).
+                    FilledButton(
+                      key: checkAgainKey,
+                      onPressed: () =>
+                          context.read<AccountBloc>().add(const AccountRefreshRequested()),
+                      child: const Text('Check again'),
+                    ),
+                    const SizedBox(height: Spacing.sm),
                     OutlinedButton(
                       // Dispatched through AccountBloc, not called on
                       // Supabase directly (issue #38): the Bloc is the only
