@@ -95,6 +95,14 @@ Account exists and can do nothing. With several Sites, Approval is where a
 person's plant is decided, so it is a deliberate act rather than a flag.
 _Avoid_: Activation, verification, registration, onboarding
 
+**Grant**:
+The record that an Account may work in one Org Unit, at one of two levels: view,
+or view and edit. A Grant reaches downward, so one on a department covers every
+line beneath it, and an Account holds as many Grants as Approval gave it. This is
+the record Account, Approval and Entry point each already gesture at.
+_Avoid_: Permission, scope (scope is the reach a Grant produces, not the record),
+access
+
 **Job role**:
 What an Employee does — fitter, welder, line leader. Defined once and shared
 by every Site (ADR-0005's shared catalogue), never scoped to one, so the same
@@ -122,3 +130,18 @@ A number reported under a Pillar, calculated from the measurements Modules
 record. Maintenance work yields MTBF under Delivery and parts cost under Cost —
 which Module produced a KPI and which Pillar it reports under are independent.
 _Avoid_: Metric, measure, indicator, stat
+
+### The interface
+
+**Screen**:
+A full destination with its own address — sign-in, the Directory, the Approval
+queue. A Screen is what a person navigates to and can bookmark or link to; a
+dialog, a card or a panel inside one is not a Screen.
+_Avoid_: Page, view
+
+**Shell**:
+The persistent chrome around every Screen: the sidebar carrying the
+destinations, the brand header, and the account footer with sign-out. The Shell
+stays put while Screens change beneath it, which is why the current destination
+is marked there and nowhere else.
+_Avoid_: Layout, frame, chrome

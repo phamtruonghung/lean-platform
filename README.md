@@ -264,7 +264,10 @@ from browser to database and lets a person sign up, sign in, wait for
 Approval, and — once an administrator approves them — act within the Org
 Units they were granted (issue #8).
 
-- **Fonts are fetched from a public CDN.** `--no-web-resources-cdn` keeps
-  CanvasKit local, but Flutter still fetches Roboto from `fonts.gstatic.com`.
-  On a private deployment that request can fail, and the app then renders with
-  no text at all. Bundling the font belongs with the first real screens.
+- **Roboto is bundled; the engine's glyph fallback is not.**
+  `frontend/assets/fonts` ships Roboto with the app, served from its own
+  origin, so a private deployment with no egress still renders every string
+  this interface currently shows. What remains unbundled is the Flutter
+  engine's own fallback base URL, `fonts.gstatic.com`, used only for glyphs
+  outside the Roboto family — it affects nothing the interface currently
+  renders.

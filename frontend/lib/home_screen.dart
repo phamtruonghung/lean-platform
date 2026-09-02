@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'people_api.dart';
+import 'theme.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.account});
@@ -38,17 +39,19 @@ class HomeScreen extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(Spacing.xl),
             child: Card(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(Spacing.xl),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // A one-off status colour, not a token — a single caller
+                    // doesn't earn its own AppColors.success.
                     Icon(Icons.check_circle_outline, size: 48, color: Colors.green.shade700),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: Spacing.md),
                     Text('Welcome, ${account.displayName}', style: theme.textTheme.headlineSmall),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: Spacing.sm),
                     Text('${account.email} · ${account.role}', style: theme.textTheme.bodyMedium),
                   ],
                 ),

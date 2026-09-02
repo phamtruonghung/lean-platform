@@ -8,6 +8,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../theme.dart';
+
 class AwaitingApprovalScreen extends StatelessWidget {
   const AwaitingApprovalScreen({super.key, required this.email});
 
@@ -23,23 +25,25 @@ class AwaitingApprovalScreen extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(Spacing.xl),
             child: Card(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(Spacing.xl),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.hourglass_top, size: 48, color: theme.colorScheme.outline),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: Spacing.md),
                     Text('Awaiting approval', style: theme.textTheme.headlineSmall),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: Spacing.sm),
                     Text(
                       "You're signed in as $email, but an administrator hasn't "
                       'admitted you to the Platform yet. Check back once they have.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium,
                     ),
+                    // 20 is not on the Spacing scale; rounding it to 16 or 24
+                    // would change this layout, which this ticket forbids.
                     const SizedBox(height: 20),
                     OutlinedButton(
                       onPressed: () => Supabase.instance.client.auth.signOut(),
