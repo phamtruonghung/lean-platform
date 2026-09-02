@@ -145,9 +145,9 @@ jobs:
         working-directory: frontend
         run: flutter analyze
 
-      # No `flutter test` step: the Platform tests at one seam, HTTP against the
-      # running API, and there are no widget tests to run. Adding the step now
-      # would fail the build for having nothing to do.
+      - name: Tests
+        working-directory: frontend
+        run: flutter test
 
       - name: Build web
         working-directory: frontend
@@ -159,11 +159,11 @@ jobs:
       #
       # The checks are specific on purpose: a blanket grep for "gstatic.com"
       # fails on a correct build, because the loader carries the CDN URL as a
-      # dead branch that `useLocalCanvasKit: true` never takes.
-      #
-      # There is deliberately no check that Roboto is bundled. It is not, yet —
-      # see "Known gaps" in the README. That check belongs with the commit that
-      # bundles the font, not before it, or it would fail every build until then.
+      # dead branch that `useLocalCanvasKit: true` never takes, and the engine's
+      # own fontFallbackBaseUrl (used for glyphs outside the bundled Roboto
+      # family) still carries `fonts.gstatic.com/s/` as a literal string in a
+      # correct build. Checking for the bundled font's presence, rather than
+      # for the CDN string's absence, is what a correct build can actually pass.
       - name: Web build is self-contained
         working-directory: frontend
         run: |
@@ -173,6 +173,9 @@ jobs:
           fi
           test -f build/web/canvaskit/canvaskit.wasm
           echo "CanvasKit is served from the app's own origin"
+          test -f build/web/assets/assets/fonts/Roboto-Regular.ttf
+          grep -q '"family":"Roboto"' build/web/assets/FontManifest.json
+          echo "Roboto is served from the app's own origin"
 
   # Builds both images without publishing them, so a Dockerfile that no longer
   # builds fails on the pull request rather than on the push to main that was

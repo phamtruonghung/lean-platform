@@ -10,10 +10,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth/auth_gate.dart';
 import 'supabase_config.dart';
+import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,18 +27,21 @@ Future<void> main() async {
 }
 
 class PlatformApp extends StatelessWidget {
-  const PlatformApp({super.key});
+  const PlatformApp({super.key, this.httpClient});
+
+  /// Supplied only by tests. Threaded down to PeopleApi so a widget test can
+  /// stand a fake client in for the network at the wire, instead of the
+  /// widget tree constructing its own client where nothing above can reach
+  /// it (issue #37's own HTTP-client-injection criterion).
+  final http.Client? httpClient;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Platform',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F172A)),
-        useMaterial3: true,
-      ),
-      home: const AuthGate(),
+      theme: buildAppTheme(),
+      home: AuthGate(httpClient: httpClient),
     );
   }
 }

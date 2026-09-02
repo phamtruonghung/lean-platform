@@ -6,6 +6,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../theme.dart';
+
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
@@ -84,7 +86,7 @@ class _SignInScreenState extends State<SignInScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(Spacing.xl),
             child: Form(
               key: _formKey,
               child: Column(
@@ -92,7 +94,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text('Sign in', style: Theme.of(context).textTheme.headlineSmall),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: Spacing.xl),
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(labelText: 'Email'),
@@ -101,7 +103,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     validator: (value) =>
                         (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: Spacing.md),
                   TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(labelText: 'Password'),
@@ -111,15 +113,17 @@ class _SignInScreenState extends State<SignInScreen> {
                         (value == null || value.length < 6) ? 'At least 6 characters' : null,
                   ),
                   if (_error != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: Spacing.md),
                     Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   ],
+                  // 20 is not on the Spacing scale; rounding it to 16 or 24
+                  // would change this layout, which this ticket forbids.
                   const SizedBox(height: 20),
                   FilledButton(
                     onPressed: _submitting ? null : _signIn,
                     child: const Text('Sign in'),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: Spacing.sm),
                   OutlinedButton(
                     onPressed: _submitting ? null : _signUp,
                     child: const Text('Create an account'),
@@ -128,7 +132,10 @@ class _SignInScreenState extends State<SignInScreen> {
                   const Row(
                     children: [
                       Expanded(child: Divider()),
-                      Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('or')),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: Spacing.sm),
+                        child: Text('or'),
+                      ),
                       Expanded(child: Divider()),
                     ],
                   ),

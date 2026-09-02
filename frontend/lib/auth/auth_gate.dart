@@ -10,22 +10,29 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../home_screen.dart';
 import '../people_api.dart';
+import '../theme.dart';
 import 'awaiting_approval_screen.dart';
 import 'sign_in_screen.dart';
 
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+  const AuthGate({super.key, this.httpClient});
+
+  final http.Client? httpClient;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
 
 class _AuthGateState extends State<AuthGate> {
-  final _peopleApi = PeopleApi();
+  // `late final` on the State, not the StatelessWidget above — the State is
+  // created once, so the client is not rebuilt per frame, and both
+  // constructors stay `const`-capable.
+  late final _peopleApi = PeopleApi(client: widget.httpClient);
 
   @override
   Widget build(BuildContext context) {
@@ -117,16 +124,16 @@ class _ErrorScreen extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(Spacing.xl),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
-                const SizedBox(height: 12),
+                const SizedBox(height: Spacing.md),
                 Text(message, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
+                const SizedBox(height: Spacing.lg),
                 FilledButton(onPressed: onRetry, child: const Text('Try again')),
-                const SizedBox(height: 8),
+                const SizedBox(height: Spacing.sm),
                 TextButton(
                   onPressed: () => Supabase.instance.client.auth.signOut(),
                   child: const Text('Sign out'),

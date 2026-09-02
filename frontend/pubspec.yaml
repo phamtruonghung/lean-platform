@@ -22,3 +22,15 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Roboto is bundled rather than left to the engine, which would otherwise
+  # fetch it from fonts.gstatic.com on first paint. See assets/fonts/README.md.
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
