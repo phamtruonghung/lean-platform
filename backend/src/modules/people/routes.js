@@ -11,7 +11,7 @@
 
 const express = require('express');
 const { authenticate, requireActive, statusFor } = require('./middleware');
-const { requireAdmin } = require('./authorization');
+const { requireAdmin, orgUnitScopeFor } = require('./authorization');
 const { parseId, httpError, handleError } = require('./errors');
 const {
   listAccounts,
@@ -41,11 +41,34 @@ function requireAccountId(req) {
 // to be exempt from. `statusFor` (middleware.js) is what tells a pending
 // Account apart from a rejected or deactivated one — see that file's own
 // header.
-router.get('/me', authenticate, (req, res) => {
-  res.json({
-    status: statusFor(req.account),
-    account: req.account
-  });
+//
+// `orgUnitScope` (issue #43) sits beside `account`, not inside it, for the
+// same reason `status` already does: it is a computed fact about the caller,
+// not an `app_users` column, and `toAccount`'s row shape (service.js) is
+// shared verbatim by three other endpoints (GET /accounts, approval,
+// rejection) that must not be forked to carry it. No branch on status here
+// either — orgUnitScopeFor runs for a pending or deactivated caller exactly
+// as it does for an active one, computing whatever their real (possibly
+// empty) grant rows are; `status` already says they may not act, and
+// requireActive blocks every other endpoint.
+//
+// Entry points are deliberately NOT computed here, for every Site the caller
+// can see, eagerly, on every call to this route: that is a structurally
+// different, per-Site question ("where does my scope begin in *this* Site's
+// tree", CONTEXT.md's Entry point, ADR-0008) that GET /sites/:siteId/org-units
+// already answers on demand, and computing it for every visible Site here
+// would be O(number of visible Sites) queries on a route that runs on every
+// session resolution. See authorization.js's own header and orgUnitScopeFor.
+router.get('/me', authenticate, async (req, res, next) => {
+  try {
+    res.json({
+      status: statusFor(req.account),
+      account: req.account,
+      orgUnitScope: await orgUnitScopeFor({ account: req.account })
+    });
+  } catch (error) {
+    handleError(error, res, next);
+  }
 });
 
 // Everything else sits behind requireActive. A directory listing is the

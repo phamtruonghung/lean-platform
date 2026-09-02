@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'people/org_unit.dart';
+import 'people/org_unit_scope.dart';
 import 'people/pending_account.dart';
 
 /// What the API answered for the caller's own Account: either it is still
@@ -25,10 +26,20 @@ class AccountPendingApproval extends AccountStatus {
 }
 
 class AccountActive extends AccountStatus {
-  const AccountActive({required super.email, required this.displayName, required this.role});
+  const AccountActive({
+    required super.email,
+    required this.displayName,
+    required this.role,
+    this.orgUnitScope = const OrgUnitScope.nowhere(),
+  });
 
   final String displayName;
   final String role;
+
+  /// Where this Account may work (issue #43) — "nowhere" by default so a
+  /// cached client that predates this field, or a response the API sent with
+  /// no `orgUnitScope` at all, still constructs a valid [AccountActive].
+  final OrgUnitScope orgUnitScope;
 }
 
 /// The request could not be answered at all — unreachable API, a malformed
@@ -92,6 +103,28 @@ class PeopleApi {
       email: email,
       displayName: account['displayName'] as String,
       role: account['role'] as String,
+      orgUnitScope: _orgUnitScopeFrom(body['orgUnitScope']),
+    );
+  }
+
+  /// The caller's own Org Unit scope, when the API sent one. Tolerant of its
+  /// absence rather than fatal: a cached client can outlive a deploy, and an
+  /// Account that cannot yet be told where it may work is still an Account
+  /// that can sign in and see the Shell.
+  static OrgUnitScope _orgUnitScopeFrom(Object? raw) {
+    if (raw is! Map<String, dynamic>) return const OrgUnitScope.nowhere();
+    final grants = raw['grants'];
+    return OrgUnitScope(
+      everywhere: raw['everywhere'] == true,
+      grants: [
+        if (grants is List<dynamic>)
+          for (final grant in grants.whereType<Map<String, dynamic>>())
+            OrgUnitGrant(
+              orgUnitId: grant['orgUnitId'].toString(),
+              siteId: grant['siteId'].toString(),
+              canWrite: grant['canWrite'] == true,
+            ),
+      ],
     );
   }
 

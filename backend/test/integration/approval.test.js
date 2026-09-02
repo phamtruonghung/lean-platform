@@ -1007,3 +1007,61 @@ test('re-approving an already-approved Account still works when no precondition 
   const body = await response.json();
   assert.strictEqual(body.account.role, 'manager');
 });
+
+// ---------------------------------------------------------------------------
+// 11. GET /me's own orgUnitScope (issue #43) — where the caller may work,
+//     distinct from status/account. "everywhere" for an administrator, raw
+//     Grant rows for everyone else, and an empty grant list must never be
+//     mistaken for "everywhere" the other way around.
+// ---------------------------------------------------------------------------
+
+test('an administrator\'s /me says everywhere: true, with no grants', async () => {
+  const response = await me(adminToken);
+  assert.strictEqual(response.status, 200);
+  const body = await response.json();
+  assert.deepStrictEqual(body.orgUnitScope, { everywhere: true, grants: [] });
+});
+
+test('a non-administrator with one Grant gets everywhere: false and that one Grant back, raw', async () => {
+  const { root } = await createSiteWithTree();
+  const { token } = await approveFreshAccount('supervisor', [{ orgUnitId: root.id, canWrite: true }]);
+
+  const response = await me(token);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  assert.strictEqual(orgUnitScope.everywhere, false);
+  assert.strictEqual(orgUnitScope.grants.length, 1);
+  const [grant] = orgUnitScope.grants;
+  assert.strictEqual(String(grant.orgUnitId), String(root.id));
+  assert.strictEqual(String(grant.siteId), String(root.siteId));
+  assert.strictEqual(grant.canWrite, true);
+});
+
+// The pair to the administrator test above: the same empty grants list, but
+// distinguishable by everywhere alone — this is exactly the ambiguity issue
+// #43 exists to rule out.
+test('a non-administrator with no Grants at all gets everywhere: false and an empty grants list — distinguishable from an administrator only by everywhere', async () => {
+  const { token } = await approveFreshAccount('operator', []);
+
+  const response = await me(token);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  assert.strictEqual(orgUnitScope.everywhere, false);
+  assert.deepStrictEqual(orgUnitScope.grants, []);
+});
+
+test('a root Org Unit and a descendant beneath it, both granted directly, both come back — raw rows, not collapsed entry points', async () => {
+  const { root, child } = await createSiteWithTree();
+  const { token } = await approveFreshAccount('operator', [
+    { orgUnitId: root.id, canWrite: false },
+    { orgUnitId: child.id, canWrite: true }
+  ]);
+
+  const response = await me(token);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  assert.strictEqual(orgUnitScope.everywhere, false);
+  assert.strictEqual(orgUnitScope.grants.length, 2);
+  const grantedIds = orgUnitScope.grants.map((g) => String(g.orgUnitId)).sort();
+  assert.deepStrictEqual(grantedIds, [String(root.id), String(child.id)].sort());
+});
