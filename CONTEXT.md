@@ -83,6 +83,20 @@ Account exists and can do nothing. With several Sites, Approval is where a
 person's plant is decided, so it is a deliberate act rather than a flag.
 _Avoid_: Activation, verification, registration, onboarding
 
+**Job role**:
+What an Employee does — fitter, welder, line leader. Defined once and shared
+by every Site (ADR-0005's shared catalogue), never scoped to one, so the same
+role means the same thing wherever it is held.
+_Avoid_: Position, title, job code, grade
+
+**Assignment**:
+The record of an Employee working at one Org Unit, as one job role, from one
+date. A transfer never edits an Assignment in place: the open one is closed
+with an end date and a new one is opened, so both remain and an Employee's
+history stays answerable.
+_Avoid_: Placement, posting, allocation, transfer (a transfer is the act; an
+Assignment is what it produces)
+
 ### The numbers
 
 **Pillar**:
