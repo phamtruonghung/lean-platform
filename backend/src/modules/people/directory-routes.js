@@ -39,19 +39,34 @@
  * — Express 5 would otherwise match the literal segment "me" as the :id
  * param, since routes are matched in declaration order and :id matches
  * anything.
+ *
+ * POST /employees/:id/assignments (issue #10) is a different question again
+ * from either of the two above: not "who may know about an Employee" and not
+ * "who may change their payroll/plant record", but "who may say where in the
+ * plant they work" — which names a particular Org Unit, exactly the shape
+ * plant-routes.js already gates by Org Unit scope. So this one route sits
+ * behind write scope on the DESTINATION Org Unit (requireAssignmentOrgUnitScope,
+ * below) rather than requireAdmin, even though it lives in this file next to
+ * routes that are administrator-only. ADR-0010 is the decision record for
+ * why this is a deliberate deviation from ADR-0009's reasoning, not an
+ * inconsistency: an Org Unit assignment, unlike an Employee record itself,
+ * genuinely is "owned" by the Org Unit it names.
  */
 
 const express = require('express');
 const { authenticate, requireActive } = require('./middleware');
-const { requireAdmin } = require('./authorization');
-const { httpError, parseId, handleError } = require('./errors');
+const authorization = require('./authorization');
+const { requireAdmin } = authorization;
+const plant = require('./plant');
+const { httpError, parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 const {
   listEmployees,
   getEmployeeDetail,
   createEmployee,
   updateEmployee,
   setEmployeeDeparted,
-  reinstateEmployee
+  reinstateEmployee,
+  createAssignment
 } = require('./directory');
 
 const router = express.Router();
@@ -66,6 +81,14 @@ router.get('/employees', authenticate, requireActive, async (req, res, next) => 
       }
     }
 
+    let jobRoleId;
+    if (req.query.jobRoleId !== undefined) {
+      jobRoleId = parseId(req.query.jobRoleId);
+      if (jobRoleId === null) {
+        return res.status(400).json({ message: 'jobRoleId must be a valid job role id' });
+      }
+    }
+
     // Exact string "true" only — `?includeDeparted` with no value, `=false`,
     // or any other string must never widen the listing. A directory listing
     // silently including Departed Employees because of a typo or a stray
@@ -76,6 +99,7 @@ router.get('/employees', authenticate, requireActive, async (req, res, next) => 
     const employees = await listEmployees({
       search: typeof req.query.search === 'string' ? req.query.search : undefined,
       orgUnitId,
+      jobRoleId,
       includeDeparted
     });
     res.json({ employees });
@@ -178,5 +202,60 @@ router.post('/employees/:id/reinstatement', authenticate, requireActive, require
     handleError(error, res, next);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Org Unit assignments (issue #10) — write scope on the DESTINATION Org
+// Unit only. See this file's own header and ADR-0010 for why this route is
+// gated differently from the rest of the write surface above.
+// ---------------------------------------------------------------------------
+
+// Modelled closely on plant-routes.js's requireOrgUnitCreateScope: it too
+// reads its Org Unit id out of the body rather than a path param, and
+// follows the same existence-before-scope ordering authorization.js
+// documents (parse the id, 400 if malformed; plant.getOrgUnit, 404 if it
+// names nothing; authorization.canAct, 403 with the shared body if the
+// caller holds no write grant reaching it). canAct already returns true
+// unconditionally for an administrator, so this needs no separate admin
+// check of its own.
+//
+// Deliberately NOT also requiring scope on the Employee's current (source)
+// Org Unit: a supervisor receiving a transfer into their line should not
+// need a grant on the line the person is leaving (ADR-0010). The Employee's
+// own existence (and whether they have departed) is resolved afterwards, by
+// createAssignment itself, inside the route handler below — this middleware
+// only ever answers "may this caller write to the named destination".
+async function requireAssignmentOrgUnitScope(req, res, next) {
+  try {
+    const orgUnitId = parseId(req.body?.orgUnitId);
+    if (orgUnitId === null) {
+      return res.status(400).json({ message: 'orgUnitId must be a valid Org Unit id' });
+    }
+
+    const orgUnit = await plant.getOrgUnit(orgUnitId); // throws the 404.
+    const allowed = await authorization.canAct({ account: req.account, orgUnitId: orgUnit.id, write: true });
+    if (!allowed) {
+      return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    return next();
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+}
+
+router.post(
+  '/employees/:id/assignments',
+  authenticate,
+  requireActive,
+  requireAssignmentOrgUnitScope,
+  async (req, res, next) => {
+    try {
+      const id = requireEmployeeId(req); // 400 if malformed; createAssignment below 404s if it does not exist.
+      const assignment = await createAssignment(id, req.body ?? {}, req.account.id);
+      res.status(201).json({ assignment });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
 
 module.exports = router;
