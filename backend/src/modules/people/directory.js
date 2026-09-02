@@ -22,6 +22,10 @@
  * worked here last March" (issue #9's own acceptance criteria; see also the
  * CONTEXT.md glossary's Departed entry).
  *
+ * Issue #10 (job roles and assignments) and #11 (skills) own the write
+ * surfaces for assignments and skills; this file only ever reads them, for
+ * the detail view's own acceptance criterion.
+ *
  * Pass 2 (issue #9, criteria 5 and 6) adds the write surface: an
  * administrator adding, editing, departing and reinstating an Employee.
  * createEmployee, updateEmployee, setEmployeeDeparted and reinstateEmployee
@@ -34,30 +38,10 @@
  * directory-routes.js is the one place that decides who may call these
  * (administrator only); this file still stays unaware of that, exactly as
  * the header above already says of the read surface.
- *
- * Issue #10 (job roles and Org Unit assignments) adds two more write
- * surfaces, both owned here rather than in a new service file:
- *
- *  - Job roles (listJobRoles/createJobRole/setJobRoleActive). `job_roles` is
- *    only ever meaningful as an attribute of an Employee's assignment — this
- *    file already reads and maps it for the detail view (getEmployeeDetail,
- *    below) — so a fourth service+routes pair in this Module for a handful
- *    of CRUD functions over one small table would be a seam with nothing
- *    behind it. The table itself carries no `site_id`: criterion 1 ("Job
- *    roles are defined once and shared by every Site") is exactly what a
- *    global table already means structurally, not a rule this file has to
- *    enforce.
- *
- *  - Assignments (assignEmployee). A transfer is a new assignment that
- *    closes the previous one, in one transaction — see assignEmployee's own
- *    comment for why order (close, then insert) matters against the
- *    `employee_assignments_no_overlap` exclusion constraint. Issue #11
- *    (skills) still owns `employee_skills`'s own write surface; this file
- *    still only ever reads that one, for the detail view.
  */
 
 const { getPool, withActor } = require('../../platform/db');
-const { httpError, notFound, parseId } = require('./errors');
+const { httpError, notFound } = require('./errors');
 const { getOrgUnit } = require('./plant');
 
 function requireNonEmptyString(field, value) {
@@ -134,9 +118,9 @@ function escapeLikePattern(value) {
 
 // Active Employees by default (issue #9's own default), ordered by
 // display_name; includeDeparted also brings in Departed ones (is_active =
-// FALSE). search, orgUnitId and jobRoleId are all optional and combine with
-// the activity filter by AND — a caller narrowing by name, Org Unit or job
-// role is never widening past "active only" by accident.
+// FALSE). search and orgUnitId are both optional and combine with the
+// activity filter by AND — a caller narrowing by name or Org Unit is never
+// widening past "active only" by accident.
 //
 // An Employee is "at" an Org Unit by their CURRENT employee_assignments row
 // (effective_from <= today AND (effective_to IS NULL OR effective_to >
@@ -151,17 +135,7 @@ function escapeLikePattern(value) {
 // getOrgUnitSubtree uses for "everything beneath this Org Unit" — an Employee
 // assigned to a descendant of the filtered Org Unit is included, not only one
 // assigned to it exactly.
-//
-// jobRoleId (issue #10, criterion 4) turns on the exact same "current
-// assignment" rule, and reuses the same LEFT JOIN LATERAL rather than a
-// second one — it is extended to also carry job_role_id, so a query using
-// both filters together still resolves the current assignment once. Unlike
-// the Org Unit filter, there is no default-job-role fallback: a job role is
-// never a "default" the way default_org_unit_id is, only ever a current
-// fact, so an Employee with no current assignment has a NULL
-// current_assignment.job_role_id and never matches a jobRoleId filter — which
-// is correct, since they hold no role right now.
-async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } = {}) {
+async function listEmployees({ search, orgUnitId, includeDeparted } = {}) {
   const conditions = [];
   const params = [];
 
@@ -174,42 +148,29 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } =
     conditions.push(`e.display_name ILIKE $${params.length} ESCAPE '\\'`);
   }
 
-  const wantsOrgUnitFilter = orgUnitId !== undefined && orgUnitId !== null;
-  const wantsJobRoleFilter = jobRoleId !== undefined && jobRoleId !== null;
-
-  let assignmentJoin = '';
-  if (wantsOrgUnitFilter || wantsJobRoleFilter) {
-    // LEFT JOIN LATERAL resolves the Employee's current assignment (Org Unit
-    // and job role together) once per employee, in this one query — never an
-    // N+1, and never a second lateral for the second filter.
-    assignmentJoin = `
-      LEFT JOIN LATERAL (
-        SELECT ea.org_unit_id, ea.job_role_id
-          FROM employee_assignments ea
-         WHERE ea.employee_id = e.id
-           AND ea.effective_from <= CURRENT_DATE
-           AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
-         LIMIT 1
-      ) current_assignment ON TRUE`;
-  }
-
-  if (wantsOrgUnitFilter) {
+  let orgUnitJoin = '';
+  if (orgUnitId !== undefined && orgUnitId !== null) {
     // A tiny separate query to resolve the filter Org Unit's own path — 404s
     // if it does not exist at all, the same existence check every other Org
     // Unit id this Module accepts gets (plant.getOrgUnit).
     const target = await getOrgUnit(orgUnitId);
     params.push(target.path);
+    // LEFT JOIN LATERAL resolves "current assignment's Org Unit, else
+    // default_org_unit_id" per employee, in this one query — never an N+1.
     // COALESCE falls back to the default when there is no current
     // assignment row at all.
-    assignmentJoin += `
+    orgUnitJoin = `
+      LEFT JOIN LATERAL (
+        SELECT ea.org_unit_id
+          FROM employee_assignments ea
+         WHERE ea.employee_id = e.id
+           AND ea.effective_from <= CURRENT_DATE
+           AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
+         LIMIT 1
+      ) current_assignment ON TRUE
       JOIN org_units resolved_ou
         ON resolved_ou.id = COALESCE(current_assignment.org_unit_id, e.default_org_unit_id)`;
     conditions.push(`resolved_ou.path <@ $${params.length}::ltree`);
-  }
-
-  if (wantsJobRoleFilter) {
-    params.push(jobRoleId);
-    conditions.push(`current_assignment.job_role_id = $${params.length}`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -217,7 +178,7 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } =
   const { rows } = await getPool().query(
     `SELECT ${EMPLOYEE_COLUMNS_QUALIFIED}
        FROM employees e
-       ${assignmentJoin}
+       ${orgUnitJoin}
        ${whereClause}
       ORDER BY e.display_name`,
     params
@@ -259,7 +220,16 @@ async function getEmployeeDetail(id) {
     [id]
   );
 
-  const assignments = assignmentRows.map(toAssignment);
+  const assignments = assignmentRows.map((row) => ({
+    id: row.id,
+    effectiveFrom: toDateString(row.effective_from),
+    effectiveTo: toDateString(row.effective_to),
+    crewId: row.crew_id,
+    orgUnit: { id: row.org_unit_id, code: row.org_unit_code, name: row.org_unit_name },
+    jobRole: row.job_role_id
+      ? { id: row.job_role_id, code: row.job_role_code, name: row.job_role_name }
+      : null
+  }));
 
   // jobRole on the detail view itself is the CURRENT assignment's job role —
   // the same "current" rule listEmployees's Org Unit filter turns on,
@@ -475,268 +445,6 @@ async function reinstateEmployee(id, accountId) {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Job roles (issue #10, criterion 1) — "defined once and shared by every
-// Site" is exactly what the baseline's `job_roles` table already is
-// structurally (no `site_id` column at all), not a rule enforced here. See
-// this file's own header for why job roles live here rather than in a
-// separate service.
-// ---------------------------------------------------------------------------
-
-const JOB_ROLE_COLUMNS = 'id, code, name, is_active, created_at, updated_at';
-
-function toJobRole(row) {
-  return {
-    id: row.id,
-    code: row.code,
-    name: row.name,
-    isActive: row.is_active,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
-  };
-}
-
-// Active job roles by default, ordered by name; includeInactive also brings
-// in deactivated ones — the same shape as listEmployees's includeDeparted,
-// for the same reason: a caller narrowing a listing should never silently
-// widen it by omission.
-async function listJobRoles({ includeInactive } = {}) {
-  const whereClause = includeInactive ? '' : 'WHERE is_active = TRUE';
-  const { rows } = await getPool().query(
-    `SELECT ${JOB_ROLE_COLUMNS} FROM job_roles ${whereClause} ORDER BY name`
-  );
-  return rows.map(toJobRole);
-}
-
-// Mirrors getEmployee exactly: null id and "no such row" are both a 404, one
-// query, no scope check (job roles are catalogue data, read by any approved
-// Account — see directory-routes.js's own header). assignEmployee below uses
-// this the same way it uses plant.getOrgUnit, to 404 a jobRoleId naming
-// nothing at all rather than let it fall through to the foreign-key
-// violation Postgres would otherwise raise on the INSERT.
-async function getJobRole(id) {
-  if (id === null) throw notFound('job role');
-  const { rows } = await getPool().query(
-    `SELECT ${JOB_ROLE_COLUMNS} FROM job_roles WHERE id = $1`,
-    [id]
-  );
-  if (!rows[0]) throw notFound('job role');
-  return toJobRole(rows[0]);
-}
-
-// A write against `job_roles` can fail for one reason this file turns into a
-// clean 4xx rather than a 500: the `code` UNIQUE constraint. Anything else is
-// a genuine failure and is rethrown as-is, same as mapEmployeeWriteError.
-function mapJobRoleWriteError(error) {
-  if (error.code === '23505') {
-    return httpError(409, 'a job role with this code already exists');
-  }
-  return error;
-}
-
-async function createJobRole({ code, name } = {}, accountId) {
-  requireNonEmptyString('code', code);
-  requireNonEmptyString('name', name);
-
-  try {
-    return await withActor(accountId, async (client) => {
-      const { rows: [row] } = await client.query(
-        `INSERT INTO job_roles (code, name) VALUES ($1, $2) RETURNING ${JOB_ROLE_COLUMNS}`,
-        [code.trim(), name.trim()]
-      );
-      return toJobRole(row);
-    });
-  } catch (error) {
-    throw mapJobRoleWriteError(error);
-  }
-}
-
-// Deactivation, not deletion — past assignments still reference the role
-// (employee_assignments.job_role_id has no ON DELETE, and never should:
-// deleting a role a Departed Employee once held would erase the fact they
-// held it). Mirrors plant.setOrgUnitActive exactly.
-async function setJobRoleActive(id, isActive, accountId) {
-  await getJobRole(id); // 404s if it does not exist.
-
-  return withActor(accountId, async (client) => {
-    const { rows: [row] } = await client.query(
-      `UPDATE job_roles SET is_active = $1 WHERE id = $2 RETURNING ${JOB_ROLE_COLUMNS}`,
-      [isActive, id]
-    );
-    return toJobRole(row);
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Assignments (issue #10, criteria 2 and 3) — where an Employee works, and as
-// what, over time. See the baseline's own comment above `employee_assignments`
-// for why this is history rather than columns on `employees`.
-// ---------------------------------------------------------------------------
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-// A supplied effectiveFrom must be a real calendar date, not just a string
-// shaped like one — a `YYYY-MM-DD` regex alone would still accept
-// '2024-02-30'. Validated here so a bad value comes back as a clean 400
-// instead of a Postgres cast error, the same reasoning as every other
-// CHECK-mirroring validator in this Module.
-function requireDateString(field, value) {
-  if (typeof value !== 'string' || !DATE_PATTERN.test(value)) {
-    throw httpError(400, `${field} must be a valid YYYY-MM-DD date`);
-  }
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-    throw httpError(400, `${field} must be a valid YYYY-MM-DD date`);
-  }
-}
-
-// A write against `employee_assignments` can fail two ways this file turns
-// into a clean 4xx rather than a 500:
-//
-//  - `employee_assignments_no_overlap` (SQLSTATE 23P01, an EXCLUDE USING
-//    gist violation — confirmed against a real error, not assumed) when the
-//    new row's range overlaps an existing one for the same Employee. The
-//    realistic cause is a backdated assignment landing in the middle of an
-//    Employee's existing history — "conflicting key value violates
-//    exclusion constraint" names neither the Employee nor the date, so this
-//    replaces it with something a caller can actually act on.
-//  - `employee_assignments_range_valid` (SQLSTATE 23514, a CHECK violation)
-//    if the equal-bounds guard below is ever bypassed and an UPDATE reaches
-//    Postgres with `effective_to = effective_from`. Mapped here as a second
-//    line of defence, not the primary one — the guard itself is what a
-//    caller should actually hit.
-function mapAssignmentWriteError(error) {
-  if (error.code === '23P01') {
-    return httpError(409, 'this Employee already has an assignment covering that date');
-  }
-  if (error.code === '23514' && error.constraint === 'employee_assignments_range_valid') {
-    return httpError(400, "effectiveFrom must be after the Employee's current assignment began");
-  }
-  return error;
-}
-
-// The shape both getEmployeeDetail's own `assignments` entries and
-// assignEmployee's own return value use (Org Unit and job role named, not
-// just id'd) — one mapper for both, since the two queries that feed it
-// (getEmployeeDetail's own SELECT, and assignEmployee's WITH/INSERT/SELECT)
-// are deliberately shaped to return the same columns.
-function toAssignment(row) {
-  return {
-    id: row.id,
-    effectiveFrom: toDateString(row.effective_from),
-    effectiveTo: toDateString(row.effective_to),
-    crewId: row.crew_id,
-    orgUnit: { id: row.org_unit_id, code: row.org_unit_code, name: row.org_unit_name },
-    jobRole: row.job_role_id
-      ? { id: row.job_role_id, code: row.job_role_code, name: row.job_role_name }
-      : null
-  };
-}
-
-// A transfer (criterion 3) is a new assignment that closes the previous one,
-// in one transaction: "intact" means the old row is never deleted or
-// rewritten, only given the `effective_to` its replacement's own
-// `effectiveFrom` supplies. Order matters — the previous assignment is
-// closed before the new one is inserted, since `employee_assignments_no_overlap`
-// (a GiST exclusion constraint) evaluates the whole table as it stands at
-// each statement: inserting first, while the old row is still open-ended,
-// would always conflict with it.
-//
-// crewId is not accepted here at all: crews are per-Site and out of scope
-// for this ticket (see the issue's own note), and a `crewId` this file did
-// not validate would reach the same unmapped foreign-key violation a bad
-// jobRoleId used to. `crew_id` simply stays NULL on every assignment this
-// function creates until the ticket that owns crews adds it back
-// deliberately, with its own existence check.
-async function assignEmployee(employeeId, { orgUnitId, jobRoleId, effectiveFrom } = {}, accountId) {
-  await getEmployee(employeeId); // 404s if it does not exist.
-
-  const orgUnitIdValue = parseId(orgUnitId);
-  if (orgUnitIdValue === null) {
-    throw httpError(400, 'orgUnitId is required');
-  }
-  await getOrgUnit(orgUnitIdValue); // 404s if it does not exist.
-
-  let jobRoleIdValue = null;
-  if (jobRoleId !== undefined && jobRoleId !== null) {
-    jobRoleIdValue = parseId(jobRoleId);
-    if (jobRoleIdValue === null) {
-      throw httpError(400, 'jobRoleId must be a valid job role id');
-    }
-    await getJobRole(jobRoleIdValue); // 404s if it does not exist.
-  }
-
-  // effectiveFrom defaults to CURRENT_DATE (issue #10's own default) —
-  // resolved against Postgres's own clock, not the Node process's, for the
-  // same reason getEmployeeDetail computes is_current in SQL rather than
-  // against `new Date()`: pg's DATE columns are compared by Postgres's own
-  // date semantics, so the "today" this function reasons about in JS (the
-  // equality check against an existing current assignment, below) has to be
-  // the same "today" the database would use.
-  let effectiveFromValue;
-  if (effectiveFrom === undefined || effectiveFrom === null) {
-    const { rows: [{ today }] } = await getPool().query('SELECT CURRENT_DATE AS today');
-    effectiveFromValue = toDateString(today);
-  } else {
-    requireDateString('effectiveFrom', effectiveFrom);
-    effectiveFromValue = effectiveFrom;
-  }
-
-  try {
-    return await withActor(accountId, async (client) => {
-      // The Employee's assignment current as of effectiveFrom, if any — the
-      // exact "current" rule listEmployees's own filters turn on, just
-      // evaluated at effectiveFrom instead of CURRENT_DATE, since a transfer
-      // can be backdated or postdated relative to today.
-      const { rows: [current] } = await client.query(
-        `SELECT id, effective_from FROM employee_assignments
-          WHERE employee_id = $1
-            AND effective_from <= $2
-            AND (effective_to IS NULL OR effective_to > $2)
-          LIMIT 1`,
-        [employeeId, effectiveFromValue]
-      );
-
-      if (current) {
-        if (toDateString(current.effective_from) === effectiveFromValue) {
-          // Closing the current assignment at its own effective_from would
-          // produce an empty range ('[)' with equal bounds), tripping
-          // `employee_assignments_range_valid` (effective_to > effective_from,
-          // SQLSTATE 23514) — rejected here instead, with a message naming
-          // the actual problem, rather than left to fall through to that
-          // CHECK's own opaque one. mapAssignmentWriteError still maps 23514
-          // as a second line of defence in case this guard is ever bypassed.
-          throw httpError(400, "effectiveFrom must be after the Employee's current assignment began");
-        }
-        await client.query(
-          'UPDATE employee_assignments SET effective_to = $1 WHERE id = $2',
-          [effectiveFromValue, current.id]
-        );
-      }
-
-      const { rows: [row] } = await client.query(
-        `WITH inserted AS (
-           INSERT INTO employee_assignments (employee_id, org_unit_id, job_role_id, effective_from)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id, org_unit_id, job_role_id, crew_id, effective_from, effective_to
-         )
-         SELECT i.id, i.effective_from, i.effective_to, i.crew_id,
-                ou.id AS org_unit_id, ou.code AS org_unit_code, ou.name AS org_unit_name,
-                jr.id AS job_role_id, jr.code AS job_role_code, jr.name AS job_role_name
-           FROM inserted i
-           JOIN org_units ou ON ou.id = i.org_unit_id
-           LEFT JOIN job_roles jr ON jr.id = i.job_role_id`,
-        [employeeId, orgUnitIdValue, jobRoleIdValue, effectiveFromValue]
-      );
-
-      return toAssignment(row);
-    });
-  } catch (error) {
-    throw mapAssignmentWriteError(error);
-  }
-}
-
 module.exports = {
   listEmployees,
   getEmployee,
@@ -744,9 +452,5 @@ module.exports = {
   createEmployee,
   updateEmployee,
   setEmployeeDeparted,
-  reinstateEmployee,
-  listJobRoles,
-  createJobRole,
-  setJobRoleActive,
-  assignEmployee
+  reinstateEmployee
 };
