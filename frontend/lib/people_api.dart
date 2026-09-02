@@ -139,6 +139,44 @@ class PeopleApi {
     );
   }
 
+  /// Admits an Account: sets its role and its Grants in one act
+  /// (`POST /api/people/accounts/:id/approval`, administrator only). The
+  /// server writes both in one transaction, so no Account is observably left
+  /// with a new role and the old Grants, or the reverse.
+  ///
+  /// [grants] is empty, and that is the whole of this call's Grant set today
+  /// — not a placeholder. An administrator acts everywhere by virtue of the
+  /// role and holds no Grant rows at all. When the Org Unit picker arrives it
+  /// fills this list with `{'orgUnitId': <int>, 'canWrite': <bool>}` entries,
+  /// the shape `approveAccount` validates in
+  /// `backend/src/modules/people/service.js`.
+  ///
+  /// `expectedApprovalStatus` is the same precondition [rejectPendingAccount]
+  /// sends, for the same reason: a 409 rather than a silent overwrite of a
+  /// decision another administrator made while this queue was on screen.
+  Future<void> approvePendingAccount(
+    String accessToken, {
+    required String accountId,
+    required String role,
+    List<Map<String, Object?>> grants = const [],
+  }) async {
+    await _send(
+      () => _client.post(
+        Uri.parse('/api/people/accounts/$accountId/approval'),
+        headers: {
+          'authorization': 'Bearer $accessToken',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({
+          'role': role,
+          'grants': grants,
+          'expectedApprovalStatus': 'pending',
+        }),
+      ),
+      '/api/people/accounts/$accountId/approval',
+    );
+  }
+
   /// The one place a request's transport failure and its non-2xx status turn
   /// into a [PeopleApiException] — `fetchMe` predates this and keeps its own
   /// copy so its messages stay byte-identical.
