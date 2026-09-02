@@ -101,7 +101,11 @@ router.post('/accounts/:id/rejection', authenticate, requireActive, requireAdmin
   try {
     const id = requireAccountId(req);
 
-    const account = await rejectAccount(id, req.account.id);
+    // `expectedApprovalStatus` is optional — see service.js's rejectAccount
+    // for what sending it buys an administrator working the queue.
+    const account = await rejectAccount(id, req.account.id, {
+      expectedApprovalStatus: req.body?.expectedApprovalStatus
+    });
     res.json({ account });
   } catch (error) {
     handleError(error, res, next);

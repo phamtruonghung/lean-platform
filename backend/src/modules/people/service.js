@@ -36,12 +36,21 @@ function toAccount(row) {
     externalSubject: row.external_subject,
     isActive: row.is_active,
     approvalStatus: row.approval_status,
-    employeeId: row.employee_id
+    employeeId: row.employee_id,
+    // When this Account came into existence, which for a pending one is when
+    // it started waiting — the Approval queue's own "how long has this person
+    // been waiting" (issue #40). Same `createdAt` name every other row shape
+    // in this Module uses (plant.js, directory.js, skills.js, job-roles.js).
+    createdAt: row.created_at
   };
 }
 
 const ACCOUNT_COLUMNS =
-  'id, email, display_name, role, external_subject, is_active, approval_status, employee_id';
+  'id, email, display_name, role, external_subject, is_active, approval_status, employee_id, created_at';
+
+// The values `approval_status` may take, per the column's own CHECK
+// (migrations/1788295040758_account-approval-status.js).
+const APPROVAL_STATUSES = ['pending', 'approved', 'rejected'];
 
 async function findAccountBySubject(subject) {
   const { rows } = await getPool().query(
@@ -244,8 +253,35 @@ async function approveAccount(id, { role, grants }, actingAccountId) {
 // does not carry — see the state mapping in the migration's own header, and
 // approveAccount's comment above on why this is allowed regardless of the
 // Account's current approval_status.
-async function rejectAccount(id, actingAccountId) {
+//
+// `expectedApprovalStatus` is an optional precondition, and the default —
+// omitting it — keeps the unconditional behaviour above exactly as it was.
+// It exists for a caller acting on a *list* it read earlier: two
+// administrators working the Approval queue at the same time would otherwise
+// have the slower one silently overwrite the faster one's decision, so an
+// Account just approved would be rejected again by a click aimed at a row
+// that had already moved. Sending the status the caller believed the Account
+// held turns that into a 409 it can report and re-read from, rather than an
+// invisible, wrong write. The row is locked FOR UPDATE first, so the check
+// and the write cannot straddle another transaction's commit.
+async function rejectAccount(id, actingAccountId, { expectedApprovalStatus } = {}) {
+  if (expectedApprovalStatus !== undefined && !APPROVAL_STATUSES.includes(expectedApprovalStatus)) {
+    throw httpError(400, `expectedApprovalStatus must be one of: ${APPROVAL_STATUSES.join(', ')}`);
+  }
+
   return withActor(actingAccountId, async (client) => {
+    const { rows: [current] } = await client.query(
+      'SELECT approval_status FROM app_users WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (!current) throw notFoundAccount();
+    if (expectedApprovalStatus !== undefined && current.approval_status !== expectedApprovalStatus) {
+      throw httpError(
+        409,
+        `This Account is no longer ${expectedApprovalStatus} — another administrator has already dealt with it.`
+      );
+    }
+
     const { rows: [updated] } = await client.query(
       `UPDATE app_users
           SET approval_status = 'rejected', is_active = FALSE

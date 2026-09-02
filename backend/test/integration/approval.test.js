@@ -128,10 +128,11 @@ async function approve(id, body, token = adminToken) {
   });
 }
 
-async function reject(id, token = adminToken) {
+async function reject(id, token = adminToken, body) {
   return fetch(`${base}/api/people/accounts/${id}/rejection`, {
     method: 'POST',
-    headers: token
+    headers: body ? { ...token, 'content-type': 'application/json' } : token,
+    body: body ? JSON.stringify(body) : undefined
   });
 }
 
@@ -844,4 +845,80 @@ test('an Account granted a Site root plus a deep unit under a second, ungranted 
   assert.ok(ids.includes(deepUnderB.id));
   assert.ok(!ids.includes(rootB.id));
   assert.strictEqual(ids.length, 2);
+});
+
+
+// ---------------------------------------------------------------------------
+// 10. The Approval queue Screen's own needs (issue #40): a wait that can be
+//     shown, and a rejection that refuses to overwrite another
+//     administrator's decision.
+// ---------------------------------------------------------------------------
+
+test('a queued Account carries when it started waiting, so a client can show how long', async () => {
+  const before = new Date();
+  const { account: pending } = await createPendingAccount('waiting');
+
+  const response = await fetch(`${base}/api/people/accounts/pending`, { headers: adminToken });
+  const { accounts } = await response.json();
+  const queued = accounts.find((a) => a.id === pending.id);
+
+  assert.ok(queued.createdAt, 'a queued Account carries createdAt');
+  const createdAt = new Date(queued.createdAt);
+  assert.ok(!Number.isNaN(createdAt.getTime()), 'createdAt parses as a date');
+  // Within a sane window of this test's own clock — enough to prove it is
+  // this Account's own creation time and not a constant.
+  assert.ok(createdAt >= new Date(before.getTime() - 60_000));
+  assert.ok(createdAt <= new Date(Date.now() + 60_000));
+});
+
+test('rejecting with a precondition that still holds succeeds', async () => {
+  const { account: pending } = await createPendingAccount('precond-ok');
+
+  const response = await reject(pending.id, adminToken, { expectedApprovalStatus: 'pending' });
+  assert.strictEqual(response.status, 200);
+  const { account } = await response.json();
+  assert.strictEqual(account.approvalStatus, 'rejected');
+});
+
+test('rejecting an Account another administrator already dealt with is a 409, and changes nothing', async () => {
+  const { account: pending } = await createPendingAccount('precond-race');
+
+  // The other administrator gets there first.
+  const approved = await approve(pending.id, { role: 'operator', grants: [] });
+  assert.strictEqual(approved.status, 200);
+
+  const response = await reject(pending.id, adminToken, { expectedApprovalStatus: 'pending' });
+  assert.strictEqual(response.status, 409);
+  const body = await response.json();
+  assert.match(body.message, /already dealt with/);
+
+  // Not a partial write: the Approval the other administrator made stands.
+  const { rows: [row] } = await pool.query(
+    'SELECT approval_status, is_active FROM app_users WHERE id = $1',
+    [pending.id]
+  );
+  assert.strictEqual(row.approval_status, 'approved');
+  assert.strictEqual(row.is_active, true);
+});
+
+test('the precondition is optional — an unconditional rejection is unchanged', async () => {
+  const { account } = await approveFreshAccount('operator', []);
+
+  const response = await reject(account.id);
+  assert.strictEqual(response.status, 200);
+  const body = await response.json();
+  assert.strictEqual(body.account.approvalStatus, 'rejected');
+});
+
+test('an unknown expectedApprovalStatus is a 400, not a silent unconditional rejection', async () => {
+  const { account: pending } = await createPendingAccount('precond-bad');
+
+  const response = await reject(pending.id, adminToken, { expectedApprovalStatus: 'maybe' });
+  assert.strictEqual(response.status, 400);
+
+  const { rows: [row] } = await pool.query(
+    'SELECT approval_status FROM app_users WHERE id = $1',
+    [pending.id]
+  );
+  assert.strictEqual(row.approval_status, 'pending');
 });

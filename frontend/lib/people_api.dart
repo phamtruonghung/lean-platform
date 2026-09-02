@@ -9,6 +9,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'people/pending_account.dart';
+
 /// What the API answered for the caller's own Account: either it is still
 /// waiting on Approval, or it is active and may use the rest of the API.
 sealed class AccountStatus {
@@ -90,5 +92,83 @@ class PeopleApi {
       displayName: account['displayName'] as String,
       role: account['role'] as String,
     );
+  }
+
+  /// The Approval queue: every Account nobody has decided about yet
+  /// (`GET /api/people/accounts/pending`, administrator only).
+  Future<List<PendingAccount>> fetchPendingAccounts(String accessToken) async {
+    final response = await _send(
+      () => _client.get(
+        Uri.parse('/api/people/accounts/pending'),
+        headers: {'authorization': 'Bearer $accessToken'},
+      ),
+      '/api/people/accounts/pending',
+    );
+
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final account in body['accounts'] as List<dynamic>)
+          PendingAccount(
+            id: (account as Map<String, dynamic>)['id'].toString(),
+            email: account['email'] as String,
+            waitingSince: DateTime.parse(account['createdAt'] as String),
+          ),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Rejects an Account still waiting in the queue.
+  ///
+  /// `expectedApprovalStatus` is a precondition, not decoration: it is what
+  /// makes the API refuse (409) rather than silently overwrite a decision
+  /// another administrator made while this queue was on screen.
+  Future<void> rejectPendingAccount(String accessToken, {required String accountId}) async {
+    await _send(
+      () => _client.post(
+        Uri.parse('/api/people/accounts/$accountId/rejection'),
+        headers: {
+          'authorization': 'Bearer $accessToken',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({'expectedApprovalStatus': 'pending'}),
+      ),
+      '/api/people/accounts/$accountId/rejection',
+    );
+  }
+
+  /// The one place a request's transport failure and its non-2xx status turn
+  /// into a [PeopleApiException] — `fetchMe` predates this and keeps its own
+  /// copy so its messages stay byte-identical.
+  Future<http.Response> _send(Future<http.Response> Function() send, String path) async {
+    final http.Response response;
+    try {
+      response = await send();
+    } catch (error) {
+      throw PeopleApiException('Could not reach the API: $error');
+    }
+    if (response.statusCode != 200) {
+      throw PeopleApiException(
+        _messageFrom(response) ?? 'The API answered ${response.statusCode} for $path.',
+        statusCode: response.statusCode,
+      );
+    }
+    return response;
+  }
+
+  /// The API's own `{ "message": ... }`, when it sent one — the backend's
+  /// `errors.js handleError` answers every refusal in that shape.
+  static String? _messageFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic> && body['message'] is String) {
+        return body['message'] as String;
+      }
+    } catch (_) {
+      // Not JSON, or not that shape: the caller's generic message stands.
+    }
+    return null;
   }
 }
