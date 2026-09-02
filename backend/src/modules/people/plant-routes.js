@@ -52,6 +52,7 @@ const express = require('express');
 const { authenticate, requireActive } = require('./middleware');
 const authorization = require('./authorization');
 const plant = require('./plant');
+const orgUnitImport = require('./org-unit-import');
 const { parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
@@ -226,6 +227,51 @@ router.post('/sites/:siteId/org-units', authenticate, requireActive, requireOrgU
     handleError(error, res, next);
   }
 });
+
+// Bulk Org Unit import (issue #12) — a whole branch (or several) of a Site's
+// tree in one call, rows referencing each other by `code` rather than by id
+// (org-unit-import.js's own header has the full format and the reasoning).
+// A distinct path segment from POST /sites/:siteId/org-units above, not a
+// second meaning for the same route — Express 5 matches the two as different
+// literal paths regardless of declaration order, but this is registered
+// right next to the route it is a bulk counterpart to, for a reader.
+//
+// Gated the same way GET/POST /sites/:siteId/org-units are at the Site level
+// — authorization.requireSiteScope, existence-before-scope (404 for a Site
+// that does not exist, 403 for one the caller holds no grant within at all)
+// — before this handler, or org-unit-import.js, ever runs. Per-row scope
+// (issue #12 criterion 5: a root row needs the administrator role, a row
+// under an existing Org Unit needs write scope on it) is a stricter,
+// per-payload question requireSiteScope cannot answer on its own, so it is
+// decided inside org-unit-import.importOrgUnits once structural validation
+// of every row has already passed.
+//
+// The 422 validation-failure shape (`{ message, errors: [...] }`, one entry
+// per invalid row) is distinct from every other error this Module returns,
+// which is why this handler checks `error.errors` before falling back to the
+// shared handleError — see org-unit-import.js's validationError for why that
+// shape does not fit httpError's plain `{ message }`.
+router.post(
+  '/sites/:siteId/org-units/import',
+  authenticate,
+  requireActive,
+  authorization.requireSiteScope(),
+  async (req, res, next) => {
+    try {
+      const orgUnits = await orgUnitImport.importOrgUnits({
+        siteId: req.site.id,
+        body: req.body,
+        account: req.account
+      });
+      res.status(201).json({ orgUnits });
+    } catch (error) {
+      if (error.errors) {
+        return res.status(error.status).json({ message: error.message, errors: error.errors });
+      }
+      return handleError(error, res, next);
+    }
+  }
+);
 
 // Read scope on the named Org Unit (or an ancestor of it) — issue #8's
 // 403-vs-404 rule applied via authorization.requireOrgUnitScope, which

@@ -292,5 +292,13 @@ module.exports = {
   listOrgUnitsByIds,
   getOrgUnit,
   getOrgUnitSubtree,
-  setOrgUnitActive
+  setOrgUnitActive,
+  // Exported for org-unit-import.js (issue #12) only, which inserts rows
+  // directly inside its own single transaction rather than calling
+  // createOrgUnit per row — see that file's own header for why. Everything
+  // else in this Module still reaches Org Units through the functions above.
+  UNIT_TYPES,
+  ORG_UNIT_COLUMNS,
+  toOrgUnit,
+  mapOrgUnitWriteError
 };

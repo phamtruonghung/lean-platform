@@ -43,6 +43,18 @@ has exactly one, the root itself.
 _Avoid_: Root Org Unit (a property of the tree, not of a particular Account's
 grants)
 
+**Import**:
+Submitting a whole branch (or several) of a Site's Org Unit hierarchy in one
+call, rows keyed by their own `code` rather than a database id since most of
+them do not exist yet — the file a spreadsheeter prepares offline, not a row
+typed one at a time through the ordinary create. Validated whole before
+anything is applied, and applied in one transaction: a single invalid or
+out-of-scope row means none of the import happened, never a partial
+hierarchy left behind.
+_Avoid_: Upload (nothing here is a stored file — the request is JSON, kept
+only long enough to validate and apply), bulk create, migration (a schema
+change, an unrelated word this codebase already uses for that)
+
 ### The people
 
 **Employee**:
