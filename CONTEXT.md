@@ -60,32 +60,6 @@ March" — a question this Platform must still be able to answer after they
 leave.
 _Avoid_: Terminated, ex-employee, removed, deleted
 
-**Job role**:
-What an Employee is assigned to do — Fitter, Line Operator, Quality
-Inspector — held through their current Assignment rather than as a property
-of the Employee itself. Job roles are defined once and shared by every
-Site: a Fitter is a Fitter wherever they work, not a value duplicated into
-each Site's own catalogue.
-_Avoid_: Position, job title, role (an Account's own role is a different
-fact — what it may do in this Platform, not what an Employee does on the
-floor)
-
-**Assignment**:
-Where an Employee works, and as what, over time: an Org Unit and, usually, a
-job role, each dated from when it began. An Assignment is history, not a
-snapshot — it is never edited in place to reflect a move, only closed with
-an end date, so a staffing question asked about last month is answered with
-last month's Assignment, not today's.
-_Avoid_: Posting, placement, position
-
-**Transfer**:
-An Employee moving to a new Org Unit, a new job role, or both. A Transfer is
-recorded as a new Assignment that closes the previous one, never as an edit
-to it: the old Assignment keeps its own start date and gains an end date,
-intact rather than overwritten, which is what keeps the answer to "where did
-they work before" honest after they move again.
-_Avoid_: Move, reassignment
-
 **Directory**:
 The searchable listing of Employees, and the detail view behind one of
 them — job role, Org Unit assignments and skills. Readable by any approved
