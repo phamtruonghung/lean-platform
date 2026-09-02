@@ -5,9 +5,10 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'people_api.dart';
+import 'platform/account_bloc.dart';
 import 'theme.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -30,8 +31,10 @@ class HomeScreen extends StatelessWidget {
             // revoked server-side and the locally persisted session is
             // cleared, which is what "signing out ends the session" means:
             // a reload after this shows the sign-in screen again, not a
-            // restored session.
-            onPressed: () => Supabase.instance.client.auth.signOut(),
+            // restored session. Dispatched through AccountBloc, not called on
+            // Supabase directly (issue #38): the Bloc is the only place the
+            // session is resolved, so it must also be the only place it ends.
+            onPressed: () => context.read<AccountBloc>().add(const AccountSignOutRequested()),
           ),
         ],
       ),

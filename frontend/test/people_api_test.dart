@@ -73,7 +73,10 @@ void main() {
       final client = MockClient((request) async => http.Response('server error', 500));
       final api = PeopleApi(client: client);
 
-      expect(() => api.fetchMe('the-token'), throwsA(isA<PeopleApiException>()));
+      expect(
+        () => api.fetchMe('the-token'),
+        throwsA(isA<PeopleApiException>().having((e) => e.statusCode, 'statusCode', 500)),
+      );
     });
   });
 }

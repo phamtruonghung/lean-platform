@@ -81,3 +81,14 @@ the tests that exercise it (`people_api_test.dart`,
 Bloc's arrival: whichever Bloc eventually calls `PeopleApi` will substitute
 the same fake client at the same point, rather than #38 needing a second
 injection mechanism.
+
+#38 landed the routing and state-management wiring itself — `AccountBloc`,
+`go_router`'s redirect table, and `AuthGate`'s deletion — and with it a second
+injection seam, `AuthGateway`, for Supabase Auth. This does not contradict the
+paragraph above: that sentence was specifically about `PeopleApi`'s HTTP
+client, and remains true unchanged for it. `AuthGateway` is a distinct,
+necessary seam because `Supabase.initialize()` cannot run under `flutter
+test`, and every router redirect test needs to drive session state (sign-in,
+sign-out, token refresh) directly rather than through a real Supabase client.
+`SupabaseAuthGateway` is the production implementation; tests substitute a
+fake at the same point `router_redirect_test.dart` exercises.
