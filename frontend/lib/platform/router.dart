@@ -8,7 +8,9 @@ import '../auth/awaiting_approval_screen.dart';
 import '../auth/sign_in_screen.dart';
 import '../home_screen.dart';
 import 'account_bloc.dart';
+import 'destinations.dart';
 import 'not_found_screen.dart';
+import 'shell.dart';
 
 abstract final class Routes {
   static const String home = '/';
@@ -42,16 +44,45 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               : const SizedBox.shrink();
         },
       ),
-      GoRoute(
-        path: Routes.home,
-        builder: (context, state) {
+      // Everything an admitted Account can reach sits inside the Shell.
+      // Sign-in and awaiting-Approval are siblings of it, not children, so
+      // they render outside the sidebar; the not-found Screen comes from
+      // `errorBuilder`, which is outside it too.
+      ShellRoute(
+        builder: (context, state, child) {
           final account = context.watch<AccountBloc>().state;
           // Sealed-state type narrowing, not a per-Screen access check: the
           // redirect below has already decided nobody else reaches here.
-          return account is AccountApproved
-              ? HomeScreen(account: account.account)
-              : const SizedBox.shrink();
+          if (account is! AccountApproved) return const SizedBox.shrink();
+          return PlatformShell(
+            destinations: destinationsFor(role: account.account.role),
+            currentLocation: state.uri.path,
+            // By address, not by swapping a widget: the browser's history and
+            // back button work because navigation is a real route change.
+            onDestinationSelected: (destination) => context.go(destination.path),
+            account: account.account,
+            // Ends the session Supabase issued — the refresh token is
+            // revoked server-side and the locally persisted session is
+            // cleared, which is what "signing out ends the session" means:
+            // a reload after this shows the sign-in screen again, not a
+            // restored session. Dispatched through AccountBloc, not called on
+            // Supabase directly (issue #38): the Bloc is the only place the
+            // session is resolved, so it must also be the only place it ends.
+            onSignOut: () => context.read<AccountBloc>().add(const AccountSignOutRequested()),
+            child: child,
+          );
         },
+        routes: [
+          GoRoute(
+            path: Routes.home,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              return account is AccountApproved
+                  ? HomeScreen(account: account.account)
+                  : const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     ],
   );

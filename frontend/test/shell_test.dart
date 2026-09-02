@@ -1,0 +1,179 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:lean_platform/people_api.dart';
+import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/platform/shell.dart';
+import 'package:lean_platform/theme.dart';
+
+/// Stand-in destinations, so these tests exercise the Shell's navigation and
+/// role filtering rather than whichever destinations the Platform happens to
+/// offer today.
+const _directory = Destination(
+  label: 'Directory',
+  icon: Icons.badge_outlined,
+  path: '/directory',
+);
+const _approvals = Destination(
+  label: 'Approvals',
+  icon: Icons.how_to_reg_outlined,
+  path: '/approvals',
+  roles: {Roles.admin},
+);
+const _testDestinations = [_directory, _approvals];
+
+const _account = AccountActive(email: 'a@b.c', displayName: 'A B', role: Roles.admin);
+
+/// The Shell mounted on a real router over the stand-in destinations — the
+/// same wiring `router.dart` uses, so selecting a destination really is a
+/// change of address.
+Widget _harness({List<Destination> destinations = _testDestinations, VoidCallback? onSignOut}) {
+  final router = GoRouter(
+    initialLocation: destinations.first.path,
+    routes: [
+      ShellRoute(
+        builder: (context, state, child) => PlatformShell(
+          destinations: destinations,
+          currentLocation: state.uri.path,
+          onDestinationSelected: (destination) => context.go(destination.path),
+          account: _account,
+          onSignOut: onSignOut ?? () {},
+          child: child,
+        ),
+        routes: [
+          for (final destination in _testDestinations)
+            GoRoute(
+              path: destination.path,
+              builder: (context, state) => Center(child: Text('${destination.label} Screen')),
+            ),
+        ],
+      ),
+    ],
+  );
+  return MaterialApp.router(theme: buildAppTheme(), routerConfig: router);
+}
+
+BoxDecoration? _highlightOf(WidgetTester tester, String label) {
+  final container = tester.widget<Container>(
+    find.descendant(
+      of: find.byKey(ValueKey('nav-item-$label')),
+      matching: find.byType(Container),
+    ),
+  );
+  return container.decoration as BoxDecoration?;
+}
+
+void _useNarrowWindow(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = const Size(600, 800);
+  addTearDown(tester.view.reset);
+}
+
+void main() {
+  testWidgets('the sidebar carries every destination it is given, and the brand',
+      (tester) async {
+    await tester.pumpWidget(_harness());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(PlatformShell.sidebarKey), findsOneWidget);
+    expect(find.text('Platform'), findsOneWidget);
+    for (final destination in _testDestinations) {
+      expect(find.text(destination.label), findsOneWidget);
+    }
+  });
+
+  testWidgets('selecting a destination navigates by address and swaps the Screen',
+      (tester) async {
+    await tester.pumpWidget(_harness());
+    await tester.pumpAndSettle();
+    expect(find.text('Directory Screen'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('nav-item-Approvals')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Approvals Screen'), findsOneWidget);
+    expect(find.text('Directory Screen'), findsNothing);
+    // The sidebar is the same one: it did not rebuild from scratch around a
+    // new Screen.
+    expect(find.byKey(PlatformShell.sidebarKey), findsOneWidget);
+
+    // The address really changed, which is what puts the destination in the
+    // browser's history and makes its back button work — the history itself
+    // belongs to go_router's browser integration, not to the Shell.
+    final router = GoRouter.of(tester.element(find.byKey(PlatformShell.sidebarKey)));
+    expect(router.state.uri.path, '/approvals');
+  });
+
+  testWidgets('the current destination is marked and the others are not', (tester) async {
+    await tester.pumpWidget(_harness());
+    await tester.pumpAndSettle();
+
+    final scheme = buildAppTheme().colorScheme;
+    expect(_highlightOf(tester, 'Directory')?.color, scheme.primaryContainer);
+    expect(_highlightOf(tester, 'Approvals')?.color, isNull);
+
+    await tester.tap(find.byKey(const ValueKey('nav-item-Approvals')));
+    await tester.pumpAndSettle();
+
+    expect(_highlightOf(tester, 'Approvals')?.color, scheme.primaryContainer);
+    expect(_highlightOf(tester, 'Directory')?.color, isNull);
+  });
+
+  testWidgets('the destination list shrinks for a role that earns fewer', (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        destinations: destinationsFor(role: Roles.operator, destinations: _testDestinations),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Directory'), findsOneWidget);
+    expect(find.text('Approvals'), findsNothing);
+  });
+
+  testWidgets('the footer names the signed-in Account and signs it out', (tester) async {
+    var signedOut = 0;
+    await tester.pumpWidget(_harness(onSignOut: () => signedOut++));
+    await tester.pumpAndSettle();
+
+    expect(find.text('A B'), findsOneWidget);
+    expect(find.text('a@b.c'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Sign out'));
+    await tester.pumpAndSettle();
+    expect(signedOut, 1);
+  });
+
+  testWidgets('a wide window gets the expanded sidebar with labels', (tester) async {
+    await tester.pumpWidget(_harness());
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byKey(PlatformShell.sidebarKey)).width,
+      PlatformShell.expandedWidth,
+    );
+    expect(find.text('Approvals'), findsOneWidget);
+  });
+
+  testWidgets('below the breakpoint the sidebar collapses to an icon rail with tooltips',
+      (tester) async {
+    _useNarrowWindow(tester);
+    await tester.pumpWidget(_harness());
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byKey(PlatformShell.sidebarKey)).width,
+      PlatformShell.collapsedWidth,
+    );
+    for (final destination in _testDestinations) {
+      expect(find.text(destination.label), findsNothing);
+      expect(find.byTooltip(destination.label), findsOneWidget);
+    }
+    expect(find.byTooltip('Sign out'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('nav-item-Approvals')));
+    await tester.pumpAndSettle();
+    expect(find.text('Approvals Screen'), findsOneWidget);
+  });
+}
