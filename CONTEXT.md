@@ -52,6 +52,22 @@ of a qualification. An Employee need not be able to sign in; most of a plant
 cannot.
 _Avoid_: Staff member, worker, person, resource, user
 
+**Departed**:
+An Employee who no longer works at the plant. Departed is a flag
+(`is_active = false`, with the date recorded), never a deletion: the record
+stays, since an Employee's history is what answers "who worked here last
+March" — a question this Platform must still be able to answer after they
+leave.
+_Avoid_: Terminated, ex-employee, removed, deleted
+
+**Directory**:
+The searchable listing of Employees, and the detail view behind one of
+them — job role, Org Unit assignments and skills. Readable by any approved
+Account regardless of their own Org Unit grants: a plant directory is not a
+secret, and Org Unit scope decides where an Account may act, not who it may
+know about.
+_Avoid_: Employee list, staff directory, org chart
+
 **Account**:
 What lets somebody sign in and act. An Account carries the role that says what
 kind of work they may do, and the Org Units it may be done in — a supervisor on
