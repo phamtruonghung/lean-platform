@@ -7,7 +7,12 @@ import 'package:go_router/go_router.dart';
 import '../auth/awaiting_approval_screen.dart';
 import '../auth/sign_in_screen.dart';
 import '../home_screen.dart';
+import '../people/approval_queue_bloc.dart';
+import '../people/approval_queue_screen.dart';
+import '../people_api.dart';
+import 'access_denied_screen.dart';
 import 'account_bloc.dart';
+import 'auth_gateway.dart';
 import 'destinations.dart';
 import 'not_found_screen.dart';
 import 'shell.dart';
@@ -16,6 +21,7 @@ abstract final class Routes {
   static const String home = '/';
   static const String signIn = '/sign-in';
   static const String awaitingApproval = '/awaiting-approval';
+  static const String approvals = '/approvals';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -80,6 +86,30 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               return account is AccountApproved
                   ? HomeScreen(account: account.account)
                   : const SizedBox.shrink();
+            },
+          ),
+          GoRoute(
+            path: Routes.approvals,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              // Unlike the sealed-state narrowing above, this *is* a per-Screen
+              // access check: the redirect table decides who is admitted, not
+              // what each role earns once admitted. Leaving the destination out
+              // of the sidebar hides the door; this is what locks it, for a
+              // caller who types the address.
+              if (account is! AccountApproved || account.account.role != Roles.admin) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<ApprovalQueueBloc>(
+                // Scoped to this route, not to the app the way AccountBloc is:
+                // the queue is one Screen's reading of the server, and it
+                // should be re-read on arrival rather than restored stale.
+                create: (context) => ApprovalQueueBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const ApprovalQueueRequested()),
+                child: const ApprovalQueueScreen(),
+              );
             },
           ),
         ],

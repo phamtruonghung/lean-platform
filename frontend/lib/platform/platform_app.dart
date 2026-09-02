@@ -49,8 +49,13 @@ class _PlatformAppState extends State<PlatformApp> {
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider<AuthGateway>.value(
-      value: widget.authGateway,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<AuthGateway>.value(value: widget.authGateway),
+        // Provided so a Module's own Bloc can be built at its route, with the
+        // same faked wire a widget test already substitutes here.
+        RepositoryProvider<PeopleApi>.value(value: widget.peopleApi),
+      ],
       child: BlocProvider<AccountBloc>.value(
         value: _accountBloc,
         child: MaterialApp.router(

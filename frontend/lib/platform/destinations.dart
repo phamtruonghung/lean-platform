@@ -45,6 +45,12 @@ class Destination {
 
 const List<Destination> platformDestinations = [
   Destination(label: 'Home', icon: Icons.home_outlined, path: Routes.home),
+  Destination(
+    label: 'Approvals',
+    icon: Icons.how_to_reg_outlined,
+    path: Routes.approvals,
+    roles: {Roles.admin},
+  ),
 ];
 
 /// The destinations an Account holding [role] may use.
