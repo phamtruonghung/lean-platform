@@ -15,4 +15,6 @@ would rebuild the boundary ADR-0001 removed.
 `src/platform` and is not a Module; the foundation must not depend on what is
 built on it.
 
-This directory is empty until the People Module lands.
+`people/` is the first Module. See ADR-0006's "What a Module's entry point may
+expose" section (added for issue #59) for the rule governing what an entry
+point may export once a second Module — Maintenance — exists to call it.

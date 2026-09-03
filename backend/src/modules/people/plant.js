@@ -152,14 +152,32 @@ function mapOrgUnitWriteError(error) {
   return error;
 }
 
-async function getOrgUnit(id) {
-  if (id === null) throw notFound('Org Unit');
+// The null-returning form (issue #59): what another Module calls through
+// index.js. A cross-Module lookup hands back a value, never an
+// HTTP-status-carrying throw into the caller's own error funnel — ADR-0006.
+//
+// Total on purpose: anything that is not a real id answers null rather than
+// reaching the database, because ADR-0006's third clause deliberately keeps
+// `parseId` on this side of the boundary. Without this, a caller passing a
+// raw body value straight through — exactly what issue #56 does with
+// `orgUnitId` — would hand Postgres a non-numeric BIGINT, and 22P02 carries
+// no `.status`, so the consumer's error funnel would answer 500 where every
+// People route answers 400. A question asked about a nonsense id has the
+// same honest answer as one asked about an id nobody has: no such row.
+async function findOrgUnit(id) {
+  if (parseId(id) === null) return null;
   const { rows } = await getPool().query(
     `SELECT ${ORG_UNIT_COLUMNS} FROM org_units WHERE id = $1`,
     [id]
   );
-  if (!rows[0]) throw notFound('Org Unit');
-  return toOrgUnit(rows[0]);
+  return rows[0] ? toOrgUnit(rows[0]) : null;
+}
+
+// This Module's own form: the 404 every route in People already relies on.
+async function getOrgUnit(id) {
+  const orgUnit = await findOrgUnit(id);
+  if (!orgUnit) throw notFound('Org Unit');
+  return orgUnit;
 }
 
 // The direct children of a Site's root (parentId omitted) or of a given Org
@@ -352,6 +370,7 @@ module.exports = {
   listOrgUnits,
   listOrgUnitsByIds,
   getOrgUnit,
+  findOrgUnit,
   getOrgUnitSubtree,
   searchOrgUnits,
   setOrgUnitActive,

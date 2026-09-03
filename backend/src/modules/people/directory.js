@@ -213,17 +213,28 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } =
   return rows.map(toEmployee);
 }
 
-// Mirrors plant.getOrgUnit exactly: null id and "no such row" are both a 404,
-// one query, no scope check (this Module's directory is deliberately not
-// scoped — see the file header and ADR-0009).
-async function getEmployee(id) {
-  if (id === null) throw notFound('Employee');
+// The null-returning form (issue #59): what another Module calls through
+// index.js. A cross-Module lookup hands back a value, never an
+// HTTP-status-carrying throw into the caller's own error funnel — ADR-0006.
+// Total for the same reason plant.findOrgUnit is — see that function's own
+// header: a nonsense id answers null rather than handing Postgres a
+// non-numeric BIGINT and turning the consumer's 400 into a 500.
+async function findEmployee(id) {
+  if (parseId(id) === null) return null;
   const { rows } = await getPool().query(
     `SELECT ${EMPLOYEE_COLUMNS} FROM employees WHERE id = $1`,
     [id]
   );
-  if (!rows[0]) throw notFound('Employee');
-  return toEmployee(rows[0]);
+  return rows[0] ? toEmployee(rows[0]) : null;
+}
+
+// Mirrors plant.getOrgUnit exactly: null id and "no such row" are both a 404,
+// one query, no scope check (this Module's directory is deliberately not
+// scoped — see the file header and ADR-0009).
+async function getEmployee(id) {
+  const employee = await findEmployee(id);
+  if (!employee) throw notFound('Employee');
+  return employee;
 }
 
 // The full assignment history for one Employee, newest first — the detail
@@ -669,6 +680,7 @@ async function createAssignment(employeeId, input, accountId) {
 module.exports = {
   listEmployees,
   getEmployee,
+  findEmployee,
   getEmployeeDetail,
   createEmployee,
   updateEmployee,
