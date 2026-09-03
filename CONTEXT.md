@@ -119,6 +119,37 @@ history stays answerable.
 _Avoid_: Placement, posting, allocation, transfer (a transfer is the act; an
 Assignment is what it produces)
 
+### The work
+
+**Asset**:
+The machine, cell, tool or utility that work is done on. An Asset sits at
+exactly one Org Unit, and that placement is what decides who may work on it —
+scope follows the Asset, never the job. Assets nest, so a gearbox belongs to
+the press it is fitted to, and "everything on this line" reaches the components
+beneath it.
+_Avoid_: Equipment, machine (one kind of Asset), item, resource, tag
+
+**Work order**:
+The job maintenance commits to doing on an Asset: raised, assigned to somebody,
+worked, and completed. A work order is not a request — a request is what anyone
+on the floor asks for and maintenance may decline; the work order is the
+commitment that follows one, or that maintenance raises for itself. What it
+records on completion, above all when the work started and ended, is what the
+reliability numbers are calculated from.
+_Avoid_: Ticket, job card, task (a task is one step inside a work order),
+maintenance request (that is what precedes it)
+
+**CAPA**:
+A corrective and preventive action: the investigation opened when something
+went wrong badly enough to need a root cause and a fix that holds. A CAPA is
+raised from a quality escape, a customer complaint, a supplier non-conformance,
+a safety incident, or from nothing at all — so it belongs to no one Module and
+is owned by none. Which Module the problem surfaced in and which Module does
+the fixing are independent of each other, the same way a KPI's Module and its
+Pillar are.
+_Avoid_: Corrective action (that is one half of it), 8D (that is one method of
+running one), ticket, issue
+
 ### The numbers
 
 **Pillar**:
