@@ -225,10 +225,23 @@ class OrgUnitPickerState {
 }
 
 class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
-  OrgUnitPickerBloc({required PeopleApi peopleApi, required AuthGateway authGateway})
-      : _api = peopleApi,
+  /// [initialGranted] is the Grant set this picker opens holding — the Grants
+  /// an Account already has, when what is being edited is a correction rather
+  /// than a first admission (issue #36). Deliberately a starting state and not
+  /// a replay of [OrgUnitPickerGrantAdded]: that event requires the Org Unit to
+  /// be a node already on screen, because it captures the breadcrumb the tree
+  /// was walked down to reach it, and a pre-filled Grant was never walked to —
+  /// it can sit in an unexpanded branch, or in a Site nobody has opened.
+  /// Everything downstream still works by id alone: the tree badges a granted
+  /// row through `isGranted`, and [OrgUnitPickerGrantRemoved] never looks a
+  /// node up.
+  OrgUnitPickerBloc({
+    required PeopleApi peopleApi,
+    required AuthGateway authGateway,
+    List<GrantedOrgUnit> initialGranted = const [],
+  })  : _api = peopleApi,
         _auth = authGateway,
-        super(const OrgUnitPickerState()) {
+        super(OrgUnitPickerState(granted: initialGranted)) {
     on<OrgUnitPickerStarted>(_onStarted);
     on<OrgUnitPickerSiteSelected>(_onSiteSelected);
     on<OrgUnitPickerExpanded>(_onExpanded);

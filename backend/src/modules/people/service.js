@@ -164,11 +164,62 @@ async function resolveAccountForIdentity({ subject, email, name }) {
   return createAccountForSubject({ subject, email, name });
 }
 
+// Every Account's Grants, in one query rather than one per Account. Issue
+// #36's accounts-management Screen shows what each Account currently holds,
+// and an administrator correcting one has to see the whole existing set
+// before replacing it (approveAccount below replaces, never merges) — so a
+// row's Grants travel with the row rather than needing a second endpoint.
+//
+// The Org Unit's own name and its Site's are carried, not just the ids: an
+// id is not something an administrator can recognise. Ancestor names are
+// deliberately NOT resolved — `org_units.path` is a chain of ids, not names
+// (see plant.js's own header), so a breadcrumb would need a second recursive
+// join for something the Site name already disambiguates well enough.
+async function listGrantsByAccount() {
+  const { rows } = await getPool().query(
+    `SELECT auo.app_user_id,
+            auo.org_unit_id,
+            auo.can_write,
+            ou.parent_id,
+            ou.code,
+            ou.name,
+            ou.unit_type,
+            ou.site_id,
+            s.name AS site_name
+       FROM app_user_org_units auo
+       JOIN org_units ou ON ou.id = auo.org_unit_id
+       JOIN sites s ON s.id = ou.site_id
+      ORDER BY auo.app_user_id, s.name, ou.name`
+  );
+
+  const byAccount = new Map();
+  for (const row of rows) {
+    const grants = byAccount.get(row.app_user_id) ?? [];
+    grants.push({
+      orgUnitId: row.org_unit_id,
+      parentId: row.parent_id,
+      code: row.code,
+      name: row.name,
+      unitType: row.unit_type,
+      siteId: row.site_id,
+      siteName: row.site_name,
+      canWrite: row.can_write
+    });
+    byAccount.set(row.app_user_id, grants);
+  }
+  return byAccount;
+}
+
+// `toAccount` is deliberately not forked to carry `grants` — it runs on every
+// authenticated request across four other endpoints (see #43's own reasoning
+// for orgUnitScope on GET /me), so the extra field is added here, in the one
+// listing that needs it, and nowhere else.
 async function listAccounts() {
   const { rows } = await getPool().query(
     `SELECT ${ACCOUNT_COLUMNS} FROM app_users ORDER BY created_at`
   );
-  return rows.map(toAccount);
+  const grantsByAccount = await listGrantsByAccount();
+  return rows.map((row) => ({ ...toAccount(row), grants: grantsByAccount.get(row.id) ?? [] }));
 }
 
 // ---------------------------------------------------------------------------

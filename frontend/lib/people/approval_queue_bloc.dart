@@ -179,11 +179,12 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
     emit(ApprovalQueueLoaded(accounts: current.accounts, admittingId: event.accountId));
 
     try {
-      await _api.approvePendingAccount(
+      await _api.admitAccount(
         token,
         accountId: event.accountId,
         role: event.role,
         grants: event.grants,
+        expectedApprovalStatus: 'pending',
       );
       // The row is gone because this request is what removed it — the same
       // reasoning as the rejection above: no refetch for the ordinary case.

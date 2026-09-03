@@ -51,6 +51,12 @@ const List<Destination> platformDestinations = [
     path: Routes.approvals,
     roles: {Roles.admin},
   ),
+  Destination(
+    label: 'Accounts',
+    icon: Icons.manage_accounts_outlined,
+    path: Routes.accounts,
+    roles: {Roles.admin},
+  ),
 ];
 
 /// The destinations an Account holding [role] may use.
