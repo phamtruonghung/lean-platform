@@ -11,8 +11,8 @@ import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/people/admission_dialog.dart';
 import 'package:lean_platform/platform/destinations.dart';
 
-import 'approval_queue_test.dart' show FakeWire, openApprovals, pendingJson;
-import 'router_redirect_test.dart' show FakeAuthGateway, meClient, pumpApp;
+import 'approval_queue_test.dart' show openApprovals;
+import 'harness.dart' show FakeAuthGateway, FakeWire, meClient, pendingJson, pumpApp;
 
 final DateTime _twoDaysAgo = DateTime.now().subtract(const Duration(days: 2, hours: 1));
 
