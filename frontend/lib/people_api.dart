@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'people/managed_account.dart';
 import 'people/org_unit.dart';
 import 'people/org_unit_scope.dart';
 import 'people/pending_account.dart';
@@ -254,10 +255,16 @@ class PeopleApi {
   /// `expectedApprovalStatus` is the same precondition [rejectPendingAccount]
   /// sends, for the same reason: a 409 rather than a silent overwrite of a
   /// decision another administrator made while this queue was on screen.
-  Future<void> approvePendingAccount(
+  ///
+  /// [expectedApprovalStatus] is required, not defaulted to `'pending'`, so
+  /// this one method can serve both admitting a pending Account and
+  /// correcting an already-admitted one (issue #36): the precondition is
+  /// whichever standing the caller actually read the Account at.
+  Future<void> admitAccount(
     String accessToken, {
     required String accountId,
     required String role,
+    required String expectedApprovalStatus,
     List<Map<String, Object?>> grants = const [],
   }) async {
     await _send(
@@ -270,10 +277,83 @@ class PeopleApi {
         body: jsonEncode({
           'role': role,
           'grants': grants,
-          'expectedApprovalStatus': 'pending',
+          'expectedApprovalStatus': expectedApprovalStatus,
         }),
       ),
       '/api/people/accounts/$accountId/approval',
+    );
+  }
+
+  /// Every Account the server knows about (`GET /api/people/accounts`,
+  /// administrator only), each carrying the decision made about it and the
+  /// whole Grant set it currently holds. Nothing is filtered here: which of
+  /// these rows a Screen shows is the Screen's business.
+  Future<List<ManagedAccount>> fetchAccounts(String accessToken) async {
+    final response = await _send(
+      () => _client.get(
+        Uri.parse('/api/people/accounts'),
+        headers: {'authorization': 'Bearer $accessToken'},
+      ),
+      '/api/people/accounts',
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final account in body['accounts'] as List<dynamic>)
+          _managedAccountFrom(account as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static ManagedAccount _managedAccountFrom(Map<String, dynamic> account) {
+    final grants = account['grants'];
+    return ManagedAccount(
+      id: account['id'].toString(),
+      email: account['email'] as String,
+      displayName: account['displayName'] as String? ?? account['email'] as String,
+      role: account['role'] as String,
+      isActive: account['isActive'] == true,
+      approvalStatus: account['approvalStatus'] as String,
+      grants: [
+        if (grants is List<dynamic>)
+          for (final grant in grants.whereType<Map<String, dynamic>>())
+            AccountGrant(
+              orgUnitId: grant['orgUnitId'].toString(),
+              parentId: grant['parentId']?.toString(),
+              code: grant['code'] as String,
+              name: grant['name'] as String,
+              unitType: grant['unitType'] as String,
+              siteId: grant['siteId'].toString(),
+              siteName: grant['siteName'] as String,
+              canWrite: grant['canWrite'] == true,
+            ),
+      ],
+    );
+  }
+
+  /// Deactivates or reactivates an admitted Account
+  /// (`PATCH /api/people/accounts/:id`, administrator only). Not a deletion:
+  /// the Account, its role and its Grants all stay exactly as they were, and
+  /// the same call puts it back. The server refuses this for an Account that
+  /// is not `approved` — a pending or rejected one is admitted through
+  /// [admitAccount] instead.
+  Future<void> setAccountActive(
+    String accessToken, {
+    required String accountId,
+    required bool isActive,
+  }) async {
+    await _send(
+      () => _client.patch(
+        Uri.parse('/api/people/accounts/$accountId'),
+        headers: {
+          'authorization': 'Bearer $accessToken',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({'isActive': isActive}),
+      ),
+      '/api/people/accounts/$accountId',
     );
   }
 

@@ -52,6 +52,44 @@ Map<String, dynamic> orgUnitJson(
       'isActive': true,
     };
 
+/// One Account as `GET /api/people/accounts` sends it.
+Map<String, dynamic> accountJson(
+  String id,
+  String email, {
+  String role = Roles.operator,
+  bool isActive = true,
+  String approvalStatus = 'approved',
+  List<Map<String, dynamic>> grants = const [],
+}) =>
+    {
+      'id': id,
+      'email': email,
+      'displayName': email.split('@').first,
+      'role': role,
+      'isActive': isActive,
+      'approvalStatus': approvalStatus,
+      'grants': grants,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One Grant on an Account row, as the accounts listing sends it.
+Map<String, dynamic> grantJson(
+  String orgUnitId, {
+  String name = 'Assembly',
+  String siteName = 'Ho Chi Minh',
+  bool canWrite = false,
+}) =>
+    {
+      'orgUnitId': orgUnitId,
+      'parentId': null,
+      'code': name.toUpperCase().replaceAll(' ', '-'),
+      'name': name,
+      'unitType': 'area',
+      'siteId': '1',
+      'siteName': siteName,
+      'canWrite': canWrite,
+    };
+
 /// The wire, faked: `/me` answers the role under test, and the queue endpoints
 /// answer whatever the test scripted. Every request is recorded so a test can
 /// assert what was — and was not — sent.
@@ -63,11 +101,15 @@ class FakeWire {
     this.rejectStatus = 200,
     this.approveStatus = 200,
     this.approveMessage = 'The Platform could not admit that Account.',
+    List<Map<String, dynamic>>? accounts,
+    this.accountsStatus = 200,
+    this.patchStatus = 200,
     List<Map<String, dynamic>>? sites,
     Map<String?, List<Map<String, dynamic>>>? orgUnits,
     this.sitesStatus = 200,
     this.orgUnitsStatus = 200,
   })  : queue = queue ?? [],
+        accounts = accounts ?? [],
         sites = sites ?? [],
         orgUnits = orgUnits ?? {};
 
@@ -77,6 +119,21 @@ class FakeWire {
   int rejectStatus;
   int approveStatus;
   String approveMessage;
+
+  /// `GET /api/people/accounts` — every Account, pending ones included.
+  List<Map<String, dynamic>> accounts;
+  int accountsStatus;
+
+  /// `PATCH /api/people/accounts/:id`.
+  int patchStatus;
+
+  /// When set, a PATCH hangs until the test completes it — the same device
+  /// [approvalGate] uses, needed to prove what happens when a second action
+  /// is dispatched while this one is still in flight.
+  Completer<void>? patchGate;
+
+  /// Every activation change that reached the wire, as `(accountId, isActive)`.
+  final List<(String, bool)> activations = [];
 
   /// `GET /api/people/sites`.
   List<Map<String, dynamic>> sites;
@@ -125,6 +182,32 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'orgUnits': orgUnits[parentId] ?? []}), 200);
         }
+        if (path == '/api/people/accounts') {
+          if (accountsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Accounts are unavailable.'}),
+              accountsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'accounts': accounts}), 200);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/people/accounts/')) {
+          final id = path.split('/')[4];
+          final isActive = (jsonDecode(request.body) as Map<String, dynamic>)['isActive'] == true;
+          activations.add((id, isActive));
+          if (patchGate != null) await patchGate!.future;
+          if (patchStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'That Account could not be changed.'}),
+              patchStatus,
+            );
+          }
+          accounts = [
+            for (final a in accounts)
+              if (a['id'] == id) {...a, 'isActive': isActive} else a,
+          ];
+          return http.Response(jsonEncode({'account': {'id': id}}), 200);
+        }
         if (path == '/api/people/accounts/pending') {
           if (queueStatus != 200) {
             return http.Response(jsonEncode({'message': 'The queue is unavailable.'}), queueStatus);
@@ -139,6 +222,26 @@ class FakeWire {
           }
           final id = path.split('/')[4];
           queue = [for (final a in queue) if (a['id'] != id) a];
+          final sent = approvals.last;
+          accounts = [
+            for (final a in accounts)
+              if (a['id'] == id)
+                {
+                  ...a,
+                  'role': sent['role'],
+                  'isActive': true,
+                  'approvalStatus': 'approved',
+                  'grants': [
+                    for (final g in (sent['grants'] as List<dynamic>))
+                      grantJson(
+                        (g as Map<String, dynamic>)['orgUnitId'] as String,
+                        canWrite: g['canWrite'] == true,
+                      ),
+                  ],
+                }
+              else
+                a,
+          ];
           return http.Response(jsonEncode({'account': {'id': id}}), 200);
         }
         if (path.endsWith('/rejection')) {

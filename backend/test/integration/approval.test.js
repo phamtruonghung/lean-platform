@@ -999,6 +999,92 @@ test('an unknown expectedApprovalStatus on an Approval is a 400, not a silent un
   assert.strictEqual(row.role, 'operator');
 });
 
+// Issue #36: the accounts listing is where an administrator sees what an
+// admitted Account currently holds, and where a correction starts from —
+// which needs the whole existing Grant set on the row, not just its role.
+test('the accounts listing carries each Account\'s current Grants, named, with the Site each sits in', async () => {
+  const { site, root, child } = await createSiteWithTree();
+  const { account } = await approveFreshAccount('supervisor', [
+    { orgUnitId: root.id, canWrite: true },
+    { orgUnitId: child.id, canWrite: false }
+  ]);
+
+  const response = await fetch(`${base}/api/people/accounts`, { headers: adminToken });
+  assert.strictEqual(response.status, 200);
+  const { accounts } = await response.json();
+
+  const row = accounts.find((a) => a.id === account.id);
+  assert.ok(row, 'the admitted Account is in the listing');
+  assert.strictEqual(row.role, 'supervisor');
+  assert.strictEqual(row.approvalStatus, 'approved');
+  assert.strictEqual(row.isActive, true);
+  assert.strictEqual(row.grants.length, 2);
+
+  const rootGrant = row.grants.find((g) => String(g.orgUnitId) === String(root.id));
+  assert.strictEqual(rootGrant.name, 'Root');
+  assert.strictEqual(rootGrant.code, root.code);
+  assert.strictEqual(rootGrant.unitType, 'area');
+  assert.strictEqual(String(rootGrant.siteId), String(site.id));
+  assert.strictEqual(rootGrant.siteName, 'Approval Test Site');
+  assert.strictEqual(rootGrant.parentId, null);
+  assert.strictEqual(rootGrant.canWrite, true);
+
+  const childGrant = row.grants.find((g) => String(g.orgUnitId) === String(child.id));
+  assert.strictEqual(childGrant.canWrite, false);
+  assert.strictEqual(String(childGrant.parentId), String(root.id));
+});
+
+// An administrator holds no grant rows at all, so its own listing row must say
+// so with an empty array rather than a missing field a client has to guess at.
+test('an Account with no Grants comes back with an empty grants array, never undefined', async () => {
+  const { account } = await approveFreshAccount('operator', []);
+
+  const response = await fetch(`${base}/api/people/accounts`, { headers: adminToken });
+  const { accounts } = await response.json();
+  const row = accounts.find((a) => a.id === account.id);
+  assert.deepStrictEqual(row.grants, []);
+});
+
+// The correction the Screen actually performs: re-running the admission act on
+// an already-approved Account with the standing it was read with as the
+// precondition, replacing the whole Grant set rather than adding to it.
+test('correcting an admitted Account replaces its whole Grant set, and the listing shows the new one', async () => {
+  const { root, child, grandchild } = await createSiteWithTree();
+  const { account } = await approveFreshAccount('supervisor', [
+    { orgUnitId: root.id, canWrite: true },
+    { orgUnitId: child.id, canWrite: true }
+  ]);
+
+  const corrected = await approve(account.id, {
+    role: 'engineer',
+    grants: [{ orgUnitId: grandchild.id, canWrite: false }],
+    expectedApprovalStatus: 'approved'
+  });
+  assert.strictEqual(corrected.status, 200);
+
+  const response = await fetch(`${base}/api/people/accounts`, { headers: adminToken });
+  const { accounts } = await response.json();
+  const row = accounts.find((a) => a.id === account.id);
+  assert.strictEqual(row.role, 'engineer');
+  assert.strictEqual(row.grants.length, 1);
+  assert.strictEqual(String(row.grants[0].orgUnitId), String(grandchild.id));
+});
+
+// The precondition the Screen sends is what turns "another administrator got
+// there first" into a 409 the Screen can report and re-read from.
+test('a correction whose precondition no longer holds is a 409, and writes nothing', async () => {
+  const { account } = await approveFreshAccount('operator', []);
+  const stale = await approve(account.id, {
+    role: 'manager',
+    grants: [],
+    expectedApprovalStatus: 'pending'
+  });
+  assert.strictEqual(stale.status, 409);
+
+  const { rows: [row] } = await pool.query('SELECT role FROM app_users WHERE id = $1', [account.id]);
+  assert.strictEqual(row.role, 'operator');
+});
+
 test('re-approving an already-approved Account still works when no precondition is sent', async () => {
   const { account } = await approveFreshAccount('operator', []);
 

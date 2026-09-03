@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../auth/awaiting_approval_screen.dart';
 import '../auth/sign_in_screen.dart';
 import '../home_screen.dart';
+import '../people/accounts_bloc.dart';
+import '../people/accounts_screen.dart';
 import '../people/approval_queue_bloc.dart';
 import '../people/approval_queue_screen.dart';
 import '../people_api.dart';
@@ -22,6 +24,7 @@ abstract final class Routes {
   static const String signIn = '/sign-in';
   static const String awaitingApproval = '/awaiting-approval';
   static const String approvals = '/approvals';
+  static const String accounts = '/accounts';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -109,6 +112,26 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const ApprovalQueueRequested()),
                 child: const ApprovalQueueScreen(),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.accounts,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              // The same per-Screen access check the Approval queue makes, for
+              // the same reason: leaving the destination out of the sidebar
+              // hides the door, this locks it for a caller who types the
+              // address.
+              if (account is! AccountApproved || account.account.role != Roles.admin) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<AccountsBloc>(
+                create: (context) => AccountsBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const AccountsRequested()),
+                child: const AccountsScreen(),
               );
             },
           ),
