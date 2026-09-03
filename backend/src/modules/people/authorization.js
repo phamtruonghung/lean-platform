@@ -44,10 +44,19 @@
  * caller's very next request (issue #8's own freshness criterion), not
  * when a token happens to expire.
  *
- * A Module internal (ADR-0006): index.js does not re-export this file,
- * since no other Module needs Org Unit scope today — People is the only
- * Module with routes to guard so far. `npm run lint`'s boundary check is
- * the arbiter of that, not this comment.
+ * Mostly a Module internal (ADR-0006), with one exception as of issue #59:
+ * `canAct` alone is re-exported through index.js, since Maintenance becomes
+ * a second Module with routes of its own to guard (#56, #57, #61, #62, #63)
+ * and needs the exact same read/write grant check on the Org Unit an Asset
+ * sits at that this Module's own writes already use — see index.js's own
+ * header for the full seven-export list and the reasoning behind each entry,
+ * including why `canAct` crosses this boundary as a plain function rather
+ * than a ready-made middleware. The other eight names here — isAdmin,
+ * canSeeSite, grantedEntryPointIds, orgUnitScopeFor, requireAdmin,
+ * requireOrgUnitScope, requireSiteScope, ROLES — stay internal: none of them
+ * has a caller outside People today (again, see index.js's header for why,
+ * one bullet each). `npm run lint`'s boundary check is the arbiter of what
+ * actually crosses, not this comment.
  */
 
 const { getPool } = require('../../platform/db');

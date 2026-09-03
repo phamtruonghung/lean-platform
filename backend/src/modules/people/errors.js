@@ -1,9 +1,16 @@
 /*
- * Error plumbing shared across the People Module — a Module internal
- * (ADR-0006): index.js does not re-export this file, since no other Module
- * needs it. Pulled out of plant.js and service.js, which each defined their
- * own byte-identical httpError, and out of the five separate copies of the
- * same res.status(error.status).json(...)-or-next(error) funnel that used to
+ * Error plumbing shared across the People Module — mostly a Module internal
+ * (ADR-0006), with one exception as of issue #59: `OUTSIDE_GRANTED_ORG_UNITS`
+ * alone is re-exported through index.js, since it is the canonical wording of
+ * the refusal People's own grant model produces, not a generic string a
+ * second Module should have to invent its own version of — see index.js's
+ * own header for the full reasoning. `httpError`, `notFound`, `parseId` and
+ * `handleError` stay internal: they are exactly the "domain, not utility"
+ * exception index.js's header rules out, so Maintenance gets its own small
+ * `modules/maintenance/errors.js` rather than reaching for these. Pulled out
+ * of plant.js and service.js, which each defined their own byte-identical
+ * httpError, and out of the five separate copies of the same
+ * res.status(error.status).json(...)-or-next(error) funnel that used to
  * live in authorization.js, plant-routes.js and routes.js.
  *
  * parseId lives here too, not in plant.js — service.js was reaching into
