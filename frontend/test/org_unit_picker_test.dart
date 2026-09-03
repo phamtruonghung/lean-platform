@@ -9,7 +9,8 @@ import 'package:lean_platform/people/org_unit.dart';
 import 'package:lean_platform/people/org_unit_picker.dart';
 import 'package:lean_platform/platform/destinations.dart';
 
-import 'approval_queue_test.dart' show FakeWire, openApprovals, orgUnitJson, pendingJson, siteJson;
+import 'approval_queue_test.dart' show openApprovals;
+import 'harness.dart' show FakeWire, orgUnitJson, pendingJson, siteJson, tapIn;
 import 'admission_test.dart' show chooseRole;
 
 final DateTime _twoDaysAgo = DateTime.now().subtract(const Duration(days: 2, hours: 1));
@@ -33,12 +34,6 @@ Future<void> openDecision(WidgetTester tester, FakeWire wire) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> tapIn(WidgetTester tester, Finder finder) async {
-  await tester.ensureVisible(finder);
-  await tester.pumpAndSettle();
-  await tester.tap(finder);
-  await tester.pumpAndSettle();
-}
 
 Future<void> grant(WidgetTester tester, String id, GrantLevel level) async {
   await tapIn(tester, find.byKey(OrgUnitPicker.addKey(id)));

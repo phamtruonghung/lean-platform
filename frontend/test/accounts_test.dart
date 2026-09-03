@@ -15,9 +15,10 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/shell.dart';
 
-import 'approval_queue_test.dart' show FakeWire, accountJson, grantJson, orgUnitJson, siteJson;
-import 'org_unit_picker_test.dart' show grant, tapIn;
-import 'router_redirect_test.dart' show FakeAuthGateway, pumpApp;
+import 'harness.dart'
+    show FakeAuthGateway, FakeWire, accountJson, grantJson, orgUnitJson, pumpApp,
+        siteJson, tapIn;
+import 'org_unit_picker_test.dart' show grant;
 
 Future<void> openAccounts(WidgetTester tester, FakeWire wire) => pumpApp(
       tester,

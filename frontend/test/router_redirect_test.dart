@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -10,50 +9,10 @@ import 'package:lean_platform/auth/awaiting_approval_screen.dart';
 import 'package:lean_platform/auth/sign_in_screen.dart';
 import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/people_api.dart';
-import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/not_found_screen.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 
-class FakeAuthGateway implements AuthGateway {
-  FakeAuthGateway({String? accessToken}) : _token = accessToken;
-
-  String? _token;
-  final StreamController<String?> _controller = StreamController<String?>.broadcast();
-
-  @override
-  String? get currentAccessToken => _token;
-
-  /// Honours [AuthGateway]'s contract: the current token first, then every
-  /// change after it.
-  @override
-  Stream<String?> get accessTokenChanges async* {
-    yield _token;
-    yield* _controller.stream;
-  }
-
-  void emitToken(String? token) {
-    _token = token;
-    _controller.add(token);
-  }
-
-  @override
-  Future<void> signInWithPassword({required String email, required String password}) async =>
-      emitToken('token-for-$email');
-
-  @override
-  Future<void> signUp({required String email, required String password}) async =>
-      emitToken('token-for-$email');
-
-  @override
-  Future<void> signInWithGoogle() async => emitToken('token-for-google');
-
-  @override
-  Future<void> signOut() async => emitToken(null);
-}
-
-http.Client meClient(Map<String, dynamic> Function() body, {int status = 200}) {
-  return MockClient((request) async => http.Response(jsonEncode(body()), status));
-}
+import 'harness.dart' show FakeAuthGateway, meClient, pumpApp;
 
 Map<String, dynamic> activeBody = {
   'status': 'active',
@@ -64,22 +23,6 @@ Map<String, dynamic> pendingBody = {
   'status': 'pending_approval',
   'account': {'email': 'a@b.c'},
 };
-
-Future<void> pumpApp(
-  WidgetTester tester, {
-  required FakeAuthGateway gateway,
-  required http.Client client,
-  String? initialLocation,
-}) async {
-  await tester.pumpWidget(
-    PlatformApp(
-      authGateway: gateway,
-      peopleApi: PeopleApi(client: client),
-      initialLocation: initialLocation,
-    ),
-  );
-  await tester.pumpAndSettle();
-}
 
 void main() {
   testWidgets('a signed-out caller reaching a protected address arrives at sign-in',

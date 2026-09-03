@@ -7,9 +7,8 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/not_found_screen.dart';
 import 'package:lean_platform/platform/shell.dart';
 
-// The Account fakes already used by the redirect tests, rather than a second
-// copy of them. `show` keeps that file's own `main` out of this one.
-import 'router_redirect_test.dart' show FakeAuthGateway, meClient, pumpApp;
+// The shared Account fakes, rather than a second copy of them.
+import 'harness.dart' show FakeAuthGateway, meClient, pumpApp;
 
 final Map<String, dynamic> _adminBody = {
   'status': 'active',
