@@ -57,7 +57,7 @@ http.Client meClient(Map<String, dynamic> Function() body, {int status = 200}) {
 
 Map<String, dynamic> activeBody = {
   'status': 'active',
-  'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
+  'account': {'id': '1', 'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
 };
 
 Map<String, dynamic> pendingBody = {

@@ -131,7 +131,7 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   peopleApi: context.read<PeopleApi>(),
                   authGateway: context.read<AuthGateway>(),
                 )..add(const AccountsRequested()),
-                child: const AccountsScreen(),
+                child: AccountsScreen(selfAccountId: account.account.id),
               );
             },
           ),

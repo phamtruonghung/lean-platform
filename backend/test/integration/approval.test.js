@@ -1151,3 +1151,77 @@ test('a root Org Unit and a descendant beneath it, both granted directly, both c
   const grantedIds = orgUnitScope.grants.map((g) => String(g.orgUnitId)).sort();
   assert.deepStrictEqual(grantedIds, [String(root.id), String(child.id)].sort());
 });
+
+// ---------------------------------------------------------------------------
+// Issue #53: an administrator cannot act on their own Account.
+// ---------------------------------------------------------------------------
+
+test('an administrator cannot deactivate their own Account', async () => {
+  const response = await patchAccount(adminAccountId, { isActive: false });
+  assert.strictEqual(response.status, 403);
+  const body = await response.json();
+  assert.match(body.message, /their own Account/);
+
+  const { rows: [row] } = await pool.query('SELECT is_active FROM app_users WHERE id = $1', [adminAccountId]);
+  assert.strictEqual(row.is_active, true);
+});
+
+test('an administrator cannot demote their own Account away from admin', async () => {
+  const response = await approve(adminAccountId, { role: 'operator', grants: [] });
+  assert.strictEqual(response.status, 403);
+
+  const { rows: [row] } = await pool.query('SELECT role FROM app_users WHERE id = $1', [adminAccountId]);
+  assert.strictEqual(row.role, 'admin');
+
+  const { rows: grants } = await pool.query(
+    'SELECT 1 FROM app_user_org_units WHERE app_user_id = $1',
+    [adminAccountId]
+  );
+  assert.strictEqual(grants.length, 0);
+});
+
+test('an administrator cannot re-approve their own Account even as admin — the rule is unconditional, not just demotions', async () => {
+  const response = await approve(adminAccountId, { role: 'admin', grants: [] });
+  assert.strictEqual(response.status, 403);
+});
+
+test('an administrator cannot reject their own Account', async () => {
+  const response = await reject(adminAccountId);
+  assert.strictEqual(response.status, 403);
+
+  const { rows: [row] } = await pool.query(
+    'SELECT approval_status, is_active FROM app_users WHERE id = $1',
+    [adminAccountId]
+  );
+  assert.strictEqual(row.approval_status, 'approved');
+  assert.strictEqual(row.is_active, true);
+});
+
+test('the self-action refusal happens before body validation', async () => {
+  // The route's own "isActive (boolean) is required" check runs before the
+  // service function — and therefore before refuseSelfAction — is ever
+  // reached, so a self-action with no isActive at all is the route's
+  // ordinary 400, not the service's 403.
+  const missingBody = await patchAccount(adminAccountId, {});
+  assert.strictEqual(missingBody.status, 400);
+
+  // approveAccount, by contrast, runs refuseSelfAction as its own first
+  // statement, ahead of its own role-validity check — so an unknown role
+  // against the caller's own Account is still the self-action 403, not the
+  // 400 an unknown role would otherwise get against any other Account.
+  const badRole = await approve(adminAccountId, { role: 'nonsense', grants: [] });
+  assert.strictEqual(badRole.status, 403);
+});
+
+test('a second administrator can still deactivate the first — the rule is about identity, not the admin role', async () => {
+  const { token: secondAdminToken } = await approveFreshAccount('admin', []);
+
+  const deactivate = await patchAccount(adminAccountId, { isActive: false }, secondAdminToken);
+  assert.strictEqual(deactivate.status, 200);
+
+  // Reactivated in the same test: adminAccountId/adminToken are shared by
+  // the whole file, and leaving it deactivated would break every later test
+  // that relies on adminToken passing requireActive.
+  const reactivate = await patchAccount(adminAccountId, { isActive: true }, secondAdminToken);
+  assert.strictEqual(reactivate.status, 200);
+});

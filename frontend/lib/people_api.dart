@@ -28,12 +28,17 @@ class AccountPendingApproval extends AccountStatus {
 
 class AccountActive extends AccountStatus {
   const AccountActive({
+    required this.id,
     required super.email,
     required this.displayName,
     required this.role,
     this.orgUnitScope = const OrgUnitScope.nowhere(),
   });
 
+  /// The caller's own Account id — what the Accounts Screen compares each row
+  /// against, so it never offers an action on the caller's own Account that
+  /// the server will refuse (issue #53).
+  final String id;
   final String displayName;
   final String role;
 
@@ -100,7 +105,13 @@ class PeopleApi {
       return AccountPendingApproval(email: email);
     }
 
+    final id = account['id'];
+    if (id == null) {
+      throw PeopleApiException('The API answered /api/people/me with no Account id.');
+    }
+
     return AccountActive(
+      id: id.toString(),
       email: email,
       displayName: account['displayName'] as String,
       role: account['role'] as String,

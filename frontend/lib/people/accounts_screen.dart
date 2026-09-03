@@ -19,7 +19,11 @@ import 'managed_account.dart';
 import 'role_choice.dart';
 
 class AccountsScreen extends StatelessWidget {
-  const AccountsScreen({super.key});
+  const AccountsScreen({super.key, required this.selfAccountId});
+
+  /// The caller's own Account id — threaded down to [_AccountsList] so no
+  /// row ever offers an action on the caller's own Account (issue #53).
+  final String selfAccountId;
 
   static const double maxWidth = 900;
   static const ValueKey<String> noticeKey = ValueKey<String>('accounts-notice');
@@ -44,6 +48,7 @@ class AccountsScreen extends StatelessWidget {
                   accounts: state.admitted,
                   busyId: state.busyId,
                   correctingId: state.correctingId,
+                  selfAccountId: selfAccountId,
                 ),
             },
           ),
@@ -127,11 +132,13 @@ class _AccountsList extends StatelessWidget {
     required this.accounts,
     required this.busyId,
     required this.correctingId,
+    required this.selfAccountId,
   });
 
   final List<ManagedAccount> accounts;
   final String? busyId;
   final String? correctingId;
+  final String selfAccountId;
 
   @override
   Widget build(BuildContext context) {
@@ -145,6 +152,7 @@ class _AccountsList extends StatelessWidget {
           itemBuilder: (context, index) => AccountRow(
             account: accounts[index],
             busy: accounts[index].id == busyId || accounts[index].id == correctingId,
+            isSelf: accounts[index].id == selfAccountId,
           ),
         ),
       ),
@@ -154,14 +162,21 @@ class _AccountsList extends StatelessWidget {
 
 @visibleForTesting
 class AccountRow extends StatelessWidget {
-  const AccountRow({super.key, required this.account, required this.busy});
+  const AccountRow({super.key, required this.account, required this.busy, required this.isSelf});
 
   final ManagedAccount account;
   final bool busy;
 
+  /// Whether this row is the caller's own Account (issue #53) — when true,
+  /// neither action button is offered, mirroring the same "don't offer a
+  /// button the server will refuse" reasoning the `isApproved` check below
+  /// already uses in this file.
+  final bool isSelf;
+
   static ValueKey<String> correctKey(String id) => ValueKey<String>('accounts-correct-$id');
   static ValueKey<String> activeKey(String id) => ValueKey<String>('accounts-active-$id');
   static ValueKey<String> grantsKey(String id) => ValueKey<String>('accounts-grants-$id');
+  static ValueKey<String> selfKey(String id) => ValueKey<String>('accounts-self-$id');
 
   @override
   Widget build(BuildContext context) {
@@ -201,23 +216,40 @@ class AccountRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                // Only an approved Account can be deactivated or reactivated:
-                // the server refuses either for a rejected one, whose way back
-                // in is a correction (`setAccountActive`, service.js).
-                if (account.isApproved) ...[
-                  OutlinedButton(
-                    key: activeKey(account.id),
-                    onPressed: busy ? null : () => _toggleActive(context, account),
-                    child: Text(account.isActive ? 'Deactivate' : 'Reactivate'),
+                // Neither action is offered on the caller's own row: the
+                // server refuses all three self-actions unconditionally
+                // (issue #53), so no button here would ever succeed.
+                if (isSelf)
+                  Flexible(
+                    child: Text(
+                      'Your own Account. Another administrator has to change it.',
+                      key: selfKey(account.id),
+                      textAlign: TextAlign.end,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  )
+                else ...[
+                  // Only an approved Account can be deactivated or
+                  // reactivated: the server refuses either for a rejected
+                  // one, whose way back in is a correction
+                  // (`setAccountActive`, service.js).
+                  if (account.isApproved) ...[
+                    OutlinedButton(
+                      key: activeKey(account.id),
+                      onPressed: busy ? null : () => _toggleActive(context, account),
+                      child: Text(account.isActive ? 'Deactivate' : 'Reactivate'),
+                    ),
+                    const SizedBox(width: Spacing.sm),
+                  ],
+                  FilledButton(
+                    key: correctKey(account.id),
+                    onPressed:
+                        busy ? null : () => AccountCorrectionDialog.open(context, account),
+                    child: const Text('Change'),
                   ),
-                  const SizedBox(width: Spacing.sm),
                 ],
-                FilledButton(
-                  key: correctKey(account.id),
-                  onPressed:
-                      busy ? null : () => AccountCorrectionDialog.open(context, account),
-                  child: const Text('Change'),
-                ),
               ],
             ),
             const SizedBox(height: Spacing.sm),
