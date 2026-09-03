@@ -189,7 +189,12 @@ void main() {
       client: meClient(() => admitted
           ? {
               'status': 'active',
-              'account': {'email': 'first@b.c', 'displayName': 'First', 'role': Roles.admin},
+              'account': {
+                'id': '1',
+                'email': 'first@b.c',
+                'displayName': 'First',
+                'role': Roles.admin,
+              },
             }
           : {
               'status': 'pending_approval',

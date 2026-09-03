@@ -73,6 +73,34 @@ function requireApprovalStatusUnchanged(current, expectedApprovalStatus) {
   }
 }
 
+// Issue #53: the three admin-only writes below can each end the acting
+// administrator's own access — approveAccount by demoting them away from
+// `admin`, rejectAccount and setAccountActive by setting is_active FALSE. A
+// sole administrator doing any of the three to their own Account locks every
+// administrator out of the Platform with nobody left able to reverse it.
+//
+// Refused unconditionally, not only when it would leave zero administrators.
+// A "last administrator" count would have to run inside these transactions,
+// which lock only the *target* row — two administrators self-demoting at once
+// would each see the other still live under READ COMMITTED and both pass, so
+// the permissive rule needs a new population-wide advisory lock (the device
+// createAccountForSubject uses for the bootstrap) to be correct at all. A pure
+// comparison, made before any transaction opens, cannot race with anything.
+// The cost is that offboarding yourself is somebody else's act, which is a
+// reasonable process to require. See ADR-0013.
+//
+// Both ids are BIGINT-as-string throughout (errors.js's parseId returns a
+// string; db.js registers no pg type parser, so a bigint column comes back as
+// a string too) — String() on both is belt-and-braces against that changing.
+const SELF_ACTION_REFUSED =
+  'An administrator cannot approve, reject or deactivate their own Account — another administrator has to do it.';
+
+function refuseSelfAction(id, actingAccountId) {
+  if (actingAccountId != null && String(actingAccountId) === String(id)) {
+    throw httpError(403, SELF_ACTION_REFUSED);
+  }
+}
+
 async function findAccountBySubject(subject) {
   const { rows } = await getPool().query(
     `SELECT ${ACCOUNT_COLUMNS} FROM app_users WHERE external_subject = $1`,
@@ -260,6 +288,7 @@ async function listPendingAccounts() {
 // the migration's own header for the mapping every write in this section
 // keeps true.
 async function approveAccount(id, { role, grants }, actingAccountId, { expectedApprovalStatus } = {}) {
+  refuseSelfAction(id, actingAccountId);
   requireKnownApprovalStatus(expectedApprovalStatus);
   if (!ROLES.includes(role)) {
     throw httpError(400, `role must be one of: ${ROLES.join(', ')}`);
@@ -339,6 +368,7 @@ async function approveAccount(id, { role, grants }, actingAccountId, { expectedA
 // invisible, wrong write. The row is locked FOR UPDATE first, so the check
 // and the write cannot straddle another transaction's commit.
 async function rejectAccount(id, actingAccountId, { expectedApprovalStatus } = {}) {
+  refuseSelfAction(id, actingAccountId);
   requireKnownApprovalStatus(expectedApprovalStatus);
 
   return withActor(actingAccountId, async (client) => {
@@ -368,6 +398,7 @@ async function rejectAccount(id, actingAccountId, { expectedApprovalStatus } = {
 // is_active is already FALSE for a reason this route does not carry —
 // approveAccount is the deliberate way back in for either.
 async function setAccountActive(id, isActive, actingAccountId) {
+  refuseSelfAction(id, actingAccountId);
   return withActor(actingAccountId, async (client) => {
     const { rows: [current] } = await client.query(
       'SELECT approval_status FROM app_users WHERE id = $1 FOR UPDATE',
@@ -396,5 +427,6 @@ module.exports = {
   listPendingAccounts,
   approveAccount,
   rejectAccount,
-  setAccountActive
+  setAccountActive,
+  SELF_ACTION_REFUSED
 };

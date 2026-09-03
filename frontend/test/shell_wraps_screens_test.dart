@@ -13,7 +13,7 @@ import 'router_redirect_test.dart' show FakeAuthGateway, meClient, pumpApp;
 
 final Map<String, dynamic> _adminBody = {
   'status': 'active',
-  'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': Roles.admin},
+  'account': {'id': '1', 'email': 'a@b.c', 'displayName': 'A B', 'role': Roles.admin},
 };
 
 final Map<String, dynamic> _pendingBody = {

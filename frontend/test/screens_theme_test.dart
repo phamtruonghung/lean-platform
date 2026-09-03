@@ -48,7 +48,7 @@ void main() {
       MaterialApp(
         theme: buildAppTheme(),
         home: const HomeScreen(
-          account: AccountActive(email: 'a@b.c', displayName: 'A B', role: 'administrator'),
+          account: AccountActive(id: '1', email: 'a@b.c', displayName: 'A B', role: 'administrator'),
         ),
       ),
     );

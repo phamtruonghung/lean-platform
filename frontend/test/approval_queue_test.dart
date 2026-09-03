@@ -15,9 +15,13 @@ import 'package:lean_platform/platform/shell.dart';
 
 import 'router_redirect_test.dart' show FakeAuthGateway, pumpApp;
 
-Map<String, dynamic> _meBody(String role) => {
+// `selfId` is '1' by default — every existing test-fixture Account/Org Unit
+// in this file uses ids '7'/'8'/'9'/'10'+, so '1' never accidentally
+// collides with an existing row and turns it into a false "self" match
+// (issue #53).
+Map<String, dynamic> _meBody(String role, String selfId) => {
       'status': 'active',
-      'account': {'email': 'admin@b.c', 'displayName': 'A B', 'role': role},
+      'account': {'id': selfId, 'email': 'admin@b.c', 'displayName': 'A B', 'role': role},
     };
 
 /// Two days and a bit, so flooring never lands on "1 day" while the test runs.
@@ -96,6 +100,7 @@ Map<String, dynamic> grantJson(
 class FakeWire {
   FakeWire({
     this.role = Roles.admin,
+    this.selfId = '1',
     List<Map<String, dynamic>>? queue,
     this.queueStatus = 200,
     this.rejectStatus = 200,
@@ -114,6 +119,10 @@ class FakeWire {
         orgUnits = orgUnits ?? {};
 
   final String role;
+
+  /// The caller's own Account id, as `/me` reports it — what the Accounts
+  /// Screen compares each row against (issue #53).
+  final String selfId;
   List<Map<String, dynamic>> queue;
   int queueStatus;
   int rejectStatus;
@@ -162,7 +171,7 @@ class FakeWire {
         final path = request.url.path;
         requests.add('${request.method} $path');
         if (path == '/api/people/me') {
-          return http.Response(jsonEncode(_meBody(role)), 200);
+          return http.Response(jsonEncode(_meBody(role, selfId)), 200);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {

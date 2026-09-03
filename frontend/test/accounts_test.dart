@@ -214,4 +214,42 @@ void main() {
       findsOneWidget,
     );
   });
+
+  // Issue #53: an administrator cannot act on their own Account, so the
+  // Screen never even offers a button the server would refuse.
+  testWidgets(
+      "the caller's own row offers neither action and explains why, and a different row is unaffected",
+      (tester) async {
+    // FakeWire's default selfId is '1' — this row's id matches it, so it is
+    // the caller's own Account.
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('1', 'admin@b.c', role: Roles.admin),
+        accountJson('7', 'other@b.c'),
+      ]),
+    );
+
+    expect(find.byKey(AccountRow.activeKey('1')), findsNothing);
+    expect(find.byKey(AccountRow.correctKey('1')), findsNothing);
+    expect(find.byKey(AccountRow.selfKey('1')), findsOneWidget);
+
+    expect(find.byKey(AccountRow.activeKey('7')), findsOneWidget);
+    expect(find.byKey(AccountRow.correctKey('7')), findsOneWidget);
+    expect(find.byKey(AccountRow.selfKey('7')), findsNothing);
+  });
+
+  testWidgets("a different administrator's row keeps both actions — the guard keys on identity, not the admin role",
+      (tester) async {
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('9', 'other-admin@b.c', role: Roles.admin),
+      ]),
+    );
+
+    expect(find.byKey(AccountRow.activeKey('9')), findsOneWidget);
+    expect(find.byKey(AccountRow.correctKey('9')), findsOneWidget);
+    expect(find.byKey(AccountRow.selfKey('9')), findsNothing);
+  });
 }

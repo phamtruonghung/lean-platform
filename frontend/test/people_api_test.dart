@@ -17,7 +17,7 @@ void main() {
         return http.Response(
           jsonEncode({
             'status': 'active',
-            'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
+            'account': {'id': '1', 'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
           }),
           200,
         );
@@ -53,7 +53,7 @@ void main() {
         return http.Response(
           jsonEncode({
             'status': 'active',
-            'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
+            'account': {'id': '1', 'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
           }),
           200,
         );
@@ -84,7 +84,7 @@ void main() {
         return http.Response(
           jsonEncode({
             'status': 'active',
-            'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'admin'},
+            'account': {'id': '1', 'email': 'a@b.c', 'displayName': 'A B', 'role': 'admin'},
             'orgUnitScope': {'everywhere': true, 'grants': []},
           }),
           200,
@@ -107,7 +107,7 @@ void main() {
           return http.Response(
             jsonEncode({
               'status': 'active',
-              'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'supervisor'},
+              'account': {'id': '1', 'email': 'a@b.c', 'displayName': 'A B', 'role': 'supervisor'},
               'orgUnitScope': {
                 'everywhere': false,
                 'grants': [
@@ -146,7 +146,7 @@ void main() {
         return http.Response(
           jsonEncode({
             'status': 'active',
-            'account': {'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
+            'account': {'id': '1', 'email': 'a@b.c', 'displayName': 'A B', 'role': 'administrator'},
           }),
           200,
         );

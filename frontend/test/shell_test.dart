@@ -23,7 +23,7 @@ const _approvals = Destination(
 );
 const _testDestinations = [_directory, _approvals];
 
-const _account = AccountActive(email: 'a@b.c', displayName: 'A B', role: Roles.admin);
+const _account = AccountActive(id: '1', email: 'a@b.c', displayName: 'A B', role: Roles.admin);
 
 /// The Shell mounted on a real router over the stand-in destinations — the
 /// same wiring `router.dart` uses, so selecting a destination really is a
