@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'maintenance/maintenance_api.dart';
 import 'people_api.dart';
 import 'platform/auth_gateway.dart';
 import 'platform/platform_app.dart';
@@ -31,5 +32,11 @@ Future<void> main() async {
   // same public, browser-safe key Supabase's dashboard still labels "anon
   // key" today, which is why supabase_config.dart keeps that name.
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
-  runApp(PlatformApp(authGateway: SupabaseAuthGateway(), peopleApi: PeopleApi()));
+  runApp(
+    PlatformApp(
+      authGateway: SupabaseAuthGateway(),
+      peopleApi: PeopleApi(),
+      maintenanceApi: MaintenanceApi(),
+    ),
+  );
 }

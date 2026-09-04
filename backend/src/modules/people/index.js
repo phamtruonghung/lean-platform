@@ -44,7 +44,7 @@
  * refuses. The rule stays narrow — a Module may export middleware that
  * establishes the caller's identity, and only that.
  *
- * Exactly seven exports, each justified below against the sibling ticket
+ * Exactly eight exports, each justified below against the sibling ticket
  * that needs it:
  *
  *   - router — mounted by src/index.js, which lives outside `modules/` and so
@@ -81,6 +81,12 @@
  *     bad one itself, in its own wording. #57 needs no resolution at all —
  *     it reads the Org Unit id off the Asset row by trigger, already proven
  *     to exist.
+ *   - findSite — #56: GET /sites/:siteId/assets names a Site in its own path
+ *     and must 404 an unknown one in Maintenance's own wording, exactly the
+ *     "existence before scope" shape findOrgUnit serves above, one level up
+ *     the tree. plant.js splits getSite (throws) into findSite (null) and
+ *     getSite (still throws, still People's internal 404) the same way it
+ *     already split getOrgUnit/findOrgUnit — see that file's own header.
  *   - findEmployee — #62: validate the assignee named on a work order
  *     actually exists, and read `isActive` off the result so a departed
  *     Employee is never offered as an assignee, without reaching past this
@@ -108,11 +114,6 @@
  * writes People's own tables), and errors.js's parseId/httpError/notFound/
  * handleError/escapeLikePattern (clause 3 — Maintenance gets its own small
  * modules/maintenance/errors.js rather than importing People's).
- *
- * The most likely next addition is findSite, if #56 decides an unknown
- * siteId in the request body must 404 rather than silently return an empty
- * list — this rule already licenses that as a one-line addition mirroring
- * findOrgUnit/findEmployee, not a new design decision.
  */
 
 const express = require('express');
@@ -123,7 +124,7 @@ const jobRoleRoutes = require('./job-role-routes');
 const skillRoutes = require('./skill-routes');
 const { authenticate, requireActive } = require('./middleware');
 const { canAct } = require('./authorization');
-const { findOrgUnit } = require('./plant');
+const { findOrgUnit, findSite } = require('./plant');
 const { findEmployee } = require('./directory');
 const { OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
@@ -140,6 +141,7 @@ module.exports = {
   requireActive,
   canAct,
   findOrgUnit,
+  findSite,
   findEmployee,
   OUTSIDE_GRANTED_ORG_UNITS
 };

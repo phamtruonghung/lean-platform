@@ -235,13 +235,19 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
   /// Everything downstream still works by id alone: the tree badges a granted
   /// row through `isGranted`, and [OrgUnitPickerGrantRemoved] never looks a
   /// node up.
+  /// [initialSiteId] is the Site to open on, when the Screen that mounted this
+  /// picker is already looking at one (issue #56's Asset form). Null keeps
+  /// today's behaviour exactly: the first Site the caller can see. An id the
+  /// caller cannot actually see falls back to that same first Site rather than
+  /// leaving the picker on an empty pane.
   OrgUnitPickerBloc({
     required PeopleApi peopleApi,
     required AuthGateway authGateway,
     List<GrantedOrgUnit> initialGranted = const [],
+    String? initialSiteId,
   })  : _api = peopleApi,
         _auth = authGateway,
-        super(OrgUnitPickerState(granted: initialGranted)) {
+        super(OrgUnitPickerState(granted: initialGranted, siteId: initialSiteId)) {
     on<OrgUnitPickerStarted>(_onStarted);
     on<OrgUnitPickerSiteSelected>(_onSiteSelected);
     on<OrgUnitPickerExpanded>(_onExpanded);
@@ -266,10 +272,12 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
       final sites = await _api.fetchSites(token);
       emit(state.copyWith(sitesStatus: SitesStatus.ready, sites: sites));
       if (sites.isNotEmpty) {
-        // One Site or several, the first is browsed straight away: a picker
-        // that opens on an empty pane makes the caller do a step the Screen
-        // could have done for them. Which Site is still theirs to change.
-        add(OrgUnitPickerSiteSelected(sites.first.id));
+        // One Site or several, one is browsed straight away: a picker that
+        // opens on an empty pane makes the caller do a step the Screen could
+        // have done for them. Which Site is still theirs to change.
+        final wanted = state.siteId;
+        final opensOn = sites.any((site) => site.id == wanted) ? wanted! : sites.first.id;
+        add(OrgUnitPickerSiteSelected(opensOn));
       }
     } on PeopleApiException catch (error) {
       emit(state.copyWith(sitesStatus: SitesStatus.failed, sitesFailure: error.message));

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../maintenance/maintenance_api.dart';
 import '../people_api.dart';
 import '../theme.dart';
 import 'account_bloc.dart';
@@ -14,11 +15,13 @@ class PlatformApp extends StatefulWidget {
     super.key,
     required this.authGateway,
     required this.peopleApi,
+    required this.maintenanceApi,
     this.initialLocation,
   });
 
   final AuthGateway authGateway;
   final PeopleApi peopleApi;
+  final MaintenanceApi maintenanceApi;
 
   /// Supplied only by tests; always null in production.
   final String? initialLocation;
@@ -55,6 +58,7 @@ class _PlatformAppState extends State<PlatformApp> {
         // Provided so a Module's own Bloc can be built at its route, with the
         // same faked wire a widget test already substitutes here.
         RepositoryProvider<PeopleApi>.value(value: widget.peopleApi),
+        RepositoryProvider<MaintenanceApi>.value(value: widget.maintenanceApi),
       ],
       child: BlocProvider<AccountBloc>.value(
         value: _accountBloc,

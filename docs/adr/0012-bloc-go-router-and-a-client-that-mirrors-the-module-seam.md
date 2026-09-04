@@ -92,3 +92,38 @@ test`, and every router redirect test needs to drive session state (sign-in,
 sign-out, token refresh) directly rather than through a real Supabase client.
 `SupabaseAuthGateway` is the production implementation; tests substitute a
 fake at the same point `router_redirect_test.dart` exercises.
+
+## The client-mirror sentence gets its first implementation
+
+Added 2026-09-04 (issue #56). "The client mirrors this per ADR-0006" (this
+ADR's own decision above, and ADR-0006's closing paragraph) was written ahead
+of any Module needing it — the client had exactly one Module, People, and
+nothing outside it yet called in. Issue #56 is the first time a second
+Module, Maintenance, needs something People owns (the Org Unit tree, to place
+an Asset in it), which is what makes `frontend/lib/people/people.dart` worth
+writing: a client entry point, `export`-ing `OrgUnitPickerBloc` and the few
+model types (`OrgUnitNode`, `Site`) Maintenance actually needs, the same shape
+`modules/people/index.js` gives the backend. `PeopleApi` itself is not
+re-exported here — `lib/people_api.dart` sits at `lib/` root, outside this
+seam, for the historical reason its own header names, and `AssetFormDialog`
+still reaches it directly the way it already reached `AuthGateway` directly;
+narrowing that is left for whenever `people_api.dart` itself moves under
+`lib/people/`, not decided by this ticket. `OrgUnitPicker` — the widget, not
+the Bloc — is deliberately left off the export list: it is a Grant editor built for
+People's own admission screens, not a general "choose an Org Unit" surface,
+and Maintenance reaches the Bloc directly to build its own view over it
+(`maintenance/org_unit_chooser.dart`) rather than importing a widget shaped
+for someone else's screen.
+
+Two differences from the backend seam, both because the client has no
+equivalent of the backend's own tooling. First, `lib/platform/` — the Shell,
+router and DI wiring in `platform_app.dart` and `main.dart` — sits outside
+this seam entirely, the same way `src/index.js` sits outside `modules/` on
+the backend: it wires both Modules together rather than being a third Module
+consuming People's entry point. Second, there is no Dart equivalent of
+`people-entry-point.test.js`'s export-set assertion — `show` lists are not
+introspectable at runtime the way a CommonJS `module.exports` object is — so
+`flutter analyze` (which already fails on an unused or unresolved import) is
+the only enforcement this seam gets on the client. That is weaker than the
+backend's test, and is recorded here as a known gap rather than a parity
+claim.
