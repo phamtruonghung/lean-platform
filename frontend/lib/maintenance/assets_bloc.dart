@@ -53,6 +53,30 @@ class AssetAddConfirmed extends AssetsEvent {
   final String criticality;
 }
 
+/// Toggle whether the register includes retired Assets. Re-reads with
+/// `includeRetired` rather than filtering client-side, since a retired Asset
+/// is not even sent unless asked for.
+class AssetsShowRetiredChanged extends AssetsEvent {
+  const AssetsShowRetiredChanged(this.showRetired);
+  final bool showRetired;
+}
+
+/// Retire or reinstate one Asset (issue #61). Not a deletion — the row stays
+/// on the register either way.
+class AssetActiveToggled extends AssetsEvent {
+  const AssetActiveToggled({required this.assetId, required this.isActive});
+  final String assetId;
+  final bool isActive;
+}
+
+/// Nest one Asset beneath another, or detach it back to top-level when
+/// [parentId] is null.
+class AssetParentChanged extends AssetsEvent {
+  const AssetParentChanged({required this.assetId, required this.parentId});
+  final String assetId;
+  final String? parentId;
+}
+
 sealed class AssetsState {
   const AssetsState();
 }
@@ -70,6 +94,8 @@ class AssetsLoaded extends AssetsState {
     this.isLoadingAssets = false,
     this.isAdding = false,
     this.addFailure,
+    this.showRetired = false,
+    this.mutatingAssetId,
     this.notice,
   });
 
@@ -89,6 +115,17 @@ class AssetsLoaded extends AssetsState {
   /// open so the caller can fix the code rather than retype the Asset.
   final String? addFailure;
 
+  /// Whether the register was last (re-)read with `includeRetired` (issue
+  /// #61). Kept alongside [siteId] for the same reason `_lastSiteId` is kept
+  /// on the Bloc: a Site switch and a retry must both survive it rather than
+  /// silently resetting to "active only".
+  final bool showRetired;
+
+  /// The Asset a retire/reinstate/nest/detach is in flight for, if any.
+  /// Checked alongside [isAdding] — the register handles one mutation at a
+  /// time, the same rule `AccountsBloc.busyId` enforces.
+  final String? mutatingAssetId;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [AssetsUnavailable].
   final String? notice;
@@ -106,6 +143,9 @@ class AssetsLoaded extends AssetsState {
     bool? isLoadingAssets,
     bool? isAdding,
     String? addFailure,
+    bool? showRetired,
+    String? mutatingAssetId,
+    bool clearMutatingAssetId = false,
     String? notice,
   }) =>
       AssetsLoaded(
@@ -115,6 +155,8 @@ class AssetsLoaded extends AssetsState {
         isLoadingAssets: isLoadingAssets ?? this.isLoadingAssets,
         isAdding: isAdding ?? this.isAdding,
         addFailure: addFailure,
+        showRetired: showRetired ?? this.showRetired,
+        mutatingAssetId: clearMutatingAssetId ? null : (mutatingAssetId ?? this.mutatingAssetId),
         notice: notice,
       );
 }
@@ -136,6 +178,9 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
     on<AssetsStarted>(_onStarted);
     on<AssetsSiteSelected>(_onSiteSelected);
     on<AssetAddConfirmed>(_onAddConfirmed);
+    on<AssetsShowRetiredChanged>(_onShowRetiredChanged);
+    on<AssetActiveToggled>(_onActiveToggled);
+    on<AssetParentChanged>(_onParentChanged);
   }
 
   final MaintenanceApi _maintenance;
@@ -146,11 +191,21 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
   static const String noSitesMessage =
       'There are no Sites you can see, so there is no register to show.';
 
+  /// What a second row action reports, rather than dropping silently, when
+  /// one mutation is already in flight — same text `AccountsBloc` uses for
+  /// exactly the same shape of guard.
+  static const String inFlightMessage = 'Another action is already in progress. Try again in a moment.';
+
   /// The last Site the caller actually settled on — set wherever a Site is
   /// settled, below. `AssetsStarted` is also what "Try again" on
   /// `AssetsUnavailable` dispatches, and that retry must re-open on the Site
   /// the caller was looking at, not silently jump back to the first one.
   String? _lastSiteId;
+
+  /// The last "Show retired" setting the caller chose, kept for the same
+  /// reason as [_lastSiteId]: a retry or a Site switch must reopen on it
+  /// rather than silently resetting to active-only.
+  bool _lastShowRetired = false;
 
   Future<void> _onStarted(AssetsStarted event, Emitter<AssetsState> emit) async {
     emit(const AssetsLoading());
@@ -176,7 +231,14 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
     final wanted = _lastSiteId;
     final opensOn = sites.any((site) => site.id == wanted) ? wanted! : sites.first.id;
     _lastSiteId = opensOn;
-    emit(AssetsLoaded(sites: sites, siteId: opensOn, isLoadingAssets: true));
+    emit(
+      AssetsLoaded(
+        sites: sites,
+        siteId: opensOn,
+        isLoadingAssets: true,
+        showRetired: _lastShowRetired,
+      ),
+    );
     await _readRegister(opensOn, emit);
   }
 
@@ -197,7 +259,11 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
       return;
     }
     try {
-      final assets = await _maintenance.fetchAssets(token, siteId: siteId);
+      final assets = await _maintenance.fetchAssets(
+        token,
+        siteId: siteId,
+        includeRetired: current.showRetired,
+      );
       if (state is! AssetsLoaded || (state as AssetsLoaded).siteId != siteId) return;
       emit((state as AssetsLoaded).copyWith(assets: assets, isLoadingAssets: false, notice: notice));
     } on MaintenanceApiException catch (error) {
@@ -255,5 +321,103 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
       if (settled is! AssetsLoaded) return;
       emit(settled.copyWith(isAdding: false, addFailure: error.message));
     }
+  }
+
+  Future<void> _onShowRetiredChanged(
+    AssetsShowRetiredChanged event,
+    Emitter<AssetsState> emit,
+  ) async {
+    final current = state;
+    if (current is! AssetsLoaded) return;
+    final siteId = current.siteId;
+    if (siteId == null) return;
+    _lastShowRetired = event.showRetired;
+    emit(current.copyWith(showRetired: event.showRetired, assets: const [], isLoadingAssets: true));
+    await _readRegister(siteId, emit);
+  }
+
+  Future<void> _onActiveToggled(AssetActiveToggled event, Emitter<AssetsState> emit) async {
+    final current = state;
+    if (current is! AssetsLoaded) return;
+    // Reported, not silently dropped — the same guard `AccountsBloc` uses for
+    // `busyId`/`correctingId`, generalised to one flag since an Asset row
+    // only ever has one mutation of its own.
+    if (current.isAdding || current.mutatingAssetId != null) {
+      emit(current.copyWith(notice: inFlightMessage));
+      return;
+    }
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(notice: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(mutatingAssetId: event.assetId));
+    try {
+      final asset = await _maintenance.setAssetActive(token, event.assetId, isActive: event.isActive);
+      final settled = state;
+      if (settled is! AssetsLoaded) return;
+      emit(
+        settled.copyWith(
+          clearMutatingAssetId: true,
+          assets: _applyMutation(settled, asset),
+          notice: event.isActive
+              ? '${asset.code} is back on the active register.'
+              : '${asset.code} has been retired.',
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! AssetsLoaded) return;
+      emit(settled.copyWith(clearMutatingAssetId: true, notice: error.message));
+    }
+  }
+
+  Future<void> _onParentChanged(AssetParentChanged event, Emitter<AssetsState> emit) async {
+    final current = state;
+    if (current is! AssetsLoaded) return;
+    if (current.isAdding || current.mutatingAssetId != null) {
+      emit(current.copyWith(notice: inFlightMessage));
+      return;
+    }
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(notice: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(mutatingAssetId: event.assetId));
+    try {
+      final asset = await _maintenance.setAssetParent(token, event.assetId, parentId: event.parentId);
+      final settled = state;
+      if (settled is! AssetsLoaded) return;
+      emit(
+        settled.copyWith(
+          clearMutatingAssetId: true,
+          assets: _applyMutation(settled, asset),
+          notice: event.parentId == null
+              ? '${asset.code} is a top-level Asset again.'
+              : '${asset.code} now sits beneath its new parent.',
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! AssetsLoaded) return;
+      emit(settled.copyWith(clearMutatingAssetId: true, notice: error.message));
+    }
+  }
+
+  /// The register patched in place with one Asset's new state, rather than
+  /// re-read — same reasoning [_onAddConfirmed] follows. An Asset that has
+  /// just been retired drops out of the list entirely when the register is
+  /// not currently showing retired ones, keeping the toggle honest about what
+  /// it means rather than leaving a retired row visible until the next read.
+  List<Asset> _applyMutation(AssetsLoaded state, Asset updated) {
+    if (!state.showRetired && !updated.isActive) {
+      return [for (final asset in state.assets) if (asset.id != updated.id) asset];
+    }
+    return [for (final asset in state.assets) if (asset.id == updated.id) updated else asset];
   }
 }

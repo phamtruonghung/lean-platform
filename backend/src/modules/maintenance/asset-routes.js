@@ -28,6 +28,14 @@
  * `canAct` returns true for role `admin` before it checks whether the Org
  * Unit id is null at all, so asking it first would turn an administrator's
  * typo into a 500 on a NOT NULL foreign key rather than a clean 404.
+ *
+ * `requireAssetWriteScope` (issue #61) is a third middleware, and it cannot
+ * reuse `requireOrgUnitWriteScope` above: that one parses `req.body.orgUnitId`,
+ * which is the right source for POST /assets (the caller is naming where a
+ * brand new Asset goes) but wrong for PATCH /assets/:id, whose Org Unit is
+ * read off the Asset ROW, not the URL or the body — an Asset's placement
+ * does not change under retirement or nesting (see PATCH /assets/:id's own
+ * comment: `org_unit_id` is untouched by nesting).
  */
 
 const express = require('express');
@@ -82,6 +90,32 @@ async function requireOrgUnitWriteScope(req, res, next) {
   }
 }
 
+// Write scope on the Org Unit the ASSET NAMED IN THE URL already sits at
+// (issue #61) — the counterpart to requireOrgUnitWriteScope above for a
+// route keyed on an Asset id rather than an Org Unit id in the body.
+// Existence before scope, same ordering, same reason: assets.findAsset is
+// now total (issue #61's own fix — see that function's own comment), so a
+// malformed :id resolves to a clean 404 here rather than ever reaching
+// canAct or the database again. `write: true` is passed explicitly and must
+// stay that way, for the exact reason requireOrgUnitWriteScope's own comment
+// gives: canAct's `write` defaults to FALSE, so dropping it would silently
+// authorise this write for any read Grant, with no error anywhere to notice.
+async function requireAssetWriteScope(req, res, next) {
+  try {
+    const asset = await assets.findAsset(req.params.id);
+    if (!asset) throw notFound('Asset');
+
+    const allowed = await people.canAct({ account: req.account, orgUnitId: asset.orgUnitId, write: true });
+    if (!allowed) {
+      return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    req.asset = asset;
+    return next();
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+}
+
 router.get(
   '/sites/:siteId/assets',
   people.authenticate,
@@ -89,7 +123,15 @@ router.get(
   requireKnownSite,
   async (req, res, next) => {
     try {
-      res.json({ assets: await assets.listAssetsAtSite(req.site.id) });
+      // Only the exact string 'true' counts (issue #61). Anything else —
+      // absent, 'false', or garbage like 'yes' — means "no": this is a
+      // convenience filter over an already-visible register (reads are
+      // Site-wide by decision, see this file's own header), not a value a
+      // caller could be wrong about in a way worth a 400 for. Silently
+      // treating garbage as "no" is honest here in a way it would not be for
+      // an id or an enum, where a bad value could hide a real mistake.
+      const includeRetired = req.query.includeRetired === 'true';
+      res.json({ assets: await assets.listAssetsAtSite(req.site.id, { includeRetired }) });
     } catch (error) {
       handleError(error, res, next);
     }
@@ -114,6 +156,115 @@ router.post(
         req.account.id
       );
       res.status(201).json({ asset });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// PATCH /assets/:id (issue #61): retiring/reinstating and nesting/detaching
+// an Asset, both through this one route — isActive and parentId are just two
+// columns on the same Asset row, not two resources. At least one of the two
+// must be present in the body; an empty `{}` is refused with 400 rather than
+// accepted as a no-op, the same shape PATCH /org-units/:id follows for its
+// own single field.
+//
+// `hasOwnProperty` is used for `parentId` rather than a truthiness check on
+// `req.body.parentId`, on purpose: `parentId: null` (detach — make this
+// Asset top-level again) and `parentId` simply absent (leave the parent
+// alone) have to read differently, and `!req.body.parentId` cannot tell them
+// apart — both are falsy.
+//
+// A body naming BOTH isActive and parentId is refused with 400 (issue #61
+// review, Fix A). setAssetParent and setAssetActive are separate
+// transactions; a combined PATCH could commit the re-parent and then hit a
+// 409 or 500 on the retire half, and the caller — seeing only the failure —
+// would reasonably conclude nothing happened, when the parent had already
+// changed. These are two distinct operations on the same row, not one
+// compound edit: nothing asks for them to be combined, and the only sound
+// alternative — restructuring both service functions to accept a
+// caller-supplied transaction so they could commit together — would be built
+// for a caller that does not exist. Refusing is honest; half-committing is
+// not. Send them as two requests.
+//
+// The extra parent-scope rule below requires write scope on the Org Unit of
+// whichever parent is losing OR gaining the Asset when parentId changes —
+// the CURRENT parent (detach, move) as well as the PROPOSED parent (attach,
+// move) — not just requireAssetWriteScope's own check on the Asset being
+// patched. The baseline's own schema comment on assets.parent_id says a
+// component's failures roll up to the machine it is part of, so this cuts
+// both ways: attaching changes what the new parent is made of, and detaching
+// changes what the OLD parent is made of just as much — there IS a second
+// machine whose composition changes. Without the current-parent half of this
+// check, a supervisor holding write scope only over Line A's Org Unit could
+// strip one of Line B's components off a Line B machine using a Grant that
+// never reached Line B at all. Being entitled to act on the child is not
+// enough to alter either parent.
+router.patch(
+  '/assets/:id',
+  people.authenticate,
+  people.requireActive,
+  requireAssetWriteScope,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const hasIsActive = Object.prototype.hasOwnProperty.call(body, 'isActive');
+      const hasParentId = Object.prototype.hasOwnProperty.call(body, 'parentId');
+      if (!hasIsActive && !hasParentId) {
+        return res.status(400).json({ message: 'isActive and/or parentId is required' });
+      }
+      if (hasIsActive && hasParentId) {
+        return res.status(400).json({
+          message: 'isActive and parentId cannot be changed in the same request; send them as separate requests'
+        });
+      }
+      if (hasIsActive && typeof body.isActive !== 'boolean') {
+        return res.status(400).json({ message: 'isActive (boolean) is required' });
+      }
+
+      if (hasParentId) {
+        if (req.asset.parentId !== null) {
+          const currentParent = await assets.findAsset(req.asset.parentId);
+          if (currentParent) {
+            const allowedOnCurrentParent = await people.canAct({
+              account: req.account,
+              orgUnitId: currentParent.orgUnitId,
+              write: true
+            });
+            if (!allowedOnCurrentParent) {
+              return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+            }
+          }
+        }
+
+        if (body.parentId !== null) {
+          const parentId = parseId(body.parentId);
+          if (parentId === null) {
+            return res.status(400).json({ message: 'parentId must be a valid Asset id' });
+          }
+          const parentAsset = await assets.findAsset(parentId);
+          if (!parentAsset) throw notFound('Parent Asset');
+
+          const allowedOnParent = await people.canAct({
+            account: req.account,
+            orgUnitId: parentAsset.orgUnitId,
+            write: true
+          });
+          if (!allowedOnParent) {
+            return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+          }
+        }
+      }
+
+      let asset = req.asset;
+      if (hasParentId) {
+        asset = await assets.setAssetParent(req.params.id, body.parentId, req.account.id);
+      }
+      if (hasIsActive) {
+        asset = await assets.setAssetActive(req.params.id, body.isActive, req.account.id);
+      }
+
+      res.json({ asset });
     } catch (error) {
       handleError(error, res, next);
     }

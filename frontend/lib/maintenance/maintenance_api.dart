@@ -31,12 +31,20 @@ class MaintenanceApi {
 
   final http.Client _client;
 
-  /// Every active Asset at a Site. The API reads Site-wide whatever the
+  /// Every Asset at a Site — active only, unless [includeRetired] asks for
+  /// the retired ones too (issue #61). The API reads Site-wide whatever the
   /// caller's Grants, so nothing is filtered here either.
-  Future<List<Asset>> fetchAssets(String accessToken, {required String siteId}) async {
+  Future<List<Asset>> fetchAssets(
+    String accessToken, {
+    required String siteId,
+    bool includeRetired = false,
+  }) async {
     final path = '/api/maintenance/sites/$siteId/assets';
+    final uri = includeRetired
+        ? Uri.parse(path).replace(queryParameters: {'includeRetired': 'true'})
+        : Uri.parse(path);
     final response = await _send(
-      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
       path,
     );
     try {
@@ -83,6 +91,37 @@ class MaintenanceApi {
     }
   }
 
+  /// Retires or reinstates one Asset (`PATCH /api/maintenance/assets/:id`).
+  /// Not a deletion: retiring only excludes the row from the default read,
+  /// and the server itself refuses to retire one still carrying active parts
+  /// (409) — this call just reports whatever it decides.
+  Future<Asset> setAssetActive(String accessToken, String id, {required bool isActive}) =>
+      _patchAsset(accessToken, id, {'isActive': isActive});
+
+  /// Nests one Asset beneath another, or detaches it back to top-level when
+  /// [parentId] is null. The server independently refuses a self-parent or a
+  /// cycle (400) — this call is not the guard against either.
+  Future<Asset> setAssetParent(String accessToken, String id, {required String? parentId}) =>
+      _patchAsset(accessToken, id, {'parentId': parentId});
+
+  Future<Asset> _patchAsset(String accessToken, String id, Map<String, dynamic> body) async {
+    final path = '/api/maintenance/assets/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return _assetFrom(decoded['asset'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   static Asset _assetFrom(Map<String, dynamic> asset) => Asset(
         id: asset['id'].toString(),
         code: asset['code'] as String,
@@ -92,6 +131,8 @@ class MaintenanceApi {
         orgUnitId: asset['orgUnitId'].toString(),
         orgUnitName: asset['orgUnitName'] as String? ?? '',
         siteId: asset['siteId'].toString(),
+        isActive: asset['isActive'] as bool? ?? true,
+        parentId: asset['parentId']?.toString(),
       );
 
   /// Accepts any 2xx, unlike `PeopleApi._send`'s `!= 200`: creating an Asset

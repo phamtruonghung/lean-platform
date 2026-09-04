@@ -52,6 +52,8 @@ Map<String, dynamic> assetJson(
   String siteId = '1',
   String assetType = 'machine',
   String criticality = 'medium',
+  bool isActive = true,
+  String? parentId,
 }) =>
     {
       'id': id,
@@ -63,8 +65,8 @@ Map<String, dynamic> assetJson(
       'orgUnitName': orgUnitName,
       'orgUnitCode': orgUnitName.toUpperCase().replaceAll(' ', '-'),
       'siteId': siteId,
-      'isActive': true,
-      'parentId': null,
+      'isActive': isActive,
+      'parentId': parentId,
       'assetLevel': 'machine',
     };
 
@@ -158,6 +160,8 @@ class FakeWire {
     this.assetsStatus = 200,
     this.createAssetStatus = 201,
     this.createAssetMessage = 'an Asset with this code already exists',
+    this.patchAssetStatus = 200,
+    this.patchAssetMessage = 'That Asset could not be changed.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -180,6 +184,20 @@ class FakeWire {
   /// Every Asset body that actually reached the wire, decoded — so a test can
   /// assert that exactly one request was sent and what Org Unit it carried.
   final List<Map<String, dynamic>> assetPosts = [];
+
+  /// `PATCH /api/maintenance/assets/:id` — retiring, reinstating, nesting and
+  /// detaching all land here (issue #61).
+  int patchAssetStatus;
+  String patchAssetMessage;
+
+  /// Every Asset PATCH that actually reached the wire, as `(id, body)` — so a
+  /// test can assert exactly one request was sent and what it carried.
+  final List<(String, Map<String, dynamic>)> assetPatches = [];
+
+  /// When set, an Asset PATCH hangs until the test completes it — the same
+  /// device [patchGate] uses for Accounts, needed to prove a second row
+  /// action while this one is in flight is reported rather than dropped.
+  Completer<void>? assetPatchGate;
 
   /// When set, an Asset listing hangs until the test completes it.
   Completer<void>? assetsGate;
@@ -246,7 +264,15 @@ class FakeWire {
             );
           }
           final siteId = path.split('/')[4];
-          return http.Response(jsonEncode({'assets': assets[siteId] ?? []}), 200);
+          final includeRetired = request.url.queryParameters['includeRetired'] == 'true';
+          final siteAssets = assets[siteId] ?? [];
+          final sent = includeRetired
+              ? siteAssets
+              : [
+                  for (final a in siteAssets)
+                    if (a['isActive'] != false) a,
+                ];
+          return http.Response(jsonEncode({'assets': sent}), 200);
         }
         if (request.method == 'POST' && path == '/api/maintenance/assets') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;
@@ -263,6 +289,27 @@ class FakeWire {
             criticality: sent['criticality'] as String,
           );
           return http.Response(jsonEncode({'asset': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/maintenance/assets/')) {
+          final id = path.split('/').last;
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          assetPatches.add((id, body));
+          if (assetPatchGate != null) await assetPatchGate!.future;
+          if (patchAssetStatus != 200) {
+            return http.Response(jsonEncode({'message': patchAssetMessage}), patchAssetStatus);
+          }
+          Map<String, dynamic>? updated;
+          assets = {
+            for (final entry in assets.entries)
+              entry.key: [
+                for (final a in entry.value)
+                  if (a['id'] == id) (updated = {...a, ...body}) else a,
+              ],
+          };
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Asset does not exist.'}), 404);
+          }
+          return http.Response(jsonEncode({'asset': updated}), 200);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {
