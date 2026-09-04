@@ -86,6 +86,16 @@ async function postAsset(token, body) {
   return { response, payload };
 }
 
+async function patchAsset(token, id, body) {
+  const response = await fetch(`${base}/api/maintenance/assets/${id}`, {
+    method: 'PATCH',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
 function assetBody(orgUnitId, overrides = {}) {
   return {
     orgUnitId,
@@ -332,4 +342,246 @@ test('an unknown Site is a 404, not an empty list — the same answer People giv
   // The sibling endpoint this consistency claim rests on.
   const peers = await fetch(`${base}/api/people/sites/999999999/org-units`, { headers: admin.token });
   assert.strictEqual(peers.status, 404);
+});
+
+// ---------------------------------------------------------------------------
+// Nesting and retiring (issue #61).
+// ---------------------------------------------------------------------------
+
+test('an Asset can be recorded as part of another Asset, and the parent comes back on the row', async () => {
+  const parent = await postAsset(admin.token, assetBody(grantedLine.id, { name: 'Machine' }));
+  const child = await postAsset(admin.token, assetBody(grantedLine.id, { name: 'Gearbox' }));
+
+  const { response, payload } = await patchAsset(admin.token, child.payload.asset.id, {
+    parentId: parent.payload.asset.id
+  });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.asset.parentId, String(parent.payload.asset.id));
+});
+
+test('detaching with parentId: null works', async () => {
+  const parent = await postAsset(admin.token, assetBody(grantedLine.id));
+  const child = await postAsset(admin.token, assetBody(grantedLine.id));
+  const nested = await patchAsset(admin.token, child.payload.asset.id, { parentId: parent.payload.asset.id });
+  assert.strictEqual(nested.response.status, 200);
+
+  const { response, payload } = await patchAsset(admin.token, child.payload.asset.id, { parentId: null });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.asset.parentId, null);
+});
+
+test('retiring succeeds, and the Asset is out of the default register but present with includeRetired=true', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const { response, payload } = await patchAsset(admin.token, created.payload.asset.id, { isActive: false });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.asset.isActive, false);
+
+  const defaultList = await fetch(`${base}/api/maintenance/sites/${site}/assets`, { headers: admin.token });
+  const { assets: defaultAssets } = await defaultList.json();
+  assert.ok(!defaultAssets.some((a) => a.code === created.payload.asset.code));
+
+  const withRetired = await fetch(`${base}/api/maintenance/sites/${site}/assets?includeRetired=true`, {
+    headers: admin.token
+  });
+  const { assets: retiredAssets } = await withRetired.json();
+  assert.ok(retiredAssets.some((a) => a.code === created.payload.asset.code));
+});
+
+test('reinstating brings a retired Asset back into the default register', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  await patchAsset(admin.token, created.payload.asset.id, { isActive: false });
+
+  const { response, payload } = await patchAsset(admin.token, created.payload.asset.id, { isActive: true });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.asset.isActive, true);
+
+  const defaultList = await fetch(`${base}/api/maintenance/sites/${site}/assets`, { headers: admin.token });
+  const { assets: defaultAssets } = await defaultList.json();
+  assert.ok(defaultAssets.some((a) => a.code === created.payload.asset.code));
+});
+
+test('retiring an Asset that still has active children is refused — parts are still fitted to it', async () => {
+  const parent = await postAsset(admin.token, assetBody(grantedLine.id));
+  const child = await postAsset(admin.token, assetBody(grantedLine.id));
+  const nested = await patchAsset(admin.token, child.payload.asset.id, { parentId: parent.payload.asset.id });
+  assert.strictEqual(nested.response.status, 200);
+
+  const { response, payload } = await patchAsset(admin.token, parent.payload.asset.id, { isActive: false });
+  assert.strictEqual(response.status, 409);
+  assert.strictEqual(payload.message, 'this Asset still has parts fitted to it');
+});
+
+test("an Account without a write Grant reaching the Asset's Org Unit is refused", async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const { response, payload } = await patchAsset(readOnlyAccount.token, created.payload.asset.id, {
+    isActive: false
+  });
+  assert.strictEqual(response.status, 403);
+  assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+});
+
+test('write scope on the child is not enough to nest it under a parent outside that scope', async () => {
+  // writerAccount's only Grant is on grantedArea (an ancestor of grantedLine),
+  // so it reaches the child but has never been granted anything at
+  // otherSiteArea, where the proposed parent sits.
+  const parent = await postAsset(admin.token, assetBody(otherSiteArea.id));
+  const child = await postAsset(admin.token, assetBody(grantedLine.id));
+
+  const { response, payload } = await patchAsset(writerAccount.token, child.payload.asset.id, {
+    parentId: parent.payload.asset.id
+  });
+  assert.strictEqual(response.status, 403);
+  assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+});
+
+test('an Asset cannot be made part of itself', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const { response, payload } = await patchAsset(admin.token, created.payload.asset.id, {
+    parentId: created.payload.asset.id
+  });
+  assert.strictEqual(response.status, 400);
+  assert.strictEqual(payload.message, 'an Asset cannot be part of itself');
+});
+
+test('a cycle is refused: A -> B -> C, then A cannot be made part of C', async () => {
+  const a = await postAsset(admin.token, assetBody(grantedLine.id, { name: 'A' }));
+  const b = await postAsset(admin.token, assetBody(grantedLine.id, { name: 'B' }));
+  const c = await postAsset(admin.token, assetBody(grantedLine.id, { name: 'C' }));
+
+  const ab = await patchAsset(admin.token, b.payload.asset.id, { parentId: a.payload.asset.id });
+  assert.strictEqual(ab.response.status, 200);
+  const bc = await patchAsset(admin.token, c.payload.asset.id, { parentId: b.payload.asset.id });
+  assert.strictEqual(bc.response.status, 200);
+
+  const { response, payload } = await patchAsset(admin.token, a.payload.asset.id, {
+    parentId: c.payload.asset.id
+  });
+  assert.strictEqual(response.status, 400);
+  assert.strictEqual(payload.message, 'an Asset cannot be part of one of its own parts');
+});
+
+test('PATCH /assets/abc (malformed id) is a clean 404, not a 500', async () => {
+  const { response } = await patchAsset(admin.token, 'abc', { isActive: false });
+  assert.strictEqual(response.status, 404);
+});
+
+test('an empty body is refused', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const { response, payload } = await patchAsset(admin.token, created.payload.asset.id, {});
+  assert.strictEqual(response.status, 400);
+  assert.strictEqual(payload.message, 'isActive and/or parentId is required');
+});
+
+// ---------------------------------------------------------------------------
+// Review fixes for issue #61.
+// ---------------------------------------------------------------------------
+
+// Fix A: a combined PATCH can half-commit — setAssetParent and setAssetActive
+// are separate transactions, so refuse the combination outright rather than
+// let a caller see only a 409/500 while the parent has already changed.
+test('a PATCH naming both isActive and parentId is refused, and the Asset is unchanged', async () => {
+  const parent = await postAsset(admin.token, assetBody(grantedLine.id));
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+
+  const { response, payload } = await patchAsset(admin.token, created.payload.asset.id, {
+    parentId: parent.payload.asset.id,
+    isActive: false
+  });
+  assert.strictEqual(response.status, 400);
+  assert.strictEqual(
+    payload.message,
+    'isActive and parentId cannot be changed in the same request; send them as separate requests'
+  );
+
+  const { rows: [row] } = await pool.query(
+    'SELECT parent_id, is_active FROM assets WHERE id = $1',
+    [created.payload.asset.id]
+  );
+  assert.strictEqual(row.parent_id, null);
+  assert.strictEqual(row.is_active, true);
+});
+
+// Fix C: nesting under a retired parent, and reinstating a child whose parent
+// is retired, are both refused — the invariant is that an active Asset never
+// has a retired parent, and a retired Asset never has active parts.
+test('nesting under a retired parent is refused', async () => {
+  const parent = await postAsset(admin.token, assetBody(grantedLine.id));
+  const retire = await patchAsset(admin.token, parent.payload.asset.id, { isActive: false });
+  assert.strictEqual(retire.response.status, 200);
+
+  const child = await postAsset(admin.token, assetBody(grantedLine.id));
+  const { response, payload } = await patchAsset(admin.token, child.payload.asset.id, {
+    parentId: parent.payload.asset.id
+  });
+  assert.strictEqual(response.status, 409);
+  assert.strictEqual(payload.message, 'that Asset has been retired');
+});
+
+test('reinstating an Asset whose parent is retired is refused', async () => {
+  const parent = await postAsset(admin.token, assetBody(grantedLine.id));
+  const child = await postAsset(admin.token, assetBody(grantedLine.id));
+
+  const nested = await patchAsset(admin.token, child.payload.asset.id, { parentId: parent.payload.asset.id });
+  assert.strictEqual(nested.response.status, 200);
+
+  // Retire the child first (it has no children of its own, so this succeeds),
+  // then retire the parent — leaving both retired and nested.
+  const retireChild = await patchAsset(admin.token, child.payload.asset.id, { isActive: false });
+  assert.strictEqual(retireChild.response.status, 200);
+  const retireParent = await patchAsset(admin.token, parent.payload.asset.id, { isActive: false });
+  assert.strictEqual(retireParent.response.status, 200);
+
+  const { response, payload } = await patchAsset(admin.token, child.payload.asset.id, { isActive: true });
+  assert.strictEqual(response.status, 409);
+  assert.strictEqual(payload.message, "this Asset's parent has been retired");
+});
+
+// Fix E: the parent-scope rule now guards the CURRENT parent too, not just
+// the proposed one — detaching or moving a part off a machine alters that
+// machine's composition just as attaching does.
+test('detaching with write scope on the child but not on its current parent is refused', async () => {
+  // writerAccount's only Grant is on grantedArea; otherSiteArea is outside it.
+  const parent = await postAsset(admin.token, assetBody(otherSiteArea.id));
+  const child = await postAsset(admin.token, assetBody(grantedLine.id));
+
+  const nested = await patchAsset(admin.token, child.payload.asset.id, { parentId: parent.payload.asset.id });
+  assert.strictEqual(nested.response.status, 200);
+
+  const { response, payload } = await patchAsset(writerAccount.token, child.payload.asset.id, { parentId: null });
+  assert.strictEqual(response.status, 403);
+  assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+});
+
+test('moving an Asset from X to Y without scope on X is refused', async () => {
+  // siblingWriter's only Grant is on otherLine. X sits at grantedLine, where
+  // siblingWriter has never been granted anything.
+  const x = await postAsset(admin.token, assetBody(grantedLine.id, { name: 'X' }));
+  const y = await postAsset(admin.token, assetBody(otherLine.id, { name: 'Y' }));
+  const child = await postAsset(admin.token, assetBody(otherLine.id));
+
+  const nested = await patchAsset(admin.token, child.payload.asset.id, { parentId: x.payload.asset.id });
+  assert.strictEqual(nested.response.status, 200);
+
+  const { response, payload } = await patchAsset(siblingWriter.token, child.payload.asset.id, {
+    parentId: y.payload.asset.id
+  });
+  assert.strictEqual(response.status, 403);
+  assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+});
+
+// Fix F: nesting promotes a default 'machine' to 'component', and detaching
+// restores 'machine' — 'assembly' or an already-nested 'component' is left
+// alone, but no test above needs that branch to make the point.
+test('nesting promotes a default machine to component, and detaching restores machine', async () => {
+  const parent = await postAsset(admin.token, assetBody(grantedLine.id));
+  const child = await postAsset(admin.token, assetBody(grantedLine.id));
+  assert.strictEqual(child.payload.asset.assetLevel, 'machine');
+
+  const nested = await patchAsset(admin.token, child.payload.asset.id, { parentId: parent.payload.asset.id });
+  assert.strictEqual(nested.response.status, 200);
+  assert.strictEqual(nested.payload.asset.assetLevel, 'component');
+
+  const detached = await patchAsset(admin.token, child.payload.asset.id, { parentId: null });
+  assert.strictEqual(detached.response.status, 200);
+  assert.strictEqual(detached.payload.asset.assetLevel, 'machine');
 });

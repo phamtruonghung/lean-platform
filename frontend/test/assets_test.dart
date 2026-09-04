@@ -14,8 +14,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/asset_form_dialog.dart';
+import 'package:lean_platform/maintenance/assets_bloc.dart';
 import 'package:lean_platform/maintenance/assets_screen.dart';
+import 'package:lean_platform/maintenance/maintenance_api.dart';
 import 'package:lean_platform/maintenance/org_unit_chooser.dart';
+import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
@@ -29,6 +32,8 @@ FakeWire wireWith({
   Map<String, List<Map<String, dynamic>>>? assets,
   int assetsStatus = 200,
   int createAssetStatus = 201,
+  int patchAssetStatus = 200,
+  String patchAssetMessage = 'That Asset could not be changed.',
 }) =>
     FakeWire(
       role: role,
@@ -41,6 +46,8 @@ FakeWire wireWith({
       assets: assets,
       assetsStatus: assetsStatus,
       createAssetStatus: createAssetStatus,
+      patchAssetStatus: patchAssetStatus,
+      patchAssetMessage: patchAssetMessage,
     );
 
 void main() {
@@ -309,5 +316,382 @@ void main() {
     expect(find.byKey(AssetsScreen.failedKey), findsNothing);
     expect(find.text('Da Nang conveyor'), findsOneWidget);
     expect(find.text('Press 1'), findsNothing);
+  });
+
+  testWidgets('nesting is visible in the register, indented beneath its own machine',
+      (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [
+          assetJson('7', 'PRESS-1', 'Press 1'),
+          assetJson('8', 'MOTOR-1', 'Drive motor', parentId: '7'),
+        ],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.rowKey('8')), findsOneWidget);
+
+    final parentLeft = tester.getTopLeft(find.byKey(AssetsScreen.rowKey('7'))).dx;
+    final childLeft = tester.getTopLeft(find.byKey(AssetsScreen.rowKey('8'))).dx;
+    expect(childLeft, greaterThan(parentLeft));
+  });
+
+  testWidgets('an Asset whose parent is not in this list still renders as a root',
+      (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [
+          assetJson('7', 'PRESS-1', 'Press 1'),
+          // '999' names an Asset in another Site, or a retired one filtered
+          // out — either way, not a row this list was given.
+          assetJson('9', 'ORPHAN-1', 'Orphan unit', parentId: '999'),
+        ],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    expect(find.byKey(AssetsScreen.rowKey('9')), findsOneWidget);
+    final rootLeft = tester.getTopLeft(find.byKey(AssetsScreen.rowKey('7'))).dx;
+    final orphanLeft = tester.getTopLeft(find.byKey(AssetsScreen.rowKey('9'))).dx;
+    expect(orphanLeft, rootLeft);
+  });
+
+  testWidgets(
+      'a cycle in the parent links still renders every Asset, flattened rather than dropped',
+      (tester) async {
+    // The server refuses to create a cycle; this is defensive only, proving
+    // the register does not silently lose rows if malformed data ever
+    // reached the client some other way.
+    final wire = wireWith(assets: {
+      '1': [
+        assetJson('7', 'PRESS-1', 'Press 1', parentId: '8'),
+        assetJson('8', 'PRESS-2', 'Press 2', parentId: '7'),
+      ],
+    });
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.rowKey('8')), findsOneWidget);
+  });
+
+  testWidgets('a retired Asset is absent until asked for, then visibly marked as retired',
+      (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [
+          assetJson('7', 'PRESS-1', 'Press 1'),
+          assetJson('8', 'PRESS-2', 'Press 2', isActive: false),
+        ],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    expect(find.text('Press 1'), findsOneWidget);
+    expect(find.text('Press 2'), findsNothing);
+    expect(find.byKey(AssetsScreen.rowKey('8')), findsNothing);
+
+    await tapIn(tester, find.byKey(AssetsScreen.showRetiredKey));
+
+    expect(find.text('Press 2'), findsOneWidget);
+    expect(find.byKey(AssetsScreen.retiredChipKey('8')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.retiredChipKey('7')), findsNothing);
+  });
+
+  testWidgets("showing retired survives a Site switch", (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1', isActive: false)],
+        '2': [assetJson('9', 'CONV-9', 'Da Nang conveyor', isActive: false)],
+      },
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh'), siteJson('2', 'DN', 'Da Nang')],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    expect(find.text('Press 1'), findsNothing);
+    await tapIn(tester, find.byKey(AssetsScreen.showRetiredKey));
+    expect(find.text('Press 1'), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AssetsScreen.siteKey));
+    await tapIn(tester, find.text('Da Nang').last);
+
+    expect(find.text('Da Nang conveyor'), findsOneWidget);
+  });
+
+  testWidgets(
+      'retiring asks first, sends exactly one PATCH, and drops the row while retired ones '
+      'are hidden', (tester) async {
+    final wire = wireWith(assets: {
+      '1': [assetJson('7', 'PRESS-1', 'Press 1')],
+    });
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.retireKey('7')));
+    expect(find.text('Retire this Asset?'), findsOneWidget);
+    await tapIn(tester, find.widgetWithText(TextButton, 'Cancel'));
+    expect(wire.assetPatches, isEmpty);
+
+    await tapIn(tester, find.byKey(AssetsScreen.retireKey('7')));
+    await tapIn(tester, find.widgetWithText(FilledButton, 'Retire'));
+
+    expect(wire.assetPatches.length, 1);
+    expect(wire.assetPatches.single.$1, '7');
+    expect(wire.assetPatches.single.$2, {'isActive': false});
+    // Retired ones are hidden by default, so the row simply drops out.
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsNothing);
+  });
+
+  testWidgets('reinstating a shown retired Asset sends exactly one PATCH and asks nothing',
+      (tester) async {
+    final wire = wireWith(assets: {
+      '1': [assetJson('7', 'PRESS-1', 'Press 1', isActive: false)],
+    });
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+    await tapIn(tester, find.byKey(AssetsScreen.showRetiredKey));
+    expect(find.byKey(AssetsScreen.reinstateKey('7')), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AssetsScreen.reinstateKey('7')));
+
+    expect(wire.assetPatches.length, 1);
+    expect(wire.assetPatches.single.$1, '7');
+    expect(wire.assetPatches.single.$2, {'isActive': true});
+    expect(find.byKey(AssetsScreen.retiredChipKey('7')), findsNothing);
+    expect(find.byKey(AssetsScreen.retireKey('7')), findsOneWidget);
+  });
+
+  testWidgets(
+      'nesting under another Asset sends { parentId }, and detaching sends { parentId: null }',
+      (tester) async {
+    final wire = wireWith(assets: {
+      '1': [
+        assetJson('7', 'PRESS-1', 'Press 1'),
+        assetJson('8', 'PRESS-2', 'Press 2'),
+      ],
+    });
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.nestKey('8')));
+    expect(find.byKey(AssetsScreen.parentChooserKey), findsOneWidget);
+    await tapIn(tester, find.byKey(AssetsScreen.parentOptionKey('7')));
+
+    expect(wire.assetPatches.length, 1);
+    expect(wire.assetPatches.single.$1, '8');
+    expect(wire.assetPatches.single.$2, {'parentId': '7'});
+    expect(find.byKey(AssetsScreen.detachKey('8')), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AssetsScreen.detachKey('8')));
+
+    expect(wire.assetPatches.length, 2);
+    expect(wire.assetPatches.last.$1, '8');
+    expect(wire.assetPatches.last.$2, {'parentId': null});
+    expect(find.byKey(AssetsScreen.nestKey('8')), findsOneWidget);
+  });
+
+  testWidgets('the parent chooser excludes the Asset itself and its own descendants',
+      (tester) async {
+    final wire = wireWith(assets: {
+      '1': [
+        assetJson('7', 'PRESS-1', 'Press 1'),
+        assetJson('8', 'MOTOR-1', 'Drive motor', parentId: '7'),
+        assetJson('9', 'PRESS-2', 'Press 2'),
+      ],
+    });
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.nestKey('7')));
+    expect(find.byKey(AssetsScreen.parentOptionKey('7')), findsNothing);
+    expect(find.byKey(AssetsScreen.parentOptionKey('8')), findsNothing);
+    expect(find.byKey(AssetsScreen.parentOptionKey('9')), findsOneWidget);
+  });
+
+  testWidgets(
+      'the parent chooser excludes a retired Asset too, even with "Show retired" on',
+      (tester) async {
+    final wire = wireWith(assets: {
+      '1': [
+        assetJson('7', 'PRESS-1', 'Press 1'),
+        assetJson('8', 'PRESS-2', 'Press 2', isActive: false),
+      ],
+    });
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    // The retired Asset is only on screen at all once asked for.
+    await tapIn(tester, find.byKey(AssetsScreen.showRetiredKey));
+    expect(find.byKey(AssetsScreen.retiredChipKey('8')), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AssetsScreen.nestKey('7')));
+    expect(find.byKey(AssetsScreen.parentChooserKey), findsOneWidget);
+    // The backend rejects nesting under a retired Asset with 409 — not
+    // offered here at all, rather than earning the caller a refusal after
+    // they had already chosen it.
+    expect(find.byKey(AssetsScreen.parentOptionKey('8')), findsNothing);
+  });
+
+  testWidgets(
+      'a 409 refusal for parts still fitted surfaces its message and leaves the row as it was',
+      (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1')],
+      },
+      patchAssetStatus: 409,
+      patchAssetMessage: 'This Asset still has active parts fitted.',
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.retireKey('7')));
+    await tapIn(tester, find.widgetWithText(FilledButton, 'Retire'));
+
+    expect(find.text('This Asset still has active parts fitted.'), findsOneWidget);
+    expect(find.byKey(AssetsScreen.retireKey('7')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.reinstateKey('7')), findsNothing);
+  });
+
+  // The two tests below replace a single prior test, "a second row's action
+  // while one is already in flight is reported, not silently dropped", which
+  // tapped a second row's action and expected the confirmation dialog to
+  // open and then report a snackbar. That path is now unreachable from the
+  // UI: row actions are disabled the moment any mutation is in flight (see
+  // the fix to `_AssetsList`/`_AssetRow` below), so a widget test can no
+  // longer reach a second row's confirm dialog at all. The coverage is split
+  // honestly instead: a widget-level test that the other row's controls are
+  // actually disabled, and a Bloc-level test — bypassing the UI, dispatching
+  // straight at the Bloc — that pins the defence-in-depth guard in
+  // `_onActiveToggled`/`_onParentChanged`, which still exists and still fires
+  // even though the UI can no longer trigger it.
+
+  testWidgets(
+      "another row's actions are disabled while one mutation is already in flight, so its "
+      'confirmation dialog cannot even be reached', (tester) async {
+    final wire = wireWith(assets: {
+      '1': [
+        assetJson('7', 'PRESS-1', 'Press 1'),
+        assetJson('8', 'PRESS-2', 'Press 2'),
+      ],
+    })
+      ..assetPatchGate = Completer<void>();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    // Row 7's retirement starts, and hangs on the gate.
+    await tapIn(tester, find.byKey(AssetsScreen.retireKey('7')));
+    await tapIn(tester, find.widgetWithText(FilledButton, 'Retire'));
+
+    // Row 8's own actions are disabled outright while row 7 is still busy —
+    // not merely reported after the fact.
+    final row8Retire = tester.widget<OutlinedButton>(find.byKey(AssetsScreen.retireKey('8')));
+    expect(row8Retire.onPressed, isNull);
+    final row8Nest = tester.widget<OutlinedButton>(find.byKey(AssetsScreen.nestKey('8')));
+    expect(row8Nest.onPressed, isNull);
+
+    // Tapping a disabled control is a no-op: no dialog opens, no event
+    // reaches the Bloc.
+    await tapIn(tester, find.byKey(AssetsScreen.nestKey('8')));
+    expect(find.byKey(AssetsScreen.parentChooserKey), findsNothing);
+    expect(wire.assetPatches.length, 1);
+
+    wire.assetPatchGate!.complete();
+    await tester.pumpAndSettle();
+    expect(wire.assetPatches.length, 1);
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsNothing);
+  });
+
+  test(
+      'a racing event dispatched straight at the Bloc while a mutation is already in flight is '
+      'still reported, not silently dropped — the UI-level guard above cannot reach this path, '
+      'but the Bloc must still defend it on its own', () async {
+    final wire = wireWith(assets: {
+      '1': [
+        assetJson('7', 'PRESS-1', 'Press 1'),
+        assetJson('8', 'PRESS-2', 'Press 2'),
+      ],
+    })
+      ..assetPatchGate = Completer<void>();
+    final bloc = AssetsBloc(
+      maintenanceApi: MaintenanceApi(client: wire.client),
+      peopleApi: PeopleApi(client: wire.client),
+      authGateway: FakeAuthGateway(accessToken: 'a-token'),
+    );
+    addTearDown(bloc.close);
+
+    bloc.add(const AssetsStarted());
+    await pumpEventQueue();
+    expect((bloc.state as AssetsLoaded).assets.length, 2);
+
+    // Row 7's retirement starts, and hangs on the gate.
+    bloc.add(const AssetActiveToggled(assetId: '7', isActive: false));
+    await pumpEventQueue();
+    expect((bloc.state as AssetsLoaded).mutatingAssetId, '7');
+
+    // Row 8's own event races in directly, bypassing whatever the UI would
+    // have disabled.
+    bloc.add(const AssetActiveToggled(assetId: '8', isActive: false));
+    await pumpEventQueue();
+
+    expect(wire.assetPatches.length, 1);
+    expect((bloc.state as AssetsLoaded).notice, AssetsBloc.inFlightMessage);
+
+    wire.assetPatchGate!.complete();
+    await pumpEventQueue();
   });
 }

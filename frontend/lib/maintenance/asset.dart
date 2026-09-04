@@ -43,6 +43,8 @@ class Asset {
     required this.orgUnitId,
     required this.orgUnitName,
     required this.siteId,
+    required this.isActive,
+    required this.parentId,
   });
 
   final String id;
@@ -61,6 +63,16 @@ class Asset {
   /// never sends it. Carried so the register can tell an Asset just created
   /// somewhere else from one belonging to the Site on screen.
   final String siteId;
+
+  /// False once retired (issue #61). Retiring is not a deletion — the row
+  /// stays on the register, only excluded from the default read.
+  final bool isActive;
+
+  /// The Asset it is nested beneath, or null for a top-level one. This may
+  /// name an id that is not in whatever list this Asset arrived in — its
+  /// parent can sit in another Site, or be retired and filtered out — so a
+  /// non-null value here is never assumed to resolve.
+  final String? parentId;
 
   String get typeLabel => _labelFor(assetType, [for (final t in AssetType.values) (t.wire, t.label)]);
   String get criticalityLabel =>
