@@ -19,6 +19,7 @@ const { log } = require('./platform/log');
 const health = require('./platform/health');
 const lifecycle = require('./platform/lifecycle');
 const people = require('./modules/people');
+const maintenance = require('./modules/maintenance');
 
 const app = express();
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
@@ -42,6 +43,7 @@ const healthRoutes = health.mount(app);
 // an omission (ADR-0002).
 app.use('/api', healthRoutes);
 app.use('/api/people', people.router);
+app.use('/api/maintenance', maintenance.router);
 
 // An unknown path under /api answers in JSON. Express's default 404 is an HTML
 // page, which a client that asked for JSON cannot parse — so a typo in a URL

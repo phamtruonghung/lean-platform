@@ -7,6 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../auth/awaiting_approval_screen.dart';
 import '../auth/sign_in_screen.dart';
 import '../home_screen.dart';
+import '../maintenance/assets_bloc.dart';
+import '../maintenance/assets_screen.dart';
+import '../maintenance/maintenance_api.dart';
 import '../people/accounts_bloc.dart';
 import '../people/accounts_screen.dart';
 import '../people/approval_queue_bloc.dart';
@@ -25,6 +28,7 @@ abstract final class Routes {
   static const String awaitingApproval = '/awaiting-approval';
   static const String approvals = '/approvals';
   static const String accounts = '/accounts';
+  static const String assets = '/assets';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -112,6 +116,36 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const ApprovalQueueRequested()),
                 child: const ApprovalQueueScreen(),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.assets,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              // The same per-Screen access check the two administrator Screens
+              // make, against a Module's role set rather than a single role:
+              // leaving the destination out of the sidebar hides the door,
+              // this locks it for a caller who types the address.
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<AssetsBloc>(
+                create: (context) => AssetsBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const AssetsStarted()),
+                child: AssetsScreen(
+                  // A caller with no write Grant anywhere is offered no way to
+                  // add: the server would refuse it, so the interface does not
+                  // invite it (#55, story 39). An administrator reaches
+                  // everywhere by role and holds no Grant rows at all, which is
+                  // exactly what `everywhere` means (issue #43).
+                  canPlaceAnAsset: account.account.orgUnitScope.everywhere ||
+                      account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
+                ),
               );
             },
           ),

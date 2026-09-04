@@ -18,6 +18,21 @@ abstract final class Roles {
   static const String admin = 'admin';
 }
 
+/// The roles that earn a whole Module, named once so the sidebar and the
+/// route guard cannot disagree about who is let in. Maintenance is offered to
+/// supervisor, engineer, manager and administrator, and not to operator: the
+/// workflow an operator needs is raising a request, which this Module does not
+/// build yet, and a Screen where every write would be refused is exactly what
+/// the Approval queue and the Accounts Screen already avoid (#55).
+abstract final class ModuleRoles {
+  static const Set<String> maintenance = {
+    Roles.supervisor,
+    Roles.engineer,
+    Roles.manager,
+    Roles.admin,
+  };
+}
+
 /// One entry in the Shell's sidebar.
 @immutable
 class Destination {
@@ -50,6 +65,12 @@ const List<Destination> platformDestinations = [
     icon: Icons.how_to_reg_outlined,
     path: Routes.approvals,
     roles: {Roles.admin},
+  ),
+  Destination(
+    label: 'Assets',
+    icon: Icons.precision_manufacturing_outlined,
+    path: Routes.assets,
+    roles: ModuleRoles.maintenance,
   ),
   Destination(
     label: 'Accounts',

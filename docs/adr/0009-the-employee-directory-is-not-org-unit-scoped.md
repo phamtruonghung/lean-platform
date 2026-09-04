@@ -63,3 +63,48 @@ the Account rather than the Employee. This is the same shape of trade-off
 ADR-0008 records for entry points: a decision explicit enough that the next
 person to touch this area is choosing to extend it or to override it, not
 discovering it by accident.
+
+## The Asset register carries the same reasoning, and deliberately diverges from its sibling
+
+Added 2026-09-04 (issue #56). `GET /api/maintenance/sites/:siteId/assets`
+(asset-routes.js) sits behind `authenticate` + `requireActive` only, exactly
+the shape this ADR already gives the Employee directory: no `canAct`, no
+`requireOrgUnitScope`, no per-row filter by the caller's Grants. Every
+approved Account can list every Asset at any Site, whatever their own Grants
+reach, for the same reason a directory does — "what machines are on the line
+beside mine" is a thing a supervisor needs to know, not a thing they need
+permission to act on. Writing an Asset is the opposite: `POST
+/api/maintenance/assets` requires a write Grant reaching the Org Unit named,
+because placing an Asset in the tree is what decides who may later raise work
+against it (issue #55's own framing), and that is exactly the kind of act Org
+Unit scope exists to bound.
+
+This deliberately diverges from its own closest sibling: People's own `GET
+/api/people/sites/:siteId/org-units` is `requireSiteScope`'d — an Account with
+no Grant anywhere in a Site cannot browse that Site's Org Unit tree at all.
+Recorded here, next to the ADR that supplies the reasoning, so the difference
+reads as a decision rather than as an inconsistency the next person "fixes" by
+making the two match. There is no server-side role gate on the Asset read
+either — every role that reaches `authenticate` + `requireActive` may call it
+— and that too is deliberate: the same route serves whichever roles the Shell
+offers the Maintenance destination to (issue #55: supervisor, engineer,
+manager, administrator, never operator), and the client-side destination gate
+is what keeps operator from reaching it in practice, exactly as ADR-0006's own
+`router` note already treats the mount point as outside what a role check
+gates.
+
+The write has no role gate either, and that is the same decision, not an
+oversight left over from the read case. `POST /api/maintenance/assets` sits
+behind `authenticate` + `requireActive` + `requireOrgUnitWriteScope` — no
+`role === 'admin'` check, no allow-list of roles anywhere in the middleware
+chain. An Account with role `operator`, holding a write Grant reaching the Org
+Unit named, CAN create an Asset over the API, even though the Maintenance
+destination is never offered to operator in the Shell. This is this ADR's own
+principle applied without an exception for writes: role decides which Screens
+are offered, Grants decide where an Account may act — the two are orthogonal,
+and a role that does not earn a Screen is not the same claim as a role that
+may not act. It also matches People's own precedent: `POST
+/sites/:siteId/org-units` is likewise Grant-scoped with no role check at all.
+Pinned by a test in `assets.test.js` so a future reader who takes the missing
+role check for a bug finds one saying otherwise, rather than "fixing" it into
+an inconsistency with this ADR.

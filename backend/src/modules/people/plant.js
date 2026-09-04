@@ -104,14 +104,25 @@ async function listSites() {
   return rows.map(toSite);
 }
 
-async function getSite(id) {
-  if (id === null) throw notFound('Site');
+// The null-returning form, mirroring findOrgUnit below exactly (issue #56):
+// what another Module calls through index.js. Total on purpose — anything
+// that is not a real id answers null rather than reaching the database,
+// because parseId deliberately stays on this side of the boundary
+// (ADR-0006 clause 3).
+async function findSite(id) {
+  if (parseId(id) === null) return null;
   const { rows } = await getPool().query(
     `SELECT ${SITE_COLUMNS} FROM sites WHERE id = $1`,
     [id]
   );
-  if (!rows[0]) throw notFound('Site');
-  return toSite(rows[0]);
+  return rows[0] ? toSite(rows[0]) : null;
+}
+
+// This Module's own form: the 404 every route in People already relies on.
+async function getSite(id) {
+  const site = await findSite(id);
+  if (!site) throw notFound('Site');
+  return site;
 }
 
 // ---------------------------------------------------------------------------
@@ -366,6 +377,7 @@ module.exports = {
   createSite,
   listSites,
   getSite,
+  findSite,
   createOrgUnit,
   listOrgUnits,
   listOrgUnitsByIds,
