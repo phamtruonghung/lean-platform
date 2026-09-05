@@ -44,6 +44,16 @@ routing: `/api/*` goes to the backend, everything else to the Flutter app.
 Host ports sit one above `maintenance-management`'s, which sit one above
 `employee-management`'s. All three are routinely run side by side.
 
+### Reviewing the app locally
+
+`docker compose up` alone leaves the schema unmigrated, since compose has no
+equivalent of the migration step `deploy/deploy.sh` runs before starting
+production. `./scripts/review.sh` does the equivalent locally — build, wait for
+Postgres, migrate, wait for the app to answer — so a reviewer gets one command
+that ends at a stack that is actually usable, at <http://localhost:3002>, rather
+than a backend erroring against an empty database. `./scripts/review.sh help`
+lists `down`, `reset`, `logs`, and `status` alongside the default `up`.
+
 ## Tests
 
 The Platform has **one test seam**: HTTP against the running API, with a real
