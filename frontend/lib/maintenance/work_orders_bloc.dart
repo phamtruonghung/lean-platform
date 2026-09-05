@@ -72,6 +72,20 @@ class WorkOrderRaiseConfirmed extends WorkOrdersEvent {
   final String? description;
 }
 
+/// The assign dialog has decided: this Work order goes to this Employee
+/// (issue #62). Same contract as [WorkOrderRaiseConfirmed] — the dialog
+/// decides, the Bloc only ever sees a decision already made. [workOrderId] is
+/// the Work order being assigned; [employeeId] is the chosen assignee.
+class WorkOrderAssignConfirmed extends WorkOrdersEvent {
+  const WorkOrderAssignConfirmed({
+    required this.workOrderId,
+    required this.employeeId,
+  });
+
+  final String workOrderId;
+  final String employeeId;
+}
+
 sealed class WorkOrdersState {
   const WorkOrdersState();
 }
@@ -91,6 +105,8 @@ class WorkOrdersLoaded extends WorkOrdersState {
     this.orgUnitFilterName,
     this.isRaising = false,
     this.raiseFailure,
+    this.isAssigning = false,
+    this.assignFailure,
     this.notice,
   });
 
@@ -117,6 +133,15 @@ class WorkOrdersLoaded extends WorkOrdersState {
   /// form.
   final String? raiseFailure;
 
+  /// An assignment is in flight. Kept on the state, not only in the dialog,
+  /// so the Screen can refuse a second assignment to the same row while the
+  /// first is still being sent.
+  final bool isAssigning;
+
+  /// Why the last assignment did not land. Reported by the open assign
+  /// dialog, which stays open on a refusal.
+  final String? assignFailure;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [WorkOrdersUnavailable].
   final String? notice;
@@ -137,6 +162,8 @@ class WorkOrdersLoaded extends WorkOrdersState {
     bool clearOrgUnitFilter = false,
     bool? isRaising,
     String? raiseFailure,
+    bool? isAssigning,
+    String? assignFailure,
     String? notice,
   }) =>
       WorkOrdersLoaded(
@@ -149,6 +176,8 @@ class WorkOrdersLoaded extends WorkOrdersState {
             clearOrgUnitFilter ? null : (orgUnitFilterName ?? this.orgUnitFilterName),
         isRaising: isRaising ?? this.isRaising,
         raiseFailure: raiseFailure,
+        isAssigning: isAssigning ?? this.isAssigning,
+        assignFailure: assignFailure,
         notice: notice,
       );
 }
@@ -172,6 +201,7 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
     on<WorkOrdersOrgUnitFilterSelected>(_onOrgUnitFilterSelected);
     on<WorkOrdersOrgUnitFilterCleared>(_onOrgUnitFilterCleared);
     on<WorkOrderRaiseConfirmed>(_onRaiseConfirmed);
+    on<WorkOrderAssignConfirmed>(_onAssignConfirmed);
   }
 
   final MaintenanceApi _maintenance;
@@ -370,5 +400,46 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
   static int _byPriorityThenNumber(WorkOrder a, WorkOrder b) {
     final byPriority = a.priority.compareTo(b.priority);
     return byPriority != 0 ? byPriority : a.workOrderNo.compareTo(b.workOrderNo);
+  }
+
+  Future<void> _onAssignConfirmed(
+    WorkOrderAssignConfirmed event,
+    Emitter<WorkOrdersState> emit,
+  ) async {
+    final current = state;
+    if (current is! WorkOrdersLoaded || current.isAssigning) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(assignFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isAssigning: true));
+    try {
+      final assigned = await _maintenance.assignWorkOrder(
+        token,
+        event.workOrderId,
+        employeeId: event.employeeId,
+      );
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      // Swap the assigned row in place (same id), so the assignee name the
+      // server returns appears on the row immediately — no second read.
+      emit(
+        settled.copyWith(
+          isAssigning: false,
+          workOrders: [
+            for (final workOrder in settled.workOrders)
+              workOrder.id == assigned.id ? assigned : workOrder,
+          ],
+          notice: '${assigned.workOrderNo} assigned to ${assigned.assigneeName}.',
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      emit(settled.copyWith(isAssigning: false, assignFailure: error.message));
+    }
   }
 }

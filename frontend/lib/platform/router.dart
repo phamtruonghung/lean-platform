@@ -174,8 +174,12 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   // Same rule `Routes.assets` applies to its own "Add an
                   // Asset" button: a caller with no write Grant anywhere is
                   // offered no way to raise, since the server would refuse it
-                  // anyway (#55, story 39).
+                  // anyway (#55, story 39). Assigning is a write too (#62), so
+                  // the same test gates it — a caller the server would refuse
+                  // on assignment is offered no way to assign.
                   canRaiseWorkOrder: account.account.orgUnitScope.everywhere ||
+                      account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
+                  canAssign: account.account.orgUnitScope.everywhere ||
                       account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
                 ),
               );

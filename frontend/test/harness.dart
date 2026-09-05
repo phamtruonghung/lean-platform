@@ -121,6 +121,43 @@ Map<String, dynamic> pendingJson(String id, String email, DateTime since) => {
       'createdAt': since.toUtc().toIso8601String(),
     };
 
+/// One qualification as `GET /api/maintenance/work-orders/:id/candidates`
+/// sends it within a candidate's `qualifications` array.
+Map<String, dynamic> qualificationJson(
+  String skillName, {
+  bool isLapsed = false,
+  String? expiresOn,
+  int proficiencyLevel = 3,
+  String skillId = 'sk1',
+}) =>
+    {
+      'skillId': skillId,
+      'skillCode': skillName.toUpperCase().replaceAll(' ', '-'),
+      'skillName': skillName,
+      'proficiencyLevel': proficiencyLevel,
+      'assessedOn': '2024-01-01',
+      'expiresOn': expiresOn ?? (isLapsed ? '2020-01-01' : '2030-01-01'),
+      'isLapsed': isLapsed,
+    };
+
+/// One assignee candidate as `GET /api/maintenance/work-orders/:id/candidates`
+/// sends it (issue #62) — mirrors `groupCandidateRows` and `toEmployee`
+/// (backend work-orders.js / directory.js).
+Map<String, dynamic> candidateJson(
+  String id,
+  String displayName, {
+  String employeeNo = 'EMP-1',
+  List<Map<String, dynamic>> qualifications = const [],
+}) =>
+    {
+      'id': id,
+      'employeeNo': employeeNo,
+      'firstName': displayName.split(' ').first,
+      'lastName': displayName.split(' ').last,
+      'displayName': displayName,
+      'qualifications': qualifications,
+    };
+
 Map<String, dynamic> siteJson(String id, String code, String name) =>
     {'id': id, 'code': code, 'name': name, 'timezone': 'Europe/London'};
 
@@ -211,12 +248,17 @@ class FakeWire {
     this.workOrdersStatus = 200,
     this.createWorkOrderStatus = 201,
     this.createWorkOrderMessage = 'That Work order could not be raised.',
+    Map<String, List<Map<String, dynamic>>>? candidates,
+    this.candidatesStatus = 200,
+    this.assignStatus = 200,
+    this.assignMessage = 'That Work order could not be assigned.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
         sites = sites ?? [],
         orgUnits = orgUnits ?? {},
-        workOrders = workOrders ?? {};
+        workOrders = workOrders ?? {},
+        candidates = candidates ?? {};
 
   final String role;
 
@@ -278,6 +320,18 @@ class FakeWire {
   /// Every Work order body that actually reached the wire, decoded — so a
   /// test can assert exactly one request was sent and what it carried.
   final List<Map<String, dynamic>> workOrderPosts = [];
+
+  /// `GET /api/maintenance/work-orders/:id/candidates`, keyed by Work order id.
+  Map<String, List<Map<String, dynamic>>> candidates;
+  int candidatesStatus;
+
+  /// `PATCH /api/maintenance/work-orders/:id` (assignment).
+  int assignStatus;
+  String assignMessage;
+
+  /// Every assignment that reached the wire, as `(workOrderId, employeeId)` —
+  /// so a test can assert exactly one PATCH was sent and who it named.
+  final List<(String, String)> workOrderAssignments = [];
 
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
@@ -421,6 +475,44 @@ class FakeWire {
             priority: sent['priority'] as int,
           );
           return http.Response(jsonEncode({'workOrder': created}), 201);
+        }
+        if (path.startsWith('/api/maintenance/work-orders/') && path.endsWith('/candidates')) {
+          final workOrderId = path.split('/')[4];
+          if (candidatesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The assignable Employees could not be read.'}),
+              candidatesStatus,
+            );
+          }
+          return http.Response(
+            jsonEncode({'candidates': candidates[workOrderId] ?? []}),
+            200,
+          );
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/maintenance/work-orders/')) {
+          final id = path.split('/').last;
+          final employeeId = (jsonDecode(request.body) as Map<String, dynamic>)['assignedTo'] as String;
+          workOrderAssignments.add((id, employeeId));
+          if (assignStatus != 200) {
+            return http.Response(jsonEncode({'message': assignMessage}), assignStatus);
+          }
+          Map<String, dynamic>? updated;
+          final replaced = {
+            for (final entry in workOrders.entries)
+              entry.key: [
+                for (final w in entry.value)
+                  if (w['id'] == id)
+                    (updated = {...w, 'assignedTo': employeeId, 'assigneeName': candidates
+                            [id]?.firstWhere((c) => c['id'] == employeeId, orElse: () => {'displayName': 'Assignee'})['displayName'] ?? 'Assignee'})
+                  else
+                    w,
+              ],
+          };
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Work order does not exist.'}), 404);
+          }
+          workOrders = replaced;
+          return http.Response(jsonEncode({'workOrder': updated}), 200);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {

@@ -130,4 +130,69 @@ router.get(
   }
 );
 
+// The assignee picker (issue #62): every active Employee at the work order's
+// Site, each with what they currently hold. A read, so it sits behind
+// authenticate + requireActive only — no role check, no Grant filter, the
+// same Site-wide-read rule every other read in this Module follows (ADR-0009).
+// Existence before anything else: an unknown or malformed :id is a 404 naming
+// the Work order, never a scope refusal or an empty list.
+router.get(
+  '/work-orders/:id/candidates',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const workOrder = await workOrders.getWorkOrder(req.params.id); // throws the 404.
+      const candidates = await workOrders.listAssigneeCandidates(workOrder.id);
+      res.json({ candidates });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Assign a Work order to an Employee (issue #62). Same shape as the write
+// routes that came before it: existence first (a 404 for a malformed or
+// unknown :id), then write scope on the Org Unit the Work order's Asset sits
+// at (a 403), then the Employee is validated to exist and be active before
+// `assigned_to` is set. The server is the arbiter of both the scope and the
+// assignee's activity — the candidate picker's filters inform the caller's
+// choice, they do not replace these checks.
+router.patch(
+  '/work-orders/:id',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      // Existence before scope: resolve the Work order first so an unknown or
+      // malformed :id is a clean 404 before `canAct` is ever asked about
+      // scope (the ordering asset-routes.js's requireAssetWriteScope follows).
+      const workOrder = await workOrders.getWorkOrder(req.params.id);
+
+      const allowed = await people.canAct({
+        account: req.account,
+        orgUnitId: workOrder.orgUnitId,
+        write: true
+      });
+      if (!allowed) {
+        return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+      }
+
+      const employeeId = req.body?.assignedTo;
+      if (employeeId === undefined || employeeId === null || employeeId === '') {
+        return res.status(400).json({ message: 'assignedTo is required' });
+      }
+
+      const assigned = await workOrders.setAssignee(
+        workOrder.id,
+        employeeId,
+        req.account.id
+      );
+      res.json({ workOrder: assigned });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 module.exports = router;

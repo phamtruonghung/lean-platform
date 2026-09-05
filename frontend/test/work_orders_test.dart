@@ -15,6 +15,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lean_platform/maintenance/assign_work_order_dialog.dart';
 import 'package:lean_platform/maintenance/org_unit_chooser.dart';
 import 'package:lean_platform/maintenance/work_order_form_dialog.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
@@ -32,6 +33,9 @@ FakeWire wireWith({
   int workOrdersStatus = 200,
   Map<String, List<Map<String, dynamic>>>? assets,
   int createWorkOrderStatus = 201,
+  Map<String, List<Map<String, dynamic>>>? candidates,
+  int candidatesStatus = 200,
+  int assignStatus = 200,
 }) =>
     FakeWire(
       role: role,
@@ -45,6 +49,9 @@ FakeWire wireWith({
       workOrders: workOrders,
       workOrdersStatus: workOrdersStatus,
       createWorkOrderStatus: createWorkOrderStatus,
+      candidates: candidates ?? {'101': []},
+      candidatesStatus: candidatesStatus,
+      assignStatus: assignStatus,
     );
 
 void main() {
@@ -312,56 +319,192 @@ void main() {
   });
 
   testWidgets('an operator is offered neither the destination nor the Screen', (tester) async {
-    final wire = wireWith(role: Roles.operator, workOrders: {'1': []});
-    await pumpApp(
-      tester,
-      gateway: FakeAuthGateway(accessToken: 'a-token'),
-      client: wire.client,
-      initialLocation: '/work-orders',
-    );
+      final wire = wireWith(role: Roles.operator, workOrders: {'1': []});
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
 
-    expect(find.byType(AccessDeniedScreen), findsOneWidget);
-    expect(find.byType(WorkOrdersScreen), findsNothing);
-    expect(find.widgetWithText(NavigationRail, 'Work orders'), findsNothing);
-    expect(wire.requests.any((r) => r.contains('/api/maintenance/')), isFalse);
-  });
+      expect(find.byType(AccessDeniedScreen), findsOneWidget);
+      expect(find.byType(WorkOrdersScreen), findsNothing);
+      expect(find.widgetWithText(NavigationRail, 'Work orders'), findsNothing);
+      expect(wire.requests.any((r) => r.contains('/api/maintenance/')), isFalse);
+    });
 
-  testWidgets('a supervisor gets the destination and the Screen', (tester) async {
-    final wire = wireWith(
-      role: Roles.supervisor,
-      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10', canWrite: true)]},
-      workOrders: {'1': []},
-    );
-    await pumpApp(
-      tester,
-      gateway: FakeAuthGateway(accessToken: 'a-token'),
-      client: wire.client,
-      initialLocation: '/work-orders',
-    );
+    testWidgets('a supervisor gets the destination and the Screen', (tester) async {
+      final wire = wireWith(
+        role: Roles.supervisor,
+        orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10', canWrite: true)]},
+        workOrders: {'1': []},
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
 
-    expect(find.byType(WorkOrdersScreen), findsOneWidget);
-    expect(find.text('Work orders'), findsWidgets);
-    expect(find.byKey(WorkOrdersScreen.raiseKey), findsOneWidget);
-  });
+      expect(find.byType(WorkOrdersScreen), findsOneWidget);
+      expect(find.text('Work orders'), findsWidgets);
+      expect(find.byKey(WorkOrdersScreen.raiseKey), findsOneWidget);
+    });
 
-  testWidgets('a supervisor with no write Grant is offered no way to raise', (tester) async {
-    final wire = wireWith(
-      role: Roles.supervisor,
-      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
-      workOrders: {
-        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
-      },
-    );
-    await pumpApp(
-      tester,
-      gateway: FakeAuthGateway(accessToken: 'a-token'),
-      client: wire.client,
-      initialLocation: '/work-orders',
-    );
+    testWidgets('a supervisor with no write Grant is offered no way to raise', (tester) async {
+      final wire = wireWith(
+        role: Roles.supervisor,
+        orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
+        workOrders: {
+          '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
 
-    // The list itself is Site-wide: they read every open Work order
-    // regardless.
-    expect(find.text('Belt is slipping'), findsOneWidget);
-    expect(find.byKey(WorkOrdersScreen.raiseKey), findsNothing);
-  });
-}
+      // The list itself is Site-wide: they read every open Work order
+      // regardless.
+      expect(find.text('Belt is slipping'), findsOneWidget);
+      expect(find.byKey(WorkOrdersScreen.raiseKey), findsNothing);
+    });
+
+    // -------------------------------------------------------------------------
+    // Assigning (issue #62).
+    // -------------------------------------------------------------------------
+
+    testWidgets('assigning sends exactly one PATCH naming the chosen Employee, and the assignee name appears on the row', (tester) async {
+      final wire = wireWith(
+        workOrders: {
+          '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+        },
+        candidates: {
+          '101': [
+            candidateJson('5', 'Grace Hopper', qualifications: [qualificationJson('Welding')]),
+            candidateJson('6', 'Ada Lovelace', qualifications: [
+              qualificationJson('Electrical', isLapsed: true),
+            ]),
+          ],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+      // The picker loads the candidates and shows what each holds.
+      expect(find.text('Grace Hopper'), findsOneWidget);
+      expect(find.text('Ada Lovelace'), findsOneWidget);
+      // A lapsed qualification is shown as lapsed, and a current one is not.
+      expect(find.text('Welding'), findsOneWidget);
+      expect(find.text('Electrical — lapsed'), findsOneWidget);
+
+      await tapIn(tester, find.byKey(AssignWorkOrderDialog.candidateKey('5')));
+      await tapIn(tester, find.byKey(AssignWorkOrderDialog.confirmKey));
+
+      expect(wire.workOrderAssignments, [('101', '5')]);
+      expect(find.byType(AssignWorkOrderDialog), findsNothing);
+      // The assignee's name appears on the row afterwards, straight from the
+      // server's response (the fake returns the candidate's display name).
+      expect(find.text('Grace Hopper'), findsOneWidget);
+    });
+
+    testWidgets('a refusal on assignment is surfaced in the dialog, which stays open', (tester) async {
+      final wire = wireWith(
+        workOrders: {
+          '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+        },
+        candidates: {
+          '101': [candidateJson('5', 'Grace Hopper')],
+        },
+        assignStatus: 403,
+      )..assignMessage = 'You do not hold a write Grant reaching this Asset.';
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+      await tapIn(tester, find.byKey(AssignWorkOrderDialog.candidateKey('5')));
+      await tapIn(tester, find.byKey(AssignWorkOrderDialog.confirmKey));
+
+      expect(find.byType(AssignWorkOrderDialog), findsOneWidget);
+      expect(find.byKey(AssignWorkOrderDialog.failureKey), findsOneWidget);
+      expect(find.text('You do not hold a write Grant reaching this Asset.'), findsOneWidget);
+    });
+
+    testWidgets('a caller with no write Grant is offered no way to assign, same as to raise', (tester) async {
+      final wire = wireWith(
+        role: Roles.supervisor,
+        orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
+        workOrders: {
+          '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      expect(find.byKey(WorkOrdersScreen.assignKey('101')), findsNothing);
+      expect(find.byKey(WorkOrdersScreen.raiseKey), findsNothing);
+      // The list is still readable Site-wide.
+      expect(find.text('Belt is slipping'), findsOneWidget);
+    });
+
+    testWidgets('an assignee picker that fails to load explains itself and the retry works', (tester) async {
+      final wire = wireWith(
+        workOrders: {
+          '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+        },
+        candidatesStatus: 503,
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+      expect(find.byKey(AssignWorkOrderDialog.failedKey), findsOneWidget);
+      expect(find.text('The assignable Employees could not be read.'), findsOneWidget);
+
+      wire.candidatesStatus = 200;
+      wire.candidates = {
+        '101': [candidateJson('5', 'Grace Hopper')],
+      };
+      await tapIn(tester, find.byKey(AssignWorkOrderDialog.retryKey));
+
+      expect(find.byKey(AssignWorkOrderDialog.failedKey), findsNothing);
+      expect(find.text('Grace Hopper'), findsOneWidget);
+    });
+
+    testWidgets('an assignee picker with no candidates says so plainly', (tester) async {
+      final wire = wireWith(
+        workOrders: {
+          '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+        },
+        candidates: {'101': []},
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+      expect(find.text('No active Employees are assigned to this Site.'), findsOneWidget);
+    });
+  }
