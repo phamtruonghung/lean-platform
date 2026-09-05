@@ -27,6 +27,15 @@ and its own local time, so a production day means something different at each.
 Every part of the plant hierarchy belongs to exactly one Site.
 _Avoid_: Factory, location, facility, plant (use Site in prose about the model)
 
+**Production day**:
+The span the plant counts a day's work against, beginning when a Site's
+first shift begins rather than at midnight. It differs between Sites for the
+same reason the Site entry above already does: each keeps its own shift
+pattern and its own local time. Every event this Platform records is filed
+against the production day its own shift fell within, never the calendar
+date a clock happened to show at the time.
+_Avoid_: Calendar day, date, 24-hour period
+
 **Org Unit**:
 A node in a Site's hierarchy — area, department, line, cell or work centre.
 Org Units form a tree, so "everything under Line 3" is a single question. What a
@@ -129,15 +138,67 @@ the press it is fitted to, and "everything on this line" reaches the components
 beneath it.
 _Avoid_: Equipment, machine (one kind of Asset), item, resource, tag
 
+**Request**:
+What anyone on the floor asks maintenance for, before there is a work order —
+a machine acting up, something that needs looking at, raised by whoever
+noticed it. Maintenance may accept it or decline it; accepting produces a work
+order that still points back to the request that asked for it, so the person
+who raised it can follow it through to the job. A request commits maintenance
+to nothing: until it is accepted, it is an ask and no more.
+_Avoid_: Ticket, complaint, maintenance request, work order (a request is not
+yet one)
+
 **Work order**:
 The job maintenance commits to doing on an Asset: raised, assigned to somebody,
 worked, and completed. A work order is not a request — a request is what anyone
 on the floor asks for and maintenance may decline; the work order is the
 commitment that follows one, or that maintenance raises for itself. What it
-records on completion, above all when the work started and ended, is what the
-reliability numbers are calculated from.
+records on completion, above all when the work started and ended, is how long
+the repair itself took — one half of the reliability numbers, the other being
+how long the machine was down.
 _Avoid_: Ticket, job card, task (a task is one step inside a work order),
 maintenance request (that is what precedes it)
+
+**Breakdown**:
+A machine stopping unplanned. It bypasses the request-and-decline path
+entirely, because the machine is already stopped rather than something
+somebody is asking maintenance to look at — it produces both a record of the
+stoppage and the work order that fixes it, together, rather than the one
+waiting on the other.
+_Avoid_: Failure, fault, incident, unplanned stop (use Breakdown)
+
+**Downtime**:
+The period a machine was not running — what availability is measured from,
+and the span between one stoppage and the next. It is not the same length as
+the work order's own duration, which is how long the repair took: a
+job can take longer than the stoppage, if nobody gets to it right away, or the
+stoppage can outlast the job, if the machine is back running before the work
+order raised against it is finished.
+_Avoid_: Stopped time, outage, breakdown (a breakdown is one cause of
+downtime, not the period itself)
+
+**Job plan**:
+The reusable description of how a recurring job is done — the steps it takes
+and what it requires — kept once and used every time that job comes around
+again. It is distinct from the work order that carries it out: the job plan is
+the instructions, the work order is one particular occasion of following
+them.
+_Avoid_: SOP, checklist, work instruction, template
+
+**PM schedule**:
+What raises a work order before something breaks, rather than in response to
+one. Elapsed time and accumulated use are two different mechanisms sharing
+this one word — one raises on a calendar, the other on running hours or a
+cycle count — and a PM schedule may run on either.
+_Avoid_: Preventive maintenance (that is the kind of work it produces, not the
+schedule itself), maintenance plan, recurring work order
+
+**Part**:
+A stocked item consumed doing a job, drawn from stock when it is booked
+against a work order. A part is not an Asset: it is consumed and gone, where
+an Asset is what work keeps being done on.
+_Avoid_: Spare, material, stock item, component (that is a nested Asset, not
+something consumed)
 
 **CAPA**:
 A corrective and preventive action: the investigation opened when something
