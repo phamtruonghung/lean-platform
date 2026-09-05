@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import 'auth_error_messages.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -43,7 +44,7 @@ class _SignInScreenState extends State<SignInScreen> {
       // On success the app moves on via AccountBloc's own access-token
       // listener — nothing to navigate to here.
     } on AuthException catch (error) {
-      setState(() => _error = error.message);
+      setState(() => _error = authErrorMessage(error));
     } catch (error) {
       setState(() => _error = 'Something went wrong: $error');
     } finally {
