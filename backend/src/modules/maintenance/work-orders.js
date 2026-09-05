@@ -24,7 +24,7 @@
  */
 
 const { getPool, withActor } = require('../../platform/db');
-const { httpError, notFound } = require('./errors');
+const { httpError, notFound, parseId } = require('./errors');
 
 // Mirrors the CHECK constraint on work_orders.work_type in the baseline, so a
 // bad value is a 400 with a clear message rather than a raw constraint
@@ -192,8 +192,206 @@ async function listOpenWorkOrdersAtSite(siteId, { orgUnitPath = null } = {}) {
   return rows.map(toWorkOrder);
 }
 
+// The total form of getWorkOrder below — returns null for a malformed or
+// absent id rather than throwing, the same shape assets.findAsset (and
+// People's findOrgUnit/findSite) take. It is what a route's existence-before-
+// scope check calls (asset-routes.js's requireAssetWriteScope is the prior
+// art); the route resolves the row first so an unknown or malformed :id is
+// a clean 404 before `canAct` is ever asked about scope.
+async function findWorkOrder(id) {
+  if (parseId(id) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT ${WORK_ORDER_COLUMNS}
+       FROM work_orders wo
+       JOIN assets a ON a.id = wo.asset_id
+       JOIN org_units ou ON ou.id = wo.org_unit_id
+       LEFT JOIN employees e ON e.id = wo.assigned_to
+      WHERE wo.id = $1`,
+    [id]
+  );
+  return rows[0] ? toWorkOrder(rows[0]) : null;
+}
+
+// Mirrors assets.findAsset -> getAsset's throw on null: the route middleware
+// resolve-plus-404 uses findWorkOrder; any service-function path that needs a
+// work order to exist and reads it again calls getWorkOrder. Returns the row.
+async function getWorkOrder(id) {
+  const workOrder = await findWorkOrder(id);
+  if (!workOrder) throw notFound('Work order');
+  return workOrder;
+}
+
+// Issues the assignment (issue #62): sets `assigned_to` to the Employee a
+// supervisor has chosen. Reassigning is calling this again with a different
+// id — there is deliberately no "unassign" state being invented here; a job
+// is either given to somebody or (still) unassigned, and taking it back off
+// somebody without replacing them is not a workflow this slice offers (the
+// open list shows "Unassigned" for a null assignee, and #63's transitions are
+// a separate ticket).
+//
+// `isActive = FALSE` on the target Employee is refused here, not only left
+// out of the client's candidate picker: the server is the arbiter of "this
+// person still works here", so a stale client offering a departed assignee
+// cannot strand work in the hands of somebody the plant no longer employs.
+// This is a deliberate 400, not 404 — the Employee exists, it is just not an
+// assignable one.
+async function setAssignee(workOrderId, employeeId, accountId) {
+  const workOrder = await getWorkOrder(workOrderId); // throws the 404.
+
+  const { rows } = await getPool().query(
+    'SELECT is_active FROM employees WHERE id = $1',
+    [employeeId]
+  );
+  if (rows.length === 0) throw notFound('Employee');
+  if (!rows[0].is_active) {
+    throw httpError(400, 'that Employee has departed and cannot be assigned');
+  }
+
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [row] } = await client.query(
+        `WITH updated AS (
+           UPDATE work_orders SET assigned_to = $1 WHERE id = $2 RETURNING *
+         )
+         SELECT ${WORK_ORDER_COLUMNS}
+           FROM updated wo
+           JOIN assets a ON a.id = wo.asset_id
+           JOIN org_units ou ON ou.id = wo.org_unit_id
+           LEFT JOIN employees e ON e.id = wo.assigned_to`,
+        [employeeId, workOrder.id]
+      );
+      return toWorkOrder(row);
+    });
+  } catch (error) {
+    throw mapWorkOrderWriteError(error);
+  }
+}
+
+// The assignee picker's data (issue #62): every active Employee at the Site
+// the work order's Asset sits at, each carrying what they currently hold —
+// their `employee_skills` rows joined against `skills`, with a lapsed
+// qualification shown as lapsed (expires_on in the past) rather than simply
+// dropped, so "never trained" and "needs revalidating" stay distinguishable
+// (the distinction #11 built; #55's assignment decision says the Platform
+// *shows* qualifications, it does not enforce them).
+//
+// Site-scoped to the work order's Site via the Employee's current Org Unit —
+// the same "current or default" resolution listEmployees (People) uses —
+// because "any active Employee" (#55) is bounded by the plant the work order
+// lives in: a supervisor on Site A is not offered Site B's workforce. A
+// departed Employee has no row here at all (is_active = TRUE filters them
+// out), which is what "a departed Employee is not offered as an assignee"
+// means.
+//
+// One query, never a query-per-employee: employees LEFT JOIN their current
+// assignment resolution (a LATERAL, same as People's listEmployees) LEFT
+// JOIN org_units for the Site test, LEFT JOIN employee_skills and skills for
+// the qualifications. An Employee with no current skills comes back with an
+// empty `qualifications` array — the "holds nothing" case, which is
+// deliberately distinct from the "holds a lapsed one" case.
+async function listAssigneeCandidates(workOrderId) {
+  const workOrder = await getWorkOrder(workOrderId); // throws the 404.
+
+  const { rows } = await getPool().query(
+    `SELECT e.id, e.employee_no, e.first_name, e.last_name, e.display_name,
+            s.id AS skill_id, s.code AS skill_code, s.name AS skill_name,
+            es.proficiency_level, es.assessed_on, es.expires_on
+       FROM employees e
+       LEFT JOIN LATERAL (
+         SELECT ea.org_unit_id
+           FROM employee_assignments ea
+          WHERE ea.employee_id = e.id
+            AND ea.effective_from <= CURRENT_DATE
+            AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
+          LIMIT 1
+       ) current_assignment ON TRUE
+       JOIN org_units ou
+         ON ou.id = COALESCE(current_assignment.org_unit_id, e.default_org_unit_id)
+       LEFT JOIN employee_skills es ON es.employee_id = e.id
+       LEFT JOIN skills s ON s.id = es.skill_id
+      WHERE e.is_active = TRUE
+        AND ou.site_id = $1
+      ORDER BY e.display_name, s.name`,
+    [workOrder.orgUnitId === null ? null : await siteIdForOrgUnit(workOrder.orgUnitId)]
+  );
+  return groupCandidateRows(rows);
+}
+
+// An Employee's Org Unit is by definition inside one Site (ADR-0005: "Every
+// part of the plant hierarchy belongs to exactly one Site"), so the work
+// order's own Org Unit resolves to exactly one Site. Kept as its own small
+// helper rather than joined into the candidates query so the two questions —
+// "which Site is this work order in" and "which Employees are there" — stay
+// readable as themselves. `path` is an ltree but this only needs the Site id,
+// which the column carries flat.
+async function siteIdForOrgUnit(orgUnitId) {
+  const { rows } = await getPool().query(
+    'SELECT site_id FROM org_units WHERE id = $1',
+    [orgUnitId]
+  );
+  return rows[0] ? rows[0].site_id : null;
+}
+
+// Group the flat (employee x skill) rows from listAssigneeCandidates into one
+// Employee per entry with a `qualifications` array. A row with NULL skill
+// columns (the LEFT JOIN found no skill) still yields the Employee, with an
+// empty array — the row exists because the employee_at left-join produced it.
+// `isLapsed` is computed in JS from `expires_on`: a qualification in the past
+// is shown as lapsed, a NULL (never-expiring) or future one is current, and
+// an absent skill is a different row shape entirely (no skill columns).
+function toDateString(value) {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) {
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(value.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(value);
+}
+
+function groupCandidateRows(rows) {
+  const byEmployee = new Map();
+  for (const row of rows) {
+    let candidate = byEmployee.get(row.id);
+    if (!candidate) {
+      candidate = {
+        id: row.id,
+        employeeNo: row.employee_no,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        displayName: row.display_name,
+        qualifications: []
+      };
+      byEmployee.set(row.id, candidate);
+    }
+    if (row.skill_id !== null && row.skill_id !== undefined) {
+      const expiresOn = row.expires_on;
+      candidate.qualifications.push({
+        skillId: row.skill_id,
+        skillCode: row.skill_code,
+        skillName: row.skill_name,
+        proficiencyLevel: row.proficiency_level,
+        assessedOn: toDateString(row.assessed_on),
+        expiresOn: toDateString(expiresOn),
+        isLapsed: expiresOn instanceof Date
+          ? expiresOn.getTime() < Date.now()
+          : expiresOn !== null && expiresOn !== undefined
+            ? new Date(expiresOn).getTime() < Date.now()
+            : false
+      });
+    }
+  }
+  return [...byEmployee.values()];
+}
+
 module.exports = {
   WORK_TYPES,
+  OPEN_STATUSES,
   createWorkOrder,
-  listOpenWorkOrdersAtSite
+  listOpenWorkOrdersAtSite,
+  findWorkOrder,
+  getWorkOrder,
+  setAssignee,
+  listAssigneeCandidates
 };

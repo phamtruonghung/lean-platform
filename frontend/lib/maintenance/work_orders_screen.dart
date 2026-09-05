@@ -15,13 +15,14 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/skeleton_list.dart';
+import 'assign_work_order_dialog.dart';
 import 'org_unit_chooser.dart';
 import 'work_order.dart';
 import 'work_order_form_dialog.dart';
 import 'work_orders_bloc.dart';
 
 class WorkOrdersScreen extends StatelessWidget {
-  const WorkOrdersScreen({super.key, required this.canRaiseWorkOrder});
+  const WorkOrdersScreen({super.key, required this.canRaiseWorkOrder, required this.canAssign});
 
   /// Whether this caller holds a write Grant anywhere at all — read off
   /// `/me`'s own `orgUnitScope` (issue #43), the same rule `AssetsScreen`
@@ -29,6 +30,13 @@ class WorkOrdersScreen extends StatelessWidget {
   /// affordance entirely; it does not grey it out, because a disabled button
   /// is still an invitation to fail.
   final bool canRaiseWorkOrder;
+
+  /// Whether assignments are offered at all — the same write-Grant test as
+  /// [canRaiseWorkOrder]. Assigning is a write (issue #62): the server
+  /// refuses one outside the caller's Grants, so a caller without a write
+  /// Grant is offered no way to assign, exactly as it is offered no way to
+  /// raise.
+  final bool canAssign;
 
   static const double maxWidth = 900;
   static const ValueKey<String> raiseKey = ValueKey<String>('work-orders-add');
@@ -40,6 +48,7 @@ class WorkOrdersScreen extends StatelessWidget {
   static const ValueKey<String> emptyKey = ValueKey<String>('work-orders-empty');
   static const ValueKey<String> failedKey = ValueKey<String>('work-orders-failed');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('work-order-row-$id');
+  static ValueKey<String> assignKey(String id) => ValueKey<String>('work-order-assign-$id');
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +69,8 @@ class WorkOrdersScreen extends StatelessWidget {
               WorkOrdersLoaded(workOrders: final workOrders, orgUnitFilterName: final filterName)
                   when workOrders.isEmpty =>
                 _WorkOrdersEmpty(orgUnitFilterName: filterName),
-              WorkOrdersLoaded(workOrders: final workOrders) => _WorkOrdersList(workOrders: workOrders),
+              WorkOrdersLoaded(workOrders: final workOrders) =>
+                _WorkOrdersList(workOrders: workOrders, canAssign: canAssign),
             },
           ),
         ],
@@ -268,9 +278,10 @@ class _Notice extends StatelessWidget {
 }
 
 class _WorkOrdersList extends StatelessWidget {
-  const _WorkOrdersList({required this.workOrders});
+  const _WorkOrdersList({required this.workOrders, required this.canAssign});
 
   final List<WorkOrder> workOrders;
+  final bool canAssign;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +292,10 @@ class _WorkOrdersList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           itemCount: workOrders.length,
           separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) => _WorkOrderRow(workOrder: workOrders[index]),
+          itemBuilder: (context, index) => _WorkOrderRow(
+            workOrder: workOrders[index],
+            canAssign: canAssign,
+          ),
         ),
       ),
     );
@@ -289,9 +303,10 @@ class _WorkOrdersList extends StatelessWidget {
 }
 
 class _WorkOrderRow extends StatelessWidget {
-  const _WorkOrderRow({required this.workOrder});
+  const _WorkOrderRow({required this.workOrder, required this.canAssign});
 
   final WorkOrder workOrder;
+  final bool canAssign;
 
   @override
   Widget build(BuildContext context) {
@@ -325,6 +340,14 @@ class _WorkOrderRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
+                if (canAssign)
+                  IconButton(
+                    key: WorkOrdersScreen.assignKey(workOrder.id),
+                    tooltip: 'Assign this Work order',
+                    icon: const Icon(Icons.person_add_alt_outlined),
+                    onPressed: () =>
+                        AssignWorkOrderDialog.open(context, workOrderId: workOrder.id),
+                  ),
                 Chip(label: Text(workOrder.statusLabel), visualDensity: VisualDensity.compact),
               ],
             ),

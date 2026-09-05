@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'asset.dart';
+import 'assignee_candidate.dart';
 import 'work_order.dart';
 
 /// The request could not be answered at all. Deliberately its own type rather
@@ -186,6 +187,79 @@ class MaintenanceApi {
       throw MaintenanceApiException('The API answered with something this app could not read: $error');
     }
   }
+
+  /// The assignee picker for one Work order (issue #62): every active
+  /// Employee at the Work order's Site, each with their `qualifications`.
+  /// A read — the server answers it for any approved Account whose role earns
+  /// the Module, whatever its Grants.
+  Future<List<AssigneeCandidate>> fetchCandidates(
+    String accessToken, {
+    required String workOrderId,
+  }) async {
+    final path = '/api/maintenance/work-orders/$workOrderId/candidates';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final candidate in body['candidates'] as List<dynamic>)
+          _candidateFrom(candidate as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Assigns a Work order to [employeeId] (`PATCH /api/maintenance/work-orders/:id`
+  /// with `assignedTo`). The server refuses a caller without a write Grant
+  /// reaching the Work order's Asset Org Unit (403), an unknown Work order or
+  /// Employee (404), and a departed Employee (400) — this call just reports
+  /// whatever the server decided.
+  Future<WorkOrder> assignWorkOrder(
+    String accessToken,
+    String workOrderId, {
+    required String employeeId,
+  }) async {
+    final path = '/api/maintenance/work-orders/$workOrderId';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'assignedTo': employeeId}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _workOrderFrom(body['workOrder'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static AssigneeCandidate _candidateFrom(Map<String, dynamic> candidate) => AssigneeCandidate(
+        id: candidate['id'].toString(),
+        employeeNo: candidate['employeeNo'] as String,
+        firstName: candidate['firstName'] as String,
+        lastName: candidate['lastName'] as String,
+        displayName: candidate['displayName'] as String,
+        qualifications: [
+          for (final qualification in candidate['qualifications'] as List<dynamic>? ?? const [])
+            _qualificationFrom(qualification as Map<String, dynamic>),
+        ],
+      );
+
+  static Qualification _qualificationFrom(Map<String, dynamic> qualification) => Qualification(
+        skillId: qualification['skillId'].toString(),
+        skillCode: qualification['skillCode'] as String,
+        skillName: qualification['skillName'] as String,
+        proficiencyLevel: (qualification['proficiencyLevel'] as num?)?.toInt() ?? 0,
+        assessedOn: qualification['assessedOn'] as String?,
+        expiresOn: qualification['expiresOn'] as String?,
+        isLapsed: qualification['isLapsed'] as bool? ?? false,
+      );
 
   // The server sends a flat row — `id, workOrderNo, assetId, assetCode,
   // assetName, orgUnitId, orgUnitName, summary, description, workType,

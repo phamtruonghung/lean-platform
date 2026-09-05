@@ -24,6 +24,8 @@ const insertedSiteIds = [];
 const insertedOrgUnitIds = [];
 const insertedAssetIds = [];
 const insertedWorkOrderIds = [];
+const insertedEmployeeIds = [];
+const insertedSkillIds = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -86,6 +88,41 @@ async function insertAsset(orgUnitId, { name = 'Press 1' } = {}) {
   return row;
 }
 
+async function insertEmployee({ firstName = 'Ada', lastName = 'Lovelace', isActive = true } = {}) {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name, is_active)
+     VALUES ($1, $2, $3, $4) RETURNING id, display_name`,
+    [uniqueCode('EMP'), firstName, lastName, isActive]
+  );
+  insertedEmployeeIds.push(row.id);
+  return row;
+}
+
+async function insertAssignment({ employeeId, orgUnitId }) {
+  await pool.query(
+    `INSERT INTO employee_assignments (employee_id, org_unit_id, effective_from)
+     VALUES ($1, $2, CURRENT_DATE)`,
+    [employeeId, orgUnitId]
+  );
+}
+
+async function insertSkill({ name = 'Welding' }) {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO skills (code, name) VALUES ($1, $2) RETURNING id`,
+    [uniqueCode('SK'), name]
+  );
+  insertedSkillIds.push(row.id);
+  return row;
+}
+
+async function insertEmployeeSkill({ employeeId, skillId, expiresOn = null, assessedOn = null }) {
+  await pool.query(
+    `INSERT INTO employee_skills (employee_id, skill_id, proficiency_level, assessed_on, expires_on)
+     VALUES ($1, $2, 3, COALESCE($3::date, CURRENT_DATE), $4)`,
+    [employeeId, skillId, assessedOn ?? null, expiresOn]
+  );
+}
+
 async function postWorkOrder(token, body) {
   const response = await fetch(`${base}/api/maintenance/work-orders`, {
     method: 'POST',
@@ -109,6 +146,24 @@ function workOrderBody(assetId, overrides = {}) {
 
 async function getWorkOrders(token, siteId, query = '') {
   const response = await fetch(`${base}/api/maintenance/sites/${siteId}/work-orders${query}`, {
+    headers: token
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+async function patchWorkOrder(token, id, body) {
+  const response = await fetch(`${base}/api/maintenance/work-orders/${id}`, {
+    method: 'PATCH',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+async function getCandidates(token, workOrderId) {
+  const response = await fetch(`${base}/api/maintenance/work-orders/${workOrderId}/candidates`, {
     headers: token
   });
   const payload = await response.json().catch(() => null);
@@ -168,6 +223,10 @@ test.after(async () => {
   await pool.query('DELETE FROM assets WHERE id = ANY($1)', [insertedAssetIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
+  await pool.query('DELETE FROM employee_skills WHERE employee_id = ANY($1)', [insertedEmployeeIds]);
+  await pool.query('DELETE FROM employee_assignments WHERE employee_id = ANY($1)', [insertedEmployeeIds]);
+  await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
+  await pool.query('DELETE FROM skills WHERE id = ANY($1)', [insertedSkillIds]);
   await pool.query('DELETE FROM org_units WHERE id = ANY($1)', [insertedOrgUnitIds]);
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
@@ -386,4 +445,180 @@ test('a work order in_progress is included in the open list', async () => {
 
   const { payload } = await getWorkOrders(admin.token, site.id);
   assert.ok(payload.workOrders.some((w) => w.id === created.payload.workOrder.id));
+});
+// ---------------------------------------------------------------------------
+// Assigning (issue #62).
+// ---------------------------------------------------------------------------
+
+test('a Work order can be assigned to an active Employee, and the assignee name shows on the row', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'To assign' }));
+  assert.strictEqual(created.response.status, 201);
+
+  const employee = await insertEmployee({ firstName: 'Grace', lastName: 'Hopper' });
+  await insertAssignment({ employeeId: employee.id, orgUnitId: grantedLine.id });
+
+  const { response, payload } = await patchWorkOrder(admin.token, created.payload.workOrder.id, { assignedTo: employee.id });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.assignedTo, String(employee.id));
+  assert.strictEqual(payload.workOrder.assigneeName, 'Grace Hopper');
+
+  // The open list now shows who has it.
+  const { payload: list } = await getWorkOrders(admin.token, site.id);
+  const row = list.workOrders.find((w) => w.id === created.payload.workOrder.id);
+  assert.strictEqual(row.assigneeName, 'Grace Hopper');
+});
+
+test('reassigning overwrites the previous assignee', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'To reassign' }));
+
+  const first = await insertEmployee({ firstName: 'Ada', lastName: 'Lovelace' });
+  const second = await insertEmployee({ firstName: 'Katherine', lastName: 'Johnson' });
+  await insertAssignment({ employeeId: first.id, orgUnitId: grantedLine.id });
+  await insertAssignment({ employeeId: second.id, orgUnitId: grantedLine.id });
+
+  await patchWorkOrder(admin.token, created.payload.workOrder.id, { assignedTo: first.id });
+  const { response, payload } = await patchWorkOrder(admin.token, created.payload.workOrder.id, { assignedTo: second.id });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.assignedTo, String(second.id));
+  assert.strictEqual(payload.workOrder.assigneeName, 'Katherine Johnson');
+});
+
+test('an unknown or malformed Work order id on PATCH is a 404, not a scope refusal or 500', async () => {
+  const unknown = await patchWorkOrder(admin.token, '999999999', { assignedTo: '1' });
+  assert.strictEqual(unknown.response.status, 404);
+  assert.strictEqual(unknown.payload.message, 'Work order not found');
+
+  const malformed = await patchWorkOrder(admin.token, 'not-an-id', { assignedTo: '1' });
+  assert.strictEqual(malformed.response.status, 404);
+});
+
+test('PATCH requires a write Grant reaching the Work order Asset\'s Org Unit', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Scoped assign' }));
+  const employee = await insertEmployee();
+  await insertAssignment({ employeeId: employee.id, orgUnitId: grantedLine.id });
+
+  // readOnlyAccount holds a read-only Grant on grantedLine: refused.
+  const readOnly = await patchWorkOrder(readOnlyAccount.token, created.payload.workOrder.id, { assignedTo: employee.id });
+  assert.strictEqual(readOnly.response.status, 403);
+  assert.strictEqual(readOnly.payload.message, "Outside the caller's granted Org Units");
+
+  // siblingWriter holds a write Grant on otherLine only: must not reach across.
+  const sibling = await patchWorkOrder(siblingWriter.token, created.payload.workOrder.id, { assignedTo: employee.id });
+  assert.strictEqual(sibling.response.status, 403);
+
+  // Nothing was written by either refusal.
+  const { rows } = await pool.query('SELECT assigned_to FROM work_orders WHERE id = $1', [created.payload.workOrder.id]);
+  assert.strictEqual(rows[0].assigned_to, null);
+});
+
+test('assigning to an unknown Employee is a 404; assigning to a departed one is refused', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Bad assignee' }));
+
+  const unknown = await patchWorkOrder(admin.token, created.payload.workOrder.id, { assignedTo: '999999999' });
+  assert.strictEqual(unknown.response.status, 404);
+  assert.strictEqual(unknown.payload.message, 'Employee not found');
+
+  const departed = await insertEmployee({ firstName: 'Former', lastName: 'Worker', isActive: false });
+  const refused = await patchWorkOrder(admin.token, created.payload.workOrder.id, { assignedTo: departed.id });
+  assert.strictEqual(refused.response.status, 400);
+  assert.strictEqual(refused.payload.message, 'that Employee has departed and cannot be assigned');
+});
+
+test('missing or empty assignedTo is a 400', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'No assignee field' }));
+
+  for (const body of [{}, { assignedTo: null }, { assignedTo: '' }]) {
+    // eslint-disable-next-line no-await-in-loop
+    const { response } = await patchWorkOrder(admin.token, created.payload.workOrder.id, body);
+    assert.strictEqual(response.status, 400, JSON.stringify(body));
+  }
+});
+
+test('a lapsed qualification does not prevent an assignment — the Platform shows, it does not gate', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Lapsed holder assignable' }));
+
+  const employee = await insertEmployee({ firstName: 'Rusty', lastName: 'Skills' });
+  await insertAssignment({ employeeId: employee.id, orgUnitId: grantedLine.id });
+  // expiresOn long past: a lapsed qualification.
+  await insertSkill({ name: 'Lapsed Welding Skill' });
+  const lapsedSkill = insertedSkillIds[insertedSkillIds.length - 1];
+  await insertEmployeeSkill({ employeeId: employee.id, skillId: lapsedSkill, assessedOn: '2015-01-01', expiresOn: '2016-01-01' });
+
+  const { response, payload } = await patchWorkOrder(admin.token, created.payload.workOrder.id, { assignedTo: employee.id });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.assignedTo, String(employee.id));
+});
+
+// ---------------------------------------------------------------------------
+// The assignee picker (issue #62).
+// ---------------------------------------------------------------------------
+
+test('the candidates read returns active Employees at the Work order\'s Site, with lapsed qualifications shown as lapsed', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Candidate picker' }));
+
+  const currentHolder = await insertEmployee({ firstName: 'Current', lastName: 'Holder' });
+  await insertAssignment({ employeeId: currentHolder.id, orgUnitId: grantedLine.id });
+  const currentSkill = await insertSkill({ name: 'Current Skill' });
+  await insertEmployeeSkill({ employeeId: currentHolder.id, skillId: currentSkill.id, expiresOn: null });
+
+  const lapsedHolder = await insertEmployee({ firstName: 'Lapsed', lastName: 'Holder' });
+  await insertAssignment({ employeeId: lapsedHolder.id, orgUnitId: grantedLine.id });
+  const lapsedSkill = await insertSkill({ name: 'Lapsed Skill' });
+  await insertEmployeeSkill({ employeeId: lapsedHolder.id, skillId: lapsedSkill.id, assessedOn: '2015-01-01', expiresOn: '2016-01-01' });
+
+  const noSkills = await insertEmployee({ firstName: 'No', lastName: 'Skills' });
+  await insertAssignment({ employeeId: noSkills.id, orgUnitId: grantedLine.id });
+
+  // A departed Employee must not be offered.
+  const departed = await insertEmployee({ firstName: 'Gone', lastName: 'Away', isActive: false });
+  await insertAssignment({ employeeId: departed.id, orgUnitId: grantedLine.id });
+
+  // An Employee of the *other* Site must not appear in this work order's picker.
+  const otherSiteUnit = await insertOrgUnit(otherSite.id, { name: 'Other Site Area' });
+  const otherSiteEmployee = await insertEmployee({ firstName: 'Other', lastName: 'Site' });
+  await insertAssignment({ employeeId: otherSiteEmployee.id, orgUnitId: otherSiteUnit.id });
+
+  const { response, payload } = await getCandidates(admin.token, created.payload.workOrder.id);
+  assert.strictEqual(response.status, 200);
+
+  const ids = payload.candidates.map((c) => c.id);
+  assert.ok(ids.includes(String(currentHolder.id)));
+  assert.ok(ids.includes(String(lapsedHolder.id)));
+  assert.ok(ids.includes(String(noSkills.id)));
+  assert.ok(!ids.includes(String(departed.id)), 'a departed Employee is not offered');
+  assert.ok(!ids.includes(String(otherSiteEmployee.id)), 'the other Site\'s workforce is not offered');
+
+  const lapsed = payload.candidates.find((c) => c.id === String(lapsedHolder.id));
+  assert.strictEqual(lapsed.qualifications.length, 1);
+  assert.strictEqual(lapsed.qualifications[0].isLapsed, true);
+  assert.ok(lapsed.qualifications[0].expiresOn < new Date().toISOString().slice(0, 10));
+
+  const current = payload.candidates.find((c) => c.id === String(currentHolder.id));
+  assert.strictEqual(current.qualifications.length, 1);
+  assert.strictEqual(current.qualifications[0].isLapsed, false);
+
+  const none = payload.candidates.find((c) => c.id === String(noSkills.id));
+  assert.deepStrictEqual(none.qualifications, [], '"holds nothing" is distinct from a lapsed qualification');
+});
+
+test('the candidates read requires an existing Work order, and is a Site-wide read (no Grant needed)', async () => {
+  const unknown = await getCandidates(admin.token, '999999999');
+  assert.strictEqual(unknown.response.status, 404);
+
+  const malformed = await getCandidates(admin.token, 'not-an-id');
+  assert.strictEqual(malformed.response.status, 404);
+
+  // noGrantAccount has no Grant anywhere, yet can still read the picker — a
+  // read, Site-wide (ADR-0009).
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Readable picker' }));
+  const picker = await getCandidates(noGrantAccount.token, created.payload.workOrder.id);
+  assert.strictEqual(picker.response.status, 200);
 });
