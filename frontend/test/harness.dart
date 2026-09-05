@@ -70,6 +70,51 @@ Map<String, dynamic> assetJson(
       'assetLevel': 'machine',
     };
 
+/// One Work order as `GET /api/maintenance/sites/:siteId/work-orders` sends
+/// it (issue #57) — always an open one, since the server itself excludes
+/// completed/closed/cancelled from that read.
+///
+/// Mirrors `toWorkOrder` (backend/src/modules/maintenance/work-orders.js) key
+/// for key, in its own field order: a flat row, no nested `asset`/`orgUnit`
+/// map and no `assignee` string. A change to one of these should prompt a
+/// look at the other.
+Map<String, dynamic> workOrderJson(
+  String id,
+  String workOrderNo,
+  String summary, {
+  String assetId = '7',
+  String assetCode = 'PRESS-1',
+  String assetName = 'Press 1',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String? description,
+  String workType = 'corrective',
+  int priority = 3,
+  String status = 'open',
+  String? assignedTo,
+  String? assigneeName,
+  DateTime? createdAt,
+  DateTime? updatedAt,
+}) =>
+    {
+      'id': id,
+      'workOrderNo': workOrderNo,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'summary': summary,
+      'description': description,
+      'workType': workType,
+      'priority': priority,
+      'status': status,
+      'assignedTo': assignedTo,
+      'assigneeName': assigneeName,
+      'createdAt': (createdAt ?? DateTime.now()).toUtc().toIso8601String(),
+      'updatedAt': (updatedAt ?? DateTime.now()).toUtc().toIso8601String(),
+    };
+
 Map<String, dynamic> pendingJson(String id, String email, DateTime since) => {
       'id': id,
       'email': email,
@@ -162,11 +207,16 @@ class FakeWire {
     this.createAssetMessage = 'an Asset with this code already exists',
     this.patchAssetStatus = 200,
     this.patchAssetMessage = 'That Asset could not be changed.',
+    Map<String, List<Map<String, dynamic>>>? workOrders,
+    this.workOrdersStatus = 200,
+    this.createWorkOrderStatus = 201,
+    this.createWorkOrderMessage = 'That Work order could not be raised.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
         sites = sites ?? [],
-        orgUnits = orgUnits ?? {};
+        orgUnits = orgUnits ?? {},
+        workOrders = workOrders ?? {};
 
   final String role;
 
@@ -201,6 +251,33 @@ class FakeWire {
 
   /// When set, an Asset listing hangs until the test completes it.
   Completer<void>? assetsGate;
+
+  /// `GET /api/maintenance/sites/:siteId/work-orders`, keyed by Site id.
+  Map<String, List<Map<String, dynamic>>> workOrders;
+  int workOrdersStatus;
+
+  /// Overrides [workOrders] for one particular `(siteId, orgUnitId)` narrow,
+  /// keyed as `'$siteId|$orgUnitId'` — set by a test that wants to prove a
+  /// narrowed request answers with a different list than the whole Site's,
+  /// distinct from a test that only cares whether `orgUnitId` was sent.
+  final Map<String, List<Map<String, dynamic>>> workOrdersByFilter = {};
+
+  /// Every Work order request as `(siteId, orgUnitId)`, so a test can prove
+  /// the filter was actually sent — or not — as the caller chose.
+  final List<(String, String?)> workOrderRequests = [];
+
+  /// When set, a Work order listing hangs until the test completes it — the
+  /// same device [assetsGate] uses, needed to prove the list shows its own
+  /// placeholders while a read is still in flight.
+  Completer<void>? workOrdersGate;
+
+  /// `POST /api/maintenance/work-orders`.
+  int createWorkOrderStatus;
+  String createWorkOrderMessage;
+
+  /// Every Work order body that actually reached the wire, decoded — so a
+  /// test can assert exactly one request was sent and what it carried.
+  final List<Map<String, dynamic>> workOrderPosts = [];
 
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
@@ -310,6 +387,40 @@ class FakeWire {
             return http.Response(jsonEncode({'message': 'That Asset does not exist.'}), 404);
           }
           return http.Response(jsonEncode({'asset': updated}), 200);
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/work-orders')) {
+          final siteId = path.split('/')[4];
+          final orgUnitId = request.url.queryParameters['orgUnitId'];
+          workOrderRequests.add((siteId, orgUnitId));
+          if (workOrdersGate != null) await workOrdersGate!.future;
+          if (workOrdersStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'Work orders are unavailable.'}),
+              workOrdersStatus,
+            );
+          }
+          final scripted = workOrdersByFilter['$siteId|${orgUnitId ?? ''}'];
+          final sent = scripted ?? (workOrders[siteId] ?? []);
+          return http.Response(jsonEncode({'workOrders': sent}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/work-orders') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          workOrderPosts.add(sent);
+          if (createWorkOrderStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createWorkOrderMessage}),
+              createWorkOrderStatus,
+            );
+          }
+          final created = workOrderJson(
+            '900',
+            'WO-900',
+            sent['summary'] as String,
+            assetId: sent['assetId'] as String,
+            workType: sent['workType'] as String,
+            priority: sent['priority'] as int,
+          );
+          return http.Response(jsonEncode({'workOrder': created}), 201);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {

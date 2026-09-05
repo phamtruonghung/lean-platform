@@ -25,6 +25,10 @@ class OrgUnitChooser extends StatelessWidget {
     required this.onSelected,
     this.enabled = true,
     this.height = 240,
+    this.showSitePicker = true,
+    this.title = 'Where it sits',
+    this.description = "Choose the Org Unit this machine belongs to. This is what decides "
+        'who may raise and close work against it.',
   });
 
   /// The Org Unit currently chosen, owned by the form above rather than by the
@@ -34,6 +38,21 @@ class OrgUnitChooser extends StatelessWidget {
   final ValueChanged<OrgUnitNode> onSelected;
   final bool enabled;
   final double height;
+
+  /// Whether a caller with more than one Site may switch Site from inside
+  /// this chooser. Placing an Asset needs that — the caller may cover more
+  /// than one Site and is not limited to whichever one happened to be showing
+  /// (`AssetFormDialog`). A caller that is already scoped to one particular
+  /// Site — the Work order list's Org Unit filter, say — sets this false so
+  /// the chooser cannot name an Org Unit in a Site other than the one already
+  /// on screen.
+  final bool showSitePicker;
+
+  /// The section header above the tree, and the sentence beneath it —
+  /// callers whose context is not "placing an Asset" (a filter, say) supply
+  /// their own rather than inheriting copy that does not fit.
+  final String title;
+  final String description;
 
   static const ValueKey<String> siteKey = ValueKey<String>('org-unit-chooser-site');
   static const ValueKey<String> failureKey = ValueKey<String>('org-unit-chooser-failed');
@@ -82,15 +101,14 @@ class OrgUnitChooser extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Where it sits', style: theme.textTheme.titleSmall),
+        Text(title, style: theme.textTheme.titleSmall),
         const SizedBox(height: Spacing.xs),
         Text(
-          'Choose the Org Unit this machine belongs to. This is what decides '
-          'who may raise and close work against it.',
+          description,
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: Spacing.sm),
-        if (state.sites.length > 1) ...[
+        if (showSitePicker && state.sites.length > 1) ...[
           DropdownButtonFormField<String>(
             key: siteKey,
             initialValue: state.siteId,

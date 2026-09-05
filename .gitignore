@@ -10,3 +10,7 @@ dist/
 .flutter-plugins
 .flutter-plugins-dependencies
 .deployed-tag
+
+# Local agent harness config — pins an MCP server and a live project ref.
+# Kept out of the repo so cloning does not silently change any agent's toolset.
+.mcp.json

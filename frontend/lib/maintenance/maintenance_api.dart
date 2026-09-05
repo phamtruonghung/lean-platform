@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'asset.dart';
+import 'work_order.dart';
 
 /// The request could not be answered at all. Deliberately its own type rather
 /// than People's `PeopleApiException`: ADR-0006's third clause keeps generic
@@ -121,6 +122,92 @@ class MaintenanceApi {
       throw MaintenanceApiException('The API answered with something this app could not read: $error');
     }
   }
+
+  /// The open Work orders across a whole Site (issue #57) — the server
+  /// excludes completed/closed/cancelled from this read, so nothing further
+  /// filters the result here. [orgUnitId] narrows to that Org Unit and
+  /// everything beneath it; an unknown one is a 404, surfaced through
+  /// [_send] like any other refusal.
+  Future<List<WorkOrder>> fetchWorkOrders(
+    String accessToken, {
+    required String siteId,
+    String? orgUnitId,
+  }) async {
+    final path = '/api/maintenance/sites/$siteId/work-orders';
+    final uri = orgUnitId != null
+        ? Uri.parse(path).replace(queryParameters: {'orgUnitId': orgUnitId})
+        : Uri.parse(path);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final workOrder in body['workOrders'] as List<dynamic>)
+          _workOrderFrom(workOrder as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Raises a new Work order against [assetId]. Deliberately no `orgUnitId`
+  /// and no Work order number in this call: the server derives the former
+  /// from the Asset and issues the latter from the Site's own sequence, so
+  /// the client sends neither.
+  Future<WorkOrder> createWorkOrder(
+    String accessToken, {
+    required String assetId,
+    required String summary,
+    required String workType,
+    required int priority,
+    String? description,
+  }) async {
+    const path = '/api/maintenance/work-orders';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'assetId': assetId,
+          'summary': summary,
+          'workType': workType,
+          'priority': priority,
+          'description': ?description,
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _workOrderFrom(body['workOrder'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  // The server sends a flat row — `id, workOrderNo, assetId, assetCode,
+  // assetName, orgUnitId, orgUnitName, summary, description, workType,
+  // priority, status, assignedTo, assigneeName, createdAt, updatedAt`
+  // (`toWorkOrder`, work-orders.js) — no nested `asset`/`orgUnit` map and no
+  // `assignee` string, so this reads the same flat keys `_assetFrom` already
+  // does for the Asset register.
+  static WorkOrder _workOrderFrom(Map<String, dynamic> workOrder) => WorkOrder(
+        id: workOrder['id'].toString(),
+        workOrderNo: workOrder['workOrderNo'] as String,
+        assetId: workOrder['assetId'].toString(),
+        assetCode: workOrder['assetCode'] as String,
+        assetName: workOrder['assetName'] as String,
+        orgUnitId: workOrder['orgUnitId'].toString(),
+        orgUnitName: workOrder['orgUnitName'] as String,
+        summary: workOrder['summary'] as String,
+        workType: workOrder['workType'] as String,
+        priority: (workOrder['priority'] as num).toInt(),
+        status: workOrder['status'] as String,
+        assignedTo: workOrder['assignedTo']?.toString(),
+        assigneeName: workOrder['assigneeName'] as String?,
+      );
 
   static Asset _assetFrom(Map<String, dynamic> asset) => Asset(
         id: asset['id'].toString(),

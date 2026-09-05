@@ -10,6 +10,8 @@ import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
 import '../maintenance/assets_screen.dart';
 import '../maintenance/maintenance_api.dart';
+import '../maintenance/work_orders_bloc.dart';
+import '../maintenance/work_orders_screen.dart';
 import '../people/accounts_bloc.dart';
 import '../people/accounts_screen.dart';
 import '../people/approval_queue_bloc.dart';
@@ -29,6 +31,7 @@ abstract final class Routes {
   static const String approvals = '/approvals';
   static const String accounts = '/accounts';
   static const String assets = '/assets';
+  static const String workOrders = '/work-orders';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -144,6 +147,35 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   // everywhere by role and holds no Grant rows at all, which is
                   // exactly what `everywhere` means (issue #43).
                   canPlaceAnAsset: account.account.orgUnitScope.everywhere ||
+                      account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.workOrders,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              // The same per-Screen access check `Routes.assets` makes,
+              // against the same Module role set: leaving the destination out
+              // of the sidebar hides the door, this locks it for a caller who
+              // types the address.
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<WorkOrdersBloc>(
+                create: (context) => WorkOrdersBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const WorkOrdersStarted()),
+                child: WorkOrdersScreen(
+                  // Same rule `Routes.assets` applies to its own "Add an
+                  // Asset" button: a caller with no write Grant anywhere is
+                  // offered no way to raise, since the server would refuse it
+                  // anyway (#55, story 39).
+                  canRaiseWorkOrder: account.account.orgUnitScope.everywhere ||
                       account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
                 ),
               );
