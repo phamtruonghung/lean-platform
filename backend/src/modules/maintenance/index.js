@@ -23,8 +23,10 @@
 
 const express = require('express');
 const assetRoutes = require('./asset-routes');
+const workOrderRoutes = require('./work-order-routes');
 
 const router = express.Router();
 router.use(assetRoutes);
+router.use(workOrderRoutes);
 
 module.exports = { router };

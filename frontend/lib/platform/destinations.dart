@@ -73,6 +73,12 @@ const List<Destination> platformDestinations = [
     roles: ModuleRoles.maintenance,
   ),
   Destination(
+    label: 'Work orders',
+    icon: Icons.build_outlined,
+    path: Routes.workOrders,
+    roles: ModuleRoles.maintenance,
+  ),
+  Destination(
     label: 'Accounts',
     icon: Icons.manage_accounts_outlined,
     path: Routes.accounts,
