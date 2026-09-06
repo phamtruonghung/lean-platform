@@ -10,6 +10,10 @@ import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
 import '../maintenance/assets_screen.dart';
 import '../maintenance/maintenance_api.dart';
+import '../maintenance/requests_bloc.dart';
+import '../maintenance/requests_screen.dart';
+import '../maintenance/triage_bloc.dart';
+import '../maintenance/triage_screen.dart';
 import '../maintenance/work_orders_bloc.dart';
 import '../maintenance/work_orders_screen.dart';
 import '../people/accounts_bloc.dart';
@@ -32,6 +36,8 @@ abstract final class Routes {
   static const String accounts = '/accounts';
   static const String assets = '/assets';
   static const String workOrders = '/work-orders';
+  static const String requests = '/requests';
+  static const String triage = '/triage';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -123,6 +129,34 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
             },
           ),
           GoRoute(
+            path: Routes.requests,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              // Every admitted Account earns the Requests surface — it is how
+              // anyone on the floor asks maintenance to look at something
+              // (issue #72). No role check: only the state narrowing an
+              // admitted caller *has* a role is enough, since the redirect
+              // already decided they belong.
+              if (account is! AccountApproved) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<RequestsBloc>(
+                create: (context) => RequestsBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const RequestsStarted()),
+                child: RequestsScreen(
+                  // Raising a Request needs any Grant (read or write) reaching
+                  // some Asset's Org Unit — the operator's whole write. A
+                  // caller the server would refuse is offered no way to ask.
+                  canRaiseRequest: account.account.orgUnitScope.everywhere ||
+                      account.account.orgUnitScope.grants.isNotEmpty,
+                ),
+              );
+            },
+          ),
+          GoRoute(
             path: Routes.assets,
             builder: (context, state) {
               final account = context.watch<AccountBloc>().state;
@@ -180,6 +214,35 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   canRaiseWorkOrder: account.account.orgUnitScope.everywhere ||
                       account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
                   canAssign: account.account.orgUnitScope.everywhere ||
+                      account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.triage,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              // The triage queue is the commitment half of Maintenance: a
+              // maintenance-role surface, deliberately not offered to an
+              // operator (issue #72). Leaving the destination out of the
+              // sidebar hides the door; this locks it for a caller who types
+              // the address.
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<TriageBloc>(
+                create: (context) => TriageBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const TriageStarted()),
+                child: TriageScreen(
+                  // Accepting, declining and marking a duplicate are all
+                  // writes needing a write Grant (issue #72); the same test
+                  // gates whether any is offered.
+                  canTriage: account.account.orgUnitScope.everywhere ||
                       account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
                 ),
               );

@@ -158,6 +158,62 @@ Map<String, dynamic> candidateJson(
       'qualifications': qualifications,
     };
 
+/// One Request as the API sends it (issue #72) — mirrors `toRequest`
+/// (backend maintenance-requests.js) key for key. An accepted Request carries
+/// a `workOrder`; a declined one a `rejectionReason`; a duplicate a
+/// `duplicateOfNo`; an open one none of the three.
+Map<String, dynamic> requestJson(
+  String id,
+  String requestNo,
+  String summary, {
+  String assetId = '7',
+  String assetCode = 'PRESS-1',
+  String assetName = 'Press 1',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String? description,
+  String urgency = 'normal',
+  bool productionStopped = false,
+  String status = 'new',
+  String? requestedByName = 'A B',
+  DateTime? reportedAt,
+  String? rejectionReason,
+  String? duplicateOfNo,
+  Map<String, dynamic>? workOrder,
+}) =>
+    {
+      'id': id,
+      'requestNo': requestNo,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'summary': summary,
+      'description': description,
+      'urgency': urgency,
+      'productionStopped': productionStopped,
+      'status': status,
+      'requestedByName': requestedByName,
+      'reportedAt': (reportedAt ?? DateTime.now()).toUtc().toIso8601String(),
+      'rejectionReason': rejectionReason,
+      'duplicateOfNo': duplicateOfNo,
+      'workOrder': workOrder,
+    };
+
+Map<String, dynamic> requestedWorkOrderJson(
+  String id,
+  String workOrderNo, {
+  String status = 'approved',
+}) =>
+    {
+      'id': id,
+      'workOrderNo': workOrderNo,
+      'status': status,
+      'assignedTo': null,
+      'actualEnd': null,
+    };
+
 Map<String, dynamic> siteJson(String id, String code, String name) =>
     {'id': id, 'code': code, 'name': name, 'timezone': 'Europe/London'};
 
@@ -254,13 +310,24 @@ class FakeWire {
     this.assignMessage = 'That Work order could not be assigned.',
     this.transitionStatus = 200,
     this.transitionMessage = 'That Work order could not be changed.',
+    List<Map<String, dynamic>>? requests,
+    this.requestsStatus = 200,
+    this.createRequestStatus = 201,
+    this.createRequestMessage = 'That Request could not be raised.',
+    this.acceptStatus = 200,
+    this.acceptMessage = 'That Request could not be accepted.',
+    this.declineStatus = 200,
+    this.declineMessage = 'That Request could not be declined.',
+    this.duplicateStatus = 200,
+    this.duplicateMessage = 'That Request could not be marked a duplicate.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
         sites = sites ?? [],
         orgUnits = orgUnits ?? {},
         workOrders = workOrders ?? {},
-        candidates = candidates ?? {};
+        candidates = candidates ?? {},
+        requestRows = requests ?? [];
 
   final String role;
 
@@ -345,6 +412,35 @@ class FakeWire {
   /// status answered for every transition unless a test overrides it.
   int transitionStatus;
   String transitionMessage;
+
+  /// `GET /api/maintenance/requests/mine` and the triage queue — the Requests
+  /// answered. `/mine` uses this whole list; the queue handler answers it too
+  /// (a test that drives both Screens scripts one list, mirroring that both
+  /// read the same underlying table).
+  List<Map<String, dynamic>> requestRows;
+  int requestsStatus;
+
+  /// `POST /api/maintenance/requests`.
+  int createRequestStatus;
+  String createRequestMessage;
+
+  /// Every Request body that reached the wire, decoded — so a test can assert
+  /// exactly one request was sent and what it carried.
+  final List<Map<String, dynamic>> requestPosts = [];
+
+  /// `POST /api/maintenance/requests/:id/{accept,decline,duplicate}`.
+  int acceptStatus;
+  String acceptMessage;
+  int declineStatus;
+  String declineMessage;
+  int duplicateStatus;
+  String duplicateMessage;
+
+  /// Every triage decision that reached the wire, as
+  /// `(requestId, action, body)` — so a test can assert exactly one was sent
+  /// and what it carried (a `workType`/`priority` on accept, a `reason` on
+  /// decline, a `duplicateOfId` on duplicate).
+  final List<(String, String, Map<String, dynamic>?)> triagePosts = [];
 
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
@@ -570,6 +666,89 @@ class FakeWire {
           }
           workOrders = replaced;
           return http.Response(jsonEncode({'workOrder': updated}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/requests/') &&
+            RegExp(r'/accept$|/decline$|/duplicate$').hasMatch(path)) {
+          final segments = path.split('/');
+          final id = segments[4];
+          final action = segments.last;
+          final body = request.body.isEmpty
+              ? null
+              : (jsonDecode(request.body) as Map<String, dynamic>);
+          triagePosts.add((id, action, body));
+          // The refusal status each decision answers (an accept outside the
+          // caller's Grants is an acceptStatus; decline/duplicate each their
+          // own) — a test overrides whichever it is driving.
+          final status = switch (action) {
+            'accept' => acceptStatus,
+            'decline' => declineStatus,
+            _ => duplicateStatus,
+          };
+          final message = switch (action) {
+            'accept' => acceptMessage,
+            'decline' => declineMessage,
+            _ => duplicateMessage,
+          };
+          if (status != 200) {
+            return http.Response(jsonEncode({'message': message}), status);
+          }
+          final updated = {
+            ...requestRows.firstWhere((r) => r['id'] == id, orElse: () => <String, dynamic>{}),
+            'status': switch (action) {
+              'accept' => 'accepted',
+              'decline' => 'rejected',
+              _ => 'duplicate',
+            },
+            if (action == 'accept')
+              'workOrder': requestedWorkOrderJson('900', 'WO-900'),
+            if (action == 'decline') 'rejectionReason': body?['reason'],
+            if (action == 'duplicate') 'duplicateOfNo': 'RQT-1',
+          };
+          if (action == 'accept') {
+            return http.Response(
+              jsonEncode({'workOrder': updated['workOrder'], 'request': updated}),
+              200,
+            );
+          }
+          return http.Response(jsonEncode({'request': updated}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/requests') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          requestPosts.add(sent);
+          if (createRequestStatus != 201) {
+            return http.Response(jsonEncode({'message': createRequestMessage}), createRequestStatus);
+          }
+          final created = requestJson(
+            '900',
+            'RQT-900',
+            sent['summary'] as String,
+            assetId: sent['assetId'] as String,
+            urgency: sent['urgency'] as String,
+            productionStopped: sent['productionStopped'] == true,
+          );
+          requestRows = [created, ...requestRows];
+          return http.Response(jsonEncode({'request': created}), 201);
+        }
+        if (request.method == 'GET' && path == '/api/maintenance/requests/mine') {
+          if (requestsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The requests could not be read.'}),
+              requestsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'requests': requestRows}), 200);
+        }
+        if (request.method == 'GET' &&
+            path.startsWith('/api/maintenance/sites/') &&
+            path.endsWith('/requests')) {
+          if (requestsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The queue could not be read.'}),
+              requestsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'requests': requestRows}), 200);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {

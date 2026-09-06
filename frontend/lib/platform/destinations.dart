@@ -19,11 +19,12 @@ abstract final class Roles {
 }
 
 /// The roles that earn a whole Module, named once so the sidebar and the
-/// route guard cannot disagree about who is let in. Maintenance is offered to
-/// supervisor, engineer, manager and administrator, and not to operator: the
-/// workflow an operator needs is raising a request, which this Module does not
-/// build yet, and a Screen where every write would be refused is exactly what
-/// the Approval queue and the Accounts Screen already avoid (#55).
+/// route guard cannot disagree about who is let in. Maintenance's decision
+/// surfaces — Assets, Work orders, Triage — are offered to supervisor,
+/// engineer, manager and administrator, and not to operator (issue #72): an
+/// operator's whole Maintenance surface is the Requests Destination, which
+/// every admitted Account earns, and which lets them ask and follow without
+/// any decision surface that would refuse every write they could make (#55).
 abstract final class ModuleRoles {
   static const Set<String> maintenance = {
     Roles.supervisor,
@@ -66,6 +67,17 @@ const List<Destination> platformDestinations = [
     path: Routes.approvals,
     roles: {Roles.admin},
   ),
+  // Requests is the one Maintenance Destination every admitted Account earns,
+  // including an operator: it is how anyone on the floor asks maintenance to
+  // look at something and follows what became of the ask (issue #72). The
+  // maintenance-only surfaces — Assets, Work orders, Triage — sit behind
+  // `ModuleRoles.maintenance`, so an operator is offered the asking surface
+  // and never the deciding ones.
+  Destination(
+    label: 'Requests',
+    icon: Icons.rule_folder_outlined,
+    path: Routes.requests,
+  ),
   Destination(
     label: 'Assets',
     icon: Icons.precision_manufacturing_outlined,
@@ -76,6 +88,12 @@ const List<Destination> platformDestinations = [
     label: 'Work orders',
     icon: Icons.build_outlined,
     path: Routes.workOrders,
+    roles: ModuleRoles.maintenance,
+  ),
+  Destination(
+    label: 'Triage',
+    icon: Icons.playlist_add_check_circle_outlined,
+    path: Routes.triage,
     roles: ModuleRoles.maintenance,
   ),
   Destination(
