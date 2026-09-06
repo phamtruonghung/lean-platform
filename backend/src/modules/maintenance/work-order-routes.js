@@ -151,44 +151,116 @@ router.get(
   }
 );
 
-// Assign a Work order to an Employee (issue #62). Same shape as the write
-// routes that came before it: existence first (a 404 for a malformed or
-// unknown :id), then write scope on the Org Unit the Work order's Asset sits
-// at (a 403), then the Employee is validated to exist and be active before
-// `assigned_to` is set. The server is the arbiter of both the scope and the
-// assignee's activity — the candidate picker's filters inform the caller's
-// choice, they do not replace these checks.
+// Assign a Work order to an Employee (issue #62). After the shared write-scope
+// check (`requireWorkOrderWriteScope` below) has resolved the row and proved a
+// write Grant reaching its Asset's Org Unit, the Employee is validated to
+// exist and be active before `assigned_to` is set. The server is the arbiter
+// of both the scope and the assignee's activity — the candidate picker's
+// filters inform the caller's choice, they do not replace these checks.
+// Write scope on the Org Unit the Work order's Asset sits at — the check the
+// assign PATCH (issue #62) and the start/complete/cancel transitions (issue
+// #63) all share. Existence before scope, same as every other write route in
+// this Module: an unknown or malformed :id is a clean 404 (naming the Work
+// order) before `canAct` is ever asked, and `write: true` is passed
+// explicitly because canAct's `write` defaults to FALSE — dropping it would
+// silently authorise every write for any read Grant. The resolved Work order
+// is parked on `req.workOrder` for the route's own use, so it is read once
+// here rather than again by a handler that now knows it exists.
+async function requireWorkOrderWriteScope(req, res, next) {
+  try {
+    const workOrder = await workOrders.getWorkOrder(req.params.id); // throws the 404.
+    const allowed = await people.canAct({
+      account: req.account,
+      orgUnitId: workOrder.orgUnitId,
+      write: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    req.workOrder = workOrder;
+    return next();
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+}
+
 router.patch(
   '/work-orders/:id',
   people.authenticate,
   people.requireActive,
+  requireWorkOrderWriteScope,
   async (req, res, next) => {
     try {
-      // Existence before scope: resolve the Work order first so an unknown or
-      // malformed :id is a clean 404 before `canAct` is ever asked about
-      // scope (the ordering asset-routes.js's requireAssetWriteScope follows).
-      const workOrder = await workOrders.getWorkOrder(req.params.id);
-
-      const allowed = await people.canAct({
-        account: req.account,
-        orgUnitId: workOrder.orgUnitId,
-        write: true
-      });
-      if (!allowed) {
-        return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
-      }
-
       const employeeId = req.body?.assignedTo;
       if (employeeId === undefined || employeeId === null || employeeId === '') {
         return res.status(400).json({ message: 'assignedTo is required' });
       }
 
       const assigned = await workOrders.setAssignee(
-        workOrder.id,
+        req.workOrder.id,
         employeeId,
         req.account.id
       );
       res.json({ workOrder: assigned });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// The three lifecycle transitions (issue #63): start (agreed -> in progress),
+// complete (in progress -> completed, with a note), cancel (agreed/in progress
+// -> cancelled). All write-scoped to the Org Unit the Work order's Asset sits
+// at and all worked entirely server-side — `now()` for the timestamps, the
+// source-state check for legality — so each is a bare POST with no body (or
+// at most a `completionNote` on /complete), never a client-supplied status.
+// That the server decides the lifecycle is the whole point: a caller cannot
+// invent a duration by completing a job it never started, because the server
+// refuses to (completeWorkOrder's source-state guard), and it cannot park a
+// future timestamp, because the server stamps `now()`.
+
+router.post(
+  '/work-orders/:id/start',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderWriteScope,
+  async (req, res, next) => {
+    try {
+      res.json({ workOrder: await workOrders.startWorkOrder(req.workOrder.id, req.account.id) });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+router.post(
+  '/work-orders/:id/complete',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderWriteScope,
+  async (req, res, next) => {
+    try {
+      res.json({
+        workOrder: await workOrders.completeWorkOrder(
+          req.workOrder.id,
+          { completionNote: req.body?.completionNote },
+          req.account.id
+        )
+      });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+router.post(
+  '/work-orders/:id/cancel',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderWriteScope,
+  async (req, res, next) => {
+    try {
+      res.json({ workOrder: await workOrders.cancelWorkOrder(req.workOrder.id, req.account.id) });
     } catch (error) {
       handleError(error, res, next);
     }

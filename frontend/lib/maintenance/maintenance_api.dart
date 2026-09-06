@@ -239,6 +239,63 @@ class MaintenanceApi {
     }
   }
 
+  /// Starts a Work order (`POST /api/maintenance/work-orders/:id/start`):
+  /// records when work began and moves it to in-progress (issue #63). The
+  /// server stamps the timestamp, never the client; and refuses a Work order
+  /// that is not 'approved' (agreed). A write Grant reaching the Work order's
+  /// Asset Org Unit is required.
+  Future<WorkOrder> startWorkOrder(String accessToken, String workOrderId) =>
+      _transitionWorkOrder(accessToken, workOrderId, 'start');
+
+  /// Completes a Work order (`POST /api/maintenance/work-orders/:id/complete`):
+  /// records when work ended and takes a note of what was found (issue #63).
+  /// [completionNote] is optional; the server refuses to complete a Work
+  /// order that was never started, so a duration is never invented.
+  Future<WorkOrder> completeWorkOrder(
+    String accessToken,
+    String workOrderId, {
+    String? completionNote,
+  }) =>
+      _transitionWorkOrder(
+        accessToken,
+        workOrderId,
+        'complete',
+        body: completionNote == null ? null : {'completionNote': completionNote},
+      );
+
+  /// Cancels a Work order (`POST /api/maintenance/work-orders/:id/cancel`) —
+  /// one raised in error is cancelled rather than left open pretending to be
+  /// work (issue #63). The server allows it from 'approved' or 'in_progress'.
+  Future<WorkOrder> cancelWorkOrder(String accessToken, String workOrderId) =>
+      _transitionWorkOrder(accessToken, workOrderId, 'cancel');
+
+  /// The one shape all three lifecycle transitions share: a bare POST to the
+  /// transition's sub-resource (with at most a `completionNote` body on
+  /// /complete), answered with the updated Work order — the same
+  /// `{ workOrder }` envelope every other Write in this Module returns.
+  Future<WorkOrder> _transitionWorkOrder(
+    String accessToken,
+    String workOrderId,
+    String transition, {
+    Map<String, dynamic>? body,
+  }) async {
+    final path = '/api/maintenance/work-orders/$workOrderId/$transition';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: body == null ? null : jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return _workOrderFrom(decoded['workOrder'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   static AssigneeCandidate _candidateFrom(Map<String, dynamic> candidate) => AssigneeCandidate(
         id: candidate['id'].toString(),
         employeeNo: candidate['employeeNo'] as String,
@@ -281,6 +338,13 @@ class MaintenanceApi {
         status: workOrder['status'] as String,
         assignedTo: workOrder['assignedTo']?.toString(),
         assigneeName: workOrder['assigneeName'] as String?,
+        actualStart: workOrder['actualStart'] == null
+            ? null
+            : DateTime.tryParse(workOrder['actualStart'] as String),
+        actualEnd: workOrder['actualEnd'] == null
+            ? null
+            : DateTime.tryParse(workOrder['actualEnd'] as String),
+        completionNote: workOrder['completionNote'] as String?,
       );
 
   static Asset _assetFrom(Map<String, dynamic> asset) => Asset(

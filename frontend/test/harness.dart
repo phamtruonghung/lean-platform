@@ -252,6 +252,8 @@ class FakeWire {
     this.candidatesStatus = 200,
     this.assignStatus = 200,
     this.assignMessage = 'That Work order could not be assigned.',
+    this.transitionStatus = 200,
+    this.transitionMessage = 'That Work order could not be changed.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -332,6 +334,17 @@ class FakeWire {
   /// Every assignment that reached the wire, as `(workOrderId, employeeId)` —
   /// so a test can assert exactly one PATCH was sent and who it named.
   final List<(String, String)> workOrderAssignments = [];
+
+  /// Every lifecycle transition that reached the wire, as
+  /// `(workOrderId, transition, body)` (issue #63) — so a test can assert
+  /// exactly one request was sent, which transition, and what (if anything)
+  /// it carried (a `completionNote` on /complete).
+  final List<(String, String, Map<String, dynamic>?)> workOrderTransitions = [];
+
+  /// `POST /api/maintenance/work-orders/:id/{start,complete,cancel}` — the
+  /// status answered for every transition unless a test overrides it.
+  int transitionStatus;
+  String transitionMessage;
 
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
@@ -488,6 +501,50 @@ class FakeWire {
             jsonEncode({'candidates': candidates[workOrderId] ?? []}),
             200,
           );
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/work-orders/') &&
+            RegExp(r'/start$|/complete$|/cancel$').hasMatch(path)) {
+          final segments = path.split('/');
+          final id = segments[4];
+          final transition = segments.last;
+          final body = request.body.isEmpty
+              ? null
+              : (jsonDecode(request.body) as Map<String, dynamic>);
+          workOrderTransitions.add((id, transition, body));
+          if (transitionStatus != 200) {
+            return http.Response(jsonEncode({'message': transitionMessage}), transitionStatus);
+          }
+          Map<String, dynamic>? updated;
+          final replaced = {
+            for (final entry in workOrders.entries)
+              entry.key: [
+                for (final w in entry.value)
+                  if (w['id'] == id)
+                    (updated = {
+                      ...w,
+                      'status': switch (transition) {
+                        'start' => 'in_progress',
+                        'complete' => 'completed',
+                        'cancel' => 'cancelled',
+                        _ => w['status'],
+                      },
+                      if (transition == 'start') 'actualStart':
+                          DateTime.now().toUtc().toIso8601String(),
+                      if (transition == 'complete')
+                        'actualEnd': DateTime.now().toUtc().toIso8601String(),
+                      if (transition == 'complete')
+                        'completionNote': body?['completionNote'],
+                    })
+                  else
+                    w,
+              ],
+          };
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Work order does not exist.'}), 404);
+          }
+          workOrders = replaced;
+          return http.Response(jsonEncode({'workOrder': updated}), 200);
         }
         if (request.method == 'PATCH' && path.startsWith('/api/maintenance/work-orders/')) {
           final id = path.split('/').last;

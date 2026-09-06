@@ -170,6 +170,19 @@ async function getCandidates(token, workOrderId) {
   return { response, payload };
 }
 
+async function postTransition(token, workOrderId, transition, body = undefined) {
+  const response = await fetch(
+    `${base}/api/maintenance/work-orders/${workOrderId}/${transition}`,
+    {
+      method: 'POST',
+      headers: { ...token, 'content-type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body)
+    }
+  );
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
 let admin;
 let noGrantAccount;   // approved, no Grant anywhere at all.
 let readOnlyAccount;  // read Grant on grantedLine.
@@ -621,4 +634,123 @@ test('the candidates read requires an existing Work order, and is a Site-wide re
   const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Readable picker' }));
   const picker = await getCandidates(noGrantAccount.token, created.payload.workOrder.id);
   assert.strictEqual(picker.response.status, 200);
+});
+
+// ---------------------------------------------------------------------------
+// Working it (issue #63): start, complete, cancel.
+// ---------------------------------------------------------------------------
+
+test('starting records when work began and moves an approved Work order to in-progress', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'To start' }));
+  assert.strictEqual(created.response.status, 201);
+  assert.strictEqual(created.payload.workOrder.status, 'approved');
+  assert.strictEqual(created.payload.workOrder.actualStart, null);
+
+  const { response, payload } = await postTransition(admin.token, created.payload.workOrder.id, 'start');
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.status, 'in_progress');
+  assert.ok(payload.workOrder.actualStart, 'starting stamps actualStart');
+  assert.strictEqual(payload.workOrder.actualEnd, null);
+});
+
+test('completing records when work ended, takes the note, and a completed row carries both timestamps when read back', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'To complete' }));
+  await postTransition(admin.token, created.payload.workOrder.id, 'start');
+
+  const before = await new Date().toISOString();
+  const { response, payload } = await postTransition(
+    admin.token,
+    created.payload.workOrder.id,
+    'complete',
+    { completionNote: 'Replaced bearing; running smooth.' }
+  );
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.status, 'completed');
+  assert.strictEqual(payload.workOrder.completionNote, 'Replaced bearing; running smooth.');
+  assert.ok(payload.workOrder.actualStart, 'carries actualStart (when it started)');
+  assert.ok(payload.workOrder.actualEnd, 'carries actualEnd (when it ended)');
+  assert.ok(payload.workOrder.actualEnd >= payload.workOrder.actualStart, 'ended no earlier than it started');
+  assert.ok(payload.workOrder.actualEnd >= before, 'actualEnd is today or later');
+});
+
+test('a Work order cannot be completed without having been started — completing an approved one is refused', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Never started' }));
+  assert.strictEqual(created.payload.workOrder.status, 'approved');
+
+  const { response, payload } = await postTransition(admin.token, created.payload.workOrder.id, 'complete');
+  assert.strictEqual(response.status, 400);
+  assert.match(payload.message, /cannot complete a Work order in status 'approved'/);
+
+  // Still approved afterwards — the refusal wrote nothing.
+  const { rows } = await pool.query('SELECT status, actual_start, actual_end FROM work_orders WHERE id = $1', [created.payload.workOrder.id]);
+  assert.strictEqual(rows[0].status, 'approved');
+  assert.strictEqual(rows[0].actual_start, null);
+  assert.strictEqual(rows[0].actual_end, null);
+});
+
+test('a Work order raised in error can be cancelled, and a cancelled one is never cancelled twice', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Raised in error' }));
+  assert.strictEqual(created.payload.workOrder.status, 'approved');
+
+  const first = await postTransition(admin.token, created.payload.workOrder.id, 'cancel');
+  assert.strictEqual(first.response.status, 200);
+  assert.strictEqual(first.payload.workOrder.status, 'cancelled');
+
+  const second = await postTransition(admin.token, created.payload.workOrder.id, 'cancel');
+  assert.strictEqual(second.response.status, 400);
+  assert.match(second.payload.message, /cannot cancel a Work order in status 'cancelled'/);
+});
+
+test('the transitions refuse a Work order that does not exist, a malformed id, and a completed job being started again', async () => {
+  const unknown = await postTransition(admin.token, '999999999', 'start');
+  assert.strictEqual(unknown.response.status, 404);
+  assert.strictEqual(unknown.payload.message, 'Work order not found');
+
+  const malformed = await postTransition(admin.token, 'not-an-id', 'start');
+  assert.strictEqual(malformed.response.status, 404);
+
+  // A completed Work order cannot be started again.
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Done already' }));
+  await postTransition(admin.token, created.payload.workOrder.id, 'start');
+  await postTransition(admin.token, created.payload.workOrder.id, 'complete');
+  const restart = await postTransition(admin.token, created.payload.workOrder.id, 'start');
+  assert.strictEqual(restart.response.status, 400);
+  assert.match(restart.payload.message, /cannot start a Work order in status 'completed'/);
+});
+
+test('completionNote is optional: completing without one leaves the note null', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'No note' }));
+  await postTransition(admin.token, created.payload.workOrder.id, 'start');
+
+  const { response, payload } = await postTransition(admin.token, created.payload.workOrder.id, 'complete');
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.status, 'completed');
+  assert.strictEqual(payload.workOrder.completionNote, null);
+});
+
+test("each transition requires a write Grant reaching the Work order Asset's Org Unit", async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Scoped transitions' }));
+
+  // readOnlyAccount holds a read-only Grant on grantedLine: every transition refused.
+  for (const transition of ['start', 'complete', 'cancel']) {
+    // eslint-disable-next-line no-await-in-loop
+    const { response } = await postTransition(readOnlyAccount.token, created.payload.workOrder.id, transition);
+    assert.strictEqual(response.status, 403, `${transition} refused for a read-only Grant`);
+  }
+
+  // siblingWriter holds a write Grant on otherLine only: must not reach across.
+  const sibling = await postTransition(siblingWriter.token, created.payload.workOrder.id, 'start');
+  assert.strictEqual(sibling.response.status, 403);
+
+  // Nothing was written by any refusal.
+  const { rows } = await pool.query('SELECT status, actual_start FROM work_orders WHERE id = $1', [created.payload.workOrder.id]);
+  assert.strictEqual(rows[0].status, 'approved');
+  assert.strictEqual(rows[0].actual_start, null);
 });

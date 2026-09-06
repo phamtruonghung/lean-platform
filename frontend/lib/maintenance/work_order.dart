@@ -53,6 +53,9 @@ class WorkOrder {
     required this.status,
     required this.assignedTo,
     required this.assigneeName,
+    this.actualStart,
+    this.actualEnd,
+    this.completionNote,
   });
 
   final String id;
@@ -98,6 +101,19 @@ class WorkOrder {
   /// Never rendered as a blank — the Screen shows "Unassigned" instead.
   final String? assigneeName;
 
+  /// When work actually began, or null until the Work order is started
+  /// (issue #63). Always stamped by the server as `now()`, never by the
+  /// client, so a duration is never invented.
+  final DateTime? actualStart;
+
+  /// When work actually ended, or null until the Work order is completed.
+  /// Also stamped server-side. A completed Work order carries both this and
+  /// [actualStart] — the pair the reliability views have been waiting to read.
+  final DateTime? actualEnd;
+
+  /// What was found on completion, or null until then (issue #63).
+  final String? completionNote;
+
   String get workTypeLabel =>
       _labelFor(workType, [for (final t in WorkType.values) (t.wire, t.label)]);
 
@@ -105,6 +121,15 @@ class WorkOrder {
   /// a status this build does not know about, the same fallback
   /// [workTypeLabel] follows.
   String get statusLabel => _statusLabels[status] ?? status;
+
+  /// Whether this row's status is one this slice (issue #63) offers as "live",
+  /// i.e. a caller with a write Grant may act on it. `approved` (agreed) can be
+  /// started or cancelled; `in_progress` can be completed or cancelled; a
+  /// completed or cancelled Work order has no further action on this slice —
+  /// it has left the open list, which is where it is shown from.
+  bool get canStart => status == 'approved';
+  bool get canComplete => status == 'in_progress';
+  bool get canCancel => status == 'approved' || status == 'in_progress';
 
   static String _labelFor(String wire, List<(String, String)> known) {
     for (final (value, label) in known) {

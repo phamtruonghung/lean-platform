@@ -16,6 +16,7 @@ import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/skeleton_list.dart';
 import 'assign_work_order_dialog.dart';
+import 'complete_work_order_dialog.dart';
 import 'org_unit_chooser.dart';
 import 'work_order.dart';
 import 'work_order_form_dialog.dart';
@@ -31,11 +32,12 @@ class WorkOrdersScreen extends StatelessWidget {
   /// is still an invitation to fail.
   final bool canRaiseWorkOrder;
 
-  /// Whether assignments are offered at all — the same write-Grant test as
-  /// [canRaiseWorkOrder]. Assigning is a write (issue #62): the server
-  /// refuses one outside the caller's Grants, so a caller without a write
-  /// Grant is offered no way to assign, exactly as it is offered no way to
-  /// raise.
+  /// Whether the write actions on an open row are offered at all — the same
+  /// write-Grant test as [canRaiseWorkOrder]. Assigning is a write (issue
+  /// #62) and so are starting, completing and cancelling a Work order (issue
+  /// #63): the server refuses any of them outside the caller's Grants, so a
+  /// caller without a write Grant is offered no write action on a row, the
+  /// same way it is offered no way to raise.
   final bool canAssign;
 
   static const double maxWidth = 900;
@@ -49,6 +51,9 @@ class WorkOrdersScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('work-orders-failed');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('work-order-row-$id');
   static ValueKey<String> assignKey(String id) => ValueKey<String>('work-order-assign-$id');
+  static ValueKey<String> startKey(String id) => ValueKey<String>('work-order-start-$id');
+  static ValueKey<String> completeKey(String id) => ValueKey<String>('work-order-complete-$id');
+  static ValueKey<String> cancelKey(String id) => ValueKey<String>('work-order-cancel-$id');
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +64,12 @@ class WorkOrdersScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(state: state, canRaiseWorkOrder: canRaiseWorkOrder),
+          // The last write that landed, or the last transition refused — the
+          // former is an informational banner, the latter an error-styled one,
+          // so the caller can tell "your work order was completed" from "the
+          // server declined that", without hunting.
+          if (state is WorkOrdersLoaded && state.transitionFailure != null)
+            _Notice(message: state.transitionFailure!, isError: true),
           if (state is WorkOrdersLoaded && state.notice != null) _Notice(message: state.notice!),
           Expanded(
             child: switch (state) {
@@ -70,7 +81,11 @@ class WorkOrdersScreen extends StatelessWidget {
                   when workOrders.isEmpty =>
                 _WorkOrdersEmpty(orgUnitFilterName: filterName),
               WorkOrdersLoaded(workOrders: final workOrders) =>
-                _WorkOrdersList(workOrders: workOrders, canAssign: canAssign),
+                _WorkOrdersList(
+                  workOrders: workOrders,
+                  canAssign: canAssign,
+                  transitioningId: state.transitioningId,
+                ),
             },
           ),
         ],
@@ -238,13 +253,22 @@ class _OrgUnitFilterDialog extends StatelessWidget {
 }
 
 class _Notice extends StatelessWidget {
-  const _Notice({required this.message});
+  const _Notice({required this.message, this.isError = false});
 
   final String message;
+
+  /// True for a refused write (a transition the server declined): rendered in
+  /// the error palette rather than the informational one, so a failure is not
+  /// mistaken for a success banner.
+  final bool isError;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final containerColor =
+        isError ? theme.colorScheme.errorContainer : theme.colorScheme.secondaryContainer;
+    final contentColor =
+        isError ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSecondaryContainer;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: WorkOrdersScreen.maxWidth),
@@ -254,18 +278,21 @@ class _Notice extends StatelessWidget {
             key: WorkOrdersScreen.noticeKey,
             padding: const EdgeInsets.all(Spacing.md),
             decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer,
+              color: containerColor,
               borderRadius: BorderRadius.circular(AppRadius.card),
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
+                Icon(
+                  isError ? Icons.error_outline : Icons.info_outline,
+                  size: 20,
+                  color: contentColor,
+                ),
                 const SizedBox(width: Spacing.sm),
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: contentColor),
                   ),
                 ),
               ],
@@ -278,10 +305,14 @@ class _Notice extends StatelessWidget {
 }
 
 class _WorkOrdersList extends StatelessWidget {
-  const _WorkOrdersList({required this.workOrders, required this.canAssign});
+  const _WorkOrdersList({required this.workOrders, required this.canAssign, required this.transitioningId});
 
   final List<WorkOrder> workOrders;
   final bool canAssign;
+
+  /// The Work order whose transition is in flight — its action buttons are
+  /// disabled so a second tap on the same row cannot send a second request.
+  final String? transitioningId;
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +326,7 @@ class _WorkOrdersList extends StatelessWidget {
           itemBuilder: (context, index) => _WorkOrderRow(
             workOrder: workOrders[index],
             canAssign: canAssign,
+            isTransitioning: transitioningId == workOrders[index].id,
           ),
         ),
       ),
@@ -302,11 +334,24 @@ class _WorkOrdersList extends StatelessWidget {
   }
 }
 
+/// One open Work order: what it is, who has it, and — for a caller with a
+/// write Grant — the lifecycle actions this slice offers (issue #63). Those
+/// follow the row's status: `approved` (agreed) can be started or cancelled;
+/// `in_progress` can be completed or cancelled; a completed or cancelled Work
+/// order is not in this open list at all, so no action is offered on a row
+/// that is not here. A caller without a write Grant is offered no transition,
+/// exactly as it is offered no way to raise or to assign — an action the
+/// server would refuse is not offered in the first place.
 class _WorkOrderRow extends StatelessWidget {
-  const _WorkOrderRow({required this.workOrder, required this.canAssign});
+  const _WorkOrderRow({
+    required this.workOrder,
+    required this.canAssign,
+    required this.isTransitioning,
+  });
 
   final WorkOrder workOrder;
   final bool canAssign;
+  final bool isTransitioning;
 
   @override
   Widget build(BuildContext context) {
@@ -369,6 +414,54 @@ class _WorkOrderRow extends StatelessWidget {
                 ),
               ],
             ),
+            // Lifecycle actions (issue #63), offered only to a caller with a
+            // write Grant, and only on a status this slice can act on. Each is
+            // a small TextButton rather than an icon, so what it does is said
+            // rather than guessed; the server is still the arbiter, so an
+            // action the server would refuse is a 400 surfaced as a notice,
+            // not a button that lied.
+            if (canAssign &&
+                (workOrder.canStart || workOrder.canComplete || workOrder.canCancel)) ...[
+              const SizedBox(height: Spacing.sm),
+              Row(
+                children: [
+                  if (workOrder.canStart)
+                    TextButton.icon(
+                      key: WorkOrdersScreen.startKey(workOrder.id),
+                      onPressed: isTransitioning
+                          ? null
+                          : () => context
+                              .read<WorkOrdersBloc>()
+                              .add(WorkOrderStartPressed(workOrder.id)),
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      label: const Text('Start'),
+                    ),
+                  if (workOrder.canComplete)
+                    TextButton.icon(
+                      key: WorkOrdersScreen.completeKey(workOrder.id),
+                      onPressed: isTransitioning
+                          ? null
+                          : () => CompleteWorkOrderDialog.open(context, workOrderId: workOrder.id),
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      label: const Text('Complete'),
+                    ),
+                  if (workOrder.canCancel)
+                    TextButton.icon(
+                      key: WorkOrdersScreen.cancelKey(workOrder.id),
+                      onPressed: isTransitioning
+                          ? null
+                          : () => context
+                              .read<WorkOrdersBloc>()
+                              .add(WorkOrderCancelPressed(workOrder.id)),
+                      icon: const Icon(Icons.cancel_outlined, size: 18),
+                      label: const Text('Cancel'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

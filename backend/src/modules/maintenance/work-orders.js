@@ -48,6 +48,7 @@ const OPEN_STATUSES = ['draft', 'approved', 'scheduled', 'in_progress', 'on_hold
 const WORK_ORDER_COLUMNS = `
   wo.id, wo.work_order_no, wo.asset_id, wo.org_unit_id, wo.summary, wo.description,
   wo.work_type, wo.priority, wo.status, wo.assigned_to,
+  wo.actual_start, wo.actual_end, wo.completion_note,
   wo.created_at, wo.updated_at,
   a.code AS asset_code, a.name AS asset_name,
   ou.name AS org_unit_name,
@@ -70,6 +71,9 @@ function toWorkOrder(row) {
     status: row.status,
     assignedTo: row.assigned_to,
     assigneeName: row.assignee_name ?? null,
+    actualStart: row.actual_start,
+    actualEnd: row.actual_end,
+    completionNote: row.completion_note,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -267,6 +271,153 @@ async function setAssignee(workOrderId, employeeId, accountId) {
   }
 }
 
+// The four states this slice (issue #63) offers and no more: agreed
+// (`approved`), in progress, completed, cancelled. The database allows eight;
+// these three transitions below never introduce the other four (`draft`,
+// `scheduled`, `on_hold`, `closed`) — every status a caller can reach through
+// this Module is one the interface already explains. Each transition's source
+// statuses are listed positively, so a new transition cannot silently reach a
+// status nobody has a word for.
+//
+// Each transition rides `withActor` (audit + `updated_by`), and each refuses
+// a row whose status is not a legal source — the server is the arbiter of the
+// lifecycle, never the client. The database backstops the *shape* of a cycle
+// (a completed row must carry `actual_end` — `work_orders_completed_has_end`;
+// a completed one can't start before it ended — `work_orders_actual_window`),
+// but the legality of a *source* status is this Module's wording, because the
+// database's own answer to an illegal UPDATE would be a bare CHECK violation.
+const STARTABLE_STATUSES = ['approved']; // agreed -> in progress.
+const COMPLETABLE_STATUSES = ['in_progress']; // -> completed.
+const CANCELLABLE_STATUSES = ['approved', 'in_progress']; // -> cancelled.
+
+// Runs one work order transition: checks the source status is one this
+// transition may start from, applies the UPDATE, and returns the row with its
+// joins — the same shape setAssignee returns. The transition's SQL sets
+// `status` and whichever timestamp columns it owns; it never touches the
+// others (starting leaves `actual_end` null, completing fills it).
+async function transitionWorkOrder(
+  workOrderId,
+  statuses,
+  nextStatus,
+  columnUpdates,
+  accountId
+) {
+  const workOrder = await getWorkOrder(workOrderId); // throws the 404.
+  if (!statuses.includes(workOrder.status)) {
+    throw httpError(400, `cannot ${columnUpdates.action} a Work order in status '${workOrder.status}'`);
+  }
+
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [row] } = await client.query(
+        columnUpdates.query,
+        [nextStatus, workOrder.id, ...(columnUpdates.params ?? [])]
+      );
+      return toWorkOrder(row);
+    });
+  } catch (error) {
+    throw mapWorkOrderWriteError(error);
+  }
+}
+
+// Starting (issue #63): records when work began and moves the Work order to
+// in-progress. Only `approved` — "agreed, not yet started" — may be started;
+// a job that has already begun, finished or been cancelled has no business
+// being "started" again.
+const START_COLUMNS = {
+  query: `WITH updated AS (
+           UPDATE work_orders SET status = $1, actual_start = now()
+           WHERE id = $2 AND status = 'approved'
+           RETURNING *
+         )
+         SELECT ${WORK_ORDER_COLUMNS}
+           FROM updated wo
+           JOIN assets a ON a.id = wo.asset_id
+           JOIN org_units ou ON ou.id = wo.org_unit_id
+           LEFT JOIN employees e ON e.id = wo.assigned_to`,
+  params: [],
+  action: 'start'
+};
+
+function startWorkOrder(workOrderId, accountId) {
+  return transitionWorkOrder(
+    workOrderId,
+    STARTABLE_STATUSES,
+    'in_progress',
+    START_COLUMNS,
+    accountId
+  );
+}
+
+// Completing (issue #63): records when work ended, and takes a note of what
+// was found. Refuses a Work order that was never started — a duration is never
+// invented, so completing requires `in_progress`, which only starting (which
+// sets `actual_start = now()`) can have produced (the acceptance criterion).
+// `completion_note` is optional; an empty-string is normalised away so a
+// caller cannot park a whitespace string meaning "nothing to say".
+const COMPLETE_COLUMNS = {
+  query: `WITH updated AS (
+           UPDATE work_orders
+             SET status = $1, actual_end = now(), completion_note = $3
+           WHERE id = $2 AND status = 'in_progress'
+           RETURNING *
+         )
+         SELECT ${WORK_ORDER_COLUMNS}
+           FROM updated wo
+           JOIN assets a ON a.id = wo.asset_id
+           JOIN org_units ou ON ou.id = wo.org_unit_id
+           LEFT JOIN employees e ON e.id = wo.assigned_to`,
+  params: [],
+  action: 'complete'
+};
+
+function completeWorkOrder(workOrderId, { completionNote = null } = {}, accountId) {
+  return transitionWorkOrder(
+    workOrderId,
+    COMPLETABLE_STATUSES,
+    'completed',
+    {
+      ...COMPLETE_COLUMNS,
+      params: [
+        typeof completionNote === 'string' && completionNote.trim() !== ''
+          ? completionNote.trim()
+          : null
+      ]
+    },
+    accountId
+  );
+}
+
+// Cancelling (issue #63): a Work order raised in error is cancelled rather
+// than left open pretending to be work. Either of the two states this slice
+// renders as live — agreed or in progress — may be cancelled; a completed job
+// stays readable as history, and a cancelled one is never cancelled twice.
+const CANCEL_COLUMNS = {
+  query: `WITH updated AS (
+           UPDATE work_orders
+             SET status = $1
+           WHERE id = $2 AND status IN ('approved', 'in_progress')
+           RETURNING *
+         )
+         SELECT ${WORK_ORDER_COLUMNS}
+           FROM updated wo
+           JOIN assets a ON a.id = wo.asset_id
+           JOIN org_units ou ON ou.id = wo.org_unit_id
+           LEFT JOIN employees e ON e.id = wo.assigned_to`,
+  params: [],
+  action: 'cancel'
+};
+
+function cancelWorkOrder(workOrderId, accountId) {
+  return transitionWorkOrder(
+    workOrderId,
+    CANCELLABLE_STATUSES,
+    'cancelled',
+    CANCEL_COLUMNS,
+    accountId
+  );
+}
+
 // The assignee picker's data (issue #62): every active Employee at the Site
 // the work order's Asset sits at, each carrying what they currently hold —
 // their `employee_skills` rows joined against `skills`, with a lapsed
@@ -393,5 +544,8 @@ module.exports = {
   findWorkOrder,
   getWorkOrder,
   setAssignee,
+  startWorkOrder,
+  completeWorkOrder,
+  cancelWorkOrder,
   listAssigneeCandidates
 };

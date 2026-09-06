@@ -86,6 +86,32 @@ class WorkOrderAssignConfirmed extends WorkOrdersEvent {
   final String employeeId;
 }
 
+/// The row's Start affordance was pressed (issue #63): record when work began
+/// and move this Work order to in-progress. A decision already made — the
+/// Bloc does not re-check that the row can be started; it lets the server,
+/// the arbiter of the lifecycle, refuse an illegal one.
+class WorkOrderStartPressed extends WorkOrdersEvent {
+  const WorkOrderStartPressed(this.workOrderId);
+  final String workOrderId;
+}
+
+/// The row's Complete affordance was pressed (issue #63): record when work
+/// ended and take a note of what was found. [completionNote] is optional and
+/// comes from the completion dialog, which decides; the Bloc only ever sees a
+/// decision already made.
+class WorkOrderCompletePressed extends WorkOrdersEvent {
+  const WorkOrderCompletePressed(this.workOrderId, {this.completionNote});
+  final String workOrderId;
+  final String? completionNote;
+}
+
+/// The row's Cancel affordance was pressed (issue #63): retire a Work order
+/// raised in error rather than leave it open.
+class WorkOrderCancelPressed extends WorkOrdersEvent {
+  const WorkOrderCancelPressed(this.workOrderId);
+  final String workOrderId;
+}
+
 sealed class WorkOrdersState {
   const WorkOrdersState();
 }
@@ -107,6 +133,8 @@ class WorkOrdersLoaded extends WorkOrdersState {
     this.raiseFailure,
     this.isAssigning = false,
     this.assignFailure,
+    this.transitioningId,
+    this.transitionFailure,
     this.notice,
   });
 
@@ -142,6 +170,16 @@ class WorkOrdersLoaded extends WorkOrdersState {
   /// dialog, which stays open on a refusal.
   final String? assignFailure;
 
+  /// The Work order whose lifecycle transition (start/complete/cancel,
+  /// issue #63) is in flight, or null when none is — kept on the state so the
+  /// Screen can refuse a second transition to the same row while the first is
+  /// still being sent, the same role [isAssigning] plays for assignment.
+  final String? transitioningId;
+
+  /// Why the last transition did not land. Reported where the caller acted —
+  /// the row's notice, which stays visible on a refusal.
+  final String? transitionFailure;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [WorkOrdersUnavailable].
   final String? notice;
@@ -164,6 +202,8 @@ class WorkOrdersLoaded extends WorkOrdersState {
     String? raiseFailure,
     bool? isAssigning,
     String? assignFailure,
+    String? transitioningId,
+    String? transitionFailure,
     String? notice,
   }) =>
       WorkOrdersLoaded(
@@ -178,6 +218,8 @@ class WorkOrdersLoaded extends WorkOrdersState {
         raiseFailure: raiseFailure,
         isAssigning: isAssigning ?? this.isAssigning,
         assignFailure: assignFailure,
+        transitioningId: transitioningId,
+        transitionFailure: transitionFailure,
         notice: notice,
       );
 }
@@ -202,6 +244,9 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
     on<WorkOrdersOrgUnitFilterCleared>(_onOrgUnitFilterCleared);
     on<WorkOrderRaiseConfirmed>(_onRaiseConfirmed);
     on<WorkOrderAssignConfirmed>(_onAssignConfirmed);
+    on<WorkOrderStartPressed>(_onStartPressed);
+    on<WorkOrderCompletePressed>(_onCompletePressed);
+    on<WorkOrderCancelPressed>(_onCancelPressed);
   }
 
   final MaintenanceApi _maintenance;
@@ -442,4 +487,81 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
       emit(settled.copyWith(isAssigning: false, assignFailure: error.message));
     }
   }
+
+  Future<void> _onStartPressed(WorkOrderStartPressed event, Emitter<WorkOrdersState> emit) =>
+      _runTransition(event.workOrderId, (token, id) => _maintenance.startWorkOrder(token, id), emit);
+
+  Future<void> _onCompletePressed(
+    WorkOrderCompletePressed event,
+    Emitter<WorkOrdersState> emit,
+  ) =>
+      _runTransition(
+        event.workOrderId,
+        (token, id) => _maintenance.completeWorkOrder(token, id, completionNote: event.completionNote),
+        emit,
+      );
+
+  Future<void> _onCancelPressed(WorkOrderCancelPressed event, Emitter<WorkOrdersState> emit) =>
+      _runTransition(event.workOrderId, (token, id) => _maintenance.cancelWorkOrder(token, id), emit);
+
+  /// The one shape all three lifecycle transitions share (issue #63): refuse a
+  /// second transition while one is in flight, then send exactly one request
+  /// and swap the returned row in. A completed or cancelled Work order leaves
+  /// the open list — the server's own response status is 'completed' or
+  /// 'cancelled', which this list does not show, so the row is removed and the
+  /// notice says where it went rather than pretending it still sits here.
+  Future<void> _runTransition(
+    String workOrderId,
+    Future<WorkOrder> Function(String token, String workOrderId) request,
+    Emitter<WorkOrdersState> emit,
+  ) async {
+    final current = state;
+    if (current is! WorkOrdersLoaded || current.transitioningId != null) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(transitioningId: workOrderId, transitionFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(transitioningId: workOrderId));
+    try {
+      final updated = await request(token, workOrderId);
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      // A completed/cancelled row is out of this open list; anything else — the
+      // started row, now in-progress — swaps in place (same id) so its state
+      // and the affordances that follow it change immediately.
+      final leavesOpenList = updated.status == 'completed' || updated.status == 'cancelled';
+      emit(
+        settled.copyWith(
+          transitioningId: null,
+          workOrders: leavesOpenList
+              ? [for (final w in settled.workOrders) if (w.id != updated.id) w]
+              : [
+                  for (final w in settled.workOrders)
+                    w.id == updated.id ? updated : w,
+                ],
+          notice: leavesOpenList
+              ? '${updated.workOrderNo} ${_pastTense(updated.status)} and left the open list.'
+              : _transitionNotice(updated),
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      emit(settled.copyWith(transitioningId: null, transitionFailure: error.message));
+    }
+  }
+
+  static String _pastTense(String status) => switch (status) {
+        'completed' => 'was completed',
+        'cancelled' => 'was cancelled',
+        _ => 'changed',
+      };
+
+  static String _transitionNotice(WorkOrder updated) => switch (updated.status) {
+        'in_progress' => '${updated.workOrderNo} was started.',
+        _ => '${updated.workOrderNo} changed to ${updated.statusLabel}.',
+      };
 }
