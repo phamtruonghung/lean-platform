@@ -87,14 +87,28 @@ class EmployeeAssignment {
   final String? jobRoleName;
 }
 
-/// One Employee's full record — the Directory's detail view (AC5).
+/// One Employee's full record — the Directory's detail view (AC5), plus the
+/// administrator's own write surface over it (issue #87).
+///
+/// [firstName], [lastName], [hiredOn], [employmentType] and [workEmail] are
+/// carried alongside the fields issue #86 already read, because
+/// `getEmployeeDetail` (directory.js) answers `{ ...toEmployee(row), jobRole,
+/// assignments, skills }` — the whole of `toEmployee`'s own shape was always
+/// on the wire, this model simply did not read the rest of it until there was
+/// a correction form that needed to pre-fill from it.
 @immutable
 class EmployeeDetail {
   const EmployeeDetail({
     required this.id,
     required this.employeeNo,
+    required this.firstName,
+    required this.lastName,
     required this.displayName,
     required this.isActive,
+    required this.hiredOn,
+    required this.terminatedOn,
+    required this.employmentType,
+    required this.workEmail,
     required this.jobRoleName,
     required this.assignments,
     required this.qualifications,
@@ -102,8 +116,22 @@ class EmployeeDetail {
 
   final String id;
   final String employeeNo;
+  final String firstName;
+  final String lastName;
   final String displayName;
   final bool isActive;
+
+  /// `YYYY-MM-DD`, or null — the same wire shape [EmployeeAssignment.effectiveFrom]
+  /// uses and the same reason: a DATE column has no time component, so this is
+  /// never parsed into a `DateTime`.
+  final String? hiredOn;
+
+  /// Set only for a Departed Employee (CONTEXT.md's own Departed entry) — a
+  /// flag and a date, never a deletion.
+  final String? terminatedOn;
+
+  final String employmentType;
+  final String? workEmail;
 
   /// The current Assignment's job role, or null when there is none — the same
   /// rule `getEmployeeDetail` computes server-side, not re-derived here.

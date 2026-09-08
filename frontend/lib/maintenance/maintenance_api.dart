@@ -298,8 +298,9 @@ class MaintenanceApi {
         parentId: asset['parentId']?.toString(),
       );
 
-  /// Accepts any 2xx, unlike `PeopleApi._send`'s `!= 200`: creating an Asset
-  /// answers 201, which is the status this Module's own POST actually returns.
+  /// Accepts any 2xx, the same rule `PeopleApi._send` follows (issue #87):
+  /// creating an Asset answers 201, which is the status this Module's own
+  /// POST actually returns.
   Future<http.Response> _send(Future<http.Response> Function() send, String path) async {
     final http.Response response;
     try {

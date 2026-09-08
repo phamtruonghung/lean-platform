@@ -118,7 +118,13 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   peopleApi: context.read<PeopleApi>(),
                   authGateway: context.read<AuthGateway>(),
                 )..add(const DirectoryStarted()),
-                child: const DirectoryScreen(),
+                // The four write routes are `requireAdmin`, not Org-Unit-scoped
+                // (ADR-0009) — issue #87 — so this is a role check, the same
+                // shape `account.account.role != Roles.admin` already gates
+                // the Approvals/Accounts routes below with, just offered
+                // in-Screen here rather than as a whole-Screen refusal, since
+                // the Directory itself stays open to every role.
+                child: DirectoryScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
           ),
@@ -142,7 +148,10 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   peopleApi: context.read<PeopleApi>(),
                   authGateway: context.read<AuthGateway>(),
                 )..add(EmployeeDetailRequested(employeeId: employeeId)),
-                child: EmployeeDetailScreen(employeeId: employeeId),
+                child: EmployeeDetailScreen(
+                  employeeId: employeeId,
+                  isAdmin: account.account.role == Roles.admin,
+                ),
               );
             },
           ),

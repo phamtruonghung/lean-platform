@@ -51,6 +51,25 @@ class DirectoryIncludeDepartedChanged extends DirectoryEvent {
   final bool includeDeparted;
 }
 
+/// The Add Employee form has decided: this is a whole new Employee (issue
+/// #87). Same contract as `AssetAddConfirmed` — the dialog decides, the Bloc
+/// only ever sees a decision already made.
+class DirectoryAddConfirmed extends DirectoryEvent {
+  const DirectoryAddConfirmed({
+    required this.employeeNo,
+    required this.firstName,
+    required this.lastName,
+    this.employmentType,
+    this.workEmail,
+  });
+
+  final String employeeNo;
+  final String firstName;
+  final String lastName;
+  final String? employmentType;
+  final String? workEmail;
+}
+
 sealed class DirectoryState {
   const DirectoryState();
 }
@@ -73,6 +92,8 @@ class DirectoryLoaded extends DirectoryState {
     this.jobRoleName,
     this.includeDeparted = false,
     this.isLoadingList = false,
+    this.isAdding = false,
+    this.addFailure,
   });
 
   final List<Employee> employees;
@@ -95,6 +116,16 @@ class DirectoryLoaded extends DirectoryState {
   /// a Site switch.
   final bool isLoadingList;
 
+  /// An add is in flight (issue #87). Kept on the state, not only in the
+  /// dialog, so the Screen can refuse a second one — the same shape
+  /// `AssetsLoaded.isAdding` uses.
+  final bool isAdding;
+
+  /// Why the last add did not land. Reported by the open dialog, which stays
+  /// open so the caller can fix the field rather than retype the whole
+  /// Employee.
+  final String? addFailure;
+
   DirectoryLoaded copyWith({
     List<Employee>? employees,
     List<JobRole>? jobRoles,
@@ -107,6 +138,8 @@ class DirectoryLoaded extends DirectoryState {
     bool clearJobRoleFilter = false,
     bool? includeDeparted,
     bool? isLoadingList,
+    bool? isAdding,
+    String? addFailure,
   }) =>
       DirectoryLoaded(
         employees: employees ?? this.employees,
@@ -118,6 +151,13 @@ class DirectoryLoaded extends DirectoryState {
         jobRoleName: clearJobRoleFilter ? null : (jobRoleName ?? this.jobRoleName),
         includeDeparted: includeDeparted ?? this.includeDeparted,
         isLoadingList: isLoadingList ?? this.isLoadingList,
+        isAdding: isAdding ?? this.isAdding,
+        // Always overwritten, never carried forward — the same rule
+        // `AssetsLoaded.copyWith` gives `addFailure`: a failure is reported
+        // once, for the frame right after it happens, and any other state
+        // change (a re-list, a filter) clears it rather than leaving it to
+        // linger silently.
+        addFailure: addFailure,
       );
 }
 
@@ -136,6 +176,7 @@ class DirectoryBloc extends Bloc<DirectoryEvent, DirectoryState> {
     on<DirectoryOrgUnitFilterChanged>(_onOrgUnitFilterChanged);
     on<DirectoryJobRoleFilterChanged>(_onJobRoleFilterChanged);
     on<DirectoryIncludeDepartedChanged>(_onIncludeDepartedChanged);
+    on<DirectoryAddConfirmed>(_onAddConfirmed);
   }
 
   final PeopleApi _api;
@@ -184,7 +225,13 @@ class DirectoryBloc extends Bloc<DirectoryEvent, DirectoryState> {
       );
       final settled = state;
       if (settled is! DirectoryLoaded) return;
-      emit(settled.copyWith(employees: employees, isLoadingList: false));
+      // isAdding is always explicitly false here, not left to `copyWith`'s
+      // `?? this.isAdding` default — harmless for an ordinary filter/search
+      // re-read (already false), and what lets `_onAddConfirmed` fold "the
+      // add landed" and "the list now shows it" into the one state
+      // transition the open dialog's own listener reacts to, rather than
+      // two, which would call `Navigator.pop` twice.
+      emit(settled.copyWith(employees: employees, isLoadingList: false, isAdding: false));
     } on PeopleApiException catch (error) {
       emit(DirectoryUnavailable(message: error.message));
     }
@@ -246,5 +293,47 @@ class DirectoryBloc extends Bloc<DirectoryEvent, DirectoryState> {
     if (current is! DirectoryLoaded) return;
     emit(current.copyWith(includeDeparted: event.includeDeparted, isLoadingList: true));
     await _readList(emit);
+  }
+
+  /// Adds an Employee (issue #87), administrator only — the Screen never
+  /// offers this event to anyone else, and `POST /employees` would refuse it
+  /// with a 403 anyway.
+  ///
+  /// On success this deliberately does NOT splice the response into
+  /// [DirectoryLoaded.employees]: `createEmployee`'s own response
+  /// (`PeopleApi.createEmployee`'s own header explains why) carries no
+  /// `orgUnit` and no `jobRole`, so the new row would render with neither
+  /// until something else reloaded it. A full [_readList] is what
+  /// `listEmployees`'s own joins are for.
+  Future<void> _onAddConfirmed(DirectoryAddConfirmed event, Emitter<DirectoryState> emit) async {
+    final current = state;
+    if (current is! DirectoryLoaded || current.isAdding) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(addFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isAdding: true, addFailure: null));
+    try {
+      await _api.createEmployee(
+        token,
+        employeeNo: event.employeeNo,
+        firstName: event.firstName,
+        lastName: event.lastName,
+        employmentType: event.employmentType,
+        workEmail: event.workEmail,
+      );
+      // One state transition, not two: `_readList`'s own success emit is what
+      // clears `isAdding`, bundled with the refreshed list — see its own
+      // comment for why a separate "isAdding: false" emit here would fire the
+      // open dialog's listener twice and pop it twice.
+      await _readList(emit);
+    } on PeopleApiException catch (error) {
+      final settled = state;
+      if (settled is! DirectoryLoaded) return;
+      emit(settled.copyWith(isAdding: false, addFailure: error.message));
+    }
   }
 }

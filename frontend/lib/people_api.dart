@@ -412,8 +412,14 @@ class PeopleApi {
     return EmployeeDetail(
       id: employee['id'].toString(),
       employeeNo: employee['employeeNo'] as String,
+      firstName: employee['firstName'] as String,
+      lastName: employee['lastName'] as String,
       displayName: employee['displayName'] as String,
       isActive: employee['isActive'] == true,
+      hiredOn: employee['hiredOn'] as String?,
+      terminatedOn: employee['terminatedOn'] as String?,
+      employmentType: employee['employmentType'] as String,
+      workEmail: employee['workEmail'] as String?,
       jobRoleName: jobRole?['name'] as String?,
       assignments: [
         for (final assignment in assignments.whereType<Map<String, dynamic>>())
@@ -458,6 +464,100 @@ class PeopleApi {
       proficiencyLevel: (skill['proficiencyLevel'] as num).toInt(),
       expiresOn: skill['expiresOn'] as String?,
       isLapsed: skill['isLapsed'] == true,
+    );
+  }
+
+  /// Adds a new Employee (`POST /api/people/employees`, administrator only,
+  /// issue #87). Required: [employeeNo], [firstName], [lastName]. Optional:
+  /// [employmentType] (the server defaults it to `'permanent'`) and
+  /// [workEmail].
+  ///
+  /// Returns nothing: `createEmployee`'s own RETURNING clause
+  /// (`directory.js`) answers the bare `toEmployee` shape — no `orgUnit`, no
+  /// `jobRole`, since those are resolved only by `listEmployees`'s own joins.
+  /// Splicing this response straight into the Directory list would render the
+  /// new row with neither until something else reloaded it, so the caller
+  /// re-reads the list instead (`DirectoryBloc._onAddConfirmed`).
+  Future<void> createEmployee(
+    String accessToken, {
+    required String employeeNo,
+    required String firstName,
+    required String lastName,
+    String? employmentType,
+    String? workEmail,
+  }) async {
+    const path = '/api/people/employees';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'employeeNo': employeeNo,
+          'firstName': firstName,
+          'lastName': lastName,
+          'employmentType': ?employmentType,
+          'workEmail': ?workEmail,
+        }),
+      ),
+      path,
+    );
+  }
+
+  /// Corrects an existing Employee's record
+  /// (`PATCH /api/people/employees/:id`, administrator only, issue #87).
+  /// [changes] is sent exactly as given — only the keys actually present are
+  /// touched, mirroring the server's own `hasOwnProperty` rule
+  /// (`updateEmployee`, directory.js): a one-field correction carries one
+  /// field, never the whole record re-sent. Building that diff is
+  /// `EmployeeCorrectionDialog`'s job, not this method's — it sends whatever
+  /// it is given.
+  ///
+  /// `isActive` and `terminatedOn` are unreachable through this call: the
+  /// server's own `EMPLOYEE_WRITABLE_COLUMNS` has no entry for either, by
+  /// design (directory.js's own comment) — [setEmployeeDeparted] and
+  /// [reinstateEmployee] are the only two routes into them.
+  Future<void> updateEmployee(String accessToken, String id, Map<String, Object?> changes) async {
+    final path = '/api/people/employees/$id';
+    await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+  }
+
+  /// Records that an Employee has departed
+  /// (`POST /api/people/employees/:id/departure`, administrator only, issue
+  /// #87) — a flag and a date, never a deletion (CONTEXT.md's own Departed
+  /// entry). [terminatedOn] is `YYYY-MM-DD`, the day it took effect; left
+  /// null, the server defaults it to today.
+  Future<void> setEmployeeDeparted(String accessToken, String id, {String? terminatedOn}) async {
+    final path = '/api/people/employees/$id/departure';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'terminatedOn': ?terminatedOn}),
+      ),
+      path,
+    );
+  }
+
+  /// Undoes a departure
+  /// (`POST /api/people/employees/:id/reinstatement`, administrator only,
+  /// issue #87) — the other half of [setEmployeeDeparted]. No body: reinstating
+  /// asks for nothing.
+  Future<void> reinstateEmployee(String accessToken, String id) async {
+    final path = '/api/people/employees/$id/reinstatement';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(const {}),
+      ),
+      path,
     );
   }
 
@@ -606,7 +706,9 @@ class PeopleApi {
 
   /// The one place a request's transport failure and its non-2xx status turn
   /// into a [PeopleApiException] — `fetchMe` predates this and keeps its own
-  /// copy so its messages stay byte-identical.
+  /// copy so its messages stay byte-identical. Accepts any 2xx, not only 200
+  /// (issue #87): `createEmployee` answers 201, the same reason
+  /// `MaintenanceApi._send` already accepts any 2xx rather than one exact code.
   Future<http.Response> _send(Future<http.Response> Function() send, String path) async {
     final http.Response response;
     try {
@@ -614,7 +716,7 @@ class PeopleApi {
     } catch (error) {
       throw PeopleApiException('Could not reach the API: $error');
     }
-    if (response.statusCode != 200) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw PeopleApiException(
         _messageFrom(response) ?? 'The API answered ${response.statusCode} for $path.',
         statusCode: response.statusCode,
