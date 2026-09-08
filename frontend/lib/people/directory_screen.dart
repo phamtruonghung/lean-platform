@@ -264,6 +264,20 @@ class _EmployeeRow extends StatelessWidget {
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
+                    Text(
+                      // A missing job role reads as "No job role", never a
+                      // blank the reader has to interpret (issue #91's own
+                      // criterion); the Org Unit is appended only when there
+                      // is one to name at all — directory.js's own fallback
+                      // rule means it is usually there even with no current
+                      // Assignment, but not always (neither a current
+                      // Assignment nor a defaultOrgUnitId).
+                      employee.orgUnitName == null
+                          ? (employee.jobRoleName ?? 'No job role')
+                          : '${employee.jobRoleName ?? 'No job role'} · ${employee.orgUnitName}',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
                   ],
                 ),
               ),

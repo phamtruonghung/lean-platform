@@ -188,7 +188,9 @@ void main() {
     expect(find.text('Welding Certificate'), findsOneWidget);
   });
 
-  testWidgets('a lapsed qualification is shown as lapsed, not omitted', (tester) async {
+  testWidgets(
+      'a lapsed qualification is shown as lapsed, not omitted, isLapsed read off the wire',
+      (tester) async {
     final wire = FakeWire(
       employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
       employeeDetails: {
@@ -198,7 +200,11 @@ void main() {
           'Alice Nguyen',
           skills: [
             employeeSkillJson('200', '30', 'WELD-CERT', 'Welding Certificate'),
-            employeeSkillJson('201', '31', 'FORK', 'Forklift', expiresOn: '2000-01-01'),
+            // isLapsed: true sent explicitly (issue #91) — the server now
+            // derives it, so this fixture is not something the client could
+            // work out from expiresOn alone: PeopleApi._isLapsed is gone, so
+            // if this were read any other way the row would show current.
+            employeeSkillJson('201', '31', 'FORK', 'Forklift', expiresOn: '2000-01-01', isLapsed: true),
           ],
         ),
       },
@@ -213,6 +219,28 @@ void main() {
     expect(find.byKey(EmployeeDetailScreen.skillChipKey('31')), findsOneWidget);
     expect(find.byKey(EmployeeDetailScreen.lapsedSkillChipKey('31')), findsOneWidget);
     expect(find.text('Forklift · Lapsed'), findsOneWidget);
+  });
+
+  testWidgets('the list rows render the Org Unit and the job role', (tester) async {
+    final wire = FakeWire(
+      employees: [
+        employeeJson(
+          '7',
+          'E-7',
+          'Alice Nguyen',
+          orgUnit: {'id': '10', 'name': 'Assembly'},
+          jobRole: {'id': '5', 'name': 'Welder'},
+        ),
+        // No current Assignment and no defaultOrgUnitId either — reads as
+        // having no job role, not a blank the reader has to interpret
+        // (issue #91's own criterion).
+        employeeJson('8', 'E-8', 'Bao Tran'),
+      ],
+    );
+    await openDirectory(tester, wire);
+
+    expect(find.text('Welder · Assembly'), findsOneWidget);
+    expect(find.text('No job role'), findsOneWidget);
   });
 
   testWidgets("a Member reaches their own record via My record, with no edit control on it",

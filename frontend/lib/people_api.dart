@@ -316,9 +316,10 @@ class PeopleApi {
   /// approved Account regardless of their own Org Unit scope (ADR-0009), so
   /// nothing here narrows it either.
   ///
-  /// Each row carries no job role and no Org Unit — `listEmployees`
-  /// (directory.js) selects only the Employee's own columns, nothing joined
-  /// in. See [Employee]'s own header.
+  /// Each row now names the Employee's current Org Unit and current job role
+  /// (issue #91) — `listEmployees` (directory.js) resolves both in the same
+  /// one query the list was always built from, never a query per Employee.
+  /// See [Employee]'s own header.
   Future<List<Employee>> fetchEmployees(
     String accessToken, {
     String? search,
@@ -353,13 +354,19 @@ class PeopleApi {
     }
   }
 
-  static Employee _employeeFrom(Map<String, dynamic> employee) => Employee(
-        id: employee['id'].toString(),
-        employeeNo: employee['employeeNo'] as String,
-        displayName: employee['displayName'] as String,
-        employmentType: employee['employmentType'] as String,
-        isActive: employee['isActive'] == true,
-      );
+  static Employee _employeeFrom(Map<String, dynamic> employee) {
+    final orgUnit = employee['orgUnit'] as Map<String, dynamic>?;
+    final jobRole = employee['jobRole'] as Map<String, dynamic>?;
+    return Employee(
+      id: employee['id'].toString(),
+      employeeNo: employee['employeeNo'] as String,
+      displayName: employee['displayName'] as String,
+      employmentType: employee['employmentType'] as String,
+      isActive: employee['isActive'] == true,
+      orgUnitName: orgUnit?['name'] as String?,
+      jobRoleName: jobRole?['name'] as String?,
+    );
+  }
 
   /// One Employee's full record (`GET /api/people/employees/:id`, issue #86)
   /// — job role, Assignment history and skills, alongside the Employee
@@ -435,41 +442,23 @@ class PeopleApi {
   /// model `fetchAssigneeCandidates` already builds — rather than a second
   /// type of the same shape.
   ///
-  /// [isLapsed] is not part of this: unlike `listAssigneeCandidates`,
-  /// `getEmployeeDetail` (directory.js) does not compute it — its own skills
-  /// query selects `assessed_on`/`expires_on` and nothing derived from them.
-  /// [_isLapsed] below reproduces `QUALIFICATION_IS_CURRENT_SQL`'s own rule
-  /// (`backend/src/modules/people/sql.js`) as closely as a client can:
-  /// lapsed iff `expiresOn` is present and on or before today, compared as
-  /// `YYYY-MM-DD` strings — never parsed into a `DateTime` and compared as an
-  /// instant, since a DATE column has no time component to begin with
-  /// (directory.js's own `toDateString` header). This is the one place in
-  /// this app where "lapsed" is decided on the device clock rather than
-  /// read off the wire; making `getEmployeeDetail` compute it server-side,
-  /// the way `listAssigneeCandidates` already does, is a backend follow-up
-  /// reported alongside this ticket rather than done here (no backend change
-  /// is in scope for issue #86).
+  /// [isLapsed] is read straight off the wire (issue #91): `getEmployeeDetail`
+  /// (directory.js) now derives it from `QUALIFICATION_IS_CURRENT_SQL`
+  /// (`backend/src/modules/people/sql.js`), the Module's own single
+  /// definition of a current qualification, the same way
+  /// `listAssigneeCandidates` already does — so this client never re-derives
+  /// the date rule against the device clock.
   static HeldSkill _qualificationFrom(Map<String, dynamic> skill) {
     final nested = skill['skill'] as Map<String, dynamic>;
-    final expiresOn = skill['expiresOn'] as String?;
     return HeldSkill(
       id: skill['id'].toString(),
       skillId: nested['id'].toString(),
       code: nested['code'] as String,
       name: nested['name'] as String,
       proficiencyLevel: (skill['proficiencyLevel'] as num).toInt(),
-      expiresOn: expiresOn,
-      isLapsed: _isLapsed(expiresOn),
+      expiresOn: skill['expiresOn'] as String?,
+      isLapsed: skill['isLapsed'] == true,
     );
-  }
-
-  static bool _isLapsed(String? expiresOn) {
-    if (expiresOn == null) return false;
-    final now = DateTime.now();
-    final today = '${now.year.toString().padLeft(4, '0')}-'
-        '${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
-    return expiresOn.compareTo(today) <= 0;
   }
 
   /// The job role catalogue (`GET /api/people/job-roles`), for the

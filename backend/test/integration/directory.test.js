@@ -411,6 +411,51 @@ test('an Employee with no current assignment is matched by their default_org_uni
 });
 
 // ---------------------------------------------------------------------------
+// 5b. A listing row names the current Org Unit and current job role
+//     (issue #91), and an Employee with no current Assignment still names
+//     the Org Unit their default_org_unit_id points at, with no job role.
+// ---------------------------------------------------------------------------
+
+test("a listing row names the Employee's current Org Unit and current job role", async () => {
+  const response = await listEmployeesRequest();
+  assert.strictEqual(response.status, 200);
+  const { employees } = await response.json();
+  const found = employees.find((e) => e.id === richEmployee);
+
+  assert.ok(found, 'richEmployee should be in the default list');
+  // richEmployee's CURRENT assignment (test.before) is at grandchildUnit,
+  // carrying jobRole.
+  assert.deepStrictEqual(found.orgUnit, { id: grandchildUnit, name: 'Directory Test Line' });
+  assert.deepStrictEqual(found.jobRole, { id: jobRole.id, name: jobRole.name });
+});
+
+test('an Employee with no current Assignment still names the Org Unit their defaultOrgUnitId points at, and names no job role', async () => {
+  const response = await listEmployeesRequest();
+  assert.strictEqual(response.status, 200);
+  const { employees } = await response.json();
+  const found = employees.find((e) => e.id === defaultOnlyEmployee);
+
+  assert.ok(found, 'defaultOnlyEmployee should be in the default list');
+  assert.deepStrictEqual(found.orgUnit, { id: grandchildUnit, name: 'Directory Test Line' });
+  assert.strictEqual(found.jobRole, null);
+});
+
+test('an Employee with neither a current Assignment nor a defaultOrgUnitId still appears in the unfiltered listing, naming no Org Unit', async () => {
+  // searchTargetEmployee (test.before) is inserted with no defaultOrgUnitId
+  // and no employee_assignments row at all — proving the now-unconditional
+  // LEFT JOIN LATERAL + LEFT JOIN org_units never drops a row the way an
+  // INNER JOIN would have.
+  const response = await listEmployeesRequest();
+  assert.strictEqual(response.status, 200);
+  const { employees } = await response.json();
+  const found = employees.find((e) => e.id === searchTargetEmployee);
+
+  assert.ok(found, 'an Employee with neither a current Assignment nor a defaultOrgUnitId should still be listed');
+  assert.strictEqual(found.orgUnit, null);
+  assert.strictEqual(found.jobRole, null);
+});
+
+// ---------------------------------------------------------------------------
 // 6. The detail view shows job role, Org Unit assignments and skills.
 // ---------------------------------------------------------------------------
 
@@ -433,6 +478,42 @@ test('the detail view (GET /employees/:id) shows job role, Org Unit assignments 
   assert.strictEqual(employee.skills[0].skill.id, skill.id);
   assert.strictEqual(employee.skills[0].skill.code, skill.code);
   assert.strictEqual(employee.skills[0].proficiencyLevel, 3);
+});
+
+// ---------------------------------------------------------------------------
+// 6b. The detail view marks a lapsed qualification lapsed, and a current one
+//     not lapsed (issue #91) — isLapsed derived from sql.js's own
+//     QUALIFICATION_IS_CURRENT_SQL, the same rule listAssigneeCandidates
+//     already uses, never a second copy of it.
+// ---------------------------------------------------------------------------
+
+test('the detail view marks a lapsed qualification lapsed and a current one not lapsed', async () => {
+  const currentSkill = await insertSkill();
+  const lapsedSkill = await insertSkill();
+  const employeeId = await insertEmployee({ firstName: 'Lapse', lastName: 'Check' });
+  await insertEmployeeSkill({
+    employeeId,
+    skillId: currentSkill.id,
+    assessedOn: '2024-01-01',
+    expiresOn: '2099-01-01'
+  });
+  await insertEmployeeSkill({
+    employeeId,
+    skillId: lapsedSkill.id,
+    assessedOn: '2020-01-01',
+    expiresOn: '2021-01-01'
+  });
+
+  const response = await fetch(`${base}/api/people/employees/${employeeId}`, { headers: readerToken });
+  assert.strictEqual(response.status, 200);
+  const { employee } = await response.json();
+
+  const current = employee.skills.find((s) => s.skill.id === currentSkill.id);
+  const lapsed = employee.skills.find((s) => s.skill.id === lapsedSkill.id);
+  assert.ok(current, 'the current qualification should be on the detail view');
+  assert.ok(lapsed, 'the lapsed qualification should be on the detail view, not omitted');
+  assert.strictEqual(current.isLapsed, false);
+  assert.strictEqual(lapsed.isLapsed, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -828,6 +909,36 @@ test('a departure date before the hire date is a clean 400, not a 500', async ()
 
   const departResponse = await departEmployeeRequest(created.id, { terminatedOn: '2020-01-01' });
   assert.strictEqual(departResponse.status, 400);
+});
+
+// ---------------------------------------------------------------------------
+// 16b. The four write routes' response shape is unchanged (issue #91): none
+//      of createEmployee/updateEmployee/setEmployeeDeparted/reinstateEmployee
+//      resolves an Assignment, so none of their responses carries the
+//      listing's own orgUnit/jobRole keys.
+// ---------------------------------------------------------------------------
+
+test("the four write routes' response shape is unchanged: no orgUnit or jobRole key on any of them", async () => {
+  const createResponse = await createEmployeeRequest(newEmployeeBody({ hiredOn: '2020-01-01' }));
+  const { employee: created } = await createResponse.json();
+  writeTestEmployeeIds.push(created.id);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(created, 'orgUnit'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(created, 'jobRole'), false);
+
+  const patchResponse = await patchEmployeeRequest(created.id, { lastName: 'Changed' });
+  const { employee: patched } = await patchResponse.json();
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(patched, 'orgUnit'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(patched, 'jobRole'), false);
+
+  const departResponse = await departEmployeeRequest(created.id, { terminatedOn: '2024-06-01' });
+  const { employee: departed } = await departResponse.json();
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(departed, 'orgUnit'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(departed, 'jobRole'), false);
+
+  const reinstateResponse = await reinstateEmployeeRequest(created.id);
+  const { employee: reinstated } = await reinstateResponse.json();
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(reinstated, 'orgUnit'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(reinstated, 'jobRole'), false);
 });
 
 // ---------------------------------------------------------------------------

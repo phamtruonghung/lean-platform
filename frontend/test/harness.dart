@@ -155,15 +155,19 @@ Map<String, dynamic> assigneeCandidateJson(
       'skills': skills,
     };
 
-/// One row of `GET /api/people/employees` (issue #86) — mirrors `toEmployee`
-/// (directory.js) exactly: no job role, no Org Unit, since the list endpoint
-/// carries neither. See `Employee`'s own header (`lib/people/employee.dart`).
+/// One row of `GET /api/people/employees` (issue #86) — mirrors
+/// `toEmployeeListingRow` (directory.js) exactly: `toEmployee`'s own fields
+/// plus the current Org Unit and current job role (issue #91), each `{id,
+/// name}` or null when there is nothing to resolve. See `Employee`'s own
+/// header (`lib/people/employee.dart`).
 Map<String, dynamic> employeeJson(
   String id,
   String employeeNo,
   String displayName, {
   String employmentType = 'permanent',
   bool isActive = true,
+  Map<String, dynamic>? orgUnit,
+  Map<String, dynamic>? jobRole,
 }) =>
     {
       'id': id,
@@ -181,6 +185,8 @@ Map<String, dynamic> employeeJson(
       'workEmail': null,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      'orgUnit': orgUnit,
+      'jobRole': jobRole,
     };
 
 /// One row of an Employee's Assignment history, as `getAssignmentHistory`
@@ -212,10 +218,11 @@ Map<String, dynamic> employeeAssignmentJson(
           : {'id': jobRoleId, 'code': jobRoleName!.toUpperCase().replaceAll(' ', '-'), 'name': jobRoleName},
     };
 
-/// One skill on `GET /api/people/employees/:id`'s own `skills` — deliberately
-/// without `isLapsed`, unlike [heldSkillJson]: `getEmployeeDetail`
-/// (directory.js) never computes it, only `listAssigneeCandidates` does. See
-/// `PeopleApi._isLapsed`'s own header for why the client derives it here.
+/// One skill on `GET /api/people/employees/:id`'s own `skills` — `isLapsed`
+/// is sent explicitly now (issue #91): `getEmployeeDetail` (directory.js)
+/// derives it server-side, the same way `listAssigneeCandidates` already
+/// does, so a test scripts it directly rather than relying on the client to
+/// infer it from `expiresOn` against the device clock.
 Map<String, dynamic> employeeSkillJson(
   String id,
   String skillId,
@@ -223,12 +230,14 @@ Map<String, dynamic> employeeSkillJson(
   String name, {
   int proficiencyLevel = 3,
   String? expiresOn,
+  bool isLapsed = false,
 }) =>
     {
       'id': id,
       'proficiencyLevel': proficiencyLevel,
       'assessedOn': '2024-01-01',
       'expiresOn': expiresOn,
+      'isLapsed': isLapsed,
       'skill': {'id': skillId, 'code': code, 'name': name},
     };
 
