@@ -81,6 +81,39 @@ class WorkOrderAssignConfirmed extends WorkOrdersEvent {
   final String employeeId;
 }
 
+/// Starts a Work order — moves it to `in_progress` and stamps when work
+/// began (issue #63). No dialog: starting asks for nothing, the same as
+/// `AssetActiveToggled`'s reinstate half.
+class WorkOrderStartConfirmed extends WorkOrdersEvent {
+  const WorkOrderStartConfirmed(this.workOrderId);
+  final String workOrderId;
+}
+
+/// The complete dialog has decided: this Work order is done, and [note] says
+/// what was found.
+class WorkOrderCompleteConfirmed extends WorkOrdersEvent {
+  const WorkOrderCompleteConfirmed({required this.workOrderId, required this.note});
+  final String workOrderId;
+  final String note;
+}
+
+/// The cancel dialog has decided: this Work order, raised in error, is
+/// cancelled. [reason] is optional.
+class WorkOrderCancelConfirmed extends WorkOrdersEvent {
+  const WorkOrderCancelConfirmed({required this.workOrderId, this.reason});
+  final String workOrderId;
+  final String? reason;
+}
+
+/// Toggle whether the list includes completed and cancelled Work orders
+/// alongside the open ones (issue #63) — re-read with `includeHistory`
+/// rather than filtering client-side, the same shape
+/// `AssetsShowRetiredChanged` follows for retired Assets.
+class WorkOrdersShowHistoryChanged extends WorkOrdersEvent {
+  const WorkOrdersShowHistoryChanged(this.showHistory);
+  final bool showHistory;
+}
+
 sealed class WorkOrdersState {
   const WorkOrdersState();
 }
@@ -102,6 +135,9 @@ class WorkOrdersLoaded extends WorkOrdersState {
     this.raiseFailure,
     this.isAssigning = false,
     this.assignFailure,
+    this.isTransitioning = false,
+    this.transitionFailure,
+    this.showHistory = false,
     this.notice,
   });
 
@@ -137,6 +173,22 @@ class WorkOrdersLoaded extends WorkOrdersState {
   /// [raiseFailure] follows.
   final String? assignFailure;
 
+  /// A start, complete or cancel is in flight (issue #63) — one flag for all
+  /// three, mirroring [isAssigning]: the Screen only needs "an action is in
+  /// flight" to disable every row's actions while it settles, not which of
+  /// the three it was.
+  final bool isTransitioning;
+
+  /// Why the last transition did not land. Read by whichever dialog is open
+  /// (complete, cancel) so it can stay open and let the caller retry — the
+  /// same reasoning [assignFailure] follows. Starting has no dialog to read
+  /// it, so a start failure surfaces as [notice] instead.
+  final String? transitionFailure;
+
+  /// Whether the list was last (re-)read with `includeHistory` (issue #63) —
+  /// mirrors [AssetsLoaded.showRetired].
+  final bool showHistory;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [WorkOrdersUnavailable].
   final String? notice;
@@ -159,6 +211,9 @@ class WorkOrdersLoaded extends WorkOrdersState {
     String? raiseFailure,
     bool? isAssigning,
     String? assignFailure,
+    bool? isTransitioning,
+    String? transitionFailure,
+    bool? showHistory,
     String? notice,
   }) =>
       WorkOrdersLoaded(
@@ -178,6 +233,9 @@ class WorkOrdersLoaded extends WorkOrdersState {
         raiseFailure: raiseFailure,
         isAssigning: isAssigning ?? this.isAssigning,
         assignFailure: assignFailure,
+        isTransitioning: isTransitioning ?? this.isTransitioning,
+        transitionFailure: transitionFailure,
+        showHistory: showHistory ?? this.showHistory,
         notice: notice,
       );
 }
@@ -202,6 +260,10 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
     on<WorkOrdersOrgUnitFilterCleared>(_onOrgUnitFilterCleared);
     on<WorkOrderRaiseConfirmed>(_onRaiseConfirmed);
     on<WorkOrderAssignConfirmed>(_onAssignConfirmed);
+    on<WorkOrderStartConfirmed>(_onStartConfirmed);
+    on<WorkOrderCompleteConfirmed>(_onCompleteConfirmed);
+    on<WorkOrderCancelConfirmed>(_onCancelConfirmed);
+    on<WorkOrdersShowHistoryChanged>(_onShowHistoryChanged);
   }
 
   final MaintenanceApi _maintenance;
@@ -217,6 +279,12 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
   /// Site the caller was looking at, not silently jump back to the first one
   /// (the same bug `AssetsBloc._lastSiteId` was fixed for in #56).
   String? _lastSiteId;
+
+  /// The last "Show completed and cancelled" setting the caller chose, kept
+  /// for the same reason as [_lastSiteId]: a retry re-reads with the choice
+  /// still standing rather than silently resetting to open-only — mirrors
+  /// `AssetsBloc._lastShowRetired`.
+  bool _lastShowHistory = false;
 
   Future<void> _onStarted(WorkOrdersStarted event, Emitter<WorkOrdersState> emit) async {
     emit(const WorkOrdersLoading());
@@ -245,7 +313,14 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
     // scoped to whichever Site it was chosen in, and carrying it across a
     // restart that may land on a different Site would silently narrow to an
     // id that Site knows nothing about.
-    emit(WorkOrdersLoaded(sites: sites, siteId: opensOn, isLoadingWorkOrders: true));
+    emit(
+      WorkOrdersLoaded(
+        sites: sites,
+        siteId: opensOn,
+        isLoadingWorkOrders: true,
+        showHistory: _lastShowHistory,
+      ),
+    );
     await _readList(opensOn, emit);
   }
 
@@ -308,8 +383,11 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
     // flight together and land out of order. Carrying the filter this
     // request was actually made with — not just the Site — is the same
     // staleness guard below, extended: a late response is discarded when
-    // either no longer matches what is currently on screen.
+    // either no longer matches what is currently on screen. `showHistory` is
+    // carried the same way (issue #63): a history read and an open read can
+    // be in flight together too, for exactly the reason above.
     final requestedOrgUnitId = current.orgUnitFilterId;
+    final requestedShowHistory = current.showHistory;
     if (token == null) {
       emit(const WorkOrdersUnavailable(message: signedOutMessage));
       return;
@@ -319,11 +397,13 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
         token,
         siteId: siteId,
         orgUnitId: requestedOrgUnitId,
+        includeHistory: requestedShowHistory,
       );
       final settled = state;
       if (settled is! WorkOrdersLoaded ||
           settled.siteId != siteId ||
-          settled.orgUnitFilterId != requestedOrgUnitId) {
+          settled.orgUnitFilterId != requestedOrgUnitId ||
+          settled.showHistory != requestedShowHistory) {
         return;
       }
       emit(settled.copyWith(workOrders: workOrders, isLoadingWorkOrders: false, notice: notice));
@@ -331,7 +411,8 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
       final settled = state;
       if (settled is! WorkOrdersLoaded ||
           settled.siteId != siteId ||
-          settled.orgUnitFilterId != requestedOrgUnitId) {
+          settled.orgUnitFilterId != requestedOrgUnitId ||
+          settled.showHistory != requestedShowHistory) {
         return;
       }
       emit(WorkOrdersUnavailable(message: error.message));
@@ -442,6 +523,151 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
       if (settled is! WorkOrdersLoaded) return;
       emit(settled.copyWith(isAssigning: false, assignFailure: error.message));
     }
+  }
+
+  Future<void> _onStartConfirmed(
+    WorkOrderStartConfirmed event,
+    Emitter<WorkOrdersState> emit,
+  ) async {
+    final current = state;
+    if (current is! WorkOrdersLoaded || current.isTransitioning) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(notice: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isTransitioning: true));
+    try {
+      final workOrder = await _maintenance.startWorkOrder(token, event.workOrderId);
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      emit(
+        settled.copyWith(
+          isTransitioning: false,
+          workOrders: _applyTransition(settled, workOrder),
+          notice: '${workOrder.workOrderNo} is under way.',
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      // Starting has no dialog of its own to read a failure off, unlike
+      // complete/cancel — the row itself is the caller, so the refusal
+      // surfaces as the ordinary notice instead of `transitionFailure`.
+      emit(settled.copyWith(isTransitioning: false, notice: error.message));
+    }
+  }
+
+  Future<void> _onCompleteConfirmed(
+    WorkOrderCompleteConfirmed event,
+    Emitter<WorkOrdersState> emit,
+  ) async {
+    final current = state;
+    if (current is! WorkOrdersLoaded || current.isTransitioning) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(transitionFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isTransitioning: true));
+    try {
+      final workOrder = await _maintenance.completeWorkOrder(
+        token,
+        event.workOrderId,
+        note: event.note,
+      );
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      emit(
+        settled.copyWith(
+          isTransitioning: false,
+          workOrders: _applyTransition(settled, workOrder),
+          // Completing takes the row out of the open list unless history is
+          // being shown — the notice must say so, or the caller would look
+          // for the row and not find it (the same reasoning the raise
+          // notice follows for a filtered-out row).
+          notice: settled.showHistory
+              ? '${workOrder.workOrderNo} is complete.'
+              : '${workOrder.workOrderNo} is complete, and has left the open list.',
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      emit(settled.copyWith(isTransitioning: false, transitionFailure: error.message));
+    }
+  }
+
+  Future<void> _onCancelConfirmed(
+    WorkOrderCancelConfirmed event,
+    Emitter<WorkOrdersState> emit,
+  ) async {
+    final current = state;
+    if (current is! WorkOrdersLoaded || current.isTransitioning) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(transitionFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isTransitioning: true));
+    try {
+      final workOrder = await _maintenance.cancelWorkOrder(
+        token,
+        event.workOrderId,
+        reason: event.reason,
+      );
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      emit(
+        settled.copyWith(
+          isTransitioning: false,
+          workOrders: _applyTransition(settled, workOrder),
+          notice: settled.showHistory
+              ? '${workOrder.workOrderNo} has been cancelled.'
+              : '${workOrder.workOrderNo} has been cancelled, and has left the open list.',
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      emit(settled.copyWith(isTransitioning: false, transitionFailure: error.message));
+    }
+  }
+
+  Future<void> _onShowHistoryChanged(
+    WorkOrdersShowHistoryChanged event,
+    Emitter<WorkOrdersState> emit,
+  ) async {
+    final current = state;
+    if (current is! WorkOrdersLoaded) return;
+    final siteId = current.siteId;
+    if (siteId == null) return;
+    _lastShowHistory = event.showHistory;
+    emit(
+      current.copyWith(showHistory: event.showHistory, workOrders: const [], isLoadingWorkOrders: true),
+    );
+    await _readList(siteId, emit);
+  }
+
+  /// The row patched in place with its new state, rather than refetched —
+  /// same reasoning [_onAssignConfirmed] follows. Unlike assigning, though,
+  /// completing and cancelling can take the row *out* of the open list:
+  /// mirrors `AssetsBloc._applyMutation`. A row that is not in the current
+  /// list — filtered out by Site/Org Unit already — is left alone by both
+  /// branches, which is the staleness guard for a mutation that lands after
+  /// the view has moved on.
+  List<WorkOrder> _applyTransition(WorkOrdersLoaded state, WorkOrder updated) {
+    const terminal = {'completed', 'cancelled'};
+    if (!state.showHistory && terminal.contains(updated.status)) {
+      return [for (final w in state.workOrders) if (w.id != updated.id) w];
+    }
+    return [for (final w in state.workOrders) if (w.id == updated.id) updated else w];
   }
 
   /// The server's own order: priority ascending (1 most urgent, sorting

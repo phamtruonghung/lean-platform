@@ -17,6 +17,16 @@
 /// Departed Employee, or lets a lapsed qualification through unblocked. Those
 /// are proved in `backend/test/integration/work-orders.test.js`, and neither
 /// substitutes for the other.
+///
+/// Working a Work order — start, complete, cancel (issue #63) — adds the same
+/// shape of claim again: that the right action is offered for a row's status
+/// and no other, that each sends exactly one request carrying whatever the
+/// dialog collected, that a completed or cancelled row leaves the open list
+/// without a re-read, and that the history toggle asks the server for it. Not
+/// that the server enforces the state machine, the write-Grant scope, or the
+/// "already started"/"already completed" refusals — those are proved in
+/// `backend/test/integration/work-orders.test.js`, and neither substitutes
+/// for the other.
 library;
 
 import 'dart:async';
@@ -25,6 +35,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/org_unit_chooser.dart';
 import 'package:lean_platform/maintenance/work_order_assign_dialog.dart';
+import 'package:lean_platform/maintenance/work_order_cancel_dialog.dart';
+import 'package:lean_platform/maintenance/work_order_complete_dialog.dart';
 import 'package:lean_platform/maintenance/work_order_form_dialog.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
@@ -43,6 +55,9 @@ FakeWire wireWith({
   int createWorkOrderStatus = 201,
   List<Map<String, dynamic>>? assigneeCandidates,
   int assignWorkOrderStatus = 200,
+  int startWorkOrderStatus = 200,
+  int completeWorkOrderStatus = 200,
+  int cancelWorkOrderStatus = 200,
 }) =>
     FakeWire(
       role: role,
@@ -58,6 +73,9 @@ FakeWire wireWith({
       createWorkOrderStatus: createWorkOrderStatus,
       assigneeCandidates: assigneeCandidates ?? [],
       assignWorkOrderStatus: assignWorkOrderStatus,
+      startWorkOrderStatus: startWorkOrderStatus,
+      completeWorkOrderStatus: completeWorkOrderStatus,
+      cancelWorkOrderStatus: cancelWorkOrderStatus,
     );
 
 void main() {
@@ -85,7 +103,7 @@ void main() {
     expect(find.text('Jane Doe'), findsOneWidget);
     // Nobody has row 102 yet — shown plainly, never as a blank.
     expect(find.text('Unassigned'), findsOneWidget);
-    expect(find.text('open'), findsWidgets);
+    expect(find.text('Approved'), findsWidgets);
   });
 
   testWidgets('a list still loading shows placeholders in its own shape', (tester) async {
@@ -202,19 +220,19 @@ void main() {
 
     expect(find.text('Belt is slipping'), findsOneWidget);
     expect(find.text('Guard is loose'), findsOneWidget);
-    expect(wire.workOrderRequests, [('1', null)]);
+    expect(wire.workOrderRequests, [('1', null, false)]);
 
     await tapIn(tester, find.byKey(WorkOrdersScreen.filterKey));
     await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
 
-    expect(wire.workOrderRequests.last, ('1', '10'));
+    expect(wire.workOrderRequests.last, ('1', '10', false));
     expect(find.text('Guard is loose'), findsOneWidget);
     expect(find.text('Belt is slipping'), findsNothing);
     expect(find.byKey(WorkOrdersScreen.clearFilterKey), findsOneWidget);
 
     await tapIn(tester, find.byKey(WorkOrdersScreen.clearFilterKey));
 
-    expect(wire.workOrderRequests.last, ('1', null));
+    expect(wire.workOrderRequests.last, ('1', null, false));
     expect(find.text('Belt is slipping'), findsOneWidget);
     expect(find.text('Guard is loose'), findsOneWidget);
     expect(find.byKey(WorkOrdersScreen.filterKey), findsOneWidget);
@@ -683,5 +701,327 @@ void main() {
 
     wire.workOrderAssignGate!.complete();
     await tester.pumpAndSettle();
+  });
+
+  // Working a Work order — start, complete, cancel (issue #63). What these
+  // tests claim and what they do not: that the right action is offered for a
+  // row's status and no other, that each sends exactly one request carrying
+  // whatever the dialog collected, that a completed or cancelled row leaves
+  // the open list without a re-read, and that the history toggle asks the
+  // server for it. Not that the server enforces the state machine, the
+  // write-Grant scope, or the "already started"/"already completed"
+  // refusals. Those are proved in `backend/test/integration/work-orders.test.js`,
+  // and neither substitutes for the other.
+
+  testWidgets('an approved row offers Start and Cancel, and no Complete', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.byKey(WorkOrdersScreen.startKey('101')), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.cancelKey('101')), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.completeKey('101')), findsNothing);
+  });
+
+  testWidgets('an in_progress row offers Complete and Cancel, and no Start', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.byKey(WorkOrdersScreen.completeKey('101')), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.cancelKey('101')), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.startKey('101')), findsNothing);
+  });
+
+  testWidgets('a completed row offers no transition at all', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'completed')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    // The completed row is only reachable through history — the default read
+    // excludes it, the same as the server's own open-list filter.
+    await tapIn(tester, find.byKey(WorkOrdersScreen.showHistoryKey));
+
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.startKey('101')), findsNothing);
+    expect(find.byKey(WorkOrdersScreen.completeKey('101')), findsNothing);
+    expect(find.byKey(WorkOrdersScreen.cancelKey('101')), findsNothing);
+  });
+
+  testWidgets('starting sends exactly one request, and the row moves to In progress',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.startKey('101')));
+
+    expect(wire.workOrderStarts, ['101']);
+    expect(find.text('In progress'), findsOneWidget);
+  });
+
+  testWidgets('completing sends exactly one request, carrying the note', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.completeKey('101')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(WorkOrderCompleteDialog.noteKey), 'Belt replaced');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderCompleteDialog.submitKey));
+
+    expect(wire.workOrderCompletions.length, 1);
+    final (id, body) = wire.workOrderCompletions.single;
+    expect(id, '101');
+    expect(body['note'], 'Belt replaced');
+  });
+
+  testWidgets('cancelling sends exactly one request, carrying the reason', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.cancelKey('101')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(WorkOrderCancelDialog.reasonKey), 'Raised by mistake');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderCancelDialog.submitKey));
+
+    expect(wire.workOrderCancellations.length, 1);
+    final (id, body) = wire.workOrderCancellations.single;
+    expect(id, '101');
+    expect(body['reason'], 'Raised by mistake');
+  });
+
+  testWidgets('a completed row leaves the open list without a re-read', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    final requestsBefore = wire.workOrderRequests.length;
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.completeKey('101')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(WorkOrderCompleteDialog.noteKey), 'Belt replaced');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderCompleteDialog.submitKey));
+
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsNothing);
+    expect(wire.workOrderRequests.length, requestsBefore);
+  });
+
+  testWidgets('a cancelled row leaves the open list without a re-read', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    final requestsBefore = wire.workOrderRequests.length;
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.cancelKey('101')));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderCancelDialog.submitKey));
+
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsNothing);
+    expect(wire.workOrderRequests.length, requestsBefore);
+  });
+
+  testWidgets('a caller with no write Grant is offered no transition at all', (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.byKey(WorkOrdersScreen.startKey('101')), findsNothing);
+    expect(find.byKey(WorkOrdersScreen.completeKey('101')), findsNothing);
+    expect(find.byKey(WorkOrdersScreen.cancelKey('101')), findsNothing);
+  });
+
+  testWidgets('no transition is offered while one is in flight', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    )..workOrderTransitionGate = Completer<void>();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    // The start starts and hangs on the gate — `tapIn`'s own `pumpAndSettle`
+    // only waits out animations, not the pending request, the same as
+    // `assets_test.dart`'s own gated-mutation test.
+    await tapIn(tester, find.byKey(WorkOrdersScreen.startKey('101')));
+
+    // `isTransitioning` disables every row's own actions underneath, the
+    // same as `isAssigning` already does.
+    final startButton = tester.widget<OutlinedButton>(find.byKey(WorkOrdersScreen.startKey('101')));
+    expect(startButton.onPressed, isNull);
+    final cancelButton = tester.widget<OutlinedButton>(find.byKey(WorkOrdersScreen.cancelKey('101')));
+    expect(cancelButton.onPressed, isNull);
+
+    wire.workOrderTransitionGate!.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('a refusal is surfaced in the complete dialog, which stays open', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+      },
+      completeWorkOrderStatus: 409,
+    )..completeWorkOrderMessage =
+        'this Work order has not been started, so it cannot be completed';
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.completeKey('101')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(WorkOrderCompleteDialog.noteKey), 'Belt replaced');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderCompleteDialog.submitKey));
+
+    expect(find.byType(WorkOrderCompleteDialog), findsOneWidget);
+    expect(find.byKey(WorkOrderCompleteDialog.failureKey), findsOneWidget);
+    expect(
+      find.text('this Work order has not been started, so it cannot be completed'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('showing history asks the server for it and brings completed rows back',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [
+          workOrderJson('101', 'WO-101', 'Belt is slipping'),
+          workOrderJson('102', 'WO-102', 'Guard is loose', status: 'completed'),
+        ],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.text('Belt is slipping'), findsOneWidget);
+    expect(find.text('Guard is loose'), findsNothing);
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.showHistoryKey));
+
+    expect(wire.workOrderRequests.last.$3, isTrue);
+    expect(find.text('Guard is loose'), findsOneWidget);
+  });
+
+  testWidgets(
+      'a transition on a row that is showing in history replaces it in place rather than '
+      'removing it', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.showHistoryKey));
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+
+    final requestsBefore = wire.workOrderRequests.length;
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.completeKey('101')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(WorkOrderCompleteDialog.noteKey), 'Belt replaced');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderCompleteDialog.submitKey));
+
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+    expect(find.text('Completed'), findsOneWidget);
+    expect(wire.workOrderRequests.length, requestsBefore);
   });
 }

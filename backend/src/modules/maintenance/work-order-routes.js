@@ -1,12 +1,14 @@
 /*
- * Work orders over HTTP (issue #57, plus assigning one — issue #62). Mounted
- * by index.js under `/api/maintenance`, alongside asset-routes.js.
+ * Work orders over HTTP (issue #57, plus assigning one — issue #62 — and
+ * starting, completing and cancelling one — issue #63). Mounted by index.js
+ * under `/api/maintenance`, alongside asset-routes.js.
  *
  * Like asset-routes.js, this is the one file in this pairing that talks to
  * People, and only through `modules/people`'s entry point (ADR-0006):
  * `authenticate`, `requireActive`, `findSite`, `findOrgUnit`, `findEmployee`,
  * `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
- * about a work order's own fields is work-orders.js's business.
+ * about a work order's own fields, including whether a transition is legal
+ * from its current status, is work-orders.js's business.
  *
  * Same two scope rules as Assets (#55), applied to work orders:
  *
@@ -14,22 +16,36 @@
  *     `authenticate` + `requireActive` and a known-Site check only — no role
  *     check, no Grant filter. ADR-0009's addendum for the Asset register
  *     applies here unchanged: Org Unit scope decides where an Account may
- *     act, not what it may know about.
+ *     act, not what it may know about. `?includeHistory=true` widens the
+ *     statuses returned (see work-orders.js's listWorkOrdersAtSite) but does
+ *     not change who may ask.
  *   - Writes are branch-scoped. POST /work-orders requires a write Grant
  *     reaching the Org Unit the named Asset already sits at — there is no
  *     orgUnitId in the body at all, since work_orders.org_unit_id is filled
  *     by trigger from asset_id (see work-orders.js's own header), so the
  *     client does not send one and any that is sent is ignored, exactly as
  *     work-orders.js's createWorkOrder does not read it off its own input.
- *     PUT /work-orders/:id/assignee (issue #62) requires a write Grant
- *     reaching the Org Unit the Work order's own org_unit_id already names —
- *     see requireWorkOrderWriteScope below.
+ *     PUT /work-orders/:id/assignee (issue #62) and the three POST
+ *     transition routes below (issue #63) all require a write Grant reaching
+ *     the Org Unit the Work order's own org_unit_id already names — see
+ *     requireWorkOrderWriteScope below. There is no exception for the
+ *     assignee acting on their own job without a Grant; #77 is where that
+ *     changes.
  *
  * PUT /work-orders/:id/assignee never reads a qualification, and never will
  * from this file: see ADR-0018. What a candidate holds is shown by People's
  * own GET /employees/assignee-candidates (directory-routes.js), not by
  * anything here — this route only resolves the named Employee (existence,
  * and whether they have Departed) and writes the assignee.
+ *
+ * POST /work-orders/:id/start, /complete and /cancel (issue #63) are three
+ * narrow routes rather than one PATCH { status } — see ADR-0019 (D1): each
+ * transition has a different precondition and a different body (none /
+ * { note } / { reason }), and a client-chosen status string invites a
+ * caller to post 'closed' or 'on_hold', which this slice does not offer.
+ * All three answer 200 with { workOrder }, the full row, so the caller can
+ * patch its own copy in place with no second read — not 201, nothing is
+ * created.
  */
 
 const express = require('express');
@@ -180,6 +196,67 @@ router.put(
   }
 );
 
+// Starting, completing and cancelling a Work order (issue #63). All three
+// share requireWorkOrderWriteScope, so existence-before-scope and the write
+// Grant check are identical to PUT /assignee above; what's left to each
+// handler is calling the matching service function and letting its own
+// guard (work-orders.js's transitionGuard) turn an illegal transition into
+// the named 409. `req.body?.x` is this file's existing idiom (see PUT
+// /assignee) for a request that may have sent no body at all — POST /start
+// needs none and must not require one.
+router.post(
+  '/work-orders/:id/start',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderWriteScope,
+  async (req, res, next) => {
+    try {
+      const workOrder = await workOrders.startWorkOrder(req.workOrder.id, req.account.id);
+      res.json({ workOrder });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+router.post(
+  '/work-orders/:id/complete',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderWriteScope,
+  async (req, res, next) => {
+    try {
+      const workOrder = await workOrders.completeWorkOrder(
+        req.workOrder.id,
+        { note: req.body?.note },
+        req.account.id
+      );
+      res.json({ workOrder });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+router.post(
+  '/work-orders/:id/cancel',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderWriteScope,
+  async (req, res, next) => {
+    try {
+      const workOrder = await workOrders.cancelWorkOrder(
+        req.workOrder.id,
+        { reason: req.body?.reason },
+        req.account.id
+      );
+      res.json({ workOrder });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 router.get(
   '/sites/:siteId/work-orders',
   people.authenticate,
@@ -202,7 +279,14 @@ router.get(
         if (orgUnit.siteId !== req.site.id) throw notFound('Org Unit');
         orgUnitPath = orgUnit.path;
       }
-      res.json({ workOrders: await workOrders.listOpenWorkOrdersAtSite(req.site.id, { orgUnitPath }) });
+      // includeHistory (issue #63) mirrors the Asset register's own
+      // includeRetired (asset-routes.js): a string comparison against 'true'
+      // rather than a truthy check, since every query parameter arrives as a
+      // string and anything else — missing, 'false', '1' — means "no".
+      const includeHistory = req.query.includeHistory === 'true';
+      res.json({
+        workOrders: await workOrders.listWorkOrdersAtSite(req.site.id, { orgUnitPath, includeHistory })
+      });
     } catch (error) {
       handleError(error, res, next);
     }

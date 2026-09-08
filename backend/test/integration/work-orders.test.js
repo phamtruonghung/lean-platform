@@ -165,6 +165,47 @@ async function getWorkOrders(token, siteId, query = '') {
   return { response, payload };
 }
 
+// Three thin wrappers, one per transition (issue #63), mirroring putAssignee
+// above. `body` is optional on all three: /start sends none at all, and
+// /complete and /cancel are exercised both with and without one.
+async function postStart(token, workOrderId) {
+  const response = await fetch(`${base}/api/maintenance/work-orders/${workOrderId}/start`, {
+    method: 'POST',
+    headers: token
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+async function postComplete(token, workOrderId, body) {
+  const response = await fetch(`${base}/api/maintenance/work-orders/${workOrderId}/complete`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+async function postCancel(token, workOrderId, body) {
+  const response = await fetch(`${base}/api/maintenance/work-orders/${workOrderId}/cancel`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+// Raises a work order and returns its payload, saving a postWorkOrder +
+// assert pair at the top of every transition test below.
+async function raiseWorkOrder(orgUnitId, overrides = {}) {
+  const asset = await insertAsset(orgUnitId);
+  const { response, payload } = await postWorkOrder(admin.token, workOrderBody(asset.id, overrides));
+  assert.strictEqual(response.status, 201);
+  return payload.workOrder;
+}
+
 let admin;
 let noGrantAccount;   // approved, no Grant anywhere at all.
 let readOnlyAccount;  // read Grant on grantedLine.
@@ -616,4 +657,311 @@ test('a request with no bearer token is refused', async () => {
     body: JSON.stringify({ employeeId: employee.id })
   });
   assert.strictEqual(response.status, 401);
+});
+
+// ---------------------------------------------------------------------------
+// Starting, completing and cancelling a work order (issue #63). assigned_to
+// is never read on any of these three paths — see startWorkOrder's own
+// comment — so most of the cases below raise a fresh, unassigned work order
+// with raiseWorkOrder rather than going through PUT /assignee first.
+// ---------------------------------------------------------------------------
+
+test('starting a work order moves it to in_progress and stamps actual_start', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Start me' });
+  const { response, payload } = await postStart(admin.token, workOrder.id);
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.status, 'in_progress');
+
+  const { rows } = await pool.query('SELECT actual_start FROM work_orders WHERE id = $1', [workOrder.id]);
+  assert.ok(rows[0].actual_start);
+});
+
+test(
+  'the full progression approved -> in_progress -> completed carries both timestamps, ' +
+    'and actual_end is not before actual_start',
+  async () => {
+    const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Full progression' });
+
+    const started = await postStart(admin.token, workOrder.id);
+    assert.strictEqual(started.response.status, 200);
+    assert.strictEqual(started.payload.workOrder.status, 'in_progress');
+
+    const completed = await postComplete(admin.token, workOrder.id, { note: 'Bearing replaced' });
+    assert.strictEqual(completed.response.status, 200);
+    assert.strictEqual(completed.payload.workOrder.status, 'completed');
+
+    // The one fact the HTTP row does not carry: read it directly.
+    const { rows: [row] } = await pool.query(
+      'SELECT actual_start, actual_end, completion_note, status FROM work_orders WHERE id = $1',
+      [workOrder.id]
+    );
+    assert.strictEqual(row.status, 'completed');
+    assert.ok(row.actual_start);
+    assert.ok(row.actual_end);
+    assert.ok(new Date(row.actual_end).getTime() >= new Date(row.actual_start).getTime());
+    assert.strictEqual(row.completion_note, 'Bearing replaced');
+  }
+);
+
+test('completing records the note of what was found', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Note check' });
+  await postStart(admin.token, workOrder.id);
+  const { response } = await postComplete(admin.token, workOrder.id, { note: '  Belt was worn  ' });
+  assert.strictEqual(response.status, 200);
+
+  const { rows } = await pool.query('SELECT completion_note FROM work_orders WHERE id = $1', [workOrder.id]);
+  assert.strictEqual(rows[0].completion_note, 'Belt was worn');
+});
+
+test('completing a work order that was never started is refused, and the row is unchanged when read back', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Never started' });
+  const { response, payload } = await postComplete(admin.token, workOrder.id, { note: 'Anything' });
+  assert.strictEqual(response.status, 409);
+  assert.strictEqual(payload.message, 'this Work order has not been started, so it cannot be completed');
+
+  const { rows } = await pool.query(
+    'SELECT status, actual_start, actual_end FROM work_orders WHERE id = $1',
+    [workOrder.id]
+  );
+  assert.strictEqual(rows[0].status, 'approved');
+  assert.strictEqual(rows[0].actual_start, null);
+  assert.strictEqual(rows[0].actual_end, null);
+});
+
+test('completing with a missing or blank note is a clean 400', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Blank note' });
+  await postStart(admin.token, workOrder.id);
+  for (const body of [undefined, {}, { note: '' }, { note: '   ' }]) {
+    const { response, payload } = await postComplete(admin.token, workOrder.id, body);
+    assert.strictEqual(response.status, 400, JSON.stringify(body));
+    assert.strictEqual(payload.message, 'note is required');
+  }
+});
+
+test('cancelling an approved work order is allowed', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Cancel from approved' });
+  const { response, payload } = await postCancel(admin.token, workOrder.id, {});
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.status, 'cancelled');
+});
+
+test('cancelling an in_progress work order is allowed', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Cancel from in progress' });
+  await postStart(admin.token, workOrder.id);
+  const { response, payload } = await postCancel(admin.token, workOrder.id, {});
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.status, 'cancelled');
+});
+
+test('a cancelled work order records the reason it was cancelled', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Reason recorded' });
+  const { response } = await postCancel(admin.token, workOrder.id, { reason: 'Raised in error' });
+  assert.strictEqual(response.status, 200);
+
+  const { rows } = await pool.query('SELECT completion_note FROM work_orders WHERE id = $1', [workOrder.id]);
+  assert.strictEqual(rows[0].completion_note, 'Raised in error');
+});
+
+test('cancelling without a reason is allowed', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'No reason given' });
+  const { response, payload } = await postCancel(admin.token, workOrder.id, undefined);
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.status, 'cancelled');
+});
+
+test('a completed work order cannot be started, completed or cancelled again', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Terminal completed' });
+  await postStart(admin.token, workOrder.id);
+  await postComplete(admin.token, workOrder.id, { note: 'Done' });
+
+  const start = await postStart(admin.token, workOrder.id);
+  assert.strictEqual(start.response.status, 409);
+  assert.strictEqual(start.payload.message, 'this Work order has already been completed');
+
+  const complete = await postComplete(admin.token, workOrder.id, { note: 'Again' });
+  assert.strictEqual(complete.response.status, 409);
+  assert.strictEqual(complete.payload.message, 'this Work order has already been completed');
+
+  const cancel = await postCancel(admin.token, workOrder.id, {});
+  assert.strictEqual(cancel.response.status, 409);
+  assert.strictEqual(cancel.payload.message, 'this Work order has already been completed');
+});
+
+test('a cancelled work order cannot be started, completed or cancelled again', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Terminal cancelled' });
+  await postCancel(admin.token, workOrder.id, {});
+
+  const start = await postStart(admin.token, workOrder.id);
+  assert.strictEqual(start.response.status, 409);
+  assert.strictEqual(start.payload.message, 'this Work order has been cancelled');
+
+  const complete = await postComplete(admin.token, workOrder.id, { note: 'Again' });
+  assert.strictEqual(complete.response.status, 409);
+  assert.strictEqual(complete.payload.message, 'this Work order has been cancelled');
+
+  const cancel = await postCancel(admin.token, workOrder.id, {});
+  assert.strictEqual(cancel.response.status, 409);
+  assert.strictEqual(cancel.payload.message, 'this Work order has already been cancelled');
+});
+
+test('an unassigned work order can be started and completed', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Never assigned' });
+  assert.strictEqual(workOrder.assignedTo, null);
+
+  const started = await postStart(admin.token, workOrder.id);
+  assert.strictEqual(started.response.status, 200);
+
+  const completed = await postComplete(admin.token, workOrder.id, { note: 'Fixed without an assignee' });
+  assert.strictEqual(completed.response.status, 200);
+  assert.strictEqual(completed.payload.workOrder.status, 'completed');
+});
+
+test(
+  "a read-only Grant on the Asset's Org Unit is refused on each of the three transitions, and the row is unchanged",
+  async () => {
+    const forStart = await raiseWorkOrder(grantedLine.id, { summary: 'Read-only start' });
+    const startResult = await postStart(readOnlyAccount.token, forStart.id);
+    assert.strictEqual(startResult.response.status, 403);
+    assert.strictEqual(startResult.payload.message, "Outside the caller's granted Org Units");
+    const { rows: startRows } = await pool.query('SELECT status FROM work_orders WHERE id = $1', [forStart.id]);
+    assert.strictEqual(startRows[0].status, 'approved');
+
+    const forComplete = await raiseWorkOrder(grantedLine.id, { summary: 'Read-only complete' });
+    await postStart(admin.token, forComplete.id);
+    const completeResult = await postComplete(readOnlyAccount.token, forComplete.id, { note: 'Nope' });
+    assert.strictEqual(completeResult.response.status, 403);
+    const { rows: completeRows } = await pool.query(
+      'SELECT status FROM work_orders WHERE id = $1',
+      [forComplete.id]
+    );
+    assert.strictEqual(completeRows[0].status, 'in_progress');
+
+    const forCancel = await raiseWorkOrder(grantedLine.id, { summary: 'Read-only cancel' });
+    const cancelResult = await postCancel(readOnlyAccount.token, forCancel.id, {});
+    assert.strictEqual(cancelResult.response.status, 403);
+    const { rows: cancelRows } = await pool.query('SELECT status FROM work_orders WHERE id = $1', [forCancel.id]);
+    assert.strictEqual(cancelRows[0].status, 'approved');
+  }
+);
+
+test('a write Grant on a sibling branch does not reach across on any transition', async () => {
+  const forStart = await raiseWorkOrder(grantedLine.id, { summary: 'Sibling start' });
+  const start = await postStart(siblingWriter.token, forStart.id);
+  assert.strictEqual(start.response.status, 403);
+
+  const forComplete = await raiseWorkOrder(grantedLine.id, { summary: 'Sibling complete' });
+  await postStart(admin.token, forComplete.id);
+  const complete = await postComplete(siblingWriter.token, forComplete.id, { note: 'Nope' });
+  assert.strictEqual(complete.response.status, 403);
+
+  const forCancel = await raiseWorkOrder(grantedLine.id, { summary: 'Sibling cancel' });
+  const cancel = await postCancel(siblingWriter.token, forCancel.id, {});
+  assert.strictEqual(cancel.response.status, 403);
+});
+
+test('an approved Account with no Grant anywhere cannot start, complete or cancel', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'No grant transitions' });
+  const start = await postStart(noGrantAccount.token, workOrder.id);
+  assert.strictEqual(start.response.status, 403);
+  const complete = await postComplete(noGrantAccount.token, workOrder.id, { note: 'Nope' });
+  assert.strictEqual(complete.response.status, 403);
+  const cancel = await postCancel(noGrantAccount.token, workOrder.id, {});
+  assert.strictEqual(cancel.response.status, 403);
+});
+
+test('a request with no bearer token is refused on each transition', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'No token transitions' });
+  for (const action of ['start', 'complete', 'cancel']) {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await fetch(`${base}/api/maintenance/work-orders/${workOrder.id}/${action}`, {
+      method: 'POST'
+    });
+    assert.strictEqual(response.status, 401, action);
+  }
+});
+
+test('an unknown work order id is a 404 naming the Work order, checked before scope, on each transition', async () => {
+  // admin: canAct would pass this caller unconditionally, so a 404 here
+  // proves existence is checked before scope, not the other way round —
+  // same reasoning as the equivalent PUT /assignee test above.
+  const start = await postStart(admin.token, '999999999');
+  assert.strictEqual(start.response.status, 404);
+  assert.strictEqual(start.payload.message, 'Work order not found');
+
+  const complete = await postComplete(admin.token, '999999999', { note: 'Anything' });
+  assert.strictEqual(complete.response.status, 404);
+  assert.strictEqual(complete.payload.message, 'Work order not found');
+
+  const cancel = await postCancel(admin.token, '999999999', {});
+  assert.strictEqual(cancel.response.status, 404);
+  assert.strictEqual(cancel.payload.message, 'Work order not found');
+});
+
+test('a malformed work order id is a clean 404, not a 500', async () => {
+  const start = await postStart(admin.token, 'not-an-id');
+  assert.strictEqual(start.response.status, 404);
+
+  const complete = await postComplete(admin.token, 'not-an-id', { note: 'Anything' });
+  assert.strictEqual(complete.response.status, 404);
+
+  const cancel = await postCancel(admin.token, 'not-an-id', {});
+  assert.strictEqual(cancel.response.status, 404);
+});
+
+test(
+  'a completed and a cancelled work order are absent from the default listing and present when history is asked for',
+  async () => {
+    const completedWO = await raiseWorkOrder(grantedLine.id, { summary: 'History completed' });
+    await postStart(admin.token, completedWO.id);
+    await postComplete(admin.token, completedWO.id, { note: 'Done for history' });
+
+    const cancelledWO = await raiseWorkOrder(grantedLine.id, { summary: 'History cancelled' });
+    await postCancel(admin.token, cancelledWO.id, {});
+
+    const withoutHistory = await getWorkOrders(admin.token, site.id);
+    assert.ok(!withoutHistory.payload.workOrders.some((w) => w.id === completedWO.id));
+    assert.ok(!withoutHistory.payload.workOrders.some((w) => w.id === cancelledWO.id));
+
+    const withHistory = await getWorkOrders(admin.token, site.id, '?includeHistory=true');
+    assert.ok(withHistory.payload.workOrders.some((w) => w.id === completedWO.id));
+    assert.ok(withHistory.payload.workOrders.some((w) => w.id === cancelledWO.id));
+  }
+);
+
+test('?includeHistory=true keeps the Org Unit narrow', async () => {
+  const insideWO = await raiseWorkOrder(grantedLine.id, { summary: 'History inside scope' });
+  await postCancel(admin.token, insideWO.id, {});
+
+  const outsideWO = await raiseWorkOrder(otherLine.id, { summary: 'History outside scope' });
+  await postCancel(admin.token, outsideWO.id, {});
+
+  const narrowed = await getWorkOrders(admin.token, site.id, `?includeHistory=true&orgUnitId=${grantedLine.id}`);
+  assert.ok(narrowed.payload.workOrders.some((w) => w.id === insideWO.id));
+  assert.ok(!narrowed.payload.workOrders.some((w) => w.id === outsideWO.id));
+});
+
+// ---------------------------------------------------------------------------
+// D4: assignWorkOrder refuses a terminal work order (an #63 hardening of the
+// #62 code — see ADR-0019 and work-orders.js's own comment on assignWorkOrder).
+// ---------------------------------------------------------------------------
+
+test('a completed work order cannot be assigned', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Assign after completion' });
+  await postStart(admin.token, workOrder.id);
+  await postComplete(admin.token, workOrder.id, { note: 'Done' });
+
+  const employee = await insertEmployee();
+  const { response, payload } = await putAssignee(admin.token, workOrder.id, { employeeId: employee.id });
+  assert.strictEqual(response.status, 409);
+  assert.strictEqual(payload.message, 'this Work order has already been completed');
+});
+
+test('a cancelled work order cannot be assigned', async () => {
+  const workOrder = await raiseWorkOrder(grantedLine.id, { summary: 'Assign after cancel' });
+  await postCancel(admin.token, workOrder.id, {});
+
+  const employee = await insertEmployee();
+  const { response, payload } = await putAssignee(admin.token, workOrder.id, { employeeId: employee.id });
+  assert.strictEqual(response.status, 409);
+  assert.strictEqual(payload.message, 'this Work order has already been cancelled');
 });
