@@ -3,9 +3,9 @@
 ///
 /// Two different shapes on purpose, matching the two different things the
 /// wire actually sends. `GET /api/people/employees` (`listEmployees`,
-/// `backend/src/modules/people/directory.js`) answers a flat row with no job
-/// role or Org Unit at all — see [Employee]'s own header for why the list
-/// Screen cannot show either. `GET /api/people/employees/:id` and
+/// `backend/src/modules/people/directory.js`) answers a flat row naming the
+/// Employee's current Org Unit and current job role (issue #91) — see
+/// [Employee]'s own header. `GET /api/people/employees/:id` and
 /// `GET /api/people/employees/me` (`getEmployeeDetail`) answer the richer
 /// [EmployeeDetail]: the current job role, the whole Assignment history, and
 /// the skills held.
@@ -17,12 +17,11 @@ import 'assignee_candidate.dart' show HeldSkill;
 
 /// One row of the Directory list.
 ///
-/// Deliberately carries no job role and no Org Unit: `listEmployees`
-/// (directory.js) selects only the Employee's own columns — no join, no
-/// `currentAssignmentJoin` projection — so the list has nothing to show for
-/// either. Both are read from [EmployeeDetail] instead, one Employee at a
-/// time, on the Screen a row is reached from (AC5). Widening the list itself
-/// to carry them would need a backend change, out of scope for this ticket.
+/// Carries the current Org Unit's and current job role's name (issue #91),
+/// resolved server-side by `listEmployees` (directory.js) in the same one
+/// query the list was always built from — never a query per Employee, and
+/// never a second lookup against [EmployeeDetail] just to show either on the
+/// list itself (AC5's own "name, job role, Org Unit" criterion).
 @immutable
 class Employee {
   const Employee({
@@ -31,6 +30,8 @@ class Employee {
     required this.displayName,
     required this.employmentType,
     required this.isActive,
+    required this.orgUnitName,
+    required this.jobRoleName,
   });
 
   final String id;
@@ -42,6 +43,16 @@ class Employee {
   /// flag, never a deletion, and included in the list only when
   /// `includeDeparted=true` was sent.
   final bool isActive;
+
+  /// The current Org Unit's name, or null when there is nothing to resolve —
+  /// no current Assignment and no `defaultOrgUnitId` either (directory.js's
+  /// own fallback rule).
+  final String? orgUnitName;
+
+  /// The current job role's name, or null when there is no current
+  /// Assignment at all — a job role exists nowhere but on an Assignment, so
+  /// it has no fallback the way the Org Unit does.
+  final String? jobRoleName;
 }
 
 /// One entry of an Employee's Assignment history (`getAssignmentHistory`,

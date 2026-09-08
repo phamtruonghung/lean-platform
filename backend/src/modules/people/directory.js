@@ -83,6 +83,18 @@ const EMPLOYEE_COLUMNS_QUALIFIED = EMPLOYEE_COLUMNS
   .map((column) => `e.${column}`)
   .join(', ');
 
+// listEmployees's own column list (issue #91) — EMPLOYEE_COLUMNS_QUALIFIED
+// plus the current Org Unit's and current job role's id/name, resolved by
+// the joins listEmployees always emits now. Deliberately NOT folded into
+// EMPLOYEE_COLUMNS/EMPLOYEE_COLUMNS_QUALIFIED: createEmployee, updateEmployee,
+// setEmployeeDeparted and reinstateEmployee all RETURNING that shape straight
+// off `employees`, with no Assignment resolved anywhere in those statements,
+// so widening it there would either break those four RETURNING clauses or
+// silently change their response shape.
+const EMPLOYEE_LISTING_COLUMNS = `${EMPLOYEE_COLUMNS_QUALIFIED}, ` +
+  'current_org_unit.id AS current_org_unit_id, current_org_unit.name AS current_org_unit_name, ' +
+  'current_job_role.id AS current_job_role_id, current_job_role.name AS current_job_role_name';
+
 // Postgres DATE has no time zone, but node-postgres parses it into a JS Date
 // at LOCAL midnight, which JSON.stringify then renders as a UTC instant — a
 // terminated_on of 2024-06-01 leaves a process running in, say, Asia/Saigon
@@ -121,6 +133,25 @@ function toEmployee(row) {
   };
 }
 
+// listEmployees's own row shape (issue #91): toEmployee's fields plus the
+// current Org Unit and current job role listEmployees's own joins resolve —
+// built on toEmployee rather than a second copy of its field list. Null for
+// either when there is nothing to resolve: an Employee with no current
+// Assignment and no default_org_unit_id names no Org Unit, and a job role
+// exists nowhere but on an Assignment, so it is simply null whenever there is
+// no current Assignment at all.
+function toEmployeeListingRow(row) {
+  return {
+    ...toEmployee(row),
+    orgUnit: row.current_org_unit_id
+      ? { id: row.current_org_unit_id, name: row.current_org_unit_name }
+      : null,
+    jobRole: row.current_job_role_id
+      ? { id: row.current_job_role_id, name: row.current_job_role_name }
+      : null
+  };
+}
+
 // Active Employees by default (issue #9's own default), ordered by
 // display_name; includeDeparted also brings in Departed ones (is_active =
 // FALSE). search, orgUnitId and jobRoleId are all optional and combine with
@@ -145,6 +176,24 @@ function toEmployee(row) {
 // getOrgUnitSubtree uses for "everything beneath this Org Unit" — an Employee
 // assigned to a descendant of the filtered Org Unit is included, not only one
 // assigned to it exactly.
+//
+// The current-assignment lateral, and the joins resolving the current Org
+// Unit and current job role off it, are emitted unconditionally now (issue
+// #91) — not only when orgUnitId or jobRoleId is filtered on, the way they
+// used to be — so every listing row can name both (issue #86's own "name,
+// job role, Org Unit" criterion), never a query per Employee to fetch them
+// after the fact.
+//
+// current_org_unit is a LEFT JOIN, not the INNER JOIN this file used to build
+// only when orgUnitId was filtered on: an INNER JOIN would drop every
+// Employee with neither a current Assignment nor a default_org_unit_id from
+// the listing outright, which is wrong once the join is unconditional. The
+// orgUnitId filter below still narrows exactly as it did before despite the
+// join now being LEFT: `path <@` against a NULL path (an Employee with
+// nothing to resolve) evaluates to NULL, and WHERE treats NULL as false, so
+// such an Employee is excluded from a filtered result the same way the old
+// INNER JOIN excluded them — the join changed, the filtered result set did
+// not.
 async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } = {}) {
   const conditions = [];
   const params = [];
@@ -161,36 +210,13 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } =
   const hasOrgUnitFilter = orgUnitId !== undefined && orgUnitId !== null;
   const hasJobRoleFilter = jobRoleId !== undefined && jobRoleId !== null;
 
-  // The lateral resolving the current assignment is emitted whenever EITHER
-  // filter is present — issue #10 widens what was, before it, an orgUnitId
-  // -only join, since job_role_id is read off the exact same current-
-  // assignment row org_unit_id already was.
-  let currentAssignmentJoin = '';
-  if (hasOrgUnitFilter || hasJobRoleFilter) {
-    currentAssignmentJoin = `
-      LEFT JOIN LATERAL (
-        SELECT ea.org_unit_id, ea.job_role_id
-          FROM employee_assignments ea
-         WHERE ea.employee_id = e.id
-           AND ea.effective_from <= CURRENT_DATE
-           AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
-         LIMIT 1
-      ) current_assignment ON TRUE`;
-  }
-
-  let orgUnitJoin = '';
   if (hasOrgUnitFilter) {
     // A tiny separate query to resolve the filter Org Unit's own path — 404s
     // if it does not exist at all, the same existence check every other Org
     // Unit id this Module accepts gets (plant.getOrgUnit).
     const target = await getOrgUnit(orgUnitId);
     params.push(target.path);
-    // COALESCE falls back to default_org_unit_id when there is no current
-    // assignment row at all.
-    orgUnitJoin = `
-      JOIN org_units resolved_ou
-        ON resolved_ou.id = COALESCE(current_assignment.org_unit_id, e.default_org_unit_id)`;
-    conditions.push(`resolved_ou.path <@ $${params.length}::ltree`);
+    conditions.push(`current_org_unit.path <@ $${params.length}::ltree`);
   }
 
   if (hasJobRoleFilter) {
@@ -202,15 +228,25 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } =
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const { rows } = await getPool().query(
-    `SELECT ${EMPLOYEE_COLUMNS_QUALIFIED}
+    `SELECT ${EMPLOYEE_LISTING_COLUMNS}
        FROM employees e
-       ${currentAssignmentJoin}
-       ${orgUnitJoin}
+       LEFT JOIN LATERAL (
+         SELECT ea.org_unit_id, ea.job_role_id
+           FROM employee_assignments ea
+          WHERE ea.employee_id = e.id
+            AND ea.effective_from <= CURRENT_DATE
+            AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
+          LIMIT 1
+       ) current_assignment ON TRUE
+       LEFT JOIN org_units current_org_unit
+         ON current_org_unit.id = COALESCE(current_assignment.org_unit_id, e.default_org_unit_id)
+       LEFT JOIN job_roles current_job_role
+         ON current_job_role.id = current_assignment.job_role_id
        ${whereClause}
       ORDER BY e.display_name`,
     params
   );
-  return rows.map(toEmployee);
+  return rows.map(toEmployeeListingRow);
 }
 
 // The null-returning form (issue #59): what another Module calls through
@@ -292,8 +328,14 @@ async function getEmployeeDetail(id) {
   const currentAssignment = assignments.find((assignment) => assignment.isCurrent);
   const jobRole = currentAssignment ? currentAssignment.jobRole : null;
 
+  // isLapsed is the negation of QUALIFICATION_IS_CURRENT_SQL, People's single
+  // definition of a current qualification, exactly as listAssigneeCandidates
+  // already derives it (issue #91) — sql.js's own comment says a second
+  // literal copy of that expression anywhere in this Module is a bug, so this
+  // imports the same helper rather than re-writing the date rule here.
   const { rows: skillRows } = await getPool().query(
     `SELECT es.id, es.proficiency_level, es.assessed_on, es.expires_on,
+            NOT ${QUALIFICATION_IS_CURRENT_SQL('es')} AS is_lapsed,
             s.id AS skill_id, s.code AS skill_code, s.name AS skill_name
        FROM employee_skills es
        JOIN skills s ON s.id = es.skill_id
@@ -312,6 +354,7 @@ async function getEmployeeDetail(id) {
     // on the wrong calendar day depending on the server's local time zone).
     assessedOn: toDateString(row.assessed_on),
     expiresOn: toDateString(row.expires_on),
+    isLapsed: row.is_lapsed,
     skill: { id: row.skill_id, code: row.skill_code, name: row.skill_name }
   }));
 
