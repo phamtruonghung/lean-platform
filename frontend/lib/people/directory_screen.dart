@@ -17,12 +17,22 @@ import '../widgets/skeleton_list.dart';
 import 'directory_bloc.dart';
 import 'directory_org_unit_filter_dialog.dart';
 import 'employee.dart';
+import 'employee_form_dialog.dart';
 
 class DirectoryScreen extends StatelessWidget {
-  const DirectoryScreen({super.key});
+  const DirectoryScreen({super.key, required this.isAdmin});
+
+  /// Whether this caller may add an Employee (issue #87) — read off `/me`'s
+  /// own role, the same shape `AssetsScreen.canPlaceAnAsset` follows, except
+  /// this is a role gate rather than a Grant one: the four write routes are
+  /// `requireAdmin`, not Org-Unit-scoped (ADR-0009). False hides the "Add
+  /// Employee" affordance entirely, the same reasoning `canPlaceAnAsset`
+  /// gives for hiding rather than disabling.
+  final bool isAdmin;
 
   static const double maxWidth = 900;
 
+  static const ValueKey<String> addKey = ValueKey<String>('directory-add');
   static const ValueKey<String> searchFieldKey = ValueKey<String>('directory-search');
   static const ValueKey<String> orgUnitFilterKey = ValueKey<String>('directory-org-unit-filter');
   static const ValueKey<String> jobRoleFilterKey = ValueKey<String>('directory-job-role-filter');
@@ -42,7 +52,7 @@ class DirectoryScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Header(state: state),
+          _Header(state: state, isAdmin: isAdmin),
           Expanded(
             child: switch (state) {
               DirectoryLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
@@ -59,9 +69,10 @@ class DirectoryScreen extends StatelessWidget {
 }
 
 class _Header extends StatefulWidget {
-  const _Header({required this.state});
+  const _Header({required this.state, required this.isAdmin});
 
   final DirectoryState state;
+  final bool isAdmin;
 
   @override
   State<_Header> createState() => _HeaderState();
@@ -97,24 +108,36 @@ class _HeaderState extends State<_Header> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Title and subtitle on their own full-width row, not squeezed
+              // beside the action buttons: with two of them now offered to an
+              // administrator (issue #87's own "Add Employee", alongside "My
+              // record"), an `Expanded` column sharing a `Row` with both would
+              // be forced so narrow that "Directory" itself wraps character by
+              // character, ballooning this header's own height and starving
+              // whatever the body below has left — exactly the failure mode
+              // the buttons now live in their own `Wrap` beneath this to avoid.
+              Text('Directory', style: theme.textTheme.headlineSmall),
+              const SizedBox(height: Spacing.xs),
+              Text(
+                'Who works here — searched, filtered, and Departed Employees kept '
+                'out of sight until asked for.',
+                style:
+                    theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: Spacing.md),
+              Wrap(
+                spacing: Spacing.sm,
+                runSpacing: Spacing.xs,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Directory', style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: Spacing.xs),
-                        Text(
-                          'Who works here — searched, filtered, and Departed Employees kept '
-                          'out of sight until asked for.',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
+                  if (widget.isAdmin)
+                    FilledButton.icon(
+                      key: DirectoryScreen.addKey,
+                      onPressed: loaded != null && loaded.isAdding
+                          ? null
+                          : () => EmployeeFormDialog.open(context),
+                      icon: const Icon(Icons.person_add_alt_1_outlined),
+                      label: const Text('Add Employee'),
                     ),
-                  ),
                   OutlinedButton.icon(
                     key: DirectoryScreen.myRecordKey,
                     onPressed: () => context.go('${Routes.directory}/me'),

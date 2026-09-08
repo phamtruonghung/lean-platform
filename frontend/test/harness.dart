@@ -384,6 +384,14 @@ class FakeWire {
     this.employeeDetailMessage = 'That Employee record could not be read.',
     List<Map<String, dynamic>>? jobRoles,
     this.jobRolesStatus = 200,
+    this.createEmployeeStatus = 201,
+    this.createEmployeeMessage = 'That Employee could not be added.',
+    this.updateEmployeeStatus = 200,
+    this.updateEmployeeMessage = 'That Employee record could not be corrected.',
+    this.departEmployeeStatus = 200,
+    this.departEmployeeMessage = 'That departure could not be recorded.',
+    this.reinstateEmployeeStatus = 200,
+    this.reinstateEmployeeMessage = 'That Employee could not be reinstated.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -577,6 +585,67 @@ class FakeWire {
   /// `GET /api/people/job-roles`.
   List<Map<String, dynamic>> jobRoles;
   int jobRolesStatus;
+
+  /// `POST /api/people/employees` (issue #87, administrator only).
+  int createEmployeeStatus;
+  String createEmployeeMessage;
+
+  /// Every create body that actually reached the wire, decoded — so a test
+  /// can assert exactly one request was sent and what it carried.
+  final List<Map<String, dynamic>> employeePosts = [];
+
+  /// `PATCH /api/people/employees/:id`.
+  int updateEmployeeStatus;
+  String updateEmployeeMessage;
+
+  /// Every correction body that actually reached the wire, as `(id, body)` —
+  /// so a test can assert exactly one request was sent and that it carried
+  /// only the field that actually changed.
+  final List<(String, Map<String, dynamic>)> employeePatches = [];
+
+  /// `POST /api/people/employees/:id/departure`.
+  int departEmployeeStatus;
+  String departEmployeeMessage;
+
+  /// Every departure body that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> employeeDepartures = [];
+
+  /// `POST /api/people/employees/:id/reinstatement`.
+  int reinstateEmployeeStatus;
+  String reinstateEmployeeMessage;
+
+  /// Every Employee id reinstated, in the order the requests reached the wire.
+  final List<String> employeeReinstatements = [];
+
+  int _nextEmployeeId = 900;
+
+  /// Applies a write's own changes to every row this Fake Wire holds naming
+  /// [id] — both [employees] (the listing) and [employeeDetails] (the detail
+  /// view, keyed by id or by `'me'`) — so a re-read after a successful write,
+  /// exactly what `DirectoryBloc`/`EmployeeDetailBloc` do rather than splice
+  /// the write's own bare response in, actually shows the change.
+  void _applyEmployeeChanges(String id, Map<String, dynamic> changes) {
+    Map<String, dynamic> merge(Map<String, dynamic> row) {
+      final merged = {...row, ...changes};
+      // `display_name` is a Postgres GENERATED column (`first_name || ' ' ||
+      // last_name`, baseline migration) — recomputed here so a correction to
+      // either name is honestly reflected, the same way the real column
+      // would be, rather than left stale until some unrelated field changed.
+      if (changes.containsKey('firstName') || changes.containsKey('lastName')) {
+        merged['displayName'] = '${merged['firstName']} ${merged['lastName']}';
+      }
+      return merged;
+    }
+
+    employees = [
+      for (final e in employees)
+        if (e['id'] == id) merge(e) else e,
+    ];
+    employeeDetails = {
+      for (final entry in employeeDetails.entries)
+        entry.key: entry.value['id'] == id ? merge(entry.value) : entry.value,
+    };
+  }
 
   http.Client get client => MockClient((request) async {
         final path = request.url.path;
@@ -785,6 +854,94 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'candidates': assigneeCandidates}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/people/employees') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          employeePosts.add(sent);
+          if (createEmployeeStatus != 201) {
+            return http.Response(jsonEncode({'message': createEmployeeMessage}), createEmployeeStatus);
+          }
+          final id = (_nextEmployeeId++).toString();
+          final firstName = sent['firstName'] as String? ?? '';
+          final lastName = sent['lastName'] as String? ?? '';
+          final displayName = [firstName, lastName].where((n) => n.isNotEmpty).join(' ');
+          final created = employeeJson(
+            id,
+            sent['employeeNo'] as String,
+            displayName,
+            employmentType: sent['employmentType'] as String? ?? 'permanent',
+          );
+          employees = [...employees, created];
+          // The real route's own RETURNING clause answers the bare
+          // `toEmployee` shape — no `orgUnit`, no `jobRole` — so this mirrors
+          // that exactly rather than the listing row [employees] itself just
+          // got, which does carry both (issue #87's own trap).
+          final bare = {...created}..remove('orgUnit')..remove('jobRole');
+          return http.Response(jsonEncode({'employee': bare}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/people/employees/')) {
+          final id = path.substring('/api/people/employees/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          employeePatches.add((id, body));
+          if (updateEmployeeStatus != 200) {
+            return http.Response(jsonEncode({'message': updateEmployeeMessage}), updateEmployeeStatus);
+          }
+          _applyEmployeeChanges(id, body);
+          final matched = [
+            for (final e in employees) if (e['id'] == id) e,
+            for (final d in employeeDetails.values) if (d['id'] == id) d,
+          ];
+          if (matched.isEmpty) {
+            return http.Response(jsonEncode({'message': 'Employee not found'}), 404);
+          }
+          final bare = {...matched.first}..remove('orgUnit')..remove('jobRole');
+          return http.Response(jsonEncode({'employee': bare}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/people/employees/') &&
+            path.endsWith('/departure')) {
+          // '', 'api', 'people', 'employees', ':id', 'departure'.
+          final id = path.split('/')[4];
+          final body = request.body.isEmpty
+              ? const <String, dynamic>{}
+              : jsonDecode(request.body) as Map<String, dynamic>;
+          employeeDepartures.add((id, body));
+          if (departEmployeeStatus != 200) {
+            return http.Response(jsonEncode({'message': departEmployeeMessage}), departEmployeeStatus);
+          }
+          final terminatedOn = body['terminatedOn'] as String? ?? '2024-06-01';
+          _applyEmployeeChanges(id, {'isActive': false, 'terminatedOn': terminatedOn});
+          final matched = [
+            for (final e in employees) if (e['id'] == id) e,
+            for (final d in employeeDetails.values) if (d['id'] == id) d,
+          ];
+          if (matched.isEmpty) {
+            return http.Response(jsonEncode({'message': 'Employee not found'}), 404);
+          }
+          final bare = {...matched.first}..remove('orgUnit')..remove('jobRole');
+          return http.Response(jsonEncode({'employee': bare}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/people/employees/') &&
+            path.endsWith('/reinstatement')) {
+          final id = path.split('/')[4];
+          employeeReinstatements.add(id);
+          if (reinstateEmployeeStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': reinstateEmployeeMessage}),
+              reinstateEmployeeStatus,
+            );
+          }
+          _applyEmployeeChanges(id, {'isActive': true, 'terminatedOn': null});
+          final matched = [
+            for (final e in employees) if (e['id'] == id) e,
+            for (final d in employeeDetails.values) if (d['id'] == id) d,
+          ];
+          if (matched.isEmpty) {
+            return http.Response(jsonEncode({'message': 'Employee not found'}), 404);
+          }
+          final bare = {...matched.first}..remove('orgUnit')..remove('jobRole');
+          return http.Response(jsonEncode({'employee': bare}), 200);
         }
         if (path == '/api/people/employees') {
           final search = request.url.queryParameters['search'];
