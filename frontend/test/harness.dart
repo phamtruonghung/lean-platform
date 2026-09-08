@@ -155,6 +155,113 @@ Map<String, dynamic> assigneeCandidateJson(
       'skills': skills,
     };
 
+/// One row of `GET /api/people/employees` (issue #86) — mirrors `toEmployee`
+/// (directory.js) exactly: no job role, no Org Unit, since the list endpoint
+/// carries neither. See `Employee`'s own header (`lib/people/employee.dart`).
+Map<String, dynamic> employeeJson(
+  String id,
+  String employeeNo,
+  String displayName, {
+  String employmentType = 'permanent',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'employeeNo': employeeNo,
+      'firstName': displayName.split(' ').first,
+      'lastName': displayName.contains(' ') ? displayName.split(' ').last : '',
+      'displayName': displayName,
+      'hiredOn': '2020-01-01',
+      'terminatedOn': isActive ? null : '2024-06-01',
+      'employmentType': employmentType,
+      'defaultOrgUnitId': null,
+      'defaultCrewId': null,
+      'costCenterId': null,
+      'isActive': isActive,
+      'workEmail': null,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One row of an Employee's Assignment history, as `getAssignmentHistory`
+/// (directory.js) sends it, nested under `GET /api/people/employees/:id`'s
+/// own `assignments`.
+Map<String, dynamic> employeeAssignmentJson(
+  String id, {
+  required String orgUnitId,
+  required String orgUnitName,
+  String? jobRoleId,
+  String? jobRoleName,
+  required bool isCurrent,
+  String effectiveFrom = '2024-01-01',
+  String? effectiveTo,
+}) =>
+    {
+      'id': id,
+      'effectiveFrom': effectiveFrom,
+      'effectiveTo': effectiveTo,
+      'isCurrent': isCurrent,
+      'crewId': null,
+      'orgUnit': {
+        'id': orgUnitId,
+        'code': orgUnitName.toUpperCase().replaceAll(' ', '-'),
+        'name': orgUnitName,
+      },
+      'jobRole': jobRoleId == null
+          ? null
+          : {'id': jobRoleId, 'code': jobRoleName!.toUpperCase().replaceAll(' ', '-'), 'name': jobRoleName},
+    };
+
+/// One skill on `GET /api/people/employees/:id`'s own `skills` — deliberately
+/// without `isLapsed`, unlike [heldSkillJson]: `getEmployeeDetail`
+/// (directory.js) never computes it, only `listAssigneeCandidates` does. See
+/// `PeopleApi._isLapsed`'s own header for why the client derives it here.
+Map<String, dynamic> employeeSkillJson(
+  String id,
+  String skillId,
+  String code,
+  String name, {
+  int proficiencyLevel = 3,
+  String? expiresOn,
+}) =>
+    {
+      'id': id,
+      'proficiencyLevel': proficiencyLevel,
+      'assessedOn': '2024-01-01',
+      'expiresOn': expiresOn,
+      'skill': {'id': skillId, 'code': code, 'name': name},
+    };
+
+/// The full body of `GET /api/people/employees/:id` and
+/// `GET /api/people/employees/me` (issue #86) — the Employee's own fields
+/// ([employeeJson]) plus `jobRole`, `assignments` and `skills`.
+Map<String, dynamic> employeeDetailJson(
+  String id,
+  String employeeNo,
+  String displayName, {
+  String employmentType = 'permanent',
+  bool isActive = true,
+  Map<String, dynamic>? jobRole,
+  List<Map<String, dynamic>> assignments = const [],
+  List<Map<String, dynamic>> skills = const [],
+}) =>
+    {
+      ...employeeJson(id, employeeNo, displayName, employmentType: employmentType, isActive: isActive),
+      'jobRole': jobRole,
+      'assignments': assignments,
+      'skills': skills,
+    };
+
+/// One row of `GET /api/people/job-roles` (`job-roles.js`'s own `toJobRole`).
+Map<String, dynamic> jobRoleJson(String id, String code, String name, {bool isActive = true}) => {
+      'id': id,
+      'code': code,
+      'name': name,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
 Map<String, dynamic> pendingJson(String id, String email, DateTime since) => {
       'id': id,
       'email': email,
@@ -261,13 +368,23 @@ class FakeWire {
     this.completeWorkOrderMessage = 'That Work order could not be completed.',
     this.cancelWorkOrderStatus = 200,
     this.cancelWorkOrderMessage = 'That Work order could not be cancelled.',
+    List<Map<String, dynamic>>? employees,
+    this.employeesStatus = 200,
+    Map<String, Map<String, dynamic>>? employeeDetails,
+    this.employeeDetailStatus = 200,
+    this.employeeDetailMessage = 'That Employee record could not be read.',
+    List<Map<String, dynamic>>? jobRoles,
+    this.jobRolesStatus = 200,
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
         sites = sites ?? [],
         orgUnits = orgUnits ?? {},
         workOrders = workOrders ?? {},
-        assigneeCandidates = assigneeCandidates ?? [];
+        assigneeCandidates = assigneeCandidates ?? [],
+        employees = employees ?? [],
+        employeeDetails = employeeDetails ?? {},
+        jobRoles = jobRoles ?? [];
 
   final String role;
 
@@ -423,6 +540,34 @@ class FakeWire {
 
   /// Every Approval body that actually reached the wire, decoded.
   final List<Map<String, dynamic>> approvals = [];
+
+  /// `GET /api/people/employees` (issue #86) — the whole Directory this Fake
+  /// Wire knows about. Filtered by [FakeWire.client] itself for `search` (a
+  /// case-insensitive substring of `displayName`) and `includeDeparted`
+  /// (`isActive`), the two filters the wire has enough on a row to honour
+  /// honestly; `orgUnitId` and `jobRoleId` are recorded on
+  /// [employeeRequests] but not applied — the real `listEmployees` filters by
+  /// a current Assignment this Fake Wire has no equivalent row for (Employee
+  /// rows carry no Org Unit or job role at all — see `Employee`'s own
+  /// header), so a test proves those two filters by asserting what was SENT,
+  /// not by asserting the list narrowed.
+  List<Map<String, dynamic>> employees;
+  int employeesStatus;
+
+  /// Every `GET /api/people/employees` request's query parameters, in the
+  /// order they reached the wire.
+  final List<Map<String, String?>> employeeRequests = [];
+
+  /// `GET /api/people/employees/:id` and `GET /api/people/employees/me`,
+  /// keyed by Employee id — `'me'` is the key `GET .../me` itself is served
+  /// from, distinct from any real Employee id.
+  Map<String, Map<String, dynamic>> employeeDetails;
+  int employeeDetailStatus;
+  String employeeDetailMessage;
+
+  /// `GET /api/people/job-roles`.
+  List<Map<String, dynamic>> jobRoles;
+  int jobRolesStatus;
 
   http.Client get client => MockClient((request) async {
         final path = request.url.path;
@@ -631,6 +776,61 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'candidates': assigneeCandidates}), 200);
+        }
+        if (path == '/api/people/employees') {
+          final search = request.url.queryParameters['search'];
+          final orgUnitId = request.url.queryParameters['orgUnitId'];
+          final jobRoleId = request.url.queryParameters['jobRoleId'];
+          final includeDeparted = request.url.queryParameters['includeDeparted'] == 'true';
+          employeeRequests.add({
+            'search': search,
+            'orgUnitId': orgUnitId,
+            'jobRoleId': jobRoleId,
+            'includeDeparted': includeDeparted.toString(),
+          });
+          if (employeesStatus != 200) {
+            return http.Response(jsonEncode({'message': 'The Directory is unavailable.'}), employeesStatus);
+          }
+          var sent = employees;
+          if (!includeDeparted) {
+            sent = [for (final e in sent) if (e['isActive'] != false) e];
+          }
+          if (search != null && search.isNotEmpty) {
+            final needle = search.toLowerCase();
+            sent = [
+              for (final e in sent)
+                if ((e['displayName'] as String).toLowerCase().contains(needle)) e,
+            ];
+          }
+          return http.Response(jsonEncode({'employees': sent}), 200);
+        }
+        // GET /api/people/employees/me and GET /api/people/employees/:id
+        // (issue #86) — `me` is a distinct fixture key, not a real Employee
+        // id, mirroring directory-routes.js's own declaration-order trick
+        // (GET /employees/me is matched before :id could ever swallow it).
+        if (path.startsWith('/api/people/employees/')) {
+          final id = path.substring('/api/people/employees/'.length);
+          if (employeeDetailStatus != 200) {
+            return http.Response(jsonEncode({'message': employeeDetailMessage}), employeeDetailStatus);
+          }
+          final detail = employeeDetails[id];
+          if (detail == null) {
+            return http.Response(
+              jsonEncode({
+                'message': id == 'me'
+                    ? 'This Account has no linked Employee record'
+                    : 'Employee not found',
+              }),
+              404,
+            );
+          }
+          return http.Response(jsonEncode({'employee': detail}), 200);
+        }
+        if (path == '/api/people/job-roles') {
+          if (jobRolesStatus != 200) {
+            return http.Response(jsonEncode({'message': 'Job roles are unavailable.'}), jobRolesStatus);
+          }
+          return http.Response(jsonEncode({'jobRoles': jobRoles}), 200);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {
