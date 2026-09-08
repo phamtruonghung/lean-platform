@@ -10,6 +10,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'people/assignee_candidate.dart';
+import 'people/employee.dart';
+import 'people/job_role.dart';
 import 'people/managed_account.dart';
 import 'people/org_unit.dart';
 import 'people/org_unit_scope.dart';
@@ -304,6 +306,195 @@ class PeopleApi {
       expiresOn: skill['expiresOn'] as String?,
       isLapsed: skill['isLapsed'] == true,
     );
+  }
+
+  /// The Directory list (`GET /api/people/employees`, issue #86) — Active
+  /// Employees by default, `includeDeparted: true` widens it. [search]
+  /// narrows by name, [orgUnitId] and [jobRoleId] each narrow further; the
+  /// server combines every filter given by AND (directory.js's own header).
+  /// No Grant filtering at all — the whole Directory is readable by any
+  /// approved Account regardless of their own Org Unit scope (ADR-0009), so
+  /// nothing here narrows it either.
+  ///
+  /// Each row carries no job role and no Org Unit — `listEmployees`
+  /// (directory.js) selects only the Employee's own columns, nothing joined
+  /// in. See [Employee]'s own header.
+  Future<List<Employee>> fetchEmployees(
+    String accessToken, {
+    String? search,
+    String? orgUnitId,
+    String? jobRoleId,
+    bool includeDeparted = false,
+  }) async {
+    const path = '/api/people/employees';
+    final queryParameters = <String, String>{
+      if (search != null && search.isNotEmpty) 'search': search,
+      'orgUnitId': ?orgUnitId,
+      'jobRoleId': ?jobRoleId,
+      // Exact string 'true' only, mirroring the server's own narrow check
+      // (directory-routes.js) — never sent at all otherwise, so a stray
+      // `includeDeparted=false` is never constructed here either.
+      if (includeDeparted) 'includeDeparted': 'true',
+    };
+    final uri = Uri.parse(path)
+        .replace(queryParameters: queryParameters.isEmpty ? null : queryParameters);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final employee in body['employees'] as List<dynamic>)
+          _employeeFrom(employee as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static Employee _employeeFrom(Map<String, dynamic> employee) => Employee(
+        id: employee['id'].toString(),
+        employeeNo: employee['employeeNo'] as String,
+        displayName: employee['displayName'] as String,
+        employmentType: employee['employmentType'] as String,
+        isActive: employee['isActive'] == true,
+      );
+
+  /// One Employee's full record (`GET /api/people/employees/:id`, issue #86)
+  /// — job role, Assignment history and skills, alongside the Employee
+  /// record itself. No Grant filtering, the same as [fetchEmployees]
+  /// (ADR-0009): any approved Account may open any Employee's detail view.
+  Future<EmployeeDetail> fetchEmployeeDetail(String accessToken, String employeeId) async {
+    final path = '/api/people/employees/$employeeId';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _employeeDetailFromResponse(response, path);
+  }
+
+  /// The caller's own Employee record (`GET /api/people/employees/me`), when
+  /// this Account has one linked — what lets a Member reach their own record
+  /// (AC7) without searching the Directory for themselves. The server 404s
+  /// with its own message when this Account carries no `employeeId` at all
+  /// (directory-routes.js's own comment); that 404 surfaces as an ordinary
+  /// [PeopleApiException] here, ready for the Screen to show.
+  Future<EmployeeDetail> fetchMyEmployeeRecord(String accessToken) async {
+    const path = '/api/people/employees/me';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _employeeDetailFromResponse(response, path);
+  }
+
+  EmployeeDetail _employeeDetailFromResponse(http.Response response, String path) {
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _employeeDetailFrom(body['employee'] as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static EmployeeDetail _employeeDetailFrom(Map<String, dynamic> employee) {
+    final jobRole = employee['jobRole'] as Map<String, dynamic>?;
+    final assignments = employee['assignments'] as List<dynamic>? ?? const [];
+    final skills = employee['skills'] as List<dynamic>? ?? const [];
+    return EmployeeDetail(
+      id: employee['id'].toString(),
+      employeeNo: employee['employeeNo'] as String,
+      displayName: employee['displayName'] as String,
+      isActive: employee['isActive'] == true,
+      jobRoleName: jobRole?['name'] as String?,
+      assignments: [
+        for (final assignment in assignments.whereType<Map<String, dynamic>>())
+          _assignmentFrom(assignment),
+      ],
+      qualifications: [
+        for (final skill in skills.whereType<Map<String, dynamic>>()) _qualificationFrom(skill),
+      ],
+    );
+  }
+
+  static EmployeeAssignment _assignmentFrom(Map<String, dynamic> assignment) {
+    final orgUnit = assignment['orgUnit'] as Map<String, dynamic>?;
+    final jobRole = assignment['jobRole'] as Map<String, dynamic>?;
+    return EmployeeAssignment(
+      id: assignment['id'].toString(),
+      effectiveFrom: assignment['effectiveFrom'] as String,
+      effectiveTo: assignment['effectiveTo'] as String?,
+      isCurrent: assignment['isCurrent'] == true,
+      orgUnitName: orgUnit?['name'] as String? ?? '—',
+      jobRoleName: jobRole?['name'] as String?,
+    );
+  }
+
+  /// A held qualification off the detail view, reusing [HeldSkill] — the same
+  /// model `fetchAssigneeCandidates` already builds — rather than a second
+  /// type of the same shape.
+  ///
+  /// [isLapsed] is not part of this: unlike `listAssigneeCandidates`,
+  /// `getEmployeeDetail` (directory.js) does not compute it — its own skills
+  /// query selects `assessed_on`/`expires_on` and nothing derived from them.
+  /// [_isLapsed] below reproduces `QUALIFICATION_IS_CURRENT_SQL`'s own rule
+  /// (`backend/src/modules/people/sql.js`) as closely as a client can:
+  /// lapsed iff `expiresOn` is present and on or before today, compared as
+  /// `YYYY-MM-DD` strings — never parsed into a `DateTime` and compared as an
+  /// instant, since a DATE column has no time component to begin with
+  /// (directory.js's own `toDateString` header). This is the one place in
+  /// this app where "lapsed" is decided on the device clock rather than
+  /// read off the wire; making `getEmployeeDetail` compute it server-side,
+  /// the way `listAssigneeCandidates` already does, is a backend follow-up
+  /// reported alongside this ticket rather than done here (no backend change
+  /// is in scope for issue #86).
+  static HeldSkill _qualificationFrom(Map<String, dynamic> skill) {
+    final nested = skill['skill'] as Map<String, dynamic>;
+    final expiresOn = skill['expiresOn'] as String?;
+    return HeldSkill(
+      id: skill['id'].toString(),
+      skillId: nested['id'].toString(),
+      code: nested['code'] as String,
+      name: nested['name'] as String,
+      proficiencyLevel: (skill['proficiencyLevel'] as num).toInt(),
+      expiresOn: expiresOn,
+      isLapsed: _isLapsed(expiresOn),
+    );
+  }
+
+  static bool _isLapsed(String? expiresOn) {
+    if (expiresOn == null) return false;
+    final now = DateTime.now();
+    final today = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    return expiresOn.compareTo(today) <= 0;
+  }
+
+  /// The job role catalogue (`GET /api/people/job-roles`), for the
+  /// Directory's own job role filter — active roles only, no Site needed
+  /// (ADR-0005's shared catalogue). See job-roles.js's own header for why
+  /// this needs no Grant either.
+  Future<List<JobRole>> fetchJobRoles(String accessToken) async {
+    const path = '/api/people/job-roles';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final jobRole in body['jobRoles'] as List<dynamic>)
+          JobRole(
+            id: (jobRole as Map<String, dynamic>)['id'].toString(),
+            code: jobRole['code'] as String,
+            name: jobRole['name'] as String,
+          ),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
   }
 
   /// Admits an Account: sets its role and its Grants in one act

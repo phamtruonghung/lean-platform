@@ -16,6 +16,10 @@ import '../people/accounts_bloc.dart';
 import '../people/accounts_screen.dart';
 import '../people/approval_queue_bloc.dart';
 import '../people/approval_queue_screen.dart';
+import '../people/directory_bloc.dart';
+import '../people/directory_screen.dart';
+import '../people/employee_detail_bloc.dart';
+import '../people/employee_detail_screen.dart';
 import '../people_api.dart';
 import 'access_denied_screen.dart';
 import 'account_bloc.dart';
@@ -32,6 +36,7 @@ abstract final class Routes {
   static const String accounts = '/accounts';
   static const String assets = '/assets';
   static const String workOrders = '/work-orders';
+  static const String directory = '/directory';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -96,6 +101,49 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               return account is AccountApproved
                   ? HomeScreen(account: account.account)
                   : const SizedBox.shrink();
+            },
+          ),
+          // Offered to every approved Account (AC1) — unlike every other
+          // route below, there is no per-Screen role check here at all:
+          // ADR-0009 is exactly the decision that the Directory is not a
+          // secret, and `destinationsFor` (destinations.dart) already offers
+          // it to every role by leaving `roles` unset.
+          GoRoute(
+            path: Routes.directory,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<DirectoryBloc>(
+                create: (context) => DirectoryBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const DirectoryStarted()),
+                child: const DirectoryScreen(),
+              );
+            },
+          ),
+          // One Employee's record, reached from a Directory row
+          // (`/directory/:id`) or from "My record" (`/directory/me`) — the
+          // literal segment `me` is not a real Employee id, but Employee ids
+          // are opaque strings to this router either way, so `EmployeeDetail
+          // Screen`/`EmployeeDetailBloc` are what tell the two apart (null
+          // employeeId means "my own record"), the same trick directory-
+          // routes.js's own GET /employees/me plays against GET
+          // /employees/:id on the server.
+          GoRoute(
+            path: '${Routes.directory}/:id',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              final rawId = state.pathParameters['id'];
+              final employeeId = rawId == null || rawId == 'me' ? null : rawId;
+              return BlocProvider<EmployeeDetailBloc>(
+                create: (context) => EmployeeDetailBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(EmployeeDetailRequested(employeeId: employeeId)),
+                child: EmployeeDetailScreen(employeeId: employeeId),
+              );
             },
           ),
           GoRoute(

@@ -60,6 +60,10 @@ class Destination {
 
 const List<Destination> platformDestinations = [
   Destination(label: 'Home', icon: Icons.home_outlined, path: Routes.home),
+  // Offered to every approved Account — no `roles` set, the same "everyone
+  // admitted may reach this" shape Home already uses. ADR-0009 is exactly
+  // the decision that a plant directory is not a secret gated by role.
+  Destination(label: 'Directory', icon: Icons.people_outline, path: Routes.directory),
   Destination(
     label: 'Approvals',
     icon: Icons.how_to_reg_outlined,
