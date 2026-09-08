@@ -1,6 +1,8 @@
 /// One Work order as `GET /api/maintenance/sites/:siteId/work-orders` sends
-/// it — always an open one, since the server excludes completed/closed/
-/// cancelled rows from that read (issue #57).
+/// it — an open one by default, since the server excludes completed/closed/
+/// cancelled rows from that read (issue #57); a completed or cancelled row
+/// too when the caller asks for history (issue #63). `closed` stays
+/// unreachable through this endpoint either way.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -85,10 +87,11 @@ class WorkOrder {
   /// `ORDER BY wo.priority, wo.work_order_no`.
   final int priority;
 
-  /// The wire status string. Every row this endpoint sends is already open —
-  /// the server excludes completed/closed/cancelled — so this is shown
-  /// through [statusLabel] rather than a closed enum the client would have to
-  /// keep in lockstep with the backend's own status list.
+  /// The wire status string. Every row this endpoint sends is open by
+  /// default — completed/closed/cancelled are excluded unless history was
+  /// asked for (issue #63) — so this is shown through [statusLabel] rather
+  /// than a closed enum the client would have to keep in lockstep with the
+  /// backend's own status list.
   final String status;
 
   /// The Employee id holding this Work order, or null when nobody has it yet.

@@ -18,6 +18,8 @@ import '../widgets/skeleton_list.dart';
 import 'org_unit_chooser.dart';
 import 'work_order.dart';
 import 'work_order_assign_dialog.dart';
+import 'work_order_cancel_dialog.dart';
+import 'work_order_complete_dialog.dart';
 import 'work_order_form_dialog.dart';
 import 'work_orders_bloc.dart';
 
@@ -26,6 +28,7 @@ class WorkOrdersScreen extends StatelessWidget {
     super.key,
     required this.canRaiseWorkOrder,
     required this.canAssignWorkOrder,
+    required this.canWorkWorkOrder,
   });
 
   /// Whether this caller holds a write Grant anywhere at all — read off
@@ -44,6 +47,13 @@ class WorkOrdersScreen extends StatelessWidget {
   /// absent, not disabled.
   final bool canAssignWorkOrder;
 
+  /// Same coarse signal as [canAssignWorkOrder], and the same reason (issue
+  /// #63): a separate flag rather than reusing [canAssignWorkOrder] — each
+  /// affordance carries its own justification in this codebase, even though
+  /// both read off the same `orgUnitScope.canWriteSomewhere` today. False
+  /// hides Start, Complete and Cancel entirely — absent, not disabled.
+  final bool canWorkWorkOrder;
+
   static const double maxWidth = 900;
   static const ValueKey<String> raiseKey = ValueKey<String>('work-orders-add');
   static const ValueKey<String> siteKey = ValueKey<String>('work-orders-site');
@@ -61,6 +71,14 @@ class WorkOrdersScreen extends StatelessWidget {
   /// changes.
   static ValueKey<String> assignKey(String id) => ValueKey<String>('work-order-assign-$id');
 
+  /// Three separate keys, not one — unlike [assignKey]: starting, completing
+  /// and cancelling are three different acts, so this follows
+  /// `AssetsScreen.retireKey`/`reinstateKey` instead (issue #63).
+  static ValueKey<String> startKey(String id) => ValueKey<String>('work-order-start-$id');
+  static ValueKey<String> completeKey(String id) => ValueKey<String>('work-order-complete-$id');
+  static ValueKey<String> cancelKey(String id) => ValueKey<String>('work-order-cancel-$id');
+  static const ValueKey<String> showHistoryKey = ValueKey<String>('work-orders-show-history');
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<WorkOrdersBloc>().state;
@@ -77,12 +95,17 @@ class WorkOrdersScreen extends StatelessWidget {
               WorkOrdersUnavailable(message: final message) => _WorkOrdersFailed(message: message),
               WorkOrdersLoaded(isLoadingWorkOrders: true) =>
                 const SkeletonList(rows: 4, maxWidth: maxWidth),
-              WorkOrdersLoaded(workOrders: final workOrders, orgUnitFilterName: final filterName)
+              WorkOrdersLoaded(
+                workOrders: final workOrders,
+                orgUnitFilterName: final filterName,
+                showHistory: final showHistory
+              )
                   when workOrders.isEmpty =>
-                _WorkOrdersEmpty(orgUnitFilterName: filterName),
+                _WorkOrdersEmpty(orgUnitFilterName: filterName, showHistory: showHistory),
               WorkOrdersLoaded(workOrders: final workOrders) => _WorkOrdersList(
                   workOrders: workOrders,
                   canAssign: canAssignWorkOrder,
+                  canWork: canWorkWorkOrder,
                 ),
             },
           ),
@@ -120,8 +143,11 @@ class _Header extends StatelessWidget {
                       children: [
                         Text('Work orders', style: theme.textTheme.headlineSmall),
                         const SizedBox(height: Spacing.xs),
+                        // "Every open job" stopped being true once the history
+                        // toggle can bring completed and cancelled rows back
+                        // (issue #63) — neutral wording that holds either way.
                         Text(
-                          'Every open job raised at this Site, which Asset it is '
+                          'The work raised at this Site, which Asset it is '
                           'against, and who has it.',
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -189,6 +215,21 @@ class _Header extends StatelessWidget {
                       ),
                     ],
                   ),
+                const SizedBox(height: Spacing.md),
+                FilterChip(
+                  key: WorkOrdersScreen.showHistoryKey,
+                  label: const Text('Show completed and cancelled'),
+                  selected: loaded.showHistory,
+                  // Same guard `AssetsScreen.showRetiredKey` uses for its own
+                  // chip: toggling while a raise, assign or transition is in
+                  // flight would interleave the re-read with that write's own
+                  // mutation and could wipe a pending success notice before
+                  // the caller ever sees it.
+                  onSelected: loaded.isRaising || loaded.isAssigning || loaded.isTransitioning
+                      ? null
+                      : (value) =>
+                          context.read<WorkOrdersBloc>().add(WorkOrdersShowHistoryChanged(value)),
+                ),
               ],
             ],
           ),
@@ -290,11 +331,22 @@ class _Notice extends StatelessWidget {
   }
 }
 
+/// The transitions offered from [status] (issue #63) — `approved` offers
+/// Start, `in_progress` offers Complete; both offer Cancel. Every other
+/// status, reachable only through history, offers none of the three: a
+/// completed or cancelled Work order is terminal, and the four the schema
+/// allows but this slice does not offer (`draft`, `scheduled`, `on_hold`,
+/// `closed`) are unreachable through this list anyway.
+bool _offersStart(String status) => status == 'approved';
+bool _offersComplete(String status) => status == 'in_progress';
+bool _offersCancel(String status) => status == 'approved' || status == 'in_progress';
+
 class _WorkOrdersList extends StatelessWidget {
-  const _WorkOrdersList({required this.workOrders, required this.canAssign});
+  const _WorkOrdersList({required this.workOrders, required this.canAssign, required this.canWork});
 
   final List<WorkOrder> workOrders;
   final bool canAssign;
+  final bool canWork;
 
   @override
   Widget build(BuildContext context) {
@@ -305,8 +357,11 @@ class _WorkOrdersList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           itemCount: workOrders.length,
           separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) =>
-              _WorkOrderRow(workOrder: workOrders[index], canAssign: canAssign),
+          itemBuilder: (context, index) => _WorkOrderRow(
+            workOrder: workOrders[index],
+            canAssign: canAssign,
+            canWork: canWork,
+          ),
         ),
       ),
     );
@@ -314,16 +369,23 @@ class _WorkOrdersList extends StatelessWidget {
 }
 
 class _WorkOrderRow extends StatelessWidget {
-  const _WorkOrderRow({required this.workOrder, required this.canAssign});
+  const _WorkOrderRow({required this.workOrder, required this.canAssign, required this.canWork});
 
   final WorkOrder workOrder;
   final bool canAssign;
+  final bool canWork;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = context.watch<WorkOrdersBloc>().state;
     final isAssigning = state is WorkOrdersLoaded && state.isAssigning;
+    final isTransitioning = state is WorkOrdersLoaded && state.isTransitioning;
+    // Every row's actions are disabled by any action in flight, not only this
+    // row's own — the same reasoning `AssetsScreen`'s `disabled` flag
+    // documents: a second row's confirm-then-dispatch must not reach the Bloc
+    // while a different write is still settling.
+    final busy = isAssigning || isTransitioning;
     return Card(
       key: WorkOrdersScreen.rowKey(workOrder.id),
       margin: EdgeInsets.zero,
@@ -374,17 +436,57 @@ class _WorkOrderRow extends StatelessWidget {
                 ),
               ],
             ),
-            if (canAssign) ...[
+            if (canAssign || (canWork && _offersCancel(workOrder.status))) ...[
               const SizedBox(height: Spacing.sm),
               Row(
                 children: [
-                  OutlinedButton(
-                    key: WorkOrdersScreen.assignKey(workOrder.id),
-                    onPressed: isAssigning
-                        ? null
-                        : () => WorkOrderAssignDialog.open(context, workOrder: workOrder),
-                    child: Text(workOrder.assignedTo == null ? 'Assign' : 'Reassign'),
-                  ),
+                  if (canAssign) ...[
+                    OutlinedButton(
+                      key: WorkOrdersScreen.assignKey(workOrder.id),
+                      onPressed: busy
+                          ? null
+                          : () => WorkOrderAssignDialog.open(context, workOrder: workOrder),
+                      child: Text(workOrder.assignedTo == null ? 'Assign' : 'Reassign'),
+                    ),
+                    const SizedBox(width: Spacing.sm),
+                  ],
+                  // Start/Complete/Cancel: absent, not disabled, for a caller
+                  // with no write Grant anywhere at all — the server would
+                  // refuse it, so the interface does not invite it (the same
+                  // rule `canAssign` already follows). Which of the three
+                  // shows depends on the row's own status (§3's state
+                  // machine); `busy` disables all of them, on every row,
+                  // while any action — assign or transition — is in flight.
+                  if (canWork && _offersStart(workOrder.status))
+                    OutlinedButton(
+                      key: WorkOrdersScreen.startKey(workOrder.id),
+                      onPressed: busy
+                          ? null
+                          : () => context
+                              .read<WorkOrdersBloc>()
+                              .add(WorkOrderStartConfirmed(workOrder.id)),
+                      child: const Text('Start'),
+                    ),
+                  if (canWork && _offersComplete(workOrder.status)) ...[
+                    if (canAssign || _offersStart(workOrder.status)) const SizedBox(width: Spacing.sm),
+                    OutlinedButton(
+                      key: WorkOrdersScreen.completeKey(workOrder.id),
+                      onPressed: busy
+                          ? null
+                          : () => WorkOrderCompleteDialog.open(context, workOrder: workOrder),
+                      child: const Text('Complete'),
+                    ),
+                  ],
+                  if (canWork && _offersCancel(workOrder.status)) ...[
+                    const SizedBox(width: Spacing.sm),
+                    OutlinedButton(
+                      key: WorkOrdersScreen.cancelKey(workOrder.id),
+                      onPressed: busy
+                          ? null
+                          : () => WorkOrderCancelDialog.open(context, workOrder: workOrder),
+                      child: const Text('Cancel'),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -396,32 +498,47 @@ class _WorkOrderRow extends StatelessWidget {
 }
 
 class _WorkOrdersEmpty extends StatelessWidget {
-  const _WorkOrdersEmpty({required this.orgUnitFilterName});
+  const _WorkOrdersEmpty({required this.orgUnitFilterName, required this.showHistory});
 
   /// The Org Unit the list is narrowed to, or null for the whole Site — the
   /// headline must agree with whichever the `_Header` above is already
   /// showing ("Narrowed to Line 1"), not always claim the whole Site.
   final String? orgUnitFilterName;
 
+  /// Whether the list is currently showing completed and cancelled Work
+  /// orders too (issue #63) — "No open work" is wrong once the caller has
+  /// asked to see everything and there is still nothing at all.
+  final bool showHistory;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final filterName = orgUnitFilterName;
+    final headline = switch ((showHistory, filterName)) {
+      (true, null) => 'No work at this Site',
+      (true, final name?) => 'No work at $name',
+      (false, null) => 'No open work at this Site',
+      (false, final name?) => 'No open work at $name',
+    };
     return Center(
       key: WorkOrdersScreen.emptyKey,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
+        // Scrollable rather than a bare Column: completing or cancelling the
+        // last open row (issue #63) shows this empty state underneath the
+        // success notice above it, and on a short viewport the two together
+        // can be taller than the space left for the list — a scroll here
+        // beats a `RenderFlex overflowed` for content that is legitimately
+        // bigger than the space available, the same trade-off `ListView`
+        // already makes for the populated list beside it.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(Spacing.xl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.build_outlined, size: 48, color: theme.colorScheme.outline),
               const SizedBox(height: Spacing.md),
-              Text(
-                filterName == null ? 'No open work at this Site' : 'No open work at $filterName',
-                style: theme.textTheme.titleMedium,
-              ),
+              Text(headline, style: theme.textTheme.titleMedium),
               const SizedBox(height: Spacing.sm),
               Text(
                 'Nothing is currently raised here. Raise a Work order and it will '

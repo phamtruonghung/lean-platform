@@ -90,7 +90,10 @@ Map<String, dynamic> workOrderJson(
   String? description,
   String workType = 'corrective',
   int priority = 3,
-  String status = 'open',
+  // 'approved' is the first status this slice's own state machine offers
+  // (issue #63) — 'open' was never a real status, a leftover the four-state
+  // UI made untenable.
+  String status = 'approved',
   String? assignedTo,
   String? assigneeName,
   DateTime? createdAt,
@@ -252,6 +255,12 @@ class FakeWire {
     this.assigneeCandidatesStatus = 200,
     this.assignWorkOrderStatus = 200,
     this.assignWorkOrderMessage = 'That Work order could not be assigned.',
+    this.startWorkOrderStatus = 200,
+    this.startWorkOrderMessage = 'That Work order could not be started.',
+    this.completeWorkOrderStatus = 200,
+    this.completeWorkOrderMessage = 'That Work order could not be completed.',
+    this.cancelWorkOrderStatus = 200,
+    this.cancelWorkOrderMessage = 'That Work order could not be cancelled.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -304,9 +313,10 @@ class FakeWire {
   /// distinct from a test that only cares whether `orgUnitId` was sent.
   final Map<String, List<Map<String, dynamic>>> workOrdersByFilter = {};
 
-  /// Every Work order request as `(siteId, orgUnitId)`, so a test can prove
-  /// the filter was actually sent — or not — as the caller chose.
-  final List<(String, String?)> workOrderRequests = [];
+  /// Every Work order request as `(siteId, orgUnitId, includeHistory)`, so a
+  /// test can prove the filter — and the history opt-in (issue #63) — was
+  /// actually sent, or not, as the caller chose.
+  final List<(String, String?, bool)> workOrderRequests = [];
 
   /// When set, a Work order listing hangs until the test completes it — the
   /// same device [assetsGate] uses, needed to prove the list shows its own
@@ -338,6 +348,34 @@ class FakeWire {
   /// [assetPatchGate] uses, needed to prove the assign action is not offered
   /// a second time while one is already in flight.
   Completer<void>? workOrderAssignGate;
+
+  /// `POST /api/maintenance/work-orders/:id/start` (issue #63).
+  int startWorkOrderStatus;
+  String startWorkOrderMessage;
+
+  /// `POST /api/maintenance/work-orders/:id/complete`.
+  int completeWorkOrderStatus;
+  String completeWorkOrderMessage;
+
+  /// `POST /api/maintenance/work-orders/:id/cancel`.
+  int cancelWorkOrderStatus;
+  String cancelWorkOrderMessage;
+
+  /// Every Work order id started, in the order the requests actually reached
+  /// the wire — so a test can assert exactly one request was sent.
+  final List<String> workOrderStarts = [];
+
+  /// Every complete request that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> workOrderCompletions = [];
+
+  /// Every cancel request that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> workOrderCancellations = [];
+
+  /// When set, a start/complete/cancel hangs until the test completes it —
+  /// one gate for all three transitions, the same shape [workOrderAssignGate]
+  /// uses, needed to prove no transition is offered a second time while one
+  /// is already in flight.
+  Completer<void>? workOrderTransitionGate;
 
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
@@ -451,7 +489,8 @@ class FakeWire {
         if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/work-orders')) {
           final siteId = path.split('/')[4];
           final orgUnitId = request.url.queryParameters['orgUnitId'];
-          workOrderRequests.add((siteId, orgUnitId));
+          final includeHistory = request.url.queryParameters['includeHistory'] == 'true';
+          workOrderRequests.add((siteId, orgUnitId, includeHistory));
           if (workOrdersGate != null) await workOrdersGate!.future;
           if (workOrdersStatus != 200) {
             return http.Response(
@@ -460,8 +499,68 @@ class FakeWire {
             );
           }
           final scripted = workOrdersByFilter['$siteId|${orgUnitId ?? ''}'];
-          final sent = scripted ?? (workOrders[siteId] ?? []);
+          final siteWorkOrders = scripted ?? (workOrders[siteId] ?? []);
+          // Mirrors the Asset register's own `includeRetired` filtering
+          // above: completed/cancelled rows are excluded unless history was
+          // asked for (issue #63).
+          const historyStatuses = {'completed', 'cancelled'};
+          final sent = includeHistory
+              ? siteWorkOrders
+              : [
+                  for (final wo in siteWorkOrders)
+                    if (!historyStatuses.contains(wo['status'])) wo,
+                ];
           return http.Response(jsonEncode({'workOrders': sent}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/work-orders/') &&
+            (path.endsWith('/start') || path.endsWith('/complete') || path.endsWith('/cancel'))) {
+          // '', 'api', 'maintenance', 'work-orders', ':id', 'start'|'complete'|
+          // 'cancel' — segment 4 is the Work order id, segment 5 the action.
+          final segments = path.split('/');
+          final workOrderId = segments[4];
+          final action = segments[5];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          // Recorded before the gate, exactly as the assign handler's own
+          // comment insists — so a test can assert what was sent while the
+          // response still hangs.
+          final int status;
+          final String message;
+          final Map<String, dynamic> update;
+          switch (action) {
+            case 'start':
+              workOrderStarts.add(workOrderId);
+              status = startWorkOrderStatus;
+              message = startWorkOrderMessage;
+              update = {'status': 'in_progress'};
+            case 'complete':
+              workOrderCompletions.add((workOrderId, body));
+              status = completeWorkOrderStatus;
+              message = completeWorkOrderMessage;
+              update = {'status': 'completed', 'completionNote': body['note']};
+            case 'cancel':
+            default:
+              workOrderCancellations.add((workOrderId, body));
+              status = cancelWorkOrderStatus;
+              message = cancelWorkOrderMessage;
+              update = {'status': 'cancelled', 'completionNote': body['reason']};
+          }
+          if (workOrderTransitionGate != null) await workOrderTransitionGate!.future;
+          if (status != 200) {
+            return http.Response(jsonEncode({'message': message}), status);
+          }
+          Map<String, dynamic>? updated;
+          workOrders = {
+            for (final entry in workOrders.entries)
+              entry.key: [
+                for (final wo in entry.value)
+                  if (wo['id'] == workOrderId) (updated = {...wo, ...update}) else wo,
+              ],
+          };
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Work order does not exist.'}), 404);
+          }
+          return http.Response(jsonEncode({'workOrder': updated}), 200);
         }
         if (request.method == 'PUT' &&
             path.startsWith('/api/maintenance/work-orders/') &&

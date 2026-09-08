@@ -183,6 +183,12 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   // gate (403); this only avoids offering an action to a
                   // caller who holds no write Grant anywhere at all.
                   canAssignWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
+                  // Same coarse signal again, same reason (issue #63): a
+                  // separate flag from canAssignWorkOrder rather than reusing
+                  // it, since each affordance carries its own justification
+                  // in this codebase and #77 will want to move these two
+                  // apart.
+                  canWorkWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
                 ),
               );
             },

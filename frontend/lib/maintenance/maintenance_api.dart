@@ -123,20 +123,26 @@ class MaintenanceApi {
     }
   }
 
-  /// The open Work orders across a whole Site (issue #57) — the server
-  /// excludes completed/closed/cancelled from this read, so nothing further
-  /// filters the result here. [orgUnitId] narrows to that Org Unit and
+  /// The open Work orders across a whole Site (issue #57), or open-plus-
+  /// history when [includeHistory] asks for it (issue #63) — the server
+  /// excludes completed/cancelled from the default read, and `closed` stays
+  /// unoffered either way. [orgUnitId] narrows to that Org Unit and
   /// everything beneath it; an unknown one is a 404, surfaced through
   /// [_send] like any other refusal.
   Future<List<WorkOrder>> fetchWorkOrders(
     String accessToken, {
     required String siteId,
     String? orgUnitId,
+    bool includeHistory = false,
   }) async {
     final path = '/api/maintenance/sites/$siteId/work-orders';
-    final uri = orgUnitId != null
-        ? Uri.parse(path).replace(queryParameters: {'orgUnitId': orgUnitId})
-        : Uri.parse(path);
+    final queryParameters = {
+      'orgUnitId': ?orgUnitId,
+      if (includeHistory) 'includeHistory': 'true',
+    };
+    final uri = queryParameters.isEmpty
+        ? Uri.parse(path)
+        : Uri.parse(path).replace(queryParameters: queryParameters);
     final response = await _send(
       () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
       path,
@@ -211,6 +217,47 @@ class MaintenanceApi {
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       return _workOrderFrom(body['workOrder'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Starts a Work order: moves it to `in_progress` and stamps when work
+  /// began (`POST /api/maintenance/work-orders/:id/start`, issue #63). No
+  /// body — starting asks for nothing and takes nothing.
+  Future<WorkOrder> startWorkOrder(String accessToken, String id) =>
+      _postWorkOrderAction(accessToken, id, 'start', const {});
+
+  /// Completes a Work order: stamps when it ended and records [note], what
+  /// was found (`POST /api/maintenance/work-orders/:id/complete`). The
+  /// server refuses one that was never started (409) before writing anything.
+  Future<WorkOrder> completeWorkOrder(String accessToken, String id, {required String note}) =>
+      _postWorkOrderAction(accessToken, id, 'complete', {'note': note});
+
+  /// Cancels a Work order raised in error
+  /// (`POST /api/maintenance/work-orders/:id/cancel`). [reason] is optional —
+  /// undoing a mistake should not demand prose to explain it.
+  Future<WorkOrder> cancelWorkOrder(String accessToken, String id, {String? reason}) =>
+      _postWorkOrderAction(accessToken, id, 'cancel', {'reason': ?reason});
+
+  Future<WorkOrder> _postWorkOrderAction(
+    String accessToken,
+    String id,
+    String action,
+    Map<String, dynamic> body,
+  ) async {
+    final path = '/api/maintenance/work-orders/$id/$action';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return _workOrderFrom(decoded['workOrder'] as Map<String, dynamic>);
     } catch (error) {
       throw MaintenanceApiException('The API answered with something this app could not read: $error');
     }

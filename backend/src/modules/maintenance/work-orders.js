@@ -42,6 +42,13 @@ const WORK_TYPES = ['corrective', 'preventive', 'predictive', 'inspection', 'imp
 // to notice.
 const OPEN_STATUSES = ['draft', 'approved', 'scheduled', 'in_progress', 'on_hold'];
 
+// The two terminal states this slice (issue #63) offers, added to
+// listWorkOrdersAtSite only when a caller asks for history by name.
+// Deliberately NOT the whole of the non-open set: 'closed' stays unoffered,
+// so a row in it is not silently surfaced by a filter that was asked for
+// something else.
+const HISTORY_STATUSES = ['completed', 'cancelled'];
+
 // asset_code/asset_name/org_unit_name/assignee_name all come from joins, so
 // every work order this Module hands back carries enough for a list row
 // without a second round trip. Mirrors ASSET_COLUMNS/toAsset's own shape.
@@ -113,6 +120,42 @@ function mapWorkOrderWriteError(error) {
   return error;
 }
 
+// The exact wording for every illegal transition this slice (issue #63)
+// refuses, kept in one table so startWorkOrder/completeWorkOrder/
+// cancelWorkOrder (and assignWorkOrder's own D4 guard below) cannot drift
+// apart on phrasing. Messages name the problem ("already been completed"),
+// not the state machine.
+const TRANSITION_MESSAGES = {
+  start: {
+    in_progress: 'this Work order has already been started',
+    completed: 'this Work order has already been completed',
+    cancelled: 'this Work order has been cancelled'
+  },
+  complete: {
+    approved: 'this Work order has not been started, so it cannot be completed',
+    completed: 'this Work order has already been completed',
+    cancelled: 'this Work order has been cancelled'
+  },
+  cancel: {
+    completed: 'this Work order has already been completed',
+    cancelled: 'this Work order has already been cancelled'
+  }
+};
+
+const TRANSITION_VERB = { start: 'started', complete: 'completed', cancel: 'cancelled' };
+
+// Turns "attempted transition + current status" into a 409 naming the
+// problem, or `undefined` if the current status has no message on file for
+// that action (callers only reach this once they already know the status is
+// not the one legal starting point, so this always resolves to a message in
+// practice — the template fallback exists only so a status this slice does
+// not expect still gets a sentence rather than `undefined`).
+function transitionGuard(action, status) {
+  const message = TRANSITION_MESSAGES[action][status]
+    ?? `this Work order cannot be ${TRANSITION_VERB[action]} from ${status}`;
+  return httpError(409, message);
+}
+
 async function findSiteCodeForAsset(assetId) {
   const { rows } = await getPool().query(
     `SELECT s.code
@@ -170,19 +213,30 @@ async function createWorkOrder({ assetId, summary, workType, priority, descripti
   }
 }
 
-// Site-wide, open work orders only (issue #57) — the same Site-wide-read
-// rule listAssetsAtSite follows (#55/ADR-0009): scope decides where an
-// Account may act, not what it may know about, so this carries no Grant
-// filter. `orgUnitPath`, when given, narrows to that Org Unit and everything
-// beneath it via ltree containment — the same `path <@ $1::ltree` idiom
-// plant.js's own getOrgUnitSubtree uses, resolved by the caller (the route)
-// through people.findOrgUnit so an unknown/malformed one is a 404 before
-// this function is ever called.
+// Site-wide, open work orders by default (issue #57), history-inclusive on
+// request (issue #63, AC6) — the same Site-wide-read rule listAssetsAtSite
+// follows (#55/ADR-0009): scope decides where an Account may act, not what
+// it may know about, so this carries no Grant filter. `orgUnitPath`, when
+// given, narrows to that Org Unit and everything beneath it via ltree
+// containment — the same `path <@ $1::ltree` idiom plant.js's own
+// getOrgUnitSubtree uses, resolved by the caller (the route) through
+// people.findOrgUnit so an unknown/malformed one is a 404 before this
+// function is ever called.
+//
+// `includeHistory` mirrors listAssetsAtSite's own `includeRetired`
+// (assets.js): OPEN_STATUSES stays untouched (its comment explains why —
+// Postgres's predicate-implication check needs it identical to
+// work_orders_open_idx's own predicate) and HISTORY_STATUSES is unioned in
+// only when asked for, as an explicit list rather than "drop the status
+// filter" — 'closed' stays unoffered even with history on, so a row in it is
+// not silently surfaced by a filter that was asked for something else. This
+// widened query cannot use work_orders_open_idx; that is expected and fine.
 //
 // Ordered priority (ascending, so 1 — the most urgent — sorts first) then
 // work_order_no: a morning meeting reads worst-first, and the number is a
 // stable, human-readable tiebreaker for two jobs at the same priority.
-async function listOpenWorkOrdersAtSite(siteId, { orgUnitPath = null } = {}) {
+async function listWorkOrdersAtSite(siteId, { orgUnitPath = null, includeHistory = false } = {}) {
+  const statuses = includeHistory ? [...OPEN_STATUSES, ...HISTORY_STATUSES] : OPEN_STATUSES;
   const scopeClause = orgUnitPath ? 'AND ou.path <@ $2::ltree' : '';
   const params = orgUnitPath ? [siteId, orgUnitPath] : [siteId];
   const { rows } = await getPool().query(
@@ -190,10 +244,10 @@ async function listOpenWorkOrdersAtSite(siteId, { orgUnitPath = null } = {}) {
        FROM work_orders wo
        ${WORK_ORDER_FROM}
       WHERE ou.site_id = $1
-        AND wo.status IN (${OPEN_STATUSES.map((_, i) => `$${params.length + i + 1}`).join(', ')})
+        AND wo.status IN (${statuses.map((_, i) => `$${params.length + i + 1}`).join(', ')})
         ${scopeClause}
       ORDER BY wo.priority, wo.work_order_no`,
-    [...params, ...OPEN_STATUSES]
+    [...params, ...statuses]
   );
   return rows.map(toWorkOrder);
 }
@@ -224,9 +278,28 @@ async function findWorkOrder(id) {
 // The caller (work-order-routes.js) has already proved the Work order exists,
 // proved the Employee exists and is not Departed, and asked canAct about
 // scope. This function assumes all three, exactly as createWorkOrder does.
+// #63 hardening (D4, flagged in that ticket's own PR as an extension to this
+// one): before #63 there was no terminal state a Work order could be handed
+// out in, so this never read status at all. After #63 a completed or
+// cancelled Work order can still be reassigned over HTTP — invisible in the
+// UI (the row has left the open list) but real: it overwrites updated_by,
+// the one record of who closed the job (see completeWorkOrder's own
+// comment), and hands somebody a job that is not actually open. Locked the
+// same way the three transitions below are, and reuses their 'cancel'
+// wording — "already been completed" / "already been cancelled" is the same
+// sentence whether the write that was refused was a cancel or an assign.
 async function assignWorkOrder(workOrderId, employeeId, accountId) {
   try {
     return await withActor(accountId, async (client) => {
+      const { rows: [current] } = await client.query(
+        'SELECT status FROM work_orders WHERE id = $1 FOR UPDATE',
+        [workOrderId]
+      );
+      if (!current) throw notFound('Work order');
+      if (current.status === 'completed' || current.status === 'cancelled') {
+        throw transitionGuard('cancel', current.status);
+      }
+
       const { rows: [row] } = await client.query(
         `WITH updated AS (
            UPDATE work_orders SET assigned_to = $1 WHERE id = $2 RETURNING *
@@ -243,10 +316,150 @@ async function assignWorkOrder(workOrderId, employeeId, accountId) {
   }
 }
 
+// Moves a Work order from approved to in_progress and stamps when work began
+// (issue #63, AC1). Guarded inside the transaction over a locked row — the
+// same lock-then-check shape approveAccount uses
+// (people/service.js:290-353, the lock at 312-315) — so two clients racing
+// start() on the same row serialize instead of racing, and the loser reads
+// the now-current status and gets the 409 below.
+//
+// assigned_to is never read here: the issue is explicit that an unassigned
+// Work order can still be started ("Deliberately not blocked by #62").
+async function startWorkOrder(workOrderId, accountId) {
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [current] } = await client.query(
+        'SELECT status FROM work_orders WHERE id = $1 FOR UPDATE',
+        [workOrderId]
+      );
+      // Unreachable in ordinary use — requireWorkOrderWriteScope already
+      // proved the row exists — but handled anyway for the same reason
+      // createWorkOrder handles its own unreachable 23503: a concurrent
+      // delete is not this Module's business to surface as a 500.
+      if (!current) throw notFound('Work order');
+      if (current.status !== 'approved') throw transitionGuard('start', current.status);
+
+      // status and actual_start are set in the SAME UPDATE statement:
+      // work_orders_fill_shift_on_start (baseline migration) is a
+      // `BEFORE UPDATE OF actual_start` trigger, which fires only on an
+      // UPDATE that touches that column. Setting status first and the
+      // timestamp in a second statement would leave shift_instance_id null
+      // forever, with nothing anywhere to say so.
+      const { rows: [row] } = await client.query(
+        `WITH updated AS (
+           UPDATE work_orders
+              SET status = 'in_progress', actual_start = now()
+            WHERE id = $1
+           RETURNING *
+         )
+         SELECT ${WORK_ORDER_COLUMNS}
+           FROM updated wo
+           ${WORK_ORDER_FROM}`,
+        [workOrderId]
+      );
+      return toWorkOrder(row);
+    });
+  } catch (error) {
+    throw mapWorkOrderWriteError(error);
+  }
+}
+
+// Moves a Work order from in_progress to completed, stamping when work ended
+// and recording what was found (issue #63, AC2). `note` is required — see
+// PLAN.md §1.1: this slice exists to produce data, and an optional note
+// would be empty on most rows within a week.
+//
+// Who and when a completion is recorded, decided rather than forgotten:
+//   - When: actual_end, stamped by the server with now(). Never accepted
+//     from the client — a client-supplied duration is an invented duration.
+//   - Who: as an Account, through work_orders.updated_by, filled by the
+//     zz_work_orders_set_actor trigger from the app.user_id withActor sets.
+//     work_orders.completed_by is deliberately NOT filled: it references
+//     employees(id), not app_users(id), and an Account need not be an
+//     Employee at all (CONTEXT.md, Account). Filling it would need a new
+//     People entry-point export for a nullable column no view reads. Note
+//     work_orders is not in the attach_audit list, so updated_by is the only
+//     record of who completed the job.
+async function completeWorkOrder(workOrderId, { note } = {}, accountId) {
+  requireNonEmptyString('note', note);
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [current] } = await client.query(
+        'SELECT status FROM work_orders WHERE id = $1 FOR UPDATE',
+        [workOrderId]
+      );
+      if (!current) throw notFound('Work order');
+      if (current.status !== 'in_progress') throw transitionGuard('complete', current.status);
+
+      const { rows: [row] } = await client.query(
+        `WITH updated AS (
+           UPDATE work_orders
+              SET status = 'completed', actual_end = now(), completion_note = $2
+            WHERE id = $1
+           RETURNING *
+         )
+         SELECT ${WORK_ORDER_COLUMNS}
+           FROM updated wo
+           ${WORK_ORDER_FROM}`,
+        [workOrderId, note.trim()]
+      );
+      return toWorkOrder(row);
+    });
+  } catch (error) {
+    throw mapWorkOrderWriteError(error);
+  }
+}
+
+// Moves an approved or in_progress Work order to cancelled (issue #63, AC4)
+// — a job raised in error, not a job that finished. `reason` is optional,
+// unlike completeWorkOrder's `note`: undoing a mistake should not demand
+// prose. When given it is persisted to completion_note (ADR-0019: there is
+// no cancellation_reason column, and `status` already disambiguates which
+// kind of closing note this is) — COALESCE keeps a reason-less cancellation
+// from wiping a note that was already on the row.
+//
+// Does NOT stamp actual_end: a cancelled job was never finished, and
+// work_orders_completed_has_end (baseline migration) does not apply to
+// 'cancelled'. Stamping it would put a fabricated duration on a row that
+// never did the work.
+async function cancelWorkOrder(workOrderId, { reason } = {}, accountId) {
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [current] } = await client.query(
+        'SELECT status FROM work_orders WHERE id = $1 FOR UPDATE',
+        [workOrderId]
+      );
+      if (!current) throw notFound('Work order');
+      if (current.status !== 'approved' && current.status !== 'in_progress') {
+        throw transitionGuard('cancel', current.status);
+      }
+
+      const { rows: [row] } = await client.query(
+        `WITH updated AS (
+           UPDATE work_orders
+              SET status = 'cancelled', completion_note = COALESCE($2, completion_note)
+            WHERE id = $1
+           RETURNING *
+         )
+         SELECT ${WORK_ORDER_COLUMNS}
+           FROM updated wo
+           ${WORK_ORDER_FROM}`,
+        [workOrderId, reason?.trim() || null]
+      );
+      return toWorkOrder(row);
+    });
+  } catch (error) {
+    throw mapWorkOrderWriteError(error);
+  }
+}
+
 module.exports = {
   WORK_TYPES,
   createWorkOrder,
-  listOpenWorkOrdersAtSite,
+  listWorkOrdersAtSite,
   findWorkOrder,
-  assignWorkOrder
+  assignWorkOrder,
+  startWorkOrder,
+  completeWorkOrder,
+  cancelWorkOrder
 };
