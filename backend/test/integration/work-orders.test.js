@@ -9,6 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { createTestJwks } = require('../helpers/jwks');
+const skillFixtures = require('../helpers/skills');
 
 const ISSUER = 'https://example.supabase.co/auth/v1';
 const AUDIENCE = 'authenticated';
@@ -24,6 +25,9 @@ const insertedSiteIds = [];
 const insertedOrgUnitIds = [];
 const insertedAssetIds = [];
 const insertedWorkOrderIds = [];
+const insertedEmployeeIds = [];
+const insertedSkillIds = [];
+const insertedEmployeeSkillIds = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -84,6 +88,52 @@ async function insertAsset(orgUnitId, { name = 'Press 1' } = {}) {
   );
   insertedAssetIds.push(row.id);
   return row;
+}
+
+// displayName is split into first/last name here, not stored directly:
+// employees.display_name is GENERATED ALWAYS AS (first_name || ' ' ||
+// last_name) STORED (baseline migration), so the round trip through the two
+// real columns is what makes the returned display_name match what a test
+// passed in.
+async function insertEmployee({ isActive = true, displayName = 'Assignee Test' } = {}) {
+  const [firstName, ...rest] = displayName.split(' ');
+  const lastName = rest.join(' ') || 'Employee';
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name, is_active)
+     VALUES ($1, $2, $3, $4) RETURNING id, display_name`,
+    [uniqueCode('EMP'), firstName, lastName, isActive]
+  );
+  insertedEmployeeIds.push(row.id);
+  return row;
+}
+
+// Thin wrappers over the shared fixtures in test/helpers/skills.js: this
+// file's own tracking (insertedSkillIds/insertedEmployeeSkillIds) and
+// skill-name convention live here, the SQL itself lives there, shared with
+// directory.test.js.
+async function insertSkill({ revalidationMonths = null } = {}) {
+  const row = await skillFixtures.insertSkill(pool, uniqueCode, {
+    name: 'Work Order Test Skill',
+    revalidationMonths
+  });
+  insertedSkillIds.push(row.id);
+  return row;
+}
+
+async function insertEmployeeSkill({ employeeId, skillId, assessedOn, expiresOn }) {
+  const id = await skillFixtures.insertEmployeeSkill(pool, { employeeId, skillId, assessedOn, expiresOn });
+  insertedEmployeeSkillIds.push(id);
+  return id;
+}
+
+async function putAssignee(token, workOrderId, body) {
+  const response = await fetch(`${base}/api/maintenance/work-orders/${workOrderId}/assignee`, {
+    method: 'PUT',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
 }
 
 async function postWorkOrder(token, body) {
@@ -165,6 +215,9 @@ test.before(async () => {
 
 test.after(async () => {
   await pool.query('DELETE FROM work_orders WHERE id = ANY($1)', [insertedWorkOrderIds]);
+  await pool.query('DELETE FROM employee_skills WHERE id = ANY($1)', [insertedEmployeeSkillIds]);
+  await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
+  await pool.query('DELETE FROM skills WHERE id = ANY($1)', [insertedSkillIds]);
   await pool.query('DELETE FROM assets WHERE id = ANY($1)', [insertedAssetIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
@@ -249,7 +302,6 @@ test('validation: bad workType, priority out of range, and an empty summary are 
     { priority: 1.5 },
     { summary: '   ' }
   ]) {
-    // eslint-disable-next-line no-await-in-loop
     const { response } = await postWorkOrder(admin.token, workOrderBody(asset.id, overrides));
     assert.strictEqual(response.status, 400, JSON.stringify(overrides));
   }
@@ -386,4 +438,182 @@ test('a work order in_progress is included in the open list', async () => {
 
   const { payload } = await getWorkOrders(admin.token, site.id);
   assert.ok(payload.workOrders.some((w) => w.id === created.payload.workOrder.id));
+});
+
+// ---------------------------------------------------------------------------
+// Assigning a work order (issue #62). No skill is ever consulted on this
+// write path — ADR-0018 — and neither this file nor work-orders.js reads one.
+// ---------------------------------------------------------------------------
+
+test('assigning a work order sets the assignee, and reading the Site list back shows it', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Assign me' }));
+  assert.strictEqual(created.response.status, 201);
+
+  const employee = await insertEmployee({ displayName: 'Ada Assignee' });
+  const { response, payload } = await putAssignee(admin.token, created.payload.workOrder.id, {
+    employeeId: employee.id
+  });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.assignedTo, String(employee.id));
+  assert.strictEqual(payload.workOrder.assigneeName, employee.display_name);
+
+  const { payload: listPayload } = await getWorkOrders(admin.token, site.id);
+  const row = listPayload.workOrders.find((w) => w.id === created.payload.workOrder.id);
+  assert.ok(row, 'the assigned work order should still be on the Site list');
+  assert.strictEqual(row.assignedTo, String(employee.id));
+  assert.strictEqual(row.assigneeName, employee.display_name);
+});
+
+test('reassigning replaces the assignee rather than adding one', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Reassign me' }));
+
+  const first = await insertEmployee({ displayName: 'First Assignee' });
+  const second = await insertEmployee({ displayName: 'Second Assignee' });
+
+  await putAssignee(admin.token, created.payload.workOrder.id, { employeeId: first.id });
+  const { response, payload } = await putAssignee(admin.token, created.payload.workOrder.id, {
+    employeeId: second.id
+  });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.assignedTo, String(second.id));
+
+  const { rows } = await pool.query('SELECT assigned_to FROM work_orders WHERE id = $1', [
+    created.payload.workOrder.id
+  ]);
+  assert.strictEqual(String(rows[0].assigned_to), String(second.id));
+});
+
+test("a write Grant reaching the Asset's Org Unit may assign; a read-only Grant on the same Org Unit is refused", async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Scope check' }));
+  const employee = await insertEmployee();
+
+  const writerResult = await putAssignee(writerAccount.token, created.payload.workOrder.id, {
+    employeeId: employee.id
+  });
+  assert.strictEqual(writerResult.response.status, 200);
+
+  const asset2 = await insertAsset(grantedLine.id);
+  const created2 = await postWorkOrder(admin.token, workOrderBody(asset2.id, { summary: 'Scope check 2' }));
+  const readOnlyResult = await putAssignee(readOnlyAccount.token, created2.payload.workOrder.id, {
+    employeeId: employee.id
+  });
+  assert.strictEqual(readOnlyResult.response.status, 403);
+  assert.strictEqual(readOnlyResult.payload.message, "Outside the caller's granted Org Units");
+
+  const { rows } = await pool.query('SELECT assigned_to FROM work_orders WHERE id = $1', [
+    created2.payload.workOrder.id
+  ]);
+  assert.strictEqual(rows[0].assigned_to, null);
+});
+
+test('a write Grant on a sibling branch does not reach across', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Sibling scope' }));
+  const employee = await insertEmployee();
+
+  const { response } = await putAssignee(siblingWriter.token, created.payload.workOrder.id, {
+    employeeId: employee.id
+  });
+  assert.strictEqual(response.status, 403);
+
+  const { rows } = await pool.query('SELECT assigned_to FROM work_orders WHERE id = $1', [
+    created.payload.workOrder.id
+  ]);
+  assert.strictEqual(rows[0].assigned_to, null);
+});
+
+test('an approved Account with no Grant anywhere cannot assign', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'No grant' }));
+  const employee = await insertEmployee();
+
+  const { response } = await putAssignee(noGrantAccount.token, created.payload.workOrder.id, {
+    employeeId: employee.id
+  });
+  assert.strictEqual(response.status, 403);
+});
+
+test('an Employee holding only a lapsed qualification can still be assigned', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Lapsed qualification' }));
+
+  const employee = await insertEmployee({ displayName: 'Lapsed Holder' });
+  const skill = await insertSkill();
+  await insertEmployeeSkill({
+    employeeId: employee.id,
+    skillId: skill.id,
+    assessedOn: '2020-01-01',
+    expiresOn: '2021-01-01'
+  });
+
+  const { response, payload } = await putAssignee(admin.token, created.payload.workOrder.id, {
+    employeeId: employee.id
+  });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.workOrder.assignedTo, String(employee.id));
+});
+
+test('an unknown work order id is a 404 naming the Work order, checked before scope', async () => {
+  const employee = await insertEmployee();
+  // admin: canAct would pass this caller unconditionally, so a 404 here
+  // proves existence is checked before scope, not the other way round.
+  const { response, payload } = await putAssignee(admin.token, '999999999', { employeeId: employee.id });
+  assert.strictEqual(response.status, 404);
+  assert.strictEqual(payload.message, 'Work order not found');
+});
+
+test('a malformed work order id is a clean 404, not a 500', async () => {
+  const employee = await insertEmployee();
+  const { response } = await putAssignee(admin.token, 'not-an-id', { employeeId: employee.id });
+  assert.strictEqual(response.status, 404);
+});
+
+test('a missing or malformed employeeId is a clean 400', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Bad employeeId' }));
+
+  for (const body of [{}, { employeeId: null }, { employeeId: 'not-an-id' }]) {
+    const { response, payload } = await putAssignee(admin.token, created.payload.workOrder.id, body);
+    assert.strictEqual(response.status, 400, JSON.stringify(body));
+    assert.strictEqual(payload.message, 'employeeId must be a valid Employee id');
+  }
+});
+
+test('an unknown Employee is a 404 naming the Employee', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Unknown employee' }));
+
+  const { response, payload } = await putAssignee(admin.token, created.payload.workOrder.id, {
+    employeeId: '999999999'
+  });
+  assert.strictEqual(response.status, 404);
+  assert.strictEqual(payload.message, 'Employee not found');
+});
+
+test('a Departed Employee cannot be assigned a work order', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'Departed employee' }));
+  const departed = await insertEmployee({ displayName: 'Departed Person', isActive: false });
+
+  const { response, payload } = await putAssignee(admin.token, created.payload.workOrder.id, {
+    employeeId: departed.id
+  });
+  assert.strictEqual(response.status, 409);
+  assert.strictEqual(payload.message, 'this Employee has departed and cannot be assigned');
+});
+
+test('a request with no bearer token is refused', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const created = await postWorkOrder(admin.token, workOrderBody(asset.id, { summary: 'No token' }));
+  const employee = await insertEmployee();
+
+  const response = await fetch(`${base}/api/maintenance/work-orders/${created.payload.workOrder.id}/assignee`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ employeeId: employee.id })
+  });
+  assert.strictEqual(response.status, 401);
 });

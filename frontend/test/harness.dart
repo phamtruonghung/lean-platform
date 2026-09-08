@@ -115,6 +115,43 @@ Map<String, dynamic> workOrderJson(
       'updatedAt': (updatedAt ?? DateTime.now()).toUtc().toIso8601String(),
     };
 
+/// One held skill as `GET /api/people/employees/assignee-candidates` sends
+/// it, nested under a candidate — mirrors `directory.js`'s per-skill shape
+/// plus `isLapsed` (issue #62).
+Map<String, dynamic> heldSkillJson(
+  String id,
+  String skillId,
+  String code,
+  String name, {
+  int proficiencyLevel = 3,
+  String? expiresOn,
+  bool isLapsed = false,
+}) =>
+    {
+      'id': id,
+      'proficiencyLevel': proficiencyLevel,
+      'assessedOn': '2024-01-01',
+      'expiresOn': expiresOn,
+      'isLapsed': isLapsed,
+      'skill': {'id': skillId, 'code': code, 'name': name},
+    };
+
+/// One candidate as `GET /api/people/employees/assignee-candidates` sends
+/// it (issue #62) — every Active Employee, with the skills each currently
+/// holds.
+Map<String, dynamic> assigneeCandidateJson(
+  String id,
+  String displayName, {
+  String employeeNo = 'E-1',
+  List<Map<String, dynamic>> skills = const [],
+}) =>
+    {
+      'id': id,
+      'employeeNo': employeeNo,
+      'displayName': displayName,
+      'skills': skills,
+    };
+
 Map<String, dynamic> pendingJson(String id, String email, DateTime since) => {
       'id': id,
       'email': email,
@@ -211,12 +248,17 @@ class FakeWire {
     this.workOrdersStatus = 200,
     this.createWorkOrderStatus = 201,
     this.createWorkOrderMessage = 'That Work order could not be raised.',
+    List<Map<String, dynamic>>? assigneeCandidates,
+    this.assigneeCandidatesStatus = 200,
+    this.assignWorkOrderStatus = 200,
+    this.assignWorkOrderMessage = 'That Work order could not be assigned.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
         sites = sites ?? [],
         orgUnits = orgUnits ?? {},
-        workOrders = workOrders ?? {};
+        workOrders = workOrders ?? {},
+        assigneeCandidates = assigneeCandidates ?? [];
 
   final String role;
 
@@ -278,6 +320,24 @@ class FakeWire {
   /// Every Work order body that actually reached the wire, decoded — so a
   /// test can assert exactly one request was sent and what it carried.
   final List<Map<String, dynamic>> workOrderPosts = [];
+
+  /// `GET /api/people/employees/assignee-candidates` (issue #62).
+  List<Map<String, dynamic>> assigneeCandidates;
+  int assigneeCandidatesStatus;
+
+  /// `PUT /api/maintenance/work-orders/:id/assignee`.
+  int assignWorkOrderStatus;
+  String assignWorkOrderMessage;
+
+  /// Every assign request that actually reached the wire, as `(id, body)` —
+  /// so a test can assert exactly one request was sent and what Employee it
+  /// carried.
+  final List<(String, Map<String, dynamic>)> workOrderAssignRequests = [];
+
+  /// When set, an assign hangs until the test completes it — the same device
+  /// [assetPatchGate] uses, needed to prove the assign action is not offered
+  /// a second time while one is already in flight.
+  Completer<void>? workOrderAssignGate;
 
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
@@ -403,6 +463,48 @@ class FakeWire {
           final sent = scripted ?? (workOrders[siteId] ?? []);
           return http.Response(jsonEncode({'workOrders': sent}), 200);
         }
+        if (request.method == 'PUT' &&
+            path.startsWith('/api/maintenance/work-orders/') &&
+            path.endsWith('/assignee')) {
+          // '', 'api', 'maintenance', 'work-orders', ':id', 'assignee' —
+          // segment 4 is the Work order id.
+          final workOrderId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          // Recorded before the gate, exactly as the asset PATCH handler
+          // does — so a test can assert what was sent while the response
+          // still hangs.
+          workOrderAssignRequests.add((workOrderId, body));
+          if (workOrderAssignGate != null) await workOrderAssignGate!.future;
+          if (assignWorkOrderStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': assignWorkOrderMessage}),
+              assignWorkOrderStatus,
+            );
+          }
+          final employeeId = body['employeeId'] as String?;
+          String? assigneeName;
+          for (final candidate in assigneeCandidates) {
+            if (candidate['id'] == employeeId) {
+              assigneeName = candidate['displayName'] as String;
+              break;
+            }
+          }
+          Map<String, dynamic>? updated;
+          workOrders = {
+            for (final entry in workOrders.entries)
+              entry.key: [
+                for (final wo in entry.value)
+                  if (wo['id'] == workOrderId)
+                    (updated = {...wo, 'assignedTo': employeeId, 'assigneeName': assigneeName})
+                  else
+                    wo,
+              ],
+          };
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Work order does not exist.'}), 404);
+          }
+          return http.Response(jsonEncode({'workOrder': updated}), 200);
+        }
         if (request.method == 'POST' && path == '/api/maintenance/work-orders') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;
           workOrderPosts.add(sent);
@@ -421,6 +523,15 @@ class FakeWire {
             priority: sent['priority'] as int,
           );
           return http.Response(jsonEncode({'workOrder': created}), 201);
+        }
+        if (path == '/api/people/employees/assignee-candidates') {
+          if (assigneeCandidatesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The candidates are unavailable.'}),
+              assigneeCandidatesStatus,
+            );
+          }
+          return http.Response(jsonEncode({'candidates': assigneeCandidates}), 200);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {

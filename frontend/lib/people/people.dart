@@ -12,6 +12,7 @@
 /// is likewise outside this seam today.
 library;
 
+export 'assignee_candidate.dart' show AssigneeCandidate, HeldSkill;
 export 'org_unit.dart' show OrgUnitNode, Site;
 export 'org_unit_picker_bloc.dart'
     show

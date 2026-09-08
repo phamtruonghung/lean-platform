@@ -1,12 +1,12 @@
 /*
- * Work orders over HTTP (issue #57). Mounted by index.js under
- * `/api/maintenance`, alongside asset-routes.js.
+ * Work orders over HTTP (issue #57, plus assigning one — issue #62). Mounted
+ * by index.js under `/api/maintenance`, alongside asset-routes.js.
  *
  * Like asset-routes.js, this is the one file in this pairing that talks to
  * People, and only through `modules/people`'s entry point (ADR-0006):
- * `authenticate`, `requireActive`, `findSite`, `findOrgUnit`, `canAct` and
- * the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything about a work
- * order's own fields is work-orders.js's business.
+ * `authenticate`, `requireActive`, `findSite`, `findOrgUnit`, `findEmployee`,
+ * `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
+ * about a work order's own fields is work-orders.js's business.
  *
  * Same two scope rules as Assets (#55), applied to work orders:
  *
@@ -15,20 +15,28 @@
  *     check, no Grant filter. ADR-0009's addendum for the Asset register
  *     applies here unchanged: Org Unit scope decides where an Account may
  *     act, not what it may know about.
- *   - Writes are branch-scoped, but on the ASSET named in the body, not an
- *     Org Unit: POST /work-orders requires a write Grant reaching the
- *     Org Unit the named Asset already sits at. There is no orgUnitId in the
- *     body at all — work_orders.org_unit_id is filled by trigger from
- *     asset_id (see work-orders.js's own header), so the client does not
- *     send one and any that is sent is ignored, exactly as work-orders.js's
- *     createWorkOrder does not read it off its own input.
+ *   - Writes are branch-scoped. POST /work-orders requires a write Grant
+ *     reaching the Org Unit the named Asset already sits at — there is no
+ *     orgUnitId in the body at all, since work_orders.org_unit_id is filled
+ *     by trigger from asset_id (see work-orders.js's own header), so the
+ *     client does not send one and any that is sent is ignored, exactly as
+ *     work-orders.js's createWorkOrder does not read it off its own input.
+ *     PUT /work-orders/:id/assignee (issue #62) requires a write Grant
+ *     reaching the Org Unit the Work order's own org_unit_id already names —
+ *     see requireWorkOrderWriteScope below.
+ *
+ * PUT /work-orders/:id/assignee never reads a qualification, and never will
+ * from this file: see ADR-0018. What a candidate holds is shown by People's
+ * own GET /employees/assignee-candidates (directory-routes.js), not by
+ * anything here — this route only resolves the named Employee (existence,
+ * and whether they have Departed) and writes the assignee.
  */
 
 const express = require('express');
 const people = require('../people');
 const assets = require('./assets');
 const workOrders = require('./work-orders');
-const { notFound, handleError } = require('./errors');
+const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
 
@@ -95,6 +103,77 @@ router.post(
         req.account.id
       );
       res.status(201).json({ workOrder });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Write scope on the Org Unit the Work order's ASSET sits at — read off
+// work_orders.org_unit_id, which the work_orders_fill_org_unit trigger already
+// derived from the Asset. Never from the request body.
+//
+// Existence before scope, the same ordering every write route in this Module
+// follows and for the same reason (AGENTS.md §6): canAct returns true for role
+// admin before it even checks whether the Org Unit id is null, so checking
+// scope first would turn an administrator's typo into a raw 500 instead of a
+// 404 that names the Work order. `write: true` is explicit and must stay that
+// way — it defaults to false.
+//
+// This reads the denormalised column rather than the Asset live, unlike
+// requireAssetWriteScope above, because the trigger that keeps it in sync
+// (work_orders_fill_org_unit, migrations/1756000000000_baseline.js) fires
+// only `BEFORE INSERT OR UPDATE OF asset_id` — it never re-fires if the Asset
+// itself is later relocated to a different Org Unit. That is unreachable
+// today (nothing in assets.js updates assets.org_unit_id), but whoever adds
+// Asset relocation should know this check would then diverge from a live
+// read and go stale until the Work order's own asset_id changes again.
+async function requireWorkOrderWriteScope(req, res, next) {
+  try {
+    const workOrder = await workOrders.findWorkOrder(req.params.id);
+    if (!workOrder) throw notFound('Work order');
+    const allowed = await people.canAct({ account: req.account, orgUnitId: workOrder.orgUnitId, write: true });
+    if (!allowed) {
+      return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    req.workOrder = workOrder;
+    return next();
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+}
+
+// Assigning and reassigning a Work order (issue #62) — one PUT, one
+// idempotent replacement of a single value. Assigning to somebody for the
+// first time and handing it to somebody else afterward are the same write
+// from the database's point of view (assigned_to changes either way), so
+// there is one route and one service function, not a separate reassign
+// path. No qualification is consulted anywhere in this route: see ADR-0018.
+//
+// Order inside the handler: parse employeeId (400) -> people.findEmployee
+// (404) -> isActive (409) -> workOrders.assignWorkOrder. Existence and scope
+// on the Work order itself are already handled by requireWorkOrderWriteScope
+// above, before this handler ever runs.
+router.put(
+  '/work-orders/:id/assignee',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderWriteScope,
+  async (req, res, next) => {
+    try {
+      const employeeId = parseId(req.body?.employeeId);
+      if (employeeId === null) {
+        return res.status(400).json({ message: 'employeeId must be a valid Employee id' });
+      }
+
+      const employee = await people.findEmployee(employeeId);
+      if (!employee) throw notFound('Employee');
+      if (!employee.isActive) {
+        throw httpError(409, 'this Employee has departed and cannot be assigned');
+      }
+
+      const workOrder = await workOrders.assignWorkOrder(req.workOrder.id, employeeId, req.account.id);
+      res.json({ workOrder });
     } catch (error) {
       handleError(error, res, next);
     }

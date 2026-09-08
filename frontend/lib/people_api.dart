@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'people/assignee_candidate.dart';
 import 'people/managed_account.dart';
 import 'people/org_unit.dart';
 import 'people/org_unit_scope.dart';
@@ -248,6 +249,61 @@ class PeopleApi {
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }
+  }
+
+  /// Who a Work order could be given to, and what each currently holds
+  /// (`GET /api/people/employees/assignee-candidates`, issue #62). Active
+  /// Employees only — the server excludes Departed ones (AC8), so nothing
+  /// filters here either. [orgUnitId] narrows to that Org Unit and everything
+  /// beneath it; the assign dialog does not send one (#62's own decision — a
+  /// central technician sits outside the Asset's own Org Unit).
+  Future<List<AssigneeCandidate>> fetchAssigneeCandidates(
+    String accessToken, {
+    String? orgUnitId,
+  }) async {
+    const path = '/api/people/employees/assignee-candidates';
+    final uri = Uri.parse(path).replace(
+      queryParameters: orgUnitId == null ? null : {'orgUnitId': orgUnitId},
+    );
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final candidate in body['candidates'] as List<dynamic>)
+          _assigneeCandidateFrom(candidate as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static AssigneeCandidate _assigneeCandidateFrom(Map<String, dynamic> candidate) {
+    final skills = candidate['skills'];
+    return AssigneeCandidate(
+      id: candidate['id'].toString(),
+      employeeNo: candidate['employeeNo'] as String,
+      displayName: candidate['displayName'] as String,
+      skills: [
+        if (skills is List<dynamic>)
+          for (final skill in skills.whereType<Map<String, dynamic>>()) _heldSkillFrom(skill),
+      ],
+    );
+  }
+
+  static HeldSkill _heldSkillFrom(Map<String, dynamic> skill) {
+    final nested = skill['skill'] as Map<String, dynamic>;
+    return HeldSkill(
+      id: skill['id'].toString(),
+      skillId: nested['id'].toString(),
+      code: nested['code'] as String,
+      name: nested['name'] as String,
+      proficiencyLevel: (skill['proficiencyLevel'] as num).toInt(),
+      expiresOn: skill['expiresOn'] as String?,
+      isLapsed: skill['isLapsed'] == true,
+    );
   }
 
   /// Admits an Account: sets its role and its Grants in one act

@@ -3,18 +3,26 @@
  * alongside routes.js's Account surface (issue #6) and plant-routes.js's
  * Sites/Org Unit tree (issue #7), all under `/api/people`.
  *
- * The read surface (GET /employees, GET /employees/me, GET /employees/:id)
- * sits behind `authenticate` + `requireActive` only — no `authorization.js`
- * scope check on any of them, deliberately. Unlike a Site or an Org Unit,
- * which a caller must already hold a grant on before plant-routes.js will
- * name it back to them, an Employee reaching one of these three is never
- * scope-checked: any approved Account may browse the whole directory, list
- * it, search it, and read any one Employee's detail view. ADR-0009 is the
- * decision record for why — in short, a plant directory is not a secret the
- * way an Account's own identity (`GET /accounts`, still administrator-only
- * in routes.js) is, and Org Unit scope exists to bound where an Account may
- * *act*, not who it may know about. Do not add a `canAct`/scope check to the
- * read surface "just in case" without reading that ADR first.
+ * The read surface (GET /employees, GET /employees/me,
+ * GET /employees/assignee-candidates, GET /employees/:id) sits behind
+ * `authenticate` + `requireActive` only — no `authorization.js` scope check
+ * on any of them, deliberately. Unlike a Site or an Org Unit, which a caller
+ * must already hold a grant on before plant-routes.js will name it back to
+ * them, an Employee reaching one of these four is never scope-checked: any
+ * approved Account may browse the whole directory, list it, search it, read
+ * any one Employee's detail view, and see who could be given a Work order.
+ * ADR-0009 is the decision record for why — in short, a plant directory is
+ * not a secret the way an Account's own identity (`GET /accounts`, still
+ * administrator-only in routes.js) is, and Org Unit scope exists to bound
+ * where an Account may *act*, not who it may know about. Do not add a
+ * `canAct`/scope check to the read surface "just in case" without reading
+ * that ADR first.
+ *
+ * GET /employees/assignee-candidates (issue #62) is what an assign dialog
+ * reads to show a supervisor what each Employee currently holds when giving
+ * them a Work order. It lives here, not in maintenance/work-order-routes.js,
+ * because "lapsed" is People's own domain rule — see that route's own
+ * comment, and ADR-0018, for the fuller reasoning.
  *
  * The write surface (issue #9's criteria 5 and 6, added in this file's
  * second pass) is a different question from "who may know about an
@@ -62,6 +70,7 @@ const { httpError, parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('
 const {
   listEmployees,
   getEmployeeDetail,
+  listAssigneeCandidates,
   createEmployee,
   updateEmployee,
   setEmployeeDeparted,
@@ -120,6 +129,32 @@ router.get('/employees/me', authenticate, requireActive, async (req, res, next) 
     }
     const employee = await getEmployeeDetail(req.account.employeeId);
     res.json({ employee });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+// Who a Work order could be given to, and what each of them currently holds
+// (issue #62). Named for what a person does with it, this Module's convention
+// for routes and Destinations alike. A read, so it sits behind
+// authenticate + requireActive only and takes no Grant filter — ADR-0009.
+//
+// Declaration order is load-bearing, the same reason /employees/me above must
+// come before /employees/:id: Express 5 matches in declaration order and
+// :id matches anything, so declared after /employees/:id, the literal
+// segment "assignee-candidates" would become the :id param and parseId
+// would turn it into a 400 rather than ever reaching this handler.
+router.get('/employees/assignee-candidates', authenticate, requireActive, async (req, res, next) => {
+  try {
+    let orgUnitId;
+    if (req.query.orgUnitId !== undefined) {
+      orgUnitId = parseId(req.query.orgUnitId);
+      if (orgUnitId === null) {
+        return res.status(400).json({ message: 'orgUnitId must be a valid Org Unit id' });
+      }
+    }
+    const candidates = await listAssigneeCandidates({ orgUnitId });
+    res.json({ candidates });
   } catch (error) {
     handleError(error, res, next);
   }
