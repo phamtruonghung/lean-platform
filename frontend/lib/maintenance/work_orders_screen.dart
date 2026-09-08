@@ -17,11 +17,16 @@ import '../theme.dart';
 import '../widgets/skeleton_list.dart';
 import 'org_unit_chooser.dart';
 import 'work_order.dart';
+import 'work_order_assign_dialog.dart';
 import 'work_order_form_dialog.dart';
 import 'work_orders_bloc.dart';
 
 class WorkOrdersScreen extends StatelessWidget {
-  const WorkOrdersScreen({super.key, required this.canRaiseWorkOrder});
+  const WorkOrdersScreen({
+    super.key,
+    required this.canRaiseWorkOrder,
+    required this.canAssignWorkOrder,
+  });
 
   /// Whether this caller holds a write Grant anywhere at all — read off
   /// `/me`'s own `orgUnitScope` (issue #43), the same rule `AssetsScreen`
@@ -29,6 +34,15 @@ class WorkOrdersScreen extends StatelessWidget {
   /// affordance entirely; it does not grey it out, because a disabled button
   /// is still an invitation to fail.
   final bool canRaiseWorkOrder;
+
+  /// Same coarse signal as [canRaiseWorkOrder], and the same reason (issue
+  /// #62): `/me` reports which Org Units are granted but not their ancestry,
+  /// so the client cannot tell whether a Grant *reaches* this particular Work
+  /// order's Org Unit. The server is the real gate (403); this only avoids
+  /// offering an action to a caller who holds no write Grant anywhere at all.
+  /// False hides the assign affordance entirely, for the same reason —
+  /// absent, not disabled.
+  final bool canAssignWorkOrder;
 
   static const double maxWidth = 900;
   static const ValueKey<String> raiseKey = ValueKey<String>('work-orders-add');
@@ -40,6 +54,12 @@ class WorkOrdersScreen extends StatelessWidget {
   static const ValueKey<String> emptyKey = ValueKey<String>('work-orders-empty');
   static const ValueKey<String> failedKey = ValueKey<String>('work-orders-failed');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('work-order-row-$id');
+
+  /// One key, two labels — unlike `AssetsScreen.retireKey`/`reinstateKey`,
+  /// which are two keys because they are two different acts. Assigning and
+  /// reassigning are one act (AC5), so the key is stable and only the label
+  /// changes.
+  static ValueKey<String> assignKey(String id) => ValueKey<String>('work-order-assign-$id');
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +80,10 @@ class WorkOrdersScreen extends StatelessWidget {
               WorkOrdersLoaded(workOrders: final workOrders, orgUnitFilterName: final filterName)
                   when workOrders.isEmpty =>
                 _WorkOrdersEmpty(orgUnitFilterName: filterName),
-              WorkOrdersLoaded(workOrders: final workOrders) => _WorkOrdersList(workOrders: workOrders),
+              WorkOrdersLoaded(workOrders: final workOrders) => _WorkOrdersList(
+                  workOrders: workOrders,
+                  canAssign: canAssignWorkOrder,
+                ),
             },
           ),
         ],
@@ -268,9 +291,10 @@ class _Notice extends StatelessWidget {
 }
 
 class _WorkOrdersList extends StatelessWidget {
-  const _WorkOrdersList({required this.workOrders});
+  const _WorkOrdersList({required this.workOrders, required this.canAssign});
 
   final List<WorkOrder> workOrders;
+  final bool canAssign;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +305,8 @@ class _WorkOrdersList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           itemCount: workOrders.length,
           separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) => _WorkOrderRow(workOrder: workOrders[index]),
+          itemBuilder: (context, index) =>
+              _WorkOrderRow(workOrder: workOrders[index], canAssign: canAssign),
         ),
       ),
     );
@@ -289,13 +314,16 @@ class _WorkOrdersList extends StatelessWidget {
 }
 
 class _WorkOrderRow extends StatelessWidget {
-  const _WorkOrderRow({required this.workOrder});
+  const _WorkOrderRow({required this.workOrder, required this.canAssign});
 
   final WorkOrder workOrder;
+  final bool canAssign;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final state = context.watch<WorkOrdersBloc>().state;
+    final isAssigning = state is WorkOrdersLoaded && state.isAssigning;
     return Card(
       key: WorkOrdersScreen.rowKey(workOrder.id),
       margin: EdgeInsets.zero,
@@ -346,6 +374,20 @@ class _WorkOrderRow extends StatelessWidget {
                 ),
               ],
             ),
+            if (canAssign) ...[
+              const SizedBox(height: Spacing.sm),
+              Row(
+                children: [
+                  OutlinedButton(
+                    key: WorkOrdersScreen.assignKey(workOrder.id),
+                    onPressed: isAssigning
+                        ? null
+                        : () => WorkOrderAssignDialog.open(context, workOrder: workOrder),
+                    child: Text(workOrder.assignedTo == null ? 'Assign' : 'Reassign'),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

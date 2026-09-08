@@ -38,6 +38,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { createTestJwks } = require('../helpers/jwks');
+const skillFixtures = require('../helpers/skills');
 
 const ISSUER = 'https://example.supabase.co/auth/v1';
 const AUDIENCE = 'authenticated';
@@ -123,6 +124,26 @@ async function insertAssignment({ employeeId, orgUnitId, jobRoleId = null, effec
      VALUES ($1, $2, $3, $4, $5)`,
     [employeeId, orgUnitId, jobRoleId, effectiveFrom, effectiveTo]
   );
+}
+
+// Thin wrappers over the shared fixtures in test/helpers/skills.js: this
+// file's own tracking (insertedSkillIds) and skill-name convention live
+// here, the SQL itself lives there, shared with work-orders.test.js.
+async function insertSkill({ revalidationMonths = null } = {}) {
+  const row = await skillFixtures.insertSkill(pool, uniqueCode, {
+    name: 'Assignee Candidate Skill',
+    revalidationMonths
+  });
+  insertedSkillIds.push(row.id);
+  return row;
+}
+
+async function insertEmployeeSkill({ employeeId, skillId, assessedOn, expiresOn }) {
+  return skillFixtures.insertEmployeeSkill(pool, { employeeId, skillId, assessedOn, expiresOn });
+}
+
+async function candidatesRequest(query = '', token = readerToken) {
+  return fetch(`${base}/api/people/employees/assignee-candidates${query}`, { headers: token });
 }
 
 test.before(async () => {
@@ -448,6 +469,142 @@ test('an unapproved or inactive Account gets a 403 from the list (GET /employees
   assert.strictEqual(response.status, 403);
   const body = await response.json();
   assert.strictEqual(body.status, 'pending_approval');
+});
+
+// ---------------------------------------------------------------------------
+// GET /employees/assignee-candidates (issue #62) — who a Work order could
+// be given to, and what each of them currently holds. No qualification check
+// anywhere here or on the write path it feeds — ADR-0018.
+// ---------------------------------------------------------------------------
+
+test('GET /employees/assignee-candidates lists Active Employees with the skills each holds', async () => {
+  const candidateSkill = await insertSkill();
+  const employee = await insertEmployee({ firstName: 'Candidate', lastName: 'Current' });
+  await insertEmployeeSkill({
+    employeeId: employee,
+    skillId: candidateSkill.id,
+    assessedOn: '2021-06-01',
+    expiresOn: '2099-01-01'
+  });
+
+  const response = await candidatesRequest();
+  assert.strictEqual(response.status, 200);
+  const { candidates } = await response.json();
+
+  const found = candidates.find((c) => c.id === employee);
+  assert.ok(found, 'the Active Employee should be among the candidates');
+  assert.ok(found.employeeNo);
+  assert.ok(found.displayName);
+
+  const heldSkill = found.skills.find((s) => s.skill.id === candidateSkill.id);
+  assert.ok(heldSkill, 'the recorded skill should be on the candidate');
+  assert.strictEqual(heldSkill.proficiencyLevel, 3);
+  assert.strictEqual(heldSkill.expiresOn, '2099-01-01');
+  assert.deepStrictEqual(heldSkill.skill, { id: candidateSkill.id, code: candidateSkill.code, name: candidateSkill.name });
+});
+
+test('a lapsed qualification is listed with isLapsed true, not omitted', async () => {
+  const lapsedSkill = await insertSkill();
+  const employee = await insertEmployee({ firstName: 'Candidate', lastName: 'Lapsed' });
+  await insertEmployeeSkill({
+    employeeId: employee,
+    skillId: lapsedSkill.id,
+    assessedOn: '2020-01-01',
+    expiresOn: '2021-01-01'
+  });
+
+  const response = await candidatesRequest();
+  const { candidates } = await response.json();
+  const found = candidates.find((c) => c.id === employee);
+  assert.ok(found, 'a candidate holding only a lapsed qualification is still listed');
+
+  const heldSkill = found.skills.find((s) => s.skill.id === lapsedSkill.id);
+  assert.ok(heldSkill);
+  assert.strictEqual(heldSkill.isLapsed, true);
+  assert.strictEqual(heldSkill.expiresOn, '2021-01-01');
+});
+
+test('a qualification with no expiry, and one expiring in the future, are both isLapsed false', async () => {
+  // revalidationMonths null means the employee_skills_set_expiry trigger
+  // never derives an expiry for this skill, so an omitted expiresOn really
+  // means "never expires", not "the trigger picked a date for me".
+  const neverExpiresSkill = await insertSkill({ revalidationMonths: null });
+  const futureSkill = await insertSkill();
+
+  const neverExpiresEmployee = await insertEmployee({ firstName: 'Candidate', lastName: 'NeverExpires' });
+  await insertEmployeeSkill({ employeeId: neverExpiresEmployee, skillId: neverExpiresSkill.id, expiresOn: null });
+
+  const futureEmployee = await insertEmployee({ firstName: 'Candidate', lastName: 'FutureExpiry' });
+  await insertEmployeeSkill({ employeeId: futureEmployee, skillId: futureSkill.id, expiresOn: '2099-01-01' });
+
+  const { candidates } = await (await candidatesRequest()).json();
+
+  const neverExpiresCandidate = candidates.find((c) => c.id === neverExpiresEmployee);
+  const neverExpiresHeld = neverExpiresCandidate.skills.find((s) => s.skill.id === neverExpiresSkill.id);
+  assert.strictEqual(neverExpiresHeld.expiresOn, null);
+  assert.strictEqual(neverExpiresHeld.isLapsed, false);
+
+  const futureCandidate = candidates.find((c) => c.id === futureEmployee);
+  const futureHeld = futureCandidate.skills.find((s) => s.skill.id === futureSkill.id);
+  assert.strictEqual(futureHeld.expiresOn, '2099-01-01');
+  assert.strictEqual(futureHeld.isLapsed, false);
+});
+
+test('a candidate who holds nothing comes back with an empty skills list, not omitted', async () => {
+  const response = await candidatesRequest();
+  const { candidates } = await response.json();
+  const found = candidates.find((c) => c.id === defaultOnlyEmployee);
+  assert.ok(found, 'an Employee with no employee_skills row should still be listed');
+  assert.deepStrictEqual(found.skills, []);
+});
+
+test('a Departed Employee is not among the candidates', async () => {
+  const response = await candidatesRequest();
+  const { candidates } = await response.json();
+  assert.ok(!candidates.map((c) => c.id).includes(departedEmployee));
+});
+
+test('?orgUnitId= narrows to that Org Unit and everything beneath it', async () => {
+  const narrowed = await candidatesRequest(`?orgUnitId=${ancestorUnit}`);
+  assert.strictEqual(narrowed.status, 200);
+  const { candidates } = await narrowed.json();
+  const ids = candidates.map((c) => c.id);
+
+  // richEmployee's CURRENT assignment is at grandchildUnit, two levels
+  // beneath ancestorUnit — a descendant, so it matches the narrowed list.
+  assert.ok(ids.includes(richEmployee));
+  // outsideEmployee's assignment is at outsideUnit, a separate root entirely.
+  assert.ok(!ids.includes(outsideEmployee));
+});
+
+test('an unknown ?orgUnitId= is a 404 and a malformed one is a 400', async () => {
+  const unknown = await candidatesRequest('?orgUnitId=999999999');
+  assert.strictEqual(unknown.status, 404);
+  const unknownBody = await unknown.json();
+  assert.strictEqual(unknownBody.message, 'Org Unit not found');
+
+  const malformed = await candidatesRequest('?orgUnitId=not-an-id');
+  assert.strictEqual(malformed.status, 400);
+  const malformedBody = await malformed.json();
+  assert.strictEqual(malformedBody.message, 'orgUnitId must be a valid Org Unit id');
+});
+
+test('expiresOn crosses the wire as a calendar date, not a locale-shifted instant', async () => {
+  const skillForDate = await insertSkill();
+  const employee = await insertEmployee({ firstName: 'Candidate', lastName: 'DateCheck' });
+  await insertEmployeeSkill({ employeeId: employee, skillId: skillForDate.id, expiresOn: '2030-03-15' });
+
+  const { candidates } = await (await candidatesRequest()).json();
+  const found = candidates.find((c) => c.id === employee);
+  const heldSkill = found.skills.find((s) => s.skill.id === skillForDate.id);
+  assert.strictEqual(heldSkill.expiresOn, '2030-03-15');
+});
+
+test('any approved Account may read the candidates, with no Grant anywhere', async () => {
+  // readerToken is an ordinary approved, active Account with no Grant of any
+  // kind (this file's own header) — ADR-0009.
+  const response = await candidatesRequest('', readerToken);
+  assert.strictEqual(response.status, 200);
 });
 
 // ---------------------------------------------------------------------------

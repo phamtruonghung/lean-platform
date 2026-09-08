@@ -46,6 +46,7 @@ const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
 const { getOrgUnit, getSite } = require('./plant');
 const { getEmployee } = require('./directory');
+const { QUALIFICATION_IS_CURRENT_SQL } = require('./sql');
 
 function requireNonEmptyString(field, value) {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -406,11 +407,11 @@ function validateMinimumLevel(value) {
 // row (falling back to default_org_unit_id when there is none), then
 // `resolved_ou.path <@ target.path` is the same GiST-indexed "everything
 // beneath this Org Unit" test plant.getOrgUnitSubtree/listEmployees both use.
-// "Not lapsed" is `expires_on IS NULL OR expires_on > CURRENT_DATE` — the
-// exact predicate the baseline's own `v_skill_coverage` view uses for
-// `qualified_headcount`, so this read and that view can never quietly
-// disagree about what "qualified" means. Excludes Departed Employees by
-// default (`e.is_active = TRUE`) — no toggle, out of scope for this issue.
+// "Not lapsed" is QUALIFICATION_IS_CURRENT_SQL — the exact predicate the
+// baseline's own `v_skill_coverage` view uses for `qualified_headcount`, so
+// this read and that view can never quietly disagree about what "qualified"
+// means. Excludes Departed Employees by default (`e.is_active = TRUE`) — no
+// toggle, out of scope for this issue.
 async function listQualifiedEmployees(skillId, { orgUnitId, minimumLevel } = {}) {
   const skill = await getSkill(skillId); // 404s if it does not exist.
 
@@ -443,7 +444,7 @@ async function listQualifiedEmployees(skillId, { orgUnitId, minimumLevel } = {})
          ON es.employee_id = e.id AND es.skill_id = $1
       WHERE e.is_active = TRUE
         AND resolved_ou.path <@ $2::ltree
-        AND (es.expires_on IS NULL OR es.expires_on > CURRENT_DATE)
+        AND ${QUALIFICATION_IS_CURRENT_SQL('es')}
         AND es.proficiency_level >= $3
       ORDER BY e.display_name`,
     [skill.id, targetOrgUnit.path, minimumLevelValue]

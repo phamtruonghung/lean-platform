@@ -56,7 +56,7 @@ const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
 const { getOrgUnit } = require('./plant');
 const { getJobRole } = require('./job-roles');
-const { escapeLikePattern } = require('./sql');
+const { escapeLikePattern, QUALIFICATION_IS_CURRENT_SQL } = require('./sql');
 
 function requireNonEmptyString(field, value) {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -316,6 +316,93 @@ async function getEmployeeDetail(id) {
   }));
 
   return { ...employee, jobRole, assignments, skills };
+}
+
+// Every Active Employee, with the skills each currently holds, for the moment
+// a supervisor chooses who gets a Work order (issue #62). ONE query — a flat
+// join grouped in JS below, never a query per Employee.
+//
+// Deliberately NOT json_agg: aggregating in SQL would hand back assessed_on /
+// expires_on as raw DATEs, bypassing toDateString and reintroducing exactly
+// the locale-shift bug this file documents at toDateString's own comment (a
+// calendar date crossing the wire as a UTC instant a day out).
+//
+// `isLapsed` is the negation of QUALIFICATION_IS_CURRENT_SQL, People's single
+// definition of a current qualification — it lives in sql.js, not skills.js,
+// specifically so this file can import it: skills.js already requires this
+// file (getEmployee), so a directory.js -> skills.js require would close that
+// into a circular require (see sql.js's own header). isLapsed is derived here
+// so the client is never left to re-derive the date rule itself.
+//
+// `e.is_active = TRUE` is what satisfies "a Departed Employee is not offered
+// as an assignee" — Departed is a flag, never a deleted row.
+//
+// orgUnitId is optional. When given, an unknown one 404s (getOrgUnit, the
+// same existence check listEmployees's own orgUnitId filter uses) and the
+// list narrows to that Org Unit and everything beneath it via the same
+// LEFT JOIN LATERAL current-assignment resolution + `path <@` containment
+// test listEmployees already uses. Omitted, every Active Employee is a
+// candidate — this endpoint answers "who could do this job", not an Org Unit
+// question, unlike listQualifiedEmployees's own required orgUnitId, so it
+// stays optional here rather than mirroring that requirement (issue #62).
+async function listAssigneeCandidates({ orgUnitId } = {}) {
+  const conditions = ['e.is_active = TRUE'];
+  const params = [];
+
+  let orgUnitJoin = '';
+  if (orgUnitId !== undefined && orgUnitId !== null) {
+    const target = await getOrgUnit(orgUnitId); // 404s if it does not exist.
+    params.push(target.path);
+    orgUnitJoin = `
+      LEFT JOIN LATERAL (
+        SELECT ea.org_unit_id
+          FROM employee_assignments ea
+         WHERE ea.employee_id = e.id
+           AND ea.effective_from <= CURRENT_DATE
+           AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
+         LIMIT 1
+      ) current_assignment ON TRUE
+      JOIN org_units resolved_ou
+        ON resolved_ou.id = COALESCE(current_assignment.org_unit_id, e.default_org_unit_id)`;
+    conditions.push(`resolved_ou.path <@ $${params.length}::ltree`);
+  }
+
+  const { rows } = await getPool().query(
+    `SELECT e.id, e.employee_no, e.display_name,
+            es.id AS employee_skill_id, es.proficiency_level, es.assessed_on, es.expires_on,
+            NOT ${QUALIFICATION_IS_CURRENT_SQL('es')} AS is_lapsed,
+            s.id AS skill_id, s.code AS skill_code, s.name AS skill_name
+       FROM employees e
+       ${orgUnitJoin}
+       LEFT JOIN employee_skills es ON es.employee_id = e.id
+       LEFT JOIN skills s ON s.id = es.skill_id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY e.display_name, s.name`,
+    params
+  );
+
+  const candidatesById = new Map();
+  for (const row of rows) {
+    let candidate = candidatesById.get(row.id);
+    if (!candidate) {
+      candidate = { id: row.id, employeeNo: row.employee_no, displayName: row.display_name, skills: [] };
+      candidatesById.set(row.id, candidate);
+    }
+    // The LEFT JOIN onto employee_skills yields one row with es.id IS NULL
+    // for a candidate who holds nothing — skipped here rather than emitted as
+    // a null skill, so that candidate still comes back with skills: [].
+    if (row.employee_skill_id !== null) {
+      candidate.skills.push({
+        id: row.employee_skill_id,
+        proficiencyLevel: row.proficiency_level,
+        assessedOn: toDateString(row.assessed_on),
+        expiresOn: toDateString(row.expires_on),
+        isLapsed: row.is_lapsed,
+        skill: { id: row.skill_id, code: row.skill_code, name: row.skill_name }
+      });
+    }
+  }
+  return [...candidatesById.values()];
 }
 
 // A write against `employees` can fail for three reasons this file turns
@@ -682,6 +769,7 @@ module.exports = {
   getEmployee,
   findEmployee,
   getEmployeeDetail,
+  listAssigneeCandidates,
   createEmployee,
   updateEmployee,
   setEmployeeDeparted,

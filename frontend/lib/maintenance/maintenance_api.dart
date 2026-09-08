@@ -187,6 +187,35 @@ class MaintenanceApi {
     }
   }
 
+  /// Gives a Work order to an Employee, or moves it to a different one
+  /// (`PUT /api/maintenance/work-orders/:id/assignee`). One call for both:
+  /// assigning and reassigning are the same idempotent replacement of a
+  /// single value (AC1, AC5). The server refuses a Departed Employee (409)
+  /// and a caller with no write Grant reaching the Work order's Org Unit
+  /// (403) — this call reports whatever it decides, and no qualification is
+  /// consulted anywhere on this path (AC4).
+  Future<WorkOrder> assignWorkOrder(
+    String accessToken,
+    String id, {
+    required String employeeId,
+  }) async {
+    final path = '/api/maintenance/work-orders/$id/assignee';
+    final response = await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'employeeId': employeeId}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _workOrderFrom(body['workOrder'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   // The server sends a flat row — `id, workOrderNo, assetId, assetCode,
   // assetName, orgUnitId, orgUnitName, summary, description, workType,
   // priority, status, assignedTo, assigneeName, createdAt, updatedAt`

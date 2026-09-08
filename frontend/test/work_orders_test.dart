@@ -9,6 +9,14 @@
 /// is proved on the backend, in whatever integration suite covers issue #57
 /// there, and neither substitutes for the other (mirroring `assets_test.dart`'s
 /// own Testing Decisions).
+///
+/// Assigning a Work order (issue #62) adds the same shape of claim, and the
+/// same limit: these tests claim the affordance is absent for a caller the
+/// server would refuse and that assigning sends exactly one request carrying
+/// the chosen Employee — not that the server enforces scope, refuses a
+/// Departed Employee, or lets a lapsed qualification through unblocked. Those
+/// are proved in `backend/test/integration/work-orders.test.js`, and neither
+/// substitutes for the other.
 library;
 
 import 'dart:async';
@@ -16,6 +24,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/org_unit_chooser.dart';
+import 'package:lean_platform/maintenance/work_order_assign_dialog.dart';
 import 'package:lean_platform/maintenance/work_order_form_dialog.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
@@ -32,6 +41,8 @@ FakeWire wireWith({
   int workOrdersStatus = 200,
   Map<String, List<Map<String, dynamic>>>? assets,
   int createWorkOrderStatus = 201,
+  List<Map<String, dynamic>>? assigneeCandidates,
+  int assignWorkOrderStatus = 200,
 }) =>
     FakeWire(
       role: role,
@@ -45,6 +56,8 @@ FakeWire wireWith({
       workOrders: workOrders,
       workOrdersStatus: workOrdersStatus,
       createWorkOrderStatus: createWorkOrderStatus,
+      assigneeCandidates: assigneeCandidates ?? [],
+      assignWorkOrderStatus: assignWorkOrderStatus,
     );
 
 void main() {
@@ -363,5 +376,312 @@ void main() {
     // regardless.
     expect(find.text('Belt is slipping'), findsOneWidget);
     expect(find.byKey(WorkOrdersScreen.raiseKey), findsNothing);
+  });
+
+  // Assigning a Work order (issue #62). What these tests claim and what they
+  // do not: that the affordance to assign is absent for a caller the server
+  // would refuse, and that one request is sent carrying the chosen Employee —
+  // not that the server enforces scope or that a lapsed qualification does
+  // not block. Those are proved in
+  // `backend/test/integration/work-orders.test.js`, and neither substitutes
+  // for the other.
+
+  testWidgets('the assign dialog lists candidates with what each of them holds', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [
+        assigneeCandidateJson(
+          '20',
+          'Jane Doe',
+          skills: [heldSkillJson('1', '5', 'WELD', 'Welding')],
+        ),
+        assigneeCandidateJson(
+          '21',
+          'John Smith',
+          skills: [heldSkillJson('2', '6', 'ELEC', 'Electrical')],
+        ),
+      ],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Jane Doe'), findsOneWidget);
+    expect(find.text('John Smith'), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.skillChipKey('20', '5')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.skillChipKey('21', '6')), findsOneWidget);
+  });
+
+  testWidgets('a lapsed qualification is shown as lapsed, and is not the same as holding nothing',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [
+        assigneeCandidateJson(
+          '20',
+          'Jane Doe',
+          skills: [
+            heldSkillJson('1', '5', 'WELD', 'Welding', isLapsed: true, expiresOn: '2020-01-01'),
+          ],
+        ),
+        assigneeCandidateJson(
+          '21',
+          'John Smith',
+          skills: [heldSkillJson('2', '6', 'ELEC', 'Electrical')],
+        ),
+        assigneeCandidateJson('22', 'Ana Silva'),
+      ],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+
+    // The lapsed holder: both keys present, and the text says so.
+    expect(find.byKey(WorkOrderAssignDialog.skillChipKey('20', '5')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.lapsedChipKey('20', '5')), findsOneWidget);
+    expect(find.text('Welding · Lapsed'), findsOneWidget);
+
+    // A current holder: the skill chip is present, the lapsed one is not.
+    expect(find.byKey(WorkOrderAssignDialog.skillChipKey('21', '6')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.lapsedChipKey('21', '6')), findsNothing);
+
+    // A candidate with nothing recorded: the plain fact, not a blank.
+    expect(find.text('No qualifications recorded'), findsOneWidget);
+  });
+
+  testWidgets('a candidate with only a lapsed qualification can still be chosen and assigned',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [
+        assigneeCandidateJson(
+          '20',
+          'Jane Doe',
+          skills: [
+            heldSkillJson('1', '5', 'WELD', 'Welding', isLapsed: true, expiresOn: '2020-01-01'),
+          ],
+        ),
+      ],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('20')));
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
+
+    expect(wire.workOrderAssignRequests.length, 1);
+    expect(wire.workOrderAssignRequests.single.$2, {'employeeId': '20'});
+  });
+
+  testWidgets('assigning sends exactly one request, carrying the chosen Employee', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [
+        assigneeCandidateJson('20', 'Jane Doe'),
+        assigneeCandidateJson('21', 'John Smith'),
+      ],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('21')));
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
+
+    expect(wire.workOrderAssignRequests.length, 1);
+    final (id, body) = wire.workOrderAssignRequests.single;
+    expect(id, '101');
+    expect(body, {'employeeId': '21'});
+  });
+
+  testWidgets('the assignee appears on the row afterwards, without re-reading the list',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [assigneeCandidateJson('20', 'Jane Doe')],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    final requestsBefore = wire.workOrderRequests.length;
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('20')));
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
+
+    expect(find.byType(WorkOrderAssignDialog), findsNothing);
+    expect(find.text('Jane Doe'), findsOneWidget);
+    expect(wire.workOrderRequests.length, requestsBefore);
+  });
+
+  testWidgets('a row already assigned offers Reassign, and moving it replaces the name',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [
+          workOrderJson('101', 'WO-101', 'Belt is slipping', assignedTo: '20', assigneeName: 'Jane Doe'),
+        ],
+      },
+      assigneeCandidates: [
+        assigneeCandidateJson('20', 'Jane Doe'),
+        assigneeCandidateJson('21', 'John Smith'),
+      ],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.widgetWithText(OutlinedButton, 'Reassign'), findsOneWidget);
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+    // The dialog's own submit button follows the title and the row button in
+    // switching to Reassign for an already-assigned Work order.
+    expect(find.widgetWithText(FilledButton, 'Reassign'), findsOneWidget);
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('21')));
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
+
+    expect(find.text('John Smith'), findsOneWidget);
+    expect(find.text('Jane Doe'), findsNothing);
+  });
+
+  testWidgets('a refusal is surfaced in the dialog, which stays open', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [assigneeCandidateJson('20', 'Jane Doe')],
+      assignWorkOrderStatus: 403,
+    )..assignWorkOrderMessage = 'You do not hold a Grant reaching this Work order.';
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('20')));
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
+
+    expect(find.byType(WorkOrderAssignDialog), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.failureKey), findsOneWidget);
+    expect(find.text('You do not hold a Grant reaching this Work order.'), findsOneWidget);
+  });
+
+  testWidgets('a caller with no write Grant is offered no way to assign', (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.text('Belt is slipping'), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.assignKey('101')), findsNothing);
+  });
+
+  testWidgets('a Departed Employee is not offered as a candidate', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      // The server excludes a Departed Employee from this list entirely — the
+      // client offers only who it was given (AC8's client half).
+      assigneeCandidates: [assigneeCandidateJson('20', 'Jane Doe')],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Jane Doe'), findsOneWidget);
+    expect(find.byType(RadioListTile<String>), findsOneWidget);
+  });
+
+  testWidgets('the assign action is not offered while an assign is in flight', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [assigneeCandidateJson('20', 'Jane Doe')],
+    )..workOrderAssignGate = Completer<void>();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('20')));
+    // The assign starts and hangs on the gate — `tapIn`'s own `pumpAndSettle`
+    // only waits out animations, not the pending request, the same as
+    // `assets_test.dart`'s own gated-mutation test.
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
+
+    // The row's own button reflects the Bloc's isAssigning underneath the
+    // still-open dialog.
+    final button = tester.widget<OutlinedButton>(find.byKey(WorkOrdersScreen.assignKey('101')));
+    expect(button.onPressed, isNull);
+
+    wire.workOrderAssignGate!.complete();
+    await tester.pumpAndSettle();
   });
 }

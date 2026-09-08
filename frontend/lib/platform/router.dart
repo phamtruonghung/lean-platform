@@ -175,8 +175,14 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   // Asset" button: a caller with no write Grant anywhere is
                   // offered no way to raise, since the server would refuse it
                   // anyway (#55, story 39).
-                  canRaiseWorkOrder: account.account.orgUnitScope.everywhere ||
-                      account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
+                  canRaiseWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
+                  // Same coarse signal, same reason (issue #62): `/me` reports
+                  // which Org Units are granted but not their ancestry, so
+                  // the client cannot tell whether a Grant *reaches* this
+                  // particular Work order's Org Unit. The server is the real
+                  // gate (403); this only avoids offering an action to a
+                  // caller who holds no write Grant anywhere at all.
+                  canAssignWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
                 ),
               );
             },

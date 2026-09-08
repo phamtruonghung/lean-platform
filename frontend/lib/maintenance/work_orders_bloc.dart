@@ -72,6 +72,15 @@ class WorkOrderRaiseConfirmed extends WorkOrdersEvent {
   final String? description;
 }
 
+/// The dialog has decided: this Work order goes to this Employee. Reassigning
+/// is the same event with a different [employeeId] — the server treats it as
+/// one idempotent replacement (AC5), and so does this.
+class WorkOrderAssignConfirmed extends WorkOrdersEvent {
+  const WorkOrderAssignConfirmed({required this.workOrderId, required this.employeeId});
+  final String workOrderId;
+  final String employeeId;
+}
+
 sealed class WorkOrdersState {
   const WorkOrdersState();
 }
@@ -91,6 +100,8 @@ class WorkOrdersLoaded extends WorkOrdersState {
     this.orgUnitFilterName,
     this.isRaising = false,
     this.raiseFailure,
+    this.isAssigning = false,
+    this.assignFailure,
     this.notice,
   });
 
@@ -117,6 +128,15 @@ class WorkOrdersLoaded extends WorkOrdersState {
   /// form.
   final String? raiseFailure;
 
+  /// An assign is in flight. Kept on the state, not only in the dialog, so
+  /// the Screen can refuse to open a second one while this one is settling.
+  final bool isAssigning;
+
+  /// Why the last assign did not land. Reported by the open dialog, which
+  /// stays open so the caller can pick somebody else — the same reasoning
+  /// [raiseFailure] follows.
+  final String? assignFailure;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [WorkOrdersUnavailable].
   final String? notice;
@@ -137,6 +157,8 @@ class WorkOrdersLoaded extends WorkOrdersState {
     bool clearOrgUnitFilter = false,
     bool? isRaising,
     String? raiseFailure,
+    bool? isAssigning,
+    String? assignFailure,
     String? notice,
   }) =>
       WorkOrdersLoaded(
@@ -148,7 +170,14 @@ class WorkOrdersLoaded extends WorkOrdersState {
         orgUnitFilterName:
             clearOrgUnitFilter ? null : (orgUnitFilterName ?? this.orgUnitFilterName),
         isRaising: isRaising ?? this.isRaising,
+        // Cleared on every emit that does not set it, exactly as raiseFailure
+        // and notice already are — deliberate, not a bug: a fresh emit with
+        // nothing to say has nothing left over to say either, so a failure
+        // banner from a previous assign never lingers on a later, unrelated
+        // state change.
         raiseFailure: raiseFailure,
+        isAssigning: isAssigning ?? this.isAssigning,
+        assignFailure: assignFailure,
         notice: notice,
       );
 }
@@ -172,6 +201,7 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
     on<WorkOrdersOrgUnitFilterSelected>(_onOrgUnitFilterSelected);
     on<WorkOrdersOrgUnitFilterCleared>(_onOrgUnitFilterCleared);
     on<WorkOrderRaiseConfirmed>(_onRaiseConfirmed);
+    on<WorkOrderAssignConfirmed>(_onAssignConfirmed);
   }
 
   final MaintenanceApi _maintenance;
@@ -362,6 +392,55 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
       final settled = state;
       if (settled is! WorkOrdersLoaded) return;
       emit(settled.copyWith(isRaising: false, raiseFailure: error.message));
+    }
+  }
+
+  Future<void> _onAssignConfirmed(
+    WorkOrderAssignConfirmed event,
+    Emitter<WorkOrdersState> emit,
+  ) async {
+    final current = state;
+    if (current is! WorkOrdersLoaded || current.isAssigning) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(assignFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isAssigning: true));
+    try {
+      final workOrder = await _maintenance.assignWorkOrder(
+        token,
+        event.workOrderId,
+        employeeId: event.employeeId,
+      );
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      // Optimistic in-place replacement, no refetch — the response already
+      // carries assigneeName, so the row needs no second request. Not
+      // re-sorted: assigning does not change priority or workOrderNo, so the
+      // server's own order still holds. A row that moved out from under the
+      // current Site/filter (no match) is left untouched rather than
+      // appended — it may not belong in this view.
+      final matches = settled.workOrders.any((existing) => existing.id == event.workOrderId);
+      final workOrders = matches
+          ? [
+              for (final existing in settled.workOrders)
+                if (existing.id == event.workOrderId) workOrder else existing,
+            ]
+          : settled.workOrders;
+      emit(
+        settled.copyWith(
+          isAssigning: false,
+          workOrders: workOrders,
+          notice: '${workOrder.workOrderNo} is now with ${workOrder.assigneeName}.',
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! WorkOrdersLoaded) return;
+      emit(settled.copyWith(isAssigning: false, assignFailure: error.message));
     }
   }
 

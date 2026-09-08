@@ -24,7 +24,7 @@
  */
 
 const { getPool, withActor } = require('../../platform/db');
-const { httpError, notFound } = require('./errors');
+const { httpError, notFound, parseId } = require('./errors');
 
 // Mirrors the CHECK constraint on work_orders.work_type in the baseline, so a
 // bad value is a 400 with a clear message rather than a raw constraint
@@ -52,6 +52,16 @@ const WORK_ORDER_COLUMNS = `
   a.code AS asset_code, a.name AS asset_name,
   ou.name AS org_unit_name,
   e.display_name AS assignee_name
+`;
+
+// The join chain WORK_ORDER_COLUMNS depends on, factored out because every
+// function below attaches it after its own FROM clause — whether that FROM
+// names the bare `work_orders` table or a CTE (`inserted`/`updated`) built
+// off it, `wo` is always the alias the join chain expects.
+const WORK_ORDER_FROM = `
+  JOIN assets a ON a.id = wo.asset_id
+  JOIN org_units ou ON ou.id = wo.org_unit_id
+  LEFT JOIN employees e ON e.id = wo.assigned_to
 `;
 
 function toWorkOrder(row) {
@@ -150,9 +160,7 @@ async function createWorkOrder({ assetId, summary, workType, priority, descripti
          )
          SELECT ${WORK_ORDER_COLUMNS}
            FROM inserted wo
-           JOIN assets a ON a.id = wo.asset_id
-           JOIN org_units ou ON ou.id = wo.org_unit_id
-           LEFT JOIN employees e ON e.id = wo.assigned_to`,
+           ${WORK_ORDER_FROM}`,
         [numberRow.work_order_no, assetId, summary.trim(), description ?? null, workType, priority]
       );
       return toWorkOrder(row);
@@ -180,9 +188,7 @@ async function listOpenWorkOrdersAtSite(siteId, { orgUnitPath = null } = {}) {
   const { rows } = await getPool().query(
     `SELECT ${WORK_ORDER_COLUMNS}
        FROM work_orders wo
-       JOIN assets a ON a.id = wo.asset_id
-       JOIN org_units ou ON ou.id = wo.org_unit_id
-       LEFT JOIN employees e ON e.id = wo.assigned_to
+       ${WORK_ORDER_FROM}
       WHERE ou.site_id = $1
         AND wo.status IN (${OPEN_STATUSES.map((_, i) => `$${params.length + i + 1}`).join(', ')})
         ${scopeClause}
@@ -192,8 +198,55 @@ async function listOpenWorkOrdersAtSite(siteId, { orgUnitPath = null } = {}) {
   return rows.map(toWorkOrder);
 }
 
+// The null-returning lookup this Module's own routes use before a write, the
+// same shape assets.js's findAsset has: total, so a malformed id answers null
+// rather than handing Postgres a non-numeric BIGINT and turning a 404 into a
+// 500.
+async function findWorkOrder(id) {
+  if (parseId(id) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT ${WORK_ORDER_COLUMNS}
+       FROM work_orders wo
+       ${WORK_ORDER_FROM}
+      WHERE wo.id = $1`,
+    [id]
+  );
+  return rows[0] ? toWorkOrder(rows[0]) : null;
+}
+
+// Assigning and reassigning are one act: an idempotent replacement of a single
+// value, so there is no separate reassign path and nothing here reads the
+// previous assignee. No qualification is consulted — see ADR-0018: the schema
+// puts a job's skill requirement on its tasks, tasks come from Job plans
+// (#74), so nothing yet states what this job needs and the Platform must not
+// enforce a requirement it cannot see.
+//
+// The caller (work-order-routes.js) has already proved the Work order exists,
+// proved the Employee exists and is not Departed, and asked canAct about
+// scope. This function assumes all three, exactly as createWorkOrder does.
+async function assignWorkOrder(workOrderId, employeeId, accountId) {
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [row] } = await client.query(
+        `WITH updated AS (
+           UPDATE work_orders SET assigned_to = $1 WHERE id = $2 RETURNING *
+         )
+         SELECT ${WORK_ORDER_COLUMNS}
+           FROM updated wo
+           ${WORK_ORDER_FROM}`,
+        [employeeId, workOrderId]
+      );
+      return toWorkOrder(row);
+    });
+  } catch (error) {
+    throw mapWorkOrderWriteError(error);
+  }
+}
+
 module.exports = {
   WORK_TYPES,
   createWorkOrder,
-  listOpenWorkOrdersAtSite
+  listOpenWorkOrdersAtSite,
+  findWorkOrder,
+  assignWorkOrder
 };
