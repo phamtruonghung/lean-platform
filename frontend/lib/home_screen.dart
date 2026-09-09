@@ -31,13 +31,18 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // A one-off status colour, not a token — a single caller
-                    // doesn't earn its own AppColors.success.
-                    Icon(Icons.check_circle_outline, size: 48, color: Colors.green.shade700),
+                    // AppColors.statusSuccess replaces the old raw green
+                    // (issue #102) — that literal measured 4.12:1 against
+                    // white, below the 4.5:1 floor; this one measures 6.53:1.
+                    Icon(Icons.check_circle_outline, size: 48, color: AppColors.statusSuccess),
                     const SizedBox(height: Spacing.md),
                     Text('Welcome, ${account.displayName}', style: theme.textTheme.headlineSmall),
                     const SizedBox(height: Spacing.sm),
-                    Text('${account.email} · ${account.role}', style: theme.textTheme.bodyMedium),
+                    // Body copy reaches for AppTypography.body (bodyLarge,
+                    // 16/24) rather than bodyMedium, per #102's type scale —
+                    // this Screen is updated since #102 is already touching
+                    // it for the colour fix above.
+                    Text('${account.email} · ${account.role}', style: AppTypography.body(context)),
                   ],
                 ),
               ),

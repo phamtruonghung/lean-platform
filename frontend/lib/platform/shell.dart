@@ -96,7 +96,7 @@ class _Sidebar extends StatelessWidget {
       key: PlatformShell.sidebarKey,
       width: collapsed ? PlatformShell.collapsedWidth : PlatformShell.expandedWidth,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         border: Border(right: BorderSide(color: AppColors.edge)),
       ),
       child: Material(
@@ -189,14 +189,18 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final foreground = selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
+    // The selected state's fill and foreground are a component binding
+    // (issue #102's AppComponentColors) — this exact pairing repeats
+    // nowhere else yet, but it is the shape #102 named the token for.
+    final foreground =
+        selected ? AppComponentColors.navSelectedForeground : theme.colorScheme.onSurfaceVariant;
 
     Widget item = InkWell(
       borderRadius: BorderRadius.circular(Spacing.md),
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: selected ? theme.colorScheme.primaryContainer : null,
+          color: selected ? AppComponentColors.navSelectedBackground : null,
           borderRadius: BorderRadius.circular(Spacing.md),
         ),
         padding: EdgeInsets.symmetric(
@@ -263,7 +267,11 @@ class _AccountFooter extends StatelessWidget {
       radius: 16,
       backgroundColor: theme.colorScheme.primaryContainer,
       foregroundColor: theme.colorScheme.onPrimaryContainer,
-      child: Text(initial, style: const TextStyle(fontSize: 13)),
+      // The one ad hoc `fontSize` the client still carried, routed through
+      // the scale instead (issue #102). `dense` is 14/20 against the old
+      // hand-written 13 — a pixel wider in a 32px circle, and the last
+      // place a Screen sized text by hand.
+      child: Text(initial, style: AppTypography.dense(context)),
     );
     final signOut = IconButton(
       tooltip: 'Sign out',

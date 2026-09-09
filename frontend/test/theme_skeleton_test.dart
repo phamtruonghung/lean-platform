@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,5 +50,40 @@ void main() {
     final context = tester.element(find.byType(Scaffold));
     final cardTheme = Theme.of(context).cardTheme;
     expect(cardTheme.elevation, 0);
+  });
+
+  test(
+      'no raw Color literal or Colors.* constant appears outside theme.dart '
+      '(issue #102)', () {
+    // A Screen names a colour through AppColors / AppComponentColors, or
+    // reaches Theme.of(context).colorScheme directly — never a Color(0x...)
+    // literal or a Colors.* constant. This walks every Dart source file
+    // under lib/, excluding theme.dart itself (the one file allowed to hold
+    // the primitives everything else is named from), and fails the moment
+    // one of those two patterns shows up anywhere else — a static check
+    // that survives the next agent rather than relying on review to catch
+    // a colour written by hand.
+    final libDir = Directory('lib');
+    expect(libDir.existsSync(), isTrue,
+        reason: 'expected to run from frontend/ with a lib/ directory next to it');
+
+    final colorLiteral = RegExp(r'Color\(0x[0-9A-Fa-f]{6,8}\)');
+    final colorsConstant = RegExp(r'\bColors\.');
+
+    final offenders = <String>[];
+    for (final entity in libDir.listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      if (entity.uri.pathSegments.last == 'theme.dart') continue;
+
+      final source = entity.readAsStringSync();
+      if (colorLiteral.hasMatch(source) || colorsConstant.hasMatch(source)) {
+        offenders.add(entity.path);
+      }
+    }
+
+    expect(offenders, isEmpty,
+        reason: 'raw colour literal(s) found outside theme.dart: ${offenders.join(', ')} — '
+            'route colour through theme.dart\'s AppColors / AppComponentColors '
+            'tokens instead (issue #102).');
   });
 }
