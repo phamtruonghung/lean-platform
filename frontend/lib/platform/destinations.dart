@@ -64,6 +64,14 @@ const List<Destination> platformDestinations = [
   // admitted may reach this" shape Home already uses. ADR-0009 is exactly
   // the decision that a plant directory is not a secret gated by role.
   Destination(label: 'Directory', icon: Icons.people_outline, path: Routes.directory),
+  // Also offered to every approved Account, for the same reason (issue #88):
+  // `GET /job-roles` carries no admin or scope check of its own
+  // (job-role-routes.js's own header), and it is what the Directory's own
+  // job role filter and every Assignment's job role choice already read —
+  // hiding the destination behind a role would gate a Screen the route
+  // itself never refuses. Only the write affordances inside the Screen are
+  // gated to an administrator.
+  Destination(label: 'Job roles', icon: Icons.badge_outlined, path: Routes.jobRoles),
   Destination(
     label: 'Approvals',
     icon: Icons.how_to_reg_outlined,

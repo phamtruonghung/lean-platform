@@ -20,6 +20,8 @@ import '../people/directory_bloc.dart';
 import '../people/directory_screen.dart';
 import '../people/employee_detail_bloc.dart';
 import '../people/employee_detail_screen.dart';
+import '../people/job_roles_bloc.dart';
+import '../people/job_roles_screen.dart';
 import '../people_api.dart';
 import 'access_denied_screen.dart';
 import 'account_bloc.dart';
@@ -37,6 +39,7 @@ abstract final class Routes {
   static const String assets = '/assets';
   static const String workOrders = '/work-orders';
   static const String directory = '/directory';
+  static const String jobRoles = '/job-roles';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -151,7 +154,36 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 child: EmployeeDetailScreen(
                   employeeId: employeeId,
                   isAdmin: account.account.role == Roles.admin,
+                  // Not a role check (issue #88, ADR-0010): the assign route
+                  // sits behind write scope on the destination Org Unit, so
+                  // this offers the action to any caller who can write
+                  // *somewhere* — the same coarse signal
+                  // `Routes.workOrders`'s own `canAssignWorkOrder` already
+                  // reads off `orgUnitScope` below.
+                  canAssign: account.account.orgUnitScope.canWriteSomewhere,
                 ),
+              );
+            },
+          ),
+          // The job role catalogue (issue #88, ADR-0005's shared catalogue).
+          // Offered to every approved Account, unlike Approvals/Assets/Work
+          // orders/Accounts below: `GET /job-roles` carries no admin or scope
+          // check at all (job-role-routes.js's own header), the same
+          // openness `Routes.directory` above already has and for the same
+          // reason (ADR-0009's "a plant directory is not a secret" applies
+          // just as well to reference data everyone needs to read). Only the
+          // write affordances inside `JobRolesScreen` are gated to `isAdmin`.
+          GoRoute(
+            path: Routes.jobRoles,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<JobRolesBloc>(
+                create: (context) => JobRolesBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const JobRolesStarted()),
+                child: JobRolesScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
           ),

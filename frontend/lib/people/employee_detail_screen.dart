@@ -9,6 +9,16 @@
 /// hides all three from anyone else, a Member included (AC7 for #86, AC6 for
 /// #87) — the same role gate `AssetsScreen.canPlaceAnAsset` follows, except
 /// this one is a role check (`requireAdmin`, ADR-0009), not a Grant one.
+///
+/// Assigning an Employee to an Org Unit (issue #88) is gated differently from
+/// those three: ADR-0010 puts `POST .../assignments` behind write scope on
+/// the *destination* Org Unit, not behind `requireAdmin`, so [canAssign] is a
+/// Grant check (`OrgUnitScope.canWriteSomewhere`), read at the router the same
+/// way `AssetsScreen.canPlaceAnAsset` already is — not the [isAdmin] role
+/// check the other three actions use. A supervisor with no administrator role
+/// at all can still see this action; an administrator with no Grant of their
+/// own still sees it too, since `canAct` already returns true for that role
+/// unconditionally (ADR-0010's own decision).
 library;
 
 import 'package:flutter/material.dart';
@@ -17,12 +27,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme.dart';
 import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
+import 'employee_assignment_dialog.dart';
 import 'employee_correction_dialog.dart';
 import 'employee_departure_dialog.dart';
 import 'employee_detail_bloc.dart';
 
 class EmployeeDetailScreen extends StatelessWidget {
-  const EmployeeDetailScreen({super.key, required this.employeeId, required this.isAdmin});
+  const EmployeeDetailScreen({
+    super.key,
+    required this.employeeId,
+    required this.isAdmin,
+    required this.canAssign,
+  });
 
   /// Null for "my own record" — carried only so a failed load's retry asks
   /// for the same record again, rather than always falling back to `/me`.
@@ -32,6 +48,15 @@ class EmployeeDetailScreen extends StatelessWidget {
   /// (issue #87) — read off `/me`'s own role, the same shape
   /// `DirectoryScreen.isAdmin` follows.
   final bool isAdmin;
+
+  /// Whether this caller may assign this Employee to *some* Org Unit
+  /// (issue #88) — `OrgUnitScope.canWriteSomewhere`, the everywhere-first rule
+  /// expressed once so this Screen does not re-derive it. This is coarser
+  /// than "may assign to the Org Unit I am about to pick": the server is the
+  /// real gate on any one destination (403 `OUTSIDE_GRANTED_ORG_UNITS`), the
+  /// same shape `WorkOrdersScreen.canAssignWorkOrder` already accepts for the
+  /// same reason.
+  final bool canAssign;
 
   static const double maxWidth = 700;
 
@@ -43,6 +68,7 @@ class EmployeeDetailScreen extends StatelessWidget {
   static const ValueKey<String> correctKey = ValueKey<String>('employee-detail-correct');
   static const ValueKey<String> departKey = ValueKey<String>('employee-detail-depart');
   static const ValueKey<String> reinstateKey = ValueKey<String>('employee-detail-reinstate');
+  static const ValueKey<String> assignKey = ValueKey<String>('employee-detail-assign');
   static const ValueKey<String> noticeKey = ValueKey<String>('employee-detail-notice');
   static ValueKey<String> assignmentRowKey(String id) =>
       ValueKey<String>('employee-detail-assignment-$id');
@@ -61,17 +87,18 @@ class EmployeeDetailScreen extends StatelessWidget {
         EmployeeDetailLoading() => const Center(child: CircularProgressIndicator()),
         EmployeeDetailUnavailable(message: final message) =>
           _Failed(message: message, employeeId: employeeId),
-        EmployeeDetailLoaded() => _Detail(state: state, isAdmin: isAdmin),
+        EmployeeDetailLoaded() => _Detail(state: state, isAdmin: isAdmin, canAssign: canAssign),
       },
     );
   }
 }
 
 class _Detail extends StatelessWidget {
-  const _Detail({required this.state, required this.isAdmin});
+  const _Detail({required this.state, required this.isAdmin, required this.canAssign});
 
   final EmployeeDetailLoaded state;
   final bool isAdmin;
+  final bool canAssign;
 
   @override
   Widget build(BuildContext context) {
@@ -137,36 +164,52 @@ class _Detail extends StatelessWidget {
                   ),
               ],
             ),
-            if (isAdmin) ...[
+            // A Departed Employee cannot be assigned (issue #88's own
+            // criterion) — `createAssignment` (directory.js) itself refuses
+            // one with a 409, so the affordance is left off rather than
+            // offered and then always refused, the same "hide, don't
+            // disable-then-fail" rule `canPlaceAnAsset` already follows
+            // elsewhere.
+            if (isAdmin || (canAssign && employee.isActive)) ...[
               const SizedBox(height: Spacing.sm),
               Wrap(
                 spacing: Spacing.sm,
                 runSpacing: Spacing.xs,
                 children: [
-                  OutlinedButton(
-                    key: EmployeeDetailScreen.correctKey,
-                    onPressed: state.isMutating
-                        ? null
-                        : () => EmployeeCorrectionDialog.open(context, employee),
-                    child: const Text('Correct record'),
-                  ),
-                  if (employee.isActive)
+                  if (isAdmin) ...[
                     OutlinedButton(
-                      key: EmployeeDetailScreen.departKey,
+                      key: EmployeeDetailScreen.correctKey,
                       onPressed: state.isMutating
                           ? null
-                          : () => EmployeeDepartureDialog.open(context, employee),
-                      child: const Text('Record departure'),
-                    )
-                  else
+                          : () => EmployeeCorrectionDialog.open(context, employee),
+                      child: const Text('Correct record'),
+                    ),
+                    if (employee.isActive)
+                      OutlinedButton(
+                        key: EmployeeDetailScreen.departKey,
+                        onPressed: state.isMutating
+                            ? null
+                            : () => EmployeeDepartureDialog.open(context, employee),
+                        child: const Text('Record departure'),
+                      )
+                    else
+                      OutlinedButton(
+                        key: EmployeeDetailScreen.reinstateKey,
+                        onPressed: state.isMutating
+                            ? null
+                            : () => context
+                                .read<EmployeeDetailBloc>()
+                                .add(const EmployeeDetailReinstatementConfirmed()),
+                        child: const Text('Reinstate'),
+                      ),
+                  ],
+                  if (canAssign && employee.isActive)
                     OutlinedButton(
-                      key: EmployeeDetailScreen.reinstateKey,
+                      key: EmployeeDetailScreen.assignKey,
                       onPressed: state.isMutating
                           ? null
-                          : () => context
-                              .read<EmployeeDetailBloc>()
-                              .add(const EmployeeDetailReinstatementConfirmed()),
-                      child: const Text('Reinstate'),
+                          : () => EmployeeAssignmentDialog.open(context, employee),
+                      child: const Text('Assign'),
                     ),
                 ],
               ),
