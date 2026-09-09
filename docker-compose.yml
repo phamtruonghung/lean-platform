@@ -71,7 +71,8 @@ services:
     restart: unless-stopped
 
   # Mirrors production routing so the app is developed against the same shape it
-  # is deployed behind: one origin, /api split off by path.
+  # is deployed behind: one origin, /api split off by path. pgAdmin below is
+  # deliberately NOT routed through here — see its own comment.
   edge:
     image: nginx:1.27-alpine
     container_name: lean-platform-edge
@@ -84,5 +85,57 @@ services:
       - backend
       - frontend
 
+  # A browser onto the local Postgres, for a reviewer who wants to look at the
+  # data directly rather than through the API. Like Postgres itself, this is
+  # local-development-only convenience: it belongs in the same category as the
+  # "Postgres here is local and disposable" comment at the top of this file —
+  # nothing about pgAdmin is deployed, and it does not exist in production.
+  #
+  # Deliberately not behind `edge`. Edge exists specifically to mirror
+  # production routing (see edge's own comment above, and the header of
+  # dev/edge.nginx.conf) — but pgAdmin has no production counterpart to
+  # mirror, so routing it through edge would make the thing that is supposed
+  # to model production diverge from production for no reason. It is reached
+  # directly on its own host port instead, exactly like Postgres itself is on
+  # 5434.
+  pgadmin:
+    image: dpage/pgadmin4:9.17
+    container_name: lean-platform-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@local.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-localdev}
+      # Suppress the second, master-password prompt pgAdmin otherwise layers on
+      # top of its own login — a reviewer who already typed the credentials
+      # above should not be asked again. Confirmed against 9.17: with
+      # SERVER_MODE off, pgAdmin runs in its "desktop" auth mode and skips the
+      # login screen entirely, landing straight on /browser/.
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      # Pre-registers the local Postgres connection (dev/pgadmin-servers.json)
+      # so a reviewer isn't typing host/port/user by hand. Important:
+      # pgAdmin's entrypoint only reads this file the first time it starts
+      # against an empty pgadmin_data volume — editing it later and restarting
+      # the container will NOT pick up the change, because pgadmin_data
+      # already has a config database at that point. Remove the pgadmin_data
+      # volume (`docker volume rm lean-platform_pgadmin_data`, or via `reset`)
+      # to force a re-import.
+      - ./dev/pgadmin-servers.json:/pgadmin4/servers.json:ro
+    ports:
+      # Continues the same +1-per-project ladder as the rest of this file's
+      # ports, starting from pgAdmin's own conventional default of 5050:
+      # employee-management 5050, maintenance-management 5051, this repo 5052.
+      - "5052:80"
+    # Plain form, not backend's `condition: service_healthy`: pgAdmin serves
+    # its own web UI regardless of whether Postgres is reachable yet (a
+    # connection attempt against a registered server just fails until
+    # Postgres is up), so waiting for Postgres to be healthy here would only
+    # slow down `up` for no benefit.
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
+  pgadmin_data:
