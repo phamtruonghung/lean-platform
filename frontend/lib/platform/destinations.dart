@@ -72,10 +72,26 @@ const List<Destination> platformDestinations = [
   // itself never refuses. Only the write affordances inside the Screen are
   // gated to an administrator.
   Destination(label: 'Job roles', icon: Icons.badge_outlined, path: Routes.jobRoles),
+  // Also offered to every approved Account, for the same reason (issue #89):
+  // `GET /skills` carries no admin or scope check of its own
+  // (skill-routes.js's own header). Only the write affordances inside the
+  // Screen are gated to an administrator.
+  Destination(label: 'Skills', icon: Icons.verified_outlined, path: Routes.skills),
   Destination(
     label: 'Approvals',
     icon: Icons.how_to_reg_outlined,
     path: Routes.approvals,
+    roles: {Roles.admin},
+  ),
+  // Administrator only (issue #89) — `GET .../skill-coverage` is deliberately
+  // narrower than every other Site-shaped read in the People Module
+  // (skill-routes.js's own header: "how the plant is being run", not "who
+  // works here"), the same reasoning that keeps `Accounts` administrator-only
+  // below.
+  Destination(
+    label: 'Skill coverage',
+    icon: Icons.query_stats_outlined,
+    path: Routes.skillCoverage,
     roles: {Roles.admin},
   ),
   Destination(

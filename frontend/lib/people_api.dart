@@ -16,6 +16,7 @@ import 'people/managed_account.dart';
 import 'people/org_unit.dart';
 import 'people/org_unit_scope.dart';
 import 'people/pending_account.dart';
+import 'people/skill.dart';
 
 /// What the API answered for the caller's own Account: either it is still
 /// waiting on Approval, or it is active and may use the rest of the API.
@@ -669,6 +670,221 @@ class PeopleApi {
       path,
     );
   }
+
+  /// The skill catalogue (`GET /api/people/skills`, issue #89) — active
+  /// skills only by default, no Site needed (ADR-0005's shared catalogue
+  /// applies to `skills` the same way it does to `job_roles` — skills.js's
+  /// own header). See `Skill`'s own header for why this needs no Grant
+  /// either (skill-routes.js's own reasoning for `GET /skills`).
+  ///
+  /// [includeInactive] mirrors the server's own narrow `'true'`-exact check
+  /// (skill-routes.js) — only the catalogue Screen's administrator sends it,
+  /// to reach a deactivated row worth reactivating, the same shape
+  /// [fetchJobRoles] already follows. [skillCategory] narrows to one of
+  /// [skillCategories]; left null, every category is read.
+  Future<List<Skill>> fetchSkills(
+    String accessToken, {
+    bool includeInactive = false,
+    String? skillCategory,
+  }) async {
+    const path = '/api/people/skills';
+    final uri = Uri.parse(path).replace(
+      queryParameters: {
+        if (includeInactive) 'includeInactive': 'true',
+        'skillCategory': ?skillCategory,
+      },
+    );
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final skill in body['skills'] as List<dynamic>) _skillFrom(skill as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static Skill _skillFrom(Map<String, dynamic> skill) => Skill(
+        id: skill['id'].toString(),
+        code: skill['code'] as String,
+        name: skill['name'] as String,
+        skillCategory: skill['skillCategory'] as String,
+        requiresCertification: skill['requiresCertification'] == true,
+        revalidationMonths: (skill['revalidationMonths'] as num?)?.toInt(),
+        isActive: skill['isActive'] == true,
+      );
+
+  /// Adds a skill to the shared catalogue (`POST /api/people/skills`,
+  /// administrator only, issue #89). [skillCategory] left null defers to the
+  /// server's own default (`'operation'`, skills.js).
+  Future<void> createSkill(
+    String accessToken, {
+    required String code,
+    required String name,
+    String? skillCategory,
+    bool? requiresCertification,
+    int? revalidationMonths,
+  }) async {
+    const path = '/api/people/skills';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'code': code,
+          'name': name,
+          'skillCategory': ?skillCategory,
+          'requiresCertification': ?requiresCertification,
+          'revalidationMonths': ?revalidationMonths,
+        }),
+      ),
+      path,
+    );
+  }
+
+  /// Corrects a skill, or deactivates/reactivates one
+  /// (`PATCH /api/people/skills/:id`, administrator only, issue #89).
+  /// [changes] is sent exactly as given — only the keys actually present are
+  /// touched, the same `hasOwnProperty` contract [updateJobRole] already
+  /// keeps, on `updateSkill`'s (skills.js) own end. There is no delete:
+  /// `isActive: false` is the only way this reaches deactivation
+  /// (skills.js's own header).
+  Future<void> updateSkill(String accessToken, String id, Map<String, Object?> changes) async {
+    final path = '/api/people/skills/$id';
+    await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+  }
+
+  /// Records, or re-assesses, an Employee holding a skill
+  /// (`PUT /api/people/employees/:id/skills/:skillId`, administrator only,
+  /// issue #89) — an upsert, always answering 200 whether this is the first
+  /// assessment or the fifth (skill-routes.js's own header), so this one
+  /// method covers both; the caller never needs to know which it is.
+  /// [proficiencyLevel] is 0–4 on the ILUO scale; [assessedOn] left null
+  /// defers to the server's own default of today. Returns nothing — the
+  /// response is the bare `employee_skills` row, not the recomputed
+  /// `EmployeeDetail` with `isLapsed` resolved, so the caller re-reads the
+  /// Employee's record instead, the same reason [createAssignment]'s own
+  /// callers do.
+  Future<void> recordEmployeeSkill(
+    String accessToken,
+    String employeeId,
+    String skillId, {
+    required int proficiencyLevel,
+    String? assessedOn,
+    String? expiresOn,
+    String? evidenceRef,
+    String? note,
+  }) async {
+    final path = '/api/people/employees/$employeeId/skills/$skillId';
+    await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'proficiencyLevel': proficiencyLevel,
+          'assessedOn': ?assessedOn,
+          'expiresOn': ?expiresOn,
+          'evidenceRef': ?evidenceRef,
+          'note': ?note,
+        }),
+      ),
+      path,
+    );
+  }
+
+  /// Who holds a skill, scoped to an Org Unit and filtered by a minimum
+  /// proficiency level (`GET /api/people/skills/:id/qualified-employees`,
+  /// issue #89). [orgUnitId] is required here, not optional — the route
+  /// itself 400s without it (skill-routes.js's own header: "the criterion is
+  /// explicitly scoped to an Org Unit"), so this method carries that same
+  /// requirement rather than letting a caller construct a request the server
+  /// would refuse. [minimumLevel] left null defers to the server's own
+  /// default of 1 (skills.js's own `validateMinimumLevel`) — 0 is never a
+  /// real minimum on the ILUO scale.
+  Future<List<QualifiedEmployee>> fetchQualifiedEmployees(
+    String accessToken,
+    String skillId, {
+    required String orgUnitId,
+    int? minimumLevel,
+  }) async {
+    final path = '/api/people/skills/$skillId/qualified-employees';
+    final uri = Uri.parse(path).replace(
+      queryParameters: {
+        'orgUnitId': orgUnitId,
+        if (minimumLevel != null) 'minimumLevel': minimumLevel.toString(),
+      },
+    );
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final employee in body['employees'] as List<dynamic>)
+          _qualifiedEmployeeFrom(employee as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static QualifiedEmployee _qualifiedEmployeeFrom(Map<String, dynamic> employee) => QualifiedEmployee(
+        id: employee['id'].toString(),
+        employeeNo: employee['employeeNo'] as String,
+        displayName: employee['displayName'] as String,
+        proficiencyLevel: (employee['proficiencyLevel'] as num).toInt(),
+        expiresOn: employee['expiresOn'] as String?,
+      );
+
+  /// A Site's skill coverage — where it is short
+  /// (`GET /api/people/sites/:siteId/skill-coverage`, administrator only,
+  /// issue #89). Deliberately narrower than every other Site-shaped read
+  /// this client makes (skill-routes.js's own header compares it to
+  /// `GET /accounts`) — "how the plant is being run", not "who works here".
+  /// Already filtered to a real shortfall server-side; see
+  /// `SkillCoverageEntry`'s own header.
+  Future<List<SkillCoverageEntry>> fetchSiteSkillCoverage(String accessToken, String siteId) async {
+    final path = '/api/people/sites/$siteId/skill-coverage';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final entry in body['coverage'] as List<dynamic>)
+          _skillCoverageEntryFrom(entry as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static SkillCoverageEntry _skillCoverageEntryFrom(Map<String, dynamic> entry) => SkillCoverageEntry(
+        orgUnitId: entry['orgUnitId'].toString(),
+        orgUnitCode: entry['orgUnitCode'] as String,
+        orgUnitName: entry['orgUnitName'] as String,
+        skillId: entry['skillId'].toString(),
+        skillCode: entry['skillCode'] as String,
+        skillName: entry['skillName'] as String,
+        minimumLevel: (entry['minimumLevel'] as num).toInt(),
+        minimumQualifiedHeadcount: (entry['minimumQualifiedHeadcount'] as num).toInt(),
+        qualifiedHeadcount: (entry['qualifiedHeadcount'] as num).toInt(),
+        expiredHeadcount: (entry['expiredHeadcount'] as num).toInt(),
+        shortfall: (entry['shortfall'] as num).toInt(),
+      );
 
   /// Admits an Account: sets its role and its Grants in one act
   /// (`POST /api/people/accounts/:id/approval`, administrator only). The

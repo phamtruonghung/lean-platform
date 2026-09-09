@@ -271,6 +271,82 @@ Map<String, dynamic> jobRoleJson(String id, String code, String name, {bool isAc
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
+/// One row of `GET /api/people/skills` (`skills.js`'s own `toSkill`, issue
+/// #89). `orgUnitId` is sent by the real route but carried by no model on
+/// this client (`Skill`'s own header) — omitted here for the same reason.
+Map<String, dynamic> skillJson(
+  String id,
+  String code,
+  String name, {
+  String skillCategory = 'operation',
+  bool requiresCertification = false,
+  int? revalidationMonths,
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'skillCategory': skillCategory,
+      'orgUnitId': null,
+      'requiresCertification': requiresCertification,
+      'revalidationMonths': revalidationMonths,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One row of `GET /api/people/skills/:id/qualified-employees`
+/// (`listQualifiedEmployees`, skills.js, issue #89) — already excludes a
+/// lapsed qualification server-side (`QUALIFICATION_IS_CURRENT_SQL`), so
+/// there is no `isLapsed` flag on this shape at all, unlike `heldSkillJson`/
+/// `employeeSkillJson` beside it.
+Map<String, dynamic> qualifiedEmployeeJson(
+  String id,
+  String employeeNo,
+  String displayName, {
+  int proficiencyLevel = 3,
+  String? expiresOn,
+}) =>
+    {
+      'id': id,
+      'employeeNo': employeeNo,
+      'displayName': displayName,
+      'proficiencyLevel': proficiencyLevel,
+      'assessedOn': '2024-01-01',
+      'expiresOn': expiresOn,
+    };
+
+/// One row of `GET /api/people/sites/:siteId/skill-coverage`
+/// (`getSiteSkillCoverage`, skills.js, issue #89) — already filtered to
+/// `shortfall > 0` server-side, so every row this fixture builds is thin by
+/// construction, the same way the real view's own filter guarantees it.
+Map<String, dynamic> skillCoverageEntryJson(
+  String orgUnitId,
+  String orgUnitName,
+  String skillId,
+  String skillCode,
+  String skillName, {
+  int minimumLevel = 1,
+  int minimumQualifiedHeadcount = 2,
+  int qualifiedHeadcount = 0,
+  int expiredHeadcount = 0,
+  int shortfall = 2,
+}) =>
+    {
+      'orgUnitId': orgUnitId,
+      'orgUnitCode': orgUnitName.toUpperCase().replaceAll(' ', '-'),
+      'orgUnitName': orgUnitName,
+      'skillId': skillId,
+      'skillCode': skillCode,
+      'skillName': skillName,
+      'minimumLevel': minimumLevel,
+      'minimumQualifiedHeadcount': minimumQualifiedHeadcount,
+      'qualifiedHeadcount': qualifiedHeadcount,
+      'expiredHeadcount': expiredHeadcount,
+      'shortfall': shortfall,
+    };
+
 Map<String, dynamic> pendingJson(String id, String email, DateTime since) => {
       'id': id,
       'email': email,
@@ -398,6 +474,18 @@ class FakeWire {
     this.createJobRoleMessage = 'That job role could not be added.',
     this.updateJobRoleStatus = 200,
     this.updateJobRoleMessage = 'That job role could not be corrected.',
+    List<Map<String, dynamic>>? skills,
+    this.skillsStatus = 200,
+    this.createSkillStatus = 201,
+    this.createSkillMessage = 'That skill could not be added.',
+    this.updateSkillStatus = 200,
+    this.updateSkillMessage = 'That skill could not be corrected.',
+    this.recordEmployeeSkillStatus = 200,
+    this.recordEmployeeSkillMessage = 'That assessment could not be recorded.',
+    List<Map<String, dynamic>>? qualifiedEmployees,
+    this.qualifiedEmployeesStatus = 200,
+    Map<String, List<Map<String, dynamic>>>? skillCoverage,
+    this.skillCoverageStatus = 200,
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -407,7 +495,10 @@ class FakeWire {
         assigneeCandidates = assigneeCandidates ?? [],
         employees = employees ?? [],
         employeeDetails = employeeDetails ?? {},
-        jobRoles = jobRoles ?? [];
+        jobRoles = jobRoles ?? [],
+        skills = skills ?? [],
+        qualifiedEmployees = qualifiedEmployees ?? [],
+        skillCoverage = skillCoverage ?? {};
 
   final String role;
 
@@ -648,9 +739,62 @@ class FakeWire {
   /// `(id, body)`.
   final List<(String, Map<String, dynamic>)> jobRolePatches = [];
 
+  /// `GET /api/people/skills` (issue #89).
+  List<Map<String, dynamic>> skills;
+  int skillsStatus;
+
+  /// `POST /api/people/skills` (administrator only).
+  int createSkillStatus;
+  String createSkillMessage;
+
+  /// Every skill create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> skillPosts = [];
+
+  /// `PATCH /api/people/skills/:id` (administrator only).
+  int updateSkillStatus;
+  String updateSkillMessage;
+
+  /// Every skill correction body that actually reached the wire, as
+  /// `(id, body)`.
+  final List<(String, Map<String, dynamic>)> skillPatches = [];
+
+  /// `PUT /api/people/employees/:id/skills/:skillId` — an upsert, so a
+  /// second call for the same pair is a re-assessment, not a duplicate
+  /// (skill-routes.js's own header). Administrator only.
+  int recordEmployeeSkillStatus;
+  String recordEmployeeSkillMessage;
+
+  /// Every assessment PUT that actually reached the wire, as
+  /// `(employeeId, skillId, body)` — so a test can assert exactly one
+  /// request was sent, and that a re-assessment sent the same PUT rather
+  /// than a second, different one.
+  final List<(String, String, Map<String, dynamic>)> employeeSkillPuts = [];
+
+  /// `GET /api/people/skills/:id/qualified-employees` — one scripted list,
+  /// same shape [assigneeCandidates] already uses: a test proves `orgUnitId`
+  /// and `minimumLevel` were sent by asserting [qualifiedEmployeeRequests],
+  /// not by asserting the list narrowed.
+  List<Map<String, dynamic>> qualifiedEmployees;
+  int qualifiedEmployeesStatus;
+
+  /// Every qualified-employees request as `(skillId, orgUnitId,
+  /// minimumLevel)`.
+  final List<(String, String?, String?)> qualifiedEmployeeRequests = [];
+
+  /// `GET /api/people/sites/:siteId/skill-coverage`, keyed by Site id
+  /// (administrator only).
+  Map<String, List<Map<String, dynamic>>> skillCoverage;
+  int skillCoverageStatus;
+
+  /// Every Site id a coverage report was asked for, in the order the
+  /// requests reached the wire.
+  final List<String> skillCoverageRequests = [];
+
   int _nextEmployeeId = 900;
   int _nextAssignmentId = 500;
   int _nextJobRoleId = 950;
+  int _nextSkillId = 970;
+  int _nextEmployeeSkillId = 800;
 
   /// The Org Unit name for [orgUnitId], resolved off whatever tree rows this
   /// Fake Wire was given (any `parentId` key) — there is no Org Unit lookup
@@ -713,6 +857,86 @@ class FakeWire {
     };
 
     return created;
+  }
+
+  /// The skill's own `(code, name)` for [skillId], resolved off whatever
+  /// catalogue this Fake Wire was given — the same "no lookup endpoint, so
+  /// resolve off what is already on hand" idiom [_orgUnitNameFor] follows.
+  (String, String) _skillCodeNameFor(String skillId) {
+    for (final skill in skills) {
+      if (skill['id'] == skillId) return (skill['code'] as String, skill['name'] as String);
+    }
+    return ('SKILL-$skillId', 'Skill $skillId');
+  }
+
+  /// A lapsed qualification the same way `QUALIFICATION_IS_CURRENT_SQL`
+  /// decides it server-side: expired against *today*, an expiry of null
+  /// meaning "never expires". Mirrors the real trigger's own reasoning
+  /// closely enough for this Fake Wire's own upsert below to answer an
+  /// honest `isLapsed` after a PUT — a widget test that cares about a
+  /// *specific* lapsed row still scripts `isLapsed` explicitly on
+  /// `employeeSkillJson` rather than relying on this.
+  bool _isLapsedFor(String? expiresOn) {
+    if (expiresOn == null) return false;
+    final expiry = DateTime.tryParse(expiresOn);
+    if (expiry == null) return false;
+    final today = DateTime.now();
+    return expiry.isBefore(DateTime(today.year, today.month, today.day));
+  }
+
+  /// Records, or re-assesses, an Employee holding a skill — mirrors
+  /// `recordEmployeeSkill`'s own upsert (skills.js): a second call for the
+  /// same `(employeeId, skillId)` pair updates the existing row in place
+  /// rather than appending a duplicate. Applied to every `employeeDetails`
+  /// entry naming this Employee, the same shape [_applyAssignment] uses.
+  /// Returns the bare `employeeSkill` row, the same shape the real route's
+  /// own response carries — unused by `PeopleApi.recordEmployeeSkill` itself
+  /// (it re-reads the record instead, per its own header), but built anyway
+  /// so this Fake Wire answers something shaped like the real response.
+  Map<String, dynamic> _applyEmployeeSkill(String employeeId, String skillId, Map<String, dynamic> body) {
+    final (code, name) = _skillCodeNameFor(skillId);
+    final proficiencyLevel = body['proficiencyLevel'] as int;
+    final expiresOn = body['expiresOn'] as String?;
+    final isLapsed = _isLapsedFor(expiresOn);
+
+    Map<String, dynamic>? existingRow;
+    for (final detail in employeeDetails.values) {
+      if (detail['id'] != employeeId) continue;
+      for (final row in (detail['skills'] as List<dynamic>? ?? const [])) {
+        final mapped = row as Map<String, dynamic>;
+        if ((mapped['skill'] as Map<String, dynamic>)['id'] == skillId) existingRow = mapped;
+      }
+    }
+    final rowId = (existingRow?['id'] as String?) ?? (_nextEmployeeSkillId++).toString();
+    final updated = employeeSkillJson(
+      rowId,
+      skillId,
+      code,
+      name,
+      proficiencyLevel: proficiencyLevel,
+      expiresOn: expiresOn,
+      isLapsed: isLapsed,
+    );
+
+    Map<String, dynamic> upsert(Map<String, dynamic> detail) {
+      final existing = (detail['skills'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+      final matchedIndex =
+          existing.indexWhere((row) => (row['skill'] as Map<String, dynamic>)['id'] == skillId);
+      final rows = [...existing];
+      if (matchedIndex >= 0) {
+        rows[matchedIndex] = updated;
+      } else {
+        rows.add(updated);
+      }
+      return {...detail, 'skills': rows};
+    }
+
+    employeeDetails = {
+      for (final entry in employeeDetails.entries)
+        entry.key: entry.value['id'] == employeeId ? upsert(entry.value) : entry.value,
+    };
+
+    return updated;
   }
 
   /// Applies a write's own changes to every row this Fake Wire holds naming
@@ -1055,6 +1279,26 @@ class FakeWire {
           final created = _applyAssignment(id, body);
           return http.Response(jsonEncode({'assignment': created}), 201);
         }
+        if (request.method == 'PUT' &&
+            path.startsWith('/api/people/employees/') &&
+            path.contains('/skills/')) {
+          // '', 'api', 'people', 'employees', ':id', 'skills', ':skillId'.
+          final segments = path.split('/');
+          final employeeId = segments[4];
+          final skillId = segments[6];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          employeeSkillPuts.add((employeeId, skillId, body));
+          if (recordEmployeeSkillStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': recordEmployeeSkillMessage}),
+              recordEmployeeSkillStatus,
+            );
+          }
+          // Always 200, never 201 — an upsert, mirroring skill-routes.js's
+          // own PUT exactly (this file's own header on why).
+          final employeeSkill = _applyEmployeeSkill(employeeId, skillId, body);
+          return http.Response(jsonEncode({'employeeSkill': employeeSkill}), 200);
+        }
         if (path == '/api/people/employees') {
           final search = request.url.queryParameters['search'];
           final orgUnitId = request.url.queryParameters['orgUnitId'];
@@ -1141,6 +1385,86 @@ class FakeWire {
               ? jobRoles
               : [for (final jobRole in jobRoles) if (jobRole['isActive'] != false) jobRole];
           return http.Response(jsonEncode({'jobRoles': sent}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/people/skills') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          skillPosts.add(sent);
+          if (createSkillStatus != 201) {
+            return http.Response(jsonEncode({'message': createSkillMessage}), createSkillStatus);
+          }
+          final id = (_nextSkillId++).toString();
+          final created = skillJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            skillCategory: sent['skillCategory'] as String? ?? 'operation',
+            requiresCertification: sent['requiresCertification'] == true,
+            revalidationMonths: (sent['revalidationMonths'] as num?)?.toInt(),
+          );
+          skills = [...skills, created];
+          return http.Response(jsonEncode({'skill': created}), 201);
+        }
+        if (request.method == 'PATCH' &&
+            path.startsWith('/api/people/skills/') &&
+            !path.endsWith('/qualified-employees')) {
+          final id = path.substring('/api/people/skills/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          skillPatches.add((id, body));
+          if (updateSkillStatus != 200) {
+            return http.Response(jsonEncode({'message': updateSkillMessage}), updateSkillStatus);
+          }
+          Map<String, dynamic>? updated;
+          skills = [
+            for (final skill in skills)
+              if (skill['id'] == id) (updated = {...skill, ...body}) else skill,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Skill not found'}), 404);
+          }
+          return http.Response(jsonEncode({'skill': updated}), 200);
+        }
+        if (path.startsWith('/api/people/skills/') && path.endsWith('/qualified-employees')) {
+          // '', 'api', 'people', 'skills', ':id', 'qualified-employees'.
+          final skillId = path.split('/')[4];
+          final orgUnitId = request.url.queryParameters['orgUnitId'];
+          final minimumLevel = request.url.queryParameters['minimumLevel'];
+          qualifiedEmployeeRequests.add((skillId, orgUnitId, minimumLevel));
+          if (qualifiedEmployeesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'That skill could not be read.'}),
+              qualifiedEmployeesStatus,
+            );
+          }
+          if (orgUnitId == null) {
+            return http.Response(
+              jsonEncode({'message': 'orgUnitId is required and must be a valid Org Unit id'}),
+              400,
+            );
+          }
+          return http.Response(jsonEncode({'employees': qualifiedEmployees}), 200);
+        }
+        if (path == '/api/people/skills') {
+          if (skillsStatus != 200) {
+            return http.Response(jsonEncode({'message': 'The skill catalogue is unavailable.'}), skillsStatus);
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final skillCategory = request.url.queryParameters['skillCategory'];
+          var sent = includeInactive ? skills : [for (final skill in skills) if (skill['isActive'] != false) skill];
+          if (skillCategory != null) {
+            sent = [for (final skill in sent) if (skill['skillCategory'] == skillCategory) skill];
+          }
+          return http.Response(jsonEncode({'skills': sent}), 200);
+        }
+        if (path.startsWith('/api/people/sites/') && path.endsWith('/skill-coverage')) {
+          final siteId = path.split('/')[4];
+          skillCoverageRequests.add(siteId);
+          if (skillCoverageStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'Skill coverage is unavailable.'}),
+              skillCoverageStatus,
+            );
+          }
+          return http.Response(jsonEncode({'coverage': skillCoverage[siteId] ?? []}), 200);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {

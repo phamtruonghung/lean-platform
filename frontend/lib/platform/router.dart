@@ -22,6 +22,10 @@ import '../people/employee_detail_bloc.dart';
 import '../people/employee_detail_screen.dart';
 import '../people/job_roles_bloc.dart';
 import '../people/job_roles_screen.dart';
+import '../people/skill_coverage_bloc.dart';
+import '../people/skill_coverage_screen.dart';
+import '../people/skills_bloc.dart';
+import '../people/skills_screen.dart';
 import '../people_api.dart';
 import 'access_denied_screen.dart';
 import 'account_bloc.dart';
@@ -40,6 +44,8 @@ abstract final class Routes {
   static const String workOrders = '/work-orders';
   static const String directory = '/directory';
   static const String jobRoles = '/job-roles';
+  static const String skills = '/skills';
+  static const String skillCoverage = '/skill-coverage';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -184,6 +190,48 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const JobRolesStarted()),
                 child: JobRolesScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          // The skill catalogue (issue #89). Offered to every approved
+          // Account, the same openness `Routes.jobRoles` above already has
+          // and for the same reason: `GET /skills` carries no admin or scope
+          // check of its own (skill-routes.js's own header). Only the write
+          // affordances inside `SkillsScreen` are gated to `isAdmin`.
+          GoRoute(
+            path: Routes.skills,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<SkillsBloc>(
+                create: (context) => SkillsBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SkillsStarted()),
+                child: SkillsScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          // A Site's skill coverage (issue #89, AC6) — administrator only,
+          // and deliberately a per-Screen access check here rather than only
+          // an omission from the sidebar: `GET .../skill-coverage` is
+          // narrower than every other Site-shaped read in this Module
+          // (skill-routes.js's own header), the same reasoning
+          // `Routes.approvals`/`Routes.accounts` below already carry into
+          // this router.
+          GoRoute(
+            path: Routes.skillCoverage,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved || account.account.role != Roles.admin) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<SkillCoverageBloc>(
+                create: (context) => SkillCoverageBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SkillCoverageStarted()),
+                child: const SkillCoverageScreen(),
               );
             },
           ),

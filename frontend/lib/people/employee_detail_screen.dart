@@ -31,6 +31,8 @@ import 'employee_assignment_dialog.dart';
 import 'employee_correction_dialog.dart';
 import 'employee_departure_dialog.dart';
 import 'employee_detail_bloc.dart';
+import 'employee_skill_form_dialog.dart';
+import 'skill.dart';
 
 class EmployeeDetailScreen extends StatelessWidget {
   const EmployeeDetailScreen({
@@ -77,6 +79,9 @@ class EmployeeDetailScreen extends StatelessWidget {
   static ValueKey<String> skillChipKey(String skillId) => ValueKey<String>('employee-detail-skill-$skillId');
   static ValueKey<String> lapsedSkillChipKey(String skillId) =>
       ValueKey<String>('employee-detail-skill-lapsed-$skillId');
+  static const ValueKey<String> recordSkillKey = ValueKey<String>('employee-detail-record-skill');
+  static ValueKey<String> reassessSkillKey(String skillId) =>
+      ValueKey<String>('employee-detail-reassess-skill-$skillId');
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +238,28 @@ class _Detail extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: Spacing.xl),
-            Text('Skills', style: theme.textTheme.titleMedium),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: Text('Skills', style: theme.textTheme.titleMedium)),
+                // Administrator only (issue #89) — `PUT .../skills/:skillId`
+                // sits behind `requireAdmin`, not the destination-scoped write
+                // `canAssign` gates the "Assign" action above with
+                // (skill-routes.js's own header, ADR-0010).
+                if (isAdmin)
+                  OutlinedButton(
+                    key: EmployeeDetailScreen.recordSkillKey,
+                    onPressed: state.isMutating
+                        ? null
+                        : () => EmployeeSkillFormDialog.open(
+                              context,
+                              employee: employee,
+                              skills: state.skills,
+                            ),
+                    child: const Text('Record skill'),
+                  ),
+              ],
+            ),
             const SizedBox(height: Spacing.sm),
             if (employee.qualifications.isEmpty)
               Text(
@@ -245,7 +271,15 @@ class _Detail extends StatelessWidget {
               Wrap(
                 spacing: Spacing.xs,
                 runSpacing: Spacing.xs,
-                children: [for (final skill in employee.qualifications) _SkillChip(skill: skill)],
+                children: [
+                  for (final skill in employee.qualifications)
+                    _SkillChip(
+                      skill: skill,
+                      isAdmin: isAdmin,
+                      employee: employee,
+                      catalogue: state.skills,
+                    ),
+                ],
               ),
           ],
         ),
@@ -317,10 +351,22 @@ class _AssignmentRow extends StatelessWidget {
 /// can assert "distinguished from current" by key rather than by colour. A
 /// lapsed qualification is shown, never left out (AC6): nothing here is
 /// evaluative, the same discipline ADR-0018 records for that dialog.
+///
+/// Carries its own "Re-assess" action for an administrator (issue #89) — a
+/// lapsed chip is exactly the case re-assessing exists for, so the action is
+/// offered on every chip alike, not only a current one.
 class _SkillChip extends StatelessWidget {
-  const _SkillChip({required this.skill});
+  const _SkillChip({
+    required this.skill,
+    required this.isAdmin,
+    required this.employee,
+    required this.catalogue,
+  });
 
   final HeldSkill skill;
+  final bool isAdmin;
+  final EmployeeDetail employee;
+  final List<Skill> catalogue;
 
   @override
   Widget build(BuildContext context) {
@@ -331,9 +377,28 @@ class _SkillChip extends StatelessWidget {
       backgroundColor: skill.isLapsed ? theme.colorScheme.errorContainer : null,
       visualDensity: VisualDensity.compact,
     );
-    return skill.isLapsed
+    final keyedChip = skill.isLapsed
         ? KeyedSubtree(key: EmployeeDetailScreen.lapsedSkillChipKey(skill.skillId), child: chip)
         : chip;
+    if (!isAdmin) return keyedChip;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        keyedChip,
+        IconButton(
+          key: EmployeeDetailScreen.reassessSkillKey(skill.skillId),
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          tooltip: 'Re-assess',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => EmployeeSkillFormDialog.open(
+            context,
+            employee: employee,
+            skills: catalogue,
+            existing: skill,
+          ),
+        ),
+      ],
+    );
   }
 }
 
