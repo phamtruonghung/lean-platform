@@ -10,6 +10,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'employee.dart';
 import 'job_role.dart';
+import 'skill.dart';
 
 sealed class EmployeeDetailEvent {
   const EmployeeDetailEvent();
@@ -66,6 +67,32 @@ class EmployeeDetailAssignmentConfirmed extends EmployeeDetailEvent {
   final String effectiveFrom;
 }
 
+/// Records, or re-assesses, this Employee holding a skill (issue #89) — the
+/// same "the caller decided, the Bloc only ever sees a decision already
+/// made" contract [EmployeeDetailAssignmentConfirmed] carries. `employee_
+/// skills` has `UNIQUE (employee_id, skill_id)` (skills.js's own header), so
+/// there is no flag here to say "first assessment" or "re-assessment" —
+/// `recordEmployeeSkill` (skills.js) upserts either way, and the same event
+/// covers both. [proficiencyLevel] is 0–4 on the ILUO scale; [assessedOn]
+/// and [expiresOn] are `YYYY-MM-DD`, each optional.
+class EmployeeDetailSkillRecorded extends EmployeeDetailEvent {
+  const EmployeeDetailSkillRecorded({
+    required this.skillId,
+    required this.proficiencyLevel,
+    this.assessedOn,
+    this.expiresOn,
+    this.evidenceRef,
+    this.note,
+  });
+
+  final String skillId;
+  final int proficiencyLevel;
+  final String? assessedOn;
+  final String? expiresOn;
+  final String? evidenceRef;
+  final String? note;
+}
+
 sealed class EmployeeDetailState {
   const EmployeeDetailState();
 }
@@ -78,6 +105,7 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
   const EmployeeDetailLoaded({
     required this.employee,
     this.jobRoles = const [],
+    this.skills = const [],
     this.isMutating = false,
     this.mutationFailure,
     this.notice,
@@ -92,7 +120,14 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
   /// fail the whole Screen, only leave the dropdown short.
   final List<JobRole> jobRoles;
 
-  /// A correction, a departure or a reinstatement is in flight (issue #87).
+  /// The skill catalogue (issue #89), read once alongside the Employee
+  /// record for the "record a skill" form's own skill choice — the same
+  /// "read once, tolerate its own failure" shape [jobRoles] already carries,
+  /// for the same reason.
+  final List<Skill> skills;
+
+  /// A correction, a departure, a reinstatement or a skill assessment is in
+  /// flight (issue #87, extended by issue #89).
   /// One flag, not three — the same reasoning `AssetsLoaded.mutatingAssetId`
   /// gives an Asset row: this record has one mutation at a time.
   final bool isMutating;
@@ -112,6 +147,7 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
   EmployeeDetailLoaded copyWith({
     EmployeeDetail? employee,
     List<JobRole>? jobRoles,
+    List<Skill>? skills,
     bool? isMutating,
     String? mutationFailure,
     String? notice,
@@ -119,6 +155,7 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
       EmployeeDetailLoaded(
         employee: employee ?? this.employee,
         jobRoles: jobRoles ?? this.jobRoles,
+        skills: skills ?? this.skills,
         isMutating: isMutating ?? this.isMutating,
         // Always overwritten, never carried forward, the same rule
         // `DirectoryLoaded.copyWith` gives `addFailure`.
@@ -144,6 +181,7 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
     on<EmployeeDetailDepartureConfirmed>(_onDepartureConfirmed);
     on<EmployeeDetailReinstatementConfirmed>(_onReinstatementConfirmed);
     on<EmployeeDetailAssignmentConfirmed>(_onAssignmentConfirmed);
+    on<EmployeeDetailSkillRecorded>(_onSkillRecorded);
   }
 
   final PeopleApi _api;
@@ -178,11 +216,20 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
     } on PeopleApiException {
       jobRoles = const [];
     }
+    // The skill catalogue (issue #89), for the "record a skill" form's own
+    // skill choice — the same "read once, tolerate its own failure" shape as
+    // [jobRoles] just above.
+    List<Skill> skills = const [];
+    try {
+      skills = await _api.fetchSkills(token);
+    } on PeopleApiException {
+      skills = const [];
+    }
     try {
       final employee = event.employeeId == null
           ? await _api.fetchMyEmployeeRecord(token)
           : await _api.fetchEmployeeDetail(token, event.employeeId!);
-      emit(EmployeeDetailLoaded(employee: employee, jobRoles: jobRoles));
+      emit(EmployeeDetailLoaded(employee: employee, jobRoles: jobRoles, skills: skills));
     } on PeopleApiException catch (error) {
       emit(EmployeeDetailUnavailable(message: error.message));
     }
@@ -203,18 +250,19 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
       emit(const EmployeeDetailUnavailable(message: signedOutMessage));
       return;
     }
-    // Carried forward rather than re-fetched: the job role catalogue did not
-    // change just because the Employee record did, and `EmployeeDetailLoaded`
-    // below is built fresh (not `copyWith`), so this is what keeps the
-    // assignment dialog's own dropdown populated across the reload its own
-    // success triggers.
+    // Carried forward rather than re-fetched: neither catalogue changed just
+    // because the Employee record did, and `EmployeeDetailLoaded` below is
+    // built fresh (not `copyWith`), so this is what keeps the assignment
+    // dialog's job role dropdown and the skill form's skill dropdown
+    // populated across the reload their own success triggers.
     final settledBefore = state;
     final jobRoles = settledBefore is EmployeeDetailLoaded ? settledBefore.jobRoles : const <JobRole>[];
+    final skills = settledBefore is EmployeeDetailLoaded ? settledBefore.skills : const <Skill>[];
     try {
       final employee = _lastRequestedEmployeeId == null
           ? await _api.fetchMyEmployeeRecord(token)
           : await _api.fetchEmployeeDetail(token, _lastRequestedEmployeeId!);
-      emit(EmployeeDetailLoaded(employee: employee, jobRoles: jobRoles, notice: notice));
+      emit(EmployeeDetailLoaded(employee: employee, jobRoles: jobRoles, skills: skills, notice: notice));
     } on PeopleApiException catch (error) {
       emit(EmployeeDetailUnavailable(message: error.message));
     }
@@ -331,6 +379,49 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
       // Re-read rather than trust the response: `createAssignment`'s own
       // response is one Assignment, not the recomputed history with
       // `isCurrent` resolved (`PeopleApi.createAssignment`'s own header).
+      await _reload(emit);
+    } on PeopleApiException catch (error) {
+      final settled = state;
+      if (settled is! EmployeeDetailLoaded) return;
+      emit(settled.copyWith(isMutating: false, mutationFailure: error.message));
+    }
+  }
+
+  /// Records, or re-assesses, this Employee holding a skill (issue #89) —
+  /// administrator only, unlike [_onAssignmentConfirmed] just above:
+  /// `PUT /employees/:id/skills/:skillId` sits behind `requireAdmin`, not
+  /// Org-Unit write scope (skill-routes.js's own header, ADR-0010's
+  /// Consequences section naming this exact case as the one where ADR-0009's
+  /// original "an Employee record is not owned by an Org Unit" reasoning
+  /// holds unchanged). Re-reads the record afterwards rather than trusting
+  /// the response, the same reason [_onAssignmentConfirmed] does: the PUT's
+  /// own response is the bare `employee_skills` row, not the recomputed
+  /// `EmployeeDetail` with `isLapsed` resolved.
+  Future<void> _onSkillRecorded(
+    EmployeeDetailSkillRecorded event,
+    Emitter<EmployeeDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! EmployeeDetailLoaded || current.isMutating) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(mutationFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isMutating: true, mutationFailure: null));
+    try {
+      await _api.recordEmployeeSkill(
+        token,
+        current.employee.id,
+        event.skillId,
+        proficiencyLevel: event.proficiencyLevel,
+        assessedOn: event.assessedOn,
+        expiresOn: event.expiresOn,
+        evidenceRef: event.evidenceRef,
+        note: event.note,
+      );
       await _reload(emit);
     } on PeopleApiException catch (error) {
       final settled = state;

@@ -142,8 +142,8 @@ class EmployeeDetail {
 
   /// The skills this Employee holds, [HeldSkill] reused from
   /// `assignee_candidate.dart` rather than a second model of the same shape
-  /// (proficiency, expiry, lapsed) — see `PeopleApi`'s own note on why
-  /// `isLapsed` is derived on this client rather than read off the wire for
-  /// this one endpoint.
+  /// (proficiency, expiry, lapsed) — see `PeopleApi`'s own note on
+  /// `isLapsed` being read straight off the wire (issue #91), never
+  /// re-derived here.
   final List<HeldSkill> qualifications;
 }
