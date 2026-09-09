@@ -3,8 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/auth/awaiting_approval_screen.dart';
 import 'package:lean_platform/auth/sign_in_screen.dart';
-import 'package:lean_platform/home_screen.dart';
-import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/theme.dart';
 
 void main() {
@@ -42,18 +40,11 @@ void main() {
     expect(shape.side.color, AppColors.edge);
   });
 
-  testWidgets('HomeScreen renders the welcome and account-summary text',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: buildAppTheme(),
-        home: const HomeScreen(
-          account: AccountActive(id: '1', email: 'a@b.c', displayName: 'A B', role: 'administrator'),
-        ),
-      ),
-    );
-
-    expect(find.text('Welcome, A B'), findsOneWidget);
-    expect(find.text('a@b.c · administrator'), findsOneWidget);
-  });
+  // `HomeScreen` used to be mounted bare here, back when it was a placeholder
+  // with no Bloc of its own. Issue #101 makes it a real, Bloc-driven Screen —
+  // the same shape every other Screen in this Module already has — so its
+  // own welcome text and account-summary line are now covered where every
+  // other Bloc-driven Screen's rendering is: pumped through the real seam in
+  // `home_test.dart`, not mounted bare against a stand-alone `MaterialApp`
+  // with no `HomeBloc` to answer its `BlocBuilder`.
 }

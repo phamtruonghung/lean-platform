@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/awaiting_approval_screen.dart';
 import '../auth/sign_in_screen.dart';
+import '../home_bloc.dart';
 import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
 import '../maintenance/assets_screen.dart';
@@ -111,9 +112,22 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
             path: Routes.home,
             builder: (context, state) {
               final account = context.watch<AccountBloc>().state;
-              return account is AccountApproved
-                  ? HomeScreen(account: account.account)
-                  : const SizedBox.shrink();
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<HomeBloc>(
+                // Scoped to this route, not to the app the way AccountBloc is
+                // — the same reasoning every other route-scoped Bloc here
+                // already carries (`ApprovalQueueBloc`, `WorkOrdersBloc`):
+                // Home is one Screen's own reading of the server, re-read on
+                // arrival rather than restored stale.
+                create: (context) => HomeBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                  accountRole: account.account.role,
+                  accountOrgUnitScope: account.account.orgUnitScope,
+                )..add(const HomeStarted()),
+                child: HomeScreen(account: account.account),
+              );
             },
           ),
           // Offered to every approved Account (AC1) — unlike every other
