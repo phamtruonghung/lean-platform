@@ -229,6 +229,28 @@ abstract final class AppTypography {
 /// same white and the same hairline the old `Colors.white` literal and
 /// `AppColors.edge` already were.
 ThemeData buildAppTheme() {
+  // A focused control's own visible ring (#99 user story 21, #104's own
+  // accessibility criteria): `focusColor` above feeds `InkWell`/`Focus`
+  // directly, but a Material 3 `ButtonStyleButton` (`OutlinedButton`,
+  // `FilledButton`, `IconButton`) resolves its *own* default overlay for
+  // `WidgetState.focused` rather than reading `ThemeData.focusColor` — so
+  // without this, a focused button would still show Material's own subtle
+  // default rather than this app's own [AppComponentColors.focusRing].
+  // Wired once here, at the theme, rather than per button style at each
+  // call site, so every current and future button gets the same ring for
+  // free — `work_orders_test.dart`'s own focus test reads these two
+  // `ButtonStyle`s back off a pumped `Theme.of(context)` to prove it.
+  final focusedOverlay = WidgetStateProperty.resolveWith<Color?>(
+    (states) => states.contains(WidgetState.focused)
+        ? AppComponentColors.focusRing.withValues(alpha: 0.16)
+        : null,
+  );
+  final focusedSide = WidgetStateProperty.resolveWith<BorderSide?>(
+    (states) => states.contains(WidgetState.focused)
+        ? const BorderSide(color: AppComponentColors.focusRing, width: 2)
+        : null,
+  );
+
   return ThemeData(
     useMaterial3: true,
     colorSchemeSeed: const Color(0xFF0F172A),
@@ -245,6 +267,15 @@ ThemeData buildAppTheme() {
     inputDecorationTheme: const InputDecorationTheme(
       filled: true,
       fillColor: AppColors.card,
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(overlayColor: focusedOverlay, side: focusedSide),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: ButtonStyle(overlayColor: focusedOverlay),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(overlayColor: focusedOverlay, side: focusedSide),
     ),
   );
 }

@@ -11,6 +11,12 @@ import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
 import '../maintenance/assets_screen.dart';
 import '../maintenance/maintenance_api.dart';
+import '../maintenance/work_order.dart';
+import '../maintenance/work_order_assign_dialog.dart';
+import '../maintenance/work_order_cancel_dialog.dart';
+import '../maintenance/work_order_complete_dialog.dart';
+import '../maintenance/work_order_dialog_host.dart';
+import '../maintenance/work_order_form_dialog.dart';
 import '../maintenance/work_orders_bloc.dart';
 import '../maintenance/work_orders_screen.dart';
 import '../people/accounts_bloc.dart';
@@ -35,6 +41,7 @@ import 'access_denied_screen.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
 import 'destinations.dart';
+import 'dialog_page.dart';
 import 'not_found_screen.dart';
 import 'shell.dart';
 
@@ -342,14 +349,24 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               );
             },
           ),
-          GoRoute(
-            path: Routes.workOrders,
-            builder: (context, state) {
+          // Work orders (issue #104) — a `ShellRoute` of its own, nested
+          // inside the outer one above, so `WorkOrdersBloc` is created
+          // exactly once and shared by the list (`Routes.workOrders`) and
+          // its four dialog addresses below. A child `GoRoute`'s own page is
+          // a *sibling* of its parent's page in the Navigator, not a
+          // descendant — a `BlocProvider` created only inside the list
+          // route's own `builder` would not be visible to a dialog route
+          // sitting beside it, which is why the Bloc is hoisted to this
+          // `ShellRoute` instead (see `WorkOrdersScreen`'s own header for the
+          // dialog-versus-Screen rule this addressability answers).
+          ShellRoute(
+            builder: (context, state, child) {
               final account = context.watch<AccountBloc>().state;
               // The same per-Screen access check `Routes.assets` makes,
               // against the same Module role set: leaving the destination out
               // of the sidebar hides the door, this locks it for a caller who
-              // types the address.
+              // types the address — for the list or for any of its four
+              // dialog addresses below.
               if (account is! AccountApproved ||
                   !ModuleRoles.maintenance.contains(account.account.role)) {
                 return const AccessDeniedScreen();
@@ -360,28 +377,145 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   peopleApi: context.read<PeopleApi>(),
                   authGateway: context.read<AuthGateway>(),
                 )..add(const WorkOrdersStarted()),
-                child: WorkOrdersScreen(
-                  // Same rule `Routes.assets` applies to its own "Add an
-                  // Asset" button: a caller with no write Grant anywhere is
-                  // offered no way to raise, since the server would refuse it
-                  // anyway (#55, story 39).
-                  canRaiseWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
-                  // Same coarse signal, same reason (issue #62): `/me` reports
-                  // which Org Units are granted but not their ancestry, so
-                  // the client cannot tell whether a Grant *reaches* this
-                  // particular Work order's Org Unit. The server is the real
-                  // gate (403); this only avoids offering an action to a
-                  // caller who holds no write Grant anywhere at all.
-                  canAssignWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
-                  // Same coarse signal again, same reason (issue #63): a
-                  // separate flag from canAssignWorkOrder rather than reusing
-                  // it, since each affordance carries its own justification
-                  // in this codebase and #77 will want to move these two
-                  // apart.
-                  canWorkWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
-                ),
+                child: child,
               );
             },
+            routes: [
+              GoRoute(
+                path: Routes.workOrders,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return WorkOrdersScreen(
+                    // Same rule `Routes.assets` applies to its own "Add an
+                    // Asset" button: a caller with no write Grant anywhere is
+                    // offered no way to raise, since the server would refuse
+                    // it anyway (#55, story 39).
+                    canRaiseWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
+                    // Same coarse signal, same reason (issue #62): `/me`
+                    // reports which Org Units are granted but not their
+                    // ancestry, so the client cannot tell whether a Grant
+                    // *reaches* this particular Work order's Org Unit. The
+                    // server is the real gate (403); this only avoids
+                    // offering an action to a caller who holds no write
+                    // Grant anywhere at all.
+                    canAssignWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
+                    // Same coarse signal again, same reason (issue #63): a
+                    // separate flag from canAssignWorkOrder rather than
+                    // reusing it, since each affordance carries its own
+                    // justification in this codebase and #77 will want to
+                    // move these two apart.
+                    canWorkWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
+                  );
+                },
+                routes: [
+                  // `/work-orders/new` — the raise form (#104, Decision B:
+                  // a creation against one Work order gets its own address).
+                  // `'new'` cannot collide with the transition routes below,
+                  // the same trick `${Routes.directory}/me` already plays
+                  // against `${Routes.directory}/:id`.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          if (!account.account.orgUnitScope.canWriteSomewhere) {
+                            return AlertDialog(
+                              key: WorkOrderDialogHost.notAvailableKey,
+                              title: const Text('You cannot do that here'),
+                              content: const Text(
+                                'You do not hold a write Grant anywhere at this Site.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => dialogContext.pop(),
+                                  child: const Text('Back to the list'),
+                                ),
+                              ],
+                            );
+                          }
+                          final workOrdersState = context.watch<WorkOrdersBloc>().state;
+                          final siteId = workOrdersState is WorkOrdersLoaded
+                              ? workOrdersState.siteId
+                              : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: WorkOrderDialogHost.loadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          return WorkOrderFormDialog(siteId: siteId);
+                        },
+                      );
+                    },
+                  ),
+                  // `/work-orders/:id/assign` — Assign/Reassign is offered
+                  // regardless of status (`_RowActions`'s own reasoning), so
+                  // no status guard here, only the coarse permission one.
+                  GoRoute(
+                    path: ':id/assign',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      final workOrderId = state.pathParameters['id']!;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) => WorkOrderDialogHost(
+                          workOrderId: workOrderId,
+                          permitted:
+                              account is AccountApproved && account.account.orgUnitScope.canWriteSomewhere,
+                          builder: (workOrder) => WorkOrderAssignDialog(workOrder: workOrder),
+                        ),
+                      );
+                    },
+                  ),
+                  // `/work-orders/:id/complete` — offered only while the row
+                  // is `in_progress` (ADR-0019's own state machine).
+                  GoRoute(
+                    path: ':id/complete',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      final workOrderId = state.pathParameters['id']!;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) => WorkOrderDialogHost(
+                          workOrderId: workOrderId,
+                          permitted:
+                              account is AccountApproved && account.account.orgUnitScope.canWriteSomewhere,
+                          permittedForStatus: offersComplete,
+                          builder: (workOrder) => WorkOrderCompleteDialog(workOrder: workOrder),
+                        ),
+                      );
+                    },
+                  ),
+                  // `/work-orders/:id/cancel` — offered while the row is
+                  // `approved` or `in_progress` (ADR-0019's own state
+                  // machine).
+                  GoRoute(
+                    path: ':id/cancel',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      final workOrderId = state.pathParameters['id']!;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) => WorkOrderDialogHost(
+                          workOrderId: workOrderId,
+                          permitted:
+                              account is AccountApproved && account.account.orgUnitScope.canWriteSomewhere,
+                          permittedForStatus: offersCancel,
+                          builder: (workOrder) => WorkOrderCancelDialog(workOrder: workOrder),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: Routes.accounts,

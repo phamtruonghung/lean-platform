@@ -37,13 +37,24 @@ import 'package:lean_platform/maintenance/org_unit_chooser.dart';
 import 'package:lean_platform/maintenance/work_order_assign_dialog.dart';
 import 'package:lean_platform/maintenance/work_order_cancel_dialog.dart';
 import 'package:lean_platform/maintenance/work_order_complete_dialog.dart';
+import 'package:lean_platform/maintenance/work_order_dialog_host.dart';
 import 'package:lean_platform/maintenance/work_order_form_dialog.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 
 import 'harness.dart';
+
+/// Opens a row's overflow menu (issue #104, Decision C) — [WorkOrdersScreen
+/// .assignKey]/[WorkOrdersScreen.cancelKey] moved from an always-rendered
+/// inline button into this menu's own items, so any test that used to tap
+/// one of those keys directly now opens the menu first. The action each key
+/// names, and what tapping it does, is unchanged — only where it sits in
+/// the tree moved.
+Future<void> openRowMenu(WidgetTester tester, String id) =>
+    tapIn(tester, find.byKey(WorkOrdersScreen.rowActionsKey(id)));
 
 FakeWire wireWith({
   String role = Roles.admin,
@@ -524,6 +535,7 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
 
@@ -562,6 +574,7 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
 
@@ -601,6 +614,7 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
 
@@ -628,6 +642,7 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
     await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('21')));
@@ -656,6 +671,7 @@ void main() {
 
     final requestsBefore = wire.workOrderRequests.length;
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
     await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('20')));
@@ -686,12 +702,16 @@ void main() {
       initialLocation: '/work-orders',
     );
 
-    expect(find.widgetWithText(OutlinedButton, 'Reassign'), findsOneWidget);
-
+    // Assign/Reassign lives in the row's own overflow menu since issue #104
+    // (Decision C) rather than as an always-rendered inline button — opening
+    // the menu is what proves the label already reads "Reassign" for a row
+    // that already has somebody.
+    await openRowMenu(tester, '101');
+    expect(find.widgetWithText(PopupMenuItem<Key>, 'Reassign'), findsOneWidget);
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
-    // The dialog's own submit button follows the title and the row button in
-    // switching to Reassign for an already-assigned Work order.
+    // The dialog's own submit button follows the menu item in switching to
+    // Reassign for an already-assigned Work order.
     expect(find.widgetWithText(FilledButton, 'Reassign'), findsOneWidget);
     await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('21')));
     await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
@@ -715,6 +735,7 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
     await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('20')));
@@ -760,6 +781,7 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
 
@@ -781,6 +803,7 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
     await tester.pumpAndSettle();
     await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('20')));
@@ -789,10 +812,13 @@ void main() {
     // `assets_test.dart`'s own gated-mutation test.
     await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
 
-    // The row's own button reflects the Bloc's isAssigning underneath the
-    // still-open dialog.
-    final button = tester.widget<OutlinedButton>(find.byKey(WorkOrdersScreen.assignKey('101')));
-    expect(button.onPressed, isNull);
+    // The row's own overflow trigger reflects the Bloc's isAssigning
+    // underneath the still-open dialog — since issue #104 (Decision C) the
+    // menu cannot even be opened while busy, so this is read off the
+    // trigger's own `onPressed` rather than a menu item that cannot be
+    // reached inside a closed menu.
+    final trigger = tester.widget<IconButton>(find.byKey(WorkOrdersScreen.rowActionsKey('101')));
+    expect(trigger.onPressed, isNull);
 
     wire.workOrderAssignGate!.complete();
     await tester.pumpAndSettle();
@@ -821,9 +847,17 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    // Start is still inline (issue #104, Decision C), so this assertion
+    // stays exactly as it was.
     expect(find.byKey(WorkOrdersScreen.startKey('101')), findsOneWidget);
-    expect(find.byKey(WorkOrdersScreen.cancelKey('101')), findsOneWidget);
     expect(find.byKey(WorkOrdersScreen.completeKey('101')), findsNothing);
+
+    // Cancel moved into the row's own overflow menu — its presence can only
+    // be asserted once that menu is open, since `PopupMenuItem`'s own
+    // `itemBuilder`-equivalent is not built into the tree while the menu is
+    // closed.
+    await openRowMenu(tester, '101');
+    expect(find.byKey(WorkOrdersScreen.cancelKey('101')), findsOneWidget);
   });
 
   testWidgets('an in_progress row offers Complete and Cancel, and no Start', (tester) async {
@@ -839,9 +873,15 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    // Complete is still inline (issue #104, Decision C), so this assertion
+    // stays exactly as it was.
     expect(find.byKey(WorkOrdersScreen.completeKey('101')), findsOneWidget);
-    expect(find.byKey(WorkOrdersScreen.cancelKey('101')), findsOneWidget);
     expect(find.byKey(WorkOrdersScreen.startKey('101')), findsNothing);
+
+    // Cancel moved into the row's own overflow menu — see the same note on
+    // the `approved` row test above.
+    await openRowMenu(tester, '101');
+    expect(find.byKey(WorkOrdersScreen.cancelKey('101')), findsOneWidget);
   });
 
   testWidgets('a completed row offers no transition at all', (tester) async {
@@ -925,6 +965,7 @@ void main() {
       initialLocation: '/work-orders',
     );
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.cancelKey('101')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(WorkOrderCancelDialog.reasonKey), 'Raised by mistake');
@@ -977,6 +1018,7 @@ void main() {
 
     final requestsBefore = wire.workOrderRequests.length;
 
+    await openRowMenu(tester, '101');
     await tapIn(tester, find.byKey(WorkOrdersScreen.cancelKey('101')));
     await tester.pumpAndSettle();
     await tapIn(tester, find.byKey(WorkOrderCancelDialog.submitKey));
@@ -1024,11 +1066,15 @@ void main() {
     await tapIn(tester, find.byKey(WorkOrdersScreen.startKey('101')));
 
     // `isTransitioning` disables every row's own actions underneath, the
-    // same as `isAssigning` already does.
+    // same as `isAssigning` already does. Cancel sits behind the row's
+    // overflow trigger since issue #104 (Decision C), so it is that
+    // trigger's own `onPressed` that is checked — the menu cannot even be
+    // opened while busy, so there is no menu item to reach into.
     final startButton = tester.widget<OutlinedButton>(find.byKey(WorkOrdersScreen.startKey('101')));
     expect(startButton.onPressed, isNull);
-    final cancelButton = tester.widget<OutlinedButton>(find.byKey(WorkOrdersScreen.cancelKey('101')));
-    expect(cancelButton.onPressed, isNull);
+    final overflowTrigger =
+        tester.widget<IconButton>(find.byKey(WorkOrdersScreen.rowActionsKey('101')));
+    expect(overflowTrigger.onPressed, isNull);
 
     wire.workOrderTransitionGate!.complete();
     await tester.pumpAndSettle();
@@ -1118,5 +1164,398 @@ void main() {
     expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
     expect(find.text('Completed'), findsOneWidget);
     expect(wire.workOrderRequests.length, requestsBefore);
+  });
+
+  // Addressable dialogs (issue #104, Decision A, ADR-0019). What these tests
+  // claim: each of the four dialogs is reachable by its own `go_router`
+  // address, over a list that stays visible and readable underneath; that
+  // dismissing one returns the address to the list; and that a stale or
+  // unauthorised address is refused with its own explained dialog rather
+  // than a hang or a silent redirect. Not that the server enforces any of
+  // the underlying writes — that is `work-orders.test.js`'s job.
+
+  testWidgets('a deep link straight to the raise address opens the dialog over the list',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders/new',
+    );
+
+    expect(find.byType(WorkOrderFormDialog), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+  });
+
+  testWidgets('a deep link straight to the assign address opens the dialog over the list',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [assigneeCandidateJson('20', 'Jane Doe')],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders/101/assign',
+    );
+
+    expect(find.byType(WorkOrderAssignDialog), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+  });
+
+  testWidgets('a deep link straight to the complete address opens the dialog over the list',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders/101/complete',
+    );
+
+    expect(find.byType(WorkOrderCompleteDialog), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+  });
+
+  testWidgets('a deep link straight to the cancel address opens the dialog over the list',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders/101/cancel',
+    );
+
+    expect(find.byType(WorkOrderCancelDialog), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+  });
+
+  testWidgets(
+      'the raise button navigates to its own address, and dismissing the dialog returns to '
+      'the list address', (tester) async {
+    final wire = wireWith(
+      workOrders: {'1': []},
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.raiseKey));
+
+    expect(locationOf(tester, find.byType(WorkOrdersScreen)), '/work-orders/new');
+
+    await tapIn(tester, find.byKey(WorkOrderFormDialog.cancelKey));
+
+    expect(find.byType(WorkOrderFormDialog), findsNothing);
+    expect(locationOf(tester, find.byType(WorkOrdersScreen)), '/work-orders');
+  });
+
+  testWidgets(
+      "the row overflow's Assign item navigates to its own address, and dismissing the "
+      'dialog returns to the list address', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [assigneeCandidateJson('20', 'Jane Doe')],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await openRowMenu(tester, '101');
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+
+    expect(locationOf(tester, find.byType(WorkOrdersScreen)), '/work-orders/101/assign');
+
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.cancelKey));
+
+    expect(find.byType(WorkOrderAssignDialog), findsNothing);
+    expect(locationOf(tester, find.byType(WorkOrdersScreen)), '/work-orders');
+  });
+
+  testWidgets(
+      'the Complete button navigates to its own address, and dismissing the dialog returns '
+      'to the list address', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.completeKey('101')));
+
+    expect(locationOf(tester, find.byType(WorkOrdersScreen)), '/work-orders/101/complete');
+
+    await tapIn(tester, find.byKey(WorkOrderCompleteDialog.dismissKey));
+
+    expect(find.byType(WorkOrderCompleteDialog), findsNothing);
+    expect(locationOf(tester, find.byType(WorkOrdersScreen)), '/work-orders');
+  });
+
+  testWidgets(
+      "the row overflow's Cancel item navigates to its own address, and dismissing the "
+      'dialog returns to the list address', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await openRowMenu(tester, '101');
+    await tapIn(tester, find.byKey(WorkOrdersScreen.cancelKey('101')));
+
+    expect(locationOf(tester, find.byType(WorkOrdersScreen)), '/work-orders/101/cancel');
+
+    await tapIn(tester, find.byKey(WorkOrderCancelDialog.dismissKey));
+
+    expect(find.byType(WorkOrderCancelDialog), findsNothing);
+    expect(locationOf(tester, find.byType(WorkOrdersScreen)), '/work-orders');
+  });
+
+  testWidgets('an id not in the loaded list renders the not-found dialog, not a hang',
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders/999/assign',
+    );
+
+    expect(find.byKey(WorkOrderDialogHost.notFoundKey), findsOneWidget);
+    expect(find.byType(WorkOrderAssignDialog), findsNothing);
+  });
+
+  testWidgets(
+      "a still-loading list renders the dialog host's own loading placeholder, not "
+      'not-found', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    )..workOrdersGate = Completer<void>();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders/101/assign',
+      settle: false,
+    );
+
+    expect(find.byKey(WorkOrderDialogHost.loadingKey), findsOneWidget);
+    expect(find.byKey(WorkOrderDialogHost.notFoundKey), findsNothing);
+
+    wire.workOrdersGate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WorkOrderAssignDialog), findsOneWidget);
+  });
+
+  testWidgets(
+      'a caller with no write Grant hitting the assign address directly is refused, and no '
+      'candidates request is sent', (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      assigneeCandidates: [assigneeCandidateJson('20', 'Jane Doe')],
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders/101/assign',
+    );
+
+    expect(find.byKey(WorkOrderDialogHost.notAvailableKey), findsOneWidget);
+    expect(find.byType(WorkOrderAssignDialog), findsNothing);
+    expect(wire.requests.any((r) => r.contains('assignee-candidates')), isFalse);
+  });
+
+  testWidgets(
+      'hitting the complete address on a row that is approved, not in_progress, is refused '
+      'rather than opening a form that would 409', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders/101/complete',
+    );
+
+    expect(find.byKey(WorkOrderDialogHost.notAvailableKey), findsOneWidget);
+    expect(find.byType(WorkOrderCompleteDialog), findsNothing);
+  });
+
+  // Filter chips (issue #104, Decision D).
+
+  testWidgets(
+      'the applied Org Unit filter renders as a removable chip, and its delete affordance '
+      'clears it the same way it always did', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [
+          workOrderJson('101', 'WO-101', 'Belt is slipping'),
+          workOrderJson('102', 'WO-102', 'Guard is loose', orgUnitId: '10', orgUnitName: 'Assembly'),
+        ],
+      },
+    );
+    wire.workOrdersByFilter['1|10'] = [
+      workOrderJson('102', 'WO-102', 'Guard is loose', orgUnitId: '10', orgUnitName: 'Assembly'),
+    ];
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.filterKey));
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
+
+    expect(find.byType(Chip), findsWidgets);
+    expect(find.text('Narrowed to Assembly'), findsOneWidget);
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.clearFilterKey));
+
+    expect(wire.workOrderRequests.last, ('1', null, false));
+    expect(find.text('Belt is slipping'), findsOneWidget);
+    expect(find.text('Guard is loose'), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.filterKey), findsOneWidget);
+  });
+
+  // The narrow layout (issue #104, Decision E).
+
+  testWidgets(
+      'below 700px the list renders as cards carrying the number, summary, Asset, Org Unit, '
+      'status and the primary action, with no horizontal scroll', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(600, 800);
+    addTearDown(tester.view.reset);
+
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+    expect(find.text('WO-101'), findsOneWidget);
+    expect(find.text('Belt is slipping'), findsOneWidget);
+    expect(find.text('Press 1 (PRESS-1) · Corrective'), findsOneWidget);
+    expect(find.text('Line 1'), findsOneWidget);
+    expect(find.text('Approved'), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.startKey('101')), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.rowActionsKey('101')), findsOneWidget);
+
+    // No horizontally-scrolling container wraps the row content — the shape
+    // this ticket bans outright, at every width.
+    expect(
+      find.descendant(
+        of: find.byType(WorkOrdersScreen),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
+    );
+  });
+
+  // Accessibility (issue #104): a visible focus indicator for a control this
+  // Screen adds (the overflow trigger) and one it already had (a row's own
+  // primary button) — verified by reading the resolved `ButtonStyle` back
+  // off a pumped `Theme.of(context)`, per this ticket's own suggestion,
+  // rather than simulating a real Tab key press: every control here is a
+  // standard Material button (`OutlinedButton`, `IconButton`), which is
+  // focusable and reachable in paint order by default with no custom
+  // `FocusTraversalOrder` applied anywhere on this Screen, so paint order —
+  // header, then filter, then each row top to bottom, primary before
+  // overflow — already is tab order.
+
+  testWidgets(
+      "a row's primary button and its overflow trigger both resolve the theme's own focus "
+      'ring for a focused state', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    final theme = Theme.of(tester.element(find.byType(WorkOrdersScreen)));
+    final outlinedFocusSide =
+        theme.outlinedButtonTheme.style?.side?.resolve({WidgetState.focused});
+    final outlinedFocusOverlay =
+        theme.outlinedButtonTheme.style?.overlayColor?.resolve({WidgetState.focused});
+    final iconFocusSide = theme.iconButtonTheme.style?.side?.resolve({WidgetState.focused});
+
+    expect(outlinedFocusSide?.color, AppComponentColors.focusRing);
+    expect(outlinedFocusOverlay, isNotNull);
+    expect(iconFocusSide?.color, AppComponentColors.focusRing);
+
+    // Unfocused, neither control claims the ring — it is only ever the
+    // focused state's own decoration.
+    expect(theme.outlinedButtonTheme.style?.side?.resolve({}), isNull);
   });
 }
