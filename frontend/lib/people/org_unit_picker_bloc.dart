@@ -45,6 +45,19 @@ class OrgUnitPickerCollapsed extends OrgUnitPickerEvent {
   final String orgUnitId;
 }
 
+/// Forget what is cached at one level and read it again: the children of
+/// [parentId], or the root level when it is null. A re-read, not a write —
+/// this Bloc still knows nothing about *what* changed the tree (issue #90's
+/// own Screen owns every write against it), only that a level it holds may be
+/// stale. The coarse form of this already exists on [OrgUnitPickerSiteSelected]
+/// — re-selecting the Site in hand re-reads its root level — this is the same
+/// act scoped to one level, so a caller who has walked three levels down does
+/// not lose the branch it walked just because one sibling elsewhere changed.
+class OrgUnitPickerRefreshed extends OrgUnitPickerEvent {
+  const OrgUnitPickerRefreshed({this.parentId});
+  final String? parentId;
+}
+
 /// A deliberate act with a level already chosen — there is no event that adds
 /// an Org Unit without one, which is what keeps "a level must be chosen" a
 /// property of the state machine rather than of one widget.
@@ -252,6 +265,7 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
     on<OrgUnitPickerSiteSelected>(_onSiteSelected);
     on<OrgUnitPickerExpanded>(_onExpanded);
     on<OrgUnitPickerCollapsed>(_onCollapsed);
+    on<OrgUnitPickerRefreshed>(_onRefreshed);
     on<OrgUnitPickerGrantAdded>(_onGrantAdded);
     on<OrgUnitPickerGrantRemoved>(_onGrantRemoved);
   }
@@ -334,8 +348,60 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
     if (state.childIdsByParent.containsKey(id) || state.loadingIds.contains(id)) return;
 
     final siteId = state.siteId;
-    final token = _auth.currentAccessToken;
     if (siteId == null) return;
+    await _loadChildren(siteId, id, emit);
+  }
+
+  void _onCollapsed(OrgUnitPickerCollapsed event, Emitter<OrgUnitPickerState> emit) {
+    emit(state.copyWith(expandedIds: {...state.expandedIds}..remove(event.orgUnitId)));
+  }
+
+  /// One level, forced stale and re-read — the write-refresh seam issue #90's
+  /// own Screen drives after a create or a retirement lands, since this Bloc
+  /// has no other way to learn the tree changed underneath it. Unlike
+  /// [_onExpanded], this never checks whether the level is already cached:
+  /// that is the entire point of a refresh.
+  Future<void> _onRefreshed(OrgUnitPickerRefreshed event, Emitter<OrgUnitPickerState> emit) async {
+    final siteId = state.siteId;
+    if (siteId == null) return;
+
+    final parentId = event.parentId;
+    if (parentId == null) {
+      final token = _auth.currentAccessToken;
+      if (token == null) {
+        emit(state.copyWith(rootsFailure: signedOutMessage));
+        return;
+      }
+      try {
+        final roots = await _api.fetchOrgUnits(token, siteId: siteId);
+        if (state.siteId != siteId) return;
+        emit(
+          state.copyWith(
+            rootIds: [for (final node in roots) node.id],
+            nodesById: {...state.nodesById, for (final node in roots) node.id: node},
+            clearRootsFailure: true,
+          ),
+        );
+      } on PeopleApiException catch (error) {
+        if (state.siteId != siteId) return;
+        emit(state.copyWith(rootsFailure: error.message));
+      }
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        childIdsByParent: {...state.childIdsByParent}..remove(parentId),
+        childFailures: {...state.childFailures}..remove(parentId),
+      ),
+    );
+    await _loadChildren(siteId, parentId, emit);
+  }
+
+  /// The body [_onExpanded] and [_onRefreshed] share: read one Org Unit's
+  /// direct children and file them under its id, or record why that failed.
+  Future<void> _loadChildren(String siteId, String id, Emitter<OrgUnitPickerState> emit) async {
+    final token = _auth.currentAccessToken;
     if (token == null) {
       emit(state.copyWith(childFailures: {...state.childFailures, id: signedOutMessage}));
       return;
@@ -369,10 +435,6 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
         ),
       );
     }
-  }
-
-  void _onCollapsed(OrgUnitPickerCollapsed event, Emitter<OrgUnitPickerState> emit) {
-    emit(state.copyWith(expandedIds: {...state.expandedIds}..remove(event.orgUnitId)));
   }
 
   void _onGrantAdded(OrgUnitPickerGrantAdded event, Emitter<OrgUnitPickerState> emit) {
