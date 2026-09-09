@@ -135,7 +135,102 @@ void main() {
 
     expect(find.byKey(WorkOrdersScreen.emptyKey), findsOneWidget);
     expect(find.byKey(WorkOrdersScreen.failedKey), findsNothing);
+    expect(find.byKey(WorkOrdersScreen.emptyFilteredKey), findsNothing);
     expect(find.text('No open work at this Site'), findsOneWidget);
+  });
+
+  // Issue #103: the shared empty/loading/error states, migrated onto this
+  // Screen as the ticket's own worked example.
+
+  testWidgets('the whole-Site empty state carries the action to raise a Work order, for a caller '
+      'who holds a write Grant', (tester) async {
+    final wire = wireWith(workOrders: {'1': []});
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.byKey(WorkOrdersScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.emptyRaiseKey), findsOneWidget);
+  });
+
+  testWidgets('the whole-Site empty state carries no action for a caller with no write Grant',
+      (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
+      workOrders: {'1': []},
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.byKey(WorkOrdersScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.emptyRaiseKey), findsNothing);
+  });
+
+  testWidgets(
+      'a filter that matches nothing renders as its own distinct empty state, with its own '
+      'action to clear the filter', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    // The whole Site has an open Work order, but nothing at Assembly (org
+    // unit 10) — the "your filter matched nothing" story, distinct from
+    // "nothing has ever been raised" (issue #103).
+    wire.workOrdersByFilter['1|10'] = [];
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.filterKey));
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
+
+    expect(find.byKey(WorkOrdersScreen.emptyFilteredKey), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.emptyKey), findsNothing);
+    expect(find.text('No work orders match'), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.emptyClearFiltersKey), findsOneWidget);
+
+    await tapIn(tester, find.byKey(WorkOrdersScreen.emptyClearFiltersKey));
+
+    expect(wire.workOrderRequests.last, ('1', null, false));
+    expect(find.text('Belt is slipping'), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.filterKey), findsOneWidget);
+  });
+
+  testWidgets(
+      'a scope-refused read renders as its own explained state, never as the ordinary empty '
+      'state', (tester) async {
+    // Maintenance's own list read cannot 403 today (it is Site-wide
+    // regardless of Grants, ADR-0009) — this scripts one anyway, exactly as
+    // #103's own testing guidance asks, to prove the Screen's classification
+    // and rendering are correct ahead of the Org-Unit-scoped reads #72–#80
+    // will add.
+    final wire = wireWith(workOrders: {'1': []}, workOrdersStatus: 403);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.byKey(WorkOrdersScreen.scopeRefusedKey), findsOneWidget);
+    expect(find.byKey(WorkOrdersScreen.emptyKey), findsNothing);
+    expect(find.byKey(WorkOrdersScreen.failedKey), findsNothing);
+    expect(find.text('Not visible to you'), findsOneWidget);
+    // No retry offered — retrying answers the same refusal (this widget's
+    // own doc comment).
+    expect(find.byKey(WorkOrdersScreen.retryKey), findsNothing);
   });
 
   testWidgets('a failed load explains itself and the retry works', (tester) async {

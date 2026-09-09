@@ -14,6 +14,8 @@ import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import 'org_unit_chooser.dart';
 import 'work_order.dart';
@@ -61,8 +63,24 @@ class WorkOrdersScreen extends StatelessWidget {
   static const ValueKey<String> clearFilterKey = ValueKey<String>('work-orders-clear-filter');
   static const ValueKey<String> noticeKey = ValueKey<String>('work-orders-notice');
   static const ValueKey<String> retryKey = ValueKey<String>('work-orders-retry');
+
+  /// The "nothing has ever been raised" empty state (issue #103's
+  /// `EmptyStateVariant.noneExist`) — unfiltered, genuinely nothing at this
+  /// Site. Kept as `work-orders-empty`, its pre-#103 name, so the existing
+  /// test asserting this key stays meaningful rather than silently starting
+  /// to assert on the wrong variant.
   static const ValueKey<String> emptyKey = ValueKey<String>('work-orders-empty');
+
+  /// The "your filter matched nothing" empty state
+  /// (`EmptyStateVariant.noneMatched`) — an Org Unit filter is narrowing the
+  /// list and nothing in that narrower scope is currently open.
+  static const ValueKey<String> emptyFilteredKey = ValueKey<String>('work-orders-empty-filtered');
+
+  static const ValueKey<String> emptyRaiseKey = ValueKey<String>('work-orders-empty-raise');
+  static const ValueKey<String> emptyClearFiltersKey =
+      ValueKey<String>('work-orders-empty-clear-filters');
   static const ValueKey<String> failedKey = ValueKey<String>('work-orders-failed');
+  static const ValueKey<String> scopeRefusedKey = ValueKey<String>('work-orders-scope-refused');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('work-order-row-$id');
 
   /// One key, two labels — unlike `AssetsScreen.retireKey`/`reinstateKey`,
@@ -92,16 +110,37 @@ class WorkOrdersScreen extends StatelessWidget {
           Expanded(
             child: switch (state) {
               WorkOrdersLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
-              WorkOrdersUnavailable(message: final message) => _WorkOrdersFailed(message: message),
+              // The scope refusal (#103's fifth case) is checked before the
+              // ordinary failure below, and matched on its own field pattern
+              // rather than folded into it, so a scope-refused read can
+              // never fall through to `PlatformFailureState`'s generic
+              // wording — see `WorkOrdersUnavailable.isScopeRefused`'s own
+              // doc comment for why this read cannot actually produce one
+              // today and why the branch is kept anyway.
+              WorkOrdersUnavailable(isScopeRefused: true) =>
+                const PlatformScopeRefusedState(key: WorkOrdersScreen.scopeRefusedKey),
+              WorkOrdersUnavailable(message: final message) => PlatformFailureState(
+                  key: WorkOrdersScreen.failedKey,
+                  title: 'The Work orders could not be read',
+                  message: message,
+                  retryKey: WorkOrdersScreen.retryKey,
+                  onRetry: () => context.read<WorkOrdersBloc>().add(const WorkOrdersStarted()),
+                ),
               WorkOrdersLoaded(isLoadingWorkOrders: true) =>
                 const SkeletonList(rows: 4, maxWidth: maxWidth),
               WorkOrdersLoaded(
                 workOrders: final workOrders,
+                orgUnitFilterId: final filterId,
                 orgUnitFilterName: final filterName,
                 showHistory: final showHistory
               )
                   when workOrders.isEmpty =>
-                _WorkOrdersEmpty(orgUnitFilterName: filterName, showHistory: showHistory),
+                _WorkOrdersEmpty(
+                  orgUnitFilterId: filterId,
+                  orgUnitFilterName: filterName,
+                  showHistory: showHistory,
+                  canRaiseWorkOrder: canRaiseWorkOrder,
+                ),
               WorkOrdersLoaded(workOrders: final workOrders) => _WorkOrdersList(
                   workOrders: workOrders,
                   canAssign: canAssignWorkOrder,
@@ -497,12 +536,24 @@ class _WorkOrderRow extends StatelessWidget {
   }
 }
 
+/// The two empty stories issue #103 asks this Screen to tell apart — see
+/// `PlatformEmptyState`'s own header for the general reasoning, and this
+/// class for the worked example the ticket names.
 class _WorkOrdersEmpty extends StatelessWidget {
-  const _WorkOrdersEmpty({required this.orgUnitFilterName, required this.showHistory});
+  const _WorkOrdersEmpty({
+    required this.orgUnitFilterId,
+    required this.orgUnitFilterName,
+    required this.showHistory,
+    required this.canRaiseWorkOrder,
+  });
 
-  /// The Org Unit the list is narrowed to, or null for the whole Site — the
-  /// headline must agree with whichever the `_Header` above is already
-  /// showing ("Narrowed to Line 1"), not always claim the whole Site.
+  /// The Org Unit the list is narrowed to, or null for the whole Site. Its
+  /// presence, not [showHistory], is what decides which of the two empty
+  /// stories this is: a filter can matched-nothing, but broadening the read
+  /// with "Show completed and cancelled" on an unfiltered, genuinely-empty
+  /// Site is still "nothing exists", not "nothing matched" — there is no
+  /// filter for a caller to clear in that case.
+  final String? orgUnitFilterId;
   final String? orgUnitFilterName;
 
   /// Whether the list is currently showing completed and cancelled Work
@@ -510,88 +561,40 @@ class _WorkOrdersEmpty extends StatelessWidget {
   /// asked to see everything and there is still nothing at all.
   final bool showHistory;
 
+  /// Same coarse signal `_Header`'s own raise button reads — whether this
+  /// caller holds a write Grant anywhere at all. Read again here rather than
+  /// shared through the header: the empty state carries its own action per
+  /// #103's own requirement ("it carries the action that resolves it"), on
+  /// top of — not instead of — the persistent one in the header.
+  final bool canRaiseWorkOrder;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final filterName = orgUnitFilterName;
-    final headline = switch ((showHistory, filterName)) {
-      (true, null) => 'No work at this Site',
-      (true, final name?) => 'No work at $name',
-      (false, null) => 'No open work at this Site',
-      (false, final name?) => 'No open work at $name',
-    };
-    return Center(
+    if (orgUnitFilterId != null) {
+      return PlatformEmptyState.noneMatched(
+        key: WorkOrdersScreen.emptyFilteredKey,
+        title: 'No work orders match',
+        message: 'There is work at this Site, but none of it is raised at '
+            '${orgUnitFilterName ?? 'this Org Unit'} or beneath it'
+            '${showHistory ? '' : ' and still open'}.',
+        actionLabel: 'Clear filters',
+        actionKey: WorkOrdersScreen.emptyClearFiltersKey,
+        onAction: () => context.read<WorkOrdersBloc>().add(const WorkOrdersOrgUnitFilterCleared()),
+      );
+    }
+
+    final state = context.watch<WorkOrdersBloc>().state;
+    final loaded = state is WorkOrdersLoaded ? state : null;
+    return PlatformEmptyState.noneExist(
       key: WorkOrdersScreen.emptyKey,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        // Scrollable rather than a bare Column: completing or cancelling the
-        // last open row (issue #63) shows this empty state underneath the
-        // success notice above it, and on a short viewport the two together
-        // can be taller than the space left for the list — a scroll here
-        // beats a `RenderFlex overflowed` for content that is legitimately
-        // bigger than the space available, the same trade-off `ListView`
-        // already makes for the populated list beside it.
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.build_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              Text(headline, style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                'Nothing is currently raised here. Raise a Work order and it will '
-                'show up right away.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WorkOrdersFailed extends StatelessWidget {
-  const _WorkOrdersFailed({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: WorkOrdersScreen.failedKey,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              Text('The Work orders could not be read', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: Spacing.md),
-              FilledButton.tonal(
-                key: WorkOrdersScreen.retryKey,
-                onPressed: () => context.read<WorkOrdersBloc>().add(const WorkOrdersStarted()),
-                child: const Text('Try again'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      title: showHistory ? 'No work at this Site' : 'No open work at this Site',
+      message: 'Nothing has been raised against the Org Units you can act in. Raise a '
+          'Work order and it will show up right away.',
+      actionLabel: canRaiseWorkOrder && loaded?.siteId != null ? 'Raise a Work order' : null,
+      actionKey: WorkOrdersScreen.emptyRaiseKey,
+      onAction: canRaiseWorkOrder && loaded?.siteId != null
+          ? () => WorkOrderFormDialog.open(context, siteId: loaded!.siteId!)
+          : null,
     );
   }
 }

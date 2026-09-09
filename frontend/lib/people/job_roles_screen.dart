@@ -15,6 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
+import '../widgets/skeleton_list.dart';
 import 'job_role.dart';
 import 'job_role_form_dialog.dart';
 import 'job_roles_bloc.dart';
@@ -32,6 +35,7 @@ class JobRolesScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('job-roles-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('job-roles-retry');
   static const ValueKey<String> emptyKey = ValueKey<String>('job-roles-empty');
+  static const ValueKey<String> emptyAddKey = ValueKey<String>('job-roles-empty-add');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('job-roles-row-$id');
   static ValueKey<String> correctKey(String id) => ValueKey<String>('job-roles-correct-$id');
   static ValueKey<String> inactiveChipKey(String id) => ValueKey<String>('job-roles-inactive-$id');
@@ -42,8 +46,18 @@ class JobRolesScreen extends StatelessWidget {
 
     return Scaffold(
       body: switch (state) {
-        JobRolesLoading() => const Center(child: CircularProgressIndicator()),
-        JobRolesUnavailable(message: final message) => _Failed(message: message),
+        // A generalised loading placeholder (issue #103) replaces the bare
+        // spinner this Screen used before — six rows is the same default
+        // `SkeletonList` itself defaults to, and this catalogue is rarely
+        // long enough to need more.
+        JobRolesLoading() => const SkeletonList(maxWidth: JobRolesScreen.maxWidth),
+        JobRolesUnavailable(message: final message) => PlatformFailureState(
+            key: JobRolesScreen.failedKey,
+            title: 'The job role catalogue could not be read',
+            message: message,
+            retryKey: JobRolesScreen.retryKey,
+            onRetry: () => context.read<JobRolesBloc>().add(const JobRolesStarted()),
+          ),
         JobRolesLoaded() => _Loaded(state: state, isAdmin: isAdmin),
       },
     );
@@ -93,10 +107,17 @@ class _Loaded extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.lg),
             if (state.jobRoles.isEmpty)
-              Text(
-                'No job role has been defined yet.',
+              // No "none matched" variant here (issue #103): this catalogue
+              // carries no filter to clear, only a whole-catalogue read, so
+              // there is only ever the one empty story to tell.
+              PlatformEmptyState.noneExist(
                 key: JobRolesScreen.emptyKey,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                title: 'No job roles yet',
+                message: 'Nothing has been defined in the catalogue.',
+                icon: Icons.badge_outlined,
+                actionLabel: isAdmin ? 'Add job role' : null,
+                actionKey: JobRolesScreen.emptyAddKey,
+                onAction: isAdmin ? () => JobRoleFormDialog.open(context) : null,
               )
             else
               Card(
@@ -166,43 +187,3 @@ class _JobRoleRow extends StatelessWidget {
   }
 }
 
-class _Failed extends StatelessWidget {
-  const _Failed({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: JobRolesScreen.failedKey,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              Text('The job role catalogue could not be read', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: Spacing.md),
-              FilledButton.tonal(
-                key: JobRolesScreen.retryKey,
-                onPressed: () => context.read<JobRolesBloc>().add(const JobRolesStarted()),
-                child: const Text('Try again'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
