@@ -23,22 +23,6 @@ class WorkOrderCompleteDialog extends StatefulWidget {
   static const ValueKey<String> dismissKey = ValueKey<String>('work-order-complete-dismiss');
   static const ValueKey<String> failureKey = ValueKey<String>('work-order-complete-failure');
 
-  /// Opens the dialog over the list. `showDialog` builds its route under the
-  /// Navigator, which is not a descendant of the route-scoped
-  /// `BlocProvider<WorkOrdersBloc>` the list lives in — so the Bloc is handed
-  /// across explicitly, the same shape `WorkOrderAssignDialog.open` uses.
-  static Future<void> open(BuildContext context, {required WorkOrder workOrder}) {
-    final bloc = context.read<WorkOrdersBloc>();
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => BlocProvider<WorkOrdersBloc>.value(
-        value: bloc,
-        child: WorkOrderCompleteDialog(workOrder: workOrder),
-      ),
-    );
-  }
-
   @override
   State<WorkOrderCompleteDialog> createState() => _WorkOrderCompleteDialogState();
 }

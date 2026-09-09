@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -1830,3 +1831,12 @@ Future<void> tapIn(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
+
+/// The address the router is currently sitting on (issue #104) — resolved
+/// off whichever pumped Screen's own element is given, the same shape the
+/// advisor's own prototype for this ticket verified: a dialog opened by
+/// address must move the location forward, and dismissing it must move the
+/// location back to the Screen underneath, and a test proves both by
+/// reading this rather than by inspecting a Bloc's own state.
+String locationOf(WidgetTester tester, Finder screenFinder) =>
+    GoRouter.of(tester.element(screenFinder)).routerDelegate.currentConfiguration.uri.toString();

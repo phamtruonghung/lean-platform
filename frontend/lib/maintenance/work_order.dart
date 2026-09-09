@@ -116,3 +116,20 @@ class WorkOrder {
     return wire;
   }
 }
+
+/// The transitions offered from a status (issue #63) — `approved` offers
+/// Start, `in_progress` offers Complete; both offer Cancel. Every other
+/// status, reachable only through history, offers none of the three: a
+/// completed or cancelled Work order is terminal, and the four the schema
+/// allows but this slice does not offer (`draft`, `scheduled`, `on_hold`,
+/// `closed`) are unreachable through the list anyway.
+///
+/// Top-level and public (issue #104) rather than private to
+/// `work_orders_screen.dart`, its pre-#104 home: `router.dart`'s own dialog
+/// routes need the same rule to refuse a stale `/complete`/`/cancel`
+/// address on a row whose status has since moved on (`WorkOrderDialogHost`'s
+/// own status guard) — the same fact about a Work order, asked from two
+/// places, stays one function rather than two copies that could drift.
+bool offersStart(String status) => status == 'approved';
+bool offersComplete(String status) => status == 'in_progress';
+bool offersCancel(String status) => status == 'approved' || status == 'in_progress';
