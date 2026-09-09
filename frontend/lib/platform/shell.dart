@@ -112,13 +112,33 @@ class _Sidebar extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final destination in destinations)
-                        _NavItem(
-                          destination: destination,
-                          selected: destination.matches(currentLocation),
-                          collapsed: collapsed,
-                          onTap: () => onDestinationSelected(destination),
-                        ),
+                      // Grouped by heading (#100, ADR-0020) rather than a flat
+                      // column of every destination. A heading only renders
+                      // where the rail has room for text; below the
+                      // breakpoint a hairline marks the same boundary
+                      // instead, so the grouping survives as rhythm rather
+                      // than a truncated label. Never before the very first
+                      // group — there is nothing to divide it from.
+                      for (final (index, group) in groupDestinations(destinations).indexed) ...[
+                        if (index > 0)
+                          if (collapsed)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: Spacing.sm,
+                                vertical: Spacing.xs,
+                              ),
+                              child: Divider(height: 1, color: AppColors.edge),
+                            )
+                          else if (group.name != null)
+                            _GroupHeading(name: group.name!),
+                        for (final destination in group.destinations)
+                          _NavItem(
+                            destination: destination,
+                            selected: destination.matches(currentLocation),
+                            collapsed: collapsed,
+                            onTap: () => onDestinationSelected(destination),
+                          ),
+                      ],
                     ],
                   ),
                 ),
@@ -168,6 +188,38 @@ class _Brand extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// A [DestinationGroup]'s heading — a label and nothing more (#100,
+/// ADR-0020). It carries no address, cannot be selected, and opens nothing;
+/// this is what keeps the reversal of #39's "no destination names a Module"
+/// rule honest — giving a heading an address is the exact failure mode
+/// ADR-0020's "What this costs" section names to watch for.
+///
+/// Deliberately quieter than a [_NavItem]: small, uppercase, letter-spaced
+/// and [AppColors.textMuted], so it reads as a section label rather than
+/// competing with the destinations filed beneath it. Never rendered into the
+/// collapsed rail — see the boundary hairline in `_Sidebar.build` instead.
+class _GroupHeading extends StatelessWidget {
+  const _GroupHeading({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.md, Spacing.md, Spacing.xs),
+      child: Text(
+        name.toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: AppColors.textMuted,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+        ),
       ),
     );
   }

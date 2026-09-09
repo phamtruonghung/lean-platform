@@ -235,11 +235,23 @@ _Avoid_: Page, view
 
 **Destination**:
 An entry in the Shell's sidebar — a Screen an Account can reach directly, named
-for what a person does there (the Directory, the Approval queue), never for the
-Module behind it. Every Destination is a Screen; not every Screen is one, since
-sign-in and awaiting-Approval are reached without ever being offered. Which
-Destinations an Account is offered follows from its role.
-_Avoid_: Menu item, tab, nav link, Module
+for what a person does there (the Directory, the Approval queue). Every
+Destination is a Screen; not every Screen is one, since sign-in and
+awaiting-Approval are reached without ever being offered. Which Destinations an
+Account is offered follows from its role.
+_Avoid_: Menu item, tab, nav link
+
+**Destination group**:
+A heading the Shell files Destinations under — People, Maintenance, Insights,
+Administration. A group is a label and nothing more: it has no address, cannot
+be selected, and opens nothing, so a person still navigates only to
+Destinations. Groups are named for the Module behind their Destinations rather
+than for what a person does, which ADR-0020 records as a deliberate reversal of
+issue #39's original rule; a flat list stopped being scannable at sixteen
+entries. A group whose Destinations an Account's role all filter away renders
+no heading.
+_Avoid_: Section, category, nav header, Module (a group is named after one, but
+a Module is the code seam, not the label)
 
 **Shell**:
 The persistent chrome around every Screen: the sidebar carrying the
