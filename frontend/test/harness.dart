@@ -433,6 +433,18 @@ class FakeWire {
     this.sitesStatus = 200,
     this.orgUnitsStatus = 200,
     this.orgUnitScope,
+    this.createSiteStatus = 201,
+    this.createSiteMessage = 'a Site with this code already exists',
+    this.createOrgUnitStatus = 201,
+    this.createOrgUnitMessage = 'That Org Unit could not be added.',
+    this.patchOrgUnitStatus = 200,
+    this.patchOrgUnitMessage = 'That Org Unit could not be changed.',
+    List<Map<String, dynamic>>? orgUnitSearchResults,
+    this.orgUnitSearchStatus = 200,
+    this.orgUnitSearchTruncated = false,
+    this.importOrgUnitsStatus = 201,
+    this.importOrgUnitsMessage = 'The import contains invalid rows',
+    List<Map<String, dynamic>>? importOrgUnitsErrors,
     Map<String, List<Map<String, dynamic>>>? assets,
     this.assetsStatus = 200,
     this.createAssetStatus = 201,
@@ -491,6 +503,8 @@ class FakeWire {
         accounts = accounts ?? [],
         sites = sites ?? [],
         orgUnits = orgUnits ?? {},
+        orgUnitSearchResults = orgUnitSearchResults ?? [],
+        importOrgUnitsErrors = importOrgUnitsErrors ?? [],
         workOrders = workOrders ?? {},
         assigneeCandidates = assigneeCandidates ?? [],
         employees = employees ?? [],
@@ -643,8 +657,64 @@ class FakeWire {
   int orgUnitsStatus;
 
   /// Every Org Unit request as `(siteId, parentId)`, so a test can prove
-  /// children were asked for by parent and only on expansion.
+  /// children were asked for by parent and only on expansion — and, for
+  /// issue #90, by a level's own refresh after a write.
   final List<(String, String?)> orgUnitRequests = [];
+
+  /// `POST /api/people/sites` (issue #90, administrator only).
+  int createSiteStatus;
+  String createSiteMessage;
+
+  /// Every Site create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> sitePosts = [];
+
+  /// `POST /api/people/sites/:siteId/org-units` (issue #90) — gated server-side
+  /// by `requireOrgUnitCreateScope` (ADR-0008), not reproduced here: this Fake
+  /// Wire always honours the request, the same "prove what was sent, not that
+  /// the server enforced anything" idiom [employeeRequests] already follows.
+  int createOrgUnitStatus;
+  String createOrgUnitMessage;
+
+  /// Every Org Unit create request as `(siteId, body)`.
+  final List<(String, Map<String, dynamic>)> orgUnitPosts = [];
+
+  /// `PATCH /api/people/org-units/:id` (issue #90) — retiring and reinstating
+  /// both land here, the same single route [setOrgUnitActive] uses.
+  int patchOrgUnitStatus;
+  String patchOrgUnitMessage;
+
+  /// Every Org Unit PATCH that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> orgUnitPatches = [];
+
+  /// `GET /api/people/sites/:siteId/org-units/search` (issue #90/#35) — one
+  /// scripted list, the same shape [qualifiedEmployees] already uses: a test
+  /// proves `search` was sent by asserting [orgUnitSearchRequests], not by
+  /// asserting the list narrowed.
+  List<Map<String, dynamic>> orgUnitSearchResults;
+  int orgUnitSearchStatus;
+
+  /// Whether the scripted [orgUnitSearchResults] should be reported truncated
+  /// (AC5) — carried on the response exactly as `plant.searchOrgUnits` would.
+  bool orgUnitSearchTruncated;
+
+  /// Every search request as `(siteId, search)`.
+  final List<(String, String?)> orgUnitSearchRequests = [];
+
+  /// `POST /api/people/sites/:siteId/org-units/import` (issue #90, ADR-0011).
+  /// `201` by default; set to `422` alongside [importOrgUnitsErrors] to prove
+  /// a caller renders every row's own reason, not only the first.
+  int importOrgUnitsStatus;
+  String importOrgUnitsMessage;
+
+  /// One entry per offending row (`{row, code, field, message}`,
+  /// `org-unit-import.js`'s own shape) — sent back only when
+  /// [importOrgUnitsStatus] is `422`.
+  List<Map<String, dynamic>> importOrgUnitsErrors;
+
+  /// Every import request as `(siteId, body)` — `body` is the whole decoded
+  /// `{orgUnits: [...]}` envelope, so a test can assert exactly one request
+  /// was sent and what it carried.
+  final List<(String, Map<String, dynamic>)> orgUnitImportPosts = [];
 
   /// When set, an Approval hangs until the test completes it — which is what
   /// "in flight" means to a widget test.
@@ -795,6 +865,8 @@ class FakeWire {
   int _nextJobRoleId = 950;
   int _nextSkillId = 970;
   int _nextEmployeeSkillId = 800;
+  int _nextSiteId = 90;
+  int _nextOrgUnitId = 990;
 
   /// The Org Unit name for [orgUnitId], resolved off whatever tree rows this
   /// Fake Wire was given (any `parentId` key) — there is no Org Unit lookup
@@ -1466,11 +1538,107 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'coverage': skillCoverage[siteId] ?? []}), 200);
         }
+        if (request.method == 'POST' && path == '/api/people/sites') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          sitePosts.add(sent);
+          if (createSiteStatus != 201) {
+            return http.Response(jsonEncode({'message': createSiteMessage}), createSiteStatus);
+          }
+          final id = (_nextSiteId++).toString();
+          final created = siteJson(id, sent['code'] as String, sent['name'] as String);
+          sites = [...sites, created];
+          return http.Response(jsonEncode({'site': created}), 201);
+        }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {
             return http.Response(jsonEncode({'message': 'Sites are unavailable.'}), sitesStatus);
           }
           return http.Response(jsonEncode({'sites': sites}), 200);
+        }
+        if (path.startsWith('/api/people/sites/') && path.endsWith('/org-units/search')) {
+          // '', 'api', 'people', 'sites', ':siteId', 'org-units', 'search'.
+          final siteId = path.split('/')[4];
+          final search = request.url.queryParameters['search'];
+          orgUnitSearchRequests.add((siteId, search));
+          if (orgUnitSearchStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'Search is unavailable.'}),
+              orgUnitSearchStatus,
+            );
+          }
+          return http.Response(
+            jsonEncode({'orgUnits': orgUnitSearchResults, 'truncated': orgUnitSearchTruncated}),
+            200,
+          );
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/people/sites/') &&
+            path.endsWith('/org-units/import')) {
+          // '', 'api', 'people', 'sites', ':siteId', 'org-units', 'import'.
+          final siteId = path.split('/')[4];
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          orgUnitImportPosts.add((siteId, sent));
+          if (importOrgUnitsStatus == 422) {
+            return http.Response(
+              jsonEncode({'message': importOrgUnitsMessage, 'errors': importOrgUnitsErrors}),
+              422,
+            );
+          }
+          if (importOrgUnitsStatus != 201) {
+            return http.Response(jsonEncode({'message': importOrgUnitsMessage}), importOrgUnitsStatus);
+          }
+          // A best-effort application, not a real topological insert: rows
+          // are applied in payload order, each resolved against whatever this
+          // Fake Wire already knows by `code` (an existing Org Unit, or an
+          // earlier row in the same payload) — enough for a widget test to
+          // prove a successful import actually shows up on a re-read, without
+          // reimplementing org-unit-import.js's own validation here.
+          final codeToId = <String, String>{
+            for (final entry in orgUnits.entries)
+              for (final node in entry.value) node['code'] as String: node['id'] as String,
+          };
+          final created = <Map<String, dynamic>>[];
+          for (final row in (sent['orgUnits'] as List<dynamic>).cast<Map<String, dynamic>>()) {
+            final parentCode = row['parentCode'] as String?;
+            final parentId = parentCode == null ? null : codeToId[parentCode];
+            final id = (_nextOrgUnitId++).toString();
+            final node = orgUnitJson(
+              id,
+              row['name'] as String,
+              parentId: parentId,
+              unitType: row['unitType'] as String? ?? 'area',
+            )..['code'] = row['code'];
+            codeToId[row['code'] as String] = id;
+            created.add(node);
+            orgUnits = {
+              ...orgUnits,
+              parentId: [...(orgUnits[parentId] ?? []), node],
+            };
+          }
+          return http.Response(jsonEncode({'orgUnits': created}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/people/sites/') &&
+            path.endsWith('/org-units')) {
+          final siteId = path.split('/')[4];
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          orgUnitPosts.add((siteId, sent));
+          if (createOrgUnitStatus != 201) {
+            return http.Response(jsonEncode({'message': createOrgUnitMessage}), createOrgUnitStatus);
+          }
+          final parentId = sent['parentId'] as String?;
+          final id = (_nextOrgUnitId++).toString();
+          final created = orgUnitJson(
+            id,
+            sent['name'] as String,
+            parentId: parentId,
+            unitType: sent['unitType'] as String,
+          )..['code'] = sent['code'];
+          orgUnits = {
+            ...orgUnits,
+            parentId: [...(orgUnits[parentId] ?? []), created],
+          };
+          return http.Response(jsonEncode({'orgUnit': created}), 201);
         }
         if (path.startsWith('/api/people/sites/') && path.endsWith('/org-units')) {
           final siteId = path.split('/')[4];
@@ -1483,6 +1651,26 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'orgUnits': orgUnits[parentId] ?? []}), 200);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/people/org-units/')) {
+          final id = path.substring('/api/people/org-units/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          orgUnitPatches.add((id, body));
+          if (patchOrgUnitStatus != 200) {
+            return http.Response(jsonEncode({'message': patchOrgUnitMessage}), patchOrgUnitStatus);
+          }
+          Map<String, dynamic>? updated;
+          orgUnits = {
+            for (final entry in orgUnits.entries)
+              entry.key: [
+                for (final node in entry.value)
+                  if (node['id'] == id) (updated = {...node, ...body}) else node,
+              ],
+          };
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Org Unit does not exist.'}), 404);
+          }
+          return http.Response(jsonEncode({'orgUnit': updated}), 200);
         }
         if (path == '/api/people/accounts') {
           if (accountsStatus != 200) {

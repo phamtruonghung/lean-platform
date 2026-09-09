@@ -22,6 +22,9 @@ import '../people/employee_detail_bloc.dart';
 import '../people/employee_detail_screen.dart';
 import '../people/job_roles_bloc.dart';
 import '../people/job_roles_screen.dart';
+import '../people/org_unit_admin_bloc.dart';
+import '../people/org_unit_picker_bloc.dart';
+import '../people/org_units_screen.dart';
 import '../people/skill_coverage_bloc.dart';
 import '../people/skill_coverage_screen.dart';
 import '../people/skills_bloc.dart';
@@ -44,6 +47,7 @@ abstract final class Routes {
   static const String workOrders = '/work-orders';
   static const String directory = '/directory';
   static const String jobRoles = '/job-roles';
+  static const String orgUnits = '/org-units';
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
 
@@ -190,6 +194,41 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const JobRolesStarted()),
                 child: JobRolesScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          // Sites and the Org Unit tree (issue #90). Offered to every approved
+          // Account, the same openness `Routes.jobRoles`/`Routes.skills` above
+          // already have: neither `GET /sites` nor `GET .../org-units` carries
+          // a role check of its own (ADR-0009). Only the write affordances
+          // inside `OrgUnitsScreen` are gated — creating a root Org Unit to
+          // `isAdmin` (ADR-0008), everything else to the server's own scope
+          // check. Two Blocs, deliberately: `OrgUnitPickerBloc` for the tree
+          // itself, unchanged from what the Approval flow's own picker already
+          // uses; `OrgUnitAdminBloc` for every write and the search/import
+          // queries that Bloc was never built to hold (`org_units_screen.dart`'s
+          // own header has the fuller reasoning).
+          GoRoute(
+            path: Routes.orgUnits,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return MultiBlocProvider(
+                providers: [
+                  BlocProvider<OrgUnitPickerBloc>(
+                    create: (context) => OrgUnitPickerBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(const OrgUnitPickerStarted()),
+                  ),
+                  BlocProvider<OrgUnitAdminBloc>(
+                    create: (context) => OrgUnitAdminBloc(
+                      peopleApi: context.read<PeopleApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    ),
+                  ),
+                ],
+                child: OrgUnitsScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
           ),

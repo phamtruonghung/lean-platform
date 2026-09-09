@@ -77,6 +77,13 @@ const List<Destination> platformDestinations = [
   // (skill-routes.js's own header). Only the write affordances inside the
   // Screen are gated to an administrator.
   Destination(label: 'Skills', icon: Icons.verified_outlined, path: Routes.skills),
+  // Also offered to every approved Account, for the same reason (issue #90):
+  // neither `GET /sites` nor `GET .../org-units` carries an admin or scope
+  // check of its own (ADR-0009's "a plant directory is not a secret" applies
+  // here too). Only the write affordances inside the Screen are gated —
+  // creating a root Org Unit to an administrator (ADR-0008), everything else
+  // to the server's own scope check.
+  Destination(label: 'Org Units', icon: Icons.account_tree_outlined, path: Routes.orgUnits),
   Destination(
     label: 'Approvals',
     icon: Icons.how_to_reg_outlined,

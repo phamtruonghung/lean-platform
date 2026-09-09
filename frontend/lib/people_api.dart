@@ -68,6 +68,31 @@ class PeopleApiException implements Exception {
   String toString() => message;
 }
 
+/// One row's own reason a bulk import (issue #90, ADR-0011) refused it —
+/// `{row, code, field, message}` exactly as `org-unit-import.js`'s
+/// `addError` builds it: `row` is the 0-based index into the submitted
+/// array, `code` is that row's own `code` value (not an error code — the
+/// wire's own field name, kept as-is), `field` names which key was wrong.
+class OrgUnitImportRowError {
+  const OrgUnitImportRowError({required this.row, this.code, this.field, required this.message});
+
+  final int row;
+  final String? code;
+  final String? field;
+  final String message;
+}
+
+/// A bulk import's own `422`: distinct from every other refusal in this
+/// Module (org-unit-import.js's own header), carrying one entry per
+/// offending row rather than [PeopleApiException]'s bare [message]. A
+/// subclass, not a wholly separate type, so a caller that only wants the
+/// summary message can still catch it as a [PeopleApiException].
+class OrgUnitImportException extends PeopleApiException {
+  OrgUnitImportException(super.message, {required this.errors}) : super(statusCode: 422);
+
+  final List<OrgUnitImportRowError> errors;
+}
+
 class PeopleApi {
   PeopleApi({http.Client? client}) : _client = client ?? http.Client();
 
@@ -241,18 +266,206 @@ class PeopleApi {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       return [
         for (final orgUnit in body['orgUnits'] as List<dynamic>)
-          OrgUnitNode(
-            id: (orgUnit as Map<String, dynamic>)['id'].toString(),
-            parentId: orgUnit['parentId']?.toString(),
-            code: orgUnit['code'] as String,
-            name: orgUnit['name'] as String,
-            unitType: orgUnit['unitType'] as String,
-          ),
+          _orgUnitNodeFrom(orgUnit as Map<String, dynamic>),
       ];
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }
   }
+
+  static OrgUnitNode _orgUnitNodeFrom(Map<String, dynamic> orgUnit) => OrgUnitNode(
+        id: orgUnit['id'].toString(),
+        parentId: orgUnit['parentId']?.toString(),
+        code: orgUnit['code'] as String,
+        name: orgUnit['name'] as String,
+        unitType: orgUnit['unitType'] as String,
+        isActive: orgUnit['isActive'] == null ? true : orgUnit['isActive'] == true,
+      );
+
+  /// Creates a Site (`POST /api/people/sites`, administrator only, issue
+  /// #90). [timezone] must be a real IANA zone — `sites_validate_timezone`
+  /// (the baseline's own trigger) is what actually enforces that, surfaced
+  /// here as an ordinary [PeopleApiException] carrying its message.
+  /// [countryCode] is the only optional field (`plant.createSite`'s own
+  /// contract).
+  Future<void> createSite(
+    String accessToken, {
+    required String code,
+    required String name,
+    required String timezone,
+    String? countryCode,
+  }) async {
+    const path = '/api/people/sites';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'code': code,
+          'name': name,
+          'timezone': timezone,
+          'countryCode': ?countryCode,
+        }),
+      ),
+      path,
+    );
+  }
+
+  /// Adds an Org Unit beneath [parentId], or starts a new root branch when
+  /// [parentId] is left null (`POST /api/people/sites/:siteId/org-units`,
+  /// issue #90). Gated by `requireOrgUnitCreateScope` server-side (ADR-0008):
+  /// a root row is administrator-only, a row under a parent needs write scope
+  /// on it — this method sends whatever the caller gives it and lets the
+  /// server's own 403 (`OUTSIDE_GRANTED_ORG_UNITS`) be the real gate, the same
+  /// division every other write in this Module keeps. [unitType] must be one
+  /// of `plant.js`'s own `UNIT_TYPES`; [sortOrder] left null defers to the
+  /// server's own default of 0.
+  Future<void> createOrgUnit(
+    String accessToken, {
+    required String siteId,
+    String? parentId,
+    required String code,
+    required String name,
+    required String unitType,
+    int? sortOrder,
+  }) async {
+    final path = '/api/people/sites/$siteId/org-units';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'parentId': ?parentId,
+          'code': code,
+          'name': name,
+          'unitType': unitType,
+          'sortOrder': ?sortOrder,
+        }),
+      ),
+      path,
+    );
+  }
+
+  /// Retires, or reinstates, an Org Unit (`PATCH /api/people/org-units/:id`,
+  /// issue #90) — a flag, never a deletion (CONTEXT.md's own Org Unit entry).
+  /// Write scope on the named Org Unit or an ancestor of it
+  /// (`authorization.requireOrgUnitScope({ write: true })`); this is the only
+  /// field the route accepts, and the server 400s if `isActive` is missing or
+  /// not a boolean (plant-routes.js's own check), so this method always sends
+  /// exactly that one key.
+  Future<void> setOrgUnitActive(
+    String accessToken,
+    String orgUnitId, {
+    required bool isActive,
+  }) async {
+    final path = '/api/people/org-units/$orgUnitId';
+    await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'isActive': isActive}),
+      ),
+      path,
+    );
+  }
+
+  /// Searches a Site's Org Units by partial, case-insensitive name, at any
+  /// depth in one call (`GET /api/people/sites/:siteId/org-units/search`,
+  /// issue #90/#35) — the gap `fetchOrgUnits`'s one-level-at-a-time browsing
+  /// leaves, and the reason issue #24 was raised in the first place: an
+  /// Account with a deep Grant should not have to walk down to it. [truncated]
+  /// on the result names whether the server's own limit
+  /// (`ORG_UNIT_SEARCH_LIMIT`, plant.js) cut the match list short — carried
+  /// through rather than dropped, since acting on a silently incomplete list
+  /// is exactly the failure this exists to avoid.
+  Future<OrgUnitSearchResult> searchOrgUnits(
+    String accessToken, {
+    required String siteId,
+    required String search,
+  }) async {
+    final path = '/api/people/sites/$siteId/org-units/search';
+    final uri = Uri.parse(path).replace(queryParameters: {'search': search});
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return OrgUnitSearchResult(
+        orgUnits: [
+          for (final orgUnit in body['orgUnits'] as List<dynamic>)
+            _orgUnitNodeFrom(orgUnit as Map<String, dynamic>),
+        ],
+        truncated: body['truncated'] == true,
+      );
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Imports a whole branch (or several) of a Site's Org Unit hierarchy in
+  /// one call (`POST /api/people/sites/:siteId/org-units/import`, ADR-0011,
+  /// issue #90). [orgUnits] is the raw row set — each row is
+  /// `{code, name, unitType, parentCode, sortOrder}`, rows naming their own
+  /// parent by `code` rather than by id, since most of a fresh branch has no
+  /// id yet (`org-unit-import.js`'s own header). Validated whole before
+  /// anything is applied; a `422` never lands here as an ordinary
+  /// [PeopleApiException], because that type carries only a bare message and
+  /// this failure is one entry per offending row — [OrgUnitImportException]
+  /// is what this method throws instead, so the caller can render every row's
+  /// own reason rather than a single flattened string.
+  Future<void> importOrgUnits(
+    String accessToken, {
+    required String siteId,
+    required List<Map<String, Object?>> orgUnits,
+  }) async {
+    final path = '/api/people/sites/$siteId/org-units/import';
+    final http.Response response;
+    try {
+      response = await _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'orgUnits': orgUnits}),
+      );
+    } catch (error) {
+      throw PeopleApiException('Could not reach the API: $error');
+    }
+    if (response.statusCode == 422) {
+      throw _importFailureFrom(response);
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw PeopleApiException(
+        _messageFrom(response) ?? 'The API answered ${response.statusCode} for $path.',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  static OrgUnitImportException _importFailureFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final message = body['message'] as String? ?? 'The import contains invalid rows';
+      return OrgUnitImportException(
+        message,
+        errors: [
+          for (final error in body['errors'] as List<dynamic>? ?? const [])
+            _importRowErrorFrom(error as Map<String, dynamic>),
+        ],
+      );
+    } catch (error) {
+      return OrgUnitImportException(
+        'The API answered with something this app could not read: $error',
+        errors: const [],
+      );
+    }
+  }
+
+  static OrgUnitImportRowError _importRowErrorFrom(Map<String, dynamic> error) => OrgUnitImportRowError(
+        row: (error['row'] as num).toInt(),
+        code: error['code'] as String?,
+        field: error['field'] as String?,
+        message: error['message'] as String,
+      );
 
   /// Who a Work order could be given to, and what each currently holds
   /// (`GET /api/people/employees/assignee-candidates`, issue #62). Active
