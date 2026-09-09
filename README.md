@@ -44,6 +44,10 @@ routing: `/api/*` goes to the backend, everything else to the Flutter app.
 Host ports sit one above `maintenance-management`'s, which sit one above
 `employee-management`'s. All three are routinely run side by side.
 
+pgAdmin, for browsing the local Postgres directly, is at
+<http://localhost:5052> — local-development-only, with the local Postgres
+connection already pre-registered.
+
 ### Reviewing the app locally
 
 `docker compose up` alone leaves the schema unmigrated, since compose has no

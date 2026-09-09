@@ -5,8 +5,8 @@
 #
 #     ./scripts/review.sh [up|down|reset|logs [service]|status|help]
 #
-# docker-compose.yml is the source of truth for the stack itself (four
-# services: postgres, backend, frontend, edge) and this script does not
+# docker-compose.yml is the source of truth for the stack itself (five
+# services: postgres, backend, frontend, edge, pgadmin) and this script does not
 # duplicate its defaults — it reads .env the same way `docker compose` does.
 # What compose does NOT do is migrate the schema: deploy/deploy.sh runs that as
 # a one-off container from the backend image before starting anything, and
@@ -40,8 +40,13 @@ POSTGRES_DB="${POSTGRES_DB:-platform}"
 
 POSTGRES_WAIT_TIMEOUT_SECONDS="${POSTGRES_WAIT_TIMEOUT_SECONDS:-120}"
 APP_WAIT_TIMEOUT_SECONDS="${APP_WAIT_TIMEOUT_SECONDS:-120}"
+# Separate from APP_WAIT_TIMEOUT_SECONDS because pgAdmin's own first boot —
+# initializing its config database, validating the default email, importing
+# dev/pgadmin-servers.json — is slower than the backend or the Flutter bundle.
+PGADMIN_WAIT_TIMEOUT_SECONDS="${PGADMIN_WAIT_TIMEOUT_SECONDS:-180}"
 
 EDGE_URL="http://localhost:3002"
+PGADMIN_URL="http://localhost:5052"
 
 RED=$(tput setaf 1 2>/dev/null || true)
 GREEN=$(tput setaf 2 2>/dev/null || true)
@@ -133,10 +138,18 @@ wait_for_postgres() {
 
 # curl -fsS -o /dev/null -w '%{http_code}' against a URL, retried until it
 # answers 200 or the deadline passes. curl runs on the host, not in a
-# container: every URL checked here is one the edge already publishes to
-# localhost, so there is no container-network case to fall back to.
+# container: every URL checked here is one the edge (or, for pgAdmin, its own
+# published port) already publishes to localhost, so there is no
+# container-network case to fall back to.
+#
+# `on_fail` chooses what a timeout does, and defaults to `die` so the two
+# existing callers (backend and the Flutter bundle, both through the edge —
+# the actual app under review) keep aborting loudly exactly as before. Pass
+# `warn` for a check whose failure should not block the rest of the stack —
+# see the pgAdmin call in cmd_up, which is a convenience on top of the review,
+# not the thing being reviewed.
 wait_for_http_200() {
-  local url="$1" label="$2" timeout="$3"
+  local url="$1" label="$2" timeout="$3" on_fail="${4:-die}"
   local deadline=$((SECONDS + timeout)) code
 
   log "waiting for ${label} (${url}) to answer (up to ${timeout}s)"
@@ -149,7 +162,11 @@ wait_for_http_200() {
     sleep 2
   done
 
-  die "${label} (${url}) did not answer 200 within ${timeout}s — run './scripts/review.sh logs' to see why"
+  if [[ "$on_fail" == "warn" ]]; then
+    warn "${label} (${url}) did not answer 200 within ${timeout}s — run './scripts/review.sh logs' to see why"
+  else
+    die "${label} (${url}) did not answer 200 within ${timeout}s — run './scripts/review.sh logs' to see why"
+  fi
 }
 
 # ------------------------------------------------------------------------------
@@ -197,11 +214,25 @@ cmd_up() {
 
   wait_for_http_200 "${EDGE_URL}/api/health" "backend, through the edge" "$APP_WAIT_TIMEOUT_SECONDS"
   wait_for_http_200 "${EDGE_URL}/" "the Flutter bundle, through the edge" "$APP_WAIT_TIMEOUT_SECONDS"
+  # warn, not die: pgAdmin is a convenience for browsing Postgres, not the app
+  # under review, so a slow or failed pgAdmin boot should never stop a
+  # reviewer from reaching the actual stack above. /misc/ping is pgAdmin's own
+  # unauthenticated health endpoint — confirmed against the pinned tag to
+  # return a bare 200 with no redirect, unlike `/`, which 302s to /browser/
+  # (or /login) and would never satisfy curl's `-fsS` without `-L`.
+  wait_for_http_200 "${PGADMIN_URL}/misc/ping" "pgAdmin" "$PGADMIN_WAIT_TIMEOUT_SECONDS" warn
 
   printf '\n'
   ok "ready to review at ${EDGE_URL}"
   log "backend direct:  http://localhost:8002"
   log "postgres direct: localhost:5434 (user ${POSTGRES_USER}, db ${POSTGRES_DB})"
+  # No credentials printed here on purpose: PGADMIN_CONFIG_SERVER_MODE is
+  # 'False' in docker-compose.yml, which puts pgAdmin in desktop mode and
+  # skips its login screen entirely — / lands straight on /browser/. Printing
+  # an email and password a reviewer is never asked for would just be
+  # confusing. The Postgres password is still needed when opening the
+  # pre-registered server, so that one is worth naming.
+  log "pgAdmin: ${PGADMIN_URL} (no login; the pre-registered server asks for the Postgres password above)"
   if [[ -n "${SUPABASE_URL:-}" && -n "${SUPABASE_ANON_KEY:-}" ]]; then
     log "Supabase: configured — sign-in works"
   else
@@ -227,7 +258,7 @@ cmd_reset() {
   done
 
   if (( ! yes )); then
-    warn "this destroys the Postgres volume — every Account, Site, and Asset in it"
+    warn "this destroys the Postgres volume — every Account, Site, and Asset in it — plus pgAdmin's saved connections and sessions"
     read -r -p "  type 'yes' to continue: " reply
     [[ "$reply" == "yes" ]] || die "aborted; nothing was changed"
   fi
