@@ -392,6 +392,12 @@ class FakeWire {
     this.departEmployeeMessage = 'That departure could not be recorded.',
     this.reinstateEmployeeStatus = 200,
     this.reinstateEmployeeMessage = 'That Employee could not be reinstated.',
+    this.createAssignmentStatus = 201,
+    this.createAssignmentMessage = 'That Assignment could not be recorded.',
+    this.createJobRoleStatus = 201,
+    this.createJobRoleMessage = 'That job role could not be added.',
+    this.updateJobRoleStatus = 200,
+    this.updateJobRoleMessage = 'That job role could not be corrected.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -617,7 +623,97 @@ class FakeWire {
   /// Every Employee id reinstated, in the order the requests reached the wire.
   final List<String> employeeReinstatements = [];
 
+  /// `POST /api/people/employees/:id/assignments` (issue #88) — not
+  /// administrator only, unlike every write above (ADR-0010).
+  int createAssignmentStatus;
+  String createAssignmentMessage;
+
+  /// Every assignment body that actually reached the wire, as `(employeeId,
+  /// body)` — so a test can assert exactly one request was sent and what it
+  /// carried.
+  final List<(String, Map<String, dynamic>)> assignmentPosts = [];
+
+  /// `POST /api/people/job-roles` (issue #88, administrator only).
+  int createJobRoleStatus;
+  String createJobRoleMessage;
+
+  /// Every job role create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> jobRolePosts = [];
+
+  /// `PATCH /api/people/job-roles/:id` (issue #88, administrator only).
+  int updateJobRoleStatus;
+  String updateJobRoleMessage;
+
+  /// Every job role correction body that actually reached the wire, as
+  /// `(id, body)`.
+  final List<(String, Map<String, dynamic>)> jobRolePatches = [];
+
   int _nextEmployeeId = 900;
+  int _nextAssignmentId = 500;
+  int _nextJobRoleId = 950;
+
+  /// The Org Unit name for [orgUnitId], resolved off whatever tree rows this
+  /// Fake Wire was given (any `parentId` key) — there is no Org Unit lookup
+  /// endpoint for this client to call instead, the same reason
+  /// `GrantedOrgUnit.where` (org_unit.dart) has no better source either.
+  String _orgUnitNameFor(String orgUnitId) {
+    for (final nodes in orgUnits.values) {
+      for (final node in nodes) {
+        if (node['id'] == orgUnitId) return node['name'] as String;
+      }
+    }
+    return 'Org Unit $orgUnitId';
+  }
+
+  String? _jobRoleNameFor(String? jobRoleId) {
+    if (jobRoleId == null) return null;
+    for (final jobRole in jobRoles) {
+      if (jobRole['id'] == jobRoleId) return jobRole['name'] as String;
+    }
+    return null;
+  }
+
+  /// Mirrors `createAssignment`'s own transfer semantics (directory.js): the
+  /// Employee's currently open Assignment (`effectiveTo == null`), if there is
+  /// one, is closed with the new row's own `effectiveFrom`; the new
+  /// Assignment is inserted as current. Applied to every `employeeDetails`
+  /// entry naming this Employee, the same `_applyEmployeeChanges` shape uses.
+  Map<String, dynamic> _applyAssignment(String employeeId, Map<String, dynamic> body) {
+    final orgUnitId = body['orgUnitId'] as String;
+    final jobRoleId = body['jobRoleId'] as String?;
+    final effectiveFrom = body['effectiveFrom'] as String;
+    final newId = (_nextAssignmentId++).toString();
+
+    final created = employeeAssignmentJson(
+      newId,
+      orgUnitId: orgUnitId,
+      orgUnitName: _orgUnitNameFor(orgUnitId),
+      jobRoleId: jobRoleId,
+      jobRoleName: _jobRoleNameFor(jobRoleId),
+      isCurrent: true,
+      effectiveFrom: effectiveFrom,
+    );
+
+    Map<String, dynamic> close(Map<String, dynamic> detail) {
+      final existing = (detail['assignments'] as List<dynamic>? ?? const [])
+          .cast<Map<String, dynamic>>();
+      final closed = [
+        for (final assignment in existing)
+          if (assignment['effectiveTo'] == null)
+            {...assignment, 'effectiveTo': effectiveFrom, 'isCurrent': false}
+          else
+            assignment,
+      ];
+      return {...detail, 'assignments': [created, ...closed]};
+    }
+
+    employeeDetails = {
+      for (final entry in employeeDetails.entries)
+        entry.key: entry.value['id'] == employeeId ? close(entry.value) : entry.value,
+    };
+
+    return created;
+  }
 
   /// Applies a write's own changes to every row this Fake Wire holds naming
   /// [id] — both [employees] (the listing) and [employeeDetails] (the detail
@@ -943,6 +1039,22 @@ class FakeWire {
           final bare = {...matched.first}..remove('orgUnit')..remove('jobRole');
           return http.Response(jsonEncode({'employee': bare}), 200);
         }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/people/employees/') &&
+            path.endsWith('/assignments')) {
+          // '', 'api', 'people', 'employees', ':id', 'assignments'.
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          assignmentPosts.add((id, body));
+          if (createAssignmentStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createAssignmentMessage}),
+              createAssignmentStatus,
+            );
+          }
+          final created = _applyAssignment(id, body);
+          return http.Response(jsonEncode({'assignment': created}), 201);
+        }
         if (path == '/api/people/employees') {
           final search = request.url.queryParameters['search'];
           final orgUnitId = request.url.queryParameters['orgUnitId'];
@@ -992,11 +1104,43 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'employee': detail}), 200);
         }
+        if (request.method == 'POST' && path == '/api/people/job-roles') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          jobRolePosts.add(sent);
+          if (createJobRoleStatus != 201) {
+            return http.Response(jsonEncode({'message': createJobRoleMessage}), createJobRoleStatus);
+          }
+          final id = (_nextJobRoleId++).toString();
+          final created = jobRoleJson(id, sent['code'] as String, sent['name'] as String);
+          jobRoles = [...jobRoles, created];
+          return http.Response(jsonEncode({'jobRole': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/people/job-roles/')) {
+          final id = path.substring('/api/people/job-roles/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          jobRolePatches.add((id, body));
+          if (updateJobRoleStatus != 200) {
+            return http.Response(jsonEncode({'message': updateJobRoleMessage}), updateJobRoleStatus);
+          }
+          Map<String, dynamic>? updated;
+          jobRoles = [
+            for (final jobRole in jobRoles)
+              if (jobRole['id'] == id) (updated = {...jobRole, ...body}) else jobRole,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Job role not found'}), 404);
+          }
+          return http.Response(jsonEncode({'jobRole': updated}), 200);
+        }
         if (path == '/api/people/job-roles') {
           if (jobRolesStatus != 200) {
             return http.Response(jsonEncode({'message': 'Job roles are unavailable.'}), jobRolesStatus);
           }
-          return http.Response(jsonEncode({'jobRoles': jobRoles}), 200);
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final sent = includeInactive
+              ? jobRoles
+              : [for (final jobRole in jobRoles) if (jobRole['isActive'] != false) jobRole];
+          return http.Response(jsonEncode({'jobRoles': sent}), 200);
         }
         if (path == '/api/people/sites') {
           if (sitesStatus != 200) {

@@ -561,29 +561,113 @@ class PeopleApi {
     );
   }
 
+  /// Assigns an Employee to an Org Unit, as a given job role, from a given
+  /// date (`POST /api/people/employees/:id/assignments`, issue #88). Unlike
+  /// every write above, this is not administrator-only — ADR-0010 gates it on
+  /// write scope over the *destination* [orgUnitId] instead, so any caller
+  /// holding a write Grant reaching that Org Unit may call it. A 403 here
+  /// carries `OUTSIDE_GRANTED_ORG_UNITS`, surfaced like any other
+  /// [PeopleApiException].
+  ///
+  /// [jobRoleId] is optional, matching `createAssignment`'s own contract
+  /// (directory.js). [crewId] is never sent: crews have no client surface yet
+  /// (issue #88's own out-of-scope note).
+  ///
+  /// Already holding an open Assignment turns this into a transfer, entirely
+  /// server-side (directory.js's own header on `createAssignment`): the open
+  /// one is closed with an end date and this one is opened. Returns nothing —
+  /// the response is one Assignment, not the recomputed history with
+  /// `isCurrent` resolved, so the caller re-reads the Employee's record
+  /// instead (the same reason [updateEmployee]'s own callers do).
+  Future<void> createAssignment(
+    String accessToken,
+    String employeeId, {
+    required String orgUnitId,
+    String? jobRoleId,
+    required String effectiveFrom,
+  }) async {
+    final path = '/api/people/employees/$employeeId/assignments';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'orgUnitId': orgUnitId,
+          'jobRoleId': ?jobRoleId,
+          'effectiveFrom': effectiveFrom,
+        }),
+      ),
+      path,
+    );
+  }
+
   /// The job role catalogue (`GET /api/people/job-roles`), for the
-  /// Directory's own job role filter — active roles only, no Site needed
-  /// (ADR-0005's shared catalogue). See job-roles.js's own header for why
-  /// this needs no Grant either.
-  Future<List<JobRole>> fetchJobRoles(String accessToken) async {
+  /// Directory's own job role filter, an Assignment's own job role choice,
+  /// and the job role catalogue Screen (issue #88) — active roles only by
+  /// default, no Site needed (ADR-0005's shared catalogue). See
+  /// job-roles.js's own header for why this needs no Grant either.
+  ///
+  /// [includeInactive] mirrors the server's own narrow `'true'`-exact check
+  /// (job-role-routes.js) — only the catalogue Screen's administrator sends
+  /// it, to reach a deactivated row worth reactivating; every other caller
+  /// leaves it false and reads active roles only, exactly as before issue #88.
+  Future<List<JobRole>> fetchJobRoles(String accessToken, {bool includeInactive = false}) async {
     const path = '/api/people/job-roles';
+    final uri = Uri.parse(path).replace(
+      queryParameters: includeInactive ? {'includeInactive': 'true'} : null,
+    );
     final response = await _send(
-      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
       path,
     );
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       return [
-        for (final jobRole in body['jobRoles'] as List<dynamic>)
-          JobRole(
-            id: (jobRole as Map<String, dynamic>)['id'].toString(),
-            code: jobRole['code'] as String,
-            name: jobRole['name'] as String,
-          ),
+        for (final jobRole in body['jobRoles'] as List<dynamic>) _jobRoleFrom(jobRole as Map<String, dynamic>),
       ];
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }
+  }
+
+  static JobRole _jobRoleFrom(Map<String, dynamic> jobRole) => JobRole(
+        id: jobRole['id'].toString(),
+        code: jobRole['code'] as String,
+        name: jobRole['name'] as String,
+        isActive: jobRole['isActive'] == true,
+      );
+
+  /// Adds a job role to the shared catalogue
+  /// (`POST /api/people/job-roles`, administrator only, issue #88).
+  Future<void> createJobRole(String accessToken, {required String code, required String name}) async {
+    const path = '/api/people/job-roles';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'code': code, 'name': name}),
+      ),
+      path,
+    );
+  }
+
+  /// Corrects a job role, or deactivates/reactivates one
+  /// (`PATCH /api/people/job-roles/:id`, administrator only, issue #88).
+  /// [changes] is sent exactly as given — only the keys actually present are
+  /// touched, mirroring `updateJobRole`'s (job-roles.js) own `hasOwnProperty`
+  /// contract, the same discipline [updateEmployee] already keeps for the
+  /// Employee record. There is no delete: `isActive: false` is the only way
+  /// this reaches retirement (job-roles.js's own header).
+  Future<void> updateJobRole(String accessToken, String id, Map<String, Object?> changes) async {
+    final path = '/api/people/job-roles/$id';
+    await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
   }
 
   /// Admits an Account: sets its role and its Grants in one act

@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'employee.dart';
+import 'job_role.dart';
 
 sealed class EmployeeDetailEvent {
   const EmployeeDetailEvent();
@@ -46,6 +47,25 @@ class EmployeeDetailReinstatementConfirmed extends EmployeeDetailEvent {
   const EmployeeDetailReinstatementConfirmed();
 }
 
+/// Assigns this Employee to an Org Unit (issue #88) — the first Assignment,
+/// or a transfer when one is already open; `createAssignment` (directory.js)
+/// decides which from whether an open Assignment already exists, so this
+/// event carries no flag of its own for it. [jobRoleId] is optional,
+/// [effectiveFrom] (`YYYY-MM-DD`) is not — see `EmployeeAssignmentDialog`'s
+/// own header for why this dialog treats it as required even though the
+/// server would default a missing one to today.
+class EmployeeDetailAssignmentConfirmed extends EmployeeDetailEvent {
+  const EmployeeDetailAssignmentConfirmed({
+    required this.orgUnitId,
+    this.jobRoleId,
+    required this.effectiveFrom,
+  });
+
+  final String orgUnitId;
+  final String? jobRoleId;
+  final String effectiveFrom;
+}
+
 sealed class EmployeeDetailState {
   const EmployeeDetailState();
 }
@@ -57,12 +77,20 @@ class EmployeeDetailLoading extends EmployeeDetailState {
 class EmployeeDetailLoaded extends EmployeeDetailState {
   const EmployeeDetailLoaded({
     required this.employee,
+    this.jobRoles = const [],
     this.isMutating = false,
     this.mutationFailure,
     this.notice,
   });
 
   final EmployeeDetail employee;
+
+  /// The job role catalogue, read once alongside the Employee record for the
+  /// assignment dialog's own job role choice (issue #88) — the same
+  /// "read once, tolerate its own failure" shape `DirectoryLoaded.jobRoles`
+  /// already uses, and for the same reason: a failure to read it should not
+  /// fail the whole Screen, only leave the dropdown short.
+  final List<JobRole> jobRoles;
 
   /// A correction, a departure or a reinstatement is in flight (issue #87).
   /// One flag, not three — the same reasoning `AssetsLoaded.mutatingAssetId`
@@ -83,12 +111,14 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
 
   EmployeeDetailLoaded copyWith({
     EmployeeDetail? employee,
+    List<JobRole>? jobRoles,
     bool? isMutating,
     String? mutationFailure,
     String? notice,
   }) =>
       EmployeeDetailLoaded(
         employee: employee ?? this.employee,
+        jobRoles: jobRoles ?? this.jobRoles,
         isMutating: isMutating ?? this.isMutating,
         // Always overwritten, never carried forward, the same rule
         // `DirectoryLoaded.copyWith` gives `addFailure`.
@@ -113,6 +143,7 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
     on<EmployeeDetailCorrectionConfirmed>(_onCorrectionConfirmed);
     on<EmployeeDetailDepartureConfirmed>(_onDepartureConfirmed);
     on<EmployeeDetailReinstatementConfirmed>(_onReinstatementConfirmed);
+    on<EmployeeDetailAssignmentConfirmed>(_onAssignmentConfirmed);
   }
 
   final PeopleApi _api;
@@ -137,11 +168,21 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
       emit(const EmployeeDetailUnavailable(message: signedOutMessage));
       return;
     }
+    // The job role catalogue, for the assignment dialog's own job role
+    // choice (issue #88) — the same "read once, tolerate its own failure"
+    // shape `DirectoryBloc._onStarted` already uses for its filter: a failure
+    // here leaves the dropdown short, not the whole Screen unavailable.
+    List<JobRole> jobRoles = const [];
+    try {
+      jobRoles = await _api.fetchJobRoles(token);
+    } on PeopleApiException {
+      jobRoles = const [];
+    }
     try {
       final employee = event.employeeId == null
           ? await _api.fetchMyEmployeeRecord(token)
           : await _api.fetchEmployeeDetail(token, event.employeeId!);
-      emit(EmployeeDetailLoaded(employee: employee));
+      emit(EmployeeDetailLoaded(employee: employee, jobRoles: jobRoles));
     } on PeopleApiException catch (error) {
       emit(EmployeeDetailUnavailable(message: error.message));
     }
@@ -162,11 +203,18 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
       emit(const EmployeeDetailUnavailable(message: signedOutMessage));
       return;
     }
+    // Carried forward rather than re-fetched: the job role catalogue did not
+    // change just because the Employee record did, and `EmployeeDetailLoaded`
+    // below is built fresh (not `copyWith`), so this is what keeps the
+    // assignment dialog's own dropdown populated across the reload its own
+    // success triggers.
+    final settledBefore = state;
+    final jobRoles = settledBefore is EmployeeDetailLoaded ? settledBefore.jobRoles : const <JobRole>[];
     try {
       final employee = _lastRequestedEmployeeId == null
           ? await _api.fetchMyEmployeeRecord(token)
           : await _api.fetchEmployeeDetail(token, _lastRequestedEmployeeId!);
-      emit(EmployeeDetailLoaded(employee: employee, notice: notice));
+      emit(EmployeeDetailLoaded(employee: employee, jobRoles: jobRoles, notice: notice));
     } on PeopleApiException catch (error) {
       emit(EmployeeDetailUnavailable(message: error.message));
     }
@@ -245,6 +293,49 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
       final settled = state;
       if (settled is! EmployeeDetailLoaded) return;
       emit(settled.copyWith(isMutating: false, notice: error.message));
+    }
+  }
+
+  /// Assigns this Employee to an Org Unit (issue #88) — not administrator
+  /// only, unlike the three handlers above: `EmployeeAssignmentDialog` is
+  /// offered to any caller `OrgUnitScope.canWriteSomewhere` allows
+  /// (ADR-0010), and the server is the real gate either way (403
+  /// `OUTSIDE_GRANTED_ORG_UNITS` if the destination named turns out to sit
+  /// outside every Grant this caller holds). Failure is reported inline on
+  /// the open dialog, the same shape [_onCorrectionConfirmed] already uses —
+  /// a scope refusal, an overlap/backdate 409, and a malformed date 400 all
+  /// surface here as the API's own message rather than three different
+  /// tellings of "that failed".
+  Future<void> _onAssignmentConfirmed(
+    EmployeeDetailAssignmentConfirmed event,
+    Emitter<EmployeeDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! EmployeeDetailLoaded || current.isMutating) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(mutationFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isMutating: true, mutationFailure: null));
+    try {
+      await _api.createAssignment(
+        token,
+        current.employee.id,
+        orgUnitId: event.orgUnitId,
+        jobRoleId: event.jobRoleId,
+        effectiveFrom: event.effectiveFrom,
+      );
+      // Re-read rather than trust the response: `createAssignment`'s own
+      // response is one Assignment, not the recomputed history with
+      // `isCurrent` resolved (`PeopleApi.createAssignment`'s own header).
+      await _reload(emit);
+    } on PeopleApiException catch (error) {
+      final settled = state;
+      if (settled is! EmployeeDetailLoaded) return;
+      emit(settled.copyWith(isMutating: false, mutationFailure: error.message));
     }
   }
 }
