@@ -22,6 +22,40 @@ void main() {
     expect(find.byType(SkeletonList), findsOneWidget);
   });
 
+  // Issue #103: the loading state generalised beyond a list. Mounted
+  // directly, the same way the `SkeletonList` test just above already is —
+  // this asserts on pure placeholder geometry (how many cards, that it
+  // settles), never on a Bloc-driven Screen's own behaviour, so it is not
+  // the third test seam AGENTS.md §5 forbids; the empty/error/scope-refused
+  // states are covered exclusively through pumped Screens instead (see
+  // `work_orders_test.dart`, `job_roles_test.dart`, `skill_coverage_test.dart`).
+
+  testWidgets('SkeletonDetail renders one card with the requested number of field rows',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: SkeletonDetail(fieldRows: 3)),
+      ),
+    );
+
+    expect(find.byType(Card), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byType(SkeletonDetail), findsOneWidget);
+  });
+
+  testWidgets('SkeletonGrid renders the requested number of placeholder tiles',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: SkeletonGrid(tiles: 4, crossAxisCount: 2)),
+      ),
+    );
+
+    expect(find.byType(Card), findsNWidgets(4));
+    await tester.pumpAndSettle();
+    expect(find.byType(SkeletonGrid), findsOneWidget);
+  });
+
   test('the theme builds with the design defaults', () {
     final theme = buildAppTheme();
     expect(theme.useMaterial3, isTrue);

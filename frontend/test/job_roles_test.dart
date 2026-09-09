@@ -76,4 +76,42 @@ void main() {
     expect(find.byKey(JobRolesScreen.addKey), findsNothing);
     expect(find.byKey(JobRolesScreen.correctKey('20')), findsNothing);
   });
+
+  // Issue #103: the shared empty/loading/error states, one of the three
+  // migrations proving them — chosen because this Screen used to fall back
+  // to a bare `CircularProgressIndicator` and a plain `Text` for its own
+  // empty case, the most hand-rolled of the Screens not already worked by
+  // #99's own reference Screen (Work orders).
+
+  testWidgets('an empty catalogue carries the action to add one, for an administrator',
+      (tester) async {
+    await openJobRoles(tester, FakeWire(jobRoles: const []));
+
+    expect(find.byKey(JobRolesScreen.emptyKey), findsOneWidget);
+    expect(find.text('No job roles yet'), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.emptyAddKey), findsOneWidget);
+  });
+
+  testWidgets('an empty catalogue carries no action for a non-administrator', (tester) async {
+    await openJobRoles(tester, FakeWire(role: Roles.supervisor, jobRoles: const []));
+
+    expect(find.byKey(JobRolesScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.emptyAddKey), findsNothing);
+  });
+
+  testWidgets('a failed load explains itself and the retry works', (tester) async {
+    final wire = FakeWire(jobRolesStatus: 503);
+    await openJobRoles(tester, wire);
+
+    expect(find.byKey(JobRolesScreen.failedKey), findsOneWidget);
+    expect(find.text('Job roles are unavailable.'), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.emptyKey), findsNothing);
+
+    wire.jobRolesStatus = 200;
+    wire.jobRoles = [jobRoleJson('20', 'WELD', 'Welder')];
+    await tapIn(tester, find.byKey(JobRolesScreen.retryKey));
+
+    expect(find.byKey(JobRolesScreen.failedKey), findsNothing);
+    expect(find.text('Welder · WELD'), findsOneWidget);
+  });
 }

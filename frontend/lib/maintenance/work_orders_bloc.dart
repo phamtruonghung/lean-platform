@@ -241,8 +241,24 @@ class WorkOrdersLoaded extends WorkOrdersState {
 }
 
 class WorkOrdersUnavailable extends WorkOrdersState {
-  const WorkOrdersUnavailable({required this.message});
+  const WorkOrdersUnavailable({required this.message, this.isScopeRefused = false});
   final String message;
+
+  /// True when the list read was refused for scope rather than failing
+  /// outright (issue #103's fifth case, #99 user story 15) — read off
+  /// [MaintenanceApiException.statusCode] being `403` in [_readList]'s own
+  /// catch block, never by matching [message]'s wording, so this classifies
+  /// the same way regardless of what sentence the server chose.
+  ///
+  /// Today's own list read cannot actually produce one: Maintenance's reads
+  /// are Site-wide regardless of Grants (`modules/people/index.js`'s own
+  /// header, extending ADR-0009), so `work-order-routes.js`'s `GET
+  /// /sites/:siteId/work-orders` never calls `canAct` at all. This field is
+  /// not dead code even so — it is the same classification the Org-Unit-
+  /// scoped reads #72–#80 add will need, proven here through this Screen's
+  /// own pumped test (`work_orders_test.dart`) rather than invented the day
+  /// the first real 403 shows up on a list read.
+  final bool isScopeRefused;
 }
 
 class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
@@ -415,7 +431,7 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
           settled.showHistory != requestedShowHistory) {
         return;
       }
-      emit(WorkOrdersUnavailable(message: error.message));
+      emit(WorkOrdersUnavailable(message: error.message, isScopeRefused: error.statusCode == 403));
     }
   }
 

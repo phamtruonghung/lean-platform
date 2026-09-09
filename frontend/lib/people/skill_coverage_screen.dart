@@ -15,6 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
+import '../widgets/skeleton_list.dart';
 import 'skill.dart';
 import 'skill_coverage_bloc.dart';
 
@@ -36,8 +39,16 @@ class SkillCoverageScreen extends StatelessWidget {
 
     return Scaffold(
       body: switch (state) {
-        SkillCoverageLoading() => const Center(child: CircularProgressIndicator()),
-        SkillCoverageUnavailable(message: final message) => _Failed(message: message),
+        // The generalised loading placeholder (issue #103) replaces the bare
+        // spinner this Screen used before.
+        SkillCoverageLoading() => const SkeletonList(maxWidth: SkillCoverageScreen.maxWidth),
+        SkillCoverageUnavailable(message: final message) => PlatformFailureState(
+            key: SkillCoverageScreen.failedKey,
+            title: 'Skill coverage could not be read',
+            message: message,
+            retryKey: SkillCoverageScreen.retryKey,
+            onRetry: () => context.read<SkillCoverageBloc>().add(const SkillCoverageStarted()),
+          ),
         SkillCoverageLoaded() => _Loaded(state: state),
       },
     );
@@ -86,12 +97,20 @@ class _Loaded extends StatelessWidget {
             ],
             const SizedBox(height: Spacing.lg),
             if (state.isLoadingCoverage)
-              const Center(child: CircularProgressIndicator())
+              const SkeletonList(rows: 3, maxWidth: SkillCoverageScreen.maxWidth)
             else if (state.entries.isEmpty)
-              Text(
-                'Every skill requirement at this Site is met.',
+              // Good news, not a gap to fill — this read is already
+              // filtered to a real shortfall server-side (`SkillCoverageEntry`'s
+              // own header), so an empty result means every requirement is
+              // met, not that nobody has entered anything yet. No action to
+              // carry either way: there is nothing here for a caller to
+              // create, and no filter to clear (issue #103).
+              PlatformEmptyState.noneExist(
                 key: SkillCoverageScreen.emptyKey,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                title: 'Every requirement is met',
+                message: 'This Site has no shortfall against the skill requirements it has set '
+                    'for itself.',
+                icon: Icons.task_alt_outlined,
               )
             else
               Card(
@@ -148,43 +167,3 @@ class _CoverageRow extends StatelessWidget {
   }
 }
 
-class _Failed extends StatelessWidget {
-  const _Failed({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: SkillCoverageScreen.failedKey,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              Text('Skill coverage could not be read', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: Spacing.md),
-              FilledButton.tonal(
-                key: SkillCoverageScreen.retryKey,
-                onPressed: () => context.read<SkillCoverageBloc>().add(const SkillCoverageStarted()),
-                child: const Text('Try again'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
