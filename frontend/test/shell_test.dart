@@ -7,6 +7,8 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/shell.dart';
 import 'package:lean_platform/theme.dart';
 
+import 'harness.dart' show loadAppFonts;
+
 /// Stand-in destinations, so these tests exercise the Shell's navigation and
 /// role filtering rather than whichever destinations the Platform happens to
 /// offer today.
@@ -108,6 +110,16 @@ BoxDecoration? _highlightOf(WidgetTester tester, String label) {
 void _useNarrowWindow(WidgetTester tester) {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(600, 800);
+  addTearDown(tester.view.reset);
+}
+
+/// A window comfortably above the 700px rail breakpoint, with a fixed
+/// `devicePixelRatio` — same reasoning as [_useNarrowWindow], needed so the
+/// two golden tests below (#105) render a deterministic pixel size rather
+/// than whatever `flutter test`'s own default test surface happens to be.
+void _useWideWindow(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = const Size(1200, 800);
   addTearDown(tester.view.reset);
 }
 
@@ -334,5 +346,42 @@ void main() {
     expect(find.text('Assets Screen'), findsOneWidget);
     final router = GoRouter.of(tester.element(find.byKey(PlatformShell.sidebarKey)));
     expect(router.state.uri.path, '/assets');
+  });
+
+  // Golden tests (issue #105): the Shell's own chrome, either side of the
+  // 700px rail breakpoint. These extend this file's own `_harness` mount
+  // rather than introducing a second one — AGENTS.md §5 allows exactly two
+  // test seams, and a golden here is `matchesGoldenFile` against the same
+  // pumped mount every other test in this file already uses, asserting on
+  // pixels instead of text. `_groupedDestinations` is used (not
+  // `_testDestinations`) so the golden actually exercises the grouped
+  // sidebar #100 landed, not the flat pre-grouping layout.
+  group('goldens (#105)', () {
+    // Real Roboto, not `flutter_test`'s placeholder-box font — see
+    // `loadAppFonts`'s own header in `harness.dart` for why a golden needs
+    // this and no other test in this file does.
+    setUpAll(loadAppFonts);
+
+    testWidgets('the expanded sidebar, above the 700px breakpoint', (tester) async {
+      _useWideWindow(tester);
+      await tester.pumpWidget(_harness(destinations: _groupedDestinations));
+      await tester.pumpAndSettle();
+
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/shell_expanded.png'),
+      );
+    });
+
+    testWidgets('the icon rail, below the 700px breakpoint', (tester) async {
+      _useNarrowWindow(tester);
+      await tester.pumpWidget(_harness(destinations: _groupedDestinations));
+      await tester.pumpAndSettle();
+
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/shell_rail.png'),
+      );
+    });
   });
 }

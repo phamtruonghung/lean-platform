@@ -61,8 +61,9 @@
 ///   a second filter dimension and a "Clear all" affordance once one
 ///   arrives — see `_Header`'s own comment on its filter row.
 ///
-/// - **Below 700px, cards; at or above, a table — never horizontal scroll.**
-///   See `_WorkOrdersList`'s own header.
+/// - **Below 800px of this Screen's own content width, cards; at or above,
+///   a table — never horizontal scroll.** See `_WorkOrdersList`'s own
+///   header.
 library;
 
 import 'package:flutter/material.dart';
@@ -115,10 +116,29 @@ class WorkOrdersScreen extends StatelessWidget {
   static const double maxWidth = 960;
 
   /// The breakpoint below which the list renders as one card per Work order
-  /// rather than a table (issue #104, Decision E) — the same 700px
-  /// `platform/shell.dart` already uses for its own rail/expanded switch, so
-  /// the whole app agrees on one width where "narrow" starts.
-  static const double narrowBreakpoint = 700;
+  /// rather than a table (issue #104, Decision E) — measured against this
+  /// Screen's own *content* width (`_WorkOrdersList`'s own `LayoutBuilder`,
+  /// issue #105), not the browser window. It no longer shares its number
+  /// with `platform/shell.dart`'s rail breakpoint on purpose: that one is
+  /// against the window, correctly, since the Shell is the thing that owns
+  /// the window; this Screen only ever sees what the Shell hands it after
+  /// its own sidebar (260px expanded, 64px rail) is already subtracted, so
+  /// the two breakpoints answer different questions and coincidentally
+  /// sharing a number was the bug, not a feature to preserve. #99's own
+  /// Implementation Decisions freeze the Shell's 700px/260px/64px; this
+  /// constant is free to be whatever keeps the table legible on its own.
+  ///
+  /// 800, not 700: at 700px of content the table still fits without
+  /// overlapping anything, but WO# — the one column every row is identified
+  /// by — is itself ellipsized ("WO-…"), and at 750px "Assignee" and
+  /// "Actions" run together with no gap between the header labels at all.
+  /// 800px is the first width sampled (in 50px steps) where every header
+  /// label sits on its own line with visible spacing and WO#, Summary, Org
+  /// Unit and Status all render in full — Asset and a long Assignee name are
+  /// still free to ellipsize, the same accepted trade-off the table's other
+  /// flexed cells already make. Chosen by rendering the actual Screen at
+  /// each width and reading it, not derived from the column arithmetic.
+  static const double narrowBreakpoint = 800;
 
   static const ValueKey<String> raiseKey = ValueKey<String>('work-orders-add');
   static const ValueKey<String> siteKey = ValueKey<String>('work-orders-site');
@@ -497,10 +517,15 @@ class _Notice extends StatelessWidget {
   }
 }
 
-/// The Work order list, laid out one of two ways depending on the window
-/// (issue #104, Decision E) — never a third, horizontally-scrolling shape:
+/// The Work order list, laid out one of two ways depending on this Screen's
+/// own *content* width, read off a `LayoutBuilder` rather than
+/// `MediaQuery.sizeOf(context).width` (issue #104, Decision E; measured
+/// correctly since issue #105 — see [WorkOrdersScreen.narrowBreakpoint]'s
+/// own doc comment for why the window was never the right thing to ask) —
+/// never a third, horizontally-scrolling shape:
 ///
-/// - At or above [WorkOrdersScreen.narrowBreakpoint] (700px): a table —
+/// - At or above [WorkOrdersScreen.narrowBreakpoint] (800px of content): a
+///   table —
 ///   a header row of column labels, then one `Row` of cells per Work order,
 ///   built from `Expanded`/`Flexible` cells with `TextOverflow.ellipsis`,
 ///   sized so it never needs to scroll sideways. Deliberately not Flutter's
@@ -526,34 +551,50 @@ class _WorkOrdersList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < WorkOrdersScreen.narrowBreakpoint;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: WorkOrdersScreen.maxWidth),
-        child: narrow
-            ? ListView.separated(
-                padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                itemCount: workOrders.length,
-                separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-                itemBuilder: (context, index) => _WorkOrderCard(
-                  workOrder: workOrders[index],
-                  canAssign: canAssign,
-                  canWork: canWork,
-                ),
-              )
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                children: [
-                  const _WorkOrderTableHeader(),
-                  for (final workOrder in workOrders)
-                    _WorkOrderTableRow(
-                      workOrder: workOrder,
+    // `constraints.maxWidth` — the box this Screen actually got from its own
+    // parent — not `MediaQuery.sizeOf(context).width`, the whole browser
+    // window (issue #105). This Screen always renders inside the Shell's
+    // content area, never the full window: at exactly 700px of *window*,
+    // `PlatformShell`'s own rail breakpoint (`shell.dart`, frozen by #99's
+    // own Implementation Decisions, not touched here) has just switched to
+    // its 260px expanded sidebar, leaving only 440px of actual content — so
+    // measuring the window told this Screen it had 700px when it truly had
+    // 440, and it chose the table on that false premise. A `LayoutBuilder`
+    // reads the real number instead, so [WorkOrdersScreen.narrowBreakpoint]
+    // keeps meaning what its own doc comment says: content width, not window
+    // width.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < WorkOrdersScreen.narrowBreakpoint;
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: WorkOrdersScreen.maxWidth),
+            child: narrow
+                ? ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    itemCount: workOrders.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                    itemBuilder: (context, index) => _WorkOrderCard(
+                      workOrder: workOrders[index],
                       canAssign: canAssign,
                       canWork: canWork,
                     ),
-                ],
-              ),
-      ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    children: [
+                      const _WorkOrderTableHeader(),
+                      for (final workOrder in workOrders)
+                        _WorkOrderTableRow(
+                          workOrder: workOrder,
+                          canAssign: canAssign,
+                          canWork: canWork,
+                        ),
+                    ],
+                  ),
+          ),
+        );
+      },
     );
   }
 }
@@ -564,6 +605,39 @@ class _WorkOrdersList extends StatelessWidget {
 /// [_WorkOrderTableRow]'s own actions cell so the columns before it stay
 /// aligned regardless of which row does or does not offer a primary button.
 const double _actionsColumnWidth = 232;
+
+/// The wide table's own fixed width for its Status column (issue #105) —
+/// sized to whichever of [WorkOrder.knownStatusLabels] paints widest under
+/// the `Chip`'s own Material 3 default label style (`textTheme.labelLarge`,
+/// `chip.dart`'s own `_ChipDefaultsM3.labelStyle`), plus that `Chip`'s own
+/// horizontal chrome at text scale 1 (`padding`: 8px each side; default
+/// `labelPadding`: 8px each side — both from `chip.dart`'s own defaults),
+/// with a further buffer on top rather than the exact figure.
+///
+/// This replaced an `Expanded(flex: 2)` cell that clipped "Approved" at the
+/// chip's own right edge — a `Chip` clips its label rather than overflowing
+/// loudly, so nothing here ever threw and no widget test caught it before a
+/// golden did (issue #105). A fixed width tied to the actual label set,
+/// rather than a bigger flex number tuned to fit today's longest label
+/// ("In progress"), keeps a later status added to `work_order.dart`'s own
+/// label map sized correctly without anyone needing to remember to also
+/// widen a column.
+///
+/// Shared between [_WorkOrderTableHeader]'s own label cell and every
+/// [_WorkOrderTableRow]'s own status cell, the same way [_actionsColumnWidth]
+/// already is, so the columns after Status stay aligned between rows.
+double _statusColumnWidth(BuildContext context) {
+  final style = Theme.of(context).textTheme.labelLarge;
+  final direction = Directionality.of(context);
+  final painter = TextPainter(textDirection: direction);
+  var widest = 0.0;
+  for (final label in WorkOrder.knownStatusLabels) {
+    painter.text = TextSpan(text: label, style: style);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  return widest + 32 + Spacing.sm;
+}
 
 class _WorkOrderTableHeader extends StatelessWidget {
   const _WorkOrderTableHeader();
@@ -583,7 +657,7 @@ class _WorkOrderTableHeader extends StatelessWidget {
           label('Summary', 4),
           label('Asset', 3),
           label('Org Unit', 2),
-          label('Status', 2),
+          SizedBox(width: _statusColumnWidth(context), child: Text('Status', style: style)),
           label('Assignee', 2),
           SizedBox(width: _actionsColumnWidth, child: Text('Actions', style: style)),
         ],
@@ -627,8 +701,8 @@ class _WorkOrderTableRow extends StatelessWidget {
           cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}', 3,
               style: muted),
           cell(workOrder.orgUnitName, 2, style: muted),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: _statusColumnWidth(context),
             child: Align(
               alignment: Alignment.centerLeft,
               child:
@@ -646,9 +720,10 @@ class _WorkOrderTableRow extends StatelessWidget {
   }
 }
 
-/// The narrow (<700px) card — one Work order's number, summary, Asset, Org
-/// Unit, status, assignee and actions stacked vertically, issue #104's own
-/// floor for the narrow layout (see `_WorkOrdersList`'s own header).
+/// The narrow (<800px of content) card — one Work order's number, summary,
+/// Asset, Org Unit, status, assignee and actions stacked vertically, issue
+/// #104's own floor for the narrow layout (see `_WorkOrdersList`'s own
+/// header).
 class _WorkOrderCard extends StatelessWidget {
   const _WorkOrderCard({required this.workOrder, required this.canAssign, required this.canWork});
 
