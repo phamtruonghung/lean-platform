@@ -384,6 +384,7 @@ Map<String, dynamic> accountJson(
   bool isActive = true,
   String approvalStatus = 'approved',
   List<Map<String, dynamic>> grants = const [],
+  DateTime? createdAt,
 }) =>
     {
       'id': id,
@@ -393,7 +394,7 @@ Map<String, dynamic> accountJson(
       'isActive': isActive,
       'approvalStatus': approvalStatus,
       'grants': grants,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': (createdAt ?? DateTime.now()).toUtc().toIso8601String(),
     };
 
 /// One Grant on an Account row, as the accounts listing sends it.
