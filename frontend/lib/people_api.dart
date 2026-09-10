@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 
 import 'people/assignee_candidate.dart';
 import 'people/employee.dart';
+import 'people/employee_ref.dart';
 import 'people/job_role.dart';
 import 'people/managed_account.dart';
 import 'people/org_unit.dart';
@@ -188,11 +189,25 @@ class PeopleApi {
             id: (account as Map<String, dynamic>)['id'].toString(),
             email: account['email'] as String,
             waitingSince: DateTime.parse(account['createdAt'] as String),
+            suggestedEmployee: _employeeRefFrom(account['suggestedEmployee']),
           ),
       ];
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }
+  }
+
+  /// The minimal Employee reference (issue #116, ADR-0022) both
+  /// `suggestedEmployee` (`GET /accounts/pending`) and the departure route's
+  /// own `linkedAccount` shape are not — this one is `{id, employeeNo,
+  /// displayName}`, read tolerantly: null in, null out.
+  static EmployeeRef? _employeeRefFrom(Object? raw) {
+    if (raw is! Map<String, dynamic>) return null;
+    return EmployeeRef(
+      id: raw['id'].toString(),
+      employeeNo: raw['employeeNo'] as String,
+      displayName: raw['displayName'] as String,
+    );
   }
 
   /// Rejects an Account still waiting in the queue.
@@ -747,9 +762,18 @@ class PeopleApi {
   /// #87) — a flag and a date, never a deletion (CONTEXT.md's own Departed
   /// entry). [terminatedOn] is `YYYY-MM-DD`, the day it took effect; left
   /// null, the server defaults it to today.
-  Future<void> setEmployeeDeparted(String accessToken, String id, {String? terminatedOn}) async {
+  ///
+  /// Returns the Account this Employee was still linked to, if any (issue
+  /// #116, ADR-0022) — `setEmployeeDeparted`'s own `linkedAccount`, which
+  /// rides along on this one response only. Null means nothing is linked, and
+  /// the departure dialog shows no warning at all in that case.
+  Future<LinkedAccountSummary?> setEmployeeDeparted(
+    String accessToken,
+    String id, {
+    String? terminatedOn,
+  }) async {
     final path = '/api/people/employees/$id/departure';
-    await _send(
+    final response = await _send(
       () => _client.post(
         Uri.parse(path),
         headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
@@ -757,6 +781,19 @@ class PeopleApi {
       ),
       path,
     );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final employee = body['employee'] as Map<String, dynamic>;
+      final linkedAccount = employee['linkedAccount'];
+      if (linkedAccount is! Map<String, dynamic>) return null;
+      return LinkedAccountSummary(
+        id: linkedAccount['id'].toString(),
+        email: linkedAccount['email'] as String,
+        isActive: linkedAccount['isActive'] == true,
+      );
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
   }
 
   /// Undoes a departure
@@ -1120,12 +1157,21 @@ class PeopleApi {
   /// this one method can serve both admitting a pending Account and
   /// correcting an already-admitted one (issue #36): the precondition is
   /// whichever standing the caller actually read the Account at.
+  ///
+  /// [employeeId] confirms the Approval queue's own suggestion, or names a
+  /// different Employee outright (issue #116, ADR-0022) — left null, no
+  /// `employeeId` key is sent at all, which `approveAccount` (service.js)
+  /// treats as "leave whatever link this Account already holds untouched",
+  /// not as "clear it": a plain Approval with no Employee chosen (the
+  /// head-office Account, the integration Account) is ordinary, not an
+  /// error, and never overwrites a link a correction set earlier.
   Future<void> admitAccount(
     String accessToken, {
     required String accountId,
     required String role,
     required String expectedApprovalStatus,
     List<Map<String, Object?>> grants = const [],
+    String? employeeId,
   }) async {
     await _send(
       () => _client.post(
@@ -1138,9 +1184,35 @@ class PeopleApi {
           'role': role,
           'grants': grants,
           'expectedApprovalStatus': expectedApprovalStatus,
+          'employeeId': ?employeeId,
         }),
       ),
       '/api/people/accounts/$accountId/approval',
+    );
+  }
+
+  /// Corrects, or clears, an Account's Employee link afterwards
+  /// (`PUT /api/people/accounts/:id/employee`, administrator only, issue
+  /// #116, ADR-0022) — the route [admitAccount]'s optional `employeeId` is
+  /// not: that one leaves an untouched link alone when omitted, this one
+  /// always carries the key, since `setAccountEmployee` (service.js) 400s
+  /// without it. [employeeId] null clears the link; a value sets or moves it.
+  /// Refuses an administrator acting on their own Account (403, ADR-0013),
+  /// the same self-action refusal [admitAccount] and [setAccountActive]
+  /// already carry for their own routes.
+  Future<void> setAccountEmployee(
+    String accessToken, {
+    required String accountId,
+    required String? employeeId,
+  }) async {
+    final path = '/api/people/accounts/$accountId/employee';
+    await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'employeeId': employeeId}),
+      ),
+      path,
     );
   }
 
@@ -1177,6 +1249,11 @@ class PeopleApi {
       isActive: account['isActive'] == true,
       approvalStatus: account['approvalStatus'] as String,
       createdAt: DateTime.parse(account['createdAt'] as String),
+      // The bare id only (issue #116) — `listAccounts` (service.js) answers
+      // `toAccount`'s own shape, which carries no Employee number or display
+      // name alongside it. `AccountsBloc` resolves [linkedEmployee] itself,
+      // against the Directory it reads alongside this list.
+      employeeId: account['employeeId']?.toString(),
       grants: [
         if (grants is List<dynamic>)
           for (final grant in grants.whereType<Map<String, dynamic>>())

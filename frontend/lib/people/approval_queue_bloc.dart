@@ -33,10 +33,17 @@ class ApprovalQueueAdmissionConfirmed extends ApprovalQueueEvent {
     required this.accountId,
     required this.role,
     this.grants = const [],
+    this.employeeId,
   });
   final String accountId;
   final String role;
   final List<Map<String, Object?>> grants;
+
+  /// The Employee confirmed at Approval — the suggestion, accepted or
+  /// overridden, or null for no Employee at all (issue #116, ADR-0022). Sent
+  /// through to [PeopleApi.admitAccount] exactly as given: null here means no
+  /// `employeeId` key reaches the wire at all, not an explicit clear.
+  final String? employeeId;
 }
 
 sealed class ApprovalQueueState {
@@ -185,6 +192,7 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
         role: event.role,
         grants: event.grants,
         expectedApprovalStatus: 'pending',
+        employeeId: event.employeeId,
       );
       // The row is gone because this request is what removed it — the same
       // reasoning as the rejection above: no refetch for the ordinary case.
@@ -198,7 +206,15 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
         ),
       );
     } on PeopleApiException catch (error) {
-      if (error.statusCode == 409) {
+      // A 409 here is ordinarily "someone else already dealt with this row"
+      // (requireApprovalStatusUnchanged, service.js) — but issue #116 gives
+      // `employeeId` two 409s of its own (Departed, already linked to a
+      // different Account), which `approveAccount` only ever reaches once
+      // the approval-status precondition has already passed. The two never
+      // collide within one call, so distinguishing by the refusal's own
+      // wording is exact, not a heuristic — see `isEmployeeLinkRefusal`'s
+      // own header.
+      if (error.statusCode == 409 && !isEmployeeLinkRefusal(error.message)) {
         await _load(emit, notice: alreadyDecidedMessage);
         return;
       }
@@ -220,3 +236,17 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
     }
   }
 }
+
+/// Whether a 409's own message is one of the two Employee-link refusals
+/// `requireLinkableEmployee` (service.js) raises — "This Employee has
+/// Departed and cannot be linked to an Account" or "This Employee is already
+/// linked to a different Account" — rather than the approval-status
+/// precondition's "This Account is no longer … already dealt with it."
+/// (issue #116). Matched by wording, not a carried error code, because
+/// [PeopleApiException] only ever surfaces the server's status and message —
+/// the same information a real caller has. Shared with `AccountsBloc`'s own
+/// `PUT /accounts/:id/employee` handling so the two never drift onto
+/// different detection rules for the same two refusals.
+bool isEmployeeLinkRefusal(String message) =>
+    message.contains('has Departed and cannot be linked') ||
+    message.contains('is already linked to a different Account');

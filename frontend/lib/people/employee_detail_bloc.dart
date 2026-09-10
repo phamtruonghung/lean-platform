@@ -48,6 +48,16 @@ class EmployeeDetailReinstatementConfirmed extends EmployeeDetailEvent {
   const EmployeeDetailReinstatementConfirmed();
 }
 
+/// The administrator has chosen to deactivate the Account a just-Departed
+/// Employee was still linked to (issue #116, ADR-0022) — offered only when
+/// [EmployeeDetailLoaded.departureLinkedAccount] is not null, and never
+/// dispatched automatically: a departure must not deactivate the linked
+/// Account silently.
+class EmployeeDetailLinkedAccountDeactivationConfirmed extends EmployeeDetailEvent {
+  const EmployeeDetailLinkedAccountDeactivationConfirmed({required this.accountId});
+  final String accountId;
+}
+
 /// Assigns this Employee to an Org Unit (issue #88) — the first Assignment,
 /// or a transfer when one is already open; `createAssignment` (directory.js)
 /// decides which from whether an open Assignment already exists, so this
@@ -109,6 +119,7 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
     this.isMutating = false,
     this.mutationFailure,
     this.notice,
+    this.departureLinkedAccount,
   });
 
   final EmployeeDetail employee;
@@ -144,6 +155,15 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
   /// reinstatement already follow).
   final String? notice;
 
+  /// The Account a departure just recorded through this Bloc found still
+  /// linked to this Employee, if any (issue #116, ADR-0022) — set only by the
+  /// departure that just landed, and cleared on every subsequent emit the
+  /// same way [mutationFailure]/[notice] already are: it is a one-shot "this
+  /// just happened" signal, not standing state. Null means either nothing was
+  /// linked, or the warning has already been dealt with (deactivated, or
+  /// dismissed by the dialog closing).
+  final LinkedAccountSummary? departureLinkedAccount;
+
   EmployeeDetailLoaded copyWith({
     EmployeeDetail? employee,
     List<JobRole>? jobRoles,
@@ -151,6 +171,7 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
     bool? isMutating,
     String? mutationFailure,
     String? notice,
+    LinkedAccountSummary? departureLinkedAccount,
   }) =>
       EmployeeDetailLoaded(
         employee: employee ?? this.employee,
@@ -161,6 +182,7 @@ class EmployeeDetailLoaded extends EmployeeDetailState {
         // `DirectoryLoaded.copyWith` gives `addFailure`.
         mutationFailure: mutationFailure,
         notice: notice,
+        departureLinkedAccount: departureLinkedAccount,
       );
 }
 
@@ -180,6 +202,7 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
     on<EmployeeDetailCorrectionConfirmed>(_onCorrectionConfirmed);
     on<EmployeeDetailDepartureConfirmed>(_onDepartureConfirmed);
     on<EmployeeDetailReinstatementConfirmed>(_onReinstatementConfirmed);
+    on<EmployeeDetailLinkedAccountDeactivationConfirmed>(_onLinkedAccountDeactivationConfirmed);
     on<EmployeeDetailAssignmentConfirmed>(_onAssignmentConfirmed);
     on<EmployeeDetailSkillRecorded>(_onSkillRecorded);
   }
@@ -244,7 +267,11 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
   /// [notice] is carried into the freshly emitted state for a mutation (like
   /// reinstatement) that reports on a Screen-level banner rather than inside
   /// a dialog.
-  Future<void> _reload(Emitter<EmployeeDetailState> emit, {String? notice}) async {
+  Future<void> _reload(
+    Emitter<EmployeeDetailState> emit, {
+    String? notice,
+    LinkedAccountSummary? departureLinkedAccount,
+  }) async {
     final token = _auth.currentAccessToken;
     if (token == null) {
       emit(const EmployeeDetailUnavailable(message: signedOutMessage));
@@ -262,7 +289,15 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
       final employee = _lastRequestedEmployeeId == null
           ? await _api.fetchMyEmployeeRecord(token)
           : await _api.fetchEmployeeDetail(token, _lastRequestedEmployeeId!);
-      emit(EmployeeDetailLoaded(employee: employee, jobRoles: jobRoles, skills: skills, notice: notice));
+      emit(
+        EmployeeDetailLoaded(
+          employee: employee,
+          jobRoles: jobRoles,
+          skills: skills,
+          notice: notice,
+          departureLinkedAccount: departureLinkedAccount,
+        ),
+      );
     } on PeopleApiException catch (error) {
       emit(EmployeeDetailUnavailable(message: error.message));
     }
@@ -307,8 +342,46 @@ class EmployeeDetailBloc extends Bloc<EmployeeDetailEvent, EmployeeDetailState> 
 
     emit(current.copyWith(isMutating: true, mutationFailure: null));
     try {
-      await _api.setEmployeeDeparted(token, current.employee.id, terminatedOn: event.terminatedOn);
-      await _reload(emit, notice: '${current.employee.displayName} has left.');
+      final linkedAccount = await _api.setEmployeeDeparted(
+        token,
+        current.employee.id,
+        terminatedOn: event.terminatedOn,
+      );
+      await _reload(
+        emit,
+        notice: '${current.employee.displayName} has left.',
+        departureLinkedAccount: linkedAccount,
+      );
+    } on PeopleApiException catch (error) {
+      final settled = state;
+      if (settled is! EmployeeDetailLoaded) return;
+      emit(settled.copyWith(isMutating: false, mutationFailure: error.message));
+    }
+  }
+
+  /// Deactivates the Account [EmployeeDetailLoaded.departureLinkedAccount]
+  /// named, after the administrator explicitly chooses to (issue #116,
+  /// ADR-0022) — the departure already landed before this ever runs, so a
+  /// failure here leaves the departure exactly as it was, not undone.
+  Future<void> _onLinkedAccountDeactivationConfirmed(
+    EmployeeDetailLinkedAccountDeactivationConfirmed event,
+    Emitter<EmployeeDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! EmployeeDetailLoaded || current.isMutating) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(mutationFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isMutating: true, mutationFailure: null));
+    try {
+      await _api.setAccountActive(token, accountId: event.accountId, isActive: false);
+      // The warning has now been dealt with — cleared, not carried forward,
+      // so the dialog's own listener reads this as "settled" and closes.
+      emit(current.copyWith(isMutating: false, departureLinkedAccount: null));
     } on PeopleApiException catch (error) {
       final settled = state;
       if (settled is! EmployeeDetailLoaded) return;

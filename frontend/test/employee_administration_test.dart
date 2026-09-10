@@ -191,6 +191,61 @@ void main() {
     // entry) — the record is still on screen, reading as gone, not gone.
     expect(find.byKey(EmployeeDetailScreen.reinstateKey), findsOneWidget);
     expect(find.byKey(EmployeeDetailScreen.departKey), findsNothing);
+    // No linked Account was scripted (issue #116): no warning, no extra step.
+    expect(find.byKey(EmployeeDepartureDialog.linkedAccountWarningKey), findsNothing);
+  });
+
+  // The Employee link's other half (issue #116, ADR-0022): departing an
+  // Employee who has a linked Account warns about it, without blocking or
+  // silently deactivating.
+
+  testWidgets(
+      'departing an Employee with a linked Account warns, names the Account, and does not '
+      'deactivate it silently', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+      employeeLinkedAccounts: {'7': linkedAccountJson('50', 'alice@b.c')},
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.departKey));
+    await tapIn(tester, find.byKey(EmployeeDepartureDialog.submitKey));
+
+    // The departure already landed — the dialog stays open only to warn, not
+    // to gate it.
+    expect(wire.employeeDepartures.length, 1);
+    expect(find.byKey(EmployeeDetailScreen.departedKey), findsOneWidget);
+
+    expect(find.byType(EmployeeDepartureDialog), findsOneWidget);
+    expect(find.byKey(EmployeeDepartureDialog.linkedAccountWarningKey), findsOneWidget);
+    expect(find.textContaining('alice@b.c'), findsOneWidget);
+    expect(wire.activations, isEmpty);
+
+    await tapIn(tester, find.byKey(EmployeeDepartureDialog.deactivateLinkedAccountKey));
+
+    expect(wire.activations, [('50', false)]);
+    expect(find.byType(EmployeeDepartureDialog), findsNothing);
+  });
+
+  testWidgets('choosing "Not now" on the linked-Account warning closes without deactivating',
+      (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+      employeeLinkedAccounts: {'7': linkedAccountJson('50', 'alice@b.c')},
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.departKey));
+    await tapIn(tester, find.byKey(EmployeeDepartureDialog.submitKey));
+
+    await tapIn(tester, find.byKey(EmployeeDepartureDialog.skipDeactivationKey));
+
+    expect(find.byType(EmployeeDepartureDialog), findsNothing);
+    expect(wire.activations, isEmpty);
+    // The departure itself was not undone by declining to deactivate.
+    expect(find.byKey(EmployeeDetailScreen.departedKey), findsOneWidget);
   });
 
   testWidgets('a terminatedOn before hiredOn surfaces the API\'s 400 on the departure form',

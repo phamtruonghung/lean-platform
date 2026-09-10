@@ -8,8 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/people/account_correction_dialog.dart';
+import 'package:lean_platform/people/account_employee_dialog.dart';
 import 'package:lean_platform/people/accounts_screen.dart';
 import 'package:lean_platform/people/approval_queue_screen.dart';
+import 'package:lean_platform/people/employee_link_picker.dart';
 import 'package:lean_platform/people/org_unit.dart';
 import 'package:lean_platform/people/org_unit_picker.dart';
 import 'package:lean_platform/people/pending_account.dart' show waitingFor;
@@ -19,7 +21,7 @@ import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/shell.dart';
 
 import 'harness.dart'
-    show FakeAuthGateway, FakeWire, accountJson, grantJson, orgUnitJson, pumpApp,
+    show FakeAuthGateway, FakeWire, accountJson, employeeJson, grantJson, orgUnitJson, pumpApp,
         siteJson, tapIn;
 import 'org_unit_picker_test.dart' show grant;
 
@@ -30,14 +32,20 @@ Future<void> openAccounts(WidgetTester tester, FakeWire wire) => pumpApp(
       initialLocation: Routes.accounts,
     );
 
-FakeWire _plant({List<Map<String, dynamic>>? accounts}) => FakeWire(
+FakeWire _plant({List<Map<String, dynamic>>? accounts, List<Map<String, dynamic>>? employees}) =>
+    FakeWire(
       accounts: accounts,
+      employees: employees,
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       orgUnits: {
         null: [orgUnitJson('10', 'Assembly', unitType: 'area')],
         '10': [orgUnitJson('11', 'Line 1', parentId: '10', unitType: 'line')],
       },
     );
+
+Future<void> openEmployeeLink(WidgetTester tester, String id) async {
+  await tapIn(tester, find.byKey(AccountsScreen.linkEmployeeKey(id)));
+}
 
 Future<void> openCorrection(WidgetTester tester, String id) async {
   await tapIn(tester, find.byKey(AccountsScreen.correctKey(id)));
@@ -480,5 +488,107 @@ void main() {
 
     expect(find.byKey(AccountsScreen.activeKey('7')), findsOneWidget);
     expect(find.byKey(AccountsScreen.correctKey('7')), findsOneWidget);
+  });
+
+  // The Employee link (issue #116, ADR-0022).
+
+  testWidgets('the Employee cell names the linked Employee, or says none — neither is a problem',
+      (tester) async {
+    await openAccounts(
+      tester,
+      _plant(
+        accounts: [
+          accountJson('7', 'linked@b.c', employeeId: '40'),
+          accountJson('8', 'unlinked@b.c'),
+        ],
+        employees: [employeeJson('40', 'EMP-40', 'Jane Doe')],
+      ),
+    );
+
+    expect(find.byKey(AccountsScreen.employeeKey('7')), findsOneWidget);
+    expect(find.text('EMP-40 · Jane Doe'), findsOneWidget);
+    expect(find.byKey(AccountsScreen.employeeKey('8')), findsOneWidget);
+    expect(find.text('No Employee linked'), findsOneWidget);
+  });
+
+  testWidgets('linking an Employee from the Accounts Screen sends PUT /accounts/:id/employee',
+      (tester) async {
+    final wire = _plant(
+      accounts: [accountJson('7', 'unlinked@b.c')],
+      employees: [employeeJson('40', 'EMP-40', 'Jane Doe')],
+    );
+    await openAccounts(tester, wire);
+
+    await openEmployeeLink(tester, '7');
+    expect(find.byType(AccountEmployeeDialog), findsOneWidget);
+
+    await tester.enterText(find.byKey(EmployeeLinkPicker.searchFieldKey), 'Jane');
+    await tapIn(tester, find.byKey(EmployeeLinkPicker.searchButtonKey));
+    await tapIn(tester, find.byKey(EmployeeLinkPicker.resultKey('40')));
+    await tapIn(tester, find.byKey(AccountEmployeeDialog.submitKey));
+
+    expect(wire.employeeLinkPuts, [('7', '40')]);
+    expect(find.byType(AccountEmployeeDialog), findsNothing);
+    expect(find.text('EMP-40 · Jane Doe'), findsOneWidget);
+    expect(find.byKey(AccountsScreen.noticeKey), findsOneWidget);
+  });
+
+  testWidgets('unlinking an Employee from the Accounts Screen sends employeeId: null',
+      (tester) async {
+    final wire = _plant(
+      accounts: [accountJson('7', 'linked@b.c', employeeId: '40')],
+      employees: [employeeJson('40', 'EMP-40', 'Jane Doe')],
+    );
+    await openAccounts(tester, wire);
+
+    await openEmployeeLink(tester, '7');
+    await tapIn(tester, find.byKey(EmployeeLinkPicker.clearKey));
+    await tapIn(tester, find.byKey(AccountEmployeeDialog.submitKey));
+
+    expect(wire.employeeLinkPuts, [('7', null)]);
+    expect(find.text('No Employee linked'), findsOneWidget);
+  });
+
+  testWidgets("the link control is absent on the caller's own row, matching the backend's "
+      'ADR-0013 refusal', (tester) async {
+    await openAccounts(
+      tester,
+      _plant(
+        accounts: [
+          accountJson('1', 'admin@b.c', role: Roles.admin, employeeId: '40'),
+          accountJson('7', 'other@b.c'),
+        ],
+        employees: [employeeJson('40', 'EMP-40', 'Jane Doe')],
+      ),
+    );
+
+    expect(find.byKey(AccountsScreen.linkEmployeeKey('1')), findsNothing);
+    // The value cell still names the link — showing it is not an action.
+    expect(find.byKey(AccountsScreen.employeeKey('1')), findsOneWidget);
+    expect(find.text('EMP-40 · Jane Doe'), findsOneWidget);
+
+    expect(find.byKey(AccountsScreen.linkEmployeeKey('7')), findsOneWidget);
+  });
+
+  testWidgets('each of the three Employee-link refusals surfaces its own message', (tester) async {
+    final wire = _plant(accounts: [accountJson('7', 'unlinked@b.c')])
+      ..putEmployeeLinkStatus = 404
+      ..putEmployeeLinkMessage = 'employeeId does not name an existing Employee';
+    await openAccounts(tester, wire);
+
+    await openEmployeeLink(tester, '7');
+    await tapIn(tester, find.byKey(AccountEmployeeDialog.submitKey));
+
+    expect(find.byKey(AccountEmployeeDialog.failureKey), findsOneWidget);
+    expect(find.text('employeeId does not name an existing Employee'), findsOneWidget);
+
+    wire.putEmployeeLinkStatus = 409;
+    wire.putEmployeeLinkMessage = 'This Employee has Departed and cannot be linked to an Account';
+    await tapIn(tester, find.byKey(AccountEmployeeDialog.submitKey));
+    expect(find.text('This Employee has Departed and cannot be linked to an Account'), findsOneWidget);
+
+    wire.putEmployeeLinkMessage = 'This Employee is already linked to a different Account';
+    await tapIn(tester, find.byKey(AccountEmployeeDialog.submitKey));
+    expect(find.text('This Employee is already linked to a different Account'), findsOneWidget);
   });
 }

@@ -10,6 +10,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import 'employee.dart';
+import 'employee_ref.dart';
 import 'managed_account.dart';
 
 sealed class AccountsEvent {
@@ -56,6 +58,20 @@ class AccountsCorrectionConfirmed extends AccountsEvent {
   final List<Map<String, Object?>> grants;
 }
 
+/// The administrator has chosen an Employee to link this already-admitted
+/// Account to, or chosen to clear the link (issue #116, ADR-0022) — the
+/// correction route, `PUT /accounts/:id/employee`, separate from Approval:
+/// unlike [AccountsCorrectionConfirmed], this never touches role or Grants.
+class AccountsEmployeeLinkConfirmed extends AccountsEvent {
+  const AccountsEmployeeLinkConfirmed({required this.accountId, required this.employeeId});
+  final String accountId;
+
+  /// Null clears the link — always sent as an explicit key, unlike
+  /// [ApprovalQueueAdmissionConfirmed.employeeId], since `setAccountEmployee`
+  /// (service.js) requires it.
+  final String? employeeId;
+}
+
 sealed class AccountsState {
   const AccountsState();
 }
@@ -70,6 +86,8 @@ class AccountsLoaded extends AccountsState {
     this.busyId,
     this.correctingId,
     this.correctionFailure,
+    this.employeeLinkingId,
+    this.employeeLinkFailure,
     this.notice,
   });
 
@@ -95,6 +113,16 @@ class AccountsLoaded extends AccountsState {
   /// already been re-read and the dialog's own copy of the row is stale.
   final String? correctionFailure;
 
+  /// The row whose Employee link is being changed, if any (issue #116) — kept
+  /// apart from [busyId] and [correctingId] for the same reason those two are
+  /// kept apart from each other: `AccountEmployeeDialog` needs to know that
+  /// *its own* act is the one still running.
+  final String? employeeLinkingId;
+
+  /// Why the last Employee-link change did not land, if it did not — the same
+  /// role [correctionFailure] plays for a role/Grants correction.
+  final String? employeeLinkFailure;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [AccountsUnavailable].
   final String? notice;
@@ -116,6 +144,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     on<AccountsRequested>(_onRequested);
     on<AccountsActiveToggled>(_onActiveToggled);
     on<AccountsCorrectionConfirmed>(_onCorrectionConfirmed);
+    on<AccountsEmployeeLinkConfirmed>(_onEmployeeLinkConfirmed);
   }
 
   final PeopleApi _api;
@@ -137,8 +166,27 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       return;
     }
     try {
-      final accounts = await _api.fetchAccounts(token)..sort(_byStandingThenEmail);
-      emit(AccountsLoaded(accounts: accounts, notice: event.notice));
+      // The Directory is read alongside the register (issue #116, ADR-0022)
+      // to resolve each Account's own `employeeId` into a name: `GET
+      // /accounts` carries only the bare id (`ManagedAccount`'s own header),
+      // and the Directory is readable platform-wide with no Grant filtering
+      // regardless of caller (ADR-0009), so this is one ordinary extra read,
+      // not a second gate. `includeDeparted: true` so a link to an Employee
+      // who has since Departed still resolves to a name rather than nothing.
+      final results = await Future.wait([
+        _api.fetchAccounts(token),
+        _api.fetchEmployees(token, includeDeparted: true),
+      ]);
+      final accounts = results[0] as List<ManagedAccount>;
+      final employees = {
+        for (final employee in results[1] as List<Employee>)
+          employee.id: EmployeeRef(id: employee.id, employeeNo: employee.employeeNo, displayName: employee.displayName),
+      };
+      final enriched = [
+        for (final account in accounts)
+          account.employeeId == null ? account : account.withLinkedEmployee(employees[account.employeeId]),
+      ]..sort(_byStandingThenEmail);
+      emit(AccountsLoaded(accounts: enriched, notice: event.notice));
     } on PeopleApiException catch (error) {
       emit(AccountsUnavailable(message: error.message));
     }
@@ -154,7 +202,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     // event was aimed at (a correction dialog watching a different id) has no
     // way to tell "ignored" apart from "nothing happened yet" otherwise, and
     // would be left waiting on a click that will never resolve.
-    if (current.busyId != null || current.correctingId != null) {
+    if (current.busyId != null || current.correctingId != null || current.employeeLinkingId != null) {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
@@ -193,6 +241,8 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
                   approvalStatus: account.approvalStatus,
                   createdAt: account.createdAt,
                   grants: account.grants,
+                  employeeId: account.employeeId,
+                  linkedEmployee: account.linkedEmployee,
                 )
               else
                 account,
@@ -220,7 +270,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     // row is busy, which the dialog cannot distinguish from "my own
     // correction just landed", and it would wrongly close claiming success
     // for a save that never happened.
-    if (current.busyId != null || current.correctingId != null) {
+    if (current.busyId != null || current.correctingId != null || current.employeeLinkingId != null) {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
@@ -255,6 +305,54 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
         return;
       }
       emit(AccountsLoaded(accounts: current.accounts, correctionFailure: error.message));
+    }
+  }
+
+  /// Links, or unlinks, an already-admitted Account's Employee (issue #116,
+  /// ADR-0022) — `PUT /accounts/:id/employee`, never Approval: this event
+  /// carries no role and no Grants, and never touches either. Unlike
+  /// [_onCorrectionConfirmed], `setAccountEmployee` raises no "someone else
+  /// already moved this row" 409 of its own — every failure here is one of
+  /// the three Employee-link refusals, or a plain server failure, and both
+  /// are shown to the open dialog exactly as the server worded them.
+  Future<void> _onEmployeeLinkConfirmed(
+    AccountsEmployeeLinkConfirmed event,
+    Emitter<AccountsState> emit,
+  ) async {
+    final current = state;
+    if (current is! AccountsLoaded) return;
+    if (current.busyId != null || current.correctingId != null || current.employeeLinkingId != null) {
+      emit(
+        AccountsLoaded(
+          accounts: current.accounts,
+          employeeLinkFailure: 'Another action is already in progress. Try again in a moment.',
+        ),
+      );
+      return;
+    }
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(AccountsLoaded(accounts: current.accounts, employeeLinkFailure: signedOutMessage));
+      return;
+    }
+
+    emit(AccountsLoaded(accounts: current.accounts, employeeLinkingId: event.accountId));
+    try {
+      await _api.setAccountEmployee(token, accountId: event.accountId, employeeId: event.employeeId);
+      // Re-read rather than patched in place: the Directory join this Screen
+      // needs to name the new link (`_onRequested`'s own header) is not
+      // something this response carries, the same reason a role/Grants
+      // correction re-reads instead of patching in place.
+      add(
+        AccountsRequested(
+          notice: event.employeeId == null
+              ? 'The Employee link was removed.'
+              : 'The Account is now linked to that Employee.',
+        ),
+      );
+    } on PeopleApiException catch (error) {
+      emit(AccountsLoaded(accounts: current.accounts, employeeLinkFailure: error.message));
     }
   }
 }
