@@ -20,6 +20,7 @@ import '../platform/auth_gateway.dart';
 import '../platform/destinations.dart';
 import '../theme.dart';
 import 'approval_queue_bloc.dart';
+import 'employee_link_picker.dart';
 import 'org_unit_picker.dart';
 import 'org_unit_picker_bloc.dart';
 import 'pending_account.dart';
@@ -81,6 +82,12 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
   /// is what keeps the choice on screen for a second attempt.
   String? _role;
 
+  /// The Employee to confirm at Approval (issue #116, ADR-0022) — starts on
+  /// the queue's own suggestion, if it carried one, and changes only when
+  /// [EmployeeLinkPicker] reports a different choice. Null means no
+  /// `employeeId` is sent at all, which is ordinary, not a shortfall.
+  late String? _employeeId = widget.account.suggestedEmployee?.id;
+
   /// An Approval has been dispatched and has not settled yet. Local rather
   /// than read off the Bloc so it is already true within the same frame as the
   /// tap: a second tap before the first emit lands finds it set.
@@ -107,6 +114,7 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
             accountId: widget.account.id,
             role: role,
             grants: grants,
+            employeeId: _employeeId,
           ),
         );
   }
@@ -157,6 +165,13 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
                     'the role chosen here.',
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  EmployeeLinkPicker(
+                    suggestion: widget.account.suggestedEmployee,
+                    initial: widget.account.suggestedEmployee,
+                    enabled: !_awaiting,
+                    onChanged: (employee) => setState(() => _employeeId = employee?.id),
                   ),
                   const SizedBox(height: Spacing.md),
                   RadioGroup<String>(

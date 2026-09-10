@@ -9,10 +9,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/auth/awaiting_approval_screen.dart';
 import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/people/admission_dialog.dart';
+import 'package:lean_platform/people/employee_link_picker.dart';
 import 'package:lean_platform/platform/destinations.dart';
 
 import 'approval_queue_test.dart' show openApprovals;
-import 'harness.dart' show FakeAuthGateway, FakeWire, meClient, pendingJson, pumpApp;
+import 'harness.dart'
+    show
+        FakeAuthGateway,
+        FakeWire,
+        employeeJson,
+        meClient,
+        pendingJson,
+        pumpApp,
+        suggestedEmployeeJson,
+        tapIn;
 
 final DateTime _twoDaysAgo = DateTime.now().subtract(const Duration(days: 2, hours: 1));
 
@@ -53,8 +63,10 @@ void main() {
       Roles.manager,
       Roles.admin,
     ]);
-    // No free text anywhere in the decision.
-    expect(find.byType(TextField), findsNothing);
+    // No free text for the role itself — the only TextField in the decision
+    // is the Employee link picker's own Directory search (issue #116).
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byKey(EmployeeLinkPicker.searchFieldKey), findsOneWidget);
   });
 
   testWidgets('with no role chosen nothing can be submitted and nothing is sent', (tester) async {
@@ -211,5 +223,183 @@ void main() {
 
     expect(find.byType(AwaitingApprovalScreen), findsNothing);
     expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  // The Employee link (issue #116, ADR-0022): the Approval flow offers the
+  // suggested Employee, confirming it as part of approving rather than in a
+  // separate step.
+
+  testWidgets(
+      'the suggested Employee renders, named by employee number and display name, and is '
+      'sent on approval', (tester) async {
+    final wire = FakeWire(
+      queue: [
+        pendingJson(
+          '7',
+          'first@b.c',
+          _twoDaysAgo,
+          suggestedEmployee: suggestedEmployeeJson('40', 'EMP-40', 'Jane Doe'),
+        ),
+      ],
+    );
+    await _openDecision(tester, wire);
+
+    expect(find.textContaining('EMP-40'), findsOneWidget);
+    expect(find.textContaining('Jane Doe'), findsOneWidget);
+
+    await chooseRole(tester, Roles.operator);
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(wire.approvals.single['employeeId'], '40');
+  });
+
+  testWidgets('an administrator can override the suggestion by searching the Directory, and the '
+      'chosen id is sent instead', (tester) async {
+    final wire = FakeWire(
+      queue: [
+        pendingJson(
+          '7',
+          'first@b.c',
+          _twoDaysAgo,
+          suggestedEmployee: suggestedEmployeeJson('40', 'EMP-40', 'Jane Doe'),
+        ),
+      ],
+      employees: [employeeJson('41', 'EMP-41', 'Alex Rios')],
+    );
+    await _openDecision(tester, wire);
+
+    await tester.enterText(find.byKey(EmployeeLinkPicker.searchFieldKey), 'Alex');
+    await tapIn(tester, find.byKey(EmployeeLinkPicker.searchButtonKey));
+
+    expect(find.byKey(EmployeeLinkPicker.resultKey('41')), findsOneWidget);
+    await tapIn(tester, find.byKey(EmployeeLinkPicker.resultKey('41')));
+
+    expect(find.textContaining('Alex Rios'), findsOneWidget);
+    expect(find.textContaining('Jane Doe'), findsNothing);
+
+    await chooseRole(tester, Roles.operator);
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(wire.approvals.single['employeeId'], '41');
+  });
+
+  testWidgets('approving with no Employee at all sends no employeeId — the head-office and '
+      'integration Accounts are ordinary, not errors', (tester) async {
+    final wire = FakeWire(
+      queue: [
+        pendingJson(
+          '7',
+          'first@b.c',
+          _twoDaysAgo,
+          suggestedEmployee: suggestedEmployeeJson('40', 'EMP-40', 'Jane Doe'),
+        ),
+      ],
+    );
+    await _openDecision(tester, wire);
+
+    await tapIn(tester, find.byKey(EmployeeLinkPicker.clearKey));
+    expect(find.text('No Employee will be linked.'), findsOneWidget);
+
+    await chooseRole(tester, Roles.operator);
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(wire.approvals.single.containsKey('employeeId'), isFalse);
+    expect(find.textContaining('Admitted to the Platform as operator'), findsOneWidget);
+  });
+
+  testWidgets('a pending Account with no suggestion renders the search, not an empty slot or a '
+      'warning', (tester) async {
+    final wire = _oneWaiting();
+    await _openDecision(tester, wire);
+
+    expect(find.byKey(EmployeeLinkPicker.searchFieldKey), findsOneWidget);
+    expect(find.text('No Employee will be linked.'), findsOneWidget);
+
+    await chooseRole(tester, Roles.admin);
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(wire.approvals.single.containsKey('employeeId'), isFalse);
+  });
+
+  // Each of the three Approval refusals from #115 surfaces its own message,
+  // not the generic "someone else already dealt with it" 409 — even though
+  // two of the three share that status code.
+
+  testWidgets('an employeeId naming no Employee at all (404) surfaces its own message',
+      (tester) async {
+    final wire = FakeWire(
+      queue: [
+        pendingJson(
+          '7',
+          'first@b.c',
+          _twoDaysAgo,
+          suggestedEmployee: suggestedEmployeeJson('40', 'EMP-40', 'Jane Doe'),
+        ),
+      ],
+      approveStatus: 404,
+      approveMessage: 'employeeId does not name an existing Employee',
+    );
+    await _openDecision(tester, wire);
+    await chooseRole(tester, Roles.operator);
+
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Admit this Account'), findsOneWidget);
+    expect(find.text('employeeId does not name an existing Employee'), findsWidgets);
+  });
+
+  testWidgets('an employeeId naming a Departed Employee (409) surfaces its own message, not the '
+      'generic already-dealt-with notice', (tester) async {
+    final wire = FakeWire(
+      queue: [
+        pendingJson(
+          '7',
+          'first@b.c',
+          _twoDaysAgo,
+          suggestedEmployee: suggestedEmployeeJson('40', 'EMP-40', 'Jane Doe'),
+        ),
+      ],
+      approveStatus: 409,
+      approveMessage: 'This Employee has Departed and cannot be linked to an Account',
+    );
+    await _openDecision(tester, wire);
+    await chooseRole(tester, Roles.operator);
+
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Admit this Account'), findsOneWidget);
+    expect(find.text('This Employee has Departed and cannot be linked to an Account'), findsWidgets);
+    expect(find.textContaining('Another administrator has already dealt with'), findsNothing);
+  });
+
+  testWidgets('an employeeId already linked to a different Account (409) surfaces its own '
+      'message, not the generic already-dealt-with notice', (tester) async {
+    final wire = FakeWire(
+      queue: [
+        pendingJson(
+          '7',
+          'first@b.c',
+          _twoDaysAgo,
+          suggestedEmployee: suggestedEmployeeJson('40', 'EMP-40', 'Jane Doe'),
+        ),
+      ],
+      approveStatus: 409,
+      approveMessage: 'This Employee is already linked to a different Account',
+    );
+    await _openDecision(tester, wire);
+    await chooseRole(tester, Roles.operator);
+
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Admit this Account'), findsOneWidget);
+    expect(find.text('This Employee is already linked to a different Account'), findsWidgets);
+    expect(find.textContaining('Another administrator has already dealt with'), findsNothing);
   });
 }

@@ -348,11 +348,30 @@ Map<String, dynamic> skillCoverageEntryJson(
       'shortfall': shortfall,
     };
 
-Map<String, dynamic> pendingJson(String id, String email, DateTime since) => {
+Map<String, dynamic> pendingJson(
+  String id,
+  String email,
+  DateTime since, {
+  Map<String, dynamic>? suggestedEmployee,
+}) =>
+    {
       'id': id,
       'email': email,
       'createdAt': since.toUtc().toIso8601String(),
+      'suggestedEmployee': suggestedEmployee,
     };
+
+/// The minimal Employee reference `GET /accounts/pending`'s own
+/// `suggestedEmployee` sends (issue #116, ADR-0022) — `{id, employeeNo,
+/// displayName}`, nothing else.
+Map<String, dynamic> suggestedEmployeeJson(String id, String employeeNo, String displayName) =>
+    {'id': id, 'employeeNo': employeeNo, 'displayName': displayName};
+
+/// The Account left linked to a just-Departed Employee, as
+/// `POST .../departure`'s own `linkedAccount` sends it (issue #116,
+/// ADR-0022).
+Map<String, dynamic> linkedAccountJson(String id, String email, {bool isActive = true}) =>
+    {'id': id, 'email': email, 'isActive': isActive};
 
 Map<String, dynamic> siteJson(String id, String code, String name) =>
     {'id': id, 'code': code, 'name': name, 'timezone': 'Europe/London'};
@@ -385,6 +404,7 @@ Map<String, dynamic> accountJson(
   String approvalStatus = 'approved',
   List<Map<String, dynamic>> grants = const [],
   DateTime? createdAt,
+  String? employeeId,
 }) =>
     {
       'id': id,
@@ -395,6 +415,7 @@ Map<String, dynamic> accountJson(
       'approvalStatus': approvalStatus,
       'grants': grants,
       'createdAt': (createdAt ?? DateTime.now()).toUtc().toIso8601String(),
+      'employeeId': employeeId,
     };
 
 /// One Grant on an Account row, as the accounts listing sends it.
@@ -430,6 +451,9 @@ class FakeWire {
     List<Map<String, dynamic>>? accounts,
     this.accountsStatus = 200,
     this.patchStatus = 200,
+    this.putEmployeeLinkStatus = 200,
+    this.putEmployeeLinkMessage = 'That Employee link could not be changed.',
+    Map<String, Map<String, dynamic>>? employeeLinkedAccounts,
     List<Map<String, dynamic>>? sites,
     Map<String?, List<Map<String, dynamic>>>? orgUnits,
     this.sitesStatus = 200,
@@ -503,6 +527,7 @@ class FakeWire {
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
+        employeeLinkedAccounts = employeeLinkedAccounts ?? {},
         sites = sites ?? [],
         orgUnits = orgUnits ?? {},
         orgUnitSearchResults = orgUnitSearchResults ?? [],
@@ -647,6 +672,24 @@ class FakeWire {
 
   /// Every activation change that reached the wire, as `(accountId, isActive)`.
   final List<(String, bool)> activations = [];
+
+  /// `PUT /api/people/accounts/:id/employee` (issue #116, ADR-0022).
+  int putEmployeeLinkStatus;
+  String putEmployeeLinkMessage;
+
+  /// Every Employee-link PUT that reached the wire, as `(accountId,
+  /// employeeId)` — `employeeId` null both when the request cleared the link
+  /// and (impossible to tell apart from here) when the field truly was
+  /// `null`, the same "prove what was sent" idiom [employeeLinkedAccounts]'s
+  /// own neighbours already use.
+  final List<(String, String?)> employeeLinkPuts = [];
+
+  /// The Account a given Employee id is linked to, as `POST
+  /// .../departure`'s own `linkedAccount` reports it (issue #116, ADR-0022) —
+  /// scripted per test, since this Fake Wire keeps no real link between
+  /// [accounts] and [employees] the way the real schema's `employee_id`
+  /// column does.
+  Map<String, Map<String, dynamic>> employeeLinkedAccounts;
 
   /// `GET /api/people/sites`.
   List<Map<String, dynamic>> sites;
@@ -1313,6 +1356,10 @@ class FakeWire {
             return http.Response(jsonEncode({'message': 'Employee not found'}), 404);
           }
           final bare = {...matched.first}..remove('orgUnit')..remove('jobRole');
+          // `linkedAccount` rides along on this one response only (issue
+          // #116, ADR-0022) — null when nothing was scripted for this
+          // Employee id.
+          bare['linkedAccount'] = employeeLinkedAccounts[id];
           return http.Response(jsonEncode({'employee': bare}), 200);
         }
         if (request.method == 'POST' &&
@@ -1700,6 +1747,23 @@ class FakeWire {
           ];
           return http.Response(jsonEncode({'account': {'id': id}}), 200);
         }
+        if (request.method == 'PUT' &&
+            path.startsWith('/api/people/accounts/') &&
+            path.endsWith('/employee')) {
+          // '', 'api', 'people', 'accounts', ':id', 'employee'.
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          final employeeId = body['employeeId'] as String?;
+          employeeLinkPuts.add((id, employeeId));
+          if (putEmployeeLinkStatus != 200) {
+            return http.Response(jsonEncode({'message': putEmployeeLinkMessage}), putEmployeeLinkStatus);
+          }
+          accounts = [
+            for (final a in accounts)
+              if (a['id'] == id) {...a, 'employeeId': employeeId} else a,
+          ];
+          return http.Response(jsonEncode({'account': {'id': id, 'employeeId': employeeId}}), 200);
+        }
         if (path == '/api/people/accounts/pending') {
           if (queueStatus != 200) {
             return http.Response(jsonEncode({'message': 'The queue is unavailable.'}), queueStatus);
@@ -1715,6 +1779,12 @@ class FakeWire {
           final id = path.split('/')[4];
           queue = [for (final a in queue) if (a['id'] != id) a];
           final sent = approvals.last;
+          // `employeeId` is optional (issue #116, ADR-0022): omitted leaves
+          // whatever link the Account already holds untouched, the same
+          // "only touch a key that was actually sent" contract
+          // `approveAccount`'s own `parseOptionalEmployeeId` keeps server-side
+          // — so this only ever writes the field when the request actually
+          // carried the key, never defaulting a bare absence to null.
           accounts = [
             for (final a in accounts)
               if (a['id'] == id)
@@ -1723,6 +1793,7 @@ class FakeWire {
                   'role': sent['role'],
                   'isActive': true,
                   'approvalStatus': 'approved',
+                  if (sent.containsKey('employeeId')) 'employeeId': sent['employeeId'],
                   'grants': [
                     for (final g in (sent['grants'] as List<dynamic>))
                       grantJson(

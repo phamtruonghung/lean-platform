@@ -25,6 +25,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/skeleton_list.dart';
 import 'account_correction_dialog.dart';
+import 'account_employee_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
 import 'pending_account.dart' show waitingFor;
@@ -59,6 +60,16 @@ class AccountsScreen extends StatelessWidget {
   static ValueKey<String> grantsKey(String id) => ValueKey<String>('accounts-grants-$id');
   static ValueKey<String> selfKey(String id) => ValueKey<String>('accounts-self-$id');
 
+  /// The Employee cell (issue #116): what this Account is linked to, or that
+  /// it is linked to none — shown on every row, self included, since naming a
+  /// link is not an action.
+  static ValueKey<String> employeeKey(String id) => ValueKey<String>('accounts-employee-$id');
+
+  /// The control that opens [AccountEmployeeDialog] — absent on the caller's
+  /// own row and on a pending row, the same two branches
+  /// [correctKey]/[activeKey] are already absent from.
+  static ValueKey<String> linkEmployeeKey(String id) => ValueKey<String>('accounts-link-employee-$id');
+
   /// The pending row's own action (issue #112, Decision E): neither
   /// correction nor deactivation, since the server refuses both for a
   /// pending Account — a link to the one place Approval is actually decided.
@@ -84,6 +95,7 @@ class AccountsScreen extends StatelessWidget {
                   accounts: state.accounts,
                   busyId: state.busyId,
                   correctingId: state.correctingId,
+                  employeeLinkingId: state.employeeLinkingId,
                   selfAccountId: selfAccountId,
                 ),
             },
@@ -193,17 +205,20 @@ class _AccountsList extends StatelessWidget {
     required this.accounts,
     required this.busyId,
     required this.correctingId,
+    required this.employeeLinkingId,
     required this.selfAccountId,
   });
 
   final List<ManagedAccount> accounts;
   final String? busyId;
   final String? correctingId;
+  final String? employeeLinkingId;
   final String selfAccountId;
 
   @override
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < AccountsScreen.narrowBreakpoint;
+    bool isBusy(String id) => id == busyId || id == correctingId || id == employeeLinkingId;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AccountsScreen.maxWidth),
@@ -214,7 +229,7 @@ class _AccountsList extends StatelessWidget {
                 separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
                 itemBuilder: (context, index) => _AccountCard(
                   account: accounts[index],
-                  busy: accounts[index].id == busyId || accounts[index].id == correctingId,
+                  busy: isBusy(accounts[index].id),
                   isSelf: accounts[index].id == selfAccountId,
                 ),
               )
@@ -225,7 +240,7 @@ class _AccountsList extends StatelessWidget {
                   for (final account in accounts)
                     _AccountTableRow(
                       account: account,
-                      busy: account.id == busyId || account.id == correctingId,
+                      busy: isBusy(account.id),
                       isSelf: account.id == selfAccountId,
                     ),
                 ],
@@ -236,15 +251,19 @@ class _AccountsList extends StatelessWidget {
 }
 
 /// The wide table's own fixed width for its trailing actions column — wide
-/// enough for "Deactivate"/"Reactivate" plus "Change" side by side, or the
-/// self-row explanation, or the pending row's "Review in Approvals" link.
-/// Shared between [_AccountTableHeader]'s spacer and every
-/// [_AccountTableRow]'s own actions cell, matching
-/// `work_orders_screen.dart`'s own `_actionsColumnWidth` in spirit — wider
-/// than that Screen's own 232px since "Deactivate"/"Reactivate" plus
-/// "Change" together run longer than that Screen's own primary-plus-overflow
-/// pair.
-const double _actionsColumnWidth = 340;
+/// enough for "Deactivate"/"Reactivate" plus "Change" plus the Employee-link
+/// icon button (issue #116) side by side, or the self-row explanation, or the
+/// pending row's "Review in Approvals" link. Shared between
+/// [_AccountTableHeader]'s spacer and every [_AccountTableRow]'s own actions
+/// cell, matching `work_orders_screen.dart`'s own `_actionsColumnWidth` in
+/// spirit — wider than that Screen's own 232px since three controls together
+/// run longer than that Screen's own primary-plus-overflow pair.
+///
+/// The Employee link's own control deliberately lives here rather than in the
+/// Employee cell itself (a flex-sized column): that cell is narrow enough at
+/// ordinary widths that a button folded into it overflowed, where this fixed
+/// column has room to spare.
+const double _actionsColumnWidth = 388;
 
 class _AccountTableHeader extends StatelessWidget {
   const _AccountTableHeader();
@@ -266,6 +285,7 @@ class _AccountTableHeader extends StatelessWidget {
           label('Standing', 2),
           label('Since', 2),
           label('Grants', 2),
+          label('Employee', 2),
           SizedBox(width: _actionsColumnWidth, child: Text('Actions', style: style)),
         ],
       ),
@@ -310,6 +330,13 @@ class _AccountTableRow extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Align(alignment: Alignment.centerLeft, child: _GrantsCell(account: account)),
+          ),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _EmployeeCell(account: account),
+            ),
           ),
           SizedBox(
             width: _actionsColumnWidth,
@@ -389,9 +416,39 @@ class _AccountCard extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.sm),
             _Grants(account: account),
+            const SizedBox(height: Spacing.sm),
+            _EmployeeCell(account: account),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The Employee cell (issue #116, ADR-0022), shared between the wide table
+/// row and the narrow card exactly as [_GrantsCell]/[_Grants] are — names
+/// what this Account is linked to, or that it is linked to none, neither
+/// rendered as a problem. Plain text, on every row including the caller's
+/// own: showing a link is not an action, so it carries none of
+/// [_RowActions]'s self-row/pending-row exclusions. The control that opens
+/// [AccountEmployeeDialog] lives in [_RowActions] instead — folding it into
+/// this flex-sized cell overflowed the wide table's narrow Employee column at
+/// ordinary widths, the fixed-width actions column does not have that
+/// problem.
+class _EmployeeCell extends StatelessWidget {
+  const _EmployeeCell({required this.account});
+
+  final ManagedAccount account;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = account.linkedEmployee == null ? 'No Employee linked' : account.linkedEmployee!.label;
+    return Text(
+      label,
+      key: AccountsScreen.employeeKey(account.id),
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
     );
   }
 }
@@ -472,6 +529,20 @@ class _RowActions extends StatelessWidget {
           key: AccountsScreen.correctKey(account.id),
           onPressed: busy ? null : () => AccountCorrectionDialog.open(context, account),
           child: const Text('Change'),
+        ),
+        const SizedBox(width: Spacing.xs),
+        // The Employee link's own control (issue #116, ADR-0022) — an icon
+        // button, not a labelled one, so it fits this fixed-width column
+        // alongside the two above; [_actionsColumnWidth] was widened to make
+        // room for it. Absent on the caller's own row and on a pending row
+        // for free, by sitting after the two early returns above rather than
+        // needing an exclusion of its own.
+        IconButton(
+          key: AccountsScreen.linkEmployeeKey(account.id),
+          icon: const Icon(Icons.badge_outlined, size: 20),
+          tooltip: account.linkedEmployee == null ? 'Link an Employee' : 'Change Employee link',
+          visualDensity: VisualDensity.compact,
+          onPressed: busy ? null : () => AccountEmployeeDialog.open(context, account),
         ),
       ],
     );

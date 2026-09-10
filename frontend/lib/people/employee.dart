@@ -147,3 +147,19 @@ class EmployeeDetail {
   /// re-derived here.
   final List<HeldSkill> qualifications;
 }
+
+/// The Account left linked to a just-Departed Employee, if any (issue #116,
+/// ADR-0022) — `POST /employees/:id/departure`'s own `linkedAccount`, which
+/// rides along on that one response only (`directory.js`'s own header: this
+/// route already sits behind `requireAdmin`, so surfacing an Account's own
+/// identity here does not widen what is administrator-only elsewhere). Null
+/// means no Account is linked, and the departure dialog shows no warning at
+/// all in that case.
+@immutable
+class LinkedAccountSummary {
+  const LinkedAccountSummary({required this.id, required this.email, required this.isActive});
+
+  final String id;
+  final String email;
+  final bool isActive;
+}
