@@ -1176,6 +1176,7 @@ class PeopleApi {
       role: account['role'] as String,
       isActive: account['isActive'] == true,
       approvalStatus: account['approvalStatus'] as String,
+      createdAt: DateTime.parse(account['createdAt'] as String),
       grants: [
         if (grants is List<dynamic>)
           for (final grant in grants.whereType<Map<String, dynamic>>())

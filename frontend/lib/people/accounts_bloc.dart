@@ -73,9 +73,12 @@ class AccountsLoaded extends AccountsState {
     this.notice,
   });
 
-  /// Every Account the server sent, pending ones included — the Screen decides
-  /// which it shows, so a later Screen reading the same Bloc is not forced
-  /// into this one's choice.
+  /// Every Account the server sent, pending ones included, ordered pending
+  /// first and then by email (issue #112, Decision B) — a person waiting on
+  /// Approval is the row an administrator most needs to see. This ordering is
+  /// applied once, here on load, rather than by the Screen on every build: the
+  /// server's own `ORDER BY created_at` is left alone for every other caller,
+  /// and this Bloc is the one place that reshapes it for this Screen.
   final List<ManagedAccount> accounts;
 
   /// The row whose activation change is in flight, if any.
@@ -95,12 +98,6 @@ class AccountsLoaded extends AccountsState {
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [AccountsUnavailable].
   final String? notice;
-
-  /// Everyone an administrator has already decided about — this Screen's list.
-  List<ManagedAccount> get admitted => [
-        for (final account in accounts)
-          if (!account.isPending) account,
-      ];
 }
 
 class AccountsUnavailable extends AccountsState {
@@ -140,7 +137,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       return;
     }
     try {
-      final accounts = await _api.fetchAccounts(token);
+      final accounts = await _api.fetchAccounts(token)..sort(_byStandingThenEmail);
       emit(AccountsLoaded(accounts: accounts, notice: event.notice));
     } on PeopleApiException catch (error) {
       emit(AccountsUnavailable(message: error.message));
@@ -194,6 +191,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
                   role: account.role,
                   isActive: event.isActive,
                   approvalStatus: account.approvalStatus,
+                  createdAt: account.createdAt,
                   grants: account.grants,
                 )
               else
@@ -259,4 +257,13 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       emit(AccountsLoaded(accounts: current.accounts, correctionFailure: error.message));
     }
   }
+}
+
+/// Pending first, then by email (issue #112, Decision B) — the same shape
+/// `work_orders_bloc.dart`'s own `_byPriorityThenNumber` uses for a two-key
+/// client-side sort. A pending Account is the row an administrator most needs
+/// to see, so it outranks every already-decided one regardless of email.
+int _byStandingThenEmail(ManagedAccount a, ManagedAccount b) {
+  if (a.isPending != b.isPending) return a.isPending ? -1 : 1;
+  return a.email.compareTo(b.email);
 }

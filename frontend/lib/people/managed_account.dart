@@ -70,6 +70,7 @@ class ManagedAccount {
     required this.role,
     required this.isActive,
     required this.approvalStatus,
+    required this.createdAt,
     this.grants = const [],
   });
 
@@ -79,6 +80,11 @@ class ManagedAccount {
   final String role;
   final bool isActive;
   final String approvalStatus;
+
+  /// When this Account was created — the Accounts Screen's `Since` column
+  /// (issue #112, Decision C). `GET /accounts` has always sent this; nothing
+  /// read it client-side until that Screen needed it.
+  final DateTime createdAt;
   final List<AccountGrant> grants;
 
   bool get isPending => approvalStatus == ApprovalStatuses.pending;

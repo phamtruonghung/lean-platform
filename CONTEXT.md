@@ -89,6 +89,14 @@ secret, and Org Unit scope decides where an Account may act, not who it may
 know about.
 _Avoid_: Employee list, staff directory, org chart
 
+**Accounts Screen**:
+The listing of every Account on the plant — pending ones included — what each
+holds, and whether it can sign in. Where the Directory answers "who works
+here", the Accounts Screen answers "who can sign in and what may they reach":
+the two lists can disagree, since most of a plant cannot sign in at all and an
+administrator need not be an Employee. Reached only by an administrator.
+_Avoid_: Directory (that lists Employees, not Accounts), user list, admin panel
+
 **Account**:
 What lets somebody sign in and act. An Account carries the role that says what
 kind of work they may do, and the Org Units it may be done in — a supervisor on

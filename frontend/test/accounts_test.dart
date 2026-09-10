@@ -1,4 +1,5 @@
-/// The accounts-management Screen (issue #36), with the wire faked.
+/// The Accounts Screen (issue #36, reworked into a table by issue #112),
+/// with the wire faked.
 library;
 
 import 'dart:async';
@@ -8,8 +9,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/people/account_correction_dialog.dart';
 import 'package:lean_platform/people/accounts_screen.dart';
+import 'package:lean_platform/people/approval_queue_screen.dart';
 import 'package:lean_platform/people/org_unit.dart';
 import 'package:lean_platform/people/org_unit_picker.dart';
+import 'package:lean_platform/people/pending_account.dart' show waitingFor;
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/router.dart';
@@ -37,36 +40,207 @@ FakeWire _plant({List<Map<String, dynamic>>? accounts}) => FakeWire(
     );
 
 Future<void> openCorrection(WidgetTester tester, String id) async {
-  await tapIn(tester, find.byKey(AccountRow.correctKey(id)));
+  await tapIn(tester, find.byKey(AccountsScreen.correctKey(id)));
+}
+
+/// Switches the pumped app to the narrow (<700px) layout — the same device
+/// `work_orders_test.dart` uses for its own narrow-layout tests.
+void goNarrow(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = const Size(600, 800);
+  addTearDown(tester.view.reset);
 }
 
 void main() {
-  testWidgets('admitted Accounts are listed with role, Grants and standing; pending ones are not',
-      (tester) async {
+  // The wide table (issue #112, Decision A). The default test surface is
+  // wider than `AccountsScreen.narrowBreakpoint`, so every test that does not
+  // call `goNarrow` exercises this layout.
+
+  testWidgets(
+      'at >= 700px the table renders a header row and one row per Account, with the columns '
+      'Name, Email, Role, Standing, Since, Grants, Actions, and no horizontal scrolling, '
+      'and never uses DataTable', (tester) async {
     await openAccounts(
       tester,
       _plant(accounts: [
         accountJson('7', 'admitted@b.c',
             role: Roles.supervisor, grants: [grantJson('10', canWrite: true)]),
         accountJson('8', 'off@b.c', role: Roles.operator, isActive: false),
-        accountJson('9', 'turned-away@b.c', approvalStatus: 'rejected', isActive: false),
-        accountJson('10', 'waiting@b.c', approvalStatus: 'pending', isActive: false),
       ]),
     );
 
     expect(find.byType(AccountsScreen), findsOneWidget);
+    expect(find.text('Name'), findsOneWidget);
+    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Role'), findsOneWidget);
+    expect(find.text('Standing'), findsOneWidget);
+    expect(find.text('Since'), findsOneWidget);
+    expect(find.text('Grants'), findsOneWidget);
+    expect(find.text('Actions'), findsOneWidget);
+
+    expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.rowKey('8')), findsOneWidget);
     expect(find.text('admitted@b.c'), findsOneWidget);
-    expect(find.text('Supervisor · Active'), findsOneWidget);
-    expect(find.text('Operator · Deactivated'), findsOneWidget);
-    expect(find.text('Operator · Rejected'), findsOneWidget);
-    expect(find.text('Ho Chi Minh › Assembly · View and edit'), findsOneWidget);
-    // Still waiting, so it belongs to the Approval queue and not here.
-    expect(find.text('waiting@b.c'), findsNothing);
+    expect(find.text('off@b.c'), findsOneWidget);
+    expect(find.text('Supervisor'), findsOneWidget);
+    expect(find.text('Deactivated'), findsOneWidget);
+
+    expect(
+      find.descendant(of: find.byType(AccountsScreen), matching: find.byType(DataTable)),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(AccountsScreen),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
+    );
   });
 
-  testWidgets('an empty register says plainly that nobody has been let in', (tester) async {
+  // The narrow layout (issue #112, Decision A) — Grants rendering (Decision
+  // D) is unchanged from what this Screen rendered before this issue.
+
+  testWidgets(
+      'below 700px the list renders one card per Account, and the Grants rendering is the '
+      'unchanged prose/chip shape', (tester) async {
+    goNarrow(tester);
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('7', 'admitted@b.c',
+            role: Roles.supervisor, grants: [grantJson('10', canWrite: true)]),
+        accountJson('8', 'admin@b.c', role: Roles.admin),
+        accountJson('9', 'nogrants@b.c', role: Roles.operator),
+      ]),
+    );
+
+    expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
+    expect(find.text('Supervisor · Active'), findsOneWidget);
+    expect(find.text('Ho Chi Minh › Assembly · View and edit'), findsOneWidget);
+    expect(
+      find.text('Acts everywhere, in every Site. No Org Unit Grants, and none needed.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('No Org Unit Grants. Can sign in, but cannot act in any Org Unit.'),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: find.byType(AccountsScreen),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
+    );
+  });
+
+  // Both layouts share one row key (issue #112, Decision A).
+
+  testWidgets("both layouts key each Account's row with the same shared row key", (tester) async {
+    final wire = _plant(accounts: [accountJson('7', 'admitted@b.c')]);
+    await openAccounts(tester, wire);
+    expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
+
+    goNarrow(tester);
+    await tester.pumpAndSettle();
+    expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
+  });
+
+  // Every Account, pending included (issue #112, Decision B), ordered
+  // pending first and then by email.
+
+  testWidgets(
+      'a pending Account appears with Standing reading Awaiting Approval, and rows are ordered '
+      'pending first, then by email', (tester) async {
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('7', 'zed@b.c'),
+        accountJson('8', 'ann@b.c', approvalStatus: 'pending', isActive: false),
+        accountJson('9', 'mid@b.c'),
+      ]),
+    );
+
+    expect(find.text('ann@b.c'), findsOneWidget);
+    expect(find.text('Awaiting Approval'), findsOneWidget);
+
+    final pendingY = tester.getTopLeft(find.byKey(AccountsScreen.rowKey('8'))).dy;
+    final midY = tester.getTopLeft(find.byKey(AccountsScreen.rowKey('9'))).dy;
+    final zedY = tester.getTopLeft(find.byKey(AccountsScreen.rowKey('7'))).dy;
+
+    // Pending outranks every already-decided row regardless of email...
+    expect(pendingY, lessThan(midY));
+    expect(pendingY, lessThan(zedY));
+    // ...and the already-decided rows are then ordered by email.
+    expect(midY, lessThan(zedY));
+  });
+
+  // The Since cell (issue #112, Decision C): `ManagedAccount` parses
+  // `createdAt`, rendered the way `PendingAccount.waitingSince` already is.
+
+  testWidgets("ManagedAccount parses createdAt from GET /accounts, and the Since cell renders it",
+      (tester) async {
+    final createdAt = DateTime.now().subtract(const Duration(days: 3));
+    await openAccounts(
+      tester,
+      _plant(accounts: [accountJson('7', 'admitted@b.c', createdAt: createdAt)]),
+    );
+
+    expect(find.text(waitingFor(createdAt)), findsOneWidget);
+  });
+
+  // The Grants cell (issue #112, Decision D): a count, not a wall of chips,
+  // with the full list on hover.
+
+  testWidgets(
+      'the Grants cell reads Everywhere for an admin, None for an Account with no Grants, and '
+      'a count otherwise, with the full list on hover', (tester) async {
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('7', 'admin@b.c', role: Roles.admin),
+        accountJson('8', 'nogrants@b.c'),
+        accountJson('9', 'twogrants@b.c', grants: [
+          grantJson('10', name: 'Assembly', canWrite: true),
+          grantJson('11', name: 'Line 1'),
+        ]),
+      ]),
+    );
+
+    expect(find.text('Everywhere'), findsOneWidget);
+    expect(find.text('None'), findsOneWidget);
+    expect(find.text('2 Org Units'), findsOneWidget);
+
+    final tooltip = tester.widget<Tooltip>(find.byKey(AccountsScreen.grantsKey('9')));
+    expect(tooltip.message, contains('Ho Chi Minh › Assembly · View and edit'));
+    expect(tooltip.message, contains('Ho Chi Minh › Line 1 · View'));
+  });
+
+  // A pending row's own action (issue #112, Decision E).
+
+  testWidgets(
+      "a pending row's Actions cell offers Review in Approvals, which navigates to the Approval "
+      'queue, and offers neither correction nor deactivation', (tester) async {
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('8', 'waiting@b.c', approvalStatus: 'pending', isActive: false),
+      ]),
+    );
+
+    expect(find.byKey(AccountsScreen.correctKey('8')), findsNothing);
+    expect(find.byKey(AccountsScreen.activeKey('8')), findsNothing);
+    expect(find.byKey(AccountsScreen.reviewInApprovalsKey('8')), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AccountsScreen.reviewInApprovalsKey('8')));
+    expect(find.byType(ApprovalQueueScreen), findsOneWidget);
+  });
+
+  testWidgets('an empty register says plainly there are no Accounts yet', (tester) async {
     await openAccounts(tester, _plant(accounts: []));
-    expect(find.text('Nobody has been let in yet'), findsOneWidget);
+    expect(find.text('No Accounts yet'), findsOneWidget);
     expect(find.text('The Accounts could not be loaded'), findsNothing);
   });
 
@@ -133,7 +307,7 @@ void main() {
       'expectedApprovalStatus': 'approved',
     });
     expect(find.byType(AccountCorrectionDialog), findsNothing);
-    expect(find.text('Engineer · Active'), findsOneWidget);
+    expect(find.text('Engineer'), findsOneWidget);
     expect(find.byKey(AccountsScreen.noticeKey), findsOneWidget);
   });
 
@@ -141,20 +315,20 @@ void main() {
     final wire = _plant(accounts: [accountJson('7', 'admitted@b.c')]);
     await openAccounts(tester, wire);
 
-    await tapIn(tester, find.byKey(AccountRow.activeKey('7')));
+    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
     expect(find.text('Deactivate this Account?'), findsOneWidget);
     await tapIn(tester, find.widgetWithText(TextButton, 'Cancel'));
     expect(wire.activations, isEmpty);
 
-    await tapIn(tester, find.byKey(AccountRow.activeKey('7')));
+    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
     await tapIn(tester, find.widgetWithText(FilledButton, 'Deactivate'));
     expect(wire.activations, [('7', false)]);
-    expect(find.text('Operator · Deactivated'), findsOneWidget);
+    expect(find.text('Deactivated'), findsOneWidget);
 
     // Back in, with no question asked: reactivating takes nothing away.
-    await tapIn(tester, find.byKey(AccountRow.activeKey('7')));
+    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
     expect(wire.activations, [('7', false), ('7', true)]);
-    expect(find.text('Operator · Active'), findsOneWidget);
+    expect(find.text('Active'), findsOneWidget);
   });
 
   testWidgets(
@@ -169,7 +343,7 @@ void main() {
     // Row 7's deactivation starts, and hangs — the patchGate holds it open,
     // the same device the Approval queue's own admission tests use to make
     // "in flight" observable.
-    await tapIn(tester, find.byKey(AccountRow.activeKey('7')));
+    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
     await tapIn(tester, find.widgetWithText(FilledButton, 'Deactivate'));
 
     // Row 8's correction is opened and submitted while row 7 is still busy.
@@ -231,13 +405,13 @@ void main() {
       ]),
     );
 
-    expect(find.byKey(AccountRow.activeKey('1')), findsNothing);
-    expect(find.byKey(AccountRow.correctKey('1')), findsNothing);
-    expect(find.byKey(AccountRow.selfKey('1')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.activeKey('1')), findsNothing);
+    expect(find.byKey(AccountsScreen.correctKey('1')), findsNothing);
+    expect(find.byKey(AccountsScreen.selfKey('1')), findsOneWidget);
 
-    expect(find.byKey(AccountRow.activeKey('7')), findsOneWidget);
-    expect(find.byKey(AccountRow.correctKey('7')), findsOneWidget);
-    expect(find.byKey(AccountRow.selfKey('7')), findsNothing);
+    expect(find.byKey(AccountsScreen.activeKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.correctKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.selfKey('7')), findsNothing);
   });
 
   testWidgets("a different administrator's row keeps both actions — the guard keys on identity, not the admin role",
@@ -249,8 +423,62 @@ void main() {
       ]),
     );
 
-    expect(find.byKey(AccountRow.activeKey('9')), findsOneWidget);
-    expect(find.byKey(AccountRow.correctKey('9')), findsOneWidget);
-    expect(find.byKey(AccountRow.selfKey('9')), findsNothing);
+    expect(find.byKey(AccountsScreen.activeKey('9')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.correctKey('9')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.selfKey('9')), findsNothing);
+  });
+
+  // The narrow card shares `_RowActions` with the wide table (issue #112,
+  // Decision A), but — unlike the wide table's fixed-width actions column —
+  // sits directly in a `Row` with no width of its own. The caller's own row
+  // once overflowed here: its explanation is the one `_RowActions` branch
+  // long enough to need the `Flexible` the wide table gets for free from its
+  // `SizedBox`. These three tests are what actually closes "no action is
+  // offered on the caller's own row, at either width" — the wide-only
+  // versions above do not exercise this `Row` at all.
+
+  testWidgets(
+      "at < 700px the caller's own row still offers neither action and explains why, and a "
+      "different row is unaffected", (tester) async {
+    goNarrow(tester);
+    // FakeWire's default selfId is '1' — this row's id matches it.
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('1', 'admin@b.c', role: Roles.admin),
+        accountJson('7', 'other@b.c'),
+      ]),
+    );
+
+    expect(find.byKey(AccountsScreen.activeKey('1')), findsNothing);
+    expect(find.byKey(AccountsScreen.correctKey('1')), findsNothing);
+    expect(find.byKey(AccountsScreen.selfKey('1')), findsOneWidget);
+
+    expect(find.byKey(AccountsScreen.activeKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.correctKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.selfKey('7')), findsNothing);
+  });
+
+  testWidgets("at < 700px a pending row still offers only Review in Approvals", (tester) async {
+    goNarrow(tester);
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('8', 'waiting@b.c', approvalStatus: 'pending', isActive: false),
+      ]),
+    );
+
+    expect(find.byKey(AccountsScreen.correctKey('8')), findsNothing);
+    expect(find.byKey(AccountsScreen.activeKey('8')), findsNothing);
+    expect(find.byKey(AccountsScreen.reviewInApprovalsKey('8')), findsOneWidget);
+  });
+
+  testWidgets("at < 700px an approved row still offers Deactivate/Reactivate alongside Change",
+      (tester) async {
+    goNarrow(tester);
+    await openAccounts(tester, _plant(accounts: [accountJson('7', 'admitted@b.c')]));
+
+    expect(find.byKey(AccountsScreen.activeKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.correctKey('7')), findsOneWidget);
   });
 }
