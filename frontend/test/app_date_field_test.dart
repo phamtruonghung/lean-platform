@@ -172,6 +172,73 @@ void main() {
     expect(find.byKey(AppDateField.clearKey('effective-from')), findsNothing);
   });
 
+  testWidgets('the calendar icon is shown in required mode, both with and without a value',
+      (WidgetTester tester) async {
+    Future<void> pumpRequired(String? value) => tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AppDateField(
+                name: 'effective-from',
+                label: 'Effective date',
+                value: value,
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        );
+
+    await pumpRequired(null);
+    expect(find.byKey(AppDateField.calendarIconKey('effective-from')), findsOneWidget);
+    expect(find.byKey(AppDateField.clearKey('effective-from')), findsNothing);
+
+    await pumpRequired('2024-01-01');
+    expect(find.byKey(AppDateField.calendarIconKey('effective-from')), findsOneWidget);
+    expect(find.byKey(AppDateField.clearKey('effective-from')), findsNothing);
+  });
+
+  testWidgets(
+      'the calendar icon is shown in optional mode while the value is unset, '
+      'and is replaced by the clear button once a value is set', (WidgetTester tester) async {
+    final harnessKey = GlobalKey<_HarnessState>();
+    await tester.pumpWidget(_Harness(key: harnessKey, optional: true, initialValue: null));
+
+    expect(find.byKey(AppDateField.calendarIconKey('effective-from')), findsOneWidget);
+    expect(find.byKey(AppDateField.clearKey('effective-from')), findsNothing);
+
+    await tester.tap(find.byKey(AppDateField.fieldKey('effective-from')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('15'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState!.value, isNotNull);
+    expect(find.byKey(AppDateField.calendarIconKey('effective-from')), findsNothing);
+    expect(find.byKey(AppDateField.clearKey('effective-from')), findsOneWidget);
+  });
+
+  testWidgets('tapping the calendar icon opens the picker', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppDateField(
+            name: 'effective-from',
+            label: 'Effective date',
+            value: null,
+            onChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+
+    await tester.tap(find.byKey(AppDateField.calendarIconKey('effective-from')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+  });
+
   testWidgets('a pre-set initial value is displayed on first build', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(

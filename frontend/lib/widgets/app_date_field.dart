@@ -30,11 +30,23 @@ import 'package:flutter/material.dart';
 /// — the same format the wire already carries, so a caller keeps sending
 /// exactly what it sends today.
 ///
-/// [name] seeds [fieldKey]/[clearKey] so two `AppDateField`s living in the
-/// same form (`EmployeeSkillFormDialog`'s assessed-on and expires-on, once
-/// #126 lands) get distinct, stable keys without each call site inventing
-/// its own — the same reason `AssetsScreen.rowKey(id)` takes a parameter
-/// rather than being a bare constant (AGENTS.md §7).
+/// **A calendar icon marks the field as tappable whenever the clear button
+/// is not already occupying that slot** — required mode always, and optional
+/// mode while [value] is unset. Without it, a read-only `TextField` reads as
+/// a plain or disabled text field: nothing tells a person the label is a
+/// button, and because it refuses keyboard input, someone who tries to type
+/// into it anyway is simply stuck with no cue toward what to do instead —
+/// worse than the mistyped date this widget exists to remove. The two
+/// affordances never stack: once a value is set in optional mode the ✕ is
+/// the action that matters, and the field itself stays tappable to re-pick,
+/// so showing both would just be noise in the same slot.
+///
+/// [name] seeds [fieldKey]/[clearKey]/[calendarIconKey] so two
+/// `AppDateField`s living in the same form (`EmployeeSkillFormDialog`'s
+/// assessed-on and expires-on, once #126 lands) get distinct, stable keys
+/// without each call site inventing its own — the same reason
+/// `AssetsScreen.rowKey(id)` takes a parameter rather than being a bare
+/// constant (AGENTS.md §7).
 class AppDateField extends StatefulWidget {
   const AppDateField({
     super.key,
@@ -84,6 +96,12 @@ class AppDateField extends StatefulWidget {
   /// The clear button's own `Key`, shown only in optional mode once a value
   /// is set — see [optional].
   static ValueKey<String> clearKey(String name) => ValueKey<String>('app-date-field-$name-clear');
+
+  /// The calendar icon's own `Key` — shown whenever [clearKey]'s button is
+  /// not (see this class's own doc comment), so a test targets whichever of
+  /// the two is actually on screen rather than guessing.
+  static ValueKey<String> calendarIconKey(String name) =>
+      ValueKey<String>('app-date-field-$name-calendar');
 
   @override
   State<AppDateField> createState() => _AppDateFieldState();
@@ -159,7 +177,16 @@ class _AppDateFieldState extends State<AppDateField> {
                 // whatever it last held.
                 onPressed: () => widget.onChanged(null),
               )
-            : null,
+            // The calendar icon: the same trailing slot the ✕ would
+            // otherwise occupy, shown whenever the ✕ is not — see this
+            // class's own doc comment on why a read-only field needs a
+            // visible cue that it is tappable at all.
+            : IconButton(
+                key: AppDateField.calendarIconKey(widget.name),
+                icon: const Icon(Icons.calendar_today_outlined),
+                tooltip: 'Choose a date',
+                onPressed: widget.enabled ? _openPicker : null,
+              ),
       ),
     );
   }
