@@ -109,6 +109,16 @@ class WorkOrder {
   /// [workTypeLabel] follows.
   String get statusLabel => _statusLabels[status] ?? status;
 
+  /// Every label [statusLabel] can produce for a status this build knows
+  /// about (issue #105) — the wide table's own Status column reads this to
+  /// size itself to the longest one, rather than a width tuned to whichever
+  /// label happens to be longest today, so a status added to
+  /// [_statusLabels] later is sized for automatically rather than clipped.
+  /// The wire-string fallback [statusLabel] falls back to for an unknown
+  /// status is deliberately not included: that string is unbounded, and
+  /// only known labels are worth sizing a fixed column against.
+  static List<String> get knownStatusLabels => _statusLabels.values.toList(growable: false);
+
   static String _labelFor(String wire, List<(String, String)> known) {
     for (final (value, label) in known) {
       if (value == wire) return label;

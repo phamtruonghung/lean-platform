@@ -8,7 +8,10 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
@@ -19,6 +22,42 @@ import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/platform_app.dart';
+
+/// Loads the Platform's own bundled Roboto (`assets/fonts/README.md`,
+/// committed there for Flutter Web's CanvasKit renderer, not for this) into
+/// the test binary, under the exact family name `theme.dart`'s own
+/// `buildAppTheme` sets (`fontFamily: 'Roboto'`) — without this,
+/// `flutter_test`'s default font substitution paints every glyph as a solid
+/// box, which is fine for a text-content assertion (`find.text` reads the
+/// widget tree, not pixels) but useless for a golden: a box cannot show a
+/// font-weight, line-height or text-colour regression, and #99's own user
+/// stories 18–20 are specifically about those (issue #105).
+///
+/// A golden test calls this once, from its own `setUpAll`, before the first
+/// `pumpWidget` — see `shell_test.dart`'s `goldens (#105)` group and
+/// `work_orders_golden_test.dart`. Every other test in this suite is
+/// unaffected: nothing here asserts on a font, so the placeholder boxes
+/// `flutter_test` paints by default are exactly as good for them.
+///
+/// Idempotent within one loaded isolate — `flutter test` runs each test
+/// *file* as its own process, so this guard only matters if a single file
+/// ever called it from more than one `setUpAll`.
+bool _fontsLoaded = false;
+
+Future<void> loadAppFonts() async {
+  if (_fontsLoaded) return;
+  final loader = FontLoader('Roboto');
+  for (final path in [
+    'assets/fonts/Roboto-Regular.ttf',
+    'assets/fonts/Roboto-Medium.ttf',
+    'assets/fonts/Roboto-Bold.ttf',
+  ]) {
+    final bytes = File(path).readAsBytesSync();
+    loader.addFont(Future.value(ByteData.sublistView(bytes)));
+  }
+  await loader.load();
+  _fontsLoaded = true;
+}
 
 // `selfId` is '1' by default, and the fixtures that have to avoid it live in
 // the calling test files rather than here: they use ids '7'/'8'/'9'/'10'+, so

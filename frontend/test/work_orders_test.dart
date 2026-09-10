@@ -1476,11 +1476,16 @@ void main() {
     expect(find.byKey(WorkOrdersScreen.filterKey), findsOneWidget);
   });
 
-  // The narrow layout (issue #104, Decision E).
+  // The narrow layout (issue #104, Decision E; the breakpoint itself moved to
+  // 800px of this Screen's own content width, not the window, in issue #105
+  // — see `WorkOrdersScreen.narrowBreakpoint`'s own doc comment). A 600px
+  // window sits well under that either way (content is narrower still, once
+  // the Shell's own rail takes its 64px), so this keeps asserting the same
+  // thing it always did.
 
   testWidgets(
-      'below 700px the list renders as cards carrying the number, summary, Asset, Org Unit, '
-      'status and the primary action, with no horizontal scroll', (tester) async {
+      'below 800px of content the list renders as cards carrying the number, summary, Asset, '
+      'Org Unit, status and the primary action, with no horizontal scroll', (tester) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(600, 800);
     addTearDown(tester.view.reset);
@@ -1515,6 +1520,50 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  // Regression (issue #105): this Screen used to decide cards-versus-table
+  // off `MediaQuery.sizeOf(context).width` — the whole browser window — even
+  // though it only ever renders inside the Shell's own content area.
+  // `PlatformShell`'s own rail breakpoint (`shell.dart`) also sits at 700px
+  // of window, and switches to its 260px expanded sidebar at exactly that
+  // width, not below it — so at a 700px window this Screen used to see
+  // "700px, that's the table" while the box it actually had was 440px, and
+  // rendered a table so cramped its own header wrapped one letter per line.
+  // Proved here the same honest way as the Status column fix above: at the
+  // exact width the two breakpoints used to collide, assert the Screen
+  // renders cards, not the table — using only text a person can read (the
+  // table header's own column labels, which cards never render), not a
+  // third seam into any render object or Bloc state.
+  testWidgets(
+      "at a 700px window — where the Shell's own sidebar breakpoint and this Screen's old, "
+      'mistaken window-based breakpoint used to collide — the list renders as cards, not the '
+      'corrupted table the pre-#105 window-based breakpoint produced', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(700, 800);
+    addTearDown(tester.view.reset);
+
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    // The table header's own column labels are the one thing only the wide
+    // (table) layout ever renders — their absence, alongside the row's own
+    // content still being fully present, is what distinguishes cards from a
+    // squeezed table without reaching into anything but text on screen.
+    expect(find.text('WO#'), findsNothing);
+    expect(find.text('Assignee'), findsNothing);
+    expect(find.byKey(WorkOrdersScreen.rowKey('101')), findsOneWidget);
+    expect(find.text('WO-101'), findsOneWidget);
+    expect(find.text('Belt is slipping'), findsOneWidget);
   });
 
   // Accessibility (issue #104): a visible focus indicator for a control this
@@ -1557,5 +1606,48 @@ void main() {
     // Unfocused, neither control claims the ring — it is only ever the
     // focused state's own decoration.
     expect(theme.outlinedButtonTheme.style?.side?.resolve({}), isNull);
+  });
+
+  // Regression (issue #105): the wide table's Status column used to be an
+  // `Expanded(flex: 2)` cell, which silently clipped a long status label at
+  // the chip's own right edge ("Approve" for "Approved") rather than ever
+  // throwing — `Chip` clips its own label instead of overflowing loudly, so
+  // no widget test caught this before a golden's own pixels did. Proved here
+  // without duplicating the fix's own arithmetic (the column's fixed width,
+  // computed off `WorkOrder.knownStatusLabels`): the same Chip label style
+  // is unclipped in the narrow card layout, so comparing the two rendered
+  // widths catches a clipped wide-table label without hard-coding a pixel
+  // number that would need updating if the font or theme ever changed.
+  testWidgets(
+      "the longest status label ('In progress') renders at its full width in the wide "
+      "table — the same width the narrow card's own unclipped chip renders it at",
+      (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 800);
+    addTearDown(tester.view.reset);
+    await tester.pumpAndSettle();
+    final wideWidth = tester.getSize(find.text('In progress')).width;
+    // A sanity floor, not a hard-coded expectation: a finder bug or a truly
+    // empty label would silently pass a bare `closeTo` comparison below by
+    // both sides being (near) zero.
+    expect(wideWidth, greaterThan(20));
+
+    tester.view.physicalSize = const Size(600, 800);
+    await tester.pumpAndSettle();
+    final narrowWidth = tester.getSize(find.text('In progress')).width;
+
+    expect(wideWidth, closeTo(narrowWidth, 0.5));
   });
 }
