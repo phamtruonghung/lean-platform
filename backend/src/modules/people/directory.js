@@ -225,7 +225,12 @@ function normalizeLimit(limit) {
 // size after Postgres has already done the unbounded work. It changes
 // nothing about ORDER BY, so a limited result is always the first N rows of
 // the exact same ordering an unlimited call would return, never an
-// arbitrary N.
+// arbitrary N. e.id breaks ties in display_name for the same reason: two
+// Employees sharing a name leave ORDER BY display_name alone free to place
+// either first, which an unlimited listing never noticed but a LIMIT does —
+// the row that lands on the boundary would differ between two identical
+// requests, so a suggestion box could show a person on one keystroke and
+// drop them on the next.
 async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted, limit } = {}) {
   const conditions = [];
   const params = [];
@@ -282,7 +287,7 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted, li
        LEFT JOIN job_roles current_job_role
          ON current_job_role.id = current_assignment.job_role_id
        ${whereClause}
-      ORDER BY e.display_name
+      ORDER BY e.display_name, e.id
       ${limitClause}`,
     params
   );
