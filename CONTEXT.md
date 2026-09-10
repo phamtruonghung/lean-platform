@@ -110,6 +110,8 @@ An administrator admitting a person to the Platform and deciding which Org Units
 they may work in. Signing in successfully is not admission: until Approval the
 Account exists and can do nothing. With several Sites, Approval is where a
 person's plant is decided, so it is a deliberate act rather than a flag.
+Admitting a person is also where an administrator decides which Employee they
+are, when the two are the same person.
 _Avoid_: Activation, verification, registration, onboarding
 
 **Grant**:

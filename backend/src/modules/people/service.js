@@ -48,6 +48,16 @@ function toAccount(row) {
 const ACCOUNT_COLUMNS =
   'id, email, display_name, role, external_subject, is_active, approval_status, employee_id, created_at';
 
+// Same columns, `app_users.`-qualified — needed only by listPendingAccounts,
+// whose suggestedEmployee join (below) introduces a second table with its own
+// `id` column: an unqualified ACCOUNT_COLUMNS would make every bare column
+// name ambiguous the moment that join is present, the same reason
+// directory.js's EMPLOYEE_COLUMNS_QUALIFIED exists.
+const ACCOUNT_COLUMNS_QUALIFIED = ACCOUNT_COLUMNS
+  .split(', ')
+  .map((column) => `app_users.${column}`)
+  .join(', ');
+
 // The values `approval_status` may take, per the column's own CHECK
 // (migrations/1788295040758_account-approval-status.js).
 const APPROVAL_STATUSES = ['pending', 'approved', 'rejected'];
@@ -258,14 +268,131 @@ async function listAccounts() {
 // the *caller's* role again — only the *target* Account's own state.
 // ---------------------------------------------------------------------------
 
+// The Employee link (issue #115, ADR-0022): email matching produces a
+// *suggestion*, never a write of its own — `employees_work_email_key`
+// (directory.js's own header) is a case-insensitive UNIQUE index on
+// work_email, so "exactly one Employee's work_email matches" is already a
+// schema guarantee, not something this query has to count for itself. A
+// match is suppressed back to null, not surfaced as a suggestion an
+// administrator cannot act on, when the Employee has Departed
+// (`e.is_active = FALSE`, CONTEXT.md's own Departed entry) or is already
+// linked to a different Account (`app_users.employee_id` is UNIQUE) — the
+// ticket's own framing, "a suggestion an administrator cannot act on is
+// worse than none". This is a plain SQL join against `employees`, not a call
+// into directory.js: the two files are domains within the same Module (see
+// this file's own header and AGENTS.md section 6), the same way directory.js
+// already joins org_units and job_roles directly rather than calling into
+// plant.js/job-roles.js for a read.
+const SUGGESTED_EMPLOYEE_JOIN = `
+       LEFT JOIN LATERAL (
+         SELECT e.id, e.employee_no, e.display_name
+           FROM employees e
+          WHERE e.is_active = TRUE
+            AND e.work_email IS NOT NULL
+            AND lower(e.work_email) = lower(app_users.email)
+            AND NOT EXISTS (
+                  SELECT 1 FROM app_users linked WHERE linked.employee_id = e.id
+                )
+       ) suggested ON TRUE`;
+
+function toSuggestedEmployee(row) {
+  return row.suggested_employee_id
+    ? {
+        id: row.suggested_employee_id,
+        employeeNo: row.suggested_employee_no,
+        displayName: row.suggested_employee_display_name
+      }
+    : null;
+}
+
 // The Approval queue: every Account nobody has decided about yet. Rejected
 // and deactivated Accounts do not belong here — an administrator already
 // decided about them, even if that decision was "no" or "not anymore".
+//
+// `suggestedEmployee` rides along here, not folded into `toAccount`/
+// ACCOUNT_COLUMNS: it is a computed fact meaningful only while an Account is
+// still pending a decision, the same reasoning that keeps `grants` off
+// `toAccount` and local to listAccounts alone (see that function's own
+// comment).
 async function listPendingAccounts() {
   const { rows } = await getPool().query(
-    `SELECT ${ACCOUNT_COLUMNS} FROM app_users WHERE approval_status = 'pending' ORDER BY created_at`
+    `SELECT ${ACCOUNT_COLUMNS_QUALIFIED},
+            suggested.id AS suggested_employee_id,
+            suggested.employee_no AS suggested_employee_no,
+            suggested.display_name AS suggested_employee_display_name
+       FROM app_users${SUGGESTED_EMPLOYEE_JOIN}
+      WHERE app_users.approval_status = 'pending'
+      ORDER BY app_users.created_at`
   );
-  return rows.map(toAccount);
+  return rows.map((row) => ({ ...toAccount(row), suggestedEmployee: toSuggestedEmployee(row) }));
+}
+
+// The Employee link's own three refusals (issue #115, ADR-0022), each a
+// distinct, specific message rather than one generic "cannot link" — an
+// administrator confirming a suggestion, or correcting one, needs to know
+// exactly which of the three is wrong. Shared by approveAccount below and
+// setAccountEmployee (the PUT /accounts/:id/employee correction route), so
+// the two writers of `app_users.employee_id` can never drift onto different
+// wording for the same refusal.
+//
+// `FOR UPDATE` locks the Employee row for the length of the caller's own
+// transaction — the same reasoning as the app_users row lock both callers
+// already take: two administrators linking the same Employee to two
+// different Accounts at once should serialize against each other, not race.
+// The UNIQUE constraint on app_users.employee_id (mapAccountWriteError,
+// below) is the belt-and-braces backstop if this check and the write still
+// straddle a third transaction's commit — the same shape directory.js's
+// mapEmployeeWriteError is to employees_work_email_key.
+async function requireLinkableEmployee(client, employeeId, accountId) {
+  const { rows: [employee] } = await client.query(
+    'SELECT id, is_active FROM employees WHERE id = $1 FOR UPDATE',
+    [employeeId]
+  );
+  if (!employee) {
+    throw httpError(404, 'employeeId does not name an existing Employee');
+  }
+  if (!employee.is_active) {
+    throw httpError(409, 'This Employee has Departed and cannot be linked to an Account');
+  }
+
+  const { rows: [linkedElsewhere] } = await client.query(
+    'SELECT id FROM app_users WHERE employee_id = $1 AND id != $2',
+    [employeeId, accountId]
+  );
+  if (linkedElsewhere) {
+    throw httpError(409, 'This Employee is already linked to a different Account');
+  }
+}
+
+// The belt-and-braces backstop requireLinkableEmployee's own comment
+// describes: app_users.employee_id is UNIQUE at the schema level (the
+// baseline's own app_users table), so a race that requireLinkableEmployee's
+// pre-check cannot fully close still ends in a clean 409 here rather than a
+// raw constraint-violation 500 — the same pattern directory.js's
+// mapEmployeeWriteError already follows for employees_work_email_key
+// (that file's own header, directory-routes.js:467 at the time of writing).
+function mapAccountWriteError(error) {
+  if (error.code === '23505' && error.constraint === 'app_users_employee_id_key') {
+    return httpError(409, 'This Employee is already linked to a different Account');
+  }
+  return error;
+}
+
+// employeeId is optional, and its absence is deliberately NOT the same as
+// null: omitted (the key absent from the request body) leaves whatever link
+// the Account already holds untouched, so re-approving or correcting an
+// Account's role/grants never silently unlinks it; an explicit null clears
+// the link, the same "clearing" shape setAccountEmployee's own null case
+// uses; a value confirms — or moves — the link to that Employee, after the
+// same three checks requireLinkableEmployee runs for both writers.
+function parseOptionalEmployeeId(employeeId) {
+  if (employeeId === undefined) return undefined;
+  if (employeeId === null) return null;
+  const parsed = parseId(employeeId);
+  if (parsed === null) {
+    throw httpError(400, 'employeeId must be a valid Employee id');
+  }
+  return parsed;
 }
 
 // Approving an Account sets its role and grants its Org Units in the same
@@ -287,7 +414,15 @@ async function listPendingAccounts() {
 // `approval_status` must never do is go stale relative to `is_active` — see
 // the migration's own header for the mapping every write in this section
 // keeps true.
-async function approveAccount(id, { role, grants }, actingAccountId, { expectedApprovalStatus } = {}) {
+//
+// `employeeId` (issue #115, ADR-0022) confirms the suggestion the Approval
+// queue carried, or names a different Employee outright — see
+// parseOptionalEmployeeId's own comment for what omitting it, sending null,
+// or sending a value each do, and requireLinkableEmployee's for the three
+// refusals a value can produce. Written in this same transaction, alongside
+// role and grants, for the same "a partial Approval must stay unobservable"
+// reason the rest of this function already is one.
+async function approveAccount(id, { role, grants, employeeId }, actingAccountId, { expectedApprovalStatus } = {}) {
   refuseSelfAction(id, actingAccountId);
   requireKnownApprovalStatus(expectedApprovalStatus);
   if (!ROLES.includes(role)) {
@@ -305,51 +440,66 @@ async function approveAccount(id, { role, grants }, actingAccountId, { expectedA
     return { orgUnitId, canWrite: grant.canWrite === true };
   });
 
-  return withActor(actingAccountId, async (client) => {
-    // Locks the row for the length of this transaction, same reasoning as
-    // the bootstrap's advisory lock: two administrators approving the same
-    // Account at once should serialize, not race each other's grant writes.
-    const { rows: [current] } = await client.query(
-      'SELECT approval_status FROM app_users WHERE id = $1 FOR UPDATE',
-      [id]
-    );
-    if (!current) throw notFoundAccount();
-    requireApprovalStatusUnchanged(current, expectedApprovalStatus);
+  const parsedEmployeeId = parseOptionalEmployeeId(employeeId);
 
-    if (parsedGrants.length > 0) {
-      const { rows: found } = await client.query(
-        'SELECT id FROM org_units WHERE id = ANY($1::bigint[])',
-        [parsedGrants.map((grant) => grant.orgUnitId)]
+  try {
+    return await withActor(actingAccountId, async (client) => {
+      // Locks the row for the length of this transaction, same reasoning as
+      // the bootstrap's advisory lock: two administrators approving the same
+      // Account at once should serialize, not race each other's grant writes.
+      const { rows: [current] } = await client.query(
+        'SELECT approval_status FROM app_users WHERE id = $1 FOR UPDATE',
+        [id]
       );
-      const foundIds = new Set(found.map((row) => row.id));
-      const missing = parsedGrants.filter((grant) => !foundIds.has(grant.orgUnitId));
-      if (missing.length > 0) {
-        throw httpError(400, `unknown Org Unit id(s): ${missing.map((grant) => grant.orgUnitId).join(', ')}`);
+      if (!current) throw notFoundAccount();
+      requireApprovalStatusUnchanged(current, expectedApprovalStatus);
+
+      if (parsedGrants.length > 0) {
+        const { rows: found } = await client.query(
+          'SELECT id FROM org_units WHERE id = ANY($1::bigint[])',
+          [parsedGrants.map((grant) => grant.orgUnitId)]
+        );
+        const foundIds = new Set(found.map((row) => row.id));
+        const missing = parsedGrants.filter((grant) => !foundIds.has(grant.orgUnitId));
+        if (missing.length > 0) {
+          throw httpError(400, `unknown Org Unit id(s): ${missing.map((grant) => grant.orgUnitId).join(', ')}`);
+        }
       }
-    }
 
-    const { rows: [updated] } = await client.query(
-      `UPDATE app_users
-          SET role = $2, approval_status = 'approved', is_active = TRUE
-        WHERE id = $1
-      RETURNING ${ACCOUNT_COLUMNS}`,
-      [id, role]
-    );
+      if (parsedEmployeeId !== undefined && parsedEmployeeId !== null) {
+        await requireLinkableEmployee(client, parsedEmployeeId, id);
+      }
 
-    await client.query('DELETE FROM app_user_org_units WHERE app_user_id = $1', [id]);
-    for (const grant of parsedGrants) {
-      // Sequential, not Promise.all: same connection, one transaction — the
-      // pg client does not support concurrent queries on a single client.
-      // eslint-disable-next-line no-await-in-loop
-      await client.query(
-        `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write)
-         VALUES ($1, $2, $3)`,
-        [id, grant.orgUnitId, grant.canWrite]
+      const { rows: [updated] } = await client.query(
+        parsedEmployeeId === undefined
+          ? `UPDATE app_users
+                SET role = $2, approval_status = 'approved', is_active = TRUE
+              WHERE id = $1
+            RETURNING ${ACCOUNT_COLUMNS}`
+          : `UPDATE app_users
+                SET role = $2, approval_status = 'approved', is_active = TRUE, employee_id = $3
+              WHERE id = $1
+            RETURNING ${ACCOUNT_COLUMNS}`,
+        parsedEmployeeId === undefined ? [id, role] : [id, role, parsedEmployeeId]
       );
-    }
 
-    return toAccount(updated);
-  });
+      await client.query('DELETE FROM app_user_org_units WHERE app_user_id = $1', [id]);
+      for (const grant of parsedGrants) {
+        // Sequential, not Promise.all: same connection, one transaction — the
+        // pg client does not support concurrent queries on a single client.
+        // eslint-disable-next-line no-await-in-loop
+        await client.query(
+          `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write)
+           VALUES ($1, $2, $3)`,
+          [id, grant.orgUnitId, grant.canWrite]
+        );
+      }
+
+      return toAccount(updated);
+    });
+  } catch (error) {
+    throw mapAccountWriteError(error);
+  }
 }
 
 // Rejecting an Account sets it inactive with a reason a deactivation alone
@@ -420,6 +570,51 @@ async function setAccountActive(id, isActive, actingAccountId) {
   });
 }
 
+// The correction route (issue #115, ADR-0022): sets or clears
+// app_users.employee_id outside of Approval, for a suggestion an
+// administrator missed, an Employee record created after the Account, or a
+// mistaken link. `employeeId: null` clears the link; any other value goes
+// through the same requireLinkableEmployee checks approveAccount's own
+// employeeId uses, so the two writers of this column never disagree about
+// what makes an Employee linkable.
+//
+// refuseSelfAction runs as this function's first statement, before
+// employeeId is even looked at — exactly the shape ADR-0013 mandates
+// (service.js's other three self-action guards, above) and ADR-0022 extends
+// to this write: an administrator asserting "this is the Employee I am" is
+// exactly the kind of identity claim ADR-0013's rule already refuses,
+// regardless of which particular write carries it.
+async function setAccountEmployee(id, employeeId, actingAccountId) {
+  refuseSelfAction(id, actingAccountId);
+
+  const parsedEmployeeId = employeeId === null ? null : parseId(employeeId);
+  if (parsedEmployeeId === null && employeeId !== null) {
+    throw httpError(400, 'employeeId must be a valid Employee id, or null to clear the link');
+  }
+
+  try {
+    return await withActor(actingAccountId, async (client) => {
+      const { rows: [current] } = await client.query(
+        'SELECT id FROM app_users WHERE id = $1 FOR UPDATE',
+        [id]
+      );
+      if (!current) throw notFoundAccount();
+
+      if (parsedEmployeeId !== null) {
+        await requireLinkableEmployee(client, parsedEmployeeId, id);
+      }
+
+      const { rows: [updated] } = await client.query(
+        `UPDATE app_users SET employee_id = $2 WHERE id = $1 RETURNING ${ACCOUNT_COLUMNS}`,
+        [id, parsedEmployeeId]
+      );
+      return toAccount(updated);
+    });
+  } catch (error) {
+    throw mapAccountWriteError(error);
+  }
+}
+
 module.exports = {
   resolveAccountForIdentity,
   findAccountBySubject,
@@ -428,5 +623,6 @@ module.exports = {
   approveAccount,
   rejectAccount,
   setAccountActive,
+  setAccountEmployee,
   SELF_ACTION_REFUSED
 };

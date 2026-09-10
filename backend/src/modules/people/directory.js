@@ -591,6 +591,19 @@ async function updateEmployee(id, input, accountId) {
 // "Departed" never exists without a terminated_on to go with it. A
 // terminatedOn before hired_on trips employees_dates_valid, surfaced as a
 // clean 400 by mapEmployeeWriteError, not a 500.
+//
+// `linkedAccount` (issue #115, ADR-0022) rides along on this response only —
+// this route already sits behind requireAdmin (directory-routes.js's own
+// header), so surfacing which Account is left signed-in-able as this
+// Employee does not widen what ADR-0009 keeps administrator-only (an
+// Account's own identity, `GET /accounts`); it would if the same field
+// appeared on getEmployee/getEmployeeDetail/listEmployees, which any approved
+// Account may call, so those three deliberately stay untouched — see
+// directory-routes.js's own GET /employees/:id test pinning this. The query
+// is a plain SQL join against `app_users`, not a call into service.js: the
+// two files are domains within the same Module (this file's own header,
+// AGENTS.md section 6), the same reasoning service.js's own suggestedEmployee
+// join uses in the other direction.
 async function setEmployeeDeparted(id, { terminatedOn } = {}, accountId) {
   await getEmployee(id); // 404s if it does not exist.
 
@@ -604,7 +617,18 @@ async function setEmployeeDeparted(id, { terminatedOn } = {}, accountId) {
           RETURNING ${EMPLOYEE_COLUMNS}`,
         [terminatedOn ?? null, id]
       );
-      return toEmployee(row);
+
+      const { rows: [linkedAccount] } = await client.query(
+        'SELECT id, email, is_active FROM app_users WHERE employee_id = $1',
+        [id]
+      );
+
+      return {
+        ...toEmployee(row),
+        linkedAccount: linkedAccount
+          ? { id: linkedAccount.id, email: linkedAccount.email, isActive: linkedAccount.is_active }
+          : null
+      };
     });
   } catch (error) {
     throw mapEmployeeWriteError(error);
