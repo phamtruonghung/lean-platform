@@ -18,7 +18,8 @@ const {
   listPendingAccounts,
   approveAccount,
   rejectAccount,
-  setAccountActive
+  setAccountActive,
+  setAccountEmployee
 } = require('./service');
 
 const router = express.Router();
@@ -112,11 +113,16 @@ router.post('/accounts/:id/approval', authenticate, requireActive, requireAdmin,
   try {
     const id = requireAccountId(req);
 
-    const { role, grants } = req.body ?? {};
+    const { role, grants, employeeId } = req.body ?? {};
     // `expectedApprovalStatus` is optional, exactly as on the rejection route
     // below — see service.js's rejectAccount for what sending it buys an
-    // administrator working the queue.
-    const account = await approveAccount(id, { role, grants: grants ?? [] }, req.account.id, {
+    // administrator working the queue. `employeeId` is optional too (issue
+    // #115) — omitted from the body via destructuring is `undefined`, which
+    // approveAccount's own parseOptionalEmployeeId treats as "leave the
+    // existing link untouched", distinct from an explicit `null` ("clear
+    // it") — so this is passed through as-is, never defaulted the way
+    // `grants` is.
+    const account = await approveAccount(id, { role, grants: grants ?? [], employeeId }, req.account.id, {
       expectedApprovalStatus: req.body?.expectedApprovalStatus
     });
     res.json({ account });
@@ -150,6 +156,31 @@ router.patch('/accounts/:id', authenticate, requireActive, requireAdmin, async (
       return res.status(400).json({ message: 'isActive (boolean) is required' });
     }
     const account = await setAccountActive(id, req.body.isActive, req.account.id);
+    res.json({ account });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+// The Employee link's own correction route (issue #115, ADR-0022): sets or
+// clears app_users.employee_id outside of Approval — a suggestion an
+// administrator missed at Approval time, an Employee record created after
+// the Account, or a mistaken link. `employeeId: null` clears it; any other
+// value is validated the same way approveAccount's own employeeId is
+// (service.js's requireLinkableEmployee, shared by both writers).
+//
+// refuseSelfAction (service.js) runs as setAccountEmployee's own first
+// statement — ADR-0013's rule, extended here (see ADR-0022): asserting which
+// Employee an Account belongs to is exactly the kind of identity claim that
+// ADR-0013 already refuses an administrator making about their own Account.
+router.put('/accounts/:id/employee', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+  try {
+    const id = requireAccountId(req);
+
+    if (!Object.prototype.hasOwnProperty.call(req.body ?? {}, 'employeeId')) {
+      return res.status(400).json({ message: 'employeeId is required (a valid Employee id, or null to clear the link)' });
+    }
+    const account = await setAccountEmployee(id, req.body.employeeId, req.account.id);
     res.json({ account });
   } catch (error) {
     handleError(error, res, next);
