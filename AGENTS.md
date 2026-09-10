@@ -287,6 +287,17 @@ domain logic from its routing in a fixed pattern — see `assets.js` /
   Screens reached without ever being offered as Destinations. The *Shell* is
   the persistent chrome (sidebar, brand header, account footer) that stays
   put while Screens change beneath it.
+- **A value with a known set is chosen, never typed.** A field backed by a
+  Postgres `DATE` renders a date picker and its text field is read-only;
+  optional ones carry an explicit clear affordance, because blank has
+  meaning. A timezone is chosen from the list the database validates against,
+  never typed. A search box suggests records as the user types and reports
+  the pick to its caller. When the list behind such a control cannot be
+  fetched, it shows `FailureState` and blocks submission rather than falling
+  back to free text. The shared widgets are
+  `frontend/lib/widgets/app_date_field.dart` and `app_search_field.dart`;
+  build on them rather than hand-rolling another `TextField`. (ADR-0023.)
+
 - **Public static `Key` accessors for testing.** A widget that a test needs
   to find or act on exposes a `static ValueKey<String>` method or field
   rather than a test constructing an ad hoc `Key` inline — see
