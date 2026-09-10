@@ -125,6 +125,34 @@ async function getSite(id) {
   return site;
 }
 
+// The timezone list a Site's `timezone` is chosen from (issue #123,
+// ADR-0023's "a value with a known set is chosen, never typed"). Postgres's
+// own pg_timezone_names is the authority `sites_validate_timezone` (the
+// baseline migration) already validates against, so this mirrors that query
+// rather than shipping a second, driftable list — a bundled or curated set
+// could offer a name the trigger then refuses.
+//
+// posix/ and right/ are excluded: they are duplicates of the canonical zones
+// (roughly tripling the list) that the trigger would still accept but that
+// nothing should ever offer a person picking a Site's timezone. Everything
+// else is kept, INCLUDING legacy aliases (US/Eastern) and the Etc/* zones —
+// a Site created earlier may already store one of these, and the list must
+// be able to round-trip whatever is already on a row, not just what a new
+// Site should be steered toward.
+//
+// Sorted and fetched whole, no paging or search: ~1,200 rows after
+// filtering, changing only when the Postgres version itself changes, so a
+// server-side search would add complexity for a list this small and this
+// stable — the client filters in memory instead (ADR-0023).
+async function listTimezones() {
+  const { rows } = await getPool().query(
+    `SELECT name FROM pg_timezone_names
+      WHERE name NOT LIKE 'posix/%' AND name NOT LIKE 'right/%'
+      ORDER BY name`
+  );
+  return rows.map((row) => row.name);
+}
+
 // ---------------------------------------------------------------------------
 // Org Units
 // ---------------------------------------------------------------------------
@@ -378,6 +406,7 @@ module.exports = {
   listSites,
   getSite,
   findSite,
+  listTimezones,
   createOrgUnit,
   listOrgUnits,
   listOrgUnitsByIds,

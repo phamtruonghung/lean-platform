@@ -106,6 +106,22 @@ async function requireOrgUnitCreateScope(req, res, next) {
   }
 }
 
+// The timezone list a Site's `timezone` is chosen from (issue #123,
+// ADR-0023) — any authenticated, active Account, NOT administrator-only:
+// unlike creating or editing a Site, reading the list of valid values
+// carries no plant data of its own, and a non-admin opening a Site form
+// should not be shown an empty control just because they cannot create a
+// Site. See plant.listTimezones's own header for the filtering rule this
+// mirrors from sites_validate_timezone.
+router.get('/timezones', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const timezones = await plant.listTimezones();
+    res.json({ timezones });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
 router.post('/sites', authenticate, requireActive, authorization.requireAdmin, async (req, res, next) => {
   try {
     const site = await plant.createSite(req.body ?? {}, req.account.id);

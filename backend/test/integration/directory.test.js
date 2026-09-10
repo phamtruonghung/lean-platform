@@ -381,6 +381,101 @@ test('search by name matches on part of a first name and on part of a last name,
 });
 
 // ---------------------------------------------------------------------------
+// 3b. A limit on the listing (issue #123, ADR-0023) — applied as a SQL
+//     LIMIT, capped at a ceiling, falling back to unbounded on anything
+//     invalid, and never changing the underlying ordering. Every fixture
+//     here uses its own unique(-ish) first name as the search term, so a
+//     count assertion is never at risk of picking up an unrelated Employee
+//     inserted elsewhere in this file or by a previous run's leftovers.
+// ---------------------------------------------------------------------------
+
+async function insertLimitFixtureEmployees(term, count) {
+  const names = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India'];
+  const ids = [];
+  for (let i = 0; i < count; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const id = await insertEmployee({ firstName: term, lastName: names[i] });
+    ids.push(id);
+  }
+  return ids;
+}
+
+test('?limit=5 against more than five matching Employees returns exactly five', async () => {
+  const term = uniqueCode('LimitFive');
+  await insertLimitFixtureEmployees(term, 7);
+
+  const response = await listEmployeesRequest(`?search=${term}&limit=5`);
+  assert.strictEqual(response.status, 200);
+  const { employees } = await response.json();
+  assert.strictEqual(employees.length, 5);
+});
+
+test('omitting limit returns all matches, unaffected by the new parameter', async () => {
+  const term = uniqueCode('LimitOmit');
+  await insertLimitFixtureEmployees(term, 7);
+
+  const response = await listEmployeesRequest(`?search=${term}`);
+  assert.strictEqual(response.status, 200);
+  const { employees } = await response.json();
+  assert.strictEqual(employees.length, 7);
+});
+
+test('a non-numeric, zero, or negative limit falls back to unbounded rather than erroring', async () => {
+  const term = uniqueCode('LimitInvalid');
+  await insertLimitFixtureEmployees(term, 7);
+
+  const nonNumeric = await listEmployeesRequest(`?search=${term}&limit=abc`);
+  assert.strictEqual(nonNumeric.status, 200);
+  assert.strictEqual((await nonNumeric.json()).employees.length, 7);
+
+  const zero = await listEmployeesRequest(`?search=${term}&limit=0`);
+  assert.strictEqual(zero.status, 200);
+  assert.strictEqual((await zero.json()).employees.length, 7);
+
+  const negative = await listEmployeesRequest(`?search=${term}&limit=-3`);
+  assert.strictEqual(negative.status, 200);
+  assert.strictEqual((await negative.json()).employees.length, 7);
+});
+
+test('the limited result is the first N of the unlimited result, in the same order', async () => {
+  const term = uniqueCode('LimitOrder');
+  await insertLimitFixtureEmployees(term, 7);
+
+  const unlimited = await listEmployeesRequest(`?search=${term}`);
+  const { employees: unlimitedList } = await unlimited.json();
+  assert.strictEqual(unlimitedList.length, 7);
+
+  const limited = await listEmployeesRequest(`?search=${term}&limit=3`);
+  const { employees: limitedList } = await limited.json();
+  assert.strictEqual(limitedList.length, 3);
+
+  assert.deepStrictEqual(limitedList.map((e) => e.id), unlimitedList.slice(0, 3).map((e) => e.id));
+});
+
+test('a limit above the ceiling is capped at the ceiling', async () => {
+  const term = uniqueCode('LimitCeiling');
+  // A bulk INSERT...SELECT rather than 200-odd individual insertEmployee
+  // calls — this test's only job is to prove a value above the ceiling does
+  // not pass straight through to Postgres, so the fixture's own shape does
+  // not need insertEmployee's more expressive (but one-row-at-a-time) form.
+  const CEILING = 200; // mirrors directory.js's own EMPLOYEE_LISTING_LIMIT_CEILING
+  const overCeiling = CEILING + 5;
+  const { rows } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name)
+     SELECT 'CEIL' || $1 || '-' || gs, $2, lpad(gs::text, 4, '0')
+       FROM generate_series(1, $3) AS gs
+     RETURNING id`,
+    [process.pid, term, overCeiling]
+  );
+  insertedEmployeeIds.push(...rows.map((row) => row.id));
+
+  const response = await listEmployeesRequest(`?search=${term}&limit=99999`);
+  assert.strictEqual(response.status, 200);
+  const { employees } = await response.json();
+  assert.strictEqual(employees.length, CEILING);
+});
+
+// ---------------------------------------------------------------------------
 // 4. The Org Unit filter resolves through the tree, not by exact match.
 // ---------------------------------------------------------------------------
 
