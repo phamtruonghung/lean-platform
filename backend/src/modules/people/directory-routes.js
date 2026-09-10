@@ -105,11 +105,23 @@ router.get('/employees', authenticate, requireActive, async (req, res, next) => 
     // else falls back to the safe default (Active only).
     const includeDeparted = req.query.includeDeparted === 'true';
 
+    // A limit on the listing (issue #123), in the same distrustful spirit as
+    // includeDeparted just above: this file hands over only what the query
+    // string literally said, as a number if it parses as one at all and
+    // `undefined` otherwise, rather than deciding here what counts as valid.
+    // Unlike orgUnitId/jobRoleId above, an unparseable value is never a 400 —
+    // listEmployees's own normalizeLimit is what turns a non-numeric, zero or
+    // negative value into "unbounded" (today's exact behaviour) and caps
+    // anything past its ceiling, so a stray or malformed ?limit= can never
+    // turn a working request into an error.
+    const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+
     const employees = await listEmployees({
       search: typeof req.query.search === 'string' ? req.query.search : undefined,
       orgUnitId,
       jobRoleId,
-      includeDeparted
+      includeDeparted,
+      limit
     });
     res.json({ employees });
   } catch (error) {

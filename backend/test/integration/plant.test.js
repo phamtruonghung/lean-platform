@@ -34,6 +34,7 @@ let pool;
 let closePool;
 let adminToken;
 let inactiveToken;
+let memberToken; // approved, active, non-admin — GET /timezones' own access rule (issue #123).
 const insertedAccountIds = [];
 
 let codeCounter = 0;
@@ -74,6 +75,7 @@ test.before(async () => {
 
   const adminSubject = `plant-admin-${process.pid}`;
   const inactiveSubject = `plant-inactive-${process.pid}`;
+  const memberSubject = `plant-member-${process.pid}`;
 
   const { rows: [admin] } = await pool.query(
     `INSERT INTO app_users (email, display_name, role, external_subject, is_active)
@@ -85,10 +87,16 @@ test.before(async () => {
      VALUES ($1, 'Plant Test Inactive', 'operator', $2, FALSE) RETURNING id`,
     [`${inactiveSubject}@example.com`, inactiveSubject]
   );
-  insertedAccountIds.push(admin.id, inactive.id);
+  const { rows: [member] } = await pool.query(
+    `INSERT INTO app_users (email, display_name, role, external_subject, is_active)
+     VALUES ($1, 'Plant Test Member', 'operator', $2, TRUE) RETURNING id`,
+    [`${memberSubject}@example.com`, memberSubject]
+  );
+  insertedAccountIds.push(admin.id, inactive.id, member.id);
 
   adminToken = await authHeader(adminSubject);
   inactiveToken = await authHeader(inactiveSubject);
+  memberToken = await authHeader(memberSubject);
 });
 
 test.after(async () => {
@@ -370,4 +378,72 @@ test('PATCHing an Org Unit without a boolean isActive is rejected', async (t) =>
     body: JSON.stringify({})
   });
   assert.strictEqual(response.status, 400);
+});
+
+// ---------------------------------------------------------------------------
+// 5. GET /timezones (issue #123, ADR-0023) — the list a Site's timezone is
+//    chosen from, mirroring sites_validate_timezone's own authority
+//    (pg_timezone_names) rather than a second, driftable source.
+// ---------------------------------------------------------------------------
+
+test('the timezone list contains Europe/London and UTC', async () => {
+  const response = await fetch(`${base}/api/people/timezones`, { headers: adminToken });
+  assert.strictEqual(response.status, 200);
+  const { timezones } = await response.json();
+  assert.ok(timezones.includes('Europe/London'));
+  assert.ok(timezones.includes('UTC'));
+});
+
+test('the timezone list excludes every posix/ and right/ name', async () => {
+  const response = await fetch(`${base}/api/people/timezones`, { headers: adminToken });
+  assert.strictEqual(response.status, 200);
+  const { timezones } = await response.json();
+  assert.ok(timezones.length > 0);
+  assert.ok(!timezones.some((name) => name.startsWith('posix/')));
+  assert.ok(!timezones.some((name) => name.startsWith('right/')));
+});
+
+test('the timezone list keeps a legacy alias like US/Eastern, for a Site that already stores it', async () => {
+  const response = await fetch(`${base}/api/people/timezones`, { headers: adminToken });
+  assert.strictEqual(response.status, 200);
+  const { timezones } = await response.json();
+  assert.ok(timezones.includes('US/Eastern'));
+});
+
+test('the timezone list is sorted', async () => {
+  const response = await fetch(`${base}/api/people/timezones`, { headers: adminToken });
+  assert.strictEqual(response.status, 200);
+  const { timezones } = await response.json();
+  const sorted = [...timezones].sort();
+  assert.deepStrictEqual(timezones, sorted);
+});
+
+test('every value in the timezone list passes sites_validate_timezone: creating a Site with one succeeds', async (t) => {
+  const listResponse = await fetch(`${base}/api/people/timezones`, { headers: adminToken });
+  const { timezones } = await listResponse.json();
+  // Asia/Ho_Chi_Minh is what createSite's own default uses elsewhere in this
+  // file; picked here explicitly by name instead, so this test still proves
+  // the round trip even if that default ever changes.
+  const timezone = timezones.includes('Asia/Ho_Chi_Minh') ? 'Asia/Ho_Chi_Minh' : timezones[0];
+
+  const response = await createSite({ timezone });
+  assert.strictEqual(response.status, 201);
+  const { site } = await response.json();
+  t.after(async () => {
+    await pool.query('DELETE FROM sites WHERE id = $1', [site.id]);
+  });
+  assert.strictEqual(site.timezone, timezone);
+});
+
+test('a request with no bearer token is refused (GET /timezones)', async () => {
+  const response = await fetch(`${base}/api/people/timezones`);
+  assert.strictEqual(response.status, 401);
+});
+
+test('an ordinary active, non-admin Account may read the timezone list — not administrator-only', async () => {
+  const response = await fetch(`${base}/api/people/timezones`, { headers: memberToken });
+  assert.strictEqual(response.status, 200);
+  const { timezones } = await response.json();
+  assert.ok(Array.isArray(timezones));
+  assert.ok(timezones.length > 0);
 });

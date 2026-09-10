@@ -152,6 +152,32 @@ function toEmployeeListingRow(row) {
   };
 }
 
+// A caller cannot ask for an unbounded page by passing a huge number (issue
+// #123, ADR-0023's own "cost" section on listEmployees's unindexed
+// display_name ILIKE scan) — capped, not rejected, so a value above the
+// ceiling still returns something useful rather than erroring. 200 is
+// comfortably above what any real caller needs today: ADR-0023's own
+// suggestion boxes (the Directory, the Employee link picker) show at most
+// ten results per keystroke, and a future paged Directory view would ask
+// for one page at a time, not the whole table — but it is far short of
+// "every Employee matching a common two-letter term", which is the
+// unbounded scan this ticket exists to bound.
+const EMPLOYEE_LISTING_LIMIT_CEILING = 200;
+
+// listEmployees's own limit rule (issue #123): absent, non-numeric, zero or
+// negative all mean "today's exact behaviour" — unbounded — rather than an
+// error, so an existing caller that never sends `limit` at all, or a typo'd
+// one, is unaffected. A value within range is capped at the ceiling above;
+// this is the one place that decides what counts as a valid limit, so
+// directory-routes.js only has to hand over what the query string literally
+// said.
+function normalizeLimit(limit) {
+  if (typeof limit !== 'number' || !Number.isInteger(limit) || limit <= 0) {
+    return undefined;
+  }
+  return Math.min(limit, EMPLOYEE_LISTING_LIMIT_CEILING);
+}
+
 // Active Employees by default (issue #9's own default), ordered by
 // display_name; includeDeparted also brings in Departed ones (is_active =
 // FALSE). search, orgUnitId and jobRoleId are all optional and combine with
@@ -194,7 +220,13 @@ function toEmployeeListingRow(row) {
 // such an Employee is excluded from a filtered result the same way the old
 // INNER JOIN excluded them — the join changed, the filtered result set did
 // not.
-async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } = {}) {
+// limit (issue #123) is applied as a SQL LIMIT, not by slicing rows in Node
+// after the fact — the point is to bound the query itself, not the response
+// size after Postgres has already done the unbounded work. It changes
+// nothing about ORDER BY, so a limited result is always the first N rows of
+// the exact same ordering an unlimited call would return, never an
+// arbitrary N.
+async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted, limit } = {}) {
   const conditions = [];
   const params = [];
 
@@ -227,6 +259,13 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } =
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  const limitValue = normalizeLimit(limit);
+  let limitClause = '';
+  if (limitValue !== undefined) {
+    params.push(limitValue);
+    limitClause = `LIMIT $${params.length}`;
+  }
+
   const { rows } = await getPool().query(
     `SELECT ${EMPLOYEE_LISTING_COLUMNS}
        FROM employees e
@@ -243,7 +282,8 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted } =
        LEFT JOIN job_roles current_job_role
          ON current_job_role.id = current_assignment.job_role_id
        ${whereClause}
-      ORDER BY e.display_name`,
+      ORDER BY e.display_name
+      ${limitClause}`,
     params
   );
   return rows.map(toEmployeeListingRow);
