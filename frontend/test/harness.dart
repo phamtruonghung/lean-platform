@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -1951,3 +1952,26 @@ Future<void> tapIn(WidgetTester tester, Finder finder) async {
 /// reading this rather than by inspecting a Bloc's own state.
 String locationOf(WidgetTester tester, Finder screenFinder) =>
     GoRouter.of(tester.element(screenFinder)).routerDelegate.currentConfiguration.uri.toString();
+
+/// Picks [date] through the real `showDatePicker` dialog an `AppDateField`
+/// opens (issue #126) — taps [fieldKey] to open it, then switches the
+/// picker into its own keyboard-entry mode (the picker's `InputDatePicker
+/// FormField`, a widget entirely separate from the read-only `AppDateField`
+/// beneath it) rather than walking the calendar month by month, so a test
+/// can land on an arbitrary date deterministically. `MM/DD/YYYY` is the
+/// picker's own default (US) format — `MaterialLocalizations.
+/// formatCompactDate`, unrelated to the `YYYY-MM-DD` `AppDateField` itself
+/// displays and sends.
+Future<void> pickDate(WidgetTester tester, Key fieldKey, DateTime date) async {
+  await tapIn(tester, find.byKey(fieldKey));
+  await tester.tap(find.byTooltip('Switch to input'));
+  await tester.pumpAndSettle();
+  String twoDigits(int n) => n.toString().padLeft(2, '0');
+  await tester.enterText(
+    find.byType(TextFormField),
+    '${twoDigits(date.month)}/${twoDigits(date.day)}/${date.year}',
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('OK'));
+  await tester.pumpAndSettle();
+}

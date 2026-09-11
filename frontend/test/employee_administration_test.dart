@@ -4,6 +4,7 @@
 /// auth boundary.
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/people/directory_screen.dart';
 import 'package:lean_platform/people/employee_correction_dialog.dart';
@@ -11,6 +12,7 @@ import 'package:lean_platform/people/employee_departure_dialog.dart';
 import 'package:lean_platform/people/employee_detail_screen.dart';
 import 'package:lean_platform/people/employee_form_dialog.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_date_field.dart';
 
 import 'harness.dart';
 
@@ -179,7 +181,7 @@ void main() {
 
     await tapIn(tester, find.byKey(EmployeeDetailScreen.departKey));
     expect(find.byType(EmployeeDepartureDialog), findsOneWidget);
-    await tester.enterText(find.byKey(EmployeeDepartureDialog.terminatedOnKey), '2024-07-01');
+    await pickDate(tester, EmployeeDepartureDialog.terminatedOnKey, DateTime(2024, 7, 1));
     await tapIn(tester, find.byKey(EmployeeDepartureDialog.submitKey));
 
     expect(wire.employeeDepartures.length, 1);
@@ -260,7 +262,7 @@ void main() {
     await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
     await tapIn(tester, find.byKey(EmployeeDetailScreen.departKey));
 
-    await tester.enterText(find.byKey(EmployeeDepartureDialog.terminatedOnKey), '2019-01-01');
+    await pickDate(tester, EmployeeDepartureDialog.terminatedOnKey, DateTime(2019, 1, 1));
     await tapIn(tester, find.byKey(EmployeeDepartureDialog.submitKey));
 
     expect(find.byType(EmployeeDepartureDialog), findsOneWidget);
@@ -268,6 +270,84 @@ void main() {
     expect(find.text('terminatedOn cannot be before hiredOn'), findsOneWidget);
 
     await tapIn(tester, find.byKey(EmployeeDepartureDialog.cancelKey));
+  });
+
+  // AppDateField (issue #126, ADR-0023) at the departure date: optional,
+  // blank meaning "the server records today" — a clear affordance is the
+  // only way back to that genuine blank once a date has been picked.
+
+  testWidgets(
+      'the departure date field opens a date picker on tap, and picking a date fills it '
+      'displayed as YYYY-MM-DD', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.departKey));
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    await tapIn(tester, find.byKey(EmployeeDepartureDialog.terminatedOnKey));
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Switch to input'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '07/01/2024');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('2024-07-01'), findsOneWidget);
+  });
+
+  testWidgets('the departure date field cannot be filled by typing', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.departKey));
+
+    final fieldKey = AppDateField.fieldKey('departure-terminated-on');
+    await tester.enterText(find.byKey(fieldKey), '2099-12-31');
+    await tester.pump();
+
+    expect(find.text('2099-12-31'), findsNothing);
+    final field = tester.widget<TextField>(find.byKey(fieldKey));
+    expect(field.readOnly, isTrue);
+    expect(field.controller!.text, isEmpty);
+  });
+
+  testWidgets(
+      'clearing a picked departure date returns it to empty, and the request omits '
+      'terminatedOn exactly as a never-picked one does', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.departKey));
+
+    expect(find.byKey(AppDateField.clearKey('departure-terminated-on')), findsNothing);
+
+    await pickDate(tester, EmployeeDepartureDialog.terminatedOnKey, DateTime(2024, 7, 1));
+    expect(find.text('2024-07-01'), findsOneWidget);
+    expect(find.byKey(AppDateField.clearKey('departure-terminated-on')), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AppDateField.clearKey('departure-terminated-on')));
+
+    expect(find.text('2024-07-01'), findsNothing);
+    expect(find.byKey(AppDateField.clearKey('departure-terminated-on')), findsNothing);
+
+    await tapIn(tester, find.byKey(EmployeeDepartureDialog.submitKey));
+
+    // Genuinely blank on the wire — no `terminatedOn` key at all, exactly
+    // what a departure never touching this field also sends.
+    expect(wire.employeeDepartures.single.$2, isEmpty);
   });
 
   testWidgets('reinstatement sends its own request, with no body, and the record reads as active',

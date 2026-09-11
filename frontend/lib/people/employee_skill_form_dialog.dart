@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_date_field.dart';
 import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
@@ -83,9 +84,18 @@ class EmployeeSkillFormDialog extends StatefulWidget {
 class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
   late String? _skillId = widget.existing?.skillId;
   late int _proficiencyLevel = widget.existing?.proficiencyLevel ?? 1;
-  final TextEditingController _assessedOn = TextEditingController();
-  late final TextEditingController _expiresOn =
-      TextEditingController(text: widget.existing?.expiresOn ?? '');
+
+  /// No `TextEditingController` for either date — `AppDateField` is
+  /// controlled (`value`/`onChanged`), so this dialog holds both dates
+  /// itself, the same way it already holds [_skillId] and
+  /// [_proficiencyLevel]. [_assessedOn] always starts unset, even while
+  /// re-assessing (never pre-filled from [widget.existing], matching this
+  /// class's prior `TextEditingController()` with no initial text);
+  /// [_expiresOn] starts from [widget.existing]'s own value, matching the
+  /// prior controller's `text: widget.existing?.expiresOn ?? ''`.
+  String? _assessedOn;
+  late String? _expiresOn = widget.existing?.expiresOn;
+
   final TextEditingController _evidenceRef = TextEditingController();
   final TextEditingController _note = TextEditingController();
 
@@ -96,8 +106,6 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
 
   @override
   void dispose() {
-    _assessedOn.dispose();
-    _expiresOn.dispose();
     _evidenceRef.dispose();
     _note.dispose();
     super.dispose();
@@ -111,16 +119,14 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
       _awaiting = true;
       _failure = null;
     });
-    final assessedOn = _assessedOn.text.trim();
-    final expiresOn = _expiresOn.text.trim();
     final evidenceRef = _evidenceRef.text.trim();
     final note = _note.text.trim();
     context.read<EmployeeDetailBloc>().add(
           EmployeeDetailSkillRecorded(
             skillId: _skillId!,
             proficiencyLevel: _proficiencyLevel,
-            assessedOn: assessedOn.isEmpty ? null : assessedOn,
-            expiresOn: expiresOn.isEmpty ? null : expiresOn,
+            assessedOn: _assessedOn,
+            expiresOn: _expiresOn,
             evidenceRef: evidenceRef.isEmpty ? null : evidenceRef,
             note: note.isEmpty ? null : note,
           ),
@@ -198,27 +204,27 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                         },
                 ),
                 const SizedBox(height: Spacing.md),
-                TextField(
+                AppDateField(
                   key: EmployeeSkillFormDialog.assessedOnKey,
-                  controller: _assessedOn,
+                  name: 'skill-assessed-on',
+                  label: 'Assessed on (optional)',
+                  helperText: 'Left blank, today is recorded.',
+                  value: _assessedOn,
+                  onChanged: (value) => setState(() => _assessedOn = value),
+                  optional: true,
                   enabled: !_awaiting,
-                  decoration: const InputDecoration(
-                    labelText: 'Assessed on (optional)',
-                    helperText: 'YYYY-MM-DD. Left blank, today is recorded.',
-                    border: OutlineInputBorder(),
-                  ),
                 ),
                 const SizedBox(height: Spacing.md),
-                TextField(
+                AppDateField(
                   key: EmployeeSkillFormDialog.expiresOnKey,
-                  controller: _expiresOn,
+                  name: 'skill-expires-on',
+                  label: 'Expires on (optional)',
+                  helperText: "Left blank, never expires (or is re-derived from the skill's own "
+                      'revalidation period).',
+                  value: _expiresOn,
+                  onChanged: (value) => setState(() => _expiresOn = value),
+                  optional: true,
                   enabled: !_awaiting,
-                  decoration: const InputDecoration(
-                    labelText: 'Expires on (optional)',
-                    helperText: 'YYYY-MM-DD. Left blank, never expires (or is re-derived from the '
-                        'skill\'s own revalidation period).',
-                    border: OutlineInputBorder(),
-                  ),
                 ),
                 const SizedBox(height: Spacing.md),
                 TextField(

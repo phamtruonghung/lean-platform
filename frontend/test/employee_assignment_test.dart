@@ -5,11 +5,13 @@
 /// boundary.
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/people/directory_screen.dart';
 import 'package:lean_platform/people/employee_assignment_dialog.dart';
 import 'package:lean_platform/people/employee_detail_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_date_field.dart';
 
 import 'harness.dart';
 
@@ -66,7 +68,7 @@ void main() {
 
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.orgUnitKey('10')));
     await _chooseJobRole(tester, 'Welder');
-    await tester.enterText(find.byKey(EmployeeAssignmentDialog.effectiveFromKey), '2024-08-01');
+    await pickDate(tester, EmployeeAssignmentDialog.effectiveFromKey, DateTime(2024, 8, 1));
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.submitKey));
 
     expect(wire.assignmentPosts.single.$1, '7');
@@ -112,7 +114,7 @@ void main() {
 
     await tapIn(tester, find.byKey(EmployeeDetailScreen.assignKey));
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.orgUnitKey('11')));
-    await tester.enterText(find.byKey(EmployeeAssignmentDialog.effectiveFromKey), '2024-08-01');
+    await pickDate(tester, EmployeeAssignmentDialog.effectiveFromKey, DateTime(2024, 8, 1));
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.submitKey));
 
     // The new Assignment reads as current…
@@ -138,7 +140,7 @@ void main() {
     await tapIn(tester, find.byKey(EmployeeDetailScreen.assignKey));
 
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.orgUnitKey('10')));
-    await tester.enterText(find.byKey(EmployeeAssignmentDialog.effectiveFromKey), '2024-08-01');
+    await pickDate(tester, EmployeeAssignmentDialog.effectiveFromKey, DateTime(2024, 8, 1));
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.submitKey));
 
     // The dialog stays open, and shows the scope refusal verbatim — not a
@@ -161,7 +163,7 @@ void main() {
     await tapIn(tester, find.byKey(EmployeeDetailScreen.assignKey));
 
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.orgUnitKey('10')));
-    await tester.enterText(find.byKey(EmployeeAssignmentDialog.effectiveFromKey), '2024-01-01');
+    await pickDate(tester, EmployeeAssignmentDialog.effectiveFromKey, DateTime(2024, 1, 1));
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.submitKey));
 
     expect(find.byType(EmployeeAssignmentDialog), findsOneWidget);
@@ -206,10 +208,88 @@ void main() {
 
     await tapIn(tester, find.byKey(EmployeeDetailScreen.assignKey));
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.orgUnitKey('10')));
-    await tester.enterText(find.byKey(EmployeeAssignmentDialog.effectiveFromKey), '2024-08-01');
+    await pickDate(tester, EmployeeAssignmentDialog.effectiveFromKey, DateTime(2024, 8, 1));
     await tapIn(tester, find.byKey(EmployeeAssignmentDialog.submitKey));
 
     expect(wire.assignmentPosts.single.$1, '7');
     expect(find.byType(EmployeeAssignmentDialog), findsNothing);
+  });
+
+  // AppDateField (issue #126, ADR-0023) at the one required call site: the
+  // effective date is chosen from a picker, never typed, and this dialog's
+  // own deliberate no-default (this file's own header) survives the move.
+
+  testWidgets(
+      'the effective date field opens a date picker on tap, and picking a date fills it '
+      'displayed as YYYY-MM-DD', (tester) async {
+    final wire = _plant(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.assignKey));
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    await tapIn(tester, find.byKey(EmployeeAssignmentDialog.effectiveFromKey));
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Switch to input'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '08/01/2024');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('2024-08-01'), findsOneWidget);
+  });
+
+  testWidgets('the effective date field cannot be filled by typing', (tester) async {
+    final wire = _plant(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.assignKey));
+
+    final fieldKey = AppDateField.fieldKey('assignment-effective-from');
+    await tester.enterText(find.byKey(fieldKey), '2099-12-31');
+    await tester.pump();
+
+    expect(find.text('2099-12-31'), findsNothing);
+    final field = tester.widget<TextField>(find.byKey(fieldKey));
+    expect(field.readOnly, isTrue);
+    expect(field.controller!.text, isEmpty);
+  });
+
+  testWidgets(
+      'the effective date field starts empty, and submission is refused until a date is '
+      "picked — this dialog's own deliberate no-default survives the move to AppDateField",
+      (tester) async {
+    final wire = _plant(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.assignKey));
+
+    final field =
+        tester.widget<TextField>(find.byKey(AppDateField.fieldKey('assignment-effective-from')));
+    expect(field.controller!.text, isEmpty);
+
+    await tapIn(tester, find.byKey(EmployeeAssignmentDialog.orgUnitKey('10')));
+
+    // Choosing a destination alone is not enough: no date was ever picked,
+    // and unlike `createAssignment`'s own server-side default, this dialog
+    // never fills one in on the caller's behalf.
+    final submit = tester.widget<FilledButton>(find.byKey(EmployeeAssignmentDialog.submitKey));
+    expect(submit.onPressed, isNull);
+
+    await tapIn(tester, find.byKey(EmployeeAssignmentDialog.submitKey));
+    expect(wire.assignmentPosts, isEmpty);
+    expect(find.byType(EmployeeAssignmentDialog), findsOneWidget);
   });
 }
