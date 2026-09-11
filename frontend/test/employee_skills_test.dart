@@ -3,11 +3,13 @@
 /// client seam (ADR-0012).
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/people/directory_screen.dart';
 import 'package:lean_platform/people/employee_detail_screen.dart';
 import 'package:lean_platform/people/employee_skill_form_dialog.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_date_field.dart';
 
 import 'harness.dart';
 
@@ -134,5 +136,195 @@ void main() {
     expect(find.byKey(EmployeeDetailScreen.skillChipKey('30')), findsOneWidget);
     expect(find.byKey(EmployeeDetailScreen.recordSkillKey), findsNothing);
     expect(find.byKey(EmployeeDetailScreen.reassessSkillKey('30')), findsNothing);
+  });
+
+  // AppDateField (issue #126, ADR-0023) at this form's own two date fields —
+  // distinct `name`s (`skill-assessed-on`, `skill-expires-on`) are exactly
+  // why `AppDateField.name` is parameterised (its own header): two fields on
+  // one form need two sets of keys, not one colliding pair.
+
+  testWidgets(
+      'the assessed-on field opens a date picker on tap, and picking a date fills it displayed '
+      'as YYYY-MM-DD', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+      skills: [skillJson('30', 'WELD', 'Welding')],
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.assessedOnKey));
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Switch to input'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '02/10/2024');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('2024-02-10'), findsOneWidget);
+  });
+
+  testWidgets('the assessed-on field cannot be filled by typing', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+      skills: [skillJson('30', 'WELD', 'Welding')],
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
+
+    final fieldKey = AppDateField.fieldKey('skill-assessed-on');
+    await tester.enterText(find.byKey(fieldKey), '2099-12-31');
+    await tester.pump();
+
+    expect(find.text('2099-12-31'), findsNothing);
+    final field = tester.widget<TextField>(find.byKey(fieldKey));
+    expect(field.readOnly, isTrue);
+    expect(field.controller!.text, isEmpty);
+  });
+
+  testWidgets(
+      'clearing a picked assessed-on date returns it to empty, and the request omits '
+      'assessedOn exactly as a never-picked one does', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+      skills: [skillJson('30', 'WELD', 'Welding')],
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
+
+    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.skillKey));
+    await tapIn(tester, find.text('Welding').last);
+
+    expect(find.byKey(AppDateField.clearKey('skill-assessed-on')), findsNothing);
+    await pickDate(tester, EmployeeSkillFormDialog.assessedOnKey, DateTime(2024, 2, 10));
+    expect(find.text('2024-02-10'), findsOneWidget);
+    expect(find.byKey(AppDateField.clearKey('skill-assessed-on')), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AppDateField.clearKey('skill-assessed-on')));
+    expect(find.text('2024-02-10'), findsNothing);
+    expect(find.byKey(AppDateField.clearKey('skill-assessed-on')), findsNothing);
+
+    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.submitKey));
+
+    expect(wire.employeeSkillPuts.single.$3, {'proficiencyLevel': 1});
+  });
+
+  testWidgets(
+      'the expires-on field opens a date picker on tap, and picking a date fills it displayed '
+      'as YYYY-MM-DD', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+      skills: [skillJson('30', 'WELD', 'Welding')],
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.expiresOnKey));
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Switch to input'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '09/05/2026');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('2026-09-05'), findsOneWidget);
+  });
+
+  testWidgets('the expires-on field cannot be filled by typing', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+      skills: [skillJson('30', 'WELD', 'Welding')],
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
+
+    final fieldKey = AppDateField.fieldKey('skill-expires-on');
+    await tester.enterText(find.byKey(fieldKey), '2099-12-31');
+    await tester.pump();
+
+    expect(find.text('2099-12-31'), findsNothing);
+    final field = tester.widget<TextField>(find.byKey(fieldKey));
+    expect(field.readOnly, isTrue);
+    expect(field.controller!.text, isEmpty);
+  });
+
+  testWidgets(
+      'clearing a picked expires-on date returns it to empty, and the request omits '
+      'expiresOn exactly as a never-picked one does', (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {'7': employeeDetailJson('7', 'E-7', 'Alice Nguyen')},
+      skills: [skillJson('30', 'WELD', 'Welding')],
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
+
+    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.skillKey));
+    await tapIn(tester, find.text('Welding').last);
+
+    expect(find.byKey(AppDateField.clearKey('skill-expires-on')), findsNothing);
+    await pickDate(tester, EmployeeSkillFormDialog.expiresOnKey, DateTime(2026, 9, 5));
+    expect(find.text('2026-09-05'), findsOneWidget);
+    expect(find.byKey(AppDateField.clearKey('skill-expires-on')), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AppDateField.clearKey('skill-expires-on')));
+    expect(find.text('2026-09-05'), findsNothing);
+    expect(find.byKey(AppDateField.clearKey('skill-expires-on')), findsNothing);
+
+    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.submitKey));
+
+    expect(wire.employeeSkillPuts.single.$3, {'proficiencyLevel': 1});
+  });
+
+  testWidgets(
+      're-assessing a held skill with a stored expiresOn displays it on the expires-on field',
+      (tester) async {
+    final wire = FakeWire(
+      employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
+      employeeDetails: {
+        '7': employeeDetailJson(
+          '7',
+          'E-7',
+          'Alice Nguyen',
+          skills: [
+            employeeSkillJson('500', '30', 'WELD', 'Welding', expiresOn: '2027-03-15'),
+          ],
+        ),
+      },
+      skills: [skillJson('30', 'WELD', 'Welding')],
+    );
+    await openDirectory(tester, wire);
+    await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
+
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.reassessSkillKey('30')));
+    expect(find.byType(EmployeeSkillFormDialog), findsOneWidget);
+
+    // The stored expiry shows already, without picking anything — but the
+    // assessed-on field starts genuinely blank even on a re-assessment (this
+    // dialog's own header: never pre-filled from the record being
+    // re-assessed).
+    expect(find.text('2027-03-15'), findsOneWidget);
+    final assessedOnField =
+        tester.widget<TextField>(find.byKey(AppDateField.fieldKey('skill-assessed-on')));
+    expect(assessedOnField.controller!.text, isEmpty);
   });
 }

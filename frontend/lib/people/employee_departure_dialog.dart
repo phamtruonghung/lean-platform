@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_date_field.dart';
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
 
@@ -53,7 +54,12 @@ class EmployeeDepartureDialog extends StatefulWidget {
 }
 
 class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
-  final TextEditingController _terminatedOn = TextEditingController();
+  /// No `TextEditingController` here — `AppDateField` is controlled
+  /// (`value`/`onChanged`), so this dialog holds the date itself. Null means
+  /// genuinely unset (never a defaulted date), which is exactly what leaves
+  /// the server free to record today, mirroring `setEmployeeDeparted`'s own
+  /// default (this file's own header).
+  String? _terminatedOn;
 
   bool _awaiting = false;
   String? _failure;
@@ -65,21 +71,14 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
   /// nothing below can block it.
   LinkedAccountSummary? _linkedAccount;
 
-  @override
-  void dispose() {
-    _terminatedOn.dispose();
-    super.dispose();
-  }
-
   void _submit() {
     if (_awaiting) return;
     setState(() {
       _awaiting = true;
       _failure = null;
     });
-    final terminatedOn = _terminatedOn.text.trim();
     context.read<EmployeeDetailBloc>().add(
-          EmployeeDetailDepartureConfirmed(terminatedOn: terminatedOn.isEmpty ? null : terminatedOn),
+          EmployeeDetailDepartureConfirmed(terminatedOn: _terminatedOn),
         );
   }
 
@@ -153,15 +152,15 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: Spacing.md),
-              TextField(
+              AppDateField(
                 key: EmployeeDepartureDialog.terminatedOnKey,
-                controller: _terminatedOn,
+                name: 'departure-terminated-on',
+                label: 'Effective date (optional)',
+                helperText: 'Left blank, today is recorded.',
+                value: _terminatedOn,
+                onChanged: (value) => setState(() => _terminatedOn = value),
+                optional: true,
                 enabled: !_awaiting,
-                decoration: const InputDecoration(
-                  labelText: 'Effective date (optional)',
-                  helperText: 'YYYY-MM-DD. Left blank, today is recorded.',
-                  border: OutlineInputBorder(),
-                ),
               ),
               if (_failure != null)
                 Padding(

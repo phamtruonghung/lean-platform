@@ -52,6 +52,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_date_field.dart';
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
 import 'job_role.dart';
@@ -102,21 +103,20 @@ class EmployeeAssignmentDialog extends StatefulWidget {
 }
 
 class _EmployeeAssignmentDialogState extends State<EmployeeAssignmentDialog> {
-  final TextEditingController _effectiveFrom = TextEditingController();
-
   String? _orgUnitId;
   String? _jobRoleId;
+
+  /// No `TextEditingController` here — `AppDateField` is controlled
+  /// (`value`/`onChanged`), so this dialog holds the date itself, exactly as
+  /// it already holds [_orgUnitId] and [_jobRoleId]. Never a defaulted date
+  /// (this file's own header): stays null until a value is actually picked,
+  /// which is what keeps [_complete] honest.
+  String? _effectiveFrom;
 
   bool _awaiting = false;
   String? _failure;
 
-  @override
-  void dispose() {
-    _effectiveFrom.dispose();
-    super.dispose();
-  }
-
-  bool get _complete => _orgUnitId != null && _effectiveFrom.text.trim().isNotEmpty;
+  bool get _complete => _orgUnitId != null && _effectiveFrom != null;
 
   void _submit() {
     if (!_complete || _awaiting) return;
@@ -128,7 +128,7 @@ class _EmployeeAssignmentDialogState extends State<EmployeeAssignmentDialog> {
           EmployeeDetailAssignmentConfirmed(
             orgUnitId: _orgUnitId!,
             jobRoleId: _jobRoleId,
-            effectiveFrom: _effectiveFrom.text.trim(),
+            effectiveFrom: _effectiveFrom!,
           ),
         );
   }
@@ -184,16 +184,13 @@ class _EmployeeAssignmentDialogState extends State<EmployeeAssignmentDialog> {
                   onChanged: _awaiting ? null : (value) => setState(() => _jobRoleId = value),
                 ),
                 const SizedBox(height: Spacing.md),
-                TextField(
+                AppDateField(
                   key: EmployeeAssignmentDialog.effectiveFromKey,
-                  controller: _effectiveFrom,
+                  name: 'assignment-effective-from',
+                  label: 'Effective date',
+                  value: _effectiveFrom,
+                  onChanged: (value) => setState(() => _effectiveFrom = value),
                   enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Effective date',
-                    helperText: 'YYYY-MM-DD',
-                    border: OutlineInputBorder(),
-                  ),
                 ),
                 if (_failure != null)
                   Padding(
