@@ -254,8 +254,8 @@ void main() {
     expect(wire.approvals.single['employeeId'], '40');
   });
 
-  testWidgets('an administrator can override the suggestion by searching the Directory, and the '
-      'chosen id is sent instead', (tester) async {
+  testWidgets('an administrator can override the suggestion by typing into the Directory search, '
+      'and the chosen id is sent instead', (tester) async {
     final wire = FakeWire(
       queue: [
         pendingJson(
@@ -269,8 +269,11 @@ void main() {
     );
     await _openDecision(tester, wire);
 
+    // No Search button to tap any more (issue #129) — typing and waiting out
+    // `AppSearchField`'s own debounce is what surfaces a match.
     await tester.enterText(find.byKey(EmployeeLinkPicker.searchFieldKey), 'Alex');
-    await tapIn(tester, find.byKey(EmployeeLinkPicker.searchButtonKey));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
 
     expect(find.byKey(EmployeeLinkPicker.resultKey('41')), findsOneWidget);
     await tapIn(tester, find.byKey(EmployeeLinkPicker.resultKey('41')));
@@ -283,6 +286,82 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(wire.approvals.single['employeeId'], '41');
+  });
+
+  // Issue #129 (ADR-0023): the picker's search box is `AppSearchField`, no
+  // Search button remains, and a pick reports the Employee to the
+  // surrounding form (here, `AdmissionDialog`) and closes the suggestion
+  // list, without navigating anywhere.
+
+  testWidgets('typing 2+ characters shows matching Employees with name, job role and Org Unit',
+      (tester) async {
+    final wire = FakeWire(
+      queue: [pendingJson('7', 'first@b.c', _twoDaysAgo)],
+      employees: [
+        employeeJson(
+          '41',
+          'EMP-41',
+          'Alex Rios',
+          orgUnit: {'id': '10', 'name': 'Assembly'},
+          jobRole: {'id': '5', 'name': 'Welder'},
+        ),
+      ],
+    );
+    await _openDecision(tester, wire);
+
+    // Below the 2-character minimum: no suggestion renders at all.
+    await tester.enterText(find.byKey(EmployeeLinkPicker.searchFieldKey), 'a');
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byKey(EmployeeLinkPicker.resultKey('41')), findsNothing);
+
+    await tester.enterText(find.byKey(EmployeeLinkPicker.searchFieldKey), 'alex');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(find.byKey(EmployeeLinkPicker.resultKey('41')), findsOneWidget);
+    expect(find.text('EMP-41 · Alex Rios'), findsOneWidget);
+    expect(find.text('Welder · Assembly'), findsOneWidget);
+  });
+
+  testWidgets('picking a suggestion reports the Employee to the surrounding form and closes the '
+      'suggestion list, without navigating', (tester) async {
+    final wire = FakeWire(
+      queue: [pendingJson('7', 'first@b.c', _twoDaysAgo)],
+      employees: [employeeJson('41', 'EMP-41', 'Alex Rios')],
+    );
+    await _openDecision(tester, wire);
+
+    await tester.enterText(find.byKey(EmployeeLinkPicker.searchFieldKey), 'alex');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    expect(find.byKey(EmployeeLinkPicker.resultKey('41')), findsOneWidget);
+
+    await tapIn(tester, find.byKey(EmployeeLinkPicker.resultKey('41')));
+
+    // Reported to the surrounding form: the confirmation line above the
+    // search box now names the pick.
+    expect(find.text('Linked to: EMP-41 · Alex Rios'), findsOneWidget);
+    // The suggestion list is gone.
+    expect(find.byKey(EmployeeLinkPicker.resultKey('41')), findsNothing);
+    // Nothing navigational happened — still the same dialog, still the
+    // Approval queue underneath it.
+    expect(find.byType(AdmissionDialog), findsOneWidget);
+    expect(find.text('Admit this Account'), findsOneWidget);
+  });
+
+  testWidgets('the suggestion fetch carries the limit parameter', (tester) async {
+    final wire = FakeWire(
+      queue: [pendingJson('7', 'first@b.c', _twoDaysAgo)],
+      employees: [employeeJson('41', 'EMP-41', 'Alex Rios')],
+    );
+    await _openDecision(tester, wire);
+
+    await tester.enterText(find.byKey(EmployeeLinkPicker.searchFieldKey), 'alex');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(wire.employeeRequests.last['search'], 'alex');
+    expect(wire.employeeRequests.last['limit'], '10');
   });
 
   testWidgets('approving with no Employee at all sends no employeeId — the head-office and '

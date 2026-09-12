@@ -605,7 +605,8 @@ void main() {
     expect(find.byType(AccountEmployeeDialog), findsOneWidget);
 
     await tester.enterText(find.byKey(EmployeeLinkPicker.searchFieldKey), 'Jane');
-    await tapIn(tester, find.byKey(EmployeeLinkPicker.searchButtonKey));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
     await tapIn(tester, find.byKey(EmployeeLinkPicker.resultKey('40')));
     await tapIn(tester, find.byKey(AccountEmployeeDialog.submitKey));
 
