@@ -423,6 +423,7 @@ Map<String, dynamic> orgUnitJson(
   String name, {
   String? parentId,
   String unitType = 'area',
+  String? path,
 }) =>
     {
       'id': id,
@@ -430,7 +431,11 @@ Map<String, dynamic> orgUnitJson(
       'code': name.toUpperCase().replaceAll(' ', '-'),
       'name': name,
       'unitType': unitType,
-      'path': id,
+      // Real rows carry the full root-first ancestor chain (`n<id>.n<id>...`,
+      // issue #130) — a caller revealing a deeply nested search hit passes
+      // its own [path] explicitly; the bare id is only a fixture default for
+      // the many existing tests that never look past this node's own row.
+      'path': path ?? id,
       'sortOrder': 0,
       'isActive': true,
     };

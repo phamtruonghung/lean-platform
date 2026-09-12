@@ -29,6 +29,7 @@ class OrgUnitNode {
     required this.name,
     required this.unitType,
     this.isActive = true,
+    this.path = '',
   });
 
   final String id;
@@ -44,6 +45,32 @@ class OrgUnitNode {
   /// such flag at all — a Grant is only ever held on an Org Unit that exists
   /// and has not been retired since it was granted.
   final bool isActive;
+
+  /// The `ltree` path column every `plant.js` row carries (`ORG_UNIT_COLUMNS`),
+  /// as the wire sends it: dot-separated labels, root-first, each one `n`
+  /// followed by that ancestor's own id (`n<id>`, per the baseline's
+  /// compute-path trigger) — never names, since the tree stores no
+  /// materialised ancestor name anywhere. Defaulted to `''` for the same two
+  /// construction sites [isActive]'s own doc comment names, which build an
+  /// `OrgUnitNode` from a shape — an Account's own Grant row — that carries no
+  /// path at all.
+  final String path;
+
+  /// The ordered ancestor ids [path] implies, root-first, excluding this
+  /// node's own final segment — parsed by stripping each label's leading
+  /// non-digit run (issue #130). This is id-only: no ancestor's name or code
+  /// travels with a search hit, so revealing a picked Org Unit in the tree
+  /// still means walking `OrgUnitPickerBloc`'s own per-level fetch for each
+  /// id here, exactly as expanding a row by hand already does.
+  List<String> get ancestorIds {
+    if (path.isEmpty) return const [];
+    final segments = path.split('.');
+    if (segments.length <= 1) return const [];
+    return [
+      for (final segment in segments.sublist(0, segments.length - 1))
+        segment.replaceFirst(RegExp(r'^[^0-9]+'), ''),
+    ];
+  }
 }
 
 /// The `unit_type` values `plant.js`'s own `UNIT_TYPES` accepts

@@ -1,14 +1,23 @@
 /// Sites and the Org Unit tree an Account may see (issue #90): creating a
 /// Site, adding an Org Unit beneath a parent it holds write scope on (or
 /// starting a new root branch, administrator only — ADR-0008), retiring or
-/// reinstating one, searching a Site's tree by name, and importing a branch
+/// reinstating one, finding one by name (issue #130), and importing a branch
 /// in bulk.
+///
+/// The search box is `AppSearchField` (issue #125, ADR-0023), fed by `GET
+/// .../org-units/search` directly from this Screen — a dumb per-term fetch
+/// against `PeopleApi`, the same shape `SiteFormDialog`'s own field already
+/// uses. It is a find-and-act control, not a filter: picking a suggestion
+/// dispatches `OrgUnitPickerRevealed` at the shared `OrgUnitPickerBloc`,
+/// which expands every ancestor between the root and the picked unit and
+/// selects it — the tree itself is what is shown afterward, never a separate
+/// results list, and nothing here navigates.
 ///
 /// Drives two Blocs side by side, never merging them into one: `OrgUnitPickerBloc`
 /// for the tree itself — Sites, expand/collapse, the rows already flattened
-/// for drawing — exactly the job its own header states, unchanged by this
-/// ticket; `OrgUnitAdminBloc` for every write and the search/import queries,
-/// which that Bloc was never built to hold. `OrgUnitPicker` the widget is not
+/// for drawing, and now which one a search hit revealed and selected; and
+/// `OrgUnitAdminBloc` for every write and the import query, which that Bloc
+/// was never built to hold. `OrgUnitPicker` the widget is not
 /// reused here, the same reason `EmployeeAssignmentDialog`'s own header gives
 /// for its `_DestinationPicker`: it is a Grant editor built for the Approval
 /// flow, add/remove-Grant semantics and a Granted pane included, none of
@@ -32,7 +41,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../people_api.dart';
+import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_search_field.dart';
 import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
 import 'org_unit_form_dialog.dart';
@@ -50,16 +62,26 @@ class OrgUnitsScreen extends StatefulWidget {
 
   static const double maxWidth = 900;
 
+  /// The `name` `AppSearchField.fieldKey`/`.suggestionKey` are seeded with —
+  /// kept in one place so [searchFieldKey] and [searchSuggestionKey] can
+  /// never drift from what `build` actually renders.
+  static const String _searchFieldName = 'org-units-search';
+
   static const ValueKey<String> siteKey = ValueKey<String>('org-units-site');
   static const ValueKey<String> addSiteKey = ValueKey<String>('org-units-add-site');
   static const ValueKey<String> addRootKey = ValueKey<String>('org-units-add-root');
   static const ValueKey<String> importKey = ValueKey<String>('org-units-import');
-  static const ValueKey<String> searchFieldKey = ValueKey<String>('org-units-search-field');
-  static const ValueKey<String> searchSubmitKey = ValueKey<String>('org-units-search-submit');
-  static const ValueKey<String> searchClearKey = ValueKey<String>('org-units-search-clear');
-  static const ValueKey<String> searchTruncatedKey = ValueKey<String>('org-units-search-truncated');
-  static const ValueKey<String> searchEmptyKey = ValueKey<String>('org-units-search-empty');
-  static const ValueKey<String> searchFailureKey = ValueKey<String>('org-units-search-failure');
+
+  /// Kept as the accessor's existing name (issue #130) even though the
+  /// control behind it changed from a `TextField` to `AppSearchField` — this
+  /// now resolves to that field's own key rather than a bespoke one, the same
+  /// shape `SiteFormDialog.timezoneKey` already follows (issue #127).
+  static ValueKey<String> get searchFieldKey => AppSearchField.fieldKey(_searchFieldName);
+
+  /// One search suggestion row's own `Key`, keyed by the Org Unit's own id.
+  static ValueKey<String> searchSuggestionKey(String id) =>
+      AppSearchField.suggestionKey(_searchFieldName, id);
+
   static const ValueKey<String> emptySitesKey = ValueKey<String>('org-units-empty-sites');
   static const ValueKey<String> emptyTreeKey = ValueKey<String>('org-units-empty-tree');
   static const ValueKey<String> treeFailureKey = ValueKey<String>('org-units-tree-failed');
@@ -70,20 +92,23 @@ class OrgUnitsScreen extends StatefulWidget {
   static ValueKey<String> retireKey(String id) => ValueKey<String>('org-units-retire-$id');
   static ValueKey<String> reinstateKey(String id) => ValueKey<String>('org-units-reinstate-$id');
   static ValueKey<String> retiredChipKey(String id) => ValueKey<String>('org-units-retired-$id');
-  static ValueKey<String> searchResultKey(String id) => ValueKey<String>('org-units-search-result-$id');
+
+  /// Present on a tree row only while it is the unit a search hit last
+  /// revealed and selected ([OrgUnitPickerState.selectedId]) — a test's own
+  /// proof that picking a suggestion actually selected that row, not merely
+  /// scrolled it into view.
+  static ValueKey<String> selectedRowKey(String id) => ValueKey<String>('org-units-selected-$id');
 
   @override
   State<OrgUnitsScreen> createState() => _OrgUnitsScreenState();
 }
 
 class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
-  final TextEditingController _search = TextEditingController();
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
+  /// Bumped every time a suggestion is picked, and folded into the
+  /// `AppSearchField`'s own `Key` below — remounting it fresh after a pick
+  /// (an empty term, no suggestions showing) rather than leaving the list a
+  /// person just acted on sitting open over the tree it just changed.
+  int _searchGeneration = 0;
 
   void _onAdminChanged(BuildContext context, OrgUnitAdminState state) {
     final effect = state.effect;
@@ -100,15 +125,29 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
     context.read<OrgUnitAdminBloc>().add(const OrgUnitAdminEffectConsumed());
   }
 
-  void _submitSearch(BuildContext context, String siteId) {
-    final term = _search.text.trim();
-    if (term.isEmpty) return;
-    context.read<OrgUnitAdminBloc>().add(OrgUnitAdminSearchRequested(siteId: siteId, search: term));
+  /// `AppSearchField`'s own dumb fetch (see this widget's own doc comment) —
+  /// straight to `PeopleApi`, the same shape `directory_org_unit_filter_dialog.dart`
+  /// and `account_correction_dialog.dart` already use for an ad hoc fetch
+  /// outside any Bloc. Grant scoping is unchanged: the endpoint itself scopes
+  /// by the caller's Grants (`path <@`, plant.js), so nothing here filters.
+  Future<List<OrgUnitNode>> _fetchSuggestions(BuildContext context, String siteId, String term) async {
+    final token = context.read<AuthGateway>().currentAccessToken;
+    if (token == null) {
+      throw PeopleApiException(OrgUnitAdminBloc.signedOutMessage);
+    }
+    final result = await context.read<PeopleApi>().searchOrgUnits(token, siteId: siteId, search: term);
+    return result.orgUnits;
   }
 
-  void _clearSearch(BuildContext context) {
-    _search.clear();
-    context.read<OrgUnitAdminBloc>().add(const OrgUnitAdminSearchCleared());
+  /// A suggestion was picked: reveal it in the tree — expanding every
+  /// ancestor between the root and it — and select it. No navigation, per
+  /// `AppSearchField`'s own contract; the field itself is remounted fresh
+  /// (see [_searchGeneration]'s own doc comment).
+  void _onSuggestionSelected(BuildContext context, OrgUnitNode orgUnit) {
+    context.read<OrgUnitPickerBloc>().add(
+          OrgUnitPickerRevealed(orgUnitId: orgUnit.id, ancestorIds: orgUnit.ancestorIds),
+        );
+    setState(() => _searchGeneration++);
   }
 
   @override
@@ -187,41 +226,27 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                         onChanged: (value) {
                           if (value == null) return;
                           context.read<OrgUnitPickerBloc>().add(OrgUnitPickerSiteSelected(value));
-                          context.read<OrgUnitAdminBloc>().add(const OrgUnitAdminSearchCleared());
                         },
                       ),
                     ),
                     const SizedBox(height: Spacing.md),
                   ],
                   if (siteId != null) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            key: OrgUnitsScreen.searchFieldKey,
-                            controller: _search,
-                            decoration: const InputDecoration(
-                              labelText: 'Search this Site by name',
-                              border: OutlineInputBorder(),
-                            ),
-                            onSubmitted: (_) => _submitSearch(context, siteId),
-                          ),
-                        ),
-                        const SizedBox(width: Spacing.sm),
-                        FilledButton(
-                          key: OrgUnitsScreen.searchSubmitKey,
-                          onPressed: () => _submitSearch(context, siteId),
-                          child: const Text('Search'),
-                        ),
-                        if (adminState.searchStatus != OrgUnitAdminSearchStatus.idle) ...[
-                          const SizedBox(width: Spacing.sm),
-                          TextButton(
-                            key: OrgUnitsScreen.searchClearKey,
-                            onPressed: () => _clearSearch(context),
-                            child: const Text('Clear'),
-                          ),
-                        ],
-                      ],
+                    AppSearchField<OrgUnitNode>(
+                      key: ValueKey<int>(_searchGeneration),
+                      name: OrgUnitsScreen._searchFieldName,
+                      label: 'Find an Org Unit by name',
+                      helperText: 'Picking one reveals and selects it in the tree below.',
+                      value: null,
+                      onChanged: (_) {},
+                      onSelected: (orgUnit) => _onSuggestionSelected(context, orgUnit),
+                      fetchSuggestions: (term) => _fetchSuggestions(context, siteId, term),
+                      suggestionBuilder: (context, orgUnit) => _SuggestionTile(
+                        orgUnit: orgUnit,
+                        ancestorNames: pickerState.ancestorNamesFor(orgUnit),
+                      ),
+                      idOf: (orgUnit) => orgUnit.id,
+                      displayStringFor: (orgUnit) => orgUnit.name,
                     ),
                     const SizedBox(height: Spacing.md),
                     Wrap(
@@ -255,10 +280,7 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                         ),
                       ),
-                    if (adminState.searchStatus != OrgUnitAdminSearchStatus.idle)
-                      _SearchResults(state: adminState)
-                    else
-                      _Tree(state: pickerState, siteId: siteId, isMutating: adminState.isMutating),
+                    _Tree(state: pickerState, siteId: siteId, isMutating: adminState.isMutating),
                   ],
                 ],
               ],
@@ -270,71 +292,53 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
   }
 }
 
-class _SearchResults extends StatelessWidget {
-  const _SearchResults({required this.state});
+/// One suggestion row in the search box's own dropdown — the picked unit's
+/// name and code (`org_units_code_unique`, ADR-0011, is what actually
+/// guarantees uniqueness per Site) plus a breadcrumb of whatever ancestor
+/// names [ancestorNames] could already resolve, so two same-named units
+/// under different parents read apart even before either is picked (issue
+/// #130's own disambiguation criterion).
+///
+/// Carries no `Key` of its own: `AppSearchField` already wraps whatever this
+/// builds in the tappable `InkWell` carrying [OrgUnitsScreen.searchSuggestionKey]
+/// — giving this widget the same key too would leave two elements answering
+/// to it.
+class _SuggestionTile extends StatelessWidget {
+  const _SuggestionTile({required this.orgUnit, required this.ancestorNames});
 
-  final OrgUnitAdminState state;
+  final OrgUnitNode orgUnit;
+  final List<String> ancestorNames;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (state.searchStatus == OrgUnitAdminSearchStatus.loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (state.searchStatus == OrgUnitAdminSearchStatus.failed) {
-      return Text(
-        state.searchFailure ?? '',
-        key: OrgUnitsScreen.searchFailureKey,
-        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (state.searchTruncated)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Spacing.sm),
-            child: Text(
-              'Only the first matches are shown — narrow the search to see the rest.',
-              key: OrgUnitsScreen.searchTruncatedKey,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('${orgUnit.name} · ${orgUnit.code}', style: theme.textTheme.bodyMedium),
+              ),
+              if (!orgUnit.isActive)
+                Chip(
+                  label: const Text('Retired'),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: theme.colorScheme.errorContainer,
+                  labelStyle:
+                      theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onErrorContainer),
+                ),
+            ],
+          ),
+          if (ancestorNames.isNotEmpty)
+            Text(
+              ancestorNames.join(' › '),
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-          ),
-        if (state.searchResults.isEmpty)
-          Text(
-            'Nothing matched.',
-            key: OrgUnitsScreen.searchEmptyKey,
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          )
-        else
-          Card(
-            margin: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (final orgUnit in state.searchResults)
-                  Padding(
-                    key: OrgUnitsScreen.searchResultKey(orgUnit.id),
-                    padding: const EdgeInsets.all(Spacing.md),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text('${orgUnit.name} · ${orgUnit.code}', style: theme.textTheme.bodyMedium),
-                        ),
-                        if (!orgUnit.isActive)
-                          Chip(
-                            label: const Text('Retired'),
-                            visualDensity: VisualDensity.compact,
-                            backgroundColor: theme.colorScheme.errorContainer,
-                            labelStyle: theme.textTheme.labelSmall
-                                ?.copyWith(color: theme.colorScheme.onErrorContainer),
-                          ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -412,9 +416,12 @@ class _TreeRow extends StatelessWidget {
     final node = row.node;
     final refreshParentId = isRoot ? null : node.parentId;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(Spacing.sm + row.depth * Spacing.lg, Spacing.xs, Spacing.sm, Spacing.xs),
-      child: Column(
+    return Container(
+      key: row.isSelected ? OrgUnitsScreen.selectedRowKey(node.id) : null,
+      color: row.isSelected ? theme.colorScheme.primaryContainer : null,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(Spacing.sm + row.depth * Spacing.lg, Spacing.xs, Spacing.sm, Spacing.xs),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -502,7 +509,8 @@ class _TreeRow extends StatelessWidget {
                 style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

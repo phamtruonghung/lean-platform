@@ -266,23 +266,137 @@ void main() {
     expect(find.byKey(OrgUnitsScreen.reinstateKey('10')), findsOneWidget);
   });
 
-  testWidgets('search sends the search parameter, and a truncated result says so', (tester) async {
+  // Issue #130: the plain `TextField` + its own Search button is gone,
+  // replaced by `AppSearchField` — a find-and-act control that reveals and
+  // selects a picked unit in the tree rather than replacing the tree with a
+  // results list. The explicit submit button's own key is gone with it —
+  // nothing in this file references it any more.
+  testWidgets('the Org Units search box is an AppSearchField, and the Search button is gone',
+      (tester) async {
     final wire = FakeWire(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       orgUnits: {
         null: [orgUnitJson('10', 'Line 1')],
       },
-      orgUnitSearchResults: [orgUnitJson('20', 'Deep Cell')],
-      orgUnitSearchTruncated: true,
     );
     await openOrgUnits(tester, wire);
 
-    await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'Deep');
-    await tapIn(tester, find.byKey(OrgUnitsScreen.searchSubmitKey));
+    expect(find.byKey(OrgUnitsScreen.searchFieldKey), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Search'), findsNothing);
+  });
 
-    expect(wire.orgUnitSearchRequests.single, ('1', 'Deep'));
-    expect(find.text('Deep Cell · DEEP-CELL'), findsOneWidget);
-    expect(find.byKey(OrgUnitsScreen.searchTruncatedKey), findsOneWidget);
+  testWidgets('typing 2+ characters shows matching Org Units, each disambiguated by its path',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        // Both already loaded as root rows, so their names are already known
+        // — the breadcrumb resolves without a request of its own.
+        null: [orgUnitJson('10', 'Area A'), orgUnitJson('20', 'Area B')],
+      },
+      orgUnitSearchResults: [
+        orgUnitJson('101', 'Line 1', parentId: '10', path: 'n10.n101'),
+        orgUnitJson('201', 'Line 1', parentId: '20', path: 'n20.n201'),
+      ],
+    );
+    await openOrgUnits(tester, wire);
+
+    await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'Line');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(wire.orgUnitSearchRequests.single, ('1', 'Line'));
+    expect(find.byKey(OrgUnitsScreen.searchSuggestionKey('101')), findsOneWidget);
+    expect(find.byKey(OrgUnitsScreen.searchSuggestionKey('201')), findsOneWidget);
+    // Same name, same code shape — the breadcrumb is what tells them apart.
+    expect(find.text('Area A'), findsOneWidget);
+    expect(find.text('Area B'), findsOneWidget);
+  });
+
+  testWidgets(
+      "picking a suggestion expands the unit's ancestors and selects it, without navigating",
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Area A')],
+        '10': [orgUnitJson('101', 'Line 1', parentId: '10')],
+      },
+      orgUnitSearchResults: [
+        orgUnitJson('101', 'Line 1', parentId: '10', path: 'n10.n101'),
+      ],
+    );
+    await openOrgUnits(tester, wire);
+    final beforeLocation = locationOf(tester, find.byType(OrgUnitsScreen));
+
+    await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'Line');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.searchSuggestionKey('101')));
+
+    // The ancestor's children were fetched — this is a real expand, not a
+    // cosmetic reveal.
+    expect(wire.orgUnitRequests, contains(('1', '10')));
+    expect(find.text('Line 1 · LINE-1'), findsOneWidget);
+    expect(find.byKey(OrgUnitsScreen.selectedRowKey('101')), findsOneWidget);
+    // Nothing navigational happened.
+    expect(locationOf(tester, find.byType(OrgUnitsScreen)), beforeLocation);
+  });
+
+  testWidgets(
+      'a suggestion for a deeply nested unit reveals every ancestor between the root and it',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Area A')],
+        '10': [orgUnitJson('50', 'Department D', parentId: '10')],
+        '50': [orgUnitJson('101', 'Line L', parentId: '50')],
+      },
+      orgUnitSearchResults: [
+        orgUnitJson('101', 'Line L', parentId: '50', path: 'n10.n50.n101'),
+      ],
+    );
+    await openOrgUnits(tester, wire);
+
+    await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'Line');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.searchSuggestionKey('101')));
+
+    expect(wire.orgUnitRequests, containsAll([('1', '10'), ('1', '50')]));
+    expect(find.text('Area A · AREA-A'), findsOneWidget);
+    expect(find.text('Department D · DEPARTMENT-D'), findsOneWidget);
+    expect(find.text('Line L · LINE-L'), findsOneWidget);
+    expect(find.byKey(OrgUnitsScreen.selectedRowKey('101')), findsOneWidget);
+  });
+
+  testWidgets("the actions on the Screen apply to the unit selected via a suggestion",
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Area A')],
+        '10': [orgUnitJson('101', 'Line 1', parentId: '10')],
+      },
+      orgUnitSearchResults: [
+        orgUnitJson('101', 'Line 1', parentId: '10', path: 'n10.n101'),
+      ],
+    );
+    await openOrgUnits(tester, wire);
+
+    await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'Line');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    await tapIn(tester, find.byKey(OrgUnitsScreen.searchSuggestionKey('101')));
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.retireKey('101')));
+    await tapIn(tester, find.widgetWithText(FilledButton, 'Retire'));
+
+    expect(wire.orgUnitPatches.single.$1, '101');
+    expect(wire.orgUnitPatches.single.$2, {'isActive': false});
   });
 
   testWidgets('a bulk import sends one request, and a 422 renders every row error', (tester) async {

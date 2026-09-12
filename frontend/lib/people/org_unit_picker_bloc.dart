@@ -58,6 +58,21 @@ class OrgUnitPickerRefreshed extends OrgUnitPickerEvent {
   final String? parentId;
 }
 
+/// A unit found some other way than browsing — today, `OrgUnitsScreen`'s own
+/// as-you-type search (issue #130) — should read as if it had been walked to
+/// by hand: every ancestor between the root and it expanded, and it selected.
+/// [ancestorIds] is the root-first ancestor id chain a search hit's own
+/// `ltree` path implies (`OrgUnitNode.ancestorIds`), *not* trimmed to what
+/// this caller can see — the handler below is the one place that trims it to
+/// [OrgUnitPickerState.rootIds], because only it knows what is actually
+/// drawable. Additive, the same shape [OrgUnitPickerRefreshed] already is:
+/// one Screen's own need, meaningless to the Grant pickers sharing this Bloc.
+class OrgUnitPickerRevealed extends OrgUnitPickerEvent {
+  const OrgUnitPickerRevealed({required this.orgUnitId, required this.ancestorIds});
+  final String orgUnitId;
+  final List<String> ancestorIds;
+}
+
 /// A deliberate act with a level already chosen — there is no event that adds
 /// an Org Unit without one, which is what keeps "a level must be chosen" a
 /// property of the state machine rather than of one widget.
@@ -85,6 +100,7 @@ class OrgUnitRow {
     required this.isLoadingChildren,
     required this.childrenLoaded,
     required this.childCount,
+    required this.isSelected,
     this.failure,
   });
 
@@ -95,6 +111,10 @@ class OrgUnitRow {
   final bool isLoadingChildren;
   final bool childrenLoaded;
   final int childCount;
+
+  /// Whether this is the unit a search hit was last revealed to
+  /// ([OrgUnitPickerState.selectedId]) — see [OrgUnitPickerRevealed].
+  final bool isSelected;
   final String? failure;
 }
 
@@ -116,6 +136,7 @@ class OrgUnitPickerState {
     this.loadingIds = const {},
     this.childFailures = const {},
     this.granted = const [],
+    this.selectedId,
   });
 
   final SitesStatus sitesStatus;
@@ -150,6 +171,15 @@ class OrgUnitPickerState {
   /// The complete Grant set being submitted, in the order it was assembled.
   final List<GrantedOrgUnit> granted;
 
+  /// The unit a search hit was last revealed to (issue #130,
+  /// [OrgUnitPickerRevealed]), or null. Means nothing to the Grant pickers
+  /// sharing this Bloc — only `OrgUnitsScreen`'s own tree reads it, the same
+  /// "shared state, one caller's own field" shape [granted] already is for
+  /// the tree-browsing callers. Cleared whenever the tree itself is —
+  /// [_onSiteSelected] — since a selection made in one Site means nothing in
+  /// another.
+  final String? selectedId;
+
   Site? get site {
     for (final candidate in sites) {
       if (candidate.id == siteId) return candidate;
@@ -165,6 +195,17 @@ class OrgUnitPickerState {
     }
     return null;
   }
+
+  /// Resolves as many of [orgUnit]'s own ancestor ids ([OrgUnitNode.ancestorIds])
+  /// as this Bloc already happens to know the name of, root-first — a search
+  /// hit's own breadcrumb (issue #130), built without a request of its own.
+  /// An ancestor not yet loaded into [nodesById] (nothing above this caller's
+  /// own [rootIds] ever will be, and a deeper one may simply not have been
+  /// expanded yet) renders as `'…'` rather than being silently dropped, so
+  /// two same-named units under different unloaded parents still read apart.
+  List<String> ancestorNamesFor(OrgUnitNode orgUnit) => [
+        for (final id in orgUnit.ancestorIds) nodesById[id]?.name ?? '…',
+      ];
 
   /// The Grant set as the Approval endpoint wants it.
   List<Map<String, Object?>> get grantsPayload => [for (final g in granted) g.toJson()];
@@ -189,6 +230,7 @@ class OrgUnitPickerState {
             isLoadingChildren: loadingIds.contains(id),
             childrenLoaded: children != null,
             childCount: children?.length ?? 0,
+            isSelected: id == selectedId,
             failure: childFailures[id],
           ),
         );
@@ -218,6 +260,8 @@ class OrgUnitPickerState {
     Set<String>? loadingIds,
     Map<String, String>? childFailures,
     List<GrantedOrgUnit>? granted,
+    String? selectedId,
+    bool clearSelectedId = false,
   }) {
     return OrgUnitPickerState(
       sitesStatus: sitesStatus ?? this.sitesStatus,
@@ -233,6 +277,7 @@ class OrgUnitPickerState {
       loadingIds: loadingIds ?? this.loadingIds,
       childFailures: childFailures ?? this.childFailures,
       granted: granted ?? this.granted,
+      selectedId: clearSelectedId ? null : (selectedId ?? this.selectedId),
     );
   }
 }
@@ -268,6 +313,7 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
     on<OrgUnitPickerRefreshed>(_onRefreshed);
     on<OrgUnitPickerGrantAdded>(_onGrantAdded);
     on<OrgUnitPickerGrantRemoved>(_onGrantRemoved);
+    on<OrgUnitPickerRevealed>(_onRevealed);
   }
 
   final PeopleApi _api;
@@ -314,6 +360,9 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
         childFailures: const {},
         rootsLoading: true,
         clearRootsFailure: true,
+        // A selection made in a different Site means nothing here — see
+        // `OrgUnitPickerState.selectedId`'s own doc comment.
+        clearSelectedId: true,
       ),
     );
 
@@ -470,5 +519,40 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
         ],
       ),
     );
+  }
+
+  /// Walks [event.ancestorIds] top-down, expanding (and, where not already
+  /// cached, fetching) each level, then selects [event.orgUnitId] — reading
+  /// as if a person had opened every branch between the root and it by hand.
+  ///
+  /// Trimmed to [OrgUnitPickerState.rootIds] before any of that: [rows] only
+  /// ever walks from `rootIds` downward, and for a non-administrator those
+  /// are entry points already several levels into the real tree (ADR-0008),
+  /// so a search hit's own full `ltree` chain reaches above anything this
+  /// caller can actually see. An id above the first one this caller's own
+  /// root level contains is neither drawable nor worth a request.
+  ///
+  /// `state.siteId` is re-read at the top of every iteration, not captured
+  /// once: a later Site choice mid-walk must win, the same rule
+  /// `_loadChildren`'s own post-fetch check already enforces after each
+  /// fetch resolves — this guards the moments *before* a fetch, too, so an id
+  /// never gets stuck in `loadingIds` for a Site nobody is looking at any
+  /// more.
+  Future<void> _onRevealed(OrgUnitPickerRevealed event, Emitter<OrgUnitPickerState> emit) async {
+    final siteId = state.siteId;
+    if (siteId == null) return;
+
+    final chain = event.ancestorIds;
+    final from = chain.indexWhere(state.rootIds.contains);
+    if (from != -1) {
+      for (final id in chain.sublist(from)) {
+        if (state.siteId != siteId) return; // A later Site choice won.
+        emit(state.copyWith(expandedIds: {...state.expandedIds, id}));
+        if (state.childIdsByParent.containsKey(id) || state.loadingIds.contains(id)) continue;
+        await _loadChildren(siteId, id, emit);
+      }
+    }
+    if (state.siteId != siteId) return;
+    emit(state.copyWith(selectedId: event.orgUnitId));
   }
 }
