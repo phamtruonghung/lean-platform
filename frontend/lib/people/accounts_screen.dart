@@ -41,10 +41,41 @@ class AccountsScreen extends StatelessWidget {
   static const double maxWidth = 960;
 
   /// The breakpoint below which the list renders as one card per Account
-  /// rather than a table (issue #112, Decision A) — the same 700px
-  /// `WorkOrdersScreen` and `platform/shell.dart` already agree "narrow"
-  /// starts at.
-  static const double narrowBreakpoint = 700;
+  /// rather than a table (issue #112, Decision A) — measured against this
+  /// Screen's own *content* width (`_AccountsList`'s own `LayoutBuilder`,
+  /// issue #120), not the browser window. It no longer shares its number with
+  /// `platform/shell.dart`'s rail breakpoint on purpose: that one is against
+  /// the window, correctly, since the Shell is the thing that owns the
+  /// window; this Screen only ever sees what the Shell hands it after its own
+  /// sidebar (260px expanded, 64px rail) is already subtracted, so the two
+  /// breakpoints answer different questions and coincidentally sharing a
+  /// number was the bug, not a feature to preserve. #99's own Implementation
+  /// Decisions freeze the Shell's 700px/260px/64px; this constant is free to
+  /// be whatever keeps the table legible on its own — the same reasoning
+  /// `WorkOrdersScreen.narrowBreakpoint`'s own doc comment records for #105.
+  ///
+  /// 850, not 700 or 800: this table carries an eighth column
+  /// (`work_orders_screen.dart`'s table has seven) and a wider fixed actions
+  /// column (388px against that Screen's 232px), so less room is left for the
+  /// seven flexed columns (Name, Email, Role, Standing, Since, Grants,
+  /// Employee) at any given content width. Rendered in 50px steps from 700:
+  /// at 700–800px, every flexed header label wraps two or three lines deep
+  /// (`Standing` and `Employee` cramp to three lines at 800, the same
+  /// one-letter-per-line disaster #105 found); at 850px, `Name`, `Email`,
+  /// `Role` and `Since` are single-line and legible, and no column bleeds
+  /// into its neighbour. `Standing`, `Grants` and `Employee` still wrap to a
+  /// second line even at 850 and stay that way all the way to this Screen's
+  /// own 960px `maxWidth` ceiling (their header text plus the fixed actions
+  /// column simply do not both fit at any content width this table can
+  /// reach) — an accepted trade-off, the same shape as that Screen's own
+  /// Asset/Assignee ellipsis, since none of those three headers is how an
+  /// administrator identifies a row. The row data itself never wraps at any
+  /// sampled width, unlike the headers: every body cell already carries
+  /// `TextOverflow.ellipsis`, so a long email or display name is clipped
+  /// rather than pushed onto a second line. Chosen by rendering the actual
+  /// Screen at each width and reading it, not derived from the column
+  /// arithmetic.
+  static const double narrowBreakpoint = 850;
 
   static const ValueKey<String> noticeKey = ValueKey<String>('accounts-notice');
   static const ValueKey<String> retryKey = ValueKey<String>('accounts-retry');
@@ -179,12 +210,15 @@ class _Notice extends StatelessWidget {
   }
 }
 
-/// The Account list, laid out one of two ways depending on the window (issue
-/// #112, Decision A) — never a third, horizontally-scrolling shape, copying
-/// `work_orders_screen.dart`'s own `_WorkOrdersList` (issue #104) rather than
-/// re-deciding the shape:
+/// The Account list, laid out one of two ways depending on this Screen's own
+/// *content* width, read off a `LayoutBuilder` rather than
+/// `MediaQuery.sizeOf(context).width` (issue #112, Decision A; measured
+/// correctly since issue #120 — see [AccountsScreen.narrowBreakpoint]'s own
+/// doc comment for why the window was never the right thing to ask) — never
+/// a third, horizontally-scrolling shape, copying `work_orders_screen.dart`'s
+/// own `_WorkOrdersList` (issue #104) rather than re-deciding the shape:
 ///
-/// - At or above [AccountsScreen.narrowBreakpoint] (700px): a table — a
+/// - At or above [AccountsScreen.narrowBreakpoint] (850px of content): a table — a
 ///   header row of column labels (Name, Email, Role, Standing, Since,
 ///   Grants, Actions — issue #112, Decision C), then one `Row` of cells per
 ///   Account, built from `Expanded`/`Flexible` cells with
@@ -217,35 +251,51 @@ class _AccountsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < AccountsScreen.narrowBreakpoint;
     bool isBusy(String id) => id == busyId || id == correctingId || id == employeeLinkingId;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AccountsScreen.maxWidth),
-        child: narrow
-            ? ListView.separated(
-                padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                itemCount: accounts.length,
-                separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-                itemBuilder: (context, index) => _AccountCard(
-                  account: accounts[index],
-                  busy: isBusy(accounts[index].id),
-                  isSelf: accounts[index].id == selfAccountId,
-                ),
-              )
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                children: [
-                  const _AccountTableHeader(),
-                  for (final account in accounts)
-                    _AccountTableRow(
-                      account: account,
-                      busy: isBusy(account.id),
-                      isSelf: account.id == selfAccountId,
+    // `constraints.maxWidth` — the box this Screen actually got from its own
+    // parent — not `MediaQuery.sizeOf(context).width`, the whole browser
+    // window (issue #120). This Screen always renders inside the Shell's
+    // content area, never the full window: at exactly 700px of *window*,
+    // `PlatformShell`'s own rail breakpoint (`shell.dart`, frozen by #99's
+    // own Implementation Decisions, not touched here) has just switched to
+    // its 260px expanded sidebar, leaving only 440px of actual content — so
+    // measuring the window told this Screen it had 700px when it truly had
+    // 440, and it chose the table on that false premise. A `LayoutBuilder`
+    // reads the real number instead, so [AccountsScreen.narrowBreakpoint]
+    // keeps meaning what its own doc comment says: content width, not window
+    // width.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < AccountsScreen.narrowBreakpoint;
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: AccountsScreen.maxWidth),
+            child: narrow
+                ? ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    itemCount: accounts.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                    itemBuilder: (context, index) => _AccountCard(
+                      account: accounts[index],
+                      busy: isBusy(accounts[index].id),
+                      isSelf: accounts[index].id == selfAccountId,
                     ),
-                ],
-              ),
-      ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    children: [
+                      const _AccountTableHeader(),
+                      for (final account in accounts)
+                        _AccountTableRow(
+                          account: account,
+                          busy: isBusy(account.id),
+                          isSelf: account.id == selfAccountId,
+                        ),
+                    ],
+                  ),
+          ),
+        );
+      },
     );
   }
 }
@@ -348,9 +398,10 @@ class _AccountTableRow extends StatelessWidget {
   }
 }
 
-/// The narrow (<700px) card — unchanged from what this Screen rendered
-/// before issue #112, apart from carrying the same [AccountsScreen.rowKey]
-/// the wide table row now carries too.
+/// The narrow (<850px of content) card — unchanged from what this Screen
+/// rendered before issue #112, apart from carrying the same
+/// [AccountsScreen.rowKey] the wide table row now carries too, and apart
+/// from where [_RowActions] sits (issue #120 — see its own header below).
 class _AccountCard extends StatelessWidget {
   const _AccountCard({required this.account, required this.busy, required this.isSelf});
 
@@ -396,28 +447,14 @@ class _AccountCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: Spacing.md),
-                // Only the self-row branch is wrapped in `Flexible` — unlike
-                // the wide table row, which hands `_RowActions` a tight width
-                // via `SizedBox`, this `Row` has no width constraint of its
-                // own, and the self-row explanation is the one branch long
-                // enough to overflow it. Wrapping every branch instead would
-                // be wrong, not merely unnecessary: `Flexible` next to this
-                // `Row`'s own `Expanded` would split the remaining space
-                // between the two rather than letting the account-info
-                // column keep whatever the actions do not need, which is
-                // exactly what made the two-button case overflow when this
-                // was tried.
-                if (isSelf)
-                  Flexible(child: _RowActions(account: account, busy: busy, isSelf: isSelf))
-                else
-                  _RowActions(account: account, busy: busy, isSelf: isSelf),
               ],
             ),
             const SizedBox(height: Spacing.sm),
             _Grants(account: account),
             const SizedBox(height: Spacing.sm),
             _EmployeeCell(account: account),
+            const SizedBox(height: Spacing.sm),
+            _RowActions(account: account, busy: busy, isSelf: isSelf),
           ],
         ),
       ),
@@ -472,11 +509,26 @@ class _EmployeeCell extends StatelessWidget {
 ///
 /// Sizing is the caller's job, not this widget's: the self-row branch is a
 /// `Text` with no width of its own, long enough to overflow a `Row` that
-/// hands it unbounded space. [_AccountTableRow] constrains every branch
-/// alike (a fixed-width `SizedBox`); [_AccountCard] has no such width to
-/// give, so it wraps only the self-row branch in a `Flexible` — see that
-/// call site's own comment for why wrapping every branch there is wrong, not
-/// merely unneeded.
+/// hands it unbounded space. [_AccountTableRow] constrains it with a
+/// fixed-width `SizedBox`; [_AccountCard] gives it a full-width line of its
+/// own at the bottom of the card, below the info row, Grants and Employee
+/// cell (issue #120) — the same shape `work_orders_screen.dart`'s own
+/// `_WorkOrderCard` already uses for its `_RowActions`, and copied here for
+/// the same reason: a `CircleAvatar` plus an info column plus this widget
+/// side by side in one `Row`, as this card used to lay them out, does not
+/// leave enough width for the two-button case (Deactivate/Reactivate plus
+/// Change plus the Employee-link icon) once this Screen actually measures
+/// its own content width instead of the browser window — at the 700px window
+/// where the Shell's own sidebar breakpoint used to collide with this
+/// Screen's old one, the content box is 440px, and three controls beside an
+/// avatar and an info column do not fit at that width no matter how they are
+/// wrapped. Giving `_RowActions` its own line, rather than trying to squeeze
+/// it beside the info column with a `Flexible` (tried once already, and
+/// rejected because `Flexible` next to this `Row`'s own `Expanded` splits the
+/// remaining space between the two instead of letting the info column keep
+/// whatever the actions do not need), removes the competition for width
+/// entirely: neither branch needs a `Flexible`, and neither can overflow the
+/// other.
 class _RowActions extends StatelessWidget {
   const _RowActions({required this.account, required this.busy, required this.isSelf});
 

@@ -51,23 +51,37 @@ Future<void> openCorrection(WidgetTester tester, String id) async {
   await tapIn(tester, find.byKey(AccountsScreen.correctKey(id)));
 }
 
-/// Switches the pumped app to the narrow (<700px) layout — the same device
-/// `work_orders_test.dart` uses for its own narrow-layout tests.
+/// Switches the pumped app to the narrow (<850px of content) layout — the
+/// same device `work_orders_test.dart` uses for its own narrow-layout tests.
 void goNarrow(WidgetTester tester) {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(600, 800);
   addTearDown(tester.view.reset);
 }
 
+/// Switches the pumped app to a window wide enough to guarantee the table
+/// layout regardless of the Shell's own sidebar width (issue #120):
+/// `AccountsScreen` now measures its own *content* width, not the window
+/// (`AccountsScreen.narrowBreakpoint`'s own doc comment), so a test whose
+/// assertions only make sense against the wide table can no longer rely on
+/// flutter_test's default logical window size (800×600) the way it could
+/// before this issue — that default sits well under 850px of content once
+/// the Shell's own 260px expanded sidebar is subtracted, and would silently
+/// render cards instead.
+void goWide(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = const Size(1200, 900);
+  addTearDown(tester.view.reset);
+}
+
 void main() {
-  // The wide table (issue #112, Decision A). The default test surface is
-  // wider than `AccountsScreen.narrowBreakpoint`, so every test that does not
-  // call `goNarrow` exercises this layout.
+  // The wide table (issue #112, Decision A).
 
   testWidgets(
-      'at >= 700px the table renders a header row and one row per Account, with the columns '
-      'Name, Email, Role, Standing, Since, Grants, Actions, and no horizontal scrolling, '
+      'at >= 850px of content the table renders a header row and one row per Account, with the '
+      'columns Name, Email, Role, Standing, Since, Grants, Actions, and no horizontal scrolling, '
       'and never uses DataTable', (tester) async {
+    goWide(tester);
     await openAccounts(
       tester,
       _plant(accounts: [
@@ -110,7 +124,7 @@ void main() {
   // D) is unchanged from what this Screen rendered before this issue.
 
   testWidgets(
-      'below 700px the list renders one card per Account, and the Grants rendering is the '
+      'below 850px of content the list renders one card per Account, and the Grants rendering is the '
       'unchanged prose/chip shape', (tester) async {
     goNarrow(tester);
     await openAccounts(
@@ -144,9 +158,58 @@ void main() {
     );
   });
 
+  // Regression (issue #120): this Screen used to decide cards-versus-table
+  // off `MediaQuery.sizeOf(context).width` — the whole browser window — even
+  // though it only ever renders inside the Shell's own content area.
+  // `PlatformShell`'s own rail breakpoint (`shell.dart`) also sits at 700px
+  // of window, and switches to its 260px expanded sidebar at exactly that
+  // width, not below it — so at a 700px window this Screen used to see
+  // "700px, that's the table" while the box it actually had was 440px, and
+  // rendered a table so cramped its own columns ran together. Proved here the
+  // same honest way `work_orders_test.dart` proved the same bug for #105: at
+  // the exact width the two breakpoints used to collide, assert the Screen
+  // renders cards, not the table — using only text a person can read (the
+  // table header's own column labels, which cards never render), not a third
+  // seam into any render object or Bloc state.
+  //
+  // The fixture below (an approved, non-self, non-pending Account with a
+  // Grant) is deliberate, not incidental: it is the one row shape that
+  // renders both "Deactivate" and "Change" plus the Employee-link icon, and
+  // at this test's own 440px content width that three-control case is also
+  // what exposed `_AccountCard`'s own pre-#120 overflow (its actions used to
+  // sit beside the info column in one `Row`, which this width does not leave
+  // room for) — so this one test doubles as the regression guard for both
+  // defects, and a widget test fails on its own if either reappears.
+  testWidgets(
+      "at a 700px window — where the Shell's own sidebar breakpoint and this Screen's old, "
+      'mistaken window-based breakpoint used to collide — the list renders as cards, not the '
+      'corrupted table the pre-#120 window-based breakpoint produced', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(700, 800);
+    addTearDown(tester.view.reset);
+
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('7', 'admitted@b.c',
+            role: Roles.supervisor, grants: [grantJson('10', canWrite: true)]),
+      ]),
+    );
+
+    // The table header's own column labels are the one thing only the wide
+    // (table) layout ever renders — their absence, alongside the row's own
+    // content still being fully present, is what distinguishes cards from a
+    // squeezed table without reaching into anything but text on screen.
+    expect(find.text('Name'), findsNothing);
+    expect(find.text('Actions'), findsNothing);
+    expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
+    expect(find.text('admitted@b.c'), findsOneWidget);
+  });
+
   // Both layouts share one row key (issue #112, Decision A).
 
   testWidgets("both layouts key each Account's row with the same shared row key", (tester) async {
+    goWide(tester);
     final wire = _plant(accounts: [accountJson('7', 'admitted@b.c')]);
     await openAccounts(tester, wire);
     expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
@@ -162,6 +225,10 @@ void main() {
   testWidgets(
       'a pending Account appears with Standing reading Awaiting Approval, and rows are ordered '
       'pending first, then by email', (tester) async {
+    // The Standing cell asserted below ('Awaiting Approval' alone) is the
+    // wide table's own separate column (issue #120) — the narrow card folds
+    // role and standing into one combined string instead.
+    goWide(tester);
     await openAccounts(
       tester,
       _plant(accounts: [
@@ -190,6 +257,9 @@ void main() {
 
   testWidgets("ManagedAccount parses createdAt from GET /accounts, and the Since cell renders it",
       (tester) async {
+    // The Since cell is a wide-table-only column (issue #120) — the narrow
+    // card never renders it, so this test needs the wide window explicit.
+    goWide(tester);
     final createdAt = DateTime.now().subtract(const Duration(days: 3));
     await openAccounts(
       tester,
@@ -205,6 +275,10 @@ void main() {
   testWidgets(
       'the Grants cell reads Everywhere for an admin, None for an Account with no Grants, and '
       'a count otherwise, with the full list on hover', (tester) async {
+    // The Grants cell asserted here (`_GrantsCell`) is the wide-table-only
+    // shape (issue #120) — the narrow card renders `_Grants`'s own prose/chip
+    // shape instead, covered separately above.
+    goWide(tester);
     await openAccounts(
       tester,
       _plant(accounts: [
@@ -293,6 +367,10 @@ void main() {
 
   testWidgets('changing the role and the Grant set sends the whole set, and the list shows it',
       (tester) async {
+    // The Role cell asserted below ('Engineer' alone) is the wide table's own
+    // separate column (issue #120) — the narrow card folds role and standing
+    // into one combined string instead.
+    goWide(tester);
     final wire = _plant(accounts: [
       accountJson('7', 'admitted@b.c',
           role: Roles.supervisor, grants: [grantJson('10', canWrite: true)]),
@@ -320,6 +398,10 @@ void main() {
   });
 
   testWidgets('deactivating asks first, and reactivating does not', (tester) async {
+    // The Standing cell asserted below ('Deactivated'/'Active' alone) is the
+    // wide table's own separate column (issue #120) — the narrow card folds
+    // role and standing into one combined string instead.
+    goWide(tester);
     final wire = _plant(accounts: [accountJson('7', 'admitted@b.c')]);
     await openAccounts(tester, wire);
 
@@ -437,16 +519,16 @@ void main() {
   });
 
   // The narrow card shares `_RowActions` with the wide table (issue #112,
-  // Decision A), but — unlike the wide table's fixed-width actions column —
-  // sits directly in a `Row` with no width of its own. The caller's own row
-  // once overflowed here: its explanation is the one `_RowActions` branch
-  // long enough to need the `Flexible` the wide table gets for free from its
-  // `SizedBox`. These three tests are what actually closes "no action is
-  // offered on the caller's own row, at either width" — the wide-only
-  // versions above do not exercise this `Row` at all.
+  // Decision A). Since issue #120 it sits on its own full-width line at the
+  // bottom of the card, the same shape `work_orders_screen.dart`'s own
+  // `_WorkOrderCard` uses, rather than beside the info column in a `Row` with
+  // no width of its own — see `_RowActions`'s own doc comment for why that
+  // moved. These three tests are what actually closes "no action is offered
+  // on the caller's own row, at either width" — the wide-only versions above
+  // do not exercise the narrow card at all.
 
   testWidgets(
-      "at < 700px the caller's own row still offers neither action and explains why, and a "
+      "at < 850px of content the caller's own row still offers neither action and explains why, and a "
       "different row is unaffected", (tester) async {
     goNarrow(tester);
     // FakeWire's default selfId is '1' — this row's id matches it.
@@ -467,7 +549,7 @@ void main() {
     expect(find.byKey(AccountsScreen.selfKey('7')), findsNothing);
   });
 
-  testWidgets("at < 700px a pending row still offers only Review in Approvals", (tester) async {
+  testWidgets("at < 850px of content a pending row still offers only Review in Approvals", (tester) async {
     goNarrow(tester);
     await openAccounts(
       tester,
@@ -481,7 +563,7 @@ void main() {
     expect(find.byKey(AccountsScreen.reviewInApprovalsKey('8')), findsOneWidget);
   });
 
-  testWidgets("at < 700px an approved row still offers Deactivate/Reactivate alongside Change",
+  testWidgets("at < 850px of content an approved row still offers Deactivate/Reactivate alongside Change",
       (tester) async {
     goNarrow(tester);
     await openAccounts(tester, _plant(accounts: [accountJson('7', 'admitted@b.c')]));
