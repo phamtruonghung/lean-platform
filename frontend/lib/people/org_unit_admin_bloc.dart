@@ -102,6 +102,16 @@ class OrgUnitAdminSearchCleared extends OrgUnitAdminEvent {
   const OrgUnitAdminSearchCleared();
 }
 
+/// Fetches the timezone list a Site's `timezone` is chosen from (`GET
+/// /timezones`, issue #123/#127, ADR-0023) — dispatched once by
+/// `SiteFormDialog` when it opens, and again by its own retry after a failed
+/// fetch. The whole ~1,200-row list is fetched here and filtered in memory
+/// from there; there is deliberately no per-keystroke event, unlike
+/// `OrgUnitAdminSearchRequested` beside it.
+class OrgUnitAdminTimezonesRequested extends OrgUnitAdminEvent {
+  const OrgUnitAdminTimezonesRequested();
+}
+
 /// Submits a whole branch in one call (`POST .../org-units/import`,
 /// ADR-0011). [orgUnits] is already the raw row set the dialog built —
 /// `{code, name, unitType, parentCode, sortOrder}` per row, rows naming their
@@ -155,6 +165,12 @@ class OrgUnitAdminTreeReplaced extends OrgUnitAdminEffect {
 
 enum OrgUnitAdminSearchStatus { idle, loading, ready, failed }
 
+/// What `SiteFormDialog`'s own timezone field is showing (issue #127,
+/// ADR-0023) — `failed` is the one status that blocks submission outright:
+/// the control shows `PlatformFailureState` in place of the search field
+/// itself rather than falling back to free text.
+enum OrgUnitAdminTimezoneStatus { idle, loading, ready, failed }
+
 /// One state class, not a sealed family — the same reasoning
 /// `OrgUnitPickerState`'s own header gives: a write in flight, a search in
 /// flight and an import in flight are independent concerns, and a caller
@@ -172,6 +188,9 @@ class OrgUnitAdminState {
     this.isImporting = false,
     this.importErrors = const [],
     this.importFailure,
+    this.timezoneStatus = OrgUnitAdminTimezoneStatus.idle,
+    this.timezones = const [],
+    this.timezoneFailure,
   });
 
   /// Creating a Site, creating an Org Unit, or retiring/reinstating one — one
@@ -201,6 +220,12 @@ class OrgUnitAdminState {
   final List<OrgUnitImportRowError> importErrors;
   final String? importFailure;
 
+  /// `SiteFormDialog`'s own timezone list (issue #127) — fetched once per
+  /// dialog open, then filtered in memory; see `OrgUnitAdminTimezonesRequested`.
+  final OrgUnitAdminTimezoneStatus timezoneStatus;
+  final List<String> timezones;
+  final String? timezoneFailure;
+
   OrgUnitAdminState copyWith({
     bool? isMutating,
     String? mutationFailure,
@@ -216,6 +241,10 @@ class OrgUnitAdminState {
     List<OrgUnitImportRowError>? importErrors,
     String? importFailure,
     bool clearImportFailure = false,
+    OrgUnitAdminTimezoneStatus? timezoneStatus,
+    List<String>? timezones,
+    String? timezoneFailure,
+    bool clearTimezoneFailure = false,
   }) {
     return OrgUnitAdminState(
       isMutating: isMutating ?? this.isMutating,
@@ -228,6 +257,9 @@ class OrgUnitAdminState {
       isImporting: isImporting ?? this.isImporting,
       importErrors: importErrors ?? this.importErrors,
       importFailure: clearImportFailure ? null : (importFailure ?? this.importFailure),
+      timezoneStatus: timezoneStatus ?? this.timezoneStatus,
+      timezones: timezones ?? this.timezones,
+      timezoneFailure: clearTimezoneFailure ? null : (timezoneFailure ?? this.timezoneFailure),
     );
   }
 }
@@ -244,6 +276,7 @@ class OrgUnitAdminBloc extends Bloc<OrgUnitAdminEvent, OrgUnitAdminState> {
     on<OrgUnitAdminSearchCleared>(_onSearchCleared);
     on<OrgUnitAdminImportRequested>(_onImportRequested);
     on<OrgUnitAdminEffectConsumed>(_onEffectConsumed);
+    on<OrgUnitAdminTimezonesRequested>(_onTimezonesRequested);
   }
 
   final PeopleApi _api;
@@ -411,5 +444,35 @@ class OrgUnitAdminBloc extends Bloc<OrgUnitAdminEvent, OrgUnitAdminState> {
 
   void _onEffectConsumed(OrgUnitAdminEffectConsumed event, Emitter<OrgUnitAdminState> emit) {
     emit(state.copyWith(clearEffect: true));
+  }
+
+  Future<void> _onTimezonesRequested(
+    OrgUnitAdminTimezonesRequested event,
+    Emitter<OrgUnitAdminState> emit,
+  ) async {
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(
+        state.copyWith(
+          timezoneStatus: OrgUnitAdminTimezoneStatus.failed,
+          timezoneFailure: signedOutMessage,
+        ),
+      );
+      return;
+    }
+    emit(state.copyWith(timezoneStatus: OrgUnitAdminTimezoneStatus.loading, clearTimezoneFailure: true));
+    try {
+      final timezones = await _api.fetchTimezones(token);
+      emit(
+        state.copyWith(timezoneStatus: OrgUnitAdminTimezoneStatus.ready, timezones: timezones),
+      );
+    } on PeopleApiException catch (error) {
+      emit(
+        state.copyWith(
+          timezoneStatus: OrgUnitAdminTimezoneStatus.failed,
+          timezoneFailure: error.message,
+        ),
+      );
+    }
   }
 }
