@@ -201,8 +201,13 @@ class OrgUnitPickerState {
   /// hit's own breadcrumb (issue #130), built without a request of its own.
   /// An ancestor not yet loaded into [nodesById] (nothing above this caller's
   /// own [rootIds] ever will be, and a deeper one may simply not have been
-  /// expanded yet) renders as `'…'` rather than being silently dropped, so
-  /// two same-named units under different unloaded parents still read apart.
+  /// expanded yet) renders as `'…'` rather than being silently dropped — but
+  /// that placeholder is not itself distinguishing: two same-named units
+  /// sitting under two different unloaded parents both render `'…'` for that
+  /// ancestor, so their breadcrumbs read identically rather than apart. This
+  /// is why issue #130 was reopened, and it stays true until #145 (a backend
+  /// change, out of scope for the client alone) lets an ancestor's name be
+  /// resolved without first loading it into the tree.
   List<String> ancestorNamesFor(OrgUnitNode orgUnit) => [
         for (final id in orgUnit.ancestorIds) nodesById[id]?.name ?? '…',
       ];

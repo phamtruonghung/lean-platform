@@ -91,19 +91,20 @@ void main() {
     expect(wire.sitePosts.single['timezone'], 'Europe/London');
   });
 
-  // AC: a chosen zone is not silently lost the moment a later, unrelated
-  // term stops matching anything — picking is what sets the value
-  // (`AppSearchField`'s own contract, app_search_field.dart), typing after
-  // the fact narrows the *suggestion list* only. This is the reachable half
-  // of the ticket's "a stored value not in the fetched list still displays"
-  // concern: `SiteFormDialog` has no Site-correction surface to open on an
-  // existing Site at all (this dialog is Add-only, no `PATCH /sites/:id`
-  // exists) — `AppSearchField`'s own "an initial value is displayed on first
-  // build, before any fetch happens" test (app_search_field_test.dart) is
-  // what actually covers a caller-seeded value surviving a filtered-out
-  // list; there is no real call site here to seed one from.
-  testWidgets('a chosen zone survives a later term that matches nothing, and submits unchanged',
-      (tester) async {
+  // AC (#127): the field is this dialog's only display of the chosen zone, so
+  // typing over it retires the pick and closes the submit gate rather than
+  // posting a zone the field has stopped showing (ADR-0023, ADR-0017;
+  // `AppSearchField`'s own doc comment, app_search_field.dart). This test used
+  // to assert the opposite — that a divergent term left the picked zone in
+  // place and submittable — which was itself the defect a code review found:
+  // a person who typed over their pick would have `Europe/London` posted
+  // while the field displayed `zzzz`. ADR-0023 point 4's "a stored value
+  // absent from the list still displays" is a different case entirely — a
+  // value seeded from *outside* the widget, submitted without touching the
+  // field — which `app_search_field_test.dart`'s own "an initial value is
+  // displayed on first build" test covers; this dialog is Add-only and has no
+  // stored zone to seed one from.
+  testWidgets('typing over a chosen zone retires it and refuses submission', (tester) async {
     final wire = FakeWire(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       timezones: const ['Europe/London', 'US/Eastern'],
@@ -119,20 +120,18 @@ void main() {
     await tester.tap(find.byKey(SiteFormDialog.timezoneSuggestionKey('Europe/London')));
     await tester.pump();
 
-    // A later term that matches nothing narrows the suggestion list only —
-    // it never clears the already-picked value.
+    // Typing over the picked zone retires it — the field is this dialog's
+    // only display of the chosen zone, so a divergent term must close the
+    // submit gate rather than let a stale pick be sent underneath it.
     await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'zzzz');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
     expect(
       tester.widget<FilledButton>(find.byKey(SiteFormDialog.submitKey)).onPressed,
-      isNotNull,
+      isNull,
     );
-
-    await tapIn(tester, find.byKey(SiteFormDialog.submitKey));
-
-    expect(wire.sitePosts.single['timezone'], 'Europe/London');
+    expect(wire.sitePosts, isEmpty);
   });
 
   testWidgets(

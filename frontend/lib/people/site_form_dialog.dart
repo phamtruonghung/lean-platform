@@ -83,7 +83,11 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
 
   /// The confirmed timezone selection — controlled by `AppSearchField`'s own
   /// `value`/`onChanged`/`onSelected` contract, never typed free text. Always
-  /// starts unset: this dialog is Add-only (this file's own header).
+  /// starts unset: this dialog is Add-only (this file's own header). Typing
+  /// over a chosen zone clears it back to null (`AppSearchField`'s own
+  /// contract), closing the submit gate in `_complete` — this field is the
+  /// dialog's only display of the chosen zone, so a `_timezone` the field is
+  /// no longer showing would post a zone nobody chose (ADR-0017).
   String? _timezone;
 
   bool _awaiting = false;
