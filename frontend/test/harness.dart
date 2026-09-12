@@ -835,7 +835,10 @@ class FakeWire {
   /// Wire knows about. Filtered by [FakeWire.client] itself for `search` (a
   /// case-insensitive substring of `displayName`) and `includeDeparted`
   /// (`isActive`), the two filters the wire has enough on a row to honour
-  /// honestly; `orgUnitId` and `jobRoleId` are recorded on
+  /// honestly, plus `limit` (issue #123/#128 — `AppSearchField`'s own
+  /// suggestion fetch), applied the same way `listEmployees`'s own SQL `LIMIT`
+  /// does: after every other filter, truncating the match set rather than the
+  /// whole Directory; `orgUnitId` and `jobRoleId` are recorded on
   /// [employeeRequests] but not applied — the real `listEmployees` filters by
   /// a current Assignment this Fake Wire has no equivalent row for (Employee
   /// rows carry no Org Unit or job role at all — see `Employee`'s own
@@ -1486,11 +1489,13 @@ class FakeWire {
           final orgUnitId = request.url.queryParameters['orgUnitId'];
           final jobRoleId = request.url.queryParameters['jobRoleId'];
           final includeDeparted = request.url.queryParameters['includeDeparted'] == 'true';
+          final limit = request.url.queryParameters['limit'];
           employeeRequests.add({
             'search': search,
             'orgUnitId': orgUnitId,
             'jobRoleId': jobRoleId,
             'includeDeparted': includeDeparted.toString(),
+            'limit': limit,
           });
           if (employeesStatus != 200) {
             return http.Response(jsonEncode({'message': 'The Directory is unavailable.'}), employeesStatus);
@@ -1505,6 +1510,10 @@ class FakeWire {
               for (final e in sent)
                 if ((e['displayName'] as String).toLowerCase().contains(needle)) e,
             ];
+          }
+          final limitValue = limit == null ? null : int.tryParse(limit);
+          if (limitValue != null && limitValue > 0 && sent.length > limitValue) {
+            sent = sent.sublist(0, limitValue);
           }
           return http.Response(jsonEncode({'employees': sent}), 200);
         }

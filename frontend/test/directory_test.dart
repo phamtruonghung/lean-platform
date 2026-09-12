@@ -8,10 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/people/directory_org_unit_filter_dialog.dart';
 import 'package:lean_platform/people/directory_screen.dart';
+import 'package:lean_platform/people/employee.dart';
 import 'package:lean_platform/people/employee_detail_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/shell.dart';
+import 'package:lean_platform/widgets/app_search_field.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
 
 import 'harness.dart';
 
@@ -61,6 +64,99 @@ void main() {
     expect(find.text('Alice Nguyen'), findsOneWidget);
     expect(find.text('Bob Le'), findsNothing);
     expect(wire.employeeRequests.where((r) => r['search'] == 'Alice').length, 1);
+  });
+
+  group('search suggestions (issue #128, ADR-0023)', () {
+    testWidgets('the search box is an AppSearchField', (tester) async {
+      final wire = FakeWire(employees: [employeeJson('7', 'E-7', 'Alice Nguyen')]);
+      await openDirectory(tester, wire);
+
+      expect(find.byType(AppSearchField<Employee>), findsOneWidget);
+      expect(find.byKey(DirectoryScreen.searchFieldKey), findsOneWidget);
+    });
+
+    testWidgets(
+        'typing 2+ characters suggests matching Employees, each naming the Employee, '
+        'their job role and their Org Unit', (tester) async {
+      final wire = FakeWire(
+        employees: [
+          employeeJson(
+            '7',
+            'E-7',
+            'Alice Nguyen',
+            orgUnit: {'id': '10', 'name': 'Assembly'},
+            jobRole: {'id': '5', 'name': 'Welder'},
+          ),
+          employeeJson('8', 'E-8', 'Bob Le'),
+        ],
+      );
+      await openDirectory(tester, wire);
+
+      await tester.enterText(find.byKey(DirectoryScreen.searchFieldKey), 'Al');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+
+      final suggestion = find.byKey(DirectoryScreen.searchSuggestionKey('7'));
+      expect(suggestion, findsOneWidget);
+      expect(find.descendant(of: suggestion, matching: find.text('Alice Nguyen')), findsOneWidget);
+      expect(
+        find.descendant(of: suggestion, matching: find.text('Welder · Assembly')),
+        findsOneWidget,
+      );
+      // Bob Le does not match "Al" at all — no suggestion row for him.
+      expect(find.byKey(DirectoryScreen.searchSuggestionKey('8')), findsNothing);
+    });
+
+    testWidgets("picking a suggestion navigates to that Employee's detail route",
+        (tester) async {
+      final wire = FakeWire(employees: [employeeJson('7', 'E-7', 'Alice Nguyen')]);
+      await openDirectory(tester, wire);
+
+      await tester.enterText(find.byKey(DirectoryScreen.searchFieldKey), 'Ali');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+
+      await tester.tap(find.byKey(DirectoryScreen.searchSuggestionKey('7')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EmployeeDetailScreen), findsOneWidget);
+      expect(locationOf(tester, find.byType(EmployeeDetailScreen)), '/directory/7');
+    });
+
+    testWidgets('the suggestion fetch carries the limit parameter', (tester) async {
+      final wire = FakeWire(employees: [employeeJson('7', 'E-7', 'Alice Nguyen')]);
+      await openDirectory(tester, wire);
+
+      await tester.enterText(find.byKey(DirectoryScreen.searchFieldKey), 'Ali');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+
+      expect(wire.employeeRequests.last['search'], 'Ali');
+      expect(wire.employeeRequests.last['limit'], isNotNull);
+    });
+
+    testWidgets(
+        'a term matching nobody renders EmptyState in the suggestions, without disturbing '
+        'the listing beneath', (tester) async {
+      final wire = FakeWire(employees: [employeeJson('7', 'E-7', 'Alice Nguyen')]);
+      await openDirectory(tester, wire);
+
+      await tester.enterText(find.byKey(DirectoryScreen.searchFieldKey), 'zzz');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+
+      expect(find.byType(PlatformEmptyState), findsOneWidget);
+      // The listing beneath is untouched — still every Employee, unfiltered.
+      expect(find.byKey(DirectoryScreen.rowKey('7')), findsOneWidget);
+      expect(find.text('Alice Nguyen'), findsOneWidget);
+    });
+
+    // "pressing Enter without picking still filters the listing, sending
+    // exactly one request carrying 'search'" is the criterion the pre-existing
+    // 'searching narrows the list…' test above already covers — it exercises
+    // the exact same `enterText` + `receiveAction(TextInputAction.search)` +
+    // `pumpAndSettle()` sequence against the very `AppSearchField` this group
+    // introduces, so it is not repeated here.
   });
 
   testWidgets('the Org Unit filter sends orgUnitId, chosen by browsing the tree', (tester) async {

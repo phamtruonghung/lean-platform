@@ -11,8 +11,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../people_api.dart';
+import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_search_field.dart';
 import '../widgets/skeleton_list.dart';
 import 'directory_bloc.dart';
 import 'directory_org_unit_filter_dialog.dart';
@@ -32,8 +35,29 @@ class DirectoryScreen extends StatelessWidget {
 
   static const double maxWidth = 900;
 
+  /// The `name` the Directory's own `AppSearchField` is seeded with (issue
+  /// #128) — kept in one place so [searchFieldKey] and [searchSuggestionKey]
+  /// can never drift from what `_Header.build` actually renders, the same
+  /// device `SiteFormDialog._timezoneFieldName` uses (issue #127).
+  static const String _searchFieldName = 'directory-search';
+
+  /// How many suggestions a fetch asks for (issue #123's own `limit`) —
+  /// matches `AppSearchField`'s own cap on rendered rows (issue #125), so
+  /// nothing beyond what could ever be shown is pulled over the wire.
+  static const int _suggestionLimit = 10;
+
   static const ValueKey<String> addKey = ValueKey<String>('directory-add');
-  static const ValueKey<String> searchFieldKey = ValueKey<String>('directory-search');
+
+  /// Kept as the accessor's existing name (issue #128) even though the
+  /// control behind it changed from a `TextField` to `AppSearchField` — this
+  /// now resolves to that field's own key rather than a bespoke one, the same
+  /// change `SiteFormDialog.timezoneKey` made for issue #127.
+  static ValueKey<String> get searchFieldKey => AppSearchField.fieldKey(_searchFieldName);
+
+  /// One search suggestion row's own `Key`, keyed by the Employee's own id.
+  static ValueKey<String> searchSuggestionKey(String employeeId) =>
+      AppSearchField.suggestionKey(_searchFieldName, employeeId);
+
   static const ValueKey<String> orgUnitFilterKey = ValueKey<String>('directory-org-unit-filter');
   static const ValueKey<String> jobRoleFilterKey = ValueKey<String>('directory-job-role-filter');
   static const ValueKey<String> includeDepartedKey = ValueKey<String>('directory-include-departed');
@@ -79,20 +103,23 @@ class _Header extends StatefulWidget {
 }
 
 class _HeaderState extends State<_Header> {
-  late final TextEditingController _searchController;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController = TextEditingController(
-      text: widget.state is DirectoryLoaded ? (widget.state as DirectoryLoaded).search : '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  /// A dumb fetch, per `AppSearchField`'s own contract (issue #125): the
+  /// widget itself owns the 300ms debounce and the 2-character minimum, so
+  /// this issues one request per term it is actually asked for and nothing
+  /// more. Throwing (rather than returning an empty list) on a signed-out
+  /// session is what lets `AppSearchField` show `PlatformFailureState`
+  /// instead of a suggestion list quietly going empty for a reason it never
+  /// reports.
+  Future<List<Employee>> _fetchSuggestions(String term) async {
+    final token = context.read<AuthGateway>().currentAccessToken;
+    if (token == null) {
+      throw PeopleApiException(DirectoryBloc.signedOutMessage);
+    }
+    return context.read<PeopleApi>().fetchEmployees(
+          token,
+          search: term,
+          limit: DirectoryScreen._suggestionLimit,
+        );
   }
 
   @override
@@ -147,17 +174,47 @@ class _HeaderState extends State<_Header> {
                 ],
               ),
               const SizedBox(height: Spacing.md),
-              TextField(
-                key: DirectoryScreen.searchFieldKey,
-                controller: _searchController,
-                textInputAction: TextInputAction.search,
-                decoration: const InputDecoration(
-                  labelText: 'Search by name',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill))),
-                ),
+              // As-you-type suggestions (issue #128, ADR-0023 point 5) sit
+              // alongside the list filter below, not in place of it: picking
+              // a suggestion navigates straight to that Employee
+              // (`onSelected`), while pressing Enter without picking one
+              // still narrows the list underneath exactly as it always has
+              // (`onSubmitted` → `DirectorySearchChanged`) — "show me
+              // everyone called Nguyen" is a real thing to want, and is not
+              // the same as jumping to one person (this ticket's own "Why").
+              AppSearchField<Employee>(
+                name: DirectoryScreen._searchFieldName,
+                label: 'Search by name',
+                // No confirmed selection to seed or track here — unlike
+                // `SiteFormDialog`'s timezone field, a pick here navigates
+                // away rather than settling into this field, so there is
+                // never a chosen Employee this field itself needs to display.
+                value: null,
+                onChanged: (_) {},
+                onSelected: (employee) => context.go('${Routes.directory}/${employee.id}'),
+                fetchSuggestions: _fetchSuggestions,
+                suggestionBuilder: (context, employee) {
+                  final theme = Theme.of(context);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(employee.displayName),
+                        Text(
+                          _employeeSubtitle(employee),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                idOf: (employee) => employee.id,
+                displayStringFor: (employee) => employee.displayName,
                 onSubmitted: (value) =>
-                    context.read<DirectoryBloc>().add(DirectorySearchChanged(value.trim())),
+                    context.read<DirectoryBloc>().add(DirectorySearchChanged(value)),
               ),
               if (loaded != null) ...[
                 const SizedBox(height: Spacing.sm),
@@ -208,6 +265,18 @@ class _HeaderState extends State<_Header> {
     );
   }
 }
+
+/// The job role and Org Unit line shown beneath an Employee's name — shared
+/// by `_EmployeeRow` (the listing) and `_HeaderState`'s own search
+/// suggestion row (issue #128), so the two can never phrase the same fact
+/// differently. A missing job role reads as "No job role", never a blank the
+/// reader has to interpret (issue #91's own criterion); the Org Unit is
+/// appended only when there is one to name at all — directory.js's own
+/// fallback rule means it is usually there even with no current Assignment,
+/// but not always (neither a current Assignment nor a `defaultOrgUnitId`).
+String _employeeSubtitle(Employee employee) => employee.orgUnitName == null
+    ? (employee.jobRoleName ?? 'No job role')
+    : '${employee.jobRoleName ?? 'No job role'} · ${employee.orgUnitName}';
 
 class _DirectoryList extends StatelessWidget {
   const _DirectoryList({required this.employees});
@@ -288,16 +357,7 @@ class _EmployeeRow extends StatelessWidget {
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                     Text(
-                      // A missing job role reads as "No job role", never a
-                      // blank the reader has to interpret (issue #91's own
-                      // criterion); the Org Unit is appended only when there
-                      // is one to name at all — directory.js's own fallback
-                      // rule means it is usually there even with no current
-                      // Assignment, but not always (neither a current
-                      // Assignment nor a defaultOrgUnitId).
-                      employee.orgUnitName == null
-                          ? (employee.jobRoleName ?? 'No job role')
-                          : '${employee.jobRoleName ?? 'No job role'} · ${employee.orgUnitName}',
+                      _employeeSubtitle(employee),
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
