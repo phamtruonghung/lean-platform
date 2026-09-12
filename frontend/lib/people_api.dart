@@ -325,6 +325,7 @@ class PeopleApi {
         name: orgUnit['name'] as String,
         unitType: orgUnit['unitType'] as String,
         isActive: orgUnit['isActive'] == null ? true : orgUnit['isActive'] == true,
+        path: orgUnit['path'] == null ? '' : orgUnit['path'].toString(),
       );
 
   /// Creates a Site (`POST /api/people/sites`, administrator only, issue

@@ -1,7 +1,12 @@
-/// Every write and query issue #90's own Screen needs against the plant's
-/// shape: creating a Site, adding an Org Unit beneath a parent (or starting a
-/// new root branch), retiring or reinstating one, searching a Site's tree by
-/// name, and importing a branch in bulk.
+/// Every write issue #90's own Screen needs against the plant's shape:
+/// creating a Site, adding an Org Unit beneath a parent (or starting a new
+/// root branch), retiring or reinstating one, and importing a branch in
+/// bulk. Searching a Site's tree by name (`GET .../org-units/search`) moved
+/// out to `OrgUnitsScreen`'s own `AppSearchField` (issue #130) — a dumb
+/// per-term fetch called directly against `PeopleApi`, the same shape
+/// `SiteFormDialog`'s own `AppSearchField` field already uses for its
+/// filtered-in-memory timezone list — so this Bloc no longer holds any
+/// search state of its own.
 ///
 /// Deliberately does NOT own the tree itself — that stays `OrgUnitPickerBloc`'s
 /// job exactly as its own header describes it ("a Site, a partly-expanded
@@ -23,7 +28,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
-import 'org_unit.dart';
 
 sealed class OrgUnitAdminEvent {
   const OrgUnitAdminEvent();
@@ -84,22 +88,6 @@ class OrgUnitAdminActiveSet extends OrgUnitAdminEvent {
   final String orgUnitId;
   final bool isActive;
   final String? refreshParentId;
-}
-
-/// Searches [siteId]'s Org Units by name (`GET .../org-units/search`, issue
-/// #35/#90) — the gap `OrgUnitPickerBloc`'s one-level-at-a-time browsing
-/// leaves.
-class OrgUnitAdminSearchRequested extends OrgUnitAdminEvent {
-  const OrgUnitAdminSearchRequested({required this.siteId, required this.search});
-
-  final String siteId;
-  final String search;
-}
-
-/// Clears the last search — leaving stale results on screen after the query
-/// itself was cleared would misreport what the current search box holds.
-class OrgUnitAdminSearchCleared extends OrgUnitAdminEvent {
-  const OrgUnitAdminSearchCleared();
 }
 
 /// Fetches the timezone list a Site's `timezone` is chosen from (`GET
@@ -163,8 +151,6 @@ class OrgUnitAdminTreeReplaced extends OrgUnitAdminEffect {
   final String siteId;
 }
 
-enum OrgUnitAdminSearchStatus { idle, loading, ready, failed }
-
 /// What `SiteFormDialog`'s own timezone field is showing (issue #127,
 /// ADR-0023) — `failed` is the one status that blocks submission outright:
 /// the control shows `PlatformFailureState` in place of the search field
@@ -181,10 +167,6 @@ class OrgUnitAdminState {
     this.isMutating = false,
     this.mutationFailure,
     this.effect,
-    this.searchStatus = OrgUnitAdminSearchStatus.idle,
-    this.searchResults = const [],
-    this.searchTruncated = false,
-    this.searchFailure,
     this.isImporting = false,
     this.importErrors = const [],
     this.importFailure,
@@ -202,14 +184,6 @@ class OrgUnitAdminState {
   /// What the last successful mutation changed, waiting to be acted on. See
   /// this file's own header.
   final OrgUnitAdminEffect? effect;
-
-  final OrgUnitAdminSearchStatus searchStatus;
-  final List<OrgUnitNode> searchResults;
-
-  /// Whether the server's own limit (`ORG_UNIT_SEARCH_LIMIT`, plant.js) cut
-  /// [searchResults] short — surfaced, never dropped (AC5's own point).
-  final bool searchTruncated;
-  final String? searchFailure;
 
   final bool isImporting;
 
@@ -232,11 +206,6 @@ class OrgUnitAdminState {
     bool clearMutationFailure = false,
     OrgUnitAdminEffect? effect,
     bool clearEffect = false,
-    OrgUnitAdminSearchStatus? searchStatus,
-    List<OrgUnitNode>? searchResults,
-    bool? searchTruncated,
-    String? searchFailure,
-    bool clearSearchFailure = false,
     bool? isImporting,
     List<OrgUnitImportRowError>? importErrors,
     String? importFailure,
@@ -250,10 +219,6 @@ class OrgUnitAdminState {
       isMutating: isMutating ?? this.isMutating,
       mutationFailure: clearMutationFailure ? null : (mutationFailure ?? this.mutationFailure),
       effect: clearEffect ? null : (effect ?? this.effect),
-      searchStatus: searchStatus ?? this.searchStatus,
-      searchResults: searchResults ?? this.searchResults,
-      searchTruncated: searchTruncated ?? this.searchTruncated,
-      searchFailure: clearSearchFailure ? null : (searchFailure ?? this.searchFailure),
       isImporting: isImporting ?? this.isImporting,
       importErrors: importErrors ?? this.importErrors,
       importFailure: clearImportFailure ? null : (importFailure ?? this.importFailure),
@@ -272,8 +237,6 @@ class OrgUnitAdminBloc extends Bloc<OrgUnitAdminEvent, OrgUnitAdminState> {
     on<OrgUnitAdminSiteCreated>(_onSiteCreated);
     on<OrgUnitAdminOrgUnitCreated>(_onOrgUnitCreated);
     on<OrgUnitAdminActiveSet>(_onActiveSet);
-    on<OrgUnitAdminSearchRequested>(_onSearchRequested);
-    on<OrgUnitAdminSearchCleared>(_onSearchCleared);
     on<OrgUnitAdminImportRequested>(_onImportRequested);
     on<OrgUnitAdminEffectConsumed>(_onEffectConsumed);
     on<OrgUnitAdminTimezonesRequested>(_onTimezonesRequested);
@@ -357,51 +320,6 @@ class OrgUnitAdminBloc extends Bloc<OrgUnitAdminEvent, OrgUnitAdminState> {
     } on PeopleApiException catch (error) {
       emit(state.copyWith(isMutating: false, mutationFailure: error.message));
     }
-  }
-
-  Future<void> _onSearchRequested(
-    OrgUnitAdminSearchRequested event,
-    Emitter<OrgUnitAdminState> emit,
-  ) async {
-    final token = _auth.currentAccessToken;
-    if (token == null) {
-      emit(
-        state.copyWith(
-          searchStatus: OrgUnitAdminSearchStatus.failed,
-          searchFailure: signedOutMessage,
-        ),
-      );
-      return;
-    }
-    emit(state.copyWith(searchStatus: OrgUnitAdminSearchStatus.loading, clearSearchFailure: true));
-    try {
-      final result = await _api.searchOrgUnits(token, siteId: event.siteId, search: event.search);
-      emit(
-        state.copyWith(
-          searchStatus: OrgUnitAdminSearchStatus.ready,
-          searchResults: result.orgUnits,
-          searchTruncated: result.truncated,
-        ),
-      );
-    } on PeopleApiException catch (error) {
-      emit(
-        state.copyWith(
-          searchStatus: OrgUnitAdminSearchStatus.failed,
-          searchFailure: error.message,
-        ),
-      );
-    }
-  }
-
-  void _onSearchCleared(OrgUnitAdminSearchCleared event, Emitter<OrgUnitAdminState> emit) {
-    emit(
-      state.copyWith(
-        searchStatus: OrgUnitAdminSearchStatus.idle,
-        searchResults: const [],
-        searchTruncated: false,
-        clearSearchFailure: true,
-      ),
-    );
   }
 
   Future<void> _onImportRequested(
