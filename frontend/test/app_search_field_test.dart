@@ -299,4 +299,73 @@ void main() {
     expect(find.text('Ada Lovelace'), findsOneWidget);
     expect(calls, 0);
   });
+
+  // Defect fix: typed text is never itself a value, but a confirmed [value]
+  // must not go on being reported once the text on screen no longer matches
+  // it — see `app_search_field.dart`'s own "Typing over a confirmed
+  // selection retires it" doc comment. Before this fix, `SiteFormDialog`
+  // (issue #127) would submit a picked timezone the field had stopped
+  // displaying, which is exactly the valid-but-wrong hazard ADR-0017 warns
+  // about for a Site's production-day boundary.
+  testWidgets(
+      'typing over a confirmed selection clears it exactly once, leaving the typed text on screen',
+      (WidgetTester tester) async {
+    const initial = (id: 'e0', label: 'Grace Hopper');
+    Future<List<_Record>> fetch(String term) async => const [];
+
+    final harnessKey = GlobalKey<_HarnessState>();
+    await tester.pumpWidget(
+      _Harness(key: harnessKey, fetchSuggestions: fetch, initialValue: initial),
+    );
+
+    expect(harnessKey.currentState!.value, initial);
+
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'Gr');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(harnessKey.currentState!.reported, [null]);
+    expect(harnessKey.currentState!.value, isNull);
+    // The typed text stays on screen — `didUpdateWidget` skips re-seeding for
+    // a self-reported change, so this widget's own fix does not wipe out
+    // whatever the person is mid-typing.
+    expect(find.text('Gr'), findsOneWidget);
+
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'Gra');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    // Still exactly one report: once `value` is null there is nothing left
+    // to diverge from, so every later keystroke is a no-op on this front.
+    expect(harnessKey.currentState!.reported, [null]);
+  });
+
+  testWidgets('typing that still matches the confirmed selection leaves it in place',
+      (WidgetTester tester) async {
+    const initial = (id: 'e0', label: 'Grace Hopper');
+    Future<List<_Record>> fetch(String term) async => const [];
+
+    final harnessKey = GlobalKey<_HarnessState>();
+    await tester.pumpWidget(
+      _Harness(key: harnessKey, fetchSuggestions: fetch, initialValue: initial),
+    );
+
+    // Typing the exact same text back — one keystroke at a time reaching the
+    // same string a real typist would land on — is not itself a pick, but it
+    // is also not a divergence: nothing is reported and the value survives.
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'Grace Hopper');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(harnessKey.currentState!.reported, isEmpty);
+    expect(harnessKey.currentState!.value, initial);
+
+    // A trailing space is not a different record either.
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'Grace Hopper ');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(harnessKey.currentState!.reported, isEmpty);
+    expect(harnessKey.currentState!.value, initial);
+  });
 }

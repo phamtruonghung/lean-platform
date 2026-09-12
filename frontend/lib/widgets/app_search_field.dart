@@ -60,14 +60,15 @@ import 'failure_state.dart';
 /// meant to serve all three. [value]/[onChanged] instead exist for a
 /// narrower job: displaying an already-chosen record when a caller is
 /// editing an existing one, and reporting when that value has stopped being
-/// usable. The one case that happens inside this widget is a failed fetch —
-/// [onChanged] is called with `null` the moment [PlatformFailureState] is
-/// shown, mirroring `AppDateField`'s own "`null` means genuinely unset"
-/// contract, so a caller gating submission on a selection can see the gate
-/// close without polling anything. Typed text is never itself a value: this
-/// widget calls [onChanged] with a non-null [T] nowhere in its own code —
-/// only a caller's own [onSelected] handler, choosing to feed a pick back in
-/// as the new [value], can make it non-null again.
+/// usable. Two things inside this widget stop a value being usable — a
+/// failed fetch, and typing over the chosen record's own text (both below) —
+/// and both call [onChanged] with `null`, mirroring `AppDateField`'s own
+/// "`null` means genuinely unset" contract, so a caller gating submission on
+/// a selection can see the gate close without polling anything. Typed text
+/// is never itself a value: this widget calls [onChanged] with a non-null
+/// [T] nowhere in its own code — only a caller's own [onSelected] handler,
+/// choosing to feed a pick back in as the new [value], can make it non-null
+/// again.
 ///
 /// **A failed fetch never falls back to free text** (ADR-0023 point 6):
 /// [PlatformFailureState] replaces the suggestion list, its retry re-issues
@@ -79,6 +80,29 @@ import 'failure_state.dart';
 /// [PlatformFailureState]'s own doc comment on never showing raw exception
 /// text, any thrown error is treated alike and shown as one sentence rather
 /// than guessed at.
+///
+/// **Typing over a confirmed selection retires it.** While [value] is
+/// non-null the text on screen is that record's own [displayStringFor]. A
+/// keystroke that leaves the trimmed text no longer equal to it means the
+/// person is searching again, not looking at their choice — so [onChanged]
+/// is called with `null` at that keystroke, and the text itself is left
+/// alone for them to carry on typing. Without this, a caller whose field is
+/// the only place a choice is displayed would submit a value the field has
+/// stopped showing: the Site timezone (#127) is exactly that shape —
+/// `Europe/London` picked, `zzzz` typed over it, `Europe/London` posted —
+/// which is the valid-but-wrong value ADR-0023 exists to remove, silently
+/// moving that Site's production-day boundary (ADR-0017). This fires at most
+/// once per confirmed selection: the report leaves [value] `null`, and a
+/// `null` [value] has nothing to diverge from. Typing the same text back
+/// does **not** restore the selection — picking a suggestion is the only
+/// thing that ever sets one. Nor is this conditional on the caller: the
+/// Directory (#128), the Employee link picker (#129) and the Org Units
+/// search (#130) each pass [value] as `null` always, so no divergence is even
+/// expressible there, and a per-caller flag would only make the hazard above
+/// a supported configuration. What is *not* affected is a value seeded from
+/// outside (ADR-0023 point 4's stored zone absent from the fetched list):
+/// seeding, and re-seeding when [value] changes from outside, are untouched,
+/// and no empty or failed suggestion list clears anything on its own.
 ///
 /// A term of 2+ characters that resolves to zero records shows
 /// [PlatformEmptyState.noneMatched] — records exist elsewhere, this term
@@ -119,12 +143,15 @@ class AppSearchField<T> extends StatefulWidget {
   /// `AppDateField.value` is: this widget only ever asks to change it,
   /// through [onChanged]. Seeds the field's displayed text on first build
   /// via [displayStringFor], for a caller editing an existing record.
+  /// Cleared by this widget when typing diverges from its own display
+  /// string — see [onChanged].
   final T? value;
 
   /// Called with `null` when a fetch fails and [PlatformFailureState] is
-  /// shown (see this class's own doc comment) — never called with a non-null
-  /// [T] by this widget itself. A caller that wants [value] to track a pick
-  /// does so from its own [onSelected] handler.
+  /// shown, and when typing diverges from the confirmed [value]'s own
+  /// display string (see this class's own doc comment) — never called with a
+  /// non-null [T] by this widget itself. A caller that wants [value] to
+  /// track a pick does so from its own [onSelected] handler.
   final ValueChanged<T?> onChanged;
 
   /// Called with the tapped record when a suggestion is selected, and
@@ -147,9 +174,11 @@ class AppSearchField<T> extends StatefulWidget {
   /// [T] itself calls its identity.
   final Object Function(T record) idOf;
 
-  /// How a record renders as plain text — used only to seed the field's
-  /// displayed text from [value] on first build (and whenever [value]
-  /// changes from outside this widget), never during typing or while a
+  /// How a record renders as plain text — seeds the field's displayed text
+  /// from [value] on first build (and whenever [value] changes from outside
+  /// this widget), and is what typed text is compared against to tell
+  /// whether a confirmed selection is being typed over (this class's own doc
+  /// comment). It is never *written* into the field during typing or while a
   /// suggestion list is showing.
   final String Function(T record) displayStringFor;
 
@@ -255,11 +284,30 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
   }
 
   void _reportNoUsableValue() {
+    // Nothing to unset, and nothing for `didUpdateWidget` to skip re-seeding
+    // for — setting `_selfReportedChange` here would leave it stuck true for
+    // a caller whose `value` is always null (three of the four call sites),
+    // swallowing a later genuine outside change.
+    if (widget.value == null) return;
     _selfReportedChange = true;
     widget.onChanged(null);
   }
 
+  /// Retires a confirmed [AppSearchField.value] the moment the text stops
+  /// being that record's own display string — see this class's own doc
+  /// comment. Fires at most once per confirmed value: the report leaves
+  /// [AppSearchField.value] `null`, and a `null` value has nothing left to
+  /// diverge from, so every later keystroke falls out on the first line via
+  /// [_reportNoUsableValue]'s own guard.
+  void _clearValueIfTextDiverged(String text) {
+    final value = widget.value;
+    if (value == null) return;
+    if (text.trim() == widget.displayStringFor(value).trim()) return;
+    _reportNoUsableValue();
+  }
+
   void _handleTextChanged(String text) {
+    _clearValueIfTextDiverged(text);
     _debounceTimer?.cancel();
     final term = text.trim();
     if (term.length < _minLength) {

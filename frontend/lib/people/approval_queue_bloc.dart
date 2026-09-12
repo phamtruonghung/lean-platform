@@ -212,7 +212,8 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
       // different Account), which `approveAccount` only ever reaches once
       // the approval-status precondition has already passed. The two never
       // collide within one call, so distinguishing by the refusal's own
-      // wording is exact, not a heuristic — see `isEmployeeLinkRefusal`'s
+      // `error.code` is exact, not a heuristic (issue #119 replaced the
+      // original message-text match with this) — see `isEmployeeLinkRefusal`'s
       // own header.
       if (error.statusCode == 409 && !isEmployeeLinkRefusal(error.code)) {
         await _load(emit, notice: alreadyDecidedMessage);

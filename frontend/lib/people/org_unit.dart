@@ -91,9 +91,12 @@ abstract final class OrgUnitTypes {
 /// One `GET /api/people/sites/:siteId/org-units/search` response
 /// (`plant.searchOrgUnits`, issue #90's own search route) — the matches and
 /// whether the server's own limit (`ORG_UNIT_SEARCH_LIMIT`, plant.js) cut the
-/// result short. [truncated] is surfaced, not dropped: a caller acting on an
-/// incomplete list without knowing it is exactly the failure mode AC5 exists
-/// to close.
+/// result short. [truncated] is parsed off the wire here, but nothing renders
+/// it: issue #130 replaced the old results panel that once showed it with
+/// `AppSearchField`, which has no concept of a truncation flag at all. The
+/// field is kept because it is still faithfully parsed and issue #143 is
+/// planned to surface it again; until then, a truncated search result reads
+/// no differently on screen than a complete one.
 @immutable
 class OrgUnitSearchResult {
   const OrgUnitSearchResult({required this.orgUnits, required this.truncated});
