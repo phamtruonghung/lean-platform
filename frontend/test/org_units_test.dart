@@ -11,6 +11,7 @@ import 'package:lean_platform/people/org_unit_import_dialog.dart';
 import 'package:lean_platform/people/org_units_screen.dart';
 import 'package:lean_platform/people/site_form_dialog.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/failure_state.dart';
 
 import 'harness.dart';
 
@@ -35,8 +36,15 @@ void main() {
     expect(find.text('Line 1 · LINE-1'), findsOneWidget);
   });
 
+  // The timezone field is `AppSearchField` (issue #127, ADR-0023), fed by
+  // `GET /api/people/timezones` (issue #123) — no free-text timezone input
+  // remains, so every one of these types a term, waits out the debounce, and
+  // taps the suggestion rather than sending whatever was typed.
   testWidgets('an administrator can create a Site, sending one request', (tester) async {
-    final wire = FakeWire(sites: [siteJson('1', 'HCM', 'Ho Chi Minh')]);
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      timezones: const ['America/New_York', 'Europe/London'],
+    );
     await openOrgUnits(tester, wire);
 
     await tapIn(tester, find.byKey(OrgUnitsScreen.addSiteKey));
@@ -44,7 +52,11 @@ void main() {
 
     await tester.enterText(find.byKey(SiteFormDialog.codeKey), 'NYC');
     await tester.enterText(find.byKey(SiteFormDialog.nameKey), 'New York');
-    await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'America/New_York');
+    await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'new_york');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    await tester.tap(find.byKey(SiteFormDialog.timezoneSuggestionKey('America/New_York')));
+    await tester.pump();
     await tapIn(tester, find.byKey(SiteFormDialog.submitKey));
 
     expect(wire.sitePosts.single, {
@@ -53,6 +65,139 @@ void main() {
       'timezone': 'America/New_York',
     });
     expect(find.byType(SiteFormDialog), findsNothing);
+  });
+
+  testWidgets('typing "lon" shows Europe/London, and picking it sends Europe/London through FakeWire',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      timezones: const ['Europe/London', 'Europe/Paris', 'US/Eastern', 'Asia/Ho_Chi_Minh'],
+    );
+    await openOrgUnits(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.addSiteKey));
+    await tester.enterText(find.byKey(SiteFormDialog.codeKey), 'LON');
+    await tester.enterText(find.byKey(SiteFormDialog.nameKey), 'London');
+    await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'lon');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(find.text('Europe/London'), findsOneWidget);
+
+    await tester.tap(find.byKey(SiteFormDialog.timezoneSuggestionKey('Europe/London')));
+    await tester.pump();
+    await tapIn(tester, find.byKey(SiteFormDialog.submitKey));
+
+    expect(wire.sitePosts.single['timezone'], 'Europe/London');
+  });
+
+  // AC: a chosen zone is not silently lost the moment a later, unrelated
+  // term stops matching anything — picking is what sets the value
+  // (`AppSearchField`'s own contract, app_search_field.dart), typing after
+  // the fact narrows the *suggestion list* only. This is the reachable half
+  // of the ticket's "a stored value not in the fetched list still displays"
+  // concern: `SiteFormDialog` has no Site-correction surface to open on an
+  // existing Site at all (this dialog is Add-only, no `PATCH /sites/:id`
+  // exists) — `AppSearchField`'s own "an initial value is displayed on first
+  // build, before any fetch happens" test (app_search_field_test.dart) is
+  // what actually covers a caller-seeded value surviving a filtered-out
+  // list; there is no real call site here to seed one from.
+  testWidgets('a chosen zone survives a later term that matches nothing, and submits unchanged',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      timezones: const ['Europe/London', 'US/Eastern'],
+    );
+    await openOrgUnits(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.addSiteKey));
+    await tester.enterText(find.byKey(SiteFormDialog.codeKey), 'LON');
+    await tester.enterText(find.byKey(SiteFormDialog.nameKey), 'London');
+    await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'lon');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    await tester.tap(find.byKey(SiteFormDialog.timezoneSuggestionKey('Europe/London')));
+    await tester.pump();
+
+    // A later term that matches nothing narrows the suggestion list only —
+    // it never clears the already-picked value.
+    await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'zzzz');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(
+      tester.widget<FilledButton>(find.byKey(SiteFormDialog.submitKey)).onPressed,
+      isNotNull,
+    );
+
+    await tapIn(tester, find.byKey(SiteFormDialog.submitKey));
+
+    expect(wire.sitePosts.single['timezone'], 'Europe/London');
+  });
+
+  testWidgets(
+      'the timezone list is fetched once when the dialog opens, not once per keystroke',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      timezones: const ['Europe/London', 'Europe/Paris', 'US/Eastern'],
+    );
+    await openOrgUnits(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.addSiteKey));
+    expect(wire.requests.where((r) => r == 'GET /api/people/timezones').length, 1);
+
+    await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'e');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'eu');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.enterText(find.byKey(SiteFormDialog.timezoneKey), 'eur');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    // Still exactly one — every keystroke above filtered the same
+    // already-fetched list in memory rather than asking the wire again.
+    expect(wire.requests.where((r) => r == 'GET /api/people/timezones').length, 1);
+  });
+
+  testWidgets(
+      'when the timezone list fetch fails, FailureState renders and blocks submission; typed text is never accepted as a value',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      timezonesStatus: 503,
+    );
+    await openOrgUnits(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.addSiteKey));
+
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    // No free-text fallback: the search field itself is not even on screen.
+    expect(find.byKey(SiteFormDialog.timezoneKey), findsNothing);
+
+    await tester.enterText(find.byKey(SiteFormDialog.codeKey), 'NYC');
+    await tester.enterText(find.byKey(SiteFormDialog.nameKey), 'New York');
+
+    expect(tester.widget<FilledButton>(find.byKey(SiteFormDialog.submitKey)).onPressed, isNull);
+  });
+
+  testWidgets('retrying a failed timezone fetch re-fetches, and success makes the control usable',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      timezonesStatus: 503,
+    );
+    await openOrgUnits(tester, wire);
+    await tapIn(tester, find.byKey(OrgUnitsScreen.addSiteKey));
+
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+
+    wire.timezonesStatus = 200;
+    wire.timezones = const ['Europe/London'];
+    await tapIn(tester, find.byKey(SiteFormDialog.timezoneRetryKey));
+
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.byKey(SiteFormDialog.timezoneKey), findsOneWidget);
   });
 
   testWidgets('adding an Org Unit beneath a parent sends one request carrying parentId',

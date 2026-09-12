@@ -255,6 +255,28 @@ class PeopleApi {
     }
   }
 
+  /// The timezone list a Site's `timezone` is chosen from (`GET
+  /// /api/people/timezones`, issue #123, ADR-0023) — any authenticated,
+  /// active Account, not administrator-only. `SiteFormDialog` (issue #127)
+  /// fetches this once when it opens and filters the ~1,200 rows in memory
+  /// from there; nothing here paginates or searches server-side.
+  Future<List<String>> fetchTimezones(String accessToken) async {
+    const path = '/api/people/timezones';
+    final response = await _send(
+      () => _client.get(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken'},
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (body['timezones'] as List<dynamic>).cast<String>();
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// One level of a Site's Org Unit tree
   /// (`GET /api/people/sites/:siteId/org-units[?parentId=]`).
   ///

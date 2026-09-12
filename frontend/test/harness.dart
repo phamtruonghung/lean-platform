@@ -498,6 +498,9 @@ class FakeWire {
     Map<String?, List<Map<String, dynamic>>>? orgUnits,
     this.sitesStatus = 200,
     this.orgUnitsStatus = 200,
+    List<String>? timezones,
+    this.timezonesStatus = 200,
+    this.timezonesMessage = 'The timezone list is unavailable.',
     this.orgUnitScope,
     this.createSiteStatus = 201,
     this.createSiteMessage = 'a Site with this code already exists',
@@ -570,6 +573,7 @@ class FakeWire {
         employeeLinkedAccounts = employeeLinkedAccounts ?? {},
         sites = sites ?? [],
         orgUnits = orgUnits ?? {},
+        timezones = timezones ?? [],
         orgUnitSearchResults = orgUnitSearchResults ?? [],
         importOrgUnitsErrors = importOrgUnitsErrors ?? [],
         workOrders = workOrders ?? {},
@@ -734,6 +738,15 @@ class FakeWire {
   /// `GET /api/people/sites`.
   List<Map<String, dynamic>> sites;
   int sitesStatus;
+
+  /// `GET /api/people/timezones` (issue #123/#127, ADR-0023) — the whole
+  /// list `SiteFormDialog` fetches once when it opens. A test asserting the
+  /// fetch happened only once reads [requests] for
+  /// `'GET /api/people/timezones'`, the same generic device every other
+  /// once-per-open fetch in this suite already uses.
+  List<String> timezones;
+  int timezonesStatus;
+  String timezonesMessage;
 
   /// `GET /api/people/sites/:id/org-units`, keyed by the `parentId` asked for
   /// — the null key is the root level, which is a different request, not a
@@ -1643,6 +1656,12 @@ class FakeWire {
             return http.Response(jsonEncode({'message': 'Sites are unavailable.'}), sitesStatus);
           }
           return http.Response(jsonEncode({'sites': sites}), 200);
+        }
+        if (path == '/api/people/timezones') {
+          if (timezonesStatus != 200) {
+            return http.Response(jsonEncode({'message': timezonesMessage}), timezonesStatus);
+          }
+          return http.Response(jsonEncode({'timezones': timezones}), 200);
         }
         if (path.startsWith('/api/people/sites/') && path.endsWith('/org-units/search')) {
           // '', 'api', 'people', 'sites', ':siteId', 'org-units', 'search'.
