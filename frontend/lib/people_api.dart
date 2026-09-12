@@ -581,10 +581,13 @@ class PeopleApi {
   /// See [Employee]'s own header.
   ///
   /// [limit] bounds how many rows come back (issue #123) — `AppSearchField`
-  /// (issue #125/#128) is the caller that sends it, so a two-character
-  /// suggestion term does not pull the whole plant; the Directory's own
-  /// full-listing reads (`DirectoryBloc._readList`) leave it null, exactly as
-  /// before #123 landed.
+  /// is the caller that sends it, from the Directory's own suggestions
+  /// (issue #128) and the Employee link picker's (issue #129), so a
+  /// two-character suggestion term does not pull the whole plant. The
+  /// Directory's full-listing reads (`DirectoryBloc._readList`) leave it
+  /// null, exactly as before #123 landed. Absent, zero or non-numeric is the
+  /// server's own business to reject or ignore (`normalizeLimit`,
+  /// directory.js), not something re-validated here.
   Future<List<Employee>> fetchEmployees(
     String accessToken, {
     String? search,

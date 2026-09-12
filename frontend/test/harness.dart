@@ -848,7 +848,10 @@ class FakeWire {
   int employeesStatus;
 
   /// Every `GET /api/people/employees` request's query parameters, in the
-  /// order they reached the wire.
+  /// order they reached the wire. `limit` (issue #123) is carried through
+  /// exactly as sent, unparsed — a test that cares whether a caller bounded
+  /// its own fetch asserts this key directly rather than the (unfiltered)
+  /// [employees] list length.
   final List<Map<String, String?>> employeeRequests = [];
 
   /// `GET /api/people/employees/:id` and `GET /api/people/employees/me`,

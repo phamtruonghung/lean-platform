@@ -10,6 +10,18 @@
 /// that needs to survive this dialog closing — the same proportion
 /// `AdmissionDialog`'s own `_role`/`_failure` fields already keep for
 /// dialog-local, ephemeral choices.
+///
+/// The Directory search is `AppSearchField` (issue #129, ADR-0023): typing
+/// suggests matching Employees as the user goes, rather than making them
+/// commit to a term and press a Search button to find out whether anyone
+/// matches. Each suggestion names the Employee's job role and Org Unit
+/// alongside their name, so two people sharing a name can be told apart —
+/// the whole point of confirming an Account's Employee (ADR-0022); issue #91
+/// made both unconditional on `listEmployees`'s own row, so no second fetch
+/// is needed to show them. The fetch it issues always carries a `limit`
+/// (issue #123) matching `AppSearchField`'s own 10-suggestion cap — asking
+/// the server for more than this widget will ever render would only
+/// transfer rows nobody sees.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,6 +30,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_search_field.dart';
+import 'employee.dart';
 import 'employee_ref.dart';
 
 class EmployeeLinkPicker extends StatefulWidget {
@@ -42,13 +56,23 @@ class EmployeeLinkPicker extends StatefulWidget {
   final ValueChanged<EmployeeRef?> onChanged;
   final bool enabled;
 
-  static const ValueKey<String> searchFieldKey = ValueKey<String>('employee-link-search');
-  static const ValueKey<String> searchButtonKey = ValueKey<String>('employee-link-search-button');
+  /// The `name` this picker's own `AppSearchField` is seeded with — kept in
+  /// one place so [searchFieldKey] and [resultKey] can never drift from what
+  /// `build` actually renders (the same shape `SiteFormDialog` already uses
+  /// for its own `AppSearchField`, issue #127).
+  static const String _searchFieldName = 'employee-link';
+
+  /// Kept as the accessor's existing name (issue #129) even though the
+  /// control behind it changed from a bespoke `TextField` to `AppSearchField`
+  /// — this now resolves to that field's own key rather than a bespoke one.
+  static ValueKey<String> get searchFieldKey => AppSearchField.fieldKey(_searchFieldName);
+
   static const ValueKey<String> clearKey = ValueKey<String>('employee-link-clear');
-  static const ValueKey<String> searchFailureKey = ValueKey<String>('employee-link-search-failure');
-  static const ValueKey<String> noResultsKey = ValueKey<String>('employee-link-no-results');
+
+  /// One suggestion row's own `Key`, keyed by the Employee's own id —
+  /// `AppSearchField`'s `idOf` for this field is `Employee.id`.
   static ValueKey<String> resultKey(String employeeId) =>
-      ValueKey<String>('employee-link-result-$employeeId');
+      AppSearchField.suggestionKey(_searchFieldName, employeeId);
 
   @override
   State<EmployeeLinkPicker> createState() => _EmployeeLinkPickerState();
@@ -56,53 +80,40 @@ class EmployeeLinkPicker extends StatefulWidget {
 
 class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
   late EmployeeRef? _selected = widget.initial;
-  final TextEditingController _searchController = TextEditingController();
-  List<EmployeeRef> _results = const [];
-  bool _searched = false;
-  bool _searching = false;
-  String? _searchFailure;
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
+  /// At most this many suggestions are ever asked for — `AppSearchField`
+  /// itself never renders more than 10 of whatever a fetch returns (its own
+  /// doc comment), so asking the server for more would only transfer rows
+  /// nobody will ever see.
+  static const int _suggestionLimit = 10;
 
-  Future<void> _search() async {
-    final search = _searchController.text.trim();
-    if (search.isEmpty || !widget.enabled) return;
+  /// Bumped on every pick (and on Remove) and fed into the `AppSearchField`
+  /// below's own `Key`, forcing a fresh one to mount in its place. Tapping a
+  /// suggestion only calls `onSelected` (`AppSearchField`'s own contract,
+  /// app_search_field.dart) — it does not clear the field's typed text or
+  /// close its own suggestion list, since three different callers each want
+  /// something different to happen next. This picker's own job is done the
+  /// moment a choice is made, so it discards the whole search — text,
+  /// suggestions and all — by remounting rather than reaching into
+  /// `AppSearchField`'s internals, which it exposes no way to do.
+  int _searchGeneration = 0;
+
+  Future<List<Employee>> _fetchSuggestions(String term) async {
     final token = context.read<AuthGateway>().currentAccessToken;
-    if (token == null) return;
-    setState(() {
-      _searching = true;
-      _searchFailure = null;
-    });
-    try {
-      final employees = await context.read<PeopleApi>().fetchEmployees(token, search: search);
-      if (!mounted) return;
-      setState(() {
-        _searching = false;
-        _searched = true;
-        _results = [
-          for (final employee in employees)
-            EmployeeRef(id: employee.id, employeeNo: employee.employeeNo, displayName: employee.displayName),
-        ];
-      });
-    } on PeopleApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _searching = false;
-        _searchFailure = error.message;
-      });
+    if (token == null) {
+      throw PeopleApiException('Not signed in.');
     }
+    return context.read<PeopleApi>().fetchEmployees(
+          token,
+          search: term,
+          limit: _suggestionLimit,
+        );
   }
 
   void _select(EmployeeRef? employee) {
     setState(() {
       _selected = employee;
-      _results = const [];
-      _searched = false;
-      _searchController.clear();
+      _searchGeneration++;
     });
     widget.onChanged(employee);
   }
@@ -138,59 +149,50 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
         else
           Text('No Employee will be linked.', style: muted),
         const SizedBox(height: Spacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                key: EmployeeLinkPicker.searchFieldKey,
-                controller: _searchController,
-                enabled: widget.enabled,
-                textInputAction: TextInputAction.search,
-                decoration: const InputDecoration(
-                  labelText: 'Search the Directory',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                onSubmitted: (_) => _search(),
-              ),
+        AppSearchField<Employee>(
+          // Remounted on every pick — see [_searchGeneration]'s own doc
+          // comment. `AppSearchField`'s own field/suggestion keys are derived
+          // from `name`, not from this outer `Key`, so `searchFieldKey` and
+          // `resultKey` resolve identically before and after a remount.
+          key: ValueKey('${EmployeeLinkPicker._searchFieldName}-$_searchGeneration'),
+          name: EmployeeLinkPicker._searchFieldName,
+          label: 'Search the Directory',
+          enabled: widget.enabled,
+          // Never fed a confirmed Employee back in: the choice already made
+          // is shown above, in the "Linked to"/"Suggested match" line, not
+          // echoed into the search box itself — the same reason the old
+          // `TextField` cleared on a pick rather than displaying it.
+          value: null,
+          // This picker never surfaces a failed-fetch "value" of its own —
+          // `_selected` already tracks the real choice via `onSelected`
+          // below, and a failed fetch here has nothing to unset.
+          onChanged: (_) {},
+          onSelected: (employee) => _select(
+            EmployeeRef(
+              id: employee.id,
+              employeeNo: employee.employeeNo,
+              displayName: employee.displayName,
             ),
-            const SizedBox(width: Spacing.sm),
-            FilledButton(
-              key: EmployeeLinkPicker.searchButtonKey,
-              onPressed: widget.enabled && !_searching ? _search : null,
-              child: const Text('Search'),
-            ),
-          ],
-        ),
-        if (_searchFailure != null)
-          Padding(
-            key: EmployeeLinkPicker.searchFailureKey,
-            padding: const EdgeInsets.only(top: Spacing.sm),
-            child: Text(_searchFailure!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
           ),
-        if (_searched && _results.isEmpty)
-          Padding(
-            key: EmployeeLinkPicker.noResultsKey,
-            padding: const EdgeInsets.only(top: Spacing.sm),
-            child: Text('Nobody matches this search', style: muted),
-          ),
-        if (_results.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: Spacing.sm),
+          fetchSuggestions: _fetchSuggestions,
+          suggestionBuilder: (context, employee) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final result in _results)
-                  ListTile(
-                    key: EmployeeLinkPicker.resultKey(result.id),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(result.label),
-                    onTap: widget.enabled ? () => _select(result) : null,
-                  ),
+                Text('${employee.employeeNo} · ${employee.displayName}'),
+                Text(
+                  '${employee.jobRoleName ?? 'No job role'}'
+                  '${employee.orgUnitName == null ? '' : ' · ${employee.orgUnitName}'}',
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
               ],
             ),
           ),
+          idOf: (employee) => employee.id,
+          displayStringFor: (employee) => '${employee.employeeNo} · ${employee.displayName}',
+        ),
       ],
     );
   }
