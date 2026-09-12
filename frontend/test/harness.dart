@@ -488,6 +488,7 @@ class FakeWire {
     this.rejectStatus = 200,
     this.approveStatus = 200,
     this.approveMessage = 'The Platform could not admit that Account.',
+    this.approveCode,
     List<Map<String, dynamic>>? accounts,
     this.accountsStatus = 200,
     this.patchStatus = 200,
@@ -701,6 +702,13 @@ class FakeWire {
   int rejectStatus;
   int approveStatus;
   String approveMessage;
+
+  /// The `code` alongside [approveMessage] (issue #119) — null reproduces a
+  /// refusal that carries no code at all; a test that needs to drive
+  /// [isEmployeeLinkRefusal]'s branching sets this to one of
+  /// `EMPLOYEE_DEPARTED`, `EMPLOYEE_ALREADY_LINKED` or
+  /// `APPROVAL_STATUS_CHANGED`, the same codes `service.js` sends.
+  String? approveCode;
 
   /// `GET /api/people/accounts` — every Account, pending ones included.
   List<Map<String, dynamic>> accounts;
@@ -1833,7 +1841,10 @@ class FakeWire {
           approvals.add(jsonDecode(request.body) as Map<String, dynamic>);
           if (approvalGate != null) await approvalGate!.future;
           if (approveStatus != 200) {
-            return http.Response(jsonEncode({'message': approveMessage}), approveStatus);
+            return http.Response(
+              jsonEncode({'message': approveMessage, if (approveCode != null) 'code': approveCode}),
+              approveStatus,
+            );
           }
           final id = path.split('/')[4];
           queue = [for (final a in queue) if (a['id'] != id) a];

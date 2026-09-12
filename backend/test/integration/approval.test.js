@@ -891,6 +891,11 @@ test('rejecting an Account another administrator already dealt with is a 409, an
   assert.strictEqual(response.status, 409);
   const body = await response.json();
   assert.match(body.message, /already dealt with/);
+  // Issue #119: distinct from the three Employee-link refusal codes
+  // (employee-link.test.js), so a client can tell "someone else already
+  // decided this row" apart from "the Employee link was refused" without
+  // matching on either message's own wording.
+  assert.strictEqual(body.code, 'APPROVAL_STATUS_CHANGED');
 
   // Not a partial write: the Approval the other administrator made stands.
   const { rows: [row] } = await pool.query(
@@ -961,6 +966,7 @@ test('approving an Account another administrator already dealt with is a 409, an
   assert.strictEqual(response.status, 409);
   const body = await response.json();
   assert.match(body.message, /already dealt with/);
+  assert.strictEqual(body.code, 'APPROVAL_STATUS_CHANGED');
 
   const { rows: [row] } = await pool.query(
     'SELECT approval_status, is_active, role FROM app_users WHERE id = $1',

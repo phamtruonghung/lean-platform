@@ -7,9 +7,15 @@
  * seam, not an oversight.
  */
 
-function httpError(status, message) {
+// `code` is optional (issue #119) — see modules/people/errors.js's own
+// comment on httpError for the full reasoning; mirrored here, unused for now,
+// so the two Modules' generic error plumbing stays byte-similar rather than
+// drifting the moment one of them gains a capability the other has no
+// current call site for.
+function httpError(status, message, code) {
   const error = new Error(message);
   error.status = status;
+  if (code !== undefined) error.code = code;
   return error;
 }
 
@@ -25,7 +31,9 @@ function parseId(value) {
 
 function handleError(error, res, next) {
   if (error.status) {
-    return res.status(error.status).json({ message: error.message });
+    const body = { message: error.message };
+    if (error.code !== undefined) body.code = error.code;
+    return res.status(error.status).json(body);
   }
   return next(error);
 }

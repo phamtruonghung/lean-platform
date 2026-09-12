@@ -173,7 +173,7 @@ void main() {
 
   testWidgets('an Account another administrator already admitted is reported, and the queue refreshes',
       (tester) async {
-    final wire = _oneWaiting(approveStatus: 409);
+    final wire = _oneWaiting(approveStatus: 409)..approveCode = 'APPROVAL_STATUS_CHANGED';
     await _openDecision(tester, wire);
     await chooseRole(tester, Roles.admin);
 
@@ -327,7 +327,10 @@ void main() {
 
   // Each of the three Approval refusals from #115 surfaces its own message,
   // not the generic "someone else already dealt with it" 409 — even though
-  // two of the three share that status code.
+  // two of the three share that status code. Which of the two 409s this is
+  // (issue #119) is driven by the server's own `code`, not by matching either
+  // message's wording — see the two tests below that keep the production
+  // message but swap in an unrelated one to prove the branch follows `code`.
 
   testWidgets('an employeeId naming no Employee at all (404) surfaces its own message',
       (tester) async {
@@ -342,7 +345,7 @@ void main() {
       ],
       approveStatus: 404,
       approveMessage: 'employeeId does not name an existing Employee',
-    );
+    )..approveCode = 'EMPLOYEE_NOT_FOUND';
     await _openDecision(tester, wire);
     await chooseRole(tester, Roles.operator);
 
@@ -366,7 +369,7 @@ void main() {
       ],
       approveStatus: 409,
       approveMessage: 'This Employee has Departed and cannot be linked to an Account',
-    );
+    )..approveCode = 'EMPLOYEE_DEPARTED';
     await _openDecision(tester, wire);
     await chooseRole(tester, Roles.operator);
 
@@ -391,7 +394,7 @@ void main() {
       ],
       approveStatus: 409,
       approveMessage: 'This Employee is already linked to a different Account',
-    );
+    )..approveCode = 'EMPLOYEE_ALREADY_LINKED';
     await _openDecision(tester, wire);
     await chooseRole(tester, Roles.operator);
 
@@ -401,5 +404,51 @@ void main() {
     expect(find.text('Admit this Account'), findsOneWidget);
     expect(find.text('This Employee is already linked to a different Account'), findsWidgets);
     expect(find.textContaining('Another administrator has already dealt with'), findsNothing);
+  });
+
+  // The branch is driven by `code`, not by matching either refusal's wording
+  // (issue #119) — these two swap in a message that names neither Employee
+  // refusal and neither the precondition's own wording, and shows the code
+  // alone still routes correctly: an Employee-link code keeps the dialog open
+  // with that message, and a 409 carrying no code at all (a caller older than
+  // this issue, or a refusal that never opted in) still falls back to "someone
+  // else already dealt with it", the same default it had before any code
+  // existed.
+
+  testWidgets('a 409 carrying EMPLOYEE_ALREADY_LINKED keeps the dialog open with an arbitrary '
+      'message — the code decides, not the wording', (tester) async {
+    final wire = FakeWire(
+      queue: [pendingJson('7', 'first@b.c', _twoDaysAgo)],
+      approveStatus: 409,
+      approveMessage: 'Something unrelated to either refusal',
+    )..approveCode = 'EMPLOYEE_ALREADY_LINKED';
+    await _openDecision(tester, wire);
+    await chooseRole(tester, Roles.operator);
+
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Admit this Account'), findsOneWidget);
+    expect(find.text('Something unrelated to either refusal'), findsWidgets);
+    expect(find.textContaining('Another administrator has already dealt with'), findsNothing);
+  });
+
+  testWidgets('a 409 carrying no code at all still falls back to the generic already-dealt-with '
+      'notice and refreshes the queue', (tester) async {
+    final wire = FakeWire(
+      queue: [pendingJson('7', 'first@b.c', _twoDaysAgo)],
+      approveStatus: 409,
+      approveMessage: 'This Employee has Departed and cannot be linked to an Account',
+    );
+    await _openDecision(tester, wire);
+    await chooseRole(tester, Roles.operator);
+
+    wire.queue = [];
+
+    await tester.tap(find.byKey(AdmissionDialog.submitKey));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Admit this Account'), findsNothing);
+    expect(find.textContaining('Another administrator has already dealt with'), findsOneWidget);
   });
 }
