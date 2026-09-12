@@ -19,9 +19,16 @@
  * same rule but belong to neither file more than the other.
  */
 
-function httpError(status, message) {
+// `code` is optional (issue #119): a machine-readable tag a caller can match
+// on instead of the message's own wording, which is free to reword without
+// anything failing loudly today. Most refusals still pass no code and stay
+// exactly as they were — this only gives the capability, it does not require
+// every call site to use it (see requireLinkableEmployee and
+// requireApprovalStatusUnchanged in service.js for the ones that do).
+function httpError(status, message, code) {
   const error = new Error(message);
   error.status = status;
+  if (code !== undefined) error.code = code;
   return error;
 }
 
@@ -50,7 +57,9 @@ function parseId(value) {
 // handler via next() rather than being answered here.
 function handleError(error, res, next) {
   if (error.status) {
-    return res.status(error.status).json({ message: error.message });
+    const body = { message: error.message };
+    if (error.code !== undefined) body.code = error.code;
+    return res.status(error.status).json(body);
   }
   return next(error);
 }

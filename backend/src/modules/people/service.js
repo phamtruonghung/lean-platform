@@ -68,6 +68,14 @@ const APPROVAL_STATUSES = ['pending', 'approved', 'rejected'];
 // comparison against the row this transaction has already locked FOR UPDATE
 // (a 409). See rejectAccount's own comment for what sending it buys a
 // caller acting on a queue it read earlier.
+// Issue #119: a machine-readable code alongside this 409's message.
+// approveAccount can answer 409 for this reason or for one of
+// requireLinkableEmployee's three Employee-link refusals below, and a caller
+// (approval_queue_bloc.dart's isEmployeeLinkRefusal) needs to tell them apart
+// without matching on either message's own wording, which is free to reword.
+// Distinct from every one of requireLinkableEmployee's three codes below.
+const APPROVAL_STATUS_CHANGED = 'APPROVAL_STATUS_CHANGED';
+
 function requireKnownApprovalStatus(expectedApprovalStatus) {
   if (expectedApprovalStatus !== undefined && !APPROVAL_STATUSES.includes(expectedApprovalStatus)) {
     throw httpError(400, `expectedApprovalStatus must be one of: ${APPROVAL_STATUSES.join(', ')}`);
@@ -78,7 +86,8 @@ function requireApprovalStatusUnchanged(current, expectedApprovalStatus) {
   if (expectedApprovalStatus !== undefined && current.approval_status !== expectedApprovalStatus) {
     throw httpError(
       409,
-      `This Account is no longer ${expectedApprovalStatus} — another administrator has already dealt with it.`
+      `This Account is no longer ${expectedApprovalStatus} — another administrator has already dealt with it.`,
+      APPROVAL_STATUS_CHANGED
     );
   }
 }
@@ -343,16 +352,25 @@ async function listPendingAccounts() {
 // below) is the belt-and-braces backstop if this check and the write still
 // straddle a third transaction's commit — the same shape directory.js's
 // mapEmployeeWriteError is to employees_work_email_key.
+//
+// Each of the three refusals below carries its own code (issue #119),
+// distinct from the other two and from APPROVAL_STATUS_CHANGED above — the
+// messages themselves are unchanged, the code is what lets a caller branch on
+// which refusal this is without matching on wording that is free to reword.
+const EMPLOYEE_NOT_FOUND = 'EMPLOYEE_NOT_FOUND';
+const EMPLOYEE_DEPARTED = 'EMPLOYEE_DEPARTED';
+const EMPLOYEE_ALREADY_LINKED = 'EMPLOYEE_ALREADY_LINKED';
+
 async function requireLinkableEmployee(client, employeeId, accountId) {
   const { rows: [employee] } = await client.query(
     'SELECT id, is_active FROM employees WHERE id = $1 FOR UPDATE',
     [employeeId]
   );
   if (!employee) {
-    throw httpError(404, 'employeeId does not name an existing Employee');
+    throw httpError(404, 'employeeId does not name an existing Employee', EMPLOYEE_NOT_FOUND);
   }
   if (!employee.is_active) {
-    throw httpError(409, 'This Employee has Departed and cannot be linked to an Account');
+    throw httpError(409, 'This Employee has Departed and cannot be linked to an Account', EMPLOYEE_DEPARTED);
   }
 
   const { rows: [linkedElsewhere] } = await client.query(
@@ -360,7 +378,7 @@ async function requireLinkableEmployee(client, employeeId, accountId) {
     [employeeId, accountId]
   );
   if (linkedElsewhere) {
-    throw httpError(409, 'This Employee is already linked to a different Account');
+    throw httpError(409, 'This Employee is already linked to a different Account', EMPLOYEE_ALREADY_LINKED);
   }
 }
 
@@ -373,7 +391,7 @@ async function requireLinkableEmployee(client, employeeId, accountId) {
 // (that file's own header, directory-routes.js:467 at the time of writing).
 function mapAccountWriteError(error) {
   if (error.code === '23505' && error.constraint === 'app_users_employee_id_key') {
-    return httpError(409, 'This Employee is already linked to a different Account');
+    return httpError(409, 'This Employee is already linked to a different Account', EMPLOYEE_ALREADY_LINKED);
   }
   return error;
 }

@@ -237,7 +237,12 @@ test('employeeId is optional on Approval — omitting it leaves the Account unli
 
 // ---------------------------------------------------------------------------
 // 4. Approval refuses each of the three ways employeeId can be wrong, with a
-//    distinct, specific message — not one generic failure.
+//    distinct, specific message — not one generic failure — and, as of issue
+//    #119, a distinct machine-readable `code` alongside it, so a client can
+//    branch on which refusal this is without matching on the message's own
+//    wording. The three codes must differ from each other and from
+//    APPROVAL_STATUS_CHANGED (the precondition's own 409, asserted below in
+//    "approving an Account another administrator already dealt with...").
 // ---------------------------------------------------------------------------
 
 test('Approval refuses an employeeId that names no Employee at all', async () => {
@@ -247,6 +252,7 @@ test('Approval refuses an employeeId that names no Employee at all', async () =>
   assert.strictEqual(response.status, 404);
   const body = await response.json();
   assert.match(body.message, /does not name an existing Employee/);
+  assert.strictEqual(body.code, 'EMPLOYEE_NOT_FOUND');
 
   const { rows: [row] } = await pool.query('SELECT approval_status FROM app_users WHERE id = $1', [pending.id]);
   assert.strictEqual(row.approval_status, 'pending');
@@ -261,6 +267,7 @@ test('Approval refuses an employeeId naming an Employee who has Departed', async
   const body = await response.json();
   assert.match(body.message, /Departed/);
   assert.doesNotMatch(body.message, /already linked/);
+  assert.strictEqual(body.code, 'EMPLOYEE_DEPARTED');
 });
 
 test('Approval refuses an employeeId already linked to a different Account', async () => {
@@ -279,6 +286,7 @@ test('Approval refuses an employeeId already linked to a different Account', asy
   assert.strictEqual(response.status, 409);
   const body = await response.json();
   assert.match(body.message, /already linked to a different Account/);
+  assert.strictEqual(body.code, 'EMPLOYEE_ALREADY_LINKED');
 });
 
 // ---------------------------------------------------------------------------
@@ -329,17 +337,20 @@ test('PUT /accounts/:id/employee requires the administrator role', async () => {
   assert.strictEqual(response.status, 403);
 });
 
-test('PUT /accounts/:id/employee refuses each of the same three ways employeeId can be wrong', async () => {
+test('PUT /accounts/:id/employee refuses each of the same three ways employeeId can be wrong, each with its own code', async () => {
   const { account } = await approveFreshAccount();
 
   const notFound = await putEmployeeLink(account.id, '999999999');
   assert.strictEqual(notFound.status, 404);
+  const notFoundBody = await notFound.json();
+  assert.strictEqual(notFoundBody.code, 'EMPLOYEE_NOT_FOUND');
 
   const departed = await insertEmployee({ isActive: false });
   const departedResponse = await putEmployeeLink(account.id, departed.id);
   assert.strictEqual(departedResponse.status, 409);
   const departedBody = await departedResponse.json();
   assert.match(departedBody.message, /Departed/);
+  assert.strictEqual(departedBody.code, 'EMPLOYEE_DEPARTED');
 
   const employee = await insertEmployee({});
   const holderSubject = uniqueCode('put-holder');
@@ -353,6 +364,7 @@ test('PUT /accounts/:id/employee refuses each of the same three ways employeeId 
   assert.strictEqual(linkedResponse.status, 409);
   const linkedBody = await linkedResponse.json();
   assert.match(linkedBody.message, /already linked to a different Account/);
+  assert.strictEqual(linkedBody.code, 'EMPLOYEE_ALREADY_LINKED');
 });
 
 // ---------------------------------------------------------------------------

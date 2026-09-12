@@ -58,12 +58,20 @@ class AccountActive extends AccountStatus {
 /// [AccountPendingApproval]: per issue #6, "awaiting Approval" is not a
 /// failure, and the app must be able to tell the two apart.
 class PeopleApiException implements Exception {
-  PeopleApiException(this.message, {this.statusCode});
+  PeopleApiException(this.message, {this.statusCode, this.code});
 
   final String message;
 
   /// The HTTP status, when the request reached the API at all.
   final int? statusCode;
+
+  /// The refusal's machine-readable tag, when the server sent one alongside
+  /// [message] (issue #119, `errors.js`'s `httpError`/`handleError`) — null
+  /// for a refusal that carries no code, or when the request never reached
+  /// the API at all. A caller that needs to distinguish two refusals that
+  /// share a status code should match on this, not on [message]'s own
+  /// wording, which is free to reword without anything failing loudly.
+  final String? code;
 
   @override
   String toString() => message;
@@ -1333,6 +1341,7 @@ class PeopleApi {
       throw PeopleApiException(
         _messageFrom(response) ?? 'The API answered ${response.statusCode} for $path.',
         statusCode: response.statusCode,
+        code: _codeFrom(response),
       );
     }
     return response;
@@ -1348,6 +1357,23 @@ class PeopleApi {
       }
     } catch (_) {
       // Not JSON, or not that shape: the caller's generic message stands.
+    }
+    return null;
+  }
+
+  /// The API's own `{ "code": ... }` (issue #119), when the refusal carried
+  /// one alongside its `message` — `errors.js`'s `httpError` takes `code` as
+  /// an optional third argument, so most refusals still send none of this and
+  /// this returns null for them, exactly as `_messageFrom` returns null for a
+  /// body that is not that shape at all.
+  static String? _codeFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic> && body['code'] is String) {
+        return body['code'] as String;
+      }
+    } catch (_) {
+      // Not JSON, or not that shape: no code to report.
     }
     return null;
   }

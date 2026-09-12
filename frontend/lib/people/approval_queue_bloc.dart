@@ -214,7 +214,7 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
       // collide within one call, so distinguishing by the refusal's own
       // wording is exact, not a heuristic — see `isEmployeeLinkRefusal`'s
       // own header.
-      if (error.statusCode == 409 && !isEmployeeLinkRefusal(error.message)) {
+      if (error.statusCode == 409 && !isEmployeeLinkRefusal(error.code)) {
         await _load(emit, notice: alreadyDecidedMessage);
         return;
       }
@@ -237,16 +237,21 @@ class ApprovalQueueBloc extends Bloc<ApprovalQueueEvent, ApprovalQueueState> {
   }
 }
 
-/// Whether a 409's own message is one of the two Employee-link refusals
-/// `requireLinkableEmployee` (service.js) raises — "This Employee has
-/// Departed and cannot be linked to an Account" or "This Employee is already
-/// linked to a different Account" — rather than the approval-status
-/// precondition's "This Account is no longer … already dealt with it."
-/// (issue #116). Matched by wording, not a carried error code, because
-/// [PeopleApiException] only ever surfaces the server's status and message —
-/// the same information a real caller has. Shared with `AccountsBloc`'s own
-/// `PUT /accounts/:id/employee` handling so the two never drift onto
-/// different detection rules for the same two refusals.
-bool isEmployeeLinkRefusal(String message) =>
-    message.contains('has Departed and cannot be linked') ||
-    message.contains('is already linked to a different Account');
+/// The two Employee-link refusal codes `requireLinkableEmployee` (service.js)
+/// raises with its 409s — distinct from `APPROVAL_STATUS_CHANGED`, the
+/// approval-status precondition's own 409 code (issue #119). `EMPLOYEE_NOT_FOUND`
+/// is not one of these: `requireLinkableEmployee` answers that one 404, which
+/// [ApprovalQueueBloc]'s own 409-only check below never reaches.
+const _employeeDepartedCode = 'EMPLOYEE_DEPARTED';
+const _employeeAlreadyLinkedCode = 'EMPLOYEE_ALREADY_LINKED';
+
+/// Whether a 409's own code is one of the two Employee-link refusals above,
+/// rather than the approval-status precondition's `APPROVAL_STATUS_CHANGED`
+/// (issue #119, replacing the message-text match issue #116 originally used —
+/// see this function's own history for why that was exact rather than a
+/// heuristic, but still a message a reworded server string could silently
+/// break). [code] is null for a 409 carrying no code at all, which this
+/// treats as "not an Employee-link refusal" — every 409 requireLinkableEmployee
+/// or requireApprovalStatusUnchanged raises carries one.
+bool isEmployeeLinkRefusal(String? code) =>
+    code == _employeeDepartedCode || code == _employeeAlreadyLinkedCode;
