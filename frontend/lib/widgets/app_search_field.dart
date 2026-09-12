@@ -104,6 +104,7 @@ class AppSearchField<T> extends StatefulWidget {
     required this.suggestionBuilder,
     required this.idOf,
     required this.displayStringFor,
+    this.onSubmitted,
     this.enabled = true,
   });
 
@@ -151,6 +152,24 @@ class AppSearchField<T> extends StatefulWidget {
   /// changes from outside this widget), never during typing or while a
   /// suggestion list is showing.
   final String Function(T record) displayStringFor;
+
+  /// Fired when the field's own submit action (Enter, or a keyboard's
+  /// "search"/"done" action) is pressed — carrying whatever text is on
+  /// screen at that moment, trimmed. This is the Directory's own "commit to
+  /// this term and filter the list" action (issue #128), which survives
+  /// alongside suggestions rather than being replaced by them (ADR-0023
+  /// point 5's own "an addition, not a replacement"). Left null for a caller
+  /// with nothing to do on submit, e.g. the timezone field (#127), which is
+  /// something to *pick*, never something to *filter with*.
+  ///
+  /// Not a bare pass-through of `TextField.onSubmitted`: a pending debounce
+  /// is cancelled and any suggestions already on screen are collapsed back
+  /// to idle immediately beforehand (`_AppSearchFieldState._handleSubmitted`)
+  /// — a caller wiring this up is, by definition, about to change what
+  /// renders beneath this field on its own terms, so a suggestion for the
+  /// same term hanging around (or a debounced fetch still in flight landing
+  /// a moment later) would otherwise show the same match twice over.
+  final ValueChanged<String>? onSubmitted;
 
   final bool enabled;
 
@@ -286,6 +305,30 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
     widget.onSelected(record);
   }
 
+  /// Handles the field's own submit action (Enter, or a keyboard's "search"
+  /// action) when a caller supplies [AppSearchField.onSubmitted] — the
+  /// Directory (#128) is the first, and so far only, caller that does.
+  ///
+  /// A pending debounce is cancelled and any suggestions already on screen
+  /// are collapsed back to idle before [AppSearchField.onSubmitted] itself
+  /// runs: committing to a term is this field's caller taking over — the
+  /// Directory re-reads its whole listing narrowed to this term — so a
+  /// suggestion box for the same term hanging around (or a debounced fetch
+  /// still in flight landing a moment later) would show the same match twice
+  /// over, once as a suggestion and once as the row the narrowed listing now
+  /// renders. Bumping `_requestSeq` here, the same device `_handleTextChanged`
+  /// uses when typing drops back below the minimum length, is what stops an
+  /// already in-flight fetch from landing after this and reopening the box.
+  void _handleSubmitted(String text) {
+    _debounceTimer?.cancel();
+    _requestSeq++;
+    setState(() {
+      _status = _SuggestStatus.idle;
+      _suggestions = const [];
+    });
+    widget.onSubmitted!(text.trim());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -297,6 +340,8 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
           controller: _controller,
           enabled: widget.enabled,
           onChanged: _handleTextChanged,
+          onSubmitted: widget.onSubmitted == null ? null : _handleSubmitted,
+          textInputAction: widget.onSubmitted == null ? TextInputAction.done : TextInputAction.search,
           decoration: InputDecoration(
             labelText: widget.label,
             helperText: widget.helperText,

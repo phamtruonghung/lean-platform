@@ -579,12 +579,19 @@ class PeopleApi {
   /// (issue #91) — `listEmployees` (directory.js) resolves both in the same
   /// one query the list was always built from, never a query per Employee.
   /// See [Employee]'s own header.
+  ///
+  /// [limit] bounds how many rows come back (issue #123) — `AppSearchField`
+  /// (issue #125/#128) is the caller that sends it, so a two-character
+  /// suggestion term does not pull the whole plant; the Directory's own
+  /// full-listing reads (`DirectoryBloc._readList`) leave it null, exactly as
+  /// before #123 landed.
   Future<List<Employee>> fetchEmployees(
     String accessToken, {
     String? search,
     String? orgUnitId,
     String? jobRoleId,
     bool includeDeparted = false,
+    int? limit,
   }) async {
     const path = '/api/people/employees';
     final queryParameters = <String, String>{
@@ -595,6 +602,7 @@ class PeopleApi {
       // (directory-routes.js) — never sent at all otherwise, so a stray
       // `includeDeparted=false` is never constructed here either.
       if (includeDeparted) 'includeDeparted': 'true',
+      if (limit != null) 'limit': limit.toString(),
     };
     final uri = Uri.parse(path)
         .replace(queryParameters: queryParameters.isEmpty ? null : queryParameters);
