@@ -1,8 +1,8 @@
-/// Creating a Site (issue #90, ADR-0008's own baseline of what a Site is):
-/// `POST /api/people/sites`, administrator only. There is no correction or
-/// deactivation surface here — the ticket's own routes carry only a create,
-/// unlike `JobRoleFormDialog`/`SkillFormDialog` beside it, so this dialog is
-/// Add-only.
+/// Creating a Site (issue #90, ADR-0008's own baseline of what a Site is) or
+/// correcting one (issue #137, ADR-0025): `POST /api/people/sites` and
+/// `PATCH /api/people/sites/:siteId`, both administrator only. [site] decides
+/// which — null creates, a Site corrects, seeding every field from its stored
+/// values.
 ///
 /// The timezone field is `AppSearchField` over the timezone list `GET
 /// /api/people/timezones` answers (issue #123/#127, ADR-0023), not a typed
@@ -11,10 +11,10 @@
 /// Site's production-day boundary in silence (ADR-0017). `OrgUnitAdminBloc`
 /// (already this dialog's own shared Bloc) fetches the ~1,200-row list once
 /// when this dialog opens; typing filters that list in memory, never
-/// refetching per keystroke. The field always starts unset — this dialog
-/// stays Add-only (this file's own header, above), so there is no stored
-/// Site's zone to seed it from; a future Site-correction dialog is what
-/// would need to carry an existing zone in.
+/// refetching per keystroke. The field starts unset when creating, and seeded
+/// from the Site when correcting — a stored zone is displayed even when the
+/// fetched list does not contain it (ADR-0023 point 4), the criterion #127
+/// could not meet until this correction surface existed.
 library;
 
 import 'package:flutter/material.dart';
@@ -23,10 +23,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/failure_state.dart';
+import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
 
 class SiteFormDialog extends StatefulWidget {
-  const SiteFormDialog({super.key});
+  const SiteFormDialog({super.key, this.site});
+
+  /// The Site being corrected, or null when creating one (issue #137). Its
+  /// stored values seed the fields, including the timezone.
+  final Site? site;
 
   /// The `name` this dialog's own `AppSearchField` is seeded with — kept in
   /// one place so [timezoneKey] and [timezoneSuggestionKey] can never drift
@@ -60,14 +65,14 @@ class SiteFormDialog extends StatefulWidget {
   /// Opens the form over `OrgUnitsScreen` — the same explicit Bloc hand-off
   /// every dialog in this Module uses, `showDialog`'s route sitting outside
   /// the route-scoped `BlocProvider`.
-  static Future<void> open(BuildContext context) {
+  static Future<void> open(BuildContext context, {Site? site}) {
     final bloc = context.read<OrgUnitAdminBloc>();
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => BlocProvider<OrgUnitAdminBloc>.value(
         value: bloc,
-        child: const SiteFormDialog(),
+        child: SiteFormDialog(site: site),
       ),
     );
   }
@@ -82,12 +87,13 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
   final TextEditingController _countryCode = TextEditingController();
 
   /// The confirmed timezone selection — controlled by `AppSearchField`'s own
-  /// `value`/`onChanged`/`onSelected` contract, never typed free text. Always
-  /// starts unset: this dialog is Add-only (this file's own header). Typing
-  /// over a chosen zone clears it back to null (`AppSearchField`'s own
-  /// contract), closing the submit gate in `_complete` — this field is the
-  /// dialog's only display of the chosen zone, so a `_timezone` the field is
-  /// no longer showing would post a zone nobody chose (ADR-0017).
+  /// `value`/`onChanged`/`onSelected` contract, never typed free text. Unset
+  /// when creating; seeded from the Site's stored zone when correcting (issue
+  /// #137). Typing over a chosen zone clears it back to null
+  /// (`AppSearchField`'s own contract), closing the submit gate in
+  /// `_complete` — this field is the dialog's only display of the chosen
+  /// zone, so a `_timezone` the field is no longer showing would post a zone
+  /// nobody chose (ADR-0017).
   String? _timezone;
 
   bool _awaiting = false;
@@ -96,6 +102,13 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
   @override
   void initState() {
     super.initState();
+    final site = widget.site;
+    if (site != null) {
+      _code.text = site.code;
+      _name.text = site.name;
+      _countryCode.text = site.countryCode ?? '';
+      _timezone = site.timezone.isEmpty ? null : site.timezone;
+    }
     // Fetched once, here, when this dialog opens — never per keystroke.
     // `AppSearchField`'s own `fetchSuggestions` below only ever filters
     // whatever this fetch already landed.
@@ -127,14 +140,28 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
       _failure = null;
     });
     final countryCode = _countryCode.text.trim();
-    context.read<OrgUnitAdminBloc>().add(
-          OrgUnitAdminSiteCreated(
-            code: _code.text.trim(),
-            name: _name.text.trim(),
-            timezone: _timezone!.trim(),
-            countryCode: countryCode.isEmpty ? null : countryCode,
-          ),
-        );
+    final site = widget.site;
+    final bloc = context.read<OrgUnitAdminBloc>();
+    if (site == null) {
+      bloc.add(
+        OrgUnitAdminSiteCreated(
+          code: _code.text.trim(),
+          name: _name.text.trim(),
+          timezone: _timezone!.trim(),
+          countryCode: countryCode.isEmpty ? null : countryCode,
+        ),
+      );
+    } else {
+      bloc.add(
+        OrgUnitAdminSiteUpdated(
+          siteId: site.id,
+          code: _code.text.trim(),
+          name: _name.text.trim(),
+          timezone: _timezone!.trim(),
+          countryCode: countryCode.isEmpty ? null : countryCode,
+        ),
+      );
+    }
   }
 
   Widget _buildTimezoneField(OrgUnitAdminState state) {
@@ -208,7 +235,7 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
       listener: _onAdminChanged,
       child: BlocBuilder<OrgUnitAdminBloc, OrgUnitAdminState>(
         builder: (context, state) => AlertDialog(
-          title: const Text('Add Site'),
+          title: Text(widget.site == null ? 'Add Site' : 'Edit Site'),
           content: SizedBox(
             width: 420,
             child: SingleChildScrollView(
@@ -265,7 +292,7 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
             FilledButton(
               key: SiteFormDialog.submitKey,
               onPressed: _complete(state) && !_awaiting ? () => _submit(state) : null,
-              child: Text(_awaiting ? 'Saving…' : 'Add Site'),
+              child: Text(_awaiting ? 'Saving…' : (widget.site == null ? 'Add Site' : 'Save')),
             ),
           ],
         ),

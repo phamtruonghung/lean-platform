@@ -170,6 +170,27 @@ router.get('/sites/:siteId', authenticate, requireActive, authorization.requireS
   res.json({ site: req.site });
 });
 
+// Correcting a Site (issue #137, ADR-0025) — administrator only, matching
+// POST /sites above, and existence-before-scope via requireSiteAdmin: a 404
+// for an unknown or malformed id, then a 403 for a non-administrator. The body
+// replaces code, name, timezone and country_code with the same validation
+// create applies; the timezone half is governed by ADR-0025's
+// shift-calendar rule, enforced in plant.updateSite.
+router.patch(
+  '/sites/:siteId',
+  authenticate,
+  requireActive,
+  authorization.requireSiteAdmin(),
+  async (req, res, next) => {
+    try {
+      const site = await plant.updateSite(req.site.id, req.body ?? {}, req.account.id);
+      res.json({ site });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 // GET /sites/:siteId/org-units             -> see below: an administrator's
 //                                              root Org Units, or a
 //                                              non-administrator's own entry

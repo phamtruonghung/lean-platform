@@ -256,6 +256,8 @@ class PeopleApi {
             id: (site as Map<String, dynamic>)['id'].toString(),
             code: site['code'] as String,
             name: site['name'] as String,
+            timezone: site['timezone'] == null ? '' : site['timezone'].toString(),
+            countryCode: site['countryCode']?.toString(),
           ),
       ];
     } catch (error) {
@@ -351,6 +353,36 @@ class PeopleApi {
     const path = '/api/people/sites';
     await _send(
       () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'code': code,
+          'name': name,
+          'timezone': timezone,
+          'countryCode': ?countryCode,
+        }),
+      ),
+      path,
+    );
+  }
+
+  /// Corrects a Site (`PATCH /api/people/sites/:siteId`, administrator only,
+  /// issue #137). [code], [name] and [timezone] are required, exactly as on
+  /// create; [countryCode] is the only optional field. The server refuses a
+  /// timezone change once the Site has a shift calendar (`409`, ADR-0025) or an
+  /// unknown zone (`400`) — both surface here as an ordinary
+  /// [PeopleApiException] carrying the server's own message.
+  Future<void> updateSite(
+    String accessToken,
+    String siteId, {
+    required String code,
+    required String name,
+    required String timezone,
+    String? countryCode,
+  }) async {
+    final path = '/api/people/sites/$siteId';
+    await _send(
+      () => _client.patch(
         Uri.parse(path),
         headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
         body: jsonEncode({

@@ -413,8 +413,20 @@ Map<String, dynamic> suggestedEmployeeJson(String id, String employeeNo, String 
 Map<String, dynamic> linkedAccountJson(String id, String email, {bool isActive = true}) =>
     {'id': id, 'email': email, 'isActive': isActive};
 
-Map<String, dynamic> siteJson(String id, String code, String name) =>
-    {'id': id, 'code': code, 'name': name, 'timezone': 'Europe/London'};
+Map<String, dynamic> siteJson(
+  String id,
+  String code,
+  String name, {
+  String timezone = 'Europe/London',
+  String? countryCode,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'timezone': timezone,
+      'countryCode': countryCode,
+    };
 
 /// An Org Unit row exactly as `plant.js` sends one — `parentId` included,
 /// because a root-level response can legitimately carry a non-null one.
@@ -521,6 +533,8 @@ class FakeWire {
     this.orgUnitScope,
     this.createSiteStatus = 201,
     this.createSiteMessage = 'a Site with this code already exists',
+    this.patchSiteStatus = 200,
+    this.patchSiteMessage = 'This Site already has a shift calendar, so its timezone cannot be corrected',
     this.createOrgUnitStatus = 201,
     this.createOrgUnitMessage = 'That Org Unit could not be added.',
     this.patchOrgUnitStatus = 200,
@@ -789,6 +803,15 @@ class FakeWire {
 
   /// Every Site create body that actually reached the wire, decoded.
   final List<Map<String, dynamic>> sitePosts = [];
+
+  /// `PATCH /api/people/sites/:id` (issue #137) — correcting a Site. The
+  /// default 409 message reproduces ADR-0025's refusal, the case a widget test
+  /// most needs to surface.
+  int patchSiteStatus;
+  String patchSiteMessage;
+
+  /// Every Site correction that actually reached the wire, as `(siteId, body)`.
+  final List<(String, Map<String, dynamic>)> sitePatches = [];
 
   /// `POST /api/people/sites/:siteId/org-units` (issue #90) — gated server-side
   /// by `requireOrgUnitCreateScope` (ADR-0008), not reproduced here: this Fake
@@ -1692,6 +1715,23 @@ class FakeWire {
             return http.Response(jsonEncode({'message': 'Sites are unavailable.'}), sitesStatus);
           }
           return http.Response(jsonEncode({'sites': sites}), 200);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/people/sites/')) {
+          // '', 'api', 'people', 'sites', ':siteId'.
+          final siteId = path.split('/')[4];
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          sitePatches.add((siteId, sent));
+          if (patchSiteStatus != 200) {
+            return http.Response(jsonEncode({'message': patchSiteMessage}), patchSiteStatus);
+          }
+          final index = sites.indexWhere((site) => site['id'] == siteId);
+          final updated = {
+            if (index != -1) ...sites[index],
+            ...sent,
+            'id': siteId,
+          };
+          if (index != -1) sites[index] = updated;
+          return http.Response(jsonEncode({'site': updated}), 200);
         }
         if (path == '/api/people/timezones') {
           if (timezonesStatus != 200) {

@@ -69,6 +69,7 @@ class OrgUnitsScreen extends StatefulWidget {
 
   static const ValueKey<String> siteKey = ValueKey<String>('org-units-site');
   static const ValueKey<String> addSiteKey = ValueKey<String>('org-units-add-site');
+  static const ValueKey<String> editSiteKey = ValueKey<String>('org-units-edit-site');
   static const ValueKey<String> addRootKey = ValueKey<String>('org-units-add-root');
   static const ValueKey<String> importKey = ValueKey<String>('org-units-import');
 
@@ -192,6 +193,21 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                             : () => SiteFormDialog.open(context),
                         icon: const Icon(Icons.add_business_outlined),
                         label: const Text('Add Site'),
+                      ),
+                    if (widget.isAdmin)
+                      Padding(
+                        padding: const EdgeInsets.only(left: Spacing.sm),
+                        child: OutlinedButton.icon(
+                          key: OrgUnitsScreen.editSiteKey,
+                          // Nothing to correct until a Site is selected — the
+                          // picker loads them asynchronously, so this is
+                          // disabled while the list is empty or still loading.
+                          onPressed: adminState.isMutating || pickerState.site == null
+                              ? null
+                              : () => SiteFormDialog.open(context, site: pickerState.site),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('Edit Site'),
+                        ),
                       ),
                   ],
                 ),

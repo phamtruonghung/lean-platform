@@ -199,6 +199,83 @@ void main() {
     expect(find.byKey(SiteFormDialog.timezoneKey), findsOneWidget);
   });
 
+  testWidgets('an administrator corrects a Site through Edit Site', (tester) async {
+    final wire = FakeWire(
+      sites: [
+        siteJson('1', 'HCM', 'Ho Chi Minh', timezone: 'Asia/Ho_Chi_Minh', countryCode: 'VN'),
+      ],
+    );
+    await openOrgUnits(tester, wire);
+
+    expect(find.byKey(OrgUnitsScreen.editSiteKey), findsOneWidget);
+    await tapIn(tester, find.byKey(OrgUnitsScreen.editSiteKey));
+    expect(find.byType(SiteFormDialog), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(SiteFormDialog), matching: find.text('Edit Site')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byKey(SiteFormDialog.nameKey), 'Ho Chi Minh City');
+    await tapIn(tester, find.byKey(SiteFormDialog.submitKey));
+
+    expect(wire.sitePatches.single.$1, '1');
+    expect(wire.sitePatches.single.$2, {
+      'code': 'HCM',
+      'name': 'Ho Chi Minh City',
+      'timezone': 'Asia/Ho_Chi_Minh',
+      'countryCode': 'VN',
+    });
+  });
+
+  // Issue #127's remaining criterion, now that #137 gives it a correction
+  // surface: a Site whose stored zone is absent from the fetched list still
+  // displays it, and submitting without touching the field sends it back
+  // unchanged — never blanked, which would invite a careless save that moved
+  // the production-day boundary (ADR-0017, ADR-0023 point 4).
+  testWidgets("a Site's stored timezone absent from the fetched list still displays, and submits unchanged",
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh', timezone: 'Legacy/Zone')],
+      timezones: const ['Europe/London', 'US/Eastern'],
+    );
+    await openOrgUnits(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.editSiteKey));
+
+    // Not in the fetched list, yet it is what the field displays.
+    expect(
+      tester.widget<TextField>(find.byKey(SiteFormDialog.timezoneKey)).controller?.text,
+      'Legacy/Zone',
+    );
+
+    await tapIn(tester, find.byKey(SiteFormDialog.submitKey));
+    expect(wire.sitePatches.single.$2['timezone'], 'Legacy/Zone');
+  });
+
+  testWidgets('a refused timezone correction keeps the dialog open and shows the message',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh', timezone: 'Asia/Ho_Chi_Minh')],
+      patchSiteStatus: 409,
+      patchSiteMessage:
+          'This Site already has a shift calendar, so its timezone cannot be corrected',
+    );
+    await openOrgUnits(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitsScreen.editSiteKey));
+    await tapIn(tester, find.byKey(SiteFormDialog.submitKey));
+
+    expect(
+      find.descendant(
+        of: find.byKey(SiteFormDialog.failureKey),
+        matching: find.text(
+            'This Site already has a shift calendar, so its timezone cannot be corrected'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(SiteFormDialog), findsOneWidget);
+  });
+
   testWidgets('adding an Org Unit beneath a parent sends one request carrying parentId',
       (tester) async {
     final wire = FakeWire(
