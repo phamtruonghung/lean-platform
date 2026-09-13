@@ -3,9 +3,11 @@
 ///
 /// CONTEXT.md's own line is the point of this model: a PM schedule is what
 /// raises a Work order before something breaks, rather than in response to
-/// one. This slice is the calendar mechanism — elapsed time — so the interval
-/// is in days; the meter-driven half of the glossary's definition is written
-/// NULL by the server and is not carried here.
+/// one. Both mechanisms its entry names are carried: elapsed time in days, and
+/// accumulated use through a meter — and a schedule may run on either. The
+/// server computes the meter's current accumulated use and whether it has
+/// reached the target, so the client never re-derives the rollover offset
+/// (ADR-0029).
 ///
 /// A schedule is scoped from its Asset, exactly like a Work order: it carries
 /// no Org Unit of its own, and the server resolves one by joining through the
@@ -68,6 +70,15 @@ class PmSchedule {
     required this.nextDueOn,
     required this.isActive,
     required this.daysUntilDue,
+    this.assetMeterId,
+    this.meterCode,
+    this.meterName,
+    this.meterType,
+    this.intervalMeter,
+    this.lastCompletedMeter,
+    this.nextDueMeter,
+    this.currentMeter,
+    this.meterDue = false,
   });
 
   final String id;
@@ -92,8 +103,34 @@ class PmSchedule {
   final String jobPlanId;
   final String jobPlanName;
 
-  /// How often the schedule comes round, in days.
-  final int intervalDays;
+  /// How often the schedule comes round, in days — null for a meter-only
+  /// schedule, which comes round on accumulated use instead.
+  final int? intervalDays;
+
+  /// The meter a meter-driven schedule comes due on (issue #79), and the
+  /// interval in that meter's own unit. All null for a calendar schedule.
+  final String? assetMeterId;
+  final String? meterCode;
+  final String? meterName;
+
+  /// The wire meter type, `cumulative` for a schedule (only cumulative meters
+  /// can drive one), kept as a string like [anchor].
+  final String? meterType;
+  final num? intervalMeter;
+
+  /// The accumulated use when the last occurrence was completed, and the
+  /// target the next one comes due at.
+  final num? lastCompletedMeter;
+  final num? nextDueMeter;
+
+  /// The meter's accumulated use as the server last computed it, and whether
+  /// it has reached [nextDueMeter].
+  final num? currentMeter;
+  final bool meterDue;
+
+  /// Whether this schedule comes round on accumulated use rather than the
+  /// calendar — the two mechanisms CONTEXT.md's PM schedule entry names.
+  bool get isMeterDriven => assetMeterId != null;
 
   /// The wire string, not the enum: an anchor this build does not know about
   /// still renders rather than throwing.

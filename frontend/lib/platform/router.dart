@@ -15,6 +15,8 @@ import '../maintenance/downtime_screen.dart';
 import '../maintenance/job_plans_bloc.dart';
 import '../maintenance/job_plans_screen.dart';
 import '../maintenance/maintenance_api.dart';
+import '../maintenance/meters_bloc.dart';
+import '../maintenance/meters_screen.dart';
 import '../maintenance/my_requests_bloc.dart';
 import '../maintenance/my_requests_screen.dart';
 import '../maintenance/pm_schedules_bloc.dart';
@@ -71,6 +73,7 @@ abstract final class Routes {
   static const String myRequests = '/my-requests';
   static const String downtime = '/downtime';
   static const String pmSchedules = '/pm-schedules';
+  static const String meters = '/meters';
   static const String jobPlans = '/job-plans';
   static const String directory = '/directory';
   static const String jobRoles = '/job-roles';
@@ -573,7 +576,14 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                           authGateway: context.read<AuthGateway>(),
                           workOrderId: workOrderId,
                         )..add(const WorkOrderDetailStarted()),
-                        child: WorkOrderDetailScreen(workOrderId: workOrderId),
+                        child: WorkOrderDetailScreen(
+                          workOrderId: workOrderId,
+                          // Same coarse signal the list's own writable
+                          // affordances use (issue #79): a task that names a
+                          // meter offers a reading action to a caller who
+                          // could write one, and the server is the real gate.
+                          canRecord: account.account.orgUnitScope.canWriteSomewhere,
+                        ),
                       );
                     },
                   ),
@@ -679,6 +689,29 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const PmSchedulesStarted()),
                 child: PmSchedulesScreen(canAct: account.account.orgUnitScope.canWriteSomewhere),
+              );
+            },
+          ),
+          // Meters (issue #79) follow the same Module role set as the rest of
+          // maintenance: a supervisor, engineer, manager or administrator
+          // defines a meter and records readings. Only a cumulative meter can
+          // drive a PM schedule, and the server is the real gate; the create
+          // and record affordances read the coarse `canWriteSomewhere` signal.
+          GoRoute(
+            path: Routes.meters,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<MetersBloc>(
+                create: (context) => MetersBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const MetersStarted()),
+                child: MetersScreen(canAct: account.account.orgUnitScope.canWriteSomewhere),
               );
             },
           ),

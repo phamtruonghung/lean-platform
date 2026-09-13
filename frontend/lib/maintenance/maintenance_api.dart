@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'asset.dart';
 import 'downtime_event.dart';
 import 'job_plan.dart';
+import 'meter.dart';
 import 'pm_schedule.dart';
 import 'request.dart';
 import 'tier_board.dart';
@@ -692,17 +693,22 @@ class MaintenanceApi {
     }
   }
 
-  /// Attaches a Job plan to an Asset as a calendar PM schedule (`POST
+  /// Attaches a Job plan to an Asset as a PM schedule (`POST
   /// /api/maintenance/pm-schedules`, issue #74). No `orgUnitId` and no code:
   /// the server derives the former from the Asset and issues the latter from
-  /// the Site's own sequence. [nextDueOn] is a `YYYY-MM-DD` date; left null
-  /// the server starts the clock from today.
+  /// the Site's own sequence. The interval is one of two mechanisms (issue
+  /// #79): [intervalDays] for elapsed time, or [assetMeterId] plus
+  /// [intervalMeter] for accumulated use. Exactly one must be given; the
+  /// server refuses neither or both. [nextDueOn] is a `YYYY-MM-DD` date and
+  /// applies only to the calendar mechanism.
   Future<PmSchedule> createPmSchedule(
     String accessToken, {
     required String assetId,
     required String jobPlanId,
-    required int intervalDays,
     required String anchor,
+    int? intervalDays,
+    String? assetMeterId,
+    num? intervalMeter,
     int? leadTimeDays,
     int? priority,
     String? nextDueOn,
@@ -715,7 +721,9 @@ class MaintenanceApi {
         body: jsonEncode({
           'assetId': assetId,
           'jobPlanId': jobPlanId,
-          'intervalDays': intervalDays,
+          'intervalDays': ?intervalDays,
+          'assetMeterId': ?assetMeterId,
+          'intervalMeter': ?intervalMeter,
           'anchor': anchor,
           'leadTimeDays': ?leadTimeDays,
           'priority': ?priority,
@@ -753,6 +761,157 @@ class MaintenanceApi {
     }
   }
 
+  /// The meters at a Site (`GET /api/maintenance/sites/:siteId/meters`, issue
+  /// #79) — active ones by default, retired ones too when [includeInactive]
+  /// asks for them by name. [assetId] narrows to one Asset's meters, which is
+  /// what the PM schedule form reads. Site-wide and carrying no Grant filter
+  /// (ADR-0009).
+  Future<List<AssetMeter>> fetchMeters(
+    String accessToken, {
+    required String siteId,
+    String? assetId,
+    bool includeInactive = false,
+  }) async {
+    final path = '/api/maintenance/sites/$siteId/meters';
+    final queryParameters = {
+      'assetId': ?assetId,
+      if (includeInactive) 'includeInactive': 'true',
+    };
+    final uri = queryParameters.isEmpty
+        ? Uri.parse(path)
+        : Uri.parse(path).replace(queryParameters: queryParameters);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final meter in body['meters'] as List<dynamic>)
+          _meterFrom(meter as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The unit-of-measure catalogue the meter form chooses from (`GET
+  /// /api/maintenance/units-of-measure`, issue #79) — the baseline reference
+  /// table, so a unit is chosen rather than typed (ADR-0023).
+  Future<List<UnitOfMeasure>> fetchUnitsOfMeasure(String accessToken) async {
+    const path = '/api/maintenance/units-of-measure';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final unit in body['unitsOfMeasure'] as List<dynamic>)
+          _unitOfMeasureFrom(unit as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Defines a meter on an Asset (`POST /api/maintenance/meters`, issue #79).
+  /// A write Grant reaching the Asset's Org Unit is required (403).
+  Future<AssetMeter> createMeter(
+    String accessToken, {
+    required String assetId,
+    required String code,
+    required String name,
+    required String uomCode,
+    required String meterType,
+  }) async {
+    const path = '/api/maintenance/meters';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'assetId': assetId,
+          'code': code,
+          'name': name,
+          'uomCode': uomCode,
+          'meterType': meterType,
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _meterFrom(body['meter'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records a manual reading against a meter (`POST
+  /// /api/maintenance/meters/:id/readings`, issue #79). A backwards reading on
+  /// a cumulative meter is refused by the server with a named code; this call
+  /// reports whatever it decides. Returns the meter as it now stands, so the
+  /// caller can show the new accumulated use without a second read.
+  Future<AssetMeter> recordMeterReading(
+    String accessToken,
+    String meterId, {
+    required num reading,
+    String? note,
+    DateTime? readAt,
+  }) async {
+    final path = '/api/maintenance/meters/$meterId/readings';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'reading': reading,
+          'note': ?note,
+          'readAt': ?_timestamp(readAt),
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _meterFrom(body['meter'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records an explicit rollover or replacement (`POST
+  /// /api/maintenance/meters/:id/rollover`, issue #79). [reading] is the new
+  /// counter's own starting value and defaults to zero server-side (ADR-0029).
+  Future<AssetMeter> rolloverMeter(
+    String accessToken,
+    String meterId, {
+    num? reading,
+    String? note,
+    DateTime? readAt,
+  }) async {
+    final path = '/api/maintenance/meters/$meterId/rollover';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'reading': ?reading,
+          'note': ?note,
+          'readAt': ?_timestamp(readAt),
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _meterFrom(body['meter'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// One Work order with the tasks copied from the Job plan that raised it
   /// (`GET /api/maintenance/work-orders/:id`, issue #74) — the detail read the
   /// Site-wide list deliberately leaves tasks off (it would be an N+1). A
@@ -767,6 +926,41 @@ class MaintenanceApi {
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       return _workOrderFrom(body['workOrder'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records a reading while working a Work order task that names a meter
+  /// (`POST /api/maintenance/work-orders/:id/tasks/:taskId/reading`, issue
+  /// #79). The server records the reading against the meter — applying the
+  /// cumulative backward check — and stamps the value onto the copied task.
+  /// Returns the updated task; the caller re-reads the Work order for the
+  /// meter's own accumulated use.
+  Future<WorkOrderTask> recordTaskReading(
+    String accessToken,
+    String workOrderId,
+    String taskId, {
+    required num reading,
+    String? note,
+    DateTime? readAt,
+  }) async {
+    final path = '/api/maintenance/work-orders/$workOrderId/tasks/$taskId/reading';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'reading': reading,
+          'note': ?note,
+          'readAt': ?_timestamp(readAt),
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _workOrderTaskFrom(body['task'] as Map<String, dynamic>);
     } catch (error) {
       throw MaintenanceApiException('The API answered with something this app could not read: $error');
     }
@@ -844,8 +1038,10 @@ class MaintenanceApi {
       );
 
   // `toWorkOrderTask` (work-orders.js): `id, stepNo, instruction, skillId,
-  // skillName, status, note, reading` — the seven fields a copied step
-  // carries, with the required Skill's name resolved by the server's join.
+  // skillName, status, note, reading, assetMeterId, meterCode, meterName` —
+  // the fields a copied step carries, with the required Skill's name resolved
+  // by the server's join and the meter the step records to, if any (issue
+  // #79).
   static WorkOrderTask _workOrderTaskFrom(Map<String, dynamic> task) => WorkOrderTask(
         id: task['id'].toString(),
         stepNo: (task['stepNo'] as num).toInt(),
@@ -855,6 +1051,9 @@ class MaintenanceApi {
         status: task['status'] as String? ?? 'pending',
         note: task['note'] as String?,
         reading: task['reading'] as num?,
+        assetMeterId: task['assetMeterId']?.toString(),
+        meterCode: task['meterCode'] as String?,
+        meterName: task['meterName'] as String?,
       );
 
   // `toJobPlan` (job-plans.js) sends a flat row plus an ordered `tasks` list;
@@ -887,8 +1086,11 @@ class MaintenanceApi {
 
   // `toPmSchedule` (pm-schedules.js) sends a flat row key for key: `id, code,
   // name, assetId, assetCode, assetName, orgUnitId, orgUnitName, jobPlanId,
-  // jobPlanName, intervalDays, anchor, leadTimeDays, priority,
-  // lastCompletedOn, nextDueOn, isActive, daysUntilDue`.
+  // jobPlanName, intervalDays, assetMeterId, meterCode, meterName, meterType,
+  // intervalMeter, lastCompletedMeter, nextDueMeter, currentMeter, meterDue,
+  // anchor, leadTimeDays, priority, lastCompletedOn, nextDueOn, isActive,
+  // daysUntilDue`. `intervalDays` is null for a meter-only schedule and
+  // `intervalMeter`/`currentMeter`/`nextDueMeter` are null for a calendar one.
   static PmSchedule _pmScheduleFrom(Map<String, dynamic> schedule) => PmSchedule(
         id: schedule['id'].toString(),
         code: schedule['code'] as String,
@@ -900,7 +1102,16 @@ class MaintenanceApi {
         orgUnitName: schedule['orgUnitName'] as String,
         jobPlanId: schedule['jobPlanId'].toString(),
         jobPlanName: schedule['jobPlanName'] as String,
-        intervalDays: (schedule['intervalDays'] as num).toInt(),
+        intervalDays: (schedule['intervalDays'] as num?)?.toInt(),
+        assetMeterId: schedule['assetMeterId']?.toString(),
+        meterCode: schedule['meterCode'] as String?,
+        meterName: schedule['meterName'] as String?,
+        meterType: schedule['meterType'] as String?,
+        intervalMeter: schedule['intervalMeter'] as num?,
+        lastCompletedMeter: schedule['lastCompletedMeter'] as num?,
+        nextDueMeter: schedule['nextDueMeter'] as num?,
+        currentMeter: schedule['currentMeter'] as num?,
+        meterDue: schedule['meterDue'] as bool? ?? false,
         anchor: schedule['anchor'] as String,
         leadTimeDays: (schedule['leadTimeDays'] as num?)?.toInt() ?? 7,
         priority: (schedule['priority'] as num?)?.toInt() ?? 3,
@@ -908,6 +1119,35 @@ class MaintenanceApi {
         nextDueOn: schedule['nextDueOn'] as String?,
         isActive: schedule['isActive'] as bool? ?? true,
         daysUntilDue: (schedule['daysUntilDue'] as num?)?.toInt(),
+      );
+
+  // `toMeter` (meters.js): `id, assetId, assetCode, assetName, orgUnitId,
+  // orgUnitName, siteId, code, name, uomCode, uomName, meterType,
+  // rolloverOffset, isActive, latestReading, latestReadAt, accumulatedUse`.
+  static AssetMeter _meterFrom(Map<String, dynamic> meter) => AssetMeter(
+        id: meter['id'].toString(),
+        assetId: meter['assetId'].toString(),
+        assetCode: meter['assetCode'] as String,
+        assetName: meter['assetName'] as String,
+        orgUnitId: meter['orgUnitId'].toString(),
+        orgUnitName: meter['orgUnitName'] as String,
+        siteId: meter['siteId'].toString(),
+        code: meter['code'] as String,
+        name: meter['name'] as String,
+        uomCode: meter['uomCode'] as String,
+        uomName: meter['uomName'] as String,
+        meterType: meter['meterType'] as String,
+        rolloverOffset: meter['rolloverOffset'] as num? ?? 0,
+        isActive: meter['isActive'] as bool? ?? true,
+        latestReading: meter['latestReading'] as num?,
+        latestReadAt: meter['latestReadAt'] as String?,
+        accumulatedUse: meter['accumulatedUse'] as num? ?? 0,
+      );
+
+  static UnitOfMeasure _unitOfMeasureFrom(Map<String, dynamic> unit) => UnitOfMeasure(
+        code: unit['code'] as String,
+        name: unit['name'] as String,
+        dimension: unit['dimension'] as String,
       );
 
   // `getBoard` (board.js) sends the Site, the optional chosen Org Unit, the

@@ -276,10 +276,21 @@ class _PmScheduleCard extends StatelessWidget {
               runSpacing: Spacing.xxs,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text('Every ${schedule.intervalDays} days', style: muted),
+                if (schedule.isMeterDriven)
+                  Text(
+                    'Every ${_trim(schedule.intervalMeter)} of ${schedule.meterName ?? schedule.meterCode ?? 'the meter'}',
+                    style: muted,
+                  )
+                else
+                  Text('Every ${schedule.intervalDays} days', style: muted),
                 Text('Rolls from ${schedule.anchorLabel}', style: muted),
                 Text('Raised ${schedule.leadTimeDays} days early', style: muted),
                 Text('Priority ${schedule.priority}', style: muted),
+                if (schedule.isMeterDriven && schedule.currentMeter != null && schedule.nextDueMeter != null)
+                  Text(
+                    'Accumulated ${_trim(schedule.currentMeter)} of ${_trim(schedule.nextDueMeter)}',
+                    style: muted,
+                  ),
                 Text(_dueLabel(schedule), style: muted),
               ],
             ),
@@ -305,9 +316,15 @@ class _PmScheduleCard extends StatelessWidget {
     );
   }
 
-  /// The next due date in words, using the server's own `daysUntilDue`
-  /// rather than doing date arithmetic on the client.
+  /// The next due point in words, using the server's own computed state
+  /// rather than doing arithmetic on the client. A meter-driven schedule has
+  /// no date; it is due once accumulated use reaches its target (ADR-0029).
   static String _dueLabel(PmSchedule schedule) {
+    if (schedule.isMeterDriven) {
+      if (schedule.meterDue) return 'Due now';
+      if (schedule.nextDueMeter == null) return 'No meter target yet';
+      return 'Due at ${_trim(schedule.nextDueMeter)}';
+    }
     final nextDueOn = schedule.nextDueOn;
     if (nextDueOn == null) return 'No due date yet';
     final days = schedule.daysUntilDue;
@@ -315,6 +332,14 @@ class _PmScheduleCard extends StatelessWidget {
     if (days < 0) return 'Overdue since $nextDueOn';
     if (days == 0) return 'Due today';
     return 'Due $nextDueOn (in $days days)';
+  }
+
+  /// A number without a trailing `.0`, the same way the meter list shows its
+  /// readings.
+  static String _trim(num? value) {
+    if (value == null) return '—';
+    if (value == value.roundToDouble()) return value.toInt().toString();
+    return value.toString();
   }
 }
 

@@ -19,13 +19,23 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import 'task_reading_dialog.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
 
 class WorkOrderDetailScreen extends StatelessWidget {
-  const WorkOrderDetailScreen({super.key, required this.workOrderId});
+  const WorkOrderDetailScreen({
+    super.key,
+    required this.workOrderId,
+    required this.canRecord,
+  });
 
   final String workOrderId;
+
+  /// Whether this caller holds a write Grant somewhere at all — the same
+  /// coarse signal the list's own writable affordances use. A task that names
+  /// a meter offers a reading action only to a caller who could write one.
+  final bool canRecord;
 
   static const double maxWidth = 760;
 
@@ -33,7 +43,10 @@ class WorkOrderDetailScreen extends StatelessWidget {
   static const ValueKey<String> retryKey = ValueKey<String>('work-order-detail-retry');
   static const ValueKey<String> failedKey = ValueKey<String>('work-order-detail-failed');
   static const ValueKey<String> emptyTasksKey = ValueKey<String>('work-order-detail-empty-tasks');
+  static const ValueKey<String> noticeKey = ValueKey<String>('work-order-detail-notice');
   static ValueKey<String> taskKey(String id) => ValueKey<String>('work-order-task-$id');
+  static ValueKey<String> recordReadingKey(String id) =>
+      ValueKey<String>('work-order-task-reading-$id');
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +57,8 @@ class WorkOrderDetailScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(workOrder: state is WorkOrderDetailLoaded ? state.workOrder : null),
+          if (state is WorkOrderDetailLoaded && state.notice != null)
+            _Notice(message: state.notice!),
           Expanded(
             child: switch (state) {
               WorkOrderDetailLoading() => const SkeletonDetail(maxWidth: maxWidth),
@@ -56,10 +71,50 @@ class WorkOrderDetailScreen extends StatelessWidget {
                       context.read<WorkOrderDetailBloc>().add(const WorkOrderDetailStarted()),
                 ),
               WorkOrderDetailLoaded(workOrder: final workOrder) =>
-                _WorkOrderTasks(workOrder: workOrder),
+                _WorkOrderTasks(workOrder: workOrder, canRecord: canRecord),
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: WorkOrderDetailScreen.maxWidth),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
+          child: Container(
+            key: WorkOrderDetailScreen.noticeKey,
+            padding: const EdgeInsets.all(Spacing.md),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
+                const SizedBox(width: Spacing.sm),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -114,9 +169,10 @@ class _Header extends StatelessWidget {
 }
 
 class _WorkOrderTasks extends StatelessWidget {
-  const _WorkOrderTasks({required this.workOrder});
+  const _WorkOrderTasks({required this.workOrder, required this.canRecord});
 
   final WorkOrder workOrder;
+  final bool canRecord;
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +197,8 @@ class _WorkOrderTasks extends StatelessWidget {
                 margin: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    for (final task in workOrder.tasks) _WorkOrderTaskRow(task: task),
+                    for (final task in workOrder.tasks)
+                      _WorkOrderTaskRow(task: task, canRecord: canRecord),
                   ],
                 ),
               ),
@@ -153,9 +210,10 @@ class _WorkOrderTasks extends StatelessWidget {
 }
 
 class _WorkOrderTaskRow extends StatelessWidget {
-  const _WorkOrderTaskRow({required this.task});
+  const _WorkOrderTaskRow({required this.task, required this.canRecord});
 
   final WorkOrderTask task;
+  final bool canRecord;
 
   @override
   Widget build(BuildContext context) {
@@ -188,10 +246,21 @@ class _WorkOrderTaskRow extends StatelessWidget {
                       Text('Requires ${task.skillName}', style: muted)
                     else
                       Text('No skill required', style: muted),
+                    if (task.hasMeter)
+                      Text('Records ${task.meterName ?? task.meterCode}', style: muted),
                     if (task.note != null) Text(task.note!, style: muted),
                     if (task.reading != null) Text('Reading ${task.reading}', style: muted),
                   ],
                 ),
+                if (task.hasMeter && canRecord) ...[
+                  const SizedBox(height: Spacing.xs),
+                  OutlinedButton(
+                    key: WorkOrderDetailScreen.recordReadingKey(task.id),
+                    onPressed: () => TaskReadingDialog.open(context, task: task),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
+                    child: const Text('Record a reading'),
+                  ),
+                ],
               ],
             ),
           ),

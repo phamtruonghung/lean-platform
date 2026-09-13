@@ -28,6 +28,7 @@ const requestRoutes = require('./request-routes');
 const downtimeRoutes = require('./downtime-routes');
 const jobPlanRoutes = require('./job-plan-routes');
 const pmScheduleRoutes = require('./pm-schedule-routes');
+const meterRoutes = require('./meter-routes');
 const boardRoutes = require('./board-routes');
 
 const router = express.Router();
@@ -37,6 +38,7 @@ router.use(requestRoutes);
 router.use(downtimeRoutes);
 router.use(jobPlanRoutes);
 router.use(pmScheduleRoutes);
+router.use(meterRoutes);
 router.use(boardRoutes);
 
 module.exports = { router };

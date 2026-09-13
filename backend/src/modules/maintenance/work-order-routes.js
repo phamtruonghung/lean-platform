@@ -51,6 +51,7 @@
 const express = require('express');
 const people = require('../people');
 const assets = require('./assets');
+const meters = require('./meters');
 const workOrders = require('./work-orders');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
@@ -272,6 +273,48 @@ router.get(
       const workOrder = await workOrders.findWorkOrderWithTasks(req.params.id);
       if (!workOrder) throw notFound('Work order');
       res.json({ workOrder });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Records a reading while working a task that carries a meter (issue #79).
+// The Work order and its write scope are resolved by
+// requireWorkOrderWriteScope above; the task is resolved here, so an unknown
+// one is a 404 naming it and a task that records no meter is a 400. The
+// reading itself goes through meters.recordReading, which owns the cumulative
+// backward check, the source restriction and the shift-instance resolution;
+// this route only stamps the value onto the copied task so the detail read
+// shows it. Deliberately no `source` on the wire: a task reading is a
+// technician's own, always `manual` (ADR-0030).
+router.post(
+  '/work-orders/:id/tasks/:taskId/reading',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderWriteScope,
+  async (req, res, next) => {
+    try {
+      const workOrder = await workOrders.findWorkOrderWithTasks(req.workOrder.id);
+      if (!workOrder) throw notFound('Work order');
+      const task = workOrder.tasks.find((candidate) => String(candidate.id) === String(req.params.taskId));
+      if (!task) throw notFound('Work order task');
+      if (task.assetMeterId === null) {
+        throw httpError(400, 'this task does not record a meter reading');
+      }
+
+      const result = await meters.recordReading(
+        task.assetMeterId,
+        { reading: req.body?.reading, note: req.body?.note, readAt: req.body?.readAt },
+        req.account.id
+      );
+      const updatedTask = await workOrders.setTaskReading(
+        workOrder.id,
+        task.id,
+        result.reading.reading,
+        req.account.id
+      );
+      res.status(201).json({ reading: result.reading, meter: result.meter, task: updatedTask });
     } catch (error) {
       handleError(error, res, next);
     }

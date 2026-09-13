@@ -11,9 +11,11 @@
  * (CONTEXT.md's PM schedule): what raises a work order before something
  * breaks rather than in response to one. It carries no `org_unit_id` of its
  * own — placement is whatever Org Unit its Asset sits at, resolved by the
- * join below. This slice builds the calendar mechanism only (elapsed time, as
- * distinct from meter-driven accumulation); the meter columns are written
- * NULL on purpose.
+ * join below. Both mechanisms CONTEXT.md's PM schedule entry names are here:
+ * elapsed time (`interval_days`, issue #74) and accumulated use
+ * (`asset_meter_id`/`interval_meter`, issue #79), and a schedule may carry
+ * either or both. A meter-driven one reads accumulated use — reading plus
+ * `rollover_offset`, never the raw reading — per ADR-0029.
  *
  * Cross-Module reads are ordinary joins here, exactly as assets.js and
  * work-orders.js already do (ADR-0006): `assets`/`org_units` for placement
@@ -74,20 +76,57 @@ function requireDateString(field, value) {
 const PM_SCHEDULE_COLUMNS = `
   s.id, s.code, s.name, s.asset_id, s.job_plan_id, s.interval_days, s.anchor,
   s.lead_time_days, s.priority, s.last_completed_on, s.next_due_on, s.is_active,
+  s.asset_meter_id, s.interval_meter, s.last_completed_meter, s.next_due_meter,
   a.code AS asset_code, a.name AS asset_name,
   ou.id AS org_unit_id, ou.name AS org_unit_name,
   jp.name AS job_plan_name,
-  (s.next_due_on - CURRENT_DATE) AS days_until_due
+  am.code AS meter_code, am.name AS meter_name, am.meter_type AS meter_type,
+  (s.next_due_on - CURRENT_DATE) AS days_until_due,
+  COALESCE(lr.reading, 0) + am.rollover_offset AS current_meter
 `;
 
 // The join chain PM_SCHEDULE_COLUMNS depends on, factored out because every
 // function below attaches it after its own FROM clause — whether that FROM
 // names the bare `pm_schedules` table or a CTE (`inserted`/`updated`) built
-// off it, `s` is always the alias the join chain expects.
+// off it, `s` is always the alias the join chain expects. The `am`/`lr`
+// pair is LEFT so a calendar-only schedule (no meter) still resolves, and
+// `current_meter` is the accumulated use PM due-ness reads, never the raw
+// reading (ADR-0029).
 const PM_SCHEDULE_FROM = `
   JOIN assets a ON a.id = s.asset_id
   JOIN org_units ou ON ou.id = a.org_unit_id
   JOIN job_plans jp ON jp.id = s.job_plan_id
+  LEFT JOIN asset_meters am ON am.id = s.asset_meter_id
+  LEFT JOIN LATERAL (
+    SELECT mr.reading
+      FROM meter_readings mr
+     WHERE mr.asset_meter_id = s.asset_meter_id
+     ORDER BY mr.read_at DESC, mr.id DESC
+     LIMIT 1
+  ) lr ON TRUE
+`;
+
+// A number or null, the way every NUMERIC column this Module hands back is
+// converted — node-postgres returns NUMERIC as a string, and a null stays
+// null rather than becoming 0.
+function toNumberOrNull(value) {
+  return value === null || value === undefined ? null : Number(value);
+}
+
+// The accumulated-use lateral both due queries attach to a schedule's meter.
+// LEFT so a calendar-only schedule resolves; COALESCE keeps a meter with no
+// readings at its offset, which is the accumulated use when its current
+// counter was installed (ADR-0029). `acc.accumulated` is the number compared
+// against `next_due_meter`, never the raw reading.
+const METER_ACCUMULATED_LATERAL = `
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(mr.reading, 0) + am.rollover_offset AS accumulated
+      FROM asset_meters am
+      LEFT JOIN meter_readings mr ON mr.asset_meter_id = am.id
+     WHERE am.id = s.asset_meter_id
+     ORDER BY mr.read_at DESC NULLS LAST, mr.id DESC
+     LIMIT 1
+  ) acc ON TRUE
 `;
 
 function toPmSchedule(row) {
@@ -103,6 +142,22 @@ function toPmSchedule(row) {
     jobPlanId: row.job_plan_id,
     jobPlanName: row.job_plan_name,
     intervalDays: row.interval_days,
+    assetMeterId: row.asset_meter_id,
+    meterCode: row.meter_code ?? null,
+    meterName: row.meter_name ?? null,
+    meterType: row.meter_type ?? null,
+    intervalMeter: toNumberOrNull(row.interval_meter),
+    lastCompletedMeter: toNumberOrNull(row.last_completed_meter),
+    nextDueMeter: toNumberOrNull(row.next_due_meter),
+    currentMeter: toNumberOrNull(row.current_meter),
+    // Whether the accumulated use has reached the meter target — the meter
+    // half of v_pm_due's own `due_by_meter`, computed here so a caller does
+    // not re-derive it (and get ADR-0029's offset wrong).
+    meterDue:
+      row.interval_meter !== null &&
+      row.next_due_meter !== null &&
+      row.current_meter !== null &&
+      Number(row.current_meter) >= Number(row.next_due_meter),
     anchor: row.anchor,
     leadTimeDays: row.lead_time_days,
     priority: row.priority,
@@ -121,6 +176,16 @@ function toPmSchedule(row) {
 function resolveIntervalDays(value) {
   if (!Number.isInteger(value) || value <= 0) {
     throw httpError(400, 'intervalDays must be an integer greater than 0');
+  }
+  return value;
+}
+
+// The meter half of a schedule's interval. Positive and finite, and only ever
+// paired with a resolved cumulative meter (ADR-0029: only a cumulative meter
+// may drive a PM schedule).
+function resolveIntervalMeter(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw httpError(400, 'intervalMeter must be a number greater than 0');
   }
   return value;
 }
@@ -225,17 +290,46 @@ async function readAssetAndPlanContext(db, assetId, jobPlanId) {
   return row ?? null;
 }
 
-// Creates a calendar PM schedule: an Asset and a Job plan, an interval, and
-// either an explicit first due date or "the interval from today". The meter
-// columns are deliberately NULL — this slice is the calendar mechanism, and a
-// schedule carrying both clocks is a later ticket's concern. The Asset's
-// existence and the caller's write scope, and the Job plan's existence and
-// active state, are all proved by pm-schedule-routes.js before this runs.
+// Creates a PM schedule: an Asset and a Job plan, and an interval on either
+// clock — elapsed time (`intervalDays`) or accumulated use (a resolved
+// cumulative `meter` plus `intervalMeter`) — with either an explicit first
+// due date or "the interval from today" for the calendar half, and "one
+// interval past where the meter stands now" for the meter half. A schedule
+// carrying both clocks is allowed, and comes due when either falls. The
+// Asset's existence and the caller's write scope, the Job plan's existence
+// and active state, and the meter's existence are all proved by
+// pm-schedule-routes.js before this runs; the meter's ownership and type are
+// checked here.
 async function createPmSchedule(
-  { assetId, jobPlanId, intervalDays, anchor, leadTimeDays, priority, nextDueOn },
+  { assetId, jobPlanId, intervalDays, meter, intervalMeter, anchor, leadTimeDays, priority, nextDueOn },
   accountId
 ) {
-  const resolvedIntervalDays = resolveIntervalDays(intervalDays);
+  const hasCalendar = intervalDays !== undefined && intervalDays !== null;
+  const hasMeter = meter !== undefined && meter !== null;
+  if (!hasCalendar && !hasMeter) {
+    throw httpError(400, 'a PM schedule needs an interval: intervalDays, or a meter with intervalMeter');
+  }
+  if (hasMeter && (intervalMeter === undefined || intervalMeter === null)) {
+    throw httpError(400, 'intervalMeter is required when a meter is named');
+  }
+  if (!hasMeter && intervalMeter !== undefined && intervalMeter !== null) {
+    throw httpError(400, 'a meter is required when intervalMeter is given');
+  }
+
+  const resolvedIntervalDays = hasCalendar ? resolveIntervalDays(intervalDays) : null;
+  const resolvedIntervalMeter = hasMeter ? resolveIntervalMeter(intervalMeter) : null;
+  if (hasMeter) {
+    if (String(meter.assetId) !== String(assetId)) {
+      throw httpError(400, 'the meter must belong to the same Asset as the schedule');
+    }
+    if (meter.meterType !== 'cumulative') {
+      throw httpError(400, 'only a cumulative meter can drive a PM schedule');
+    }
+  }
+  // The first target is one interval past where the meter stands now, the
+  // meter half of "the interval from today" the calendar branch uses.
+  const resolvedNextDueMeter = hasMeter ? meter.accumulatedUse + resolvedIntervalMeter : null;
+
   const resolvedAnchor = resolveAnchor(anchor);
   const resolvedLeadTimeDays = resolveLeadTimeDays(leadTimeDays);
   const resolvedPriority = resolvePriority(priority);
@@ -254,8 +348,11 @@ async function createPmSchedule(
       const { rows: [row] } = await client.query(
         `WITH inserted AS (
            INSERT INTO pm_schedules
-             (code, name, asset_id, job_plan_id, interval_days, anchor, lead_time_days, priority, next_due_on)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9::date, CURRENT_DATE + $5::int))
+             (code, name, asset_id, job_plan_id, interval_days, asset_meter_id, interval_meter,
+              anchor, lead_time_days, priority, next_due_on, next_due_meter)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                   COALESCE($11::date, CASE WHEN $5::int IS NULL THEN NULL ELSE CURRENT_DATE + $5::int END),
+                   $12)
            RETURNING *
          )
          SELECT ${PM_SCHEDULE_COLUMNS}
@@ -267,10 +364,13 @@ async function createPmSchedule(
           assetId,
           jobPlanId,
           resolvedIntervalDays,
+          hasMeter ? meter.id : null,
+          resolvedIntervalMeter,
           resolvedAnchor,
           resolvedLeadTimeDays,
           resolvedPriority,
-          resolvedNextDueOn
+          resolvedNextDueOn,
+          resolvedNextDueMeter
         ]
       );
       return toPmSchedule(row);
@@ -309,12 +409,18 @@ async function setPmScheduleActive(id, isActive, accountId) {
   }
 }
 
-// The candidates for a raise sweep: every ACTIVE calendar schedule at the Site
-// whose due date is inside its lead time and which has no open work order
-// already. The `NOT EXISTS` guard is one half of "never twice for the same
-// cycle"; the `work_orders_one_open_per_pm_schedule` partial unique index is
-// the other, authoritative half (raiseWorkOrderFromPmSchedule catches its
-// 23505 and skips). The two are kept in lockstep through OPEN_STATUSES.
+// The candidates for a raise sweep: every ACTIVE schedule at the Site that is
+// due on EITHER clock — a calendar schedule inside its lead time, or a meter
+// schedule whose accumulated use has reached its target — and which has no
+// open work order already. A schedule carrying both is due when either falls,
+// which is what "every 6 months or 500 hours" means. A meter schedule has no
+// "days early": the plant's rate of consumption is unknown, so it comes due
+// the moment the meter passes its target (ADR-0029's ticket).
+//
+// The `NOT EXISTS` guard is one half of "never twice for the same cycle"; the
+// `work_orders_one_open_per_pm_schedule` partial unique index is the other,
+// authoritative half (raiseWorkOrderFromPmSchedule catches its 23505 and
+// skips). The two are kept in lockstep through OPEN_STATUSES.
 //
 // Only `id` and `org_unit_id` are needed by the route, which asks canAct per
 // candidate before calling the raise — the service never knows about an
@@ -325,17 +431,25 @@ async function listDuePmSchedules(siteId) {
        FROM pm_schedules s
        JOIN assets a ON a.id = s.asset_id
        JOIN org_units ou ON ou.id = a.org_unit_id
+       ${METER_ACCUMULATED_LATERAL}
       WHERE ou.site_id = $1
         AND s.is_active
-        AND s.interval_days IS NOT NULL
-        AND s.next_due_on IS NOT NULL
-        AND s.next_due_on - s.lead_time_days <= CURRENT_DATE
+        AND (
+          (s.interval_days IS NOT NULL
+             AND s.next_due_on IS NOT NULL
+             AND s.next_due_on - s.lead_time_days <= CURRENT_DATE)
+          OR
+          (s.interval_meter IS NOT NULL
+             AND s.next_due_meter IS NOT NULL
+             AND acc.accumulated IS NOT NULL
+             AND acc.accumulated >= s.next_due_meter)
+        )
         AND NOT EXISTS (
           SELECT 1 FROM work_orders wo
            WHERE wo.pm_schedule_id = s.id
              AND wo.status IN (${OPEN_STATUSES.map((_, i) => `$${i + 2}`).join(', ')})
         )
-      ORDER BY s.next_due_on, s.id`,
+      ORDER BY s.next_due_on NULLS LAST, s.id`,
     [siteId, ...OPEN_STATUSES]
   );
   return rows;
@@ -366,7 +480,14 @@ async function raiseWorkOrderFromPmSchedule(scheduleId, accountId) {
       const { rows: [schedule] } = await client.query(
         `SELECT s.id, s.asset_id, s.job_plan_id, s.priority, s.interval_days,
                 s.next_due_on, s.lead_time_days, s.is_active,
-                (s.next_due_on - s.lead_time_days <= CURRENT_DATE) AS is_due,
+                s.interval_meter, s.next_due_meter,
+                (s.interval_days IS NOT NULL
+                   AND s.next_due_on IS NOT NULL
+                   AND s.next_due_on - s.lead_time_days <= CURRENT_DATE) AS due_by_date,
+                (s.interval_meter IS NOT NULL
+                   AND s.next_due_meter IS NOT NULL
+                   AND acc.accumulated IS NOT NULL
+                   AND acc.accumulated >= s.next_due_meter) AS due_by_meter,
                 a.name AS asset_name,
                 jp.name AS job_plan_name, jp.work_type,
                 sit.code AS site_code
@@ -375,6 +496,7 @@ async function raiseWorkOrderFromPmSchedule(scheduleId, accountId) {
            JOIN org_units ou ON ou.id = a.org_unit_id
            JOIN sites sit ON sit.id = ou.site_id
            JOIN job_plans jp ON jp.id = s.job_plan_id
+           ${METER_ACCUMULATED_LATERAL}
           WHERE s.id = $1
           FOR UPDATE OF s`,
         [scheduleId]
@@ -382,8 +504,7 @@ async function raiseWorkOrderFromPmSchedule(scheduleId, accountId) {
 
       if (!schedule) return null;
       if (!schedule.is_active) return null;
-      if (schedule.interval_days === null || schedule.next_due_on === null) return null;
-      if (!schedule.is_due) return null;
+      if (!schedule.due_by_date && !schedule.due_by_meter) return null;
 
       const { rows: open } = await client.query(
         `SELECT 1 FROM work_orders
@@ -416,8 +537,8 @@ async function raiseWorkOrderFromPmSchedule(scheduleId, accountId) {
       );
 
       await client.query(
-        `INSERT INTO work_order_tasks (work_order_id, step_no, instruction, skill_id)
-         SELECT $1, step_no, instruction, skill_id
+        `INSERT INTO work_order_tasks (work_order_id, step_no, instruction, skill_id, asset_meter_id)
+         SELECT $1, step_no, instruction, skill_id, records_meter_id
            FROM job_plan_tasks
           WHERE job_plan_id = $2
           ORDER BY step_no`,

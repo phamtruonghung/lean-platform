@@ -244,6 +244,16 @@ const List<Destination> platformDestinations = [
     roles: ModuleRoles.maintenance,
     group: DestinationGroupNames.maintenance,
   ),
+  // Meters (issue #79) are the instrument a PM schedule comes due on when it
+  // runs on accumulated use rather than elapsed time, so they follow the same
+  // Module role set as the schedules they feed.
+  Destination(
+    label: 'Meters',
+    icon: Icons.speed_outlined,
+    path: Routes.meters,
+    roles: ModuleRoles.maintenance,
+    group: DestinationGroupNames.maintenance,
+  ),
   // Job plans (issue #74) is the administrator-managed catalogue a PM
   // schedule is built from, so its Destination is administrator-only — unlike
   // Skills and Job roles, whose reads the server leaves open, job-plan-routes.js
