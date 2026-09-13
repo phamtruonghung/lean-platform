@@ -48,6 +48,17 @@ import 'failure_state.dart';
 /// reorders two in-flight requests, which is the one case worth a test
 /// (`app_search_field_test.dart`'s out-of-order test).
 ///
+/// **A bounded list says it is bounded.** When [fetchSuggestions] returns more
+/// than the ten this widget renders, the box carries a footer below the rows
+/// saying more matches exist and to keep typing — see ADR-0026. The widget is
+/// the one doing the bounding, so it is the one that knows, and it needs
+/// nothing from a caller to say so; the footer is count-free on purpose, and
+/// is cleared with the rows whenever the list is collapsed. A caller's own
+/// server-side bound is not reported separately, because in every current call
+/// site it is at or above this widget's ten and so never binds differently:
+/// the Org Units search's `ORG_UNIT_SEARCH_LIMIT` (50) is the example, and its
+/// parsed `truncated` flag stays unrendered (ADR-0026).
+///
 /// **`onSelected` and the controlled `value`/`onChanged` pair are two
 /// different things.** Tapping a suggestion calls [onSelected] with that
 /// record and collapses the suggestion list — see below — and does nothing
@@ -240,6 +251,11 @@ class AppSearchField<T> extends StatefulWidget {
   /// [PlatformFailureState] is showing.
   static ValueKey<String> retryKey(String name) => ValueKey<String>('app-search-field-$name-retry');
 
+  /// The bounded-list footer's own `Key`, present only while this widget is
+  /// showing fewer suggestions than [fetchSuggestions] returned (ADR-0026).
+  static ValueKey<String> truncatedKey(String name) =>
+      ValueKey<String>('app-search-field-$name-truncated');
+
   @override
   State<AppSearchField<T>> createState() => _AppSearchFieldState<T>();
 }
@@ -272,6 +288,12 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
 
   _SuggestStatus _status = _SuggestStatus.idle;
   List<T> _suggestions = const [];
+
+  /// Whether the last fetch returned more rows than [_maxSuggestions], so the
+  /// box is showing fewer than it was given and must say so (ADR-0026). Only
+  /// meaningful while [_status] is [_SuggestStatus.results].
+  bool _hasMore = false;
+
   String _lastQueriedTerm = '';
 
   /// Set immediately before this widget calls [AppSearchField.onChanged]
@@ -337,6 +359,7 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
       setState(() {
         _status = _SuggestStatus.idle;
         _suggestions = const [];
+        _hasMore = false;
       });
       return;
     }
@@ -352,7 +375,10 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
       results = await widget.fetchSuggestions(term);
     } catch (_) {
       if (!mounted || mySeq != _requestSeq) return;
-      setState(() => _status = _SuggestStatus.failure);
+      setState(() {
+        _status = _SuggestStatus.failure;
+        _hasMore = false;
+      });
       _reportNoUsableValue();
       return;
     }
@@ -360,6 +386,7 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
     final bounded = results.take(_maxSuggestions).toList(growable: false);
     setState(() {
       _suggestions = bounded;
+      _hasMore = results.length > _maxSuggestions;
       _status = bounded.isEmpty ? _SuggestStatus.empty : _SuggestStatus.results;
     });
   }
@@ -386,6 +413,7 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
     setState(() {
       _status = _SuggestStatus.idle;
       _suggestions = const [];
+      _hasMore = false;
     });
   }
 
@@ -459,21 +487,41 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
   }
 
   Widget _buildResults() {
-    return ConstrainedBox(
-      key: AppSearchField.suggestionListKey(widget.name),
-      constraints: const BoxConstraints(maxHeight: 280),
-      child: ListView.builder(
-        shrinkWrap: true,
-        itemCount: _suggestions.length,
-        itemBuilder: (context, index) {
-          final record = _suggestions[index];
-          return InkWell(
-            key: AppSearchField.suggestionKey(widget.name, widget.idOf(record)),
-            onTap: widget.enabled ? () => _select(record) : null,
-            child: widget.suggestionBuilder(context, record),
-          );
-        },
-      ),
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ConstrainedBox(
+          key: AppSearchField.suggestionListKey(widget.name),
+          constraints: const BoxConstraints(maxHeight: 280),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _suggestions.length,
+            itemBuilder: (context, index) {
+              final record = _suggestions[index];
+              return InkWell(
+                key: AppSearchField.suggestionKey(widget.name, widget.idOf(record)),
+                onTap: widget.enabled ? () => _select(record) : null,
+                child: widget.suggestionBuilder(context, record),
+              );
+            },
+          ),
+        ),
+        // The bounded-list footer (ADR-0026): this widget rendered exactly
+        // _maxSuggestions rows but its fetch returned more. Cleared with the
+        // rows by _collapse/_handleTextChanged, so it never outlives the list
+        // it describes.
+        if (_hasMore)
+          Padding(
+            padding: const EdgeInsets.only(top: Spacing.xs, bottom: Spacing.sm),
+            child: Text(
+              'There are more matches than are shown — keep typing to narrow the list.',
+              key: AppSearchField.truncatedKey(widget.name),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+      ],
     );
   }
 }

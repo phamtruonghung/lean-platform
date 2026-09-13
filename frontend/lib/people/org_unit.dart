@@ -121,12 +121,12 @@ abstract final class OrgUnitTypes {
 /// One `GET /api/people/sites/:siteId/org-units/search` response
 /// (`plant.searchOrgUnits`, issue #90's own search route) — the matches and
 /// whether the server's own limit (`ORG_UNIT_SEARCH_LIMIT`, plant.js) cut the
-/// result short. [truncated] is parsed off the wire here, but nothing renders
-/// it: issue #130 replaced the old results panel that once showed it with
-/// `AppSearchField`, which has no concept of a truncation flag at all. The
-/// field is kept because it is still faithfully parsed and issue #143 is
-/// planned to surface it again; until then, a truncated search result reads
-/// no differently on screen than a complete one.
+/// result short. [truncated] is parsed off the wire here but deliberately not
+/// rendered: `AppSearchField` says when it is showing fewer matches than it
+/// was given (ADR-0026, issue #143), and its own ten-row bound binds before
+/// the server's fifty ever does, so this flag would never change what a person
+/// sees. It is kept parsed for the day a server bound falls below the
+/// widget's, or a caller wants to say how many more there are.
 @immutable
 class OrgUnitSearchResult {
   const OrgUnitSearchResult({required this.orgUnits, required this.truncated});
