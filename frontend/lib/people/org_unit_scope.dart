@@ -40,4 +40,11 @@ class OrgUnitScope {
   /// Whether this Account may edit anything, anywhere — the everywhere-first
   /// rule expressed once so no Screen has to remember it.
   bool get canWriteSomewhere => everywhere || grants.any((grant) => grant.canWrite);
+
+  /// Whether this Account holds a Grant reaching anywhere at all, write or
+  /// read. Raising a Request needs only a read Grant reaching the Asset's Org
+  /// Unit (issue #72, the server passes `write: false`), so the raise
+  /// affordance reads this rather than [canWriteSomewhere] — a read-only Grant
+  /// the server would allow to raise must not be hidden.
+  bool get canReadSomewhere => everywhere || grants.isNotEmpty;
 }

@@ -27,11 +27,11 @@ abstract final class Roles {
 }
 
 /// The roles that earn a whole Module, named once so the sidebar and the
-/// route guard cannot disagree about who is let in. Maintenance is offered to
-/// supervisor, engineer, manager and administrator, and not to operator: the
-/// workflow an operator needs is raising a request, which this Module does not
-/// build yet, and a Screen where every write would be refused is exactly what
-/// the Approval queue and the Accounts Screen already avoid (#55).
+/// route guard cannot disagree about who is let in. Maintenance's tool-and-
+/// equipment Destinations (Assets, Work orders, Triage queue) are offered to
+/// supervisor, engineer, manager and administrator, and not to operator: an
+/// operator's own work is raising a Request and following it, which the
+/// un-gated `My requests` Destination beside them covers (#55, #72).
 abstract final class ModuleRoles {
   static const Set<String> maintenance = {
     Roles.supervisor,
@@ -196,6 +196,29 @@ const List<Destination> platformDestinations = [
     label: 'Work orders',
     icon: Icons.build_outlined,
     path: Routes.workOrders,
+    roles: ModuleRoles.maintenance,
+    group: DestinationGroupNames.maintenance,
+  ),
+  // My requests (issue #72) is offered to every approved Account — no `roles`
+  // set, the same "everyone admitted may reach this" shape Home and the
+  // Directory already use. Anyone on the floor may raise a Request (raising
+  // needs only a read Grant reaching the Asset's Org Unit), and this is where
+  // they follow what they raised through to whatever became of it. This is the
+  // Destination an operator earns the Module with, and deliberately the only
+  // Maintenance one they are offered.
+  Destination(
+    label: 'My requests',
+    icon: Icons.assignment_outlined,
+    path: Routes.myRequests,
+    group: DestinationGroupNames.maintenance,
+  ),
+  // The triage queue (issue #72) is maintenance's own work — accepting,
+  // declining and de-duplicating what the floor asked for — so it follows the
+  // Module's role set exactly as Assets and Work orders do.
+  Destination(
+    label: 'Triage queue',
+    icon: Icons.rule_folder_outlined,
+    path: Routes.requests,
     roles: ModuleRoles.maintenance,
     group: DestinationGroupNames.maintenance,
   ),

@@ -159,6 +159,66 @@ Map<String, dynamic> workOrderJson(
       'updatedAt': (updatedAt ?? DateTime.now()).toUtc().toIso8601String(),
     };
 
+/// The Work order an accepted Request produced, as the nested `workOrder` map
+/// on a Request row sends it (issue #72, ADR-0014) — `{id, workOrderNo,
+/// status}`, nothing more.
+Map<String, dynamic> requestWorkOrderJson(
+  String id,
+  String workOrderNo, {
+  String status = 'approved',
+}) =>
+    {'id': id, 'workOrderNo': workOrderNo, 'status': status};
+
+/// One Request as `GET /api/maintenance/sites/:siteId/requests` (the triage
+/// queue), `.../requests/mine`, and the raise/accept/decline/duplicate routes
+/// send it (issue #72).
+///
+/// Mirrors `toRequest` (backend/src/modules/maintenance/requests.js) key for
+/// key, in its own field order: a flat row plus a nested `workOrder` map or
+/// null. `workOrder` is non-null only for an accepted Request.
+Map<String, dynamic> requestJson(
+  String id,
+  String requestNo,
+  String summary, {
+  String assetId = '7',
+  String assetCode = 'PRESS-1',
+  String assetName = 'Press 1',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String? description,
+  String urgency = 'normal',
+  bool productionStopped = false,
+  String? reportedBy = '20',
+  String? reporterName = 'Jane Doe',
+  DateTime? reportedAt,
+  String status = 'new',
+  DateTime? triagedAt,
+  String? rejectionReason,
+  String? duplicateOfId,
+  Map<String, dynamic>? workOrder,
+}) =>
+    {
+      'id': id,
+      'requestNo': requestNo,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'summary': summary,
+      'description': description,
+      'urgency': urgency,
+      'productionStopped': productionStopped,
+      'reportedBy': reportedBy,
+      'reporterName': reporterName,
+      'reportedAt': (reportedAt ?? DateTime.now()).toUtc().toIso8601String(),
+      'status': status,
+      'triagedAt': triagedAt?.toUtc().toIso8601String(),
+      'rejectionReason': rejectionReason,
+      'duplicateOfId': duplicateOfId,
+      'workOrder': workOrder,
+    };
+
 /// One held skill as `GET /api/people/employees/assignee-candidates` sends
 /// it, nested under a candidate — mirrors `directory.js`'s per-skill shape
 /// plus `isLapsed` (issue #62).
@@ -565,6 +625,18 @@ class FakeWire {
     this.completeWorkOrderMessage = 'That Work order could not be completed.',
     this.cancelWorkOrderStatus = 200,
     this.cancelWorkOrderMessage = 'That Work order could not be cancelled.',
+    Map<String, List<Map<String, dynamic>>>? triageRequests,
+    this.requestsStatus = 200,
+    Map<String, List<Map<String, dynamic>>>? myRequests,
+    this.myRequestsStatus = 200,
+    this.createRequestStatus = 201,
+    this.createRequestMessage = 'That Request could not be raised.',
+    this.acceptRequestStatus = 200,
+    this.acceptRequestMessage = 'That Request could not be accepted.',
+    this.declineRequestStatus = 200,
+    this.declineRequestMessage = 'That Request could not be declined.',
+    this.duplicateRequestStatus = 200,
+    this.duplicateRequestMessage = 'That Request could not be marked a duplicate.',
     List<Map<String, dynamic>>? employees,
     this.employeesStatus = 200,
     Map<String, Map<String, dynamic>>? employeeDetails,
@@ -608,6 +680,8 @@ class FakeWire {
         orgUnitSearchResults = orgUnitSearchResults ?? [],
         importOrgUnitsErrors = importOrgUnitsErrors ?? [],
         workOrders = workOrders ?? {},
+        triageRequests = triageRequests ?? {},
+        myRequests = myRequests ?? {},
         assigneeCandidates = assigneeCandidates ?? [],
         employees = employees ?? [],
         employeeDetails = employeeDetails ?? {},
@@ -723,6 +797,60 @@ class FakeWire {
   /// uses, needed to prove no transition is offered a second time while one
   /// is already in flight.
   Completer<void>? workOrderTransitionGate;
+
+  /// `GET /api/maintenance/sites/:siteId/requests` — the triage queue, keyed
+  /// by Site id.
+  Map<String, List<Map<String, dynamic>>> triageRequests;
+  int requestsStatus;
+
+  /// Every triage-queue read's Site id, in the order it reached the wire.
+  final List<String> triageRequestSites = [];
+
+  /// When set, a triage-queue read hangs until the test completes it — the
+  /// same device [workOrdersGate] uses, needed to prove the queue shows its
+  /// own placeholders while a read is still in flight. Also gates the return
+  /// from a triage action, since those routes update [triageRequests].
+  Completer<void>? requestsGate;
+
+  /// `GET /api/maintenance/sites/:siteId/requests/mine` — the caller's own
+  /// Requests, keyed by Site id.
+  Map<String, List<Map<String, dynamic>>> myRequests;
+  int myRequestsStatus;
+
+  /// Every my-requests read's Site id, in the order it reached the wire.
+  final List<String> myRequestSites = [];
+
+  /// When set, a my-requests read hangs until the test completes it.
+  Completer<void>? myRequestsGate;
+
+  /// `POST /api/maintenance/requests`.
+  int createRequestStatus;
+  String createRequestMessage;
+
+  /// Every Request body that actually reached the wire, decoded — so a test
+  /// can assert exactly one request was sent and what it carried.
+  final List<Map<String, dynamic>> requestPosts = [];
+
+  /// `POST /api/maintenance/requests/:id/accept`.
+  int acceptRequestStatus;
+  String acceptRequestMessage;
+
+  /// Every accept request that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> requestAccepts = [];
+
+  /// `POST /api/maintenance/requests/:id/decline`.
+  int declineRequestStatus;
+  String declineRequestMessage;
+
+  /// Every decline request that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> requestDeclines = [];
+
+  /// `POST /api/maintenance/requests/:id/duplicate`.
+  int duplicateRequestStatus;
+  String duplicateRequestMessage;
+
+  /// Every duplicate request that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> requestDuplicates = [];
 
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
@@ -1162,6 +1290,24 @@ class FakeWire {
     return updated;
   }
 
+  /// Applies a triage action's own changes to every Request row this Fake Wire
+  /// holds naming [id] — both the triage queue ([triageRequests]) and the caller's
+  /// own list ([myRequests]) — so a re-read honestly shows the change. Returns
+  /// the updated row, or null when no list holds it.
+  Map<String, dynamic>? _applyRequestChanges(String id, Map<String, dynamic> changes) {
+    Map<String, dynamic>? updated;
+    Map<String, List<Map<String, dynamic>>> apply(Map<String, List<Map<String, dynamic>>> source) => {
+          for (final entry in source.entries)
+            entry.key: [
+              for (final row in entry.value)
+                if (row['id'] == id) (updated = {...row, ...changes}) else row,
+            ],
+        };
+    triageRequests = apply(triageRequests);
+    myRequests = apply(myRequests);
+    return updated;
+  }
+
   /// Applies a write's own changes to every row this Fake Wire holds naming
   /// [id] — both [employees] (the listing) and [employeeDetails] (the detail
   /// view, keyed by id or by `'me'`) — so a re-read after a successful write,
@@ -1388,6 +1534,108 @@ class FakeWire {
             priority: sent['priority'] as int,
           );
           return http.Response(jsonEncode({'workOrder': created}), 201);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/requests') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          requestPosts.add(sent);
+          if (createRequestStatus != 201) {
+            return http.Response(jsonEncode({'message': createRequestMessage}), createRequestStatus);
+          }
+          final created = requestJson(
+            '900',
+            'MR-900',
+            sent['summary'] as String,
+            assetId: sent['assetId'] as String,
+            description: sent['description'] as String?,
+            urgency: sent['urgency'] as String? ?? 'normal',
+            productionStopped: sent['productionStopped'] == true,
+          );
+          return http.Response(jsonEncode({'request': created}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/requests/') &&
+            path.endsWith('/accept')) {
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          requestAccepts.add((id, body));
+          if (acceptRequestStatus != 200) {
+            return http.Response(jsonEncode({'message': acceptRequestMessage}), acceptRequestStatus);
+          }
+          final workOrder = requestWorkOrderJson('900', 'WO-900');
+          final updated = _applyRequestChanges(id, {
+            'status': 'accepted',
+            'triagedAt': DateTime.now().toUtc().toIso8601String(),
+            'workOrder': workOrder,
+          });
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Request does not exist.'}), 404);
+          }
+          return http.Response(jsonEncode({'request': updated, 'workOrder': workOrder}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/requests/') &&
+            path.endsWith('/decline')) {
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          requestDeclines.add((id, body));
+          if (declineRequestStatus != 200) {
+            return http.Response(jsonEncode({'message': declineRequestMessage}), declineRequestStatus);
+          }
+          final updated = _applyRequestChanges(id, {
+            'status': 'rejected',
+            'rejectionReason': body['reason'],
+            'triagedAt': DateTime.now().toUtc().toIso8601String(),
+          });
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Request does not exist.'}), 404);
+          }
+          return http.Response(jsonEncode({'request': updated}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/requests/') &&
+            path.endsWith('/duplicate')) {
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          requestDuplicates.add((id, body));
+          if (duplicateRequestStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': duplicateRequestMessage}),
+              duplicateRequestStatus,
+            );
+          }
+          final updated = _applyRequestChanges(id, {
+            'status': 'duplicate',
+            'duplicateOfId': body['duplicateOfId']?.toString(),
+            'triagedAt': DateTime.now().toUtc().toIso8601String(),
+          });
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'That Request does not exist.'}), 404);
+          }
+          return http.Response(jsonEncode({'request': updated}), 200);
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/requests/mine')) {
+          final siteId = path.split('/')[4];
+          myRequestSites.add(siteId);
+          if (myRequestsGate != null) await myRequestsGate!.future;
+          if (myRequestsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'Your requests are unavailable.'}),
+              myRequestsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'requests': myRequests[siteId] ?? []}), 200);
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/requests')) {
+          final siteId = path.split('/')[4];
+          triageRequestSites.add(siteId);
+          if (requestsGate != null) await requestsGate!.future;
+          if (requestsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The requests are unavailable.'}),
+              requestsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'requests': triageRequests[siteId] ?? []}), 200);
         }
         if (path == '/api/people/employees/assignee-candidates') {
           if (assigneeCandidatesStatus != 200) {
