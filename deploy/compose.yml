@@ -17,6 +17,13 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       BACKEND_PORT: 8000
+      # Supplied by the Release workflow from repository variables at deploy
+      # time. The API verifies Supabase-issued session tokens against the
+      # project's own JWKS and checks the issuer, so both are required — see
+      # src/platform/tokens.js.
+      SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:?set SUPABASE_JWKS_URL}
+      SUPABASE_JWT_ISSUER: ${SUPABASE_JWT_ISSUER:?set SUPABASE_JWT_ISSUER}
+      SUPABASE_JWT_AUDIENCE: ${SUPABASE_JWT_AUDIENCE:-authenticated}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s

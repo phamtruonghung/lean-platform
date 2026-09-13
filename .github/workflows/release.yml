@@ -55,9 +55,19 @@ jobs:
           - name: backend
             context: ./backend
             image: lean-platform-backend
+            # The backend takes no Supabase config at build time; its project
+            # settings arrive as runtime environment (see deploy/compose.yml).
+            build_args: ""
           - name: frontend
             context: ./frontend
             image: lean-platform-frontend
+            # Baked into the Flutter bundle at build time (--dart-define), so
+            # they have to be present here, not at deploy time. Both are public
+            # values — an anon/publishable key ships to every browser — which is
+            # why they are repository variables rather than secrets.
+            build_args: |
+              SUPABASE_URL=${{ vars.SUPABASE_URL }}
+              SUPABASE_ANON_KEY=${{ vars.SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -91,6 +101,7 @@ jobs:
           # valid path — and moving the repository does not mean editing five
           # files to match.
           tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ steps.meta.outputs.tag }}
+          build-args: ${{ matrix.build_args }}
           # Scoped per image. Unscoped, the two matrix legs share one cache and
           # clobber each other's layers on every run.
           cache-from: type=gha,scope=release-${{ matrix.name }}
@@ -120,6 +131,12 @@ jobs:
       - name: Deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # The API verifies Supabase-issued session tokens against the
+          # project's own JWKS, and checks that the token was issued by this
+          # project for this project's users. Both are public endpoints, so they
+          # are variables, not secrets. See src/platform/tokens.js.
+          SUPABASE_JWKS_URL: ${{ vars.SUPABASE_JWKS_URL }}
+          SUPABASE_JWT_ISSUER: ${{ vars.SUPABASE_JWT_ISSUER }}
           GHCR_OWNER: ${{ github.repository_owner }}
           # The recorded tag lives outside the runner's workspace, which is
           # wiped between runs. Losing it would leave a deploy with nothing to
