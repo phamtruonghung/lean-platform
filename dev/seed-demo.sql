@@ -479,4 +479,152 @@ SELECT p.id, s.id, -2, 'adjustment', 'Issued to DEMO-WO-5', now() - interval '8 
       WHERE m.part_id = p.id AND m.store_id = s.id AND m.reason = 'Issued to DEMO-WO-5'
    );
 
+-- -----------------------------------------------------------------------------
+-- Shift calendar — a two-shift pattern, generated across recent and upcoming
+-- days. `generate_shift_instances` is idempotent, so re-running is safe.
+-- -----------------------------------------------------------------------------
+INSERT INTO shift_definitions (site_id, code, name, start_time, duration_minutes, break_minutes, day_offset, sort_order) VALUES
+  ((SELECT id FROM sites WHERE code = 'DEMO'), 'D', 'Day shift',   TIME '06:00', 480, 30, 0, 1),
+  ((SELECT id FROM sites WHERE code = 'DEMO'), 'N', 'Night shift', TIME '22:00', 480, 30, 0, 2)
+ON CONFLICT (site_id, code) DO NOTHING;
+
+SELECT generate_shift_instances(id, CURRENT_DATE - 30, CURRENT_DATE + 60)
+  FROM org_units
+ WHERE site_id = (SELECT id FROM sites WHERE code = 'DEMO');
+
+-- -----------------------------------------------------------------------------
+-- Production — one product, two orders, and a month of runs with counts.
+--
+-- A note on scope: the Tier board's registry maps only the eight maintenance
+-- KPIs, so these production rows populate their own tables and any Screen that
+-- reads them, but they do not put an OEE number on the board today.
+-- -----------------------------------------------------------------------------
+INSERT INTO products (code, name, description, product_type, uom_code) VALUES
+  ('DEMO-PROD-1', 'Widget A', 'A finished widget used for the demo plant.', 'finished', 'EA')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO production_orders
+  (order_no, product_id, org_unit_id, quantity_ordered, uom_code, due_date, promised_date,
+   priority, status, released_at, started_at, completed_at)
+VALUES
+  ('DEMO-PO-1', (SELECT id FROM products WHERE code = 'DEMO-PROD-1'),
+   (SELECT id FROM org_units WHERE code = 'A1-L1-C1' AND site_id = (SELECT id FROM sites WHERE code = 'DEMO')),
+   2000, 'EA', CURRENT_DATE + 5, CURRENT_DATE + 5, 2, 'in_progress',
+   now() - interval '20 days', now() - interval '20 days', NULL),
+  ('DEMO-PO-2', (SELECT id FROM products WHERE code = 'DEMO-PROD-1'),
+   (SELECT id FROM org_units WHERE code = 'A1-L1-C1' AND site_id = (SELECT id FROM sites WHERE code = 'DEMO')),
+   1500, 'EA', CURRENT_DATE - 3, CURRENT_DATE - 3, 3, 'completed',
+   now() - interval '40 days', now() - interval '35 days', now() - interval '31 days')
+ON CONFLICT (order_no) DO NOTHING;
+
+-- Ten completed runs on the constraint machine, one every few days. Guarded on
+-- the run's own note, which is stable, rather than on a relative timestamp.
+INSERT INTO production_runs
+  (production_order_id, product_id, org_unit_id, asset_id, planned_quantity, uom_code,
+   started_at, ended_at, status, notes)
+SELECT po.id, pr.id, a.org_unit_id, a.id, 200, 'EA',
+       now() - make_interval(days => 30 - gs.n * 3),
+       now() - make_interval(days => 30 - gs.n * 3) + interval '8 hours',
+       'completed', 'DEMO production run ' || gs.n
+  FROM generate_series(1, 10) AS gs(n)
+  JOIN products pr ON pr.code = 'DEMO-PROD-1'
+  JOIN assets a ON a.code = 'DEMO-CNC-01'
+  JOIN production_orders po ON po.order_no = 'DEMO-PO-1'
+ WHERE NOT EXISTS (
+   SELECT 1 FROM production_runs r WHERE r.notes = 'DEMO production run ' || gs.n
+ );
+
+INSERT INTO production_counts
+  (production_run_id, org_unit_id, asset_id, shift_instance_id, period_start, period_end,
+   good_quantity, reject_quantity, rework_quantity, uom_code, recorded_by)
+SELECT r.id, r.org_unit_id, r.asset_id, r.shift_instance_id, r.started_at, r.ended_at,
+       180, 15, 5, 'EA', e.id
+  FROM production_runs r
+  JOIN employees e ON e.employee_no = 'DEMO-004'
+ WHERE r.notes LIKE 'DEMO production run %'
+   AND NOT EXISTS (SELECT 1 FROM production_counts pc WHERE pc.production_run_id = r.id);
+
+-- -----------------------------------------------------------------------------
+-- Quality and safety — a couple of records each, so those tables are not empty.
+-- -----------------------------------------------------------------------------
+INSERT INTO quality_issues
+  (issue_no, org_unit_id, asset_id, product_id, defect_code_id, detection_point, severity,
+   quantity_affected, uom_code, detected_at, detected_by, description, status)
+VALUES
+  ('DEMO-NC-1',
+   (SELECT id FROM org_units WHERE code = 'A1-L1-C1' AND site_id = (SELECT id FROM sites WHERE code = 'DEMO')),
+   (SELECT id FROM assets WHERE code = 'DEMO-CNC-01'),
+   (SELECT id FROM products WHERE code = 'DEMO-PROD-1'),
+   (SELECT id FROM defect_codes WHERE code = 'SUR'),
+   'final_inspection', 'minor', 12, 'EA', now() - interval '12 days',
+   (SELECT id FROM employees WHERE employee_no = 'DEMO-004'),
+   'Surface marks found on twelve widgets.', 'open'),
+  ('DEMO-NC-2',
+   (SELECT id FROM org_units WHERE code = 'A1-L1-C1' AND site_id = (SELECT id FROM sites WHERE code = 'DEMO')),
+   (SELECT id FROM assets WHERE code = 'DEMO-CNC-01'),
+   (SELECT id FROM products WHERE code = 'DEMO-PROD-1'),
+   (SELECT id FROM defect_codes WHERE code = 'FUN'),
+   'in_process', 'major', 5, 'EA', now() - interval '4 days',
+   (SELECT id FROM employees WHERE employee_no = 'DEMO-004'),
+   'Functional test failures on five units.', 'contained')
+ON CONFLICT (issue_no) DO NOTHING;
+
+INSERT INTO safety_incidents
+  (incident_no, org_unit_id, asset_id, occurred_at, incident_type, severity_level,
+   description, status, closed_at)
+VALUES
+  ('DEMO-SI-1',
+   (SELECT id FROM org_units WHERE code = 'PKG-L1' AND site_id = (SELECT id FROM sites WHERE code = 'DEMO')),
+   (SELECT id FROM assets WHERE code = 'DEMO-PACKER-01'),
+   now() - interval '9 days', 'near_miss', 'near_miss',
+   'A pallet fell from the stacker; nobody was in the area.', 'closed', now() - interval '8 days'),
+  ('DEMO-SI-2',
+   (SELECT id FROM org_units WHERE code = 'A1-L1' AND site_id = (SELECT id FROM sites WHERE code = 'DEMO')),
+   (SELECT id FROM assets WHERE code = 'DEMO-PRESS-01'),
+   now() - interval '2 days', 'injury', 'first_aid',
+   'Minor hand laceration while changing a hydraulic hose.', 'open', NULL)
+ON CONFLICT (incident_no) DO NOTHING;
+
+INSERT INTO safety_observations
+  (org_unit_id, observed_at, observation_type, category, severity_potential, description, observer_employee_id)
+SELECT ou.id, now() - make_interval(days => v.days_ago), v.observation_type, v.category,
+       v.severity_potential, v.description, e.id
+  FROM (VALUES
+    ('A1-L1-C1', 7, 'unsafe_condition', 'housekeeping', 'medium', 'DEMO safety observation: oil spill left unmarked.', 'DEMO-002'),
+    ('A1-L1',    3, 'safe_act',         'energy_isolation', 'low', 'DEMO safety observation: lock-off applied correctly.', 'DEMO-001')
+  ) AS v(unit_code, days_ago, observation_type, category, severity_potential, description, observer_no)
+  JOIN org_units ou ON ou.code = v.unit_code
+   AND ou.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+  JOIN employees e ON e.employee_no = v.observer_no
+ WHERE NOT EXISTS (
+   SELECT 1 FROM safety_observations so WHERE so.org_unit_id = ou.id AND so.description = v.description
+ );
+
+-- -----------------------------------------------------------------------------
+-- KPI targets — so the board judges the eight maintenance KPIs it can read,
+-- rather than reporting "no target" for every one. (The registry maps only
+-- those eight; the other pillars' definitions have no view mapping and stay
+-- no_data regardless of what is seeded.)
+-- -----------------------------------------------------------------------------
+INSERT INTO kpi_targets
+  (kpi_definition_id, org_unit_id, period_type, target_value, lower_threshold, upper_threshold, effective_from)
+SELECT kd.id, ou.id, 'month', v.target_value, v.lower_threshold, v.upper_threshold, DATE '2025-01-01'
+  FROM (VALUES
+    ('MNT_PM_COMPLIANCE',       95,   90,   NULL),
+    ('MNT_SCHEDULE_COMPLIANCE', 90,   80,   NULL),
+    ('MNT_MTBF',                200,  100,  NULL),
+    ('MNT_MTTR',                4,    NULL, 8),
+    ('MNT_PLANNED_RATIO',       80,   70,   NULL),
+    ('MNT_BACKLOG',             40,   NULL, 80),
+    ('MNT_COST',                5000, NULL, 10000),
+    ('MNT_PARTS_COST',          2000, NULL, 5000)
+  ) AS v(kpi_code, target_value, lower_threshold, upper_threshold)
+  JOIN kpi_definitions kd ON kd.code = v.kpi_code
+  JOIN org_units ou ON ou.code IN ('A1', 'PKG')
+   AND ou.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+ WHERE NOT EXISTS (
+   SELECT 1 FROM kpi_targets kt
+    WHERE kt.kpi_definition_id = kd.id AND kt.org_unit_id = ou.id AND kt.period_type = 'month'
+ );
+
 COMMIT;
