@@ -219,6 +219,71 @@ Map<String, dynamic> requestJson(
       'workOrder': workOrder,
     };
 
+/// One Downtime event as `GET /api/maintenance/sites/:siteId/downtime`, the
+/// Breakdown report and the two row actions send it (issue #73).
+///
+/// Mirrors `toDowntimeEvent` (backend/src/modules/maintenance/downtime.js) key
+/// for key, in its own field order: a flat row, no nested `asset`/`orgUnit`
+/// map. `status` is the generated column — `open` while `endedAt` is null,
+/// `unclassified` once closed with no reason, `closed` otherwise.
+Map<String, dynamic> downtimeJson(
+  String id, {
+  String assetId = '7',
+  String assetCode = 'PRESS-1',
+  String assetName = 'Press 1',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  DateTime? startedAt,
+  DateTime? endedAt,
+  num? durationMinutes,
+  String status = 'open',
+  String? downtimeReasonId,
+  String? downtimeReasonName,
+  String? description,
+  String? reportedBy = '20',
+  String? reporterName = 'Jane Doe',
+  DateTime? classifiedAt,
+  String source = 'manual',
+}) =>
+    {
+      'id': id,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'startedAt': (startedAt ?? DateTime.now()).toUtc().toIso8601String(),
+      'endedAt': endedAt?.toUtc().toIso8601String(),
+      'durationMinutes': durationMinutes,
+      'status': status,
+      'downtimeReasonId': downtimeReasonId,
+      'downtimeReasonName': downtimeReasonName,
+      'description': description,
+      'reportedBy': reportedBy,
+      'reporterName': reporterName,
+      'classifiedAt': classifiedAt?.toUtc().toIso8601String(),
+      'source': source,
+    };
+
+/// One Downtime reason as `GET /api/maintenance/downtime-reasons` sends it
+/// (issue #73) — the classify picker's own catalogue.
+Map<String, dynamic> downtimeReasonJson(
+  String id,
+  String code,
+  String name, {
+  String lossCategory = 'unplanned',
+  bool isPlanned = false,
+  bool requiresComment = false,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'lossCategory': lossCategory,
+      'isPlanned': isPlanned,
+      'requiresComment': requiresComment,
+    };
+
 /// One held skill as `GET /api/people/employees/assignee-candidates` sends
 /// it, nested under a candidate — mirrors `directory.js`'s per-skill shape
 /// plus `isLapsed` (issue #62).
@@ -637,6 +702,16 @@ class FakeWire {
     this.declineRequestMessage = 'That Request could not be declined.',
     this.duplicateRequestStatus = 200,
     this.duplicateRequestMessage = 'That Request could not be marked a duplicate.',
+    Map<String, List<Map<String, dynamic>>>? downtime,
+    this.downtimeStatus = 200,
+    List<Map<String, dynamic>>? downtimeReasons,
+    this.downtimeReasonsStatus = 200,
+    this.createDowntimeStatus = 201,
+    this.createDowntimeMessage = 'That Breakdown could not be reported.',
+    this.closeDowntimeStatus = 200,
+    this.closeDowntimeMessage = 'That stop could not be closed.',
+    this.classifyDowntimeStatus = 200,
+    this.classifyDowntimeMessage = 'That stop could not be classified.',
     List<Map<String, dynamic>>? employees,
     this.employeesStatus = 200,
     Map<String, Map<String, dynamic>>? employeeDetails,
@@ -682,6 +757,8 @@ class FakeWire {
         workOrders = workOrders ?? {},
         triageRequests = triageRequests ?? {},
         myRequests = myRequests ?? {},
+        downtime = downtime ?? {},
+        downtimeReasons = downtimeReasons ?? [],
         assigneeCandidates = assigneeCandidates ?? [],
         employees = employees ?? [],
         employeeDetails = employeeDetails ?? {},
@@ -851,6 +928,46 @@ class FakeWire {
 
   /// Every duplicate request that actually reached the wire, as `(id, body)`.
   final List<(String, Map<String, dynamic>)> requestDuplicates = [];
+
+  /// `GET /api/maintenance/sites/:siteId/downtime` — open stops by default,
+  /// keyed by Site id. Mirrors the server's own default read.
+  Map<String, List<Map<String, dynamic>>> downtime;
+  int downtimeStatus;
+
+  /// Every downtime read's Site id, in the order it reached the wire.
+  final List<String> downtimeSites = [];
+
+  /// When set, a downtime read hangs until the test completes it — the same
+  /// device [requestsGate] uses, needed to prove the list shows its own
+  /// placeholders while a read is still in flight.
+  Completer<void>? downtimeGate;
+
+  /// `GET /api/maintenance/downtime-reasons` — the classify picker's own
+  /// catalogue.
+  List<Map<String, dynamic>> downtimeReasons;
+  int downtimeReasonsStatus;
+
+  /// `POST /api/maintenance/downtime`.
+  int createDowntimeStatus;
+  String createDowntimeMessage;
+
+  /// Every Breakdown body that actually reached the wire, decoded — so a test
+  /// can assert exactly one request was sent and what Asset it carried.
+  final List<Map<String, dynamic>> downtimePosts = [];
+
+  /// `POST /api/maintenance/downtime/:id/close`.
+  int closeDowntimeStatus;
+  String closeDowntimeMessage;
+
+  /// Every close request that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> downtimeCloses = [];
+
+  /// `POST /api/maintenance/downtime/:id/classify`.
+  int classifyDowntimeStatus;
+  String classifyDowntimeMessage;
+
+  /// Every classify request that actually reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> downtimeClassifications = [];
 
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
@@ -1308,6 +1425,44 @@ class FakeWire {
     return updated;
   }
 
+  /// Applies a downtime action's own changes to every Downtime event row this
+  /// Fake Wire holds naming [id], across every Site's list. Returns the updated
+  /// row, or null when no list holds it — so a close/classify response honestly
+  /// carries the updated row the real server would send.
+  Map<String, dynamic>? _applyDowntimeChanges(String id, Map<String, dynamic> changes) {
+    Map<String, dynamic>? updated;
+    downtime = {
+      for (final entry in downtime.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) (updated = {...row, ...changes}) else row,
+        ],
+    };
+    return updated;
+  }
+
+  /// The Site whose Asset register holds [assetId], so a reported Breakdown
+  /// lands in the same Site's list — the Fake Wire keeps no real Assets-to-Site
+  /// link beyond [assets] itself.
+  String? _siteOfAsset(String assetId) {
+    for (final entry in assets.entries) {
+      for (final asset in entry.value) {
+        if (asset['id'] == assetId) return entry.key;
+      }
+    }
+    return null;
+  }
+
+  /// The Downtime event row this Fake Wire holds naming [id], or null.
+  Map<String, dynamic>? _downtimeRow(String id) {
+    for (final list in downtime.values) {
+      for (final row in list) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
   /// Applies a write's own changes to every row this Fake Wire holds naming
   /// [id] — both [employees] (the listing) and [employeeDetails] (the detail
   /// view, keyed by id or by `'me'`) — so a re-read after a successful write,
@@ -1341,6 +1496,117 @@ class FakeWire {
         requests.add('${request.method} $path');
         if (path == '/api/people/me') {
           return http.Response(jsonEncode(_meBody(role, selfId, orgUnitScope)), 200);
+        }
+        if (path == '/api/maintenance/downtime-reasons') {
+          if (downtimeReasonsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The downtime reasons are unavailable.'}),
+              downtimeReasonsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'downtimeReasons': downtimeReasons}), 200);
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/downtime')) {
+          final siteId = path.split('/')[4];
+          downtimeSites.add(siteId);
+          if (downtimeGate != null) await downtimeGate!.future;
+          if (downtimeStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The downtime events are unavailable.'}),
+              downtimeStatus,
+            );
+          }
+          final includeClosed = request.url.queryParameters['includeClosed'] == 'true';
+          final siteEvents = downtime[siteId] ?? [];
+          // Mirrors the server's own default read: a closed stop is out unless
+          // history was asked for by name.
+          final sent = includeClosed
+              ? siteEvents
+              : [
+                  for (final event in siteEvents)
+                    if (event['endedAt'] == null) event,
+                ];
+          return http.Response(jsonEncode({'downtimeEvents': sent}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/downtime') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          downtimePosts.add(sent);
+          if (createDowntimeStatus != 201) {
+            return http.Response(jsonEncode({'message': createDowntimeMessage}), createDowntimeStatus);
+          }
+          final startedAt = sent['startedAt'] as String?;
+          final created = downtimeJson(
+            '900',
+            assetId: sent['assetId'] as String,
+            startedAt: startedAt == null ? null : DateTime.parse(startedAt),
+            description: sent['description'] as String?,
+          );
+          final siteId = _siteOfAsset(created['assetId'] as String);
+          if (siteId != null) {
+            downtime = {
+              ...downtime,
+              siteId: [created, ...(downtime[siteId] ?? [])],
+            };
+          }
+          final workOrder = workOrderJson('900', 'WO-900', 'Breakdown');
+          return http.Response(
+            jsonEncode({'downtimeEvent': created, 'workOrder': workOrder}),
+            201,
+          );
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/downtime/') &&
+            path.endsWith('/close')) {
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          downtimeCloses.add((id, body));
+          if (closeDowntimeStatus != 200) {
+            return http.Response(jsonEncode({'message': closeDowntimeMessage}), closeDowntimeStatus);
+          }
+          final current = _downtimeRow(id);
+          if (current == null) {
+            return http.Response(jsonEncode({'message': 'That Downtime event does not exist.'}), 404);
+          }
+          final endedAt = body['endedAt'] as String? ?? DateTime.now().toUtc().toIso8601String();
+          final started = DateTime.tryParse(current['startedAt'] as String? ?? '');
+          final ended = DateTime.tryParse(endedAt);
+          final updated = _applyDowntimeChanges(id, {
+            'endedAt': endedAt,
+            'status': current['downtimeReasonId'] != null ? 'closed' : 'unclassified',
+            if (started != null && ended != null)
+              'durationMinutes': ended.difference(started).inMinutes,
+          });
+          return http.Response(jsonEncode({'downtimeEvent': updated}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/downtime/') &&
+            path.endsWith('/classify')) {
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          downtimeClassifications.add((id, body));
+          if (classifyDowntimeStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': classifyDowntimeMessage}),
+              classifyDowntimeStatus,
+            );
+          }
+          final current = _downtimeRow(id);
+          if (current == null) {
+            return http.Response(jsonEncode({'message': 'That Downtime event does not exist.'}), 404);
+          }
+          final reasonId = body['downtimeReasonId']?.toString();
+          String? reasonName;
+          for (final reason in downtimeReasons) {
+            if (reason['id'].toString() == reasonId) reasonName = reason['name'] as String;
+          }
+          final updated = _applyDowntimeChanges(id, {
+            'downtimeReasonId': reasonId,
+            'downtimeReasonName': reasonName,
+            if (body['description'] != null) 'description': body['description'],
+            'classifiedAt': DateTime.now().toUtc().toIso8601String(),
+            'status': current['endedAt'] == null ? 'open' : 'closed',
+          });
+          return http.Response(jsonEncode({'downtimeEvent': updated}), 200);
         }
         if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/assets')) {
           if (assetsGate != null) await assetsGate!.future;

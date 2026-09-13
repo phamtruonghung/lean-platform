@@ -10,6 +10,8 @@ import '../home_bloc.dart';
 import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
 import '../maintenance/assets_screen.dart';
+import '../maintenance/downtime_bloc.dart';
+import '../maintenance/downtime_screen.dart';
 import '../maintenance/maintenance_api.dart';
 import '../maintenance/my_requests_bloc.dart';
 import '../maintenance/my_requests_screen.dart';
@@ -59,6 +61,7 @@ abstract final class Routes {
   static const String workOrders = '/work-orders';
   static const String requests = '/requests';
   static const String myRequests = '/my-requests';
+  static const String downtime = '/downtime';
   static const String directory = '/directory';
   static const String jobRoles = '/job-roles';
   static const String orgUnits = '/org-units';
@@ -571,6 +574,31 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const RequestsStarted()),
                 child: RequestsScreen(canTriage: account.account.orgUnitScope.canWriteSomewhere),
+              );
+            },
+          ),
+          // Downtime (issue #73) is maintenance's own work, gated to the same
+          // Module role set Assets, Work orders and the Triage queue use. The
+          // same per-Screen access check they make: leaving the destination out
+          // of the sidebar hides the door, this locks it for a caller who types
+          // the address. Reporting a Breakdown, closing a stop and classifying
+          // one all need a write Grant, so the report button and the row
+          // actions read the same coarse `canWriteSomewhere` signal.
+          GoRoute(
+            path: Routes.downtime,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<DowntimeBloc>(
+                create: (context) => DowntimeBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const DowntimeStarted()),
+                child: DowntimeScreen(canAct: account.account.orgUnitScope.canWriteSomewhere),
               );
             },
           ),

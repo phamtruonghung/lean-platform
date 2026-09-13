@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'asset.dart';
+import 'downtime_event.dart';
 import 'request.dart';
 import 'work_order.dart';
 
@@ -423,6 +424,153 @@ class MaintenanceApi {
     }
   }
 
+  /// The classify picker's own catalogue
+  /// (`GET /api/maintenance/downtime-reasons`, issue #73) — every active
+  /// Downtime reason, readable by any approved Account (ADR-0005's shared
+  /// global catalogue).
+  Future<List<DowntimeReason>> fetchDowntimeReasons(String accessToken) async {
+    const path = '/api/maintenance/downtime-reasons';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final reason in body['downtimeReasons'] as List<dynamic>)
+          _downtimeReasonFrom(reason as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The open Downtime events across a whole Site — "what is down right now" —
+  /// or open-plus-history when [includeClosed] asks for it
+  /// (`GET /api/maintenance/sites/:siteId/downtime`, issue #73). Site-wide and
+  /// carrying no Grant filter (ADR-0009).
+  Future<List<DowntimeEvent>> fetchDowntimeEvents(
+    String accessToken, {
+    required String siteId,
+    bool includeClosed = false,
+  }) async {
+    final path = '/api/maintenance/sites/$siteId/downtime';
+    final uri = includeClosed
+        ? Uri.parse(path).replace(queryParameters: {'includeClosed': 'true'})
+        : Uri.parse(path);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final event in body['downtimeEvents'] as List<dynamic>)
+          _downtimeEventFrom(event as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Reports a Breakdown against [assetId] (`POST /api/maintenance/downtime`,
+  /// issue #73). Deliberately no `orgUnitId` and no Work order number in this
+  /// call: the server derives the former from the Asset by trigger and issues
+  /// the latter from the Site's own sequence. A duplicate report of an Asset
+  /// already recorded as down is a 409 whose message names the Asset and since
+  /// when — carried verbatim on [MaintenanceApiException.message] so the
+  /// dialog can stay open and show it.
+  Future<DowntimeEvent> reportBreakdown(
+    String accessToken, {
+    required String assetId,
+    DateTime? startedAt,
+    String? description,
+  }) async {
+    const path = '/api/maintenance/downtime';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'assetId': assetId,
+          'startedAt': ?_timestamp(startedAt),
+          'description': ?description,
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _downtimeEventFrom(body['downtimeEvent'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Closes a still-open Downtime event (`POST /api/maintenance/downtime/:id/close`,
+  /// issue #73). [endedAt] is optional — omitted means now, the honest default
+  /// when a caller closes a stop as it ends. The server owns the resulting
+  /// duration and status; nothing here computes either.
+  Future<DowntimeEvent> closeDowntimeEvent(
+    String accessToken,
+    String id, {
+    DateTime? endedAt,
+  }) async {
+    final path = '/api/maintenance/downtime/$id/close';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'endedAt': ?_timestamp(endedAt)}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _downtimeEventFrom(body['downtimeEvent'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Classifies a Downtime event against [downtimeReasonId]
+  /// (`POST /api/maintenance/downtime/:id/classify`, issue #73). A reason whose
+  /// `requiresComment` is true is refused by the server (400) when no
+  /// [description] is given — the classify dialog blocks that before the call.
+  Future<DowntimeEvent> classifyDowntimeEvent(
+    String accessToken,
+    String id, {
+    required String downtimeReasonId,
+    String? description,
+  }) async {
+    final path = '/api/maintenance/downtime/$id/classify';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'downtimeReasonId': downtimeReasonId,
+          'description': ?description,
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _downtimeEventFrom(body['downtimeEvent'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// A local time the picker chose, as the UTC instant the wire carries —
+  /// `timestamptz` on the server side. The server supplies now() when the
+  /// field is left blank, so a caller sends nothing rather than a default.
+  static String? _timestamp(DateTime? value) {
+    if (value == null) return null;
+    return value.toUtc().toIso8601String();
+  }
+
   // The server sends a flat row — `id, workOrderNo, assetId, assetCode,
   // assetName, orgUnitId, orgUnitName, summary, description, workType,
   // priority, status, assignedTo, assigneeName, createdAt, updatedAt`
@@ -479,6 +627,39 @@ class MaintenanceApi {
         id: workOrder['id'].toString(),
         workOrderNo: workOrder['workOrderNo'] as String,
         status: workOrder['status'] as String,
+      );
+
+  // `toDowntimeEvent` (downtime.js) sends a flat row key for key: `id,
+  // assetId, assetCode, assetName, orgUnitId, orgUnitName, startedAt,
+  // endedAt, durationMinutes, status, downtimeReasonId, downtimeReasonName,
+  // description, reportedBy, reporterName, classifiedAt, source`.
+  static DowntimeEvent _downtimeEventFrom(Map<String, dynamic> event) => DowntimeEvent(
+        id: event['id'].toString(),
+        assetId: event['assetId'].toString(),
+        assetCode: event['assetCode'] as String,
+        assetName: event['assetName'] as String,
+        orgUnitId: event['orgUnitId'].toString(),
+        orgUnitName: event['orgUnitName'] as String,
+        startedAt: event['startedAt'] as String?,
+        endedAt: event['endedAt'] as String?,
+        durationMinutes: event['durationMinutes'] as num?,
+        status: event['status'] as String,
+        downtimeReasonId: event['downtimeReasonId']?.toString(),
+        downtimeReasonName: event['downtimeReasonName'] as String?,
+        description: event['description'] as String?,
+        reportedBy: event['reportedBy']?.toString(),
+        reporterName: event['reporterName'] as String?,
+        classifiedAt: event['classifiedAt'] as String?,
+        source: event['source'] as String,
+      );
+
+  static DowntimeReason _downtimeReasonFrom(Map<String, dynamic> reason) => DowntimeReason(
+        id: reason['id'].toString(),
+        code: reason['code'] as String,
+        name: reason['name'] as String,
+        lossCategory: reason['lossCategory'] as String,
+        isPlanned: reason['isPlanned'] as bool? ?? false,
+        requiresComment: reason['requiresComment'] as bool? ?? false,
       );
 
   static Asset _assetFrom(Map<String, dynamic> asset) => Asset(
