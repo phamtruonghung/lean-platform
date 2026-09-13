@@ -294,8 +294,8 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
 
 /// One suggestion row in the search box's own dropdown — the picked unit's
 /// name and code (`org_units_code_unique`, ADR-0011, is what actually
-/// guarantees uniqueness per Site) plus a breadcrumb of whatever ancestor
-/// names [ancestorNames] could already resolve, so two same-named units
+/// guarantees uniqueness per Site) plus the breadcrumb the server resolved for
+/// the hit ([ancestorNames], issue #145, ADR-0024), so two same-named units
 /// under different parents read apart even before either is picked (issue
 /// #130's own disambiguation criterion).
 ///

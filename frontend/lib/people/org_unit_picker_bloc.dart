@@ -196,21 +196,13 @@ class OrgUnitPickerState {
     return null;
   }
 
-  /// Resolves as many of [orgUnit]'s own ancestor ids ([OrgUnitNode.ancestorIds])
-  /// as this Bloc already happens to know the name of, root-first — a search
-  /// hit's own breadcrumb (issue #130), built without a request of its own.
-  /// An ancestor not yet loaded into [nodesById] (nothing above this caller's
-  /// own [rootIds] ever will be, and a deeper one may simply not have been
-  /// expanded yet) renders as `'…'` rather than being silently dropped — but
-  /// that placeholder is not itself distinguishing: two same-named units
-  /// sitting under two different unloaded parents both render `'…'` for that
-  /// ancestor, so their breadcrumbs read identically rather than apart. This
-  /// is why issue #130 was reopened, and it stays true until #145 (a backend
-  /// change, out of scope for the client alone) lets an ancestor's name be
-  /// resolved without first loading it into the tree.
-  List<String> ancestorNamesFor(OrgUnitNode orgUnit) => [
-        for (final id in orgUnit.ancestorIds) nodesById[id]?.name ?? '…',
-      ];
+  /// A search hit's own breadcrumb, root-first (issue #130): the ancestor
+  /// names the server resolved *on the hit itself* (`OrgUnitNode.ancestorNames`,
+  /// issue #145, ADR-0024). Nothing is looked up in [nodesById], so an
+  /// ancestor the tree has not loaded — the ordinary case, since searching is
+  /// what someone does *instead of* walking the tree — is still named, and two
+  /// same-named units under different unloaded parents read apart.
+  List<String> ancestorNamesFor(OrgUnitNode orgUnit) => orgUnit.ancestorNames;
 
   /// The Grant set as the Approval endpoint wants it.
   List<Map<String, Object?>> get grantsPayload => [for (final g in granted) g.toJson()];

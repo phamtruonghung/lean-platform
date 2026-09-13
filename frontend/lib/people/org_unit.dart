@@ -30,6 +30,7 @@ class OrgUnitNode {
     required this.unitType,
     this.isActive = true,
     this.path = '',
+    this.ancestorNames = const [],
   });
 
   final String id;
@@ -56,12 +57,25 @@ class OrgUnitNode {
   /// path at all.
   final String path;
 
+  /// The names of the ancestors [path] points at, root-first, excluding this
+  /// node itself — resolved **on the server** and carried only on a search hit
+  /// (`plant.searchOrgUnits`, issue #145, ADR-0024), because [path] is a chain
+  /// of ids and no materialised ancestor name exists to look up. Empty for a
+  /// node built from any other response: browsing a level (`fetchOrgUnits`)
+  /// sends no names, and an Account's own Grant row carries no path at all.
+  ///
+  /// Scoped server-side to the ancestors the caller's Grants reach, so a
+  /// non-administrator's first entry here is their own granted Org Unit, never
+  /// an ancestor above it (ADR-0008, ADR-0024).
+  final List<String> ancestorNames;
+
   /// The ordered ancestor ids [path] implies, root-first, excluding this
   /// node's own final segment — parsed by stripping each label's leading
-  /// non-digit run (issue #130). This is id-only: no ancestor's name or code
-  /// travels with a search hit, so revealing a picked Org Unit in the tree
-  /// still means walking `OrgUnitPickerBloc`'s own per-level fetch for each
-  /// id here, exactly as expanding a row by hand already does.
+  /// non-digit run (issue #130). This is id-only, and deliberately still so:
+  /// revealing a picked Org Unit in the tree is a walk of
+  /// `OrgUnitPickerBloc`'s own per-level fetch, by id, exactly as expanding a
+  /// row by hand already does — [ancestorNames] answers the different
+  /// question of what to write *above* the hit.
   List<String> get ancestorIds {
     if (path.isEmpty) return const [];
     final segments = path.split('.');
@@ -119,10 +133,10 @@ enum GrantLevel {
 /// One Org Unit chosen in the picker, at the level chosen for it.
 ///
 /// [where] is the breadcrumb captured when it was added — the Site and the
-/// ancestors that were on screen above it at that moment. There is no Org Unit
-/// search endpoint and no ancestor lookup, so this is the only honest way to
-/// say where a granted Org Unit sits; for an entry point (no ancestors were
-/// ever fetched) it is the Site alone, which is all the caller was told.
+/// ancestors that were on screen above it at that moment. A Grant records the
+/// location it was made at rather than re-deriving it later, and for an entry
+/// point (no ancestors were ever fetched) that is the Site alone, which is all
+/// the caller was told.
 @immutable
 class GrantedOrgUnit {
   const GrantedOrgUnit({required this.orgUnit, required this.level, required this.where});

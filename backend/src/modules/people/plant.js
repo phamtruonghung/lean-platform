@@ -307,6 +307,20 @@ const ORG_UNIT_SEARCH_LIMIT = 50;
 // EXISTS), deliberately not authorization.grantedEntryPointIds's entry-point
 // dedup — search asks "is this row inside my reach", not "where does my
 // reach begin", so no dedup is wanted or correct here.
+//
+// The predicate a scoped search applies twice — to the matched row and, since
+// issue #145/ADR-0024, to a hit's ancestors — is one containment test, so it is
+// written once. `pathExpr` is whichever alias the caller is filtering; `<@` is
+// "is at or beneath", so the filtered row must sit under one of the caller's
+// granted Org Units.
+function grantContainmentClause(pathExpr, grantParam) {
+  return `EXISTS (
+            SELECT 1 FROM org_units granted
+             WHERE granted.id = ANY(${grantParam}::bigint[])
+               AND ${pathExpr} <@ granted.path
+          )`;
+}
+
 async function searchOrgUnits(siteId, { search, withinOrgUnitIds } = {}) {
   await getSite(siteId); // 404s if the Site itself does not exist.
 
@@ -319,20 +333,44 @@ async function searchOrgUnits(siteId, { search, withinOrgUnitIds } = {}) {
   }
 
   const params = [siteId, `%${escapeLikePattern(term)}%`];
+  // The same containment predicate answers two questions — which rows match
+  // (ou.path <@ a grant) and which ancestors of a match this caller may be
+  // shown (a.path <@ a grant, the lateral below, issue #145) — so the grant
+  // array is pushed once and both clauses name it by the same positional
+  // parameter. A breadcrumb must not become a read the search itself would
+  // refuse: a match sits beneath a granted unit, but its ancestry reaches
+  // above that grant (ADR-0008), so the ancestors are filtered too.
   let scopeClause = '';
+  let ancestorScopeClause = '';
   if (withinOrgUnitIds !== undefined) {
     params.push(withinOrgUnitIds);
+    const grantParam = `$${params.length}`;
     scopeClause = `
-       AND EXISTS (
-             SELECT 1 FROM org_units granted
-              WHERE granted.id = ANY($${params.length}::bigint[])
-                AND ou.path <@ granted.path
-           )`;
+       AND ${grantContainmentClause('ou.path', grantParam)}`;
+    ancestorScopeClause = `
+         AND ${grantContainmentClause('a.path', grantParam)}`;
   }
   params.push(ORG_UNIT_SEARCH_LIMIT + 1); // one extra row: the truncation probe.
 
+  // `ancestors` rides along on each match (issue #145, ADR-0024): the hit's
+  // own strict ancestors, root-first as `[{id, name}]`, resolved in the same
+  // query through a `path <@` GiST lookup per matched row. IDs are cast to
+  // text so the wire keeps the string shape every other Org Unit id has
+  // (`toOrgUnit`), and an ancestor-free row answers `[]`, never a null.
   const { rows } = await getPool().query(
-    `SELECT ${ORG_UNIT_COLUMNS} FROM org_units ou
+    `SELECT ${ORG_UNIT_COLUMNS},
+            COALESCE(anc.ancestors, '[]'::json) AS ancestors
+       FROM org_units ou
+       LEFT JOIN LATERAL (
+              SELECT json_agg(
+                       json_build_object('id', a.id::text, 'name', a.name)
+                       ORDER BY nlevel(a.path)
+                     ) AS ancestors
+                FROM org_units a
+               WHERE ou.path <@ a.path
+                 AND a.id <> ou.id
+                 ${ancestorScopeClause}
+            ) anc ON true
       WHERE ou.site_id = $1
         AND ou.name ILIKE $2 ESCAPE '\\'
         ${scopeClause}
@@ -343,7 +381,10 @@ async function searchOrgUnits(siteId, { search, withinOrgUnitIds } = {}) {
 
   const truncated = rows.length > ORG_UNIT_SEARCH_LIMIT;
   return {
-    orgUnits: rows.slice(0, ORG_UNIT_SEARCH_LIMIT).map(toOrgUnit),
+    orgUnits: rows.slice(0, ORG_UNIT_SEARCH_LIMIT).map((row) => ({
+      ...toOrgUnit(row),
+      ancestors: row.ancestors
+    })),
     truncated
   };
 }

@@ -284,21 +284,45 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Search'), findsNothing);
   });
 
-  testWidgets('typing 2+ characters shows matching Org Units, each disambiguated by its path',
+  // Issue #145 (ADR-0024): the breadcrumb comes off the search hit itself,
+  // resolved server-side, so it no longer depends on the tree having loaded
+  // the ancestors. Both parents below are deliberately absent from `orgUnits`
+  // — searching is what someone does *instead of* walking the tree, which is
+  // exactly the case the old `nodesById` lookup could not name.
+  testWidgets('two same-named hits under different, unexpanded parents render distinguishable breadcrumbs',
       (tester) async {
     final wire = FakeWire(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
-      orgUnits: {
-        // Both already loaded as root rows, so their names are already known
-        // — the breadcrumb resolves without a request of its own.
-        null: [orgUnitJson('10', 'Area A'), orgUnitJson('20', 'Area B')],
-      },
+      orgUnits: const {null: []},
       orgUnitSearchResults: [
-        orgUnitJson('101', 'Line 1', parentId: '10', path: 'n10.n101'),
-        orgUnitJson('201', 'Line 1', parentId: '20', path: 'n20.n201'),
+        orgUnitJson(
+          '101',
+          'Line 1',
+          parentId: '10',
+          path: 'n10.n101',
+          ancestors: const [
+            {'id': '10', 'name': 'Area A'},
+          ],
+        ),
+        orgUnitJson(
+          '201',
+          'Line 1',
+          parentId: '20',
+          path: 'n20.n201',
+          ancestors: const [
+            {'id': '20', 'name': 'Area B'},
+          ],
+        ),
       ],
     );
     await openOrgUnits(tester, wire);
+
+    // Issue #130's own "2+ characters" criterion: a single character never
+    // reaches the wire.
+    await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'L');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    expect(wire.orgUnitSearchRequests, isEmpty);
 
     await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'Line');
     await tester.pump(const Duration(milliseconds: 350));
@@ -307,7 +331,8 @@ void main() {
     expect(wire.orgUnitSearchRequests.single, ('1', 'Line'));
     expect(find.byKey(OrgUnitsScreen.searchSuggestionKey('101')), findsOneWidget);
     expect(find.byKey(OrgUnitsScreen.searchSuggestionKey('201')), findsOneWidget);
-    // Same name, same code shape — the breadcrumb is what tells them apart.
+    // Same name, same code — only the breadcrumb tells them apart, and
+    // neither parent is in the tree to be looked up.
     expect(find.text('Area A'), findsOneWidget);
     expect(find.text('Area B'), findsOneWidget);
   });

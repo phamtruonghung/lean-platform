@@ -246,6 +246,49 @@ test('a non-administrator searching a name two levels below their Grant finds it
 });
 
 // ---------------------------------------------------------------------------
+// 2b. Each hit carries its own ancestor names, root-first, scoped to the
+// caller's Grants (issue #145, ADR-0024) — the breadcrumb #130's remaining
+// criterion needs.
+// ---------------------------------------------------------------------------
+
+test('an administrator sees every ancestor name of a hit, root-first', async () => {
+  const response = await searchRequest(site, `search=${encodeURIComponent('Assembly Line 3')}`);
+  assert.strictEqual(response.status, 200);
+  const body = await response.json();
+  const byId = Object.fromEntries(body.orgUnits.map((ou) => [ou.id, ou]));
+  assert.deepStrictEqual(byId[grantedLine.id].ancestors, [
+    { id: String(area.id), name: 'Area' },
+    { id: String(grantedDept.id), name: 'Granted Dept' }
+  ]);
+  assert.deepStrictEqual(byId[otherLine.id].ancestors, [
+    { id: String(area.id), name: 'Area' },
+    { id: String(otherDept.id), name: 'Other Dept' }
+  ]);
+});
+
+test('a root-level hit carries no ancestors', async () => {
+  const response = await searchRequest(site, `search=${encodeURIComponent('Area')}`);
+  assert.strictEqual(response.status, 200);
+  const body = await response.json();
+  const rootHit = body.orgUnits.find((ou) => ou.id === area.id);
+  assert.deepStrictEqual(rootHit.ancestors, []);
+});
+
+test("a non-administrator's breadcrumb never names an ancestor outside their Grants", async () => {
+  const response = await searchRequest(site, `search=${encodeURIComponent('Assembly Cell 3A')}`, scopedAccount.token);
+  assert.strictEqual(response.status, 200);
+  const body = await response.json();
+  assert.strictEqual(body.orgUnits.length, 1);
+  // 'Area' sits above the caller's Grant; the chain starts at the granted
+  // ancestor itself, not at the Site root.
+  assert.deepStrictEqual(body.orgUnits[0].ancestors, [
+    { id: String(grantedDept.id), name: 'Granted Dept' },
+    { id: String(grantedLine.id), name: 'Assembly Line 3' }
+  ]);
+  assert.ok(!body.orgUnits[0].ancestors.some((ancestor) => ancestor.name === 'Area'));
+});
+
+// ---------------------------------------------------------------------------
 // 5. Missing/empty/whitespace-only query, and a no-match query — all 200 with
 // an empty result, never an error.
 // ---------------------------------------------------------------------------
@@ -321,16 +364,17 @@ test('a literal % in the query matches literally, not as a SQL wildcard', async 
 });
 
 // ---------------------------------------------------------------------------
-// 8. Result rows have exactly toOrgUnit's existing shape.
+// 8. Result rows are toOrgUnit's existing shape plus the hit's own ancestors
+// (issue #145).
 // ---------------------------------------------------------------------------
 
-test('a result row has exactly the existing Org Unit shape', async () => {
+test('a result row is the existing Org Unit shape plus its ancestors', async () => {
   const response = await searchRequest(site, `search=${encodeURIComponent('Granted Dept')}`);
   assert.strictEqual(response.status, 200);
   const body = await response.json();
   const row = body.orgUnits[0];
   assert.deepStrictEqual(Object.keys(row).sort(), [
-    'code', 'createdAt', 'id', 'isActive', 'name', 'parentId',
+    'ancestors', 'code', 'createdAt', 'id', 'isActive', 'name', 'parentId',
     'path', 'siteId', 'sortOrder', 'unitType', 'updatedAt'
   ].sort());
 });
