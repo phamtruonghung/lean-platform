@@ -29,8 +29,10 @@
  *     transition routes below (issue #63) all require a write Grant reaching
  *     the Org Unit the Work order's own org_unit_id already names — see
  *     requireWorkOrderWriteScope below. There is no exception for the
- *     assignee acting on their own job without a Grant; #77 is where that
- *     changes.
+ *     assignee acting on their own job without a Grant. Issue #77's floor
+ *     device door is not that exception either: a device is allowed a
+ *     transition only within its own Org Unit's subtree, and only with an
+ *     individual technician identification attached, never on its own.
  *
  * PUT /work-orders/:id/assignee never reads a qualification, and never will
  * from this file: see ADR-0018. What a candidate holds is shown by People's
@@ -53,6 +55,7 @@ const people = require('../people');
 const assets = require('./assets');
 const workOrders = require('./work-orders');
 const workOrderCost = require('./work-order-cost');
+const floorDevices = require('./floor-devices');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
@@ -128,6 +131,48 @@ router.post(
   }
 );
 
+// The two doors a Work order transition may come through (issue #77). The
+// desktop Shell presents an Account's bearer token — the original chain,
+// unchanged. The shared floor device presents its own `x-floor-device`
+// credential AND an individual `x-technician-identification`; the device alone
+// is refused every write. The presence of the device header is what selects
+// the door, so a request can never be both.
+//
+// On the floor door this resolves the device (401 when unknown or switched
+// off) and then the identification (401 when missing, expired, or issued to a
+// different device), and attaches `req.technician` — the Employee the write is
+// attributed to. It deliberately does NOT fall through to the Account door on
+// a bad device credential: a caller who presented a device credential is
+// asking through that door, and answering "no" is the honest reply.
+async function authenticateWorkOrderActor(req, res, next) {
+  const deviceCredential = req.headers['x-floor-device'];
+  if (deviceCredential === undefined) {
+    return people.authenticate(req, res, () => people.requireActive(req, res, next));
+  }
+
+  try {
+    const device = await floorDevices.findDeviceByCredential(deviceCredential);
+    if (!device || !device.isActive) {
+      return res.status(401).json({ message: 'Invalid or inactive floor device' });
+    }
+
+    const identificationToken = req.headers['x-technician-identification'];
+    if (typeof identificationToken !== 'string' || identificationToken === '') {
+      return res.status(401).json({ message: 'An individual identification is required to write here' });
+    }
+    const technician = await floorDevices.findValidIdentification(identificationToken, device.id);
+    if (!technician) {
+      return res.status(401).json({ message: 'This identification is invalid or has expired' });
+    }
+
+    req.floorDevice = device;
+    req.technician = technician;
+    return next();
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+}
+
 // Write scope on the Org Unit the Work order's ASSET sits at — read off
 // work_orders.org_unit_id, which the work_orders_fill_org_unit trigger already
 // derived from the Asset. Never from the request body.
@@ -138,6 +183,14 @@ router.post(
 // scope first would turn an administrator's typo into a raw 500 instead of a
 // 404 that names the Work order. `write: true` is explicit and must stay that
 // way — it defaults to false.
+//
+// The scope question itself depends on the door (issue #77): an Account is
+// asked through `people.canAct` with `write: true` exactly as before, while a
+// floor device is allowed only the Work order's own Org Unit when it sits at
+// the device's Org Unit or beneath it. The device's read scope and its write
+// scope are the same reach; neither is ever granted by the device alone,
+// because `authenticateWorkOrderActor` has already required an identification
+// before this runs.
 //
 // This reads the denormalised column rather than the Asset live, unlike
 // requireAssetWriteScope above, because the trigger that keeps it in sync
@@ -151,7 +204,10 @@ async function requireWorkOrderWriteScope(req, res, next) {
   try {
     const workOrder = await workOrders.findWorkOrder(req.params.id);
     if (!workOrder) throw notFound('Work order');
-    const allowed = await people.canAct({ account: req.account, orgUnitId: workOrder.orgUnitId, write: true });
+
+    const allowed = req.floorDevice
+      ? await floorDevices.deviceReachesOrgUnit(req.floorDevice.orgUnitId, workOrder.orgUnitId)
+      : await people.canAct({ account: req.account, orgUnitId: workOrder.orgUnitId, write: true });
     if (!allowed) {
       return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
     }
@@ -224,20 +280,29 @@ router.put(
 
 // Starting, completing and cancelling a Work order (issue #63). All three
 // share requireWorkOrderWriteScope, so existence-before-scope and the write
-// Grant check are identical to PUT /assignee above; what's left to each
+// scope check are identical to PUT /assignee above; what's left to each
 // handler is calling the matching service function and letting its own
 // guard (work-orders.js's transitionGuard) turn an illegal transition into
 // the named 409. `req.body?.x` is this file's existing idiom (see PUT
 // /assignee) for a request that may have sent no body at all — POST /start
 // needs none and must not require one.
+//
+// Start and complete admit BOTH doors (issue #77, ADR-0016): the desktop
+// Shell's Account bearer token, and the floor device's credential plus an
+// individual identification. `authenticateWorkOrderActor` selects between
+// them; the handler then attributes the write to whichever actor it resolved.
+// Cancel stays Account-only on purpose — undoing a job raised in error is
+// scheduling's business, and the floor surface does not offer it.
 router.post(
   '/work-orders/:id/start',
-  people.authenticate,
-  people.requireActive,
+  authenticateWorkOrderActor,
   requireWorkOrderWriteScope,
   async (req, res, next) => {
     try {
-      const workOrder = await workOrders.startWorkOrder(req.workOrder.id, req.account.id);
+      const actor = req.floorDevice
+        ? { employeeId: req.technician.id }
+        : { accountId: req.account.id };
+      const workOrder = await workOrders.startWorkOrder(req.workOrder.id, actor);
       res.json({ workOrder });
     } catch (error) {
       handleError(error, res, next);
@@ -247,15 +312,17 @@ router.post(
 
 router.post(
   '/work-orders/:id/complete',
-  people.authenticate,
-  people.requireActive,
+  authenticateWorkOrderActor,
   requireWorkOrderWriteScope,
   async (req, res, next) => {
     try {
+      const actor = req.floorDevice
+        ? { employeeId: req.technician.id }
+        : { accountId: req.account.id };
       const workOrder = await workOrders.completeWorkOrder(
         req.workOrder.id,
         { note: req.body?.note },
-        req.account.id
+        actor
       );
       res.json({ workOrder });
     } catch (error) {

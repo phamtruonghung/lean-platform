@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 
 import 'asset.dart';
 import 'downtime_event.dart';
+import 'floor_info.dart';
 import 'job_plan.dart';
 import 'part.dart';
 import 'pm_schedule.dart';
@@ -1365,6 +1366,118 @@ class MaintenanceApi {
         uomCode: row['uomCode'] as String,
         quantity: row['quantity'] as num,
       );
+
+  /// The open Work orders at the shared floor device's Org Unit and beneath
+  /// it (`GET /api/maintenance/floor/work-orders`, issue #77). The device's
+  /// own credential is what authenticates this read — no Account bearer token
+  /// is involved, and the server decides the scope from the device itself, so
+  /// this call names no Org Unit and cannot ask for one.
+  Future<(FloorInfo, List<WorkOrder>)> fetchFloorWorkOrders(String deviceCredential) async {
+    const path = '/api/maintenance/floor/work-orders';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'x-floor-device': deviceCredential}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final floor = body['floor'] as Map<String, dynamic>;
+      return (
+        FloorInfo(
+          orgUnitId: floor['orgUnitId'].toString(),
+          orgUnitName: floor['orgUnitName'] as String,
+          siteId: floor['siteId'].toString(),
+        ),
+        [
+          for (final workOrder in body['workOrders'] as List<dynamic>)
+            _workOrderFrom(workOrder as Map<String, dynamic>),
+        ],
+      );
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Exchanges a technician's Employee number and PIN for a short-lived
+  /// identification (`POST /api/maintenance/floor/identify`, issue #77). The
+  /// device credential must be presented too: an identification is issued for
+  /// one device and is refused on another. A wrong number and a wrong PIN
+  /// answer identically.
+  Future<FloorIdentification> identifyTechnician(
+    String deviceCredential, {
+    required String employeeNo,
+    required String pin,
+  }) async {
+    const path = '/api/maintenance/floor/identify';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'x-floor-device': deviceCredential, 'content-type': 'application/json'},
+        body: jsonEncode({'employeeNo': employeeNo, 'pin': pin}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final employee = body['employee'] as Map<String, dynamic>;
+      return FloorIdentification(
+        token: body['identification'] as String,
+        employeeId: employee['id'].toString(),
+        employeeName: employee['displayName'] as String,
+      );
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Starts a Work order from the floor (`POST
+  /// /api/maintenance/work-orders/:id/start`, issue #77) — the same endpoint
+  /// the desktop Shell calls (#63), carrying the device credential and the
+  /// individual identification instead of an Account bearer token.
+  Future<WorkOrder> startFloorWorkOrder(
+    String deviceCredential,
+    String identification,
+    String id,
+  ) =>
+      _floorWorkOrderAction(deviceCredential, identification, id, 'start', const {});
+
+  /// Completes a Work order from the floor (`POST
+  /// /api/maintenance/work-orders/:id/complete`, issue #77). [note] is what
+  /// was found, required by the same rule the desktop path follows.
+  Future<WorkOrder> completeFloorWorkOrder(
+    String deviceCredential,
+    String identification,
+    String id, {
+    required String note,
+  }) =>
+      _floorWorkOrderAction(deviceCredential, identification, id, 'complete', {'note': note});
+
+  Future<WorkOrder> _floorWorkOrderAction(
+    String deviceCredential,
+    String identification,
+    String id,
+    String action,
+    Map<String, dynamic> body,
+  ) async {
+    final path = '/api/maintenance/work-orders/$id/$action';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {
+          'x-floor-device': deviceCredential,
+          'x-technician-identification': identification,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return _workOrderFrom(decoded['workOrder'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
 
   /// Accepts any 2xx, the same rule `PeopleApi._send` follows (issue #87):
   /// creating an Asset answers 201, which is the status this Module's own

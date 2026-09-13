@@ -12,6 +12,8 @@ import '../maintenance/assets_bloc.dart';
 import '../maintenance/assets_screen.dart';
 import '../maintenance/downtime_bloc.dart';
 import '../maintenance/downtime_screen.dart';
+import '../maintenance/floor_bloc.dart';
+import '../maintenance/floor_screen.dart';
 import '../maintenance/job_plans_bloc.dart';
 import '../maintenance/job_plans_screen.dart';
 import '../maintenance/maintenance_api.dart';
@@ -62,6 +64,7 @@ import 'account_bloc.dart';
 import 'auth_gateway.dart';
 import 'destinations.dart';
 import 'dialog_page.dart';
+import 'floor_device_gateway.dart';
 import 'not_found_screen.dart';
 import 'shell.dart';
 
@@ -86,6 +89,12 @@ abstract final class Routes {
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
   static const String tierBoard = '/tier-board';
+
+  /// The shared floor device's own Screen (issue #77, ADR-0016). Its own
+  /// address, deliberately outside the Shell and never offered as a
+  /// Destination: a device is not an Account, and this surface must be
+  /// reachable without signing in.
+  static const String floor = '/floor';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -113,6 +122,23 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               ? AwaitingApprovalScreen(email: account.email)
               : const SizedBox.shrink();
         },
+      ),
+      // The floor surface (issue #77, ADR-0016). A sibling of the Shell, not a
+      // child of it and not an entry in its sidebar: a shared device is not an
+      // Account, so this Screen is reached at its own address without signing
+      // in. `accountRedirect` returns null for it unconditionally, for the same
+      // reason. It builds its own Bloc from the device credential rather than
+      // from `AccountBloc`, and its body is the whole Screen — no sidebar, no
+      // account footer.
+      GoRoute(
+        path: Routes.floor,
+        builder: (context, state) => BlocProvider<FloorBloc>(
+          create: (context) => FloorBloc(
+            maintenanceApi: context.read<MaintenanceApi>(),
+            floorDeviceGateway: context.read<FloorDeviceGateway>(),
+          )..add(const FloorStarted()),
+          child: const FloorScreen(),
+        ),
       ),
       // Everything an admitted Account can reach sits inside the Shell.
       // Sign-in and awaiting-Approval are siblings of it, not children, so
@@ -814,6 +840,11 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
 @visibleForTesting
 String? accountRedirect(AccountState account, GoRouterState state) {
   final location = state.matchedLocation;
+  // The floor surface is a device's own address, not an Account's: it must be
+  // reachable whether or not anybody is signed in, and an approved Account
+  // landing on it must not be redirected back to the Shell either. This is the
+  // one place the router says so (issue #77).
+  if (location == Routes.floor) return null;
   final atSignIn = location == Routes.signIn;
   final atAwaiting = location == Routes.awaitingApproval;
 

@@ -22,6 +22,7 @@ import 'package:lean_platform/maintenance/maintenance_api.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 
 /// Loads the Platform's own bundled Roboto (`assets/fonts/README.md`,
@@ -1067,6 +1068,13 @@ class FakeWire {
     this.storeStockStatus = 200,
     this.createReceiptStatus = 201,
     this.createReceiptMessage = 'Part X has only 0 EA on the shelf; this movement would take it below zero.',
+    Map<String, dynamic>? floor,
+    List<Map<String, dynamic>>? floorWorkOrders,
+    this.floorWorkOrdersStatus = 200,
+    this.floorIdentifyStatus = 200,
+    this.floorIdentifyMessage = 'That Employee number and PIN were not recognised',
+    this.floorIdentificationToken = 'identification-1',
+    Map<String, dynamic>? floorEmployee,
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -1096,7 +1104,11 @@ class FakeWire {
         unitsOfMeasure = unitsOfMeasure ?? [unitOfMeasureJson('EA', 'Each')],
         stores = stores ?? {},
         storeRows = storeRows ?? {},
-        stock = stock ?? {};
+        stock = stock ?? {},
+        floor = floor ?? {'orgUnitId': '10', 'orgUnitName': 'Line 1', 'siteId': '1'},
+        floorWorkOrders = floorWorkOrders ?? [],
+        floorEmployee = floorEmployee ??
+            {'id': '20', 'employeeNo': 'EMP-20', 'displayName': 'Tess Technician'};
 
   final String role;
 
@@ -1732,6 +1744,42 @@ class FakeWire {
   /// test can assert exactly one request was sent and what it carried.
   final List<(String, Map<String, dynamic>)> receiptPosts = [];
 
+  /// `GET /api/maintenance/floor/work-orders` (issue #77) — the device's own
+  /// read. [floor] is the Org Unit context the server names, and
+  /// [floorWorkOrders] the Open work it returns.
+  Map<String, dynamic> floor;
+  List<Map<String, dynamic>> floorWorkOrders;
+  int floorWorkOrdersStatus;
+
+  /// Every floor read's device credential, in the order it reached the wire.
+  final List<String> floorReads = [];
+
+  /// When set, a floor read hangs until the test completes it — the same
+  /// device [workOrdersGate] uses, needed to prove the placeholders show while
+  /// the read is still in flight.
+  Completer<void>? floorGate;
+
+  /// `POST /api/maintenance/floor/identify` (issue #77).
+  int floorIdentifyStatus;
+  String floorIdentifyMessage;
+  String floorIdentificationToken;
+
+  /// The Employee the identify exchange resolves to.
+  Map<String, dynamic> floorEmployee;
+
+  /// Every identify request that reached the wire, as `{employeeNo, pin,
+  /// device}` — so a test can assert the credential the technician typed and
+  /// the device it was presented to.
+  final List<Map<String, dynamic>> floorIdentifications = [];
+
+  /// Every floor start that reached the wire, as `{id, device,
+  /// identification}` — so a test can assert the transition carried an
+  /// individual identification rather than a device credential alone.
+  final List<Map<String, dynamic>> floorWorkOrderStarts = [];
+
+  /// Every floor complete that reached the wire, the same shape.
+  final List<Map<String, dynamic>> floorWorkOrderCompletions = [];
+
   int _nextEmployeeId = 900;
   int _nextAssignmentId = 500;
   int _nextJobRoleId = 950;
@@ -1970,6 +2018,39 @@ class FakeWire {
   http.Client get client => MockClient((request) async {
         final path = request.url.path;
         requests.add('${request.method} $path');
+        if (path == '/api/maintenance/floor/work-orders') {
+          floorReads.add(request.headers['x-floor-device'] ?? '');
+          if (floorGate != null) await floorGate!.future;
+          if (floorWorkOrdersStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The floor work is unavailable.'}),
+              floorWorkOrdersStatus,
+            );
+          }
+          return http.Response(
+            jsonEncode({'floor': floor, 'workOrders': floorWorkOrders}),
+            200,
+          );
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/floor/identify') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          floorIdentifications.add({
+            'employeeNo': sent['employeeNo'],
+            'pin': sent['pin'],
+            'device': request.headers['x-floor-device'],
+          });
+          if (floorIdentifyStatus != 200) {
+            return http.Response(jsonEncode({'message': floorIdentifyMessage}), floorIdentifyStatus);
+          }
+          return http.Response(
+            jsonEncode({
+              'identification': floorIdentificationToken,
+              'expiresAt': DateTime.now().add(const Duration(minutes: 2)).toUtc().toIso8601String(),
+              'employee': floorEmployee,
+            }),
+            200,
+          );
+        }
         if (path == '/api/people/me') {
           return http.Response(jsonEncode(_meBody(role, selfId, orgUnitScope)), 200);
         }
@@ -2458,20 +2539,38 @@ class FakeWire {
           final workOrderId = segments[4];
           final action = segments[5];
           final body = jsonDecode(request.body) as Map<String, dynamic>;
-          // Recorded before the gate, exactly as the assign handler's own
-          // comment insists — so a test can assert what was sent while the
-          // response still hangs.
+          // A floor request is the same endpoint behind a different door
+          // (issue #77): recorded separately so a test can prove the device
+          // credential and the individual identification each crossed the
+          // wire, without disturbing the Account-path lists above.
+          final floorDevice = request.headers['x-floor-device'];
+          final floorIdentification = request.headers['x-technician-identification'];
           final int status;
           final String message;
           final Map<String, dynamic> update;
           switch (action) {
             case 'start':
               workOrderStarts.add(workOrderId);
+              if (floorDevice != null) {
+                floorWorkOrderStarts.add({
+                  'id': workOrderId,
+                  'device': floorDevice,
+                  'identification': floorIdentification,
+                });
+              }
               status = startWorkOrderStatus;
               message = startWorkOrderMessage;
               update = {'status': 'in_progress'};
             case 'complete':
               workOrderCompletions.add((workOrderId, body));
+              if (floorDevice != null) {
+                floorWorkOrderCompletions.add({
+                  'id': workOrderId,
+                  'device': floorDevice,
+                  'identification': floorIdentification,
+                  'note': body['note'],
+                });
+              }
               status = completeWorkOrderStatus;
               message = completeWorkOrderMessage;
               update = {'status': 'completed', 'completionNote': body['note']};
@@ -2487,13 +2586,20 @@ class FakeWire {
             return http.Response(jsonEncode({'message': message}), status);
           }
           Map<String, dynamic>? updated;
-          workOrders = {
-            for (final entry in workOrders.entries)
-              entry.key: [
-                for (final wo in entry.value)
-                  if (wo['id'] == workOrderId) (updated = {...wo, ...update}) else wo,
-              ],
-          };
+          if (floorDevice != null) {
+            floorWorkOrders = [
+              for (final wo in floorWorkOrders)
+                if (wo['id'] == workOrderId) (updated = {...wo, ...update}) else wo,
+            ];
+          } else {
+            workOrders = {
+              for (final entry in workOrders.entries)
+                entry.key: [
+                  for (final wo in entry.value)
+                    if (wo['id'] == workOrderId) (updated = {...wo, ...update}) else wo,
+                ],
+            };
+          }
           if (updated == null) {
             return http.Response(jsonEncode({'message': 'That Work order does not exist.'}), 404);
           }
@@ -3388,6 +3494,16 @@ class FakeAuthGateway implements AuthGateway {
   Future<void> signOut() async => emitToken(null);
 }
 
+/// A floor device provisioned with [deviceCredential] (issue #77). Pass
+/// `null` to prove the not-registered state a build without a credential
+/// shows.
+class FakeFloorDeviceGateway implements FloorDeviceGateway {
+  FakeFloorDeviceGateway([this.deviceCredential = 'device-credential']);
+
+  @override
+  final String? deviceCredential;
+}
+
 http.Client meClient(Map<String, dynamic> Function() body, {int status = 200}) {
   return MockClient((request) async => http.Response(jsonEncode(body()), status));
 }
@@ -3399,6 +3515,7 @@ Future<void> pumpApp(
   WidgetTester tester, {
   required FakeAuthGateway gateway,
   required http.Client client,
+  FloorDeviceGateway? floorDeviceGateway,
   String? initialLocation,
   bool settle = true,
 }) async {
@@ -3409,6 +3526,8 @@ Future<void> pumpApp(
       // One faked wire behind both Modules' API clients, so a test scripts the
       // whole app's network in one place.
       maintenanceApi: MaintenanceApi(client: client),
+      // The floor surface's device credential, faked at the same seam.
+      floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       initialLocation: initialLocation,
     ),
   );

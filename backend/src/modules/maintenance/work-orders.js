@@ -392,9 +392,15 @@ async function assignWorkOrder(workOrderId, employeeId, accountId) {
 //
 // assigned_to is never read here: the issue is explicit that an unassigned
 // Work order can still be started ("Deliberately not blocked by #62").
-async function startWorkOrder(workOrderId, accountId) {
+//
+// `actor` is `{ accountId }` for the desktop Shell door and `{ employeeId }`
+// for the floor device door (issue #77): the Account is set as `app.user_id`
+// so the audit triggers attribute the write, and an Employee is stamped onto
+// `started_by` so the person who began the work is recorded even when they
+// have no Account (CONTEXT.md: most of a plant cannot sign in).
+async function startWorkOrder(workOrderId, actor = {}) {
   try {
-    return await withActor(accountId, async (client) => {
+    return await withActor(actor.accountId ?? null, async (client) => {
       const { rows: [current] } = await client.query(
         'SELECT status FROM work_orders WHERE id = $1 FOR UPDATE',
         [workOrderId]
@@ -415,14 +421,15 @@ async function startWorkOrder(workOrderId, accountId) {
       const { rows: [row] } = await client.query(
         `WITH updated AS (
            UPDATE work_orders
-              SET status = 'in_progress', actual_start = now()
+              SET status = 'in_progress', actual_start = now(),
+                  started_by = COALESCE($2, started_by)
             WHERE id = $1
            RETURNING *
          )
          SELECT ${WORK_ORDER_COLUMNS}
            FROM updated wo
            ${WORK_ORDER_FROM}`,
-        [workOrderId]
+        [workOrderId, actor.employeeId ?? null]
       );
       return toWorkOrder(row);
     });
@@ -441,16 +448,17 @@ async function startWorkOrder(workOrderId, accountId) {
 //     from the client — a client-supplied duration is an invented duration.
 //   - Who: as an Account, through work_orders.updated_by, filled by the
 //     zz_work_orders_set_actor trigger from the app.user_id withActor sets.
-//     work_orders.completed_by is deliberately NOT filled: it references
-//     employees(id), not app_users(id), and an Account need not be an
-//     Employee at all (CONTEXT.md, Account). Filling it would need a new
-//     People entry-point export for a nullable column no view reads. Note
-//     work_orders is not in the attach_audit list, so updated_by is the only
-//     record of who completed the job.
-async function completeWorkOrder(workOrderId, { note } = {}, accountId) {
+//     work_orders.completed_by is filled only when the actor is an Employee
+//     (issue #77's floor device door): it references employees(id), and an
+//     Account need not be an Employee at all (CONTEXT.md, Account), so a
+//     desktop completion — which has no Employee to name — leaves it null
+//     rather than inventing one. Note work_orders is not in the
+//     attach_audit list, so updated_by and completed_by together are the
+//     record of who closed the job.
+async function completeWorkOrder(workOrderId, { note } = {}, actor = {}) {
   requireNonEmptyString('note', note);
   try {
-    return await withActor(accountId, async (client) => {
+    return await withActor(actor.accountId ?? null, async (client) => {
       const { rows: [current] } = await client.query(
         'SELECT status FROM work_orders WHERE id = $1 FOR UPDATE',
         [workOrderId]
@@ -463,14 +471,15 @@ async function completeWorkOrder(workOrderId, { note } = {}, accountId) {
       const { rows: [row] } = await client.query(
         `WITH updated AS (
            UPDATE work_orders
-              SET status = 'completed', actual_end = now(), completion_note = $2
+              SET status = 'completed', actual_end = now(), completion_note = $2,
+                  completed_by = COALESCE($3, completed_by)
             WHERE id = $1
            RETURNING *
          )
          SELECT ${WORK_ORDER_COLUMNS}, wo.pm_schedule_id
            FROM updated wo
            ${WORK_ORDER_FROM}`,
-        [workOrderId, note.trim()]
+        [workOrderId, note.trim(), actor.employeeId ?? null]
       );
 
       // A PM work order completing advances its schedule (issue #74), in the
