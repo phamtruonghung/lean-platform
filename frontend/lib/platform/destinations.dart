@@ -192,6 +192,25 @@ const List<Destination> platformDestinations = [
     roles: ModuleRoles.maintenance,
     group: DestinationGroupNames.maintenance,
   ),
+  // Parts and Stores (issue #80) are maintenance's own work too — the shared
+  // catalogue and the shelves a job draws from — so they follow the same
+  // Module role set as Assets and Work orders. Filed under Maintenance rather
+  // than a group of their own: inventory is part of this Module, not a
+  // separate one (ADR-0028).
+  Destination(
+    label: 'Parts',
+    icon: Icons.inventory_2_outlined,
+    path: Routes.parts,
+    roles: ModuleRoles.maintenance,
+    group: DestinationGroupNames.maintenance,
+  ),
+  Destination(
+    label: 'Stores',
+    icon: Icons.warehouse_outlined,
+    path: Routes.stores,
+    roles: ModuleRoles.maintenance,
+    group: DestinationGroupNames.maintenance,
+  ),
   Destination(
     label: 'Work orders',
     icon: Icons.build_outlined,

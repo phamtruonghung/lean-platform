@@ -628,6 +628,71 @@ Map<String, dynamic> skillCoverageEntryJson(
       'shortfall': shortfall,
     };
 
+/// One unit of measure as `GET /api/maintenance/units-of-measure` sends it
+/// (issue #80) — the existing baseline catalogue the Part form chooses from.
+Map<String, dynamic> unitOfMeasureJson(String code, String name, {String dimension = 'count'}) => {
+      'code': code,
+      'name': name,
+      'dimension': dimension,
+    };
+
+/// One Part as `GET /api/maintenance/parts` sends it (issue #80) — mirrors
+/// `toPart` (inventory.js) key for key.
+Map<String, dynamic> partJson(
+  String id,
+  String partNo,
+  String description, {
+  String uomCode = 'EA',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'partNo': partNo,
+      'description': description,
+      'uomCode': uomCode,
+      'isActive': isActive,
+    };
+
+/// One Store as `GET /api/maintenance/sites/:siteId/stores` and
+/// `GET /api/maintenance/stores/:id` send it (issue #80) — mirrors `toStore`
+/// (inventory.js) key for key.
+Map<String, dynamic> storeJson(
+  String id,
+  String code,
+  String name, {
+  String siteId = '1',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'siteId': siteId,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'code': code,
+      'name': name,
+      'isActive': isActive,
+    };
+
+/// One row of a store's stock as `GET
+/// /api/maintenance/stores/:storeId/stock` sends it (issue #80) — mirrors
+/// `toStockLevel` (inventory.js) key for key.
+Map<String, dynamic> stockLevelJson(
+  String partId,
+  String partNo,
+  String description,
+  num quantity, {
+  String uomCode = 'EA',
+}) =>
+    {
+      'partId': partId,
+      'partNo': partNo,
+      'description': description,
+      'uomCode': uomCode,
+      'quantity': quantity,
+    };
+
 Map<String, dynamic> pendingJson(
   String id,
   String email,
@@ -920,6 +985,19 @@ class FakeWire {
     this.board,
     this.boardStatus = 200,
     this.boardMessage = 'The tier board is unavailable.',
+    List<Map<String, dynamic>>? parts,
+    this.partsStatus = 200,
+    this.createPartStatus = 201,
+    this.createPartMessage = 'a Part with this part number already exists',
+    List<Map<String, dynamic>>? unitsOfMeasure,
+    this.unitsOfMeasureStatus = 200,
+    Map<String, List<Map<String, dynamic>>>? stores,
+    this.storesStatus = 200,
+    Map<String, Map<String, dynamic>>? storeRows,
+    Map<String, List<Map<String, dynamic>>>? stock,
+    this.storeStockStatus = 200,
+    this.createReceiptStatus = 201,
+    this.createReceiptMessage = 'Part X has only 0 EA on the shelf; this movement would take it below zero.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -943,7 +1021,12 @@ class FakeWire {
         skillCoverage = skillCoverage ?? {},
         jobPlans = jobPlans ?? [],
         pmSchedules = pmSchedules ?? {},
-        workOrderTasks = workOrderTasks ?? {};
+        workOrderTasks = workOrderTasks ?? {},
+        parts = parts ?? [],
+        unitsOfMeasure = unitsOfMeasure ?? [unitOfMeasureJson('EA', 'Each')],
+        stores = stores ?? {},
+        storeRows = storeRows ?? {},
+        stock = stock ?? {};
 
   final String role;
 
@@ -1514,6 +1597,49 @@ class FakeWire {
   /// device [pmSchedulesGate] uses, needed to prove the board shows its own
   /// placeholder while a read is still in flight.
   Completer<void>? boardGate;
+
+  /// `GET /api/maintenance/parts` (issue #80) — the shared catalogue.
+  List<Map<String, dynamic>> parts;
+  int partsStatus;
+
+  /// `POST /api/maintenance/parts` (administrator only).
+  int createPartStatus;
+  String createPartMessage;
+
+  /// Every Part body that actually reached the wire, decoded — so a test can
+  /// assert exactly one request was sent and what it carried.
+  final List<Map<String, dynamic>> partPosts = [];
+
+  /// `GET /api/maintenance/units-of-measure` — the Part form's own picker.
+  List<Map<String, dynamic>> unitsOfMeasure;
+  int unitsOfMeasureStatus;
+
+  /// `GET /api/maintenance/sites/:siteId/stores`, keyed by Site id.
+  Map<String, List<Map<String, dynamic>>> stores;
+  int storesStatus;
+
+  /// Every Site id a stores read was made for, in the order it reached the
+  /// wire.
+  final List<String> storeSites = [];
+
+  /// The single store rows `GET /api/maintenance/stores/:id` and
+  /// `GET /api/maintenance/stores/:id/stock` answer with, keyed by store id.
+  Map<String, Map<String, dynamic>> storeRows;
+
+  /// `GET /api/maintenance/stores/:storeId/stock`, keyed by store id.
+  Map<String, List<Map<String, dynamic>>> stock;
+  int storeStockStatus;
+
+  /// Every stock read's store id, in the order it reached the wire.
+  final List<String> stockReads = [];
+
+  /// `POST /api/maintenance/stores/:storeId/receipts`.
+  int createReceiptStatus;
+  String createReceiptMessage;
+
+  /// Every receipt that actually reached the wire, as `(storeId, body)` — so a
+  /// test can assert exactly one request was sent and what it carried.
+  final List<(String, Map<String, dynamic>)> receiptPosts = [];
 
   int _nextEmployeeId = 900;
   int _nextAssignmentId = 500;
@@ -2921,6 +3047,124 @@ class FakeWire {
           final id = path.split('/')[4];
           queue = [for (final a in queue) if (a['id'] != id) a];
           return http.Response(jsonEncode({'account': {'id': id}}), 200);
+        }
+        if (path == '/api/maintenance/units-of-measure') {
+          if (unitsOfMeasureStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The units of measure are unavailable.'}),
+              unitsOfMeasureStatus,
+            );
+          }
+          return http.Response(jsonEncode({'unitsOfMeasure': unitsOfMeasure}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/parts') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          partPosts.add(sent);
+          if (createPartStatus != 201) {
+            return http.Response(jsonEncode({'message': createPartMessage}), createPartStatus);
+          }
+          final created = partJson(
+            '900',
+            sent['partNo'] as String,
+            sent['description'] as String,
+            uomCode: sent['uomCode'] as String,
+          );
+          parts = [...parts, created];
+          return http.Response(jsonEncode({'part': created}), 201);
+        }
+        if (path == '/api/maintenance/parts') {
+          if (partsStatus != 200) {
+            return http.Response(jsonEncode({'message': 'The parts catalogue is unavailable.'}), partsStatus);
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final sent = includeInactive ? parts : [for (final p in parts) if (p['isActive'] != false) p];
+          return http.Response(jsonEncode({'parts': sent}), 200);
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/stores')) {
+          final siteId = path.split('/')[4];
+          storeSites.add(siteId);
+          if (storesStatus != 200) {
+            return http.Response(jsonEncode({'message': 'The stores are unavailable.'}), storesStatus);
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final siteStores = stores[siteId] ?? [];
+          final sent = includeInactive
+              ? siteStores
+              : [for (final s in siteStores) if (s['isActive'] != false) s];
+          return http.Response(jsonEncode({'stores': sent}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/stores/') &&
+            path.endsWith('/receipts')) {
+          final storeId = path.split('/')[4];
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          receiptPosts.add((storeId, sent));
+          if (createReceiptStatus != 201) {
+            return http.Response(jsonEncode({'message': createReceiptMessage}), createReceiptStatus);
+          }
+          final partId = sent['partId'].toString();
+          final quantity = sent['quantity'] as num;
+          final existing = [...(stock[storeId] ?? const <Map<String, dynamic>>[])];
+          final index = existing.indexWhere((row) => row['partId'].toString() == partId);
+          final prior = index >= 0 ? existing[index]['quantity'] as num : 0;
+          final onHand = prior + quantity;
+          final part = parts.firstWhere(
+            (p) => p['id'].toString() == partId,
+            orElse: () => const <String, dynamic>{},
+          );
+          final row = stockLevelJson(
+            partId,
+            part['partNo'] as String? ?? 'PART',
+            part['description'] as String? ?? '',
+            onHand,
+            uomCode: part['uomCode'] as String? ?? 'EA',
+          );
+          if (index >= 0) {
+            existing[index] = row;
+          } else {
+            existing.add(row);
+          }
+          stock = {...stock, storeId: existing};
+          return http.Response(
+            jsonEncode({
+              'movement': {
+                'id': '900',
+                'partId': partId,
+                'partNo': row['partNo'],
+                'description': row['description'],
+                'uomCode': row['uomCode'],
+                'storeId': storeId,
+                'quantity': quantity,
+                'movementType': 'receipt',
+                'reason': sent['reason'] ?? 'received',
+                'occurredAt': DateTime.now().toUtc().toIso8601String(),
+              },
+              'onHand': onHand,
+            }),
+            201,
+          );
+        }
+        if (path.startsWith('/api/maintenance/stores/') && path.endsWith('/stock')) {
+          final storeId = path.split('/')[4];
+          stockReads.add(storeId);
+          if (storeStockStatus != 200) {
+            return http.Response(jsonEncode({'message': 'That store could not be read.'}), storeStockStatus);
+          }
+          final store = storeRows[storeId];
+          if (store == null) {
+            return http.Response(jsonEncode({'message': 'Store not found'}), 404);
+          }
+          return http.Response(jsonEncode({'store': store, 'stock': stock[storeId] ?? []}), 200);
+        }
+        if (request.method == 'GET' &&
+            path.startsWith('/api/maintenance/stores/') &&
+            path.split('/').length == 5) {
+          final storeId = path.split('/')[4];
+          final store = storeRows[storeId];
+          if (store == null) {
+            return http.Response(jsonEncode({'message': 'Store not found'}), 404);
+          }
+          return http.Response(jsonEncode({'store': store}), 200);
         }
         return http.Response('{}', 404);
       });
