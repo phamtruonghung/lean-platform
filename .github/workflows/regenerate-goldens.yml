@@ -1,0 +1,25 @@
+name: Regenerate goldens (temporary)
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  goldens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+      - name: Resolve dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Update goldens
+        working-directory: frontend
+        run: flutter test --update-goldens
+      - name: Upload goldens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goldens
+          path: frontend/test/goldens
