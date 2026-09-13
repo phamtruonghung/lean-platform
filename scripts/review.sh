@@ -63,14 +63,19 @@ usage() {
 usage: ./scripts/review.sh [command]
 
 commands:
-  up             build and start the whole stack, migrate the schema, and
-                 wait until it answers — the default if no command is given
-  down           stop the stack (docker compose down); data is kept
-  reset [-y]     destroy the Postgres volume and bring the stack back up from
-                 empty — asks to confirm first unless -y/--yes is given
-  logs [service] follow logs for the whole stack, or one service
-  status         show container status and the health endpoint
-  help           show this message
+  up                     build and start the whole stack, migrate the schema,
+                         and wait until it answers — the default if no
+                         command is given
+  down                   stop the stack (docker compose down); data is kept
+  reset [-y]             destroy the Postgres volume and bring the stack back
+                         up from empty — asks to confirm first unless
+                         -y/--yes is given
+  logs [service]         follow logs for the whole stack, or one service
+  status                 show container status and the health endpoint
+  promote-admin <email>  promote an Account that has already signed in once
+                         to admin/approved, the way the app's own Approval
+                         screen does — local dev convenience only
+  help                   show this message
 EOF
 }
 
@@ -193,6 +198,51 @@ run_migrations() {
   ok "schema is current"
 }
 
+# A reviewer landing on a freshly-migrated database otherwise sees an empty
+# Platform — no Site, no Org Unit, nothing to click into. This seeds the
+# smallest realistic tree (one Site, an area, and a line beneath it) through
+# the already-running postgres container, the same way `promote-admin` does,
+# rather than a fresh `docker compose run`, since postgres is already up by
+# the time this runs.
+#
+# ON CONFLICT DO NOTHING on each table's own unique constraint makes this safe
+# to run on every `up` — including the `up` that `reset` chains into — without
+# ever producing a second Demo Plant or a duplicate Assembly line. A real
+# failure here (a typo'd column, a broken constraint) is not something to
+# swallow alongside that: only the expected conflict is ignored, so `die` on
+# anything psql itself reports.
+seed_sample_data() {
+  log "seeding sample Site and Org Units"
+  docker compose -f "$COMPOSE_FILE" exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
+    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'SQL' \
+    || die "seeding sample data failed — run './scripts/review.sh logs postgres' to see why"
+INSERT INTO sites (code, name, timezone)
+VALUES ('DEMO', 'Demo Plant', 'UTC')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO org_units (site_id, parent_id, code, name, unit_type)
+VALUES (
+  (SELECT id FROM sites WHERE code = 'DEMO'),
+  NULL,
+  'A1',
+  'Assembly',
+  'area'
+)
+ON CONFLICT (site_id, code) DO NOTHING;
+
+INSERT INTO org_units (site_id, parent_id, code, name, unit_type)
+VALUES (
+  (SELECT id FROM sites WHERE code = 'DEMO'),
+  (SELECT id FROM org_units WHERE site_id = (SELECT id FROM sites WHERE code = 'DEMO') AND code = 'A1'),
+  'A1-L1',
+  'Assembly Line 1',
+  'line'
+)
+ON CONFLICT (site_id, code) DO NOTHING;
+SQL
+  ok "sample data ready (Demo Plant / Assembly / Assembly Line 1)"
+}
+
 # ------------------------------------------------------------------------------
 # Commands
 # ------------------------------------------------------------------------------
@@ -211,6 +261,7 @@ cmd_up() {
 
   wait_for_postgres
   run_migrations
+  seed_sample_data
 
   wait_for_http_200 "${EDGE_URL}/api/health" "backend, through the edge" "$APP_WAIT_TIMEOUT_SECONDS"
   wait_for_http_200 "${EDGE_URL}/" "the Flutter bundle, through the edge" "$APP_WAIT_TIMEOUT_SECONDS"
@@ -287,6 +338,43 @@ cmd_status() {
   fi
 }
 
+# A local-only shortcut for what an administrator does through the app's own
+# Approval screen (POST /accounts/:id/approval in
+# backend/src/modules/people/routes.js) — promote an Account that has already
+# signed in once (sitting pending/operator in the queue) to admin/approved.
+#
+# This must never INSERT a row. `resolveAccountForIdentity`
+# (backend/src/modules/people/service.js) looks an Account up by
+# `external_subject` only and INSERTs a fresh row when there is no match;
+# `app_users.email` is UNIQUE, so pre-creating a row here ahead of that
+# person's real first sign-in would make their sign-in try to INSERT a second
+# row with the same email and fail outright. Only ever UPDATE a row that
+# already exists, and die loudly when there is nothing to update.
+cmd_promote_admin() {
+  [[ $# -eq 1 ]] || die "usage: ./scripts/review.sh promote-admin <email>"
+  local email="$1" id result
+
+  require_docker
+
+  id=$(docker compose -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null || true)
+  [[ -n "$id" ]] || die "postgres is not running — run './scripts/review.sh up' first"
+
+  # email is CITEXT, so this match is already case-insensitive; the email is
+  # single-quoted for the SQL literal and not otherwise escaped — not worth
+  # over-engineering for a local dev convenience.
+  # -q on top of -t -A: without it, psql still prints its own "UPDATE n"
+  # command tag to stdout, which would make $result non-empty even when the
+  # UPDATE matched nothing and RETURNING produced no row — silently promoting
+  # nobody while reporting success.
+  result=$(docker compose -f "$COMPOSE_FILE" exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
+    psql -v ON_ERROR_STOP=1 -q -t -A -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
+    "UPDATE app_users SET role = 'admin', approval_status = 'approved', is_active = TRUE WHERE email = '${email}' RETURNING id;") \
+    || die "promoting ${email} failed — run './scripts/review.sh logs postgres' to see why"
+
+  [[ -n "$result" ]] || die "no Account found for ${email} — sign in through the app once first (it starts as pending/operator), then run this again"
+  ok "${email} is now an approved admin"
+}
+
 # ------------------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------------------
@@ -297,12 +385,13 @@ if [[ $# -gt 0 ]]; then
 fi
 
 case "$command" in
-  up)             cmd_up ;;
-  down)           cmd_down ;;
-  reset)          cmd_reset "$@" ;;
-  logs)           cmd_logs "$@" ;;
-  status)         cmd_status ;;
-  help|-h|--help) usage ;;
+  up)                    cmd_up ;;
+  down)                  cmd_down ;;
+  reset)                 cmd_reset "$@" ;;
+  logs)                  cmd_logs "$@" ;;
+  status)                cmd_status ;;
+  promote-admin)         cmd_promote_admin "$@" ;;
+  help|-h|--help)        usage ;;
   *)
     usage >&2
     exit 2
