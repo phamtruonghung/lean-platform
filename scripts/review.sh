@@ -30,6 +30,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
+SEED_FILE="dev/seed-demo.sql"
 
 # Must match docker-compose.yml's own defaults exactly: this is what lets the
 # migration step below reach the same Postgres compose is about to start,
@@ -75,6 +76,12 @@ commands:
   promote-admin <email>  promote an Account that has already signed in once
                          to admin/approved, the way the app's own Approval
                          screen does — local dev convenience only
+  seed                   re-apply the demo dataset (dev/seed-demo.sql) to the
+                         running stack, without rebuilding it
+  grant-account <email> <org-unit-code> [--write]
+                         give an Account that has signed in a Grant on a Demo
+                         Org Unit (--write for a write Grant), for testing the
+                         Org-Unit-scoped behaviour
   help                   show this message
 EOF
 }
@@ -199,48 +206,26 @@ run_migrations() {
 }
 
 # A reviewer landing on a freshly-migrated database otherwise sees an empty
-# Platform — no Site, no Org Unit, nothing to click into. This seeds the
-# smallest realistic tree (one Site, an area, and a line beneath it) through
-# the already-running postgres container, the same way `promote-admin` does,
-# rather than a fresh `docker compose run`, since postgres is already up by
-# the time this runs.
+# Platform — no Site, no Org Unit, nothing to click into. This applies
+# dev/seed-demo.sql — the versioned, idempotent demo dataset (the Demo Plant's
+# Org Units, Employees, Assets, inventory, maintenance work, and the plant's
+# shifts and production) — through the already-running postgres container, the
+# same way `promote-admin` does, rather than a fresh `docker compose run`,
+# since postgres is already up by the time this runs.
 #
-# ON CONFLICT DO NOTHING on each table's own unique constraint makes this safe
-# to run on every `up` — including the `up` that `reset` chains into — without
-# ever producing a second Demo Plant or a duplicate Assembly line. A real
-# failure here (a typo'd column, a broken constraint) is not something to
-# swallow alongside that: only the expected conflict is ignored, so `die` on
-# anything psql itself reports.
-seed_sample_data() {
-  log "seeding sample Site and Org Units"
+# The file wraps every insert in one transaction and keys each row on a fixed
+# demo identifier, so this is safe to run on every `up` — including the `up`
+# that `reset` chains into — and on demand via the `seed` command, without
+# duplicating a row. Only the expected conflict is ignored: ON_ERROR_STOP makes
+# a real failure (a typo'd column, a broken constraint) fail the whole file and
+# roll it back, rather than leaving a half-populated plant.
+seed_demo_data() {
+  [[ -f "$SEED_FILE" ]] || die "${SEED_FILE} is missing from the repo root"
+  log "seeding demo data from ${SEED_FILE}"
   docker compose -f "$COMPOSE_FILE" exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'SQL' \
-    || die "seeding sample data failed — run './scripts/review.sh logs postgres' to see why"
-INSERT INTO sites (code, name, timezone)
-VALUES ('DEMO', 'Demo Plant', 'UTC')
-ON CONFLICT (code) DO NOTHING;
-
-INSERT INTO org_units (site_id, parent_id, code, name, unit_type)
-VALUES (
-  (SELECT id FROM sites WHERE code = 'DEMO'),
-  NULL,
-  'A1',
-  'Assembly',
-  'area'
-)
-ON CONFLICT (site_id, code) DO NOTHING;
-
-INSERT INTO org_units (site_id, parent_id, code, name, unit_type)
-VALUES (
-  (SELECT id FROM sites WHERE code = 'DEMO'),
-  (SELECT id FROM org_units WHERE site_id = (SELECT id FROM sites WHERE code = 'DEMO') AND code = 'A1'),
-  'A1-L1',
-  'Assembly Line 1',
-  'line'
-)
-ON CONFLICT (site_id, code) DO NOTHING;
-SQL
-  ok "sample data ready (Demo Plant / Assembly / Assembly Line 1)"
+    psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$SEED_FILE" \
+    || die "seeding demo data failed — run './scripts/review.sh logs postgres' to see why"
+  ok "demo data ready (Demo Plant: Org Units, Employees, Assets, inventory, maintenance and production)"
 }
 
 # ------------------------------------------------------------------------------
@@ -261,7 +246,7 @@ cmd_up() {
 
   wait_for_postgres
   run_migrations
-  seed_sample_data
+  seed_demo_data
 
   wait_for_http_200 "${EDGE_URL}/api/health" "backend, through the edge" "$APP_WAIT_TIMEOUT_SECONDS"
   wait_for_http_200 "${EDGE_URL}/" "the Flutter bundle, through the edge" "$APP_WAIT_TIMEOUT_SECONDS"
@@ -338,6 +323,17 @@ cmd_status() {
   fi
 }
 
+# Re-apply the demo dataset without rebuilding the stack — the same seed `up`
+# runs, for when a reviewer has deleted or edited demo rows and wants the Demo
+# Plant back. Requires the stack to already be up.
+cmd_seed() {
+  require_docker
+  local id
+  id=$(docker compose -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null || true)
+  [[ -n "$id" ]] || die "postgres is not running — run './scripts/review.sh up' first"
+  seed_demo_data
+}
+
 # A local-only shortcut for what an administrator does through the app's own
 # Approval screen (POST /accounts/:id/approval in
 # backend/src/modules/people/routes.js) — promote an Account that has already
@@ -375,6 +371,58 @@ cmd_promote_admin() {
   ok "${email} is now an approved admin"
 }
 
+# Give an Account that has already signed in a Grant on a Demo Org Unit, so a
+# reviewer can see the Org-Unit-scoped behaviour (Home's awaiting-assignment
+# count, the per-row Assign affordance) without hand-editing the database. A
+# Grant row lives in `app_user_org_units`; `--write` sets `can_write` so the
+# Account gets a write Grant as well as a read one. The Org Unit is resolved by
+# code within the Demo Site.
+#
+# The Account must already exist: like `promote-admin`, this never INSERTs an
+# `app_users` row. Sign-in creates that row itself (`email` is UNIQUE), and a
+# pre-created one makes the real sign-in fail.
+cmd_grant_account() {
+  local write=0 email="" code="" can_write="FALSE"
+  for arg in "$@"; do
+    case "$arg" in
+      --write) write=1 ;;
+      *)
+        if [[ -z "$email" ]]; then email="$arg"
+        elif [[ -z "$code" ]]; then code="$arg"
+        fi
+        ;;
+    esac
+  done
+  [[ -n "$email" && -n "$code" ]] || die "usage: ./scripts/review.sh grant-account <email> <org-unit-code> [--write]"
+  (( write )) && can_write="TRUE"
+
+  local id result
+  require_docker
+
+  id=$(docker compose -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null || true)
+  [[ -n "$id" ]] || die "postgres is not running — run './scripts/review.sh up' first"
+
+  # email is CITEXT, so the match is already case-insensitive; the values are
+  # single-quoted and otherwise unescaped, which is fine for a local dev
+  # convenience. -q -t -A so RETURNING gives one bare id per matched row and
+  # nothing else; an empty result means the Account or the Org Unit code did
+  # not resolve.
+  result=$(docker compose -f "$COMPOSE_FILE" exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
+    psql -v ON_ERROR_STOP=1 -q -t -A -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
+    "INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write)
+     SELECT au.id, ou.id, ${can_write}
+       FROM app_users au
+       JOIN org_units ou ON ou.code = '${code}'
+       JOIN sites s ON s.id = ou.site_id AND s.code = 'DEMO'
+      WHERE au.email = '${email}'
+     ON CONFLICT (app_user_id, org_unit_id) DO UPDATE SET can_write = EXCLUDED.can_write
+     RETURNING app_user_id;") \
+    || die "granting ${email} on ${code} failed — run './scripts/review.sh logs postgres' to see why"
+
+  [[ -n "$result" ]] || die "no Account for ${email} or no Demo Org Unit '${code}' — sign in through the app once, check the code, then run this again"
+  ok "${email} now holds a $([[ "$can_write" == "TRUE" ]] && echo "write" || echo "read") Grant on ${code}"
+}
+
 # ------------------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------------------
@@ -391,6 +439,8 @@ case "$command" in
   logs)                  cmd_logs "$@" ;;
   status)                cmd_status ;;
   promote-admin)         cmd_promote_admin "$@" ;;
+  seed)                  cmd_seed ;;
+  grant-account)         cmd_grant_account "$@" ;;
   help|-h|--help)        usage ;;
   *)
     usage >&2
