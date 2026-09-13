@@ -213,6 +213,85 @@ void main() {
     expect(find.byKey(AppSearchField.fieldKey('employee')), findsOneWidget);
   });
 
+  // Issue #144: a pick collapses the widget's own list, the same way the
+  // submit path already does. Before this, the two call sites that wanted it
+  // closed forced a remount by folding a generation counter into this
+  // widget's outer `Key`.
+  testWidgets(
+      'tapping a suggestion collapses the list and cancels a pending debounce, so no later fetch reopens it',
+      (WidgetTester tester) async {
+    final calls = <String>[];
+    Future<List<_Record>> fetch(String term) async {
+      calls.add(term);
+      return const [(id: 'e1', label: 'Ada Lovelace')];
+    }
+
+    await tester.pumpWidget(_Harness(fetchSuggestions: fetch));
+
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'ada');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(find.byKey(AppSearchField.suggestionKey('employee', 'e1')), findsOneWidget);
+    expect(calls, ['ada']);
+
+    // Start a new search but tap the still-visible suggestion before the
+    // debounce fires — the pick must cancel that pending fetch, not merely
+    // clear the list it would have landed into.
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'adalovelace');
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(AppSearchField.suggestionKey('employee', 'e1')));
+    await tester.pump();
+
+    expect(find.byKey(AppSearchField.suggestionKey('employee', 'e1')), findsNothing);
+
+    // Waiting out the debounce issues no fetch for the term typed after the
+    // pick.
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(calls, ['ada']);
+  });
+
+  testWidgets('a fetch already in flight when a suggestion is picked cannot reopen the list',
+      (WidgetTester tester) async {
+    final completers = <String, Completer<List<_Record>>>{};
+    Future<List<_Record>> fetch(String term) {
+      final completer = Completer<List<_Record>>();
+      completers[term] = completer;
+      return completer.future;
+    }
+
+    await tester.pumpWidget(_Harness(fetchSuggestions: fetch));
+
+    // A fetch for "aa" is issued and left in flight.
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'aa');
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(completers.containsKey('aa'), isTrue);
+
+    // A newer fetch for "bb" resolves and shows its suggestion while "aa" is
+    // still pending.
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'bb');
+    await tester.pump(const Duration(milliseconds: 350));
+    completers['bb']!.complete(const [(id: 'b1', label: 'Bravo')]);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(AppSearchField.suggestionKey('employee', 'b1')), findsOneWidget);
+
+    // Pick "b1" while "aa" is still in flight.
+    await tester.tap(find.byKey(AppSearchField.suggestionKey('employee', 'b1')));
+    await tester.pump();
+    expect(find.byKey(AppSearchField.suggestionKey('employee', 'b1')), findsNothing);
+    expect(find.byKey(AppSearchField.suggestionListKey('employee')), findsNothing);
+
+    // The in-flight fetch resolves after the pick: it must not reopen the
+    // list the pick just closed.
+    completers['aa']!.complete(const [(id: 'a1', label: 'Alpha')]);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(AppSearchField.suggestionKey('employee', 'a1')), findsNothing);
+    expect(find.byKey(AppSearchField.suggestionListKey('employee')), findsNothing);
+  });
+
   testWidgets('a zero-result term (2+ characters) renders the shared PlatformEmptyState',
       (WidgetTester tester) async {
     Future<List<_Record>> fetch(String term) async => const [];
