@@ -424,6 +424,7 @@ Map<String, dynamic> orgUnitJson(
   String? parentId,
   String unitType = 'area',
   String? path,
+  List<Map<String, String>> ancestors = const [],
 }) =>
     {
       'id': id,
@@ -436,6 +437,11 @@ Map<String, dynamic> orgUnitJson(
       // its own [path] explicitly; the bare id is only a fixture default for
       // the many existing tests that never look past this node's own row.
       'path': path ?? id,
+      // Only the search route resolves these (`plant.searchOrgUnits`, issue
+      // #145, ADR-0024); every other response omits the key, which the client
+      // reads as no ancestors. Pass `ancestors` on a search fixture when the
+      // test cares about a hit's breadcrumb.
+      'ancestors': ancestors,
       'sortOrder': 0,
       'isActive': true,
     };

@@ -326,6 +326,13 @@ class PeopleApi {
         unitType: orgUnit['unitType'] as String,
         isActive: orgUnit['isActive'] == null ? true : orgUnit['isActive'] == true,
         path: orgUnit['path'] == null ? '' : orgUnit['path'].toString(),
+        // `ancestors` is sent only by the search route (issue #145, ADR-0024);
+        // every other Org Unit response omits it, so an absent list is empty
+        // rather than an error.
+        ancestorNames: [
+          for (final ancestor in orgUnit['ancestors'] as List<dynamic>? ?? const [])
+            (ancestor as Map<String, dynamic>)['name'] as String,
+        ],
       );
 
   /// Creates a Site (`POST /api/people/sites`, administrator only, issue
