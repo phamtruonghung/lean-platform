@@ -1,5 +1,7 @@
 name: Regenerate goldens (temporary)
 on:
+  push:
+    branches: [fix/regenerate-work-order-goldens]
   workflow_dispatch:
 jobs:
   goldens:
