@@ -173,9 +173,22 @@ class PeopleApi {
               orgUnitId: grant['orgUnitId'].toString(),
               siteId: grant['siteId'].toString(),
               canWrite: grant['canWrite'] == true,
+              // The Org Units this Grant reaches, granted unit included
+              // (issue #110). Absent means an older server, so it falls back
+              // to "this Grant's own unit" rather than an empty reach.
+              orgUnitIds: _orgUnitIdsFrom(grant['orgUnitIds']),
             ),
       ],
     );
+  }
+
+  /// A Grant's `orgUnitIds`, when the server sent one: every entry stringified
+  /// (the ids cross the wire as strings, the same as `orgUnitId`), null when
+  /// the field is absent so [OrgUnitGrant.reachedOrgUnitIds] falls back to the
+  /// granted unit alone.
+  static List<String>? _orgUnitIdsFrom(Object? raw) {
+    if (raw is! List<dynamic>) return null;
+    return [for (final id in raw) id.toString()];
   }
 
   /// The Approval queue: every Account nobody has decided about yet

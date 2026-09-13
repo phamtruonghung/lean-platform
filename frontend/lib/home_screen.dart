@@ -159,15 +159,14 @@ class _WorkSummarySection extends StatelessWidget {
               icon: Icons.person_off_outlined,
               label: 'Awaiting assignment',
               count: data.unassignedCount,
-              // A follow-up on #101, raised before this shipped: an Account
-              // scoped to Grants only ever sees a Work order sitting exactly
-              // on a granted Org Unit — `HomeWorkSummary.unassignedCount`'s
-              // own doc comment has the full reasoning. The unscoped wording
-              // below would tell that Account it is seeing every unassigned
-              // Work order when it is not, so the card's own claim changes
-              // with `unassignedScopedToGrants` rather than the count itself.
+              // Issue #110 (ADR-0027): the count now includes Work orders
+              // anywhere beneath a granted Org Unit, because `/me` reports each
+              // Grant's whole reach — so the old "not what sits beneath them"
+              // caveat is no longer true and must go. The wording still differs
+              // from an administrator's: a scoped Account's number is complete
+              // across its Grants, not across the Site, and the card says so.
               context_: data.unassignedScopedToGrants
-                  ? 'On the Org Units granted to you, not what sits beneath them'
+                  ? 'On the Org Units granted to you, and everything beneath them'
                   : 'Open, with nobody holding them yet',
               onTap: () => context.go(Routes.workOrders),
             ),

@@ -75,8 +75,10 @@ void main() {
         '1': [
           // Unassigned, and on the granted Org Unit: counted.
           workOrderJson('101', 'WO-101', 'Belt is slipping', orgUnitId: '10'),
-          // Unassigned, but on an Org Unit this Account holds no Grant on:
-          // not counted, the same coarse Grant-matching `HomeBloc` documents.
+          // Unassigned, but on an Org Unit this Grant does not reach — the
+          // wire here reports a reach of only '10' (no `orgUnitIds`), so '11'
+          // is outside it and is not counted. A Grant that *did* reach '11'
+          // would count it; see the beneath-a-grant test below.
           workOrderJson('102', 'WO-102', 'Guard is loose', orgUnitId: '11'),
           // Already has an assignee: open, but not "awaiting assignment".
           workOrderJson('103', 'WO-103', 'Bearing noise', orgUnitId: '10', assignedTo: '9', assigneeName: 'Jo'),
@@ -93,13 +95,46 @@ void main() {
     expect(find.text('3'), findsOneWidget);
     expect(find.text('Awaiting assignment'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
-    // A follow-up on #101, raised before it shipped: a Grant-scoped Account
-    // must never be told it is seeing every unassigned Work order — it is
-    // only seeing what sits exactly on an Org Unit it holds a Grant on, not
-    // what sits beneath one (`HomeWorkSummary.unassignedCount`'s own doc
-    // comment).
-    expect(find.text('On the Org Units granted to you, not what sits beneath them'), findsOneWidget);
+    // A scoped Account must never be told it is seeing every unassigned Work
+    // order — it is only seeing what its Grants reach. Since issue #110 that
+    // reach includes everything beneath a granted Org Unit, so the old "not
+    // what sits beneath them" caveat is gone and the card says what the number
+    // truly is (`HomeWorkSummary.unassignedCount`'s own doc comment).
+    expect(find.text('On the Org Units granted to you, and everything beneath them'), findsOneWidget);
     expect(find.text('Open, with nobody holding them yet'), findsNothing);
+  });
+
+  testWidgets(
+      'a Work order beneath a granted Org Unit is counted — the awaiting-assignment number reaches '
+      'downward the way the Grant does (issue #110)', (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {
+        'everywhere': false,
+        'grants': [
+          scopeGrantJson('10', orgUnitIds: ['10', '11']),
+        ],
+      },
+      workOrders: {
+        '1': [
+          // On the granted Org Unit itself.
+          workOrderJson('101', 'WO-101', 'Belt is slipping', orgUnitId: '10'),
+          // Beneath the granted Org Unit — the case the old count dropped.
+          workOrderJson('102', 'WO-102', 'Guard is loose', orgUnitId: '11'),
+          // Outside the Grant's reach: still not counted.
+          workOrderJson('103', 'WO-103', 'Bearing noise', orgUnitId: '12'),
+        ],
+      },
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+    expect(find.byKey(HomeScreen.unassignedCardKey), findsOneWidget);
+    // 101 and 102 count; 103 does not.
+    expect(find.text('2'), findsOneWidget);
+    expect(
+      find.text('On the Org Units granted to you, and everything beneath them'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('an administrator sees both the Work order cards and the Approvals card, and the '
@@ -121,7 +156,7 @@ void main() {
     // so unlike the supervisor above, the unscoped wording is honest here.
     expect(find.text('Open, with nobody holding them yet'), findsOneWidget);
     expect(
-      find.text('On the Org Units granted to you, not what sits beneath them'),
+      find.text('On the Org Units granted to you, and everything beneath them'),
       findsNothing,
     );
   });

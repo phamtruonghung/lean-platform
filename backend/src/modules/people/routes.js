@@ -60,6 +60,14 @@ function requireAccountId(req) {
 // already answers on demand, and computing it for every visible Site here
 // would be O(number of visible Sites) queries on a route that runs on every
 // session resolution. See authorization.js's own header and orgUnitScopeFor.
+//
+// What this route DOES carry, per Grant, is the set of Org Units that Grant
+// reaches — the granted unit plus its descendants (issue #110, ADR-0027),
+// computed inside orgUnitScopeFor's own query. That is not the same question
+// as an entry point ("where does my scope begin" versus "what is inside my
+// scope"), it is bounded by the caller's own Grant count rather than a Site
+// count, and it is what lets a Screen count work beneath a Grant without
+// walking the tree on the client.
 router.get('/me', authenticate, async (req, res, next) => {
   try {
     res.json({

@@ -94,23 +94,20 @@ class HomeWorkSummary {
   final int openCount;
 
   /// Open and unassigned, counted only within an Org Unit this Account holds
-  /// a Grant on — every Org Unit, for an administrator (`everywhere`). A
-  /// coarse signal, the same one `Routes.workOrders`'s own
-  /// `canAssignWorkOrder` already reads off `orgUnitScope` (router.dart):
-  /// `/me` reports which Org Units are granted but not their ancestry, so a
-  /// Work order sitting *beneath* a granted Org Unit is not counted here even
-  /// though a write there would actually be allowed. No new endpoint changes
-  /// that; this only tells the same coarse story a card can.
+  /// a Grant reaching — every Org Unit, for an administrator (`everywhere`).
+  /// Since issue #110 (ADR-0027) `/me` reports each Grant's whole reach, the
+  /// granted unit plus every descendant, so a Work order sitting *beneath* a
+  /// granted Org Unit is counted here too: this is now the honest "awaiting
+  /// assignment across the Org Units I may act in", not a count that silently
+  /// drops everything below a Grant.
   final int unassignedCount;
 
-  /// Whether [unassignedCount] is genuinely undercounted for this reason —
-  /// true for every Account except an administrator's own `everywhere` scope
-  /// (a follow-up on #101, raised before this shipped). The count itself is
-  /// never changed for this: fixing the undercount needs the Org Unit
-  /// ancestry no endpoint here answers. What changes is the card's own
-  /// claim — `_HomeCard`'s context line reads differently depending on this
-  /// flag, so a scoped Account is never told it is seeing everything
-  /// unassigned when it is only seeing what it holds a Grant on directly.
+  /// Whether [unassignedCount] is scoped to this Account's Grants rather than
+  /// every Site — false only for an administrator's own `everywhere` scope.
+  /// The count itself is complete within that scope (issue #110), so this no
+  /// longer flags an undercount; it is what lets the card say *which* scope
+  /// the number is complete across, rather than telling a scoped Account it is
+  /// seeing everything when it is seeing its own reach.
   final bool unassignedScopedToGrants;
 }
 
@@ -262,8 +259,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  bool _reachesOrgUnit(String orgUnitId) =>
-      _orgUnitScope.everywhere || _orgUnitScope.grants.any((grant) => grant.orgUnitId == orgUnitId);
+  bool _reachesOrgUnit(String orgUnitId) => _orgUnitScope.reachesOrgUnit(orgUnitId);
 
   Future<void> _loadApprovals(Emitter<HomeState> emit) async {
     final token = _auth.currentAccessToken;

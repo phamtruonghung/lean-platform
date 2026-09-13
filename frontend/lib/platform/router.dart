@@ -432,14 +432,14 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                     // offered no way to raise, since the server would refuse
                     // it anyway (#55, story 39).
                     canRaiseWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
-                    // Same coarse signal, same reason (issue #62): `/me`
-                    // reports which Org Units are granted but not their
-                    // ancestry, so the client cannot tell whether a Grant
-                    // *reaches* this particular Work order's Org Unit. The
-                    // server is the real gate (403); this only avoids
-                    // offering an action to a caller who holds no write
-                    // Grant anywhere at all.
-                    canAssignWorkOrder: account.account.orgUnitScope.canWriteSomewhere,
+                    // The per-Org-Unit write check (issue #62): may this
+                    // caller write at the Org Unit a given Work order sits at?
+                    // `canWriteAt` reads the same `/me` scope — each Grant's
+                    // whole reach, issue #110/ADR-0027 — that HomeBloc's
+                    // awaiting-assignment count reads, so the affordance and
+                    // the count can never disagree about what is in scope. The
+                    // server is the real gate (403).
+                    canAssignWorkOrder: account.account.orgUnitScope.canWriteAt,
                     // Same coarse signal again, same reason (issue #63): a
                     // separate flag from canAssignWorkOrder rather than
                     // reusing it, since each affordance carries its own
