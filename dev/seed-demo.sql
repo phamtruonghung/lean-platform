@@ -145,4 +145,64 @@ INSERT INTO assets (org_unit_id, code, name, asset_type, criticality, parent_id,
    (SELECT id FROM assets WHERE code = 'DEMO-PRESS-01'), 'component')
 ON CONFLICT (code) DO NOTHING;
 
+-- -----------------------------------------------------------------------------
+-- Inventory — the parts catalogue, two stores, and the stock they hold.
+-- A store's on-hand level is derived from these movements, never stored.
+-- -----------------------------------------------------------------------------
+INSERT INTO parts (part_no, description, uom_code) VALUES
+  ('DEMO-P-1001', 'Hydraulic oil ISO 46',   'L'),
+  ('DEMO-P-1002', 'Conveyor belt 600 mm',   'M'),
+  ('DEMO-P-1003', 'Bearing 6205-2RS',       'EA'),
+  ('DEMO-P-1004', 'Grease cartridge',       'EA'),
+  ('DEMO-P-1005', 'Safety gloves, pair',    'EA')
+ON CONFLICT (part_no) DO NOTHING;
+
+INSERT INTO stores (site_id, org_unit_id, code, name) VALUES
+  ((SELECT id FROM sites WHERE code = 'DEMO'),
+   (SELECT id FROM org_units WHERE code = 'A1' AND site_id = (SELECT id FROM sites WHERE code = 'DEMO')),
+   'DEMO-STORE-MAIN', 'Main Stores'),
+  ((SELECT id FROM sites WHERE code = 'DEMO'),
+   (SELECT id FROM org_units WHERE code = 'A1-L1-C1' AND site_id = (SELECT id FROM sites WHERE code = 'DEMO')),
+   'DEMO-STORE-LINE', 'Cell 1 line-side')
+ON CONFLICT (site_id, code) DO NOTHING;
+
+-- Opening receipts. Positive, so their order among themselves cannot trip the
+-- below-zero refusal. Guarded per (part, store, reason) so re-running never
+-- adds a second opening balance.
+INSERT INTO stock_movements (part_id, store_id, quantity, movement_type, reason, occurred_at)
+SELECT p.id, s.id, v.quantity, 'receipt', 'DEMO opening receipt',
+       now() - make_interval(days => v.days_ago)
+  FROM (VALUES
+    ('DEMO-P-1001', 'DEMO-STORE-MAIN', 200,  20),
+    ('DEMO-P-1002', 'DEMO-STORE-MAIN', 120,  20),
+    ('DEMO-P-1003', 'DEMO-STORE-MAIN',  40,  20),
+    ('DEMO-P-1004', 'DEMO-STORE-MAIN',  60,  20),
+    ('DEMO-P-1005', 'DEMO-STORE-MAIN', 100,  20),
+    ('DEMO-P-1003', 'DEMO-STORE-LINE',  10,  18),
+    ('DEMO-P-1004', 'DEMO-STORE-LINE',  15,  18)
+  ) AS v(part_no, store_code, quantity, days_ago)
+  JOIN parts p ON p.part_no = v.part_no
+  JOIN stores s ON s.code = v.store_code
+   AND s.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+ WHERE NOT EXISTS (
+   SELECT 1 FROM stock_movements m
+    WHERE m.part_id = p.id AND m.store_id = s.id AND m.reason = 'DEMO opening receipt'
+ );
+
+-- The one count correction, in its own statement so it runs after the receipts
+-- above have been applied: an outbound movement can legitimately be refused if
+-- the shelf is empty, and this seed must not depend on row order to avoid that.
+INSERT INTO stock_movements (part_id, store_id, quantity, movement_type, reason, occurred_at)
+SELECT p.id, s.id, -2, 'adjustment', 'DEMO cycle count: two bearings scrapped',
+       now() - make_interval(days => 10)
+  FROM parts p
+  JOIN stores s ON s.code = 'DEMO-STORE-MAIN'
+   AND s.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+ WHERE p.part_no = 'DEMO-P-1003'
+   AND NOT EXISTS (
+     SELECT 1 FROM stock_movements m
+      WHERE m.part_id = p.id AND m.store_id = s.id
+        AND m.reason = 'DEMO cycle count: two bearings scrapped'
+   );
+
 COMMIT;
