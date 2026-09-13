@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'asset.dart';
+import 'maintenance_request.dart';
 import 'work_order.dart';
 
 /// The request could not be answered at all. Deliberately its own type rather
@@ -263,6 +264,165 @@ class MaintenanceApi {
     }
   }
 
+  /// Raises a new Request against [assetId] (issue #72). Deliberately no
+  /// `orgUnitId` and no Request number in this call: the server derives the
+  /// former from the Asset by trigger and issues the latter from the Site's
+  /// own sequence, so the client sends neither. `productionStopped` is a JSON
+  /// boolean, and [urgency] is the reporter's judgement — never the Work
+  /// order's `priority`, which acceptance sets separately.
+  Future<MaintenanceRequest> raiseRequest(
+    String accessToken, {
+    required String assetId,
+    required String summary,
+    String? description,
+    required String urgency,
+    required bool productionStopped,
+  }) async {
+    const path = '/api/maintenance/requests';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'assetId': assetId,
+          'summary': summary,
+          'urgency': urgency,
+          'productionStopped': productionStopped,
+          'description': ?description,
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _requestFrom(body['request'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The triage queue: every Request still awaiting a decision at a Site
+  /// (`GET /api/maintenance/sites/:siteId/requests`). Site-wide and carrying
+  /// no Grant filter (ADR-0009).
+  Future<List<MaintenanceRequest>> fetchTriageRequests(
+    String accessToken, {
+    required String siteId,
+  }) async {
+    final path = '/api/maintenance/sites/$siteId/requests';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final request in body['requests'] as List<dynamic>)
+          _requestFrom(request as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The caller's own Requests at a Site, every status
+  /// (`GET /api/maintenance/sites/:siteId/requests/mine`) — what the person
+  /// who raised one follows to see what became of it (ADR-0014).
+  Future<List<MaintenanceRequest>> fetchMyRequests(
+    String accessToken, {
+    required String siteId,
+  }) async {
+    final path = '/api/maintenance/sites/$siteId/requests/mine';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final request in body['requests'] as List<dynamic>)
+          _requestFrom(request as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Accepts a Request: raises a Work order for it and moves the Request to
+  /// `accepted` in one transaction (ADR-0014). [priority] and [workType] are
+  /// optional — the server defaults them — and are maintenance's own judgement,
+  /// not the reporter's `urgency`.
+  Future<MaintenanceRequest> acceptRequest(
+    String accessToken,
+    String id, {
+    int? priority,
+    String? workType,
+  }) async {
+    final path = '/api/maintenance/requests/$id/accept';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'priority': ?priority, 'workType': ?workType}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _requestFrom(body['request'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Declines a Request. [reason] is required — the database refuses a
+  /// rejection without one (`maintenance_requests_rejected_has_reason`), and
+  /// "why was my ask refused" is a fair question.
+  Future<MaintenanceRequest> declineRequest(
+    String accessToken,
+    String id, {
+    required String reason,
+  }) async {
+    final path = '/api/maintenance/requests/$id/decline';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'reason': reason}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _requestFrom(body['request'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Marks a Request as a duplicate of [duplicateOfId], the Request that
+  /// survives.
+  Future<MaintenanceRequest> markRequestDuplicate(
+    String accessToken,
+    String id, {
+    required String duplicateOfId,
+  }) async {
+    final path = '/api/maintenance/requests/$id/duplicate';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'duplicateOfId': duplicateOfId}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _requestFrom(body['request'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   // The server sends a flat row — `id, workOrderNo, assetId, assetCode,
   // assetName, orgUnitId, orgUnitName, summary, description, workType,
   // priority, status, assignedTo, assigneeName, createdAt, updatedAt`
@@ -283,6 +443,42 @@ class MaintenanceApi {
         status: workOrder['status'] as String,
         assignedTo: workOrder['assignedTo']?.toString(),
         assigneeName: workOrder['assigneeName'] as String?,
+      );
+
+  // `toRequest` (requests.js) sends a flat row, the same shape `toWorkOrder`
+  // does: `id, requestNo, assetId, assetCode, assetName, orgUnitId,
+  // orgUnitName, summary, description, urgency, productionStopped, reportedBy,
+  // reporterName, reportedAt, status, triagedAt, rejectionReason,
+  // duplicateOfId`, plus a nested `workOrder` map or null. A later field added
+  // to one side should prompt a look at the other.
+  static MaintenanceRequest _requestFrom(Map<String, dynamic> request) => MaintenanceRequest(
+        id: request['id'].toString(),
+        requestNo: request['requestNo'] as String,
+        assetId: request['assetId'].toString(),
+        assetCode: request['assetCode'] as String,
+        assetName: request['assetName'] as String,
+        orgUnitId: request['orgUnitId'].toString(),
+        orgUnitName: request['orgUnitName'] as String,
+        summary: request['summary'] as String,
+        description: request['description'] as String?,
+        urgency: request['urgency'] as String,
+        productionStopped: request['productionStopped'] as bool? ?? false,
+        reportedBy: request['reportedBy']?.toString(),
+        reporterName: request['reporterName'] as String?,
+        reportedAt: request['reportedAt'] as String?,
+        status: request['status'] as String,
+        triagedAt: request['triagedAt'] as String?,
+        rejectionReason: request['rejectionReason'] as String?,
+        duplicateOfId: request['duplicateOfId']?.toString(),
+        workOrder: request['workOrder'] == null
+            ? null
+            : _requestWorkOrderFrom(request['workOrder'] as Map<String, dynamic>),
+      );
+
+  static RequestWorkOrder _requestWorkOrderFrom(Map<String, dynamic> workOrder) => RequestWorkOrder(
+        id: workOrder['id'].toString(),
+        workOrderNo: workOrder['workOrderNo'] as String,
+        status: workOrder['status'] as String,
       );
 
   static Asset _assetFrom(Map<String, dynamic> asset) => Asset(

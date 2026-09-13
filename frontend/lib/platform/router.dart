@@ -11,6 +11,10 @@ import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
 import '../maintenance/assets_screen.dart';
 import '../maintenance/maintenance_api.dart';
+import '../maintenance/my_requests_bloc.dart';
+import '../maintenance/my_requests_screen.dart';
+import '../maintenance/requests_bloc.dart';
+import '../maintenance/requests_screen.dart';
 import '../maintenance/work_order.dart';
 import '../maintenance/work_order_assign_dialog.dart';
 import '../maintenance/work_order_cancel_dialog.dart';
@@ -53,6 +57,8 @@ abstract final class Routes {
   static const String accounts = '/accounts';
   static const String assets = '/assets';
   static const String workOrders = '/work-orders';
+  static const String requests = '/requests';
+  static const String myRequests = '/my-requests';
   static const String directory = '/directory';
   static const String jobRoles = '/job-roles';
   static const String orgUnits = '/org-units';
@@ -516,6 +522,57 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 ],
               ),
             ],
+          ),
+          // The Requests this caller raised (issue #72), plus the raise form
+          // it opens. Offered to every approved Account — raising needs only a
+          // read Grant reaching the Asset's Org Unit, so this is the
+          // operator-facing Destination that earns them the Module. There is
+          // no per-Screen role check here at all; the raise affordance inside
+          // is gated on the caller holding a Grant somewhere, and the server
+          // is the real gate.
+          GoRoute(
+            path: Routes.myRequests,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<MyRequestsBloc>(
+                create: (context) => MyRequestsBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const MyRequestsStarted()),
+                child: MyRequestsScreen(
+                  // The same rule the server applies: raising asks a question
+                  // and needs only a read Grant reaching the Asset's Org Unit
+                  // (`write: false`), so this reads the everywhere-first
+                  // `canReadSomewhere` rather than `canWriteSomewhere`.
+                  canRaiseRequest: account.account.orgUnitScope.canReadSomewhere,
+                ),
+              );
+            },
+          ),
+          // The triage queue (issue #72) is maintenance's own work, gated to
+          // the same Module role set Assets and Work orders use. The same
+          // per-Screen access check they make: leaving the destination out of
+          // the sidebar hides the door, this locks it for a caller who types
+          // the address.
+          GoRoute(
+            path: Routes.requests,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<RequestsBloc>(
+                create: (context) => RequestsBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const RequestsStarted()),
+                child: RequestsScreen(canTriage: account.account.orgUnitScope.canWriteSomewhere),
+              );
+            },
           ),
           GoRoute(
             path: Routes.accounts,
