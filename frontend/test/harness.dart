@@ -176,7 +176,7 @@ Map<String, dynamic> requestWorkOrderJson(
 /// Mirrors `toRequest` (backend/src/modules/maintenance/requests.js) key for
 /// key, in its own field order: a flat row plus a nested `workOrder` map or
 /// null. `workOrder` is non-null only for an accepted Request.
-Map<String, dynamic> maintenanceRequestJson(
+Map<String, dynamic> requestJson(
   String id,
   String requestNo,
   String summary, {
@@ -1541,7 +1541,7 @@ class FakeWire {
           if (createRequestStatus != 201) {
             return http.Response(jsonEncode({'message': createRequestMessage}), createRequestStatus);
           }
-          final created = maintenanceRequestJson(
+          final created = requestJson(
             '900',
             'MR-900',
             sent['summary'] as String,

@@ -12,7 +12,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'asset.dart';
-import 'maintenance_request.dart';
+import 'request.dart';
 import 'work_order.dart';
 
 /// The request could not be answered at all. Deliberately its own type rather
@@ -270,7 +270,7 @@ class MaintenanceApi {
   /// own sequence, so the client sends neither. `productionStopped` is a JSON
   /// boolean, and [urgency] is the reporter's judgement — never the Work
   /// order's `priority`, which acceptance sets separately.
-  Future<MaintenanceRequest> raiseRequest(
+  Future<Request> raiseRequest(
     String accessToken, {
     required String assetId,
     required String summary,
@@ -304,7 +304,7 @@ class MaintenanceApi {
   /// The triage queue: every Request still awaiting a decision at a Site
   /// (`GET /api/maintenance/sites/:siteId/requests`). Site-wide and carrying
   /// no Grant filter (ADR-0009).
-  Future<List<MaintenanceRequest>> fetchTriageRequests(
+  Future<List<Request>> fetchTriageRequests(
     String accessToken, {
     required String siteId,
   }) async {
@@ -327,7 +327,7 @@ class MaintenanceApi {
   /// The caller's own Requests at a Site, every status
   /// (`GET /api/maintenance/sites/:siteId/requests/mine`) — what the person
   /// who raised one follows to see what became of it (ADR-0014).
-  Future<List<MaintenanceRequest>> fetchMyRequests(
+  Future<List<Request>> fetchMyRequests(
     String accessToken, {
     required String siteId,
   }) async {
@@ -348,21 +348,21 @@ class MaintenanceApi {
   }
 
   /// Accepts a Request: raises a Work order for it and moves the Request to
-  /// `accepted` in one transaction (ADR-0014). [priority] and [workType] are
-  /// optional — the server defaults them — and are maintenance's own judgement,
-  /// not the reporter's `urgency`.
-  Future<MaintenanceRequest> acceptRequest(
+  /// `accepted` in one transaction (ADR-0014). [priority] is maintenance's own
+  /// judgement, not the reporter's `urgency` — the caller chooses it on the
+  /// accept dialog. The Work order is always `corrective`; the backend takes
+  /// only `priority`.
+  Future<Request> acceptRequest(
     String accessToken,
     String id, {
-    int? priority,
-    String? workType,
+    required int priority,
   }) async {
     final path = '/api/maintenance/requests/$id/accept';
     final response = await _send(
       () => _client.post(
         Uri.parse(path),
         headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
-        body: jsonEncode({'priority': ?priority, 'workType': ?workType}),
+        body: jsonEncode({'priority': priority}),
       ),
       path,
     );
@@ -377,7 +377,7 @@ class MaintenanceApi {
   /// Declines a Request. [reason] is required — the database refuses a
   /// rejection without one (`maintenance_requests_rejected_has_reason`), and
   /// "why was my ask refused" is a fair question.
-  Future<MaintenanceRequest> declineRequest(
+  Future<Request> declineRequest(
     String accessToken,
     String id, {
     required String reason,
@@ -401,7 +401,7 @@ class MaintenanceApi {
 
   /// Marks a Request as a duplicate of [duplicateOfId], the Request that
   /// survives.
-  Future<MaintenanceRequest> markRequestDuplicate(
+  Future<Request> markRequestDuplicate(
     String accessToken,
     String id, {
     required String duplicateOfId,
@@ -451,7 +451,7 @@ class MaintenanceApi {
   // reporterName, reportedAt, status, triagedAt, rejectionReason,
   // duplicateOfId`, plus a nested `workOrder` map or null. A later field added
   // to one side should prompt a look at the other.
-  static MaintenanceRequest _requestFrom(Map<String, dynamic> request) => MaintenanceRequest(
+  static Request _requestFrom(Map<String, dynamic> request) => Request(
         id: request['id'].toString(),
         requestNo: request['requestNo'] as String,
         assetId: request['assetId'].toString(),

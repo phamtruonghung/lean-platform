@@ -17,8 +17,8 @@ import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import 'asset.dart';
 import 'maintenance_api.dart';
-import 'maintenance_request.dart';
 import 'my_requests_bloc.dart';
+import 'request.dart';
 
 class RequestFormDialog extends StatefulWidget {
   const RequestFormDialog({super.key, required this.siteId});

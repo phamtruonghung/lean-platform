@@ -9,19 +9,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
-import 'maintenance_request.dart';
+import 'request.dart';
 import 'requests_bloc.dart';
 
 class RequestDuplicateDialog extends StatefulWidget {
   const RequestDuplicateDialog({super.key, required this.request, required this.candidates});
 
   /// The Request being marked a duplicate.
-  final MaintenanceRequest request;
+  final Request request;
 
   /// The Requests that could survive it — the other open Requests in the
   /// triage queue. A Request cannot be a duplicate of itself, so [request] is
   /// never among these (the server refuses that with a 400).
-  final List<MaintenanceRequest> candidates;
+  final List<Request> candidates;
 
   static ValueKey<String> candidateKey(String id) =>
       ValueKey<String>('request-duplicate-candidate-$id');

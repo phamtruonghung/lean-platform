@@ -21,7 +21,8 @@ import '../theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
-import 'maintenance_request.dart';
+import 'request.dart';
+import 'request_accept_dialog.dart';
 import 'request_decline_dialog.dart';
 import 'request_duplicate_dialog.dart';
 import 'requests_bloc.dart';
@@ -180,7 +181,7 @@ class _Notice extends StatelessWidget {
 class _RequestsList extends StatelessWidget {
   const _RequestsList({required this.requests, required this.canTriage});
 
-  final List<MaintenanceRequest> requests;
+  final List<Request> requests;
   final bool canTriage;
 
   @override
@@ -203,7 +204,7 @@ class _RequestsList extends StatelessWidget {
 class _RequestCard extends StatelessWidget {
   const _RequestCard({required this.request, required this.canTriage});
 
-  final MaintenanceRequest request;
+  final Request request;
   final bool canTriage;
 
   @override
@@ -273,11 +274,7 @@ class _RequestCard extends StatelessWidget {
                 children: [
                   FilledButton(
                     key: RequestsScreen.acceptKey(request.id),
-                    onPressed: busy
-                        ? null
-                        : () => context
-                            .read<RequestsBloc>()
-                            .add(RequestAcceptConfirmed(request.id)),
+                    onPressed: busy ? null : () => _openAccept(context),
                     style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
                     child: const Text('Accept'),
                   ),
@@ -302,6 +299,20 @@ class _RequestCard extends StatelessWidget {
     );
   }
 
+  Future<void> _openAccept(BuildContext context) {
+    // `showDialog` pushes onto the root Navigator, above the route-scoped
+    // `RequestsBloc` — re-provide the same instance so the dialog's own
+    // context can read it.
+    final bloc = context.read<RequestsBloc>();
+    return showDialog<void>(
+      context: context,
+      builder: (_) => BlocProvider<RequestsBloc>.value(
+        value: bloc,
+        child: RequestAcceptDialog(request: request),
+      ),
+    );
+  }
+
   Future<void> _openDecline(BuildContext context) {
     // `showDialog` pushes onto the root Navigator, above the route-scoped
     // `RequestsBloc` — re-provide the same instance so the dialog's own
@@ -321,7 +332,7 @@ class _RequestCard extends StatelessWidget {
     final state = bloc.state;
     final candidates = state is RequestsLoaded
         ? [for (final other in state.requests) if (other.id != request.id) other]
-        : const <MaintenanceRequest>[];
+        : const <Request>[];
     return showDialog<void>(
       context: context,
       builder: (_) => BlocProvider<RequestsBloc>.value(

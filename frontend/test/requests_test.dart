@@ -1,4 +1,4 @@
-/// Maintenance requests and triage (issue #72), with the wire faked — the one
+/// Requests and triage (issue #72), with the wire faked — the one
 /// client seam (ADR-0012). The real app, the real router, the real Blocs,
 /// `MockClient` at the HTTP boundary and `FakeAuthGateway` at the auth
 /// boundary.
@@ -19,6 +19,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/my_requests_screen.dart';
+import 'package:lean_platform/maintenance/request_accept_dialog.dart';
 import 'package:lean_platform/maintenance/request_decline_dialog.dart';
 import 'package:lean_platform/maintenance/request_duplicate_dialog.dart';
 import 'package:lean_platform/maintenance/request_form_dialog.dart';
@@ -165,7 +166,7 @@ void main() {
       orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
       myRequests: {
         '1': [
-          maintenanceRequestJson(
+          requestJson(
             '101',
             'MR-101',
             'Pump is noisy',
@@ -193,7 +194,7 @@ void main() {
       role: Roles.supervisor,
       orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10', canWrite: true)]},
       requests: {
-        '1': [maintenanceRequestJson('101', 'MR-101', 'Pump is noisy', urgency: 'high')],
+        '1': [requestJson('101', 'MR-101', 'Pump is noisy', urgency: 'high')],
       },
     );
     await pumpApp(
@@ -211,12 +212,13 @@ void main() {
     expect(find.byKey(RequestsScreen.duplicateKey('101')), findsOneWidget);
   });
 
-  testWidgets('accepting raises a Work order and the Request leaves the queue', (tester) async {
+  testWidgets('accepting sends the chosen priority and the Request leaves the queue',
+      (tester) async {
     final wire = wireWith(
       role: Roles.supervisor,
       orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10', canWrite: true)]},
       requests: {
-        '1': [maintenanceRequestJson('101', 'MR-101', 'Pump is noisy')],
+        '1': [requestJson('101', 'MR-101', 'Pump is noisy')],
       },
     );
     await pumpApp(
@@ -227,11 +229,49 @@ void main() {
     );
 
     await tapIn(tester, find.byKey(RequestsScreen.acceptKey('101')));
+    await tester.pumpAndSettle();
+
+    // The picker opens on the schema default, but a deliberate different
+    // choice is what the wire must carry.
+    await tapIn(tester, find.byKey(RequestAcceptDialog.priorityKey));
+    await tapIn(tester, find.text('1 - Most urgent').last);
+    await tapIn(tester, find.byKey(RequestAcceptDialog.submitKey));
 
     expect(wire.requestAccepts.length, 1);
-    expect(wire.requestAccepts.single.$1, '101');
+    final (id, body) = wire.requestAccepts.single;
+    expect(id, '101');
+    expect(body, {'priority': 1});
+    // `workType` was removed from the contract; the client must not send it.
+    expect(body.containsKey('workType'), isFalse);
+
+    expect(find.byType(RequestAcceptDialog), findsNothing);
     expect(find.byKey(RequestsScreen.rowKey('101')), findsNothing);
     expect(find.textContaining('WO-900'), findsOneWidget);
+  });
+
+  testWidgets('accepting without touching the picker sends the default priority 3',
+      (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10', canWrite: true)]},
+      requests: {
+        '1': [requestJson('101', 'MR-101', 'Pump is noisy')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/requests',
+    );
+
+    await tapIn(tester, find.byKey(RequestsScreen.acceptKey('101')));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(RequestAcceptDialog.submitKey));
+
+    expect(wire.requestAccepts.length, 1);
+    expect(wire.requestAccepts.single.$2, {'priority': 3});
+    expect(find.byKey(RequestsScreen.rowKey('101')), findsNothing);
   });
 
   testWidgets('declining requires a reason, and sends it once it is given', (tester) async {
@@ -239,7 +279,7 @@ void main() {
       role: Roles.supervisor,
       orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10', canWrite: true)]},
       requests: {
-        '1': [maintenanceRequestJson('101', 'MR-101', 'Pump is noisy')],
+        '1': [requestJson('101', 'MR-101', 'Pump is noisy')],
       },
     );
     await pumpApp(
@@ -274,8 +314,8 @@ void main() {
       orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10', canWrite: true)]},
       requests: {
         '1': [
-          maintenanceRequestJson('101', 'MR-101', 'Pump is noisy'),
-          maintenanceRequestJson('102', 'MR-102', 'Pump is making a noise'),
+          requestJson('101', 'MR-101', 'Pump is noisy'),
+          requestJson('102', 'MR-102', 'Pump is making a noise'),
         ],
       },
     );
@@ -362,7 +402,7 @@ void main() {
 
     wire.requestsStatus = 200;
     wire.triageRequests = {
-      '1': [maintenanceRequestJson('101', 'MR-101', 'Pump is noisy')],
+      '1': [requestJson('101', 'MR-101', 'Pump is noisy')],
     };
     await tapIn(tester, find.byKey(RequestsScreen.retryKey));
 

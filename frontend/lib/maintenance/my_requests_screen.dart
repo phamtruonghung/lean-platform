@@ -15,8 +15,8 @@ import '../theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
-import 'maintenance_request.dart';
 import 'my_requests_bloc.dart';
+import 'request.dart';
 import 'request_form_dialog.dart';
 
 class MyRequestsScreen extends StatelessWidget {
@@ -210,7 +210,7 @@ class _Notice extends StatelessWidget {
 class _MyRequestsList extends StatelessWidget {
   const _MyRequestsList({required this.requests});
 
-  final List<MaintenanceRequest> requests;
+  final List<Request> requests;
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +231,7 @@ class _MyRequestsList extends StatelessWidget {
 class _MyRequestCard extends StatelessWidget {
   const _MyRequestCard({required this.request});
 
-  final MaintenanceRequest request;
+  final Request request;
 
   @override
   Widget build(BuildContext context) {

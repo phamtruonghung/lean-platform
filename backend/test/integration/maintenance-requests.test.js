@@ -168,6 +168,7 @@ let reporterAccount;  // read Grant on grantedLine, linked to reporterEmployee.
 let reporterEmployee;
 let reporter2Account; // read Grant on grantedLine, linked to a different Employee.
 let reporter2Employee;
+let noEmployeeAccount; // read Grant on grantedLine, linked to no Employee at all.
 
 let site;
 let otherSite;
@@ -204,6 +205,7 @@ test.before(async () => {
   reporterAccount = await insertAccount({ employeeId: reporterEmployee.id });
   reporter2Employee = await insertEmployee({ displayName: 'Other Reporter' });
   reporter2Account = await insertAccount({ employeeId: reporter2Employee.id });
+  noEmployeeAccount = await insertAccount();
 
   site = await insertSite();
   otherSite = await insertSite();
@@ -216,6 +218,7 @@ test.before(async () => {
   await insertGrant({ accountId: siblingWriter.id, orgUnitId: otherLine.id, canWrite: true });
   await insertGrant({ accountId: reporterAccount.id, orgUnitId: grantedLine.id, canWrite: false });
   await insertGrant({ accountId: reporter2Account.id, orgUnitId: grantedLine.id, canWrite: false });
+  await insertGrant({ accountId: noEmployeeAccount.id, orgUnitId: grantedLine.id, canWrite: false });
 });
 
 test.after(async () => {
@@ -423,10 +426,33 @@ test("the requester's own list carries all statuses and only their own requests"
   assert.ok(!payload.requests.some((r) => r.id === theirsRaised.payload.request.id));
 });
 
-test('an Account with no linked Employee gets an empty own list', async () => {
-  const { response, payload } = await getMine(noGrantAccount.token, site.id);
+test('an Account with no linked Employee still sees the Requests it raised, and only those', async () => {
+  const asset = await insertAsset(grantedLine.id);
+  const mineRaised = await postRequest(
+    noEmployeeAccount.token,
+    requestBody(asset.id, { summary: 'Raised by an Account with no Employee' })
+  );
+  assert.strictEqual(mineRaised.response.status, 201);
+  // The Account names no Employee, so the wire's reporter is absent...
+  assert.strictEqual(mineRaised.payload.request.reportedBy, null);
+
+  // ...but the row still belongs to the Account that raised it.
+  const anotherRaised = await postRequest(
+    reporterAccount.token,
+    requestBody(asset.id, { summary: 'Raised by the linked reporter' })
+  );
+  assert.strictEqual(anotherRaised.response.status, 201);
+
+  const { response, payload } = await getMine(noEmployeeAccount.token, site.id);
   assert.strictEqual(response.status, 200);
-  assert.deepStrictEqual(payload.requests, []);
+  assert.ok(
+    payload.requests.some((r) => r.id === mineRaised.payload.request.id),
+    'the Account that raised it sees it even with no linked Employee'
+  );
+  assert.ok(
+    !payload.requests.some((r) => r.id === anotherRaised.payload.request.id),
+    "another Account's Request does not leak into the own list"
+  );
 });
 
 test('a request with no bearer token is refused on the own list', async () => {
@@ -474,7 +500,7 @@ test('accepting moves the request to accepted and raises a linked work order in 
   assert.ok(request.triaged_at);
 });
 
-test('accepting takes an explicit workType and priority, and never copies urgency into priority', async () => {
+test('accepting takes an explicit priority, always raises corrective work, and never copies urgency into priority', async () => {
   const asset = await insertAsset(grantedLine.id);
   const raised = await postRequest(
     reporterAccount.token,
@@ -482,6 +508,8 @@ test('accepting takes an explicit workType and priority, and never copies urgenc
   );
   assert.strictEqual(raised.response.status, 201);
 
+  // A workType in the body is not part of the contract and is ignored; an
+  // accepted Request always becomes a corrective Work order.
   const { response, payload } = await triage(admin.token, raised.payload.request.id, 'accept', {
     priority: 1,
     workType: 'preventive'
@@ -492,7 +520,7 @@ test('accepting takes an explicit workType and priority, and never copies urgenc
     'SELECT work_type, priority FROM work_orders WHERE id = $1',
     [payload.workOrder.id]
   );
-  assert.strictEqual(workOrder.work_type, 'preventive');
+  assert.strictEqual(workOrder.work_type, 'corrective');
   assert.strictEqual(workOrder.priority, 1);
 
   // The reporter said 'immediate'; maintenance said priority 1. The two are
@@ -503,10 +531,10 @@ test('accepting takes an explicit workType and priority, and never copies urgenc
   assert.strictEqual(request.urgency, 'immediate');
 });
 
-test('accept validation: a bad priority or workType is a clean 400', async () => {
+test('accept validation: a bad priority is a clean 400', async () => {
   const asset = await insertAsset(grantedLine.id);
   const raised = await postRequest(reporterAccount.token, requestBody(asset.id, { summary: 'Bad accept body' }));
-  for (const body of [{ priority: 0 }, { priority: 6 }, { priority: 1.5 }, { workType: 'urgent' }]) {
+  for (const body of [{ priority: 0 }, { priority: 6 }, { priority: 1.5 }]) {
     const { response } = await triage(admin.token, raised.payload.request.id, 'accept', body);
     assert.strictEqual(response.status, 400, JSON.stringify(body));
   }

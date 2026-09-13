@@ -17,7 +17,7 @@ import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'maintenance_api.dart';
-import 'maintenance_request.dart';
+import 'request.dart';
 
 sealed class RequestsEvent {
   const RequestsEvent();
@@ -35,10 +35,13 @@ class RequestsSiteSelected extends RequestsEvent {
   final String siteId;
 }
 
-/// The queue has decided: accept this Request, raising a Work order for it.
+/// The accept dialog has decided: accept this Request, raising a Work order
+/// for it at [priority], maintenance's own judgement (never the reporter's
+/// `urgency`).
 class RequestAcceptConfirmed extends RequestsEvent {
-  const RequestAcceptConfirmed(this.requestId);
+  const RequestAcceptConfirmed({required this.requestId, required this.priority});
   final String requestId;
+  final int priority;
 }
 
 /// The decline dialog has decided: this Request is declined, and [reason] says
@@ -79,7 +82,7 @@ class RequestsLoaded extends RequestsState {
 
   final List<Site> sites;
   final String? siteId;
-  final List<MaintenanceRequest> requests;
+  final List<Request> requests;
 
   /// A Site switch re-reads the queue while the rest of the Screen stays put —
   /// the placeholders belong to the list, not the whole Screen.
@@ -92,10 +95,9 @@ class RequestsLoaded extends RequestsState {
   final bool isTriaging;
 
   /// Why the last triage action did not land. Read by whichever dialog is open
-  /// (decline, duplicate) so it can stay open and let the caller fix the field
-  /// — the same reasoning `WorkOrdersLoaded.transitionFailure` follows.
-  /// Accepting has no dialog to read it, so an accept failure surfaces as
-  /// [notice] instead.
+  /// (accept, decline, duplicate) so it can stay open and let the caller fix
+  /// the field — the same reasoning `WorkOrdersLoaded.transitionFailure`
+  /// follows.
   final String? triageFailure;
 
   /// What the last act had to say for itself. Never the failure of a load:
@@ -110,7 +112,7 @@ class RequestsLoaded extends RequestsState {
   }
 
   RequestsLoaded copyWith({
-    List<MaintenanceRequest>? requests,
+    List<Request>? requests,
     String? siteId,
     bool? isLoadingRequests,
     bool? isTriaging,
@@ -231,7 +233,11 @@ class RequestsBloc extends Bloc<RequestsEvent, RequestsState> {
 
     emit(current.copyWith(isTriaging: true));
     try {
-      final request = await _maintenance.acceptRequest(token, event.requestId);
+      final request = await _maintenance.acceptRequest(
+        token,
+        event.requestId,
+        priority: event.priority,
+      );
       final settled = state;
       if (settled is! RequestsLoaded) return;
       // The row leaves the queue either way — it has been triaged, and the
@@ -248,10 +254,9 @@ class RequestsBloc extends Bloc<RequestsEvent, RequestsState> {
     } on MaintenanceApiException catch (error) {
       final settled = state;
       if (settled is! RequestsLoaded) return;
-      // Accepting has no dialog of its own to read a failure off, unlike
-      // decline/duplicate — the row itself is the caller, so the refusal
-      // surfaces as the ordinary notice instead of `triageFailure`.
-      emit(settled.copyWith(isTriaging: false, notice: error.message));
+      // The accept dialog reads `triageFailure` so it can stay open and let
+      // the caller try again — the same shape decline/duplicate follow.
+      emit(settled.copyWith(isTriaging: false, triageFailure: error.message));
     }
   }
 
@@ -329,7 +334,7 @@ class RequestsBloc extends Bloc<RequestsEvent, RequestsState> {
 
   /// The queue with one triaged Request taken out, rather than re-read — the
   /// row has left the queue whichever of the three actions took it there.
-  static List<MaintenanceRequest> _withoutRequest(RequestsLoaded state, String id) => [
+  static List<Request> _withoutRequest(RequestsLoaded state, String id) => [
         for (final request in state.requests)
           if (request.id != id) request,
       ];

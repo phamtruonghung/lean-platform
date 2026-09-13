@@ -16,7 +16,7 @@ import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'maintenance_api.dart';
-import 'maintenance_request.dart';
+import 'request.dart';
 
 sealed class MyRequestsEvent {
   const MyRequestsEvent();
@@ -81,7 +81,7 @@ class MyRequestsLoaded extends MyRequestsState {
 
   final List<Site> sites;
   final String? siteId;
-  final List<MaintenanceRequest> requests;
+  final List<Request> requests;
 
   /// A Site switch re-reads the list while the rest of the Screen stays put.
   final bool isLoadingRequests;
@@ -106,7 +106,7 @@ class MyRequestsLoaded extends MyRequestsState {
   }
 
   MyRequestsLoaded copyWith({
-    List<MaintenanceRequest>? requests,
+    List<Request>? requests,
     String? siteId,
     bool? isLoadingRequests,
     bool? isRaising,

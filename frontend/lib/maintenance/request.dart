@@ -56,8 +56,8 @@ class RequestWorkOrder {
 }
 
 @immutable
-class MaintenanceRequest {
-  const MaintenanceRequest({
+class Request {
+  const Request({
     required this.id,
     required this.requestNo,
     required this.assetId,

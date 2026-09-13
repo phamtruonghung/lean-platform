@@ -149,9 +149,10 @@ router.get(
   }
 );
 
-// The requester's own Requests, all statuses. An Account with no linked
-// Employee is answered with an empty list rather than a 400 — it raised
-// nothing under this identity.
+// The requester's own Requests, all statuses, keyed on the Account that
+// raised them rather than any Employee link: an Account need not name an
+// Employee, and one that does not still owns every Request it raised. The
+// account id is always present on an authenticated request.
 router.get(
   '/sites/:siteId/requests/mine',
   people.authenticate,
@@ -160,10 +161,7 @@ router.get(
   async (req, res, next) => {
     try {
       res.json({
-        requests: await requests.listRequestsForReporterAtSite(
-          req.site.id,
-          req.account.employeeId ?? null
-        )
+        requests: await requests.listRequestsRaisedByAtSite(req.site.id, req.account.id)
       });
     } catch (error) {
       handleError(error, res, next);
@@ -172,9 +170,12 @@ router.get(
 );
 
 // Accept: raises a linked Work order and moves the Request to 'accepted' in
-// one transaction. Answering 200 (not 201) because from the Request's point
-// of view nothing new was created — the Request is the resource being moved —
-// and the body carries the Work order alongside it so the caller has both.
+// one transaction. The Work order is always `corrective` — accepting a
+// Request is maintenance reacting to a problem — and the only body field read
+// is the optional `priority` (default 3). Answering 200 (not 201) because
+// from the Request's point of view nothing new was created — the Request is
+// the resource being moved — and the body carries the Work order alongside it
+// so the caller has both.
 router.post(
   '/requests/:id/accept',
   people.authenticate,
@@ -184,7 +185,7 @@ router.post(
     try {
       const { request, workOrder } = await requests.acceptRequest(
         req.request.id,
-        { priority: req.body?.priority, workType: req.body?.workType },
+        { priority: req.body?.priority },
         req.account.id,
         req.account.employeeId ?? null
       );

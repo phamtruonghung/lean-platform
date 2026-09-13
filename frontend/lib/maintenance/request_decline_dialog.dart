@@ -13,14 +13,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
-import 'maintenance_request.dart';
+import 'request.dart';
 import 'requests_bloc.dart';
 
 class RequestDeclineDialog extends StatefulWidget {
   const RequestDeclineDialog({super.key, required this.request});
 
   /// The Request being declined.
-  final MaintenanceRequest request;
+  final Request request;
 
   static const ValueKey<String> reasonKey = ValueKey<String>('request-decline-reason');
   static const ValueKey<String> submitKey = ValueKey<String>('request-decline-submit');

@@ -32,10 +32,6 @@
 
 const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
-// The work order field catalogue is validated identically to work-orders.js's
-// own createWorkOrder — imported rather than copied so the two write paths
-// cannot drift onto different membership the day the CHECK constraint moves.
-const { WORK_TYPES } = require('./work-orders');
 
 // Mirrors the CHECK constraint on maintenance_requests.urgency in the
 // baseline, so a bad value is a 400 with a clear message rather than a raw
@@ -233,18 +229,22 @@ async function listTriageQueueAtSite(siteId) {
 // The requester's own Requests at a Site, all statuses, so the person who
 // raised one can follow it through to whatever became of it (ADR-0014).
 // Site-wide like the queue above; the filter is "raised by me", not a Grant.
-// A caller with no linked Employee raised nothing under this identity, so the
-// honest answer is an empty list rather than an error.
-async function listRequestsForReporterAtSite(siteId, reporterId) {
-  if (reporterId === null || reporterId === undefined) return [];
+//
+// "Me" is the Account, not the Employee: `created_by` is filled by the
+// `zz_maintenance_requests_set_actor` trigger from `app.user_id`, which
+// withActor(accountId, …) sets, so every Request a caller raises belongs to
+// them by construction. `reported_by` is the separate, nullable Employee link
+// a raise may or may not carry; an Account need not be linked to an Employee,
+// so keying "mine" on it would hide a Request its own raiser created.
+async function listRequestsRaisedByAtSite(siteId, accountId) {
   const { rows } = await getPool().query(
     `SELECT ${REQUEST_COLUMNS}
        FROM maintenance_requests r
        ${REQUEST_FROM}
       WHERE ou.site_id = $1
-        AND r.reported_by = $2
+        AND r.created_by = $2
       ORDER BY r.reported_at DESC, r.id DESC`,
-    [siteId, reporterId]
+    [siteId, accountId]
   );
   return rows.map(toRequest);
 }
@@ -292,18 +292,17 @@ async function lockOpenRequest(client, requestId) {
 // Accepting: issues a Work order number for the Request's Site, inserts the
 // Work order that points back at the Request (ADR-0014), and moves the
 // Request to 'accepted' — all in one transaction, so either both records
-// change or neither. The `urgency` is deliberately NOT copied onto the work
-// order's `priority`: they are different judgements by different people, and
-// the gap between them is a signal the schema keeps on purpose. The work
-// order carries no `org_unit_id`; its own trigger fills it from the Asset.
-async function acceptRequest(requestId, { priority, workType } = {}, accountId, triagedBy) {
+// change or neither. The Work order is always `corrective`: an accepted
+// Request is maintenance reacting to a problem, which is what that kind of
+// work is. The optional `priority` is maintenance's own judgement. The
+// `urgency` is deliberately NOT copied onto it: urgency and priority are
+// different judgements by different people, and the gap between them is a
+// signal the schema keeps on purpose. The work order carries no
+// `org_unit_id`; its own trigger fills it from the Asset.
+async function acceptRequest(requestId, { priority } = {}, accountId, triagedBy) {
   const resolvedPriority = priority === undefined || priority === null ? 3 : priority;
   if (!Number.isInteger(resolvedPriority) || resolvedPriority < 1 || resolvedPriority > 5) {
     throw httpError(400, 'priority must be an integer between 1 and 5');
-  }
-  const resolvedWorkType = workType === undefined || workType === null ? 'corrective' : workType;
-  if (!WORK_TYPES.includes(resolvedWorkType)) {
-    throw httpError(400, `workType must be one of: ${WORK_TYPES.join(', ')}`);
   }
 
   try {
@@ -318,14 +317,13 @@ async function acceptRequest(requestId, { priority, workType } = {}, accountId, 
       const { rows: [workOrderRow] } = await client.query(
         `INSERT INTO work_orders
            (work_order_no, asset_id, maintenance_request_id, summary, work_type, priority, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'approved')
+         VALUES ($1, $2, $3, $4, 'corrective', $5, 'approved')
          RETURNING id, work_order_no, status, maintenance_request_id`,
         [
           numberRow.work_order_no,
           current.asset_id,
           requestId,
           current.summary,
-          resolvedWorkType,
           resolvedPriority
         ]
       );
@@ -435,7 +433,7 @@ module.exports = {
   URGENCIES,
   createRequest,
   listTriageQueueAtSite,
-  listRequestsForReporterAtSite,
+  listRequestsRaisedByAtSite,
   findRequest,
   acceptRequest,
   declineRequest,
