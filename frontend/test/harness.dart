@@ -744,6 +744,49 @@ Map<String, dynamic> grantJson(
       'canWrite': canWrite,
     };
 
+/// One KPI as `GET /api/maintenance/sites/:siteId/board` sends it (issue #76).
+/// `value` and `targetValue` are `number | null` on the wire: a null `value`
+/// is an unmeasured KPI, never a zero.
+Map<String, dynamic> boardKpiJson(
+  String code,
+  String name, {
+  String unit = '',
+  String direction = 'higher_better',
+  int decimalPlaces = 1,
+  String formulaText = 'a formula',
+  num? value,
+  required String status,
+  num? targetValue,
+}) =>
+    {
+      'code': code,
+      'name': name,
+      'unit': unit,
+      'direction': direction,
+      'decimalPlaces': decimalPlaces,
+      'formulaText': formulaText,
+      'value': value,
+      'status': status,
+      'targetValue': targetValue,
+    };
+
+/// One Pillar as the board sends it. [hasData] defaults to whether any of
+/// [kpis] carries a measured `value`, the same rule the server applies.
+Map<String, dynamic> boardPillarJson(
+  String code,
+  String name, {
+  int sortOrder = 0,
+  required List<Map<String, dynamic>> kpis,
+  bool? hasData,
+}) =>
+    {
+      'code': code,
+      'name': name,
+      'sortOrder': sortOrder,
+      'hasData': hasData ?? kpis.any((kpi) => kpi['value'] != null),
+      'kpis': kpis,
+    };
+
 /// The wire, faked: `/me` answers the role under test, and the queue endpoints
 /// answer whatever the test scripted. Every request is recorded so a test can
 /// assert what was — and was not — sent.
@@ -874,6 +917,9 @@ class FakeWire {
     this.patchPmScheduleMessage = 'That PM schedule could not be changed.',
     Map<String, List<Map<String, dynamic>>>? workOrderTasks,
     this.workOrderDetailStatus = 200,
+    this.board,
+    this.boardStatus = 200,
+    this.boardMessage = 'The tier board is unavailable.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -1451,6 +1497,24 @@ class FakeWire {
   /// When set, a Work order detail read hangs until the test completes it.
   Completer<void>? workOrderDetailGate;
 
+  /// `GET /api/maintenance/sites/:siteId/board` (issue #76) — the scripted
+  /// board body, or null for an empty board (no Pillars). The Site, Org Unit,
+  /// period and date the request carried are scripted onto the body by the
+  /// test; this fake answers the same body whoever asks.
+  Map<String, dynamic>? board;
+  int boardStatus;
+  String boardMessage;
+
+  /// Every board read as `(siteId, orgUnitId, periodType, date)`, in the order
+  /// the requests reached the wire — so a test can prove a control change sent
+  /// exactly one request carrying the new value.
+  final List<(String, String?, String, String?)> boardRequests = [];
+
+  /// When set, a board read hangs until the test completes it — the same
+  /// device [pmSchedulesGate] uses, needed to prove the board shows its own
+  /// placeholder while a read is still in flight.
+  Completer<void>? boardGate;
+
   int _nextEmployeeId = 900;
   int _nextAssignmentId = 500;
   int _nextJobRoleId = 950;
@@ -1691,6 +1755,29 @@ class FakeWire {
         requests.add('${request.method} $path');
         if (path == '/api/people/me') {
           return http.Response(jsonEncode(_meBody(role, selfId, orgUnitScope)), 200);
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/board')) {
+          final siteId = path.split('/')[4];
+          final orgUnitId = request.url.queryParameters['orgUnitId'];
+          final periodType = request.url.queryParameters['periodType'] ?? '';
+          final date = request.url.queryParameters['date'];
+          boardRequests.add((siteId, orgUnitId, periodType, date));
+          if (boardGate != null) await boardGate!.future;
+          if (boardStatus != 200) {
+            return http.Response(jsonEncode({'message': boardMessage}), boardStatus);
+          }
+          return http.Response(
+            jsonEncode(
+              board ??
+                  {
+                    'site': {'id': siteId, 'name': 'Site', 'timezone': 'Europe/London'},
+                    'orgUnit': null,
+                    'period': {'type': periodType, 'start': '2026-01-01', 'end': '2026-01-01'},
+                    'pillars': const <dynamic>[],
+                  },
+            ),
+            200,
+          );
         }
         if (path == '/api/maintenance/downtime-reasons') {
           if (downtimeReasonsStatus != 200) {

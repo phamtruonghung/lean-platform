@@ -21,6 +21,8 @@ import '../maintenance/pm_schedules_bloc.dart';
 import '../maintenance/pm_schedules_screen.dart';
 import '../maintenance/requests_bloc.dart';
 import '../maintenance/requests_screen.dart';
+import '../maintenance/tier_board_bloc.dart';
+import '../maintenance/tier_board_screen.dart';
 import '../maintenance/work_order.dart';
 import '../maintenance/work_order_assign_dialog.dart';
 import '../maintenance/work_order_cancel_dialog.dart';
@@ -75,6 +77,7 @@ abstract final class Routes {
   static const String orgUnits = '/org-units';
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
+  static const String tierBoard = '/tier-board';
 
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
@@ -309,6 +312,26 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const SkillCoverageStarted()),
                 child: const SkillCoverageScreen(),
+              );
+            },
+          ),
+          // The tier board (issue #76). Offered to every approved Account —
+          // unlike the Maintenance and administrator routes around it, there is
+          // no per-Screen role check here at all: the board's read is Site-wide
+          // and carries no Grant filter (ADR-0009), and `destinationsFor`
+          // already offers it to every role by leaving `roles` unset.
+          GoRoute(
+            path: Routes.tierBoard,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<TierBoardBloc>(
+                create: (context) => TierBoardBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const TierBoardStarted()),
+                child: const TierBoardScreen(),
               );
             },
           ),

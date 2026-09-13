@@ -257,6 +257,20 @@ const List<Destination> platformDestinations = [
     roles: {Roles.admin},
     group: DestinationGroupNames.maintenance,
   ),
+  // The tier board (issue #76) is offered to every approved Account — no
+  // `roles` set, the same "everyone admitted may reach this" shape Home, the
+  // Directory and My requests already use. The board is plant-wide and its read
+  // is Site-wide with no Grant filter (ADR-0009): a tier board a supervisor can
+  // only half-see is not a tier board. Filed under Insights rather than
+  // Maintenance because it is a read about how the plant is being run, fed by
+  // whichever Module's work, not a tool Maintenance does its own work in
+  // (#100, ADR-0020).
+  Destination(
+    label: 'Tier board',
+    icon: Icons.dashboard_outlined,
+    path: Routes.tierBoard,
+    group: DestinationGroupNames.insights,
+  ),
   // Administrator only (issue #89) — `GET .../skill-coverage` is deliberately
   // narrower than every other Site-shaped read in the People Module
   // (skill-routes.js's own header: "how the plant is being run", not "who
