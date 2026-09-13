@@ -87,17 +87,6 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
   /// nobody will ever see.
   static const int _suggestionLimit = 10;
 
-  /// Bumped on every pick (and on Remove) and fed into the `AppSearchField`
-  /// below's own `Key`, forcing a fresh one to mount in its place. Tapping a
-  /// suggestion only calls `onSelected` (`AppSearchField`'s own contract,
-  /// app_search_field.dart) — it does not clear the field's typed text or
-  /// close its own suggestion list, since three different callers each want
-  /// something different to happen next. This picker's own job is done the
-  /// moment a choice is made, so it discards the whole search — text,
-  /// suggestions and all — by remounting rather than reaching into
-  /// `AppSearchField`'s internals, which it exposes no way to do.
-  int _searchGeneration = 0;
-
   Future<List<Employee>> _fetchSuggestions(String term) async {
     final token = context.read<AuthGateway>().currentAccessToken;
     if (token == null) {
@@ -111,10 +100,7 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
   }
 
   void _select(EmployeeRef? employee) {
-    setState(() {
-      _selected = employee;
-      _searchGeneration++;
-    });
+    setState(() => _selected = employee);
     widget.onChanged(employee);
   }
 
@@ -150,11 +136,6 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
           Text('No Employee will be linked.', style: muted),
         const SizedBox(height: Spacing.sm),
         AppSearchField<Employee>(
-          // Remounted on every pick — see [_searchGeneration]'s own doc
-          // comment. `AppSearchField`'s own field/suggestion keys are derived
-          // from `name`, not from this outer `Key`, so `searchFieldKey` and
-          // `resultKey` resolve identically before and after a remount.
-          key: ValueKey('${EmployeeLinkPicker._searchFieldName}-$_searchGeneration'),
           name: EmployeeLinkPicker._searchFieldName,
           label: 'Search the Directory',
           enabled: widget.enabled,

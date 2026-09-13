@@ -50,14 +50,15 @@ import 'failure_state.dart';
 ///
 /// **`onSelected` and the controlled `value`/`onChanged` pair are two
 /// different things.** Tapping a suggestion calls [onSelected] with that
-/// record and does nothing else — no text is written into the field, no
-/// navigation happens, nothing beyond that one call. This widget carries no
-/// `go_router` import and issues no navigation call anywhere, because the
-/// three call sites each do something different with a pick (the Directory
-/// navigates to the Employee, the link picker selects them into the form it
-/// sits inside, the Org Units search reveals and selects the unit in its
-/// tree) — deciding that here would bake one call site's job into a widget
-/// meant to serve all three. [value]/[onChanged] instead exist for a
+/// record and collapses the suggestion list — see below — and does nothing
+/// else: no text is written into the field, no navigation happens. This
+/// widget carries no `go_router` import and issues no navigation call
+/// anywhere, because the three call sites each do something different with a
+/// pick (the Directory navigates to the Employee, the link picker selects
+/// them into the form it sits inside, the Org Units search reveals and
+/// selects the unit in its tree) — deciding that here would bake one call
+/// site's job into a widget meant to serve all three. [value]/[onChanged]
+/// instead exist for a
 /// narrower job: displaying an already-chosen record when a caller is
 /// editing an existing one, and reporting when that value has stopped being
 /// usable. Two things inside this widget stop a value being usable — a
@@ -69,6 +70,23 @@ import 'failure_state.dart';
 /// [T] nowhere in its own code — only a caller's own [onSelected] handler,
 /// choosing to feed a pick back in as the new [value], can make it non-null
 /// again.
+///
+/// **A pick collapses the list, unconditionally.** Tapping a suggestion is
+/// the moment the person's search is over: the list they were reading has
+/// served its purpose, so leaving it open over whatever the caller does next
+/// is only ever in the way. Every call site wants it closed — the Directory
+/// (#128) navigates away, so it makes no visible difference there, while the
+/// Employee link picker (#129) and the Org Units search (#130) each had to
+/// fold a generation counter into this widget's outer `Key` before #144,
+/// forcing a remount, just to close it. An opt-in `closeOnSelect` flag was
+/// considered and rejected: every caller would set it `true`, and a
+/// parameter nobody sets to `false` is a knob with a single position. If a
+/// later caller genuinely wants the list left open, a flag can be added then,
+/// against a real need rather than an imagined one. The collapse is exactly
+/// the one [_AppSearchFieldState._handleSubmitted] performs for the submit
+/// path (#128): the pending debounce is cancelled and `_requestSeq` is
+/// bumped, so a fetch already in flight cannot land afterwards and reopen
+/// what the pick just closed.
 ///
 /// **A failed fetch never falls back to free text** (ADR-0023 point 6):
 /// [PlatformFailureState] replaces the suggestion list, its retry re-issues
@@ -154,8 +172,10 @@ class AppSearchField<T> extends StatefulWidget {
   /// track a pick does so from its own [onSelected] handler.
   final ValueChanged<T?> onChanged;
 
-  /// Called with the tapped record when a suggestion is selected, and
-  /// nothing else happens — see this class's own doc comment.
+  /// Called with the tapped record when a suggestion is selected. The
+  /// suggestion list is collapsed before this runs (see this class's own doc
+  /// comment); nothing else happens — no text is written and no navigation
+  /// is issued.
   final ValueChanged<T> onSelected;
 
   /// A dumb fetch: given a term, return the matching records. This widget
@@ -350,7 +370,23 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
   }
 
   void _select(T record) {
+    _collapse();
     widget.onSelected(record);
+  }
+
+  /// Collapses the suggestion box back to idle: cancels any pending debounce
+  /// and bumps `_requestSeq` so a fetch already in flight can never land
+  /// afterwards and reopen what this just closed. Shared by the submit path
+  /// ([_handleSubmitted]) and the pick path ([_select]) — both are the
+  /// person's search being over, and both must leave nothing behind that
+  /// could show the same match twice.
+  void _collapse() {
+    _debounceTimer?.cancel();
+    _requestSeq++;
+    setState(() {
+      _status = _SuggestStatus.idle;
+      _suggestions = const [];
+    });
   }
 
   /// Handles the field's own submit action (Enter, or a keyboard's "search"
@@ -364,16 +400,11 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
   /// suggestion box for the same term hanging around (or a debounced fetch
   /// still in flight landing a moment later) would show the same match twice
   /// over, once as a suggestion and once as the row the narrowed listing now
-  /// renders. Bumping `_requestSeq` here, the same device `_handleTextChanged`
-  /// uses when typing drops back below the minimum length, is what stops an
-  /// already in-flight fetch from landing after this and reopening the box.
+  /// renders. [_collapse] does the work; bumping `_requestSeq` there is what
+  /// stops an already in-flight fetch from landing after this and reopening
+  /// the box.
   void _handleSubmitted(String text) {
-    _debounceTimer?.cancel();
-    _requestSeq++;
-    setState(() {
-      _status = _SuggestStatus.idle;
-      _suggestions = const [];
-    });
+    _collapse();
     widget.onSubmitted!(text.trim());
   }
 

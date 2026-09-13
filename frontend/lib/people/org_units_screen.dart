@@ -105,12 +105,6 @@ class OrgUnitsScreen extends StatefulWidget {
 }
 
 class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
-  /// Bumped every time a suggestion is picked, and folded into the
-  /// `AppSearchField`'s own `Key` below — remounting it fresh after a pick
-  /// (an empty term, no suggestions showing) rather than leaving the list a
-  /// person just acted on sitting open over the tree it just changed.
-  int _searchGeneration = 0;
-
   void _onAdminChanged(BuildContext context, OrgUnitAdminState state) {
     final effect = state.effect;
     if (effect == null) return;
@@ -142,13 +136,12 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
 
   /// A suggestion was picked: reveal it in the tree — expanding every
   /// ancestor between the root and it — and select it. No navigation, per
-  /// `AppSearchField`'s own contract; the field itself is remounted fresh
-  /// (see [_searchGeneration]'s own doc comment).
+  /// `AppSearchField`'s own contract; the field itself collapses its own
+  /// suggestion list on a pick (#144).
   void _onSuggestionSelected(BuildContext context, OrgUnitNode orgUnit) {
     context.read<OrgUnitPickerBloc>().add(
           OrgUnitPickerRevealed(orgUnitId: orgUnit.id, ancestorIds: orgUnit.ancestorIds),
         );
-    setState(() => _searchGeneration++);
   }
 
   @override
@@ -249,7 +242,6 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                   ],
                   if (siteId != null) ...[
                     AppSearchField<OrgUnitNode>(
-                      key: ValueKey<int>(_searchGeneration),
                       name: OrgUnitsScreen._searchFieldName,
                       label: 'Find an Org Unit by name',
                       helperText: 'Picking one reveals and selects it in the tree below.',
