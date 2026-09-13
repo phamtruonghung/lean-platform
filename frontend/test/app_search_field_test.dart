@@ -190,6 +190,43 @@ void main() {
     }
   });
 
+  // Issue #143 / ADR-0026: the widget bounds the list, so it is the one that
+  // says when it has, rather than leaving the person unable to tell a missing
+  // match from one past the tenth row.
+  testWidgets('a term whose results were cut renders the bounded-list footer',
+      (WidgetTester tester) async {
+    Future<List<_Record>> fetch(String term) async {
+      return List<_Record>.generate(15, (i) => (id: '${i + 1}', label: 'Record ${i + 1}'));
+    }
+
+    await tester.pumpWidget(_Harness(fetchSuggestions: fetch));
+
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'record');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(find.byKey(AppSearchField.truncatedKey('employee')), findsOneWidget);
+    expect(
+      find.text('There are more matches than are shown — keep typing to narrow the list.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a term whose results all fit renders no bounded-list footer',
+      (WidgetTester tester) async {
+    Future<List<_Record>> fetch(String term) async {
+      return const [(id: 'e1', label: 'Ada Lovelace')];
+    }
+
+    await tester.pumpWidget(_Harness(fetchSuggestions: fetch));
+
+    await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'ada');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(find.byKey(AppSearchField.truncatedKey('employee')), findsNothing);
+  });
+
   testWidgets('tapping a suggestion invokes onSelected with that exact record, and does nothing navigational',
       (WidgetTester tester) async {
     const record = (id: 'e1', label: 'Ada Lovelace');
