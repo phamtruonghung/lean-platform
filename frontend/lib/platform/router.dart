@@ -645,7 +645,14 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                           authGateway: context.read<AuthGateway>(),
                           workOrderId: workOrderId,
                         )..add(const WorkOrderDetailStarted()),
-                        child: WorkOrderDetailScreen(workOrderId: workOrderId),
+                        child: WorkOrderDetailScreen(
+                          workOrderId: workOrderId,
+                          // Same coarse signal the list's own writable
+                          // affordances use: a caller with no write Grant
+                          // anywhere is offered no booking button, since the
+                          // server would refuse it anyway.
+                          canBook: account.account.orgUnitScope.canWriteSomewhere,
+                        ),
                       );
                     },
                   ),
