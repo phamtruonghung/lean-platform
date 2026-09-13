@@ -166,6 +166,12 @@ class WorkOrdersScreen extends StatelessWidget {
   static const ValueKey<String> scopeRefusedKey = ValueKey<String>('work-orders-scope-refused');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('work-order-row-$id');
 
+  /// The affordance that opens a row's detail (`/work-orders/:id`, issue #74)
+  /// — the whole row is tappable, so the tasks copied from the Job plan are
+  /// one tap away without the Site-wide list carrying them itself. Present on
+  /// every row regardless of role or status, since reading is not a write.
+  static ValueKey<String> detailsKey(String id) => ValueKey<String>('work-order-details-$id');
+
   /// One key, two labels — unlike `AssetsScreen.retireKey`/`reinstateKey`,
   /// which are two keys because they are two different acts. Assigning and
   /// reassigning are one act (AC5), so the key is stable and only the label
@@ -693,28 +699,33 @@ class _WorkOrderTableRow extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 56),
       padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
       decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant))),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          cell(workOrder.workOrderNo, 2, style: muted),
-          cell(workOrder.summary, 4, style: theme.textTheme.bodyMedium),
-          cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}', 3,
-              style: muted),
-          cell(workOrder.orgUnitName, 2, style: muted),
-          SizedBox(
-            width: _statusColumnWidth(context),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child:
-                  Chip(label: Text(workOrder.statusLabel), visualDensity: VisualDensity.compact),
+      child: InkWell(
+        key: WorkOrdersScreen.detailsKey(workOrder.id),
+        onTap: () => context.go('${Routes.workOrders}/${workOrder.id}'),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            cell(workOrder.workOrderNo, 2, style: muted),
+            cell(workOrder.summary, 4, style: theme.textTheme.bodyMedium),
+            cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}', 3,
+                style: muted),
+            cell(workOrder.orgUnitName, 2, style: muted),
+            SizedBox(
+              width: _statusColumnWidth(context),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child:
+                    Chip(label: Text(workOrder.statusLabel), visualDensity: VisualDensity.compact),
+              ),
             ),
-          ),
-          cell(workOrder.assigneeName ?? 'Unassigned', 2, style: theme.textTheme.bodyMedium),
-          SizedBox(
-            width: _actionsColumnWidth,
-            child: _RowActions(workOrder: workOrder, canAssign: canAssign, canWork: canWork, busy: busy),
-          ),
-        ],
+            cell(workOrder.assigneeName ?? 'Unassigned', 2, style: theme.textTheme.bodyMedium),
+            SizedBox(
+              width: _actionsColumnWidth,
+              child:
+                  _RowActions(workOrder: workOrder, canAssign: canAssign, canWork: canWork, busy: busy),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -740,7 +751,10 @@ class _WorkOrderCard extends StatelessWidget {
     return Card(
       key: WorkOrdersScreen.rowKey(workOrder.id),
       margin: EdgeInsets.zero,
-      child: Padding(
+      child: InkWell(
+        key: WorkOrdersScreen.detailsKey(workOrder.id),
+        onTap: () => context.go('${Routes.workOrders}/${workOrder.id}'),
+        child: Padding(
         padding: const EdgeInsets.all(Spacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -796,6 +810,7 @@ class _WorkOrderCard extends StatelessWidget {
             const SizedBox(height: Spacing.sm),
             _RowActions(workOrder: workOrder, canAssign: canAssign, canWork: canWork, busy: busy),
           ],
+        ),
         ),
       ),
     );

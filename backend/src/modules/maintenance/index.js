@@ -26,11 +26,15 @@ const assetRoutes = require('./asset-routes');
 const workOrderRoutes = require('./work-order-routes');
 const requestRoutes = require('./request-routes');
 const downtimeRoutes = require('./downtime-routes');
+const jobPlanRoutes = require('./job-plan-routes');
+const pmScheduleRoutes = require('./pm-schedule-routes');
 
 const router = express.Router();
 router.use(assetRoutes);
 router.use(workOrderRoutes);
 router.use(requestRoutes);
 router.use(downtimeRoutes);
+router.use(jobPlanRoutes);
+router.use(pmScheduleRoutes);
 
 module.exports = { router };

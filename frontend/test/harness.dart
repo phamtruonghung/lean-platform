@@ -284,6 +284,121 @@ Map<String, dynamic> downtimeReasonJson(
       'requiresComment': requiresComment,
     };
 
+/// One Job plan task as `GET /api/maintenance/job-plans` sends it (issue #74)
+/// — mirrors `toJobPlanTask` (job-plans.js) key for key, with the required
+/// Skill's name already resolved by the server's own join.
+Map<String, dynamic> jobPlanTaskJson(
+  String id,
+  int stepNo,
+  String instruction, {
+  String? skillId,
+  String? skillName,
+  num? estimatedHours,
+}) =>
+    {
+      'id': id,
+      'stepNo': stepNo,
+      'instruction': instruction,
+      'skillId': skillId,
+      'skillName': skillName,
+      'estimatedHours': estimatedHours,
+    };
+
+/// One Job plan as `GET /api/maintenance/job-plans` sends it (issue #74) —
+/// mirrors `toJobPlan` (job-plans.js) key for key: a flat row plus an ordered
+/// `tasks` list.
+Map<String, dynamic> jobPlanJson(
+  String id,
+  String code,
+  String name, {
+  String? description,
+  String workType = 'preventive',
+  num? estimatedHours,
+  bool requiresShutdown = false,
+  String? safetyNote,
+  bool isActive = true,
+  List<Map<String, dynamic>> tasks = const [],
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'description': description,
+      'workType': workType,
+      'estimatedHours': estimatedHours,
+      'requiresShutdown': requiresShutdown,
+      'safetyNote': safetyNote,
+      'isActive': isActive,
+      'tasks': tasks,
+    };
+
+/// One PM schedule as `GET /api/maintenance/sites/:siteId/pm-schedules` sends
+/// it (issue #74) — mirrors `toPmSchedule` (pm-schedules.js) key for key: a
+/// flat row, no nested `asset`/`orgUnit`/`jobPlan` maps.
+Map<String, dynamic> pmScheduleJson(
+  String id,
+  String code,
+  String name, {
+  String assetId = '7',
+  String assetCode = 'PRESS-1',
+  String assetName = 'Press 1',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String jobPlanId = '5',
+  String jobPlanName = 'Annual service',
+  int intervalDays = 30,
+  String anchor = 'completed',
+  int leadTimeDays = 7,
+  int priority = 3,
+  String? lastCompletedOn,
+  String? nextDueOn,
+  bool isActive = true,
+  int? daysUntilDue,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'jobPlanId': jobPlanId,
+      'jobPlanName': jobPlanName,
+      'intervalDays': intervalDays,
+      'anchor': anchor,
+      'leadTimeDays': leadTimeDays,
+      'priority': priority,
+      'lastCompletedOn': lastCompletedOn,
+      'nextDueOn': nextDueOn,
+      'isActive': isActive,
+      'daysUntilDue': daysUntilDue,
+    };
+
+/// One Work order task as `GET /api/maintenance/work-orders/:id` sends it
+/// (issue #74) — mirrors `toWorkOrderTask` (work-orders.js) key for key.
+Map<String, dynamic> workOrderTaskJson(
+  String id,
+  int stepNo,
+  String instruction, {
+  String? skillId,
+  String? skillName,
+  String status = 'pending',
+  String? note,
+  num? reading,
+}) =>
+    {
+      'id': id,
+      'stepNo': stepNo,
+      'instruction': instruction,
+      'skillId': skillId,
+      'skillName': skillName,
+      'status': status,
+      'note': note,
+      'reading': reading,
+    };
+
 /// One held skill as `GET /api/people/employees/assignee-candidates` sends
 /// it, nested under a candidate — mirrors `directory.js`'s per-skill shape
 /// plus `isLapsed` (issue #62).
@@ -745,6 +860,20 @@ class FakeWire {
     this.qualifiedEmployeesStatus = 200,
     Map<String, List<Map<String, dynamic>>>? skillCoverage,
     this.skillCoverageStatus = 200,
+    List<Map<String, dynamic>>? jobPlans,
+    this.jobPlansStatus = 200,
+    this.createJobPlanStatus = 201,
+    this.createJobPlanMessage = 'That Job plan could not be added.',
+    this.patchJobPlanStatus = 200,
+    this.patchJobPlanMessage = 'That Job plan could not be changed.',
+    Map<String, List<Map<String, dynamic>>>? pmSchedules,
+    this.pmSchedulesStatus = 200,
+    this.createPmScheduleStatus = 201,
+    this.createPmScheduleMessage = 'That PM schedule could not be created.',
+    this.patchPmScheduleStatus = 200,
+    this.patchPmScheduleMessage = 'That PM schedule could not be changed.',
+    Map<String, List<Map<String, dynamic>>>? workOrderTasks,
+    this.workOrderDetailStatus = 200,
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -765,7 +894,10 @@ class FakeWire {
         jobRoles = jobRoles ?? [],
         skills = skills ?? [],
         qualifiedEmployees = qualifiedEmployees ?? [],
-        skillCoverage = skillCoverage ?? {};
+        skillCoverage = skillCoverage ?? {},
+        jobPlans = jobPlans ?? [],
+        pmSchedules = pmSchedules ?? {},
+        workOrderTasks = workOrderTasks ?? {};
 
   final String role;
 
@@ -1256,6 +1388,69 @@ class FakeWire {
   /// requests reached the wire.
   final List<String> skillCoverageRequests = [];
 
+  /// `GET /api/maintenance/job-plans` (issue #74) — the shared catalogue,
+  /// deactivated rows included by default, the same shape the real route's
+  /// own includeInactive handling follows.
+  List<Map<String, dynamic>> jobPlans;
+  int jobPlansStatus;
+
+  /// `POST /api/maintenance/job-plans` (administrator only).
+  int createJobPlanStatus;
+  String createJobPlanMessage;
+
+  /// Every Job plan create body that actually reached the wire, decoded — so a
+  /// test can assert exactly one request was sent and what tasks and Skill it
+  /// carried.
+  final List<Map<String, dynamic>> jobPlanPosts = [];
+
+  /// `PATCH /api/maintenance/job-plans/:id` (administrator only) — deactivate
+  /// and reactivate both land here.
+  int patchJobPlanStatus;
+  String patchJobPlanMessage;
+
+  /// Every Job plan PATCH that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> jobPlanPatches = [];
+
+  /// When set, a Job plan read hangs until the test completes it — the same
+  /// device [downtimeGate] uses, needed to prove the list shows placeholders
+  /// while a read is in flight.
+  Completer<void>? jobPlansGate;
+
+  /// `GET /api/maintenance/sites/:siteId/pm-schedules`, keyed by Site id.
+  Map<String, List<Map<String, dynamic>>> pmSchedules;
+  int pmSchedulesStatus;
+
+  /// `POST /api/maintenance/pm-schedules`.
+  int createPmScheduleStatus;
+  String createPmScheduleMessage;
+
+  /// Every PM schedule create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> pmSchedulePosts = [];
+
+  /// `PATCH /api/maintenance/pm-schedules/:id` — deactivate and reactivate
+  /// both land here.
+  int patchPmScheduleStatus;
+  String patchPmScheduleMessage;
+
+  /// Every PM schedule PATCH that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> pmSchedulePatches = [];
+
+  /// When set, a PM schedule read hangs until the test completes it.
+  Completer<void>? pmSchedulesGate;
+
+  /// `GET /api/maintenance/work-orders/:id` (issue #74) — the tasks copied
+  /// onto each Work order, keyed by Work order id, merged onto whatever row
+  /// [workOrders] holds for the same id.
+  Map<String, List<Map<String, dynamic>>> workOrderTasks;
+  int workOrderDetailStatus;
+
+  /// Every Work order id a detail read was made for, in the order the
+  /// requests reached the wire.
+  final List<String> workOrderDetailRequests = [];
+
+  /// When set, a Work order detail read hangs until the test completes it.
+  Completer<void>? workOrderDetailGate;
+
   int _nextEmployeeId = 900;
   int _nextAssignmentId = 500;
   int _nextJobRoleId = 950;
@@ -1663,6 +1858,176 @@ class FakeWire {
             return http.Response(jsonEncode({'message': 'That Asset does not exist.'}), 404);
           }
           return http.Response(jsonEncode({'asset': updated}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/job-plans') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          jobPlanPosts.add(sent);
+          if (createJobPlanStatus != 201) {
+            return http.Response(jsonEncode({'message': createJobPlanMessage}), createJobPlanStatus);
+          }
+          final created = jobPlanJson(
+            '900',
+            sent['code'] as String,
+            sent['name'] as String,
+            description: sent['description'] as String?,
+            workType: sent['workType'] as String,
+            estimatedHours: sent['estimatedHours'] as num?,
+            requiresShutdown: sent['requiresShutdown'] == true,
+            safetyNote: sent['safetyNote'] as String?,
+            tasks: [
+              for (final row in (sent['tasks'] as List<dynamic>? ?? const []))
+                jobPlanTaskJson(
+                  't${(row as Map<String, dynamic>)['stepNo']}',
+                  (row['stepNo'] as num).toInt(),
+                  row['instruction'] as String,
+                  skillId: row['skillId']?.toString(),
+                  skillName: row['skillId'] == null
+                      ? null
+                      : _skillCodeNameFor(row['skillId'].toString()).$2,
+                  estimatedHours: row['estimatedHours'] as num?,
+                ),
+            ],
+          );
+          jobPlans = [...jobPlans, created];
+          return http.Response(jsonEncode({'jobPlan': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/maintenance/job-plans/')) {
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          jobPlanPatches.add((id, body));
+          if (patchJobPlanStatus != 200) {
+            return http.Response(jsonEncode({'message': patchJobPlanMessage}), patchJobPlanStatus);
+          }
+          Map<String, dynamic>? updated;
+          jobPlans = [
+            for (final plan in jobPlans)
+              if (plan['id'] == id) (updated = {...plan, ...body}) else plan,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Job plan not found'}), 404);
+          }
+          return http.Response(jsonEncode({'jobPlan': updated}), 200);
+        }
+        if (path == '/api/maintenance/job-plans') {
+          if (jobPlansGate != null) await jobPlansGate!.future;
+          if (jobPlansStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Job plans are unavailable.'}),
+              jobPlansStatus,
+            );
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] != 'false';
+          final sent = includeInactive
+              ? jobPlans
+              : [for (final plan in jobPlans) if (plan['isActive'] != false) plan];
+          return http.Response(jsonEncode({'jobPlans': sent}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/pm-schedules') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          pmSchedulePosts.add(sent);
+          if (createPmScheduleStatus != 201) {
+            return http.Response(jsonEncode({'message': createPmScheduleMessage}), createPmScheduleStatus);
+          }
+          final assetId = sent['assetId'] as String;
+          final jobPlanId = sent['jobPlanId'] as String;
+          final siteId = _siteOfAsset(assetId);
+          final siteAssets = siteId == null ? const <Map<String, dynamic>>[] : (assets[siteId] ?? []);
+          final asset = siteAssets.firstWhere(
+            (a) => a['id'] == assetId,
+            orElse: () => const <String, dynamic>{},
+          );
+          final jobPlan = jobPlans.firstWhere(
+            (p) => p['id'] == jobPlanId,
+            orElse: () => const <String, dynamic>{},
+          );
+          final created = pmScheduleJson(
+            '900',
+            'PM-900',
+            '${jobPlan['name'] ?? 'Job plan'} - ${asset['name'] ?? 'Asset'}',
+            assetId: assetId,
+            assetCode: asset['code'] as String? ?? 'ASSET',
+            assetName: asset['name'] as String? ?? 'Asset',
+            jobPlanId: jobPlanId,
+            jobPlanName: jobPlan['name'] as String? ?? 'Job plan',
+            intervalDays: (sent['intervalDays'] as num).toInt(),
+            anchor: sent['anchor'] as String? ?? 'completed',
+            leadTimeDays: (sent['leadTimeDays'] as num?)?.toInt() ?? 7,
+            priority: (sent['priority'] as num?)?.toInt() ?? 3,
+            nextDueOn: sent['nextDueOn'] as String?,
+          );
+          if (siteId != null) {
+            pmSchedules = {
+              ...pmSchedules,
+              siteId: [...(pmSchedules[siteId] ?? []), created],
+            };
+          }
+          return http.Response(jsonEncode({'pmSchedule': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/maintenance/pm-schedules/')) {
+          final id = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          pmSchedulePatches.add((id, body));
+          if (patchPmScheduleStatus != 200) {
+            return http.Response(jsonEncode({'message': patchPmScheduleMessage}), patchPmScheduleStatus);
+          }
+          Map<String, dynamic>? updated;
+          pmSchedules = {
+            for (final entry in pmSchedules.entries)
+              entry.key: [
+                for (final schedule in entry.value)
+                  if (schedule['id'] == id) (updated = {...schedule, ...body}) else schedule,
+              ],
+          };
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'PM schedule not found'}), 404);
+          }
+          return http.Response(jsonEncode({'pmSchedule': updated}), 200);
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/pm-schedules')) {
+          final siteId = path.split('/')[4];
+          if (pmSchedulesGate != null) await pmSchedulesGate!.future;
+          if (pmSchedulesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The PM schedules are unavailable.'}),
+              pmSchedulesStatus,
+            );
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final siteSchedules = pmSchedules[siteId] ?? [];
+          final sent = includeInactive
+              ? siteSchedules
+              : [for (final schedule in siteSchedules) if (schedule['isActive'] != false) schedule];
+          return http.Response(jsonEncode({'pmSchedules': sent}), 200);
+        }
+        if (request.method == 'GET' && path.startsWith('/api/maintenance/work-orders/')) {
+          final id = path.split('/')[4];
+          workOrderDetailRequests.add(id);
+          if (workOrderDetailGate != null) await workOrderDetailGate!.future;
+          if (workOrderDetailStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'That Work order could not be read.'}),
+              workOrderDetailStatus,
+            );
+          }
+          Map<String, dynamic>? row;
+          for (final list in workOrders.values) {
+            for (final workOrder in list) {
+              if (workOrder['id'] == id) row = workOrder;
+            }
+          }
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'That Work order does not exist.'}), 404);
+          }
+          return http.Response(
+            jsonEncode({
+              'workOrder': {
+                ...row,
+                'pmScheduleId': null,
+                'tasks': workOrderTasks[id] ?? const [],
+              },
+            }),
+            200,
+          );
         }
         if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/work-orders')) {
           final siteId = path.split('/')[4];

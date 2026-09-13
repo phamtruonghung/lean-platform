@@ -92,6 +92,71 @@ function toWorkOrder(row) {
   };
 }
 
+// A work order task (issue #74, consuming the baseline's `work_order_tasks`),
+// with the required Skill's NAME from the join. Mirrors the job plan task
+// shape job-plans.js hands back, plus the three execution fields a task
+// carries once it has been worked.
+const WORK_ORDER_TASK_COLUMNS = `
+  wot.id, wot.work_order_id, wot.step_no, wot.instruction, wot.skill_id,
+  wot.status, wot.note, wot.reading,
+  s.name AS skill_name
+`;
+
+function toWorkOrderTask(row) {
+  return {
+    id: row.id,
+    stepNo: row.step_no,
+    instruction: row.instruction,
+    skillId: row.skill_id,
+    skillName: row.skill_name ?? null,
+    status: row.status,
+    note: row.note,
+    // NUMERIC(18,4) crosses the wire as a string by default; a reading that
+    // fits this column comfortably is converted to a Number, the same choice
+    // downtime.js's durationMinutes makes.
+    reading: row.reading === null ? null : Number(row.reading)
+  };
+}
+
+// The tasks copied onto a work order, ordered step_no, on whichever
+// connection is handed in. Kept separate from the list read on purpose: the
+// Site-wide work order LIST must not carry tasks (it would be an N+1), so only
+// the detail read and the raise sweep below attach them.
+async function listWorkOrderTasks(workOrderId, client = getPool()) {
+  const { rows } = await client.query(
+    `SELECT ${WORK_ORDER_TASK_COLUMNS}
+       FROM work_order_tasks wot
+       LEFT JOIN skills s ON s.id = wot.skill_id
+      WHERE wot.work_order_id = $1
+      ORDER BY wot.step_no`,
+    [workOrderId]
+  );
+  return rows.map(toWorkOrderTask);
+}
+
+// One work order plus its copied tasks and the PM schedule it came from — the
+// detail read behind GET /work-orders/:id and the shape the raise sweep
+// returns. `client` is the pool by default and a transaction client when the
+// caller is inside the raise's own transaction, so a just-inserted,
+// not-yet-committed work order can be re-read. Null when the id names nothing.
+async function findWorkOrderWithTasks(id, client = getPool()) {
+  if (parseId(id) === null) return null;
+  const { rows } = await client.query(
+    `SELECT ${WORK_ORDER_COLUMNS}, wo.pm_schedule_id
+       FROM work_orders wo
+       ${WORK_ORDER_FROM}
+      WHERE wo.id = $1`,
+    [id]
+  );
+  if (!rows[0]) return null;
+
+  return {
+    ...toWorkOrder(rows[0]),
+    pmScheduleId: rows[0].pm_schedule_id ?? null,
+    tasks: await listWorkOrderTasks(id, client)
+  };
+}
+
 function requireNonEmptyString(field, value) {
   if (typeof value !== 'string' || value.trim() === '') {
     throw httpError(400, `${field} is required`);
@@ -391,6 +456,8 @@ async function completeWorkOrder(workOrderId, { note } = {}, accountId) {
       if (!current) throw notFound('Work order');
       if (current.status !== 'in_progress') throw transitionGuard('complete', current.status);
 
+      // `wo.pm_schedule_id` is selected only so the PM advance below can run;
+      // toWorkOrder ignores the extra column, so the wire shape is unchanged.
       const { rows: [row] } = await client.query(
         `WITH updated AS (
            UPDATE work_orders
@@ -398,11 +465,41 @@ async function completeWorkOrder(workOrderId, { note } = {}, accountId) {
             WHERE id = $1
            RETURNING *
          )
-         SELECT ${WORK_ORDER_COLUMNS}
+         SELECT ${WORK_ORDER_COLUMNS}, wo.pm_schedule_id
            FROM updated wo
            ${WORK_ORDER_FROM}`,
         [workOrderId, note.trim()]
       );
+
+      // A PM work order completing advances its schedule (issue #74), in the
+      // same transaction as the completion — either the work order is
+      // completed and the schedule moved on, or neither. Only a work order
+      // that came from a schedule does this; a manually raised one leaves
+      // every schedule alone.
+      //
+      // `last_completed_on` records when the work was actually done. The next
+      // due date depends on the schedule's own `anchor`:
+      //   - 'completed': the clock starts when the work was done, so it rolls
+      //     from today — a service done late simply slides.
+      //   - 'due': the obligation is fixed, so it rolls from the ORIGINAL due
+      //     date (or today, if there was none) — doing a statutory inspection
+      //     three weeks late does not push next year's date back.
+      // `interval_days` is NULL only for a meter-only schedule, which this
+      // slice does not create; the arithmetic then yields NULL, which is the
+      // honest answer rather than an invented date.
+      if (row.pm_schedule_id !== null) {
+        await client.query(
+          `UPDATE pm_schedules
+              SET last_completed_on = CURRENT_DATE,
+                  next_due_on = CASE
+                    WHEN anchor = 'completed' THEN CURRENT_DATE + interval_days
+                    ELSE COALESCE(next_due_on, CURRENT_DATE) + interval_days
+                  END
+            WHERE id = $1`,
+          [row.pm_schedule_id]
+        );
+      }
+
       return toWorkOrder(row);
     });
   } catch (error) {
@@ -455,9 +552,12 @@ async function cancelWorkOrder(workOrderId, { reason } = {}, accountId) {
 
 module.exports = {
   WORK_TYPES,
+  OPEN_STATUSES,
   createWorkOrder,
   listWorkOrdersAtSite,
   findWorkOrder,
+  findWorkOrderWithTasks,
+  listWorkOrderTasks,
   assignWorkOrder,
   startWorkOrder,
   completeWorkOrder,
