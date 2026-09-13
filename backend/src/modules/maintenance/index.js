@@ -31,6 +31,7 @@ const pmScheduleRoutes = require('./pm-schedule-routes');
 const meterRoutes = require('./meter-routes');
 const inventoryRoutes = require('./inventory-routes');
 const boardRoutes = require('./board-routes');
+const floorRoutes = require('./floor-routes');
 
 const router = express.Router();
 router.use(assetRoutes);
@@ -42,5 +43,6 @@ router.use(pmScheduleRoutes);
 router.use(meterRoutes);
 router.use(inventoryRoutes);
 router.use(boardRoutes);
+router.use(floorRoutes);
 
 module.exports = { router };

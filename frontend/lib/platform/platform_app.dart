@@ -7,6 +7,7 @@ import '../people_api.dart';
 import '../theme.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
+import 'floor_device_gateway.dart';
 import 'router.dart';
 import 'session_error_screen.dart';
 
@@ -16,12 +17,18 @@ class PlatformApp extends StatefulWidget {
     required this.authGateway,
     required this.peopleApi,
     required this.maintenanceApi,
+    this.floorDeviceGateway = const ConfiguredFloorDeviceGateway(),
     this.initialLocation,
   });
 
   final AuthGateway authGateway;
   final PeopleApi peopleApi;
   final MaintenanceApi maintenanceApi;
+
+  /// The shared floor device's own credential, if this build was provisioned
+  /// with one (issue #77). A build with none still serves the surface; it shows
+  /// the not-registered state rather than pretending to be a device.
+  final FloorDeviceGateway floorDeviceGateway;
 
   /// Supplied only by tests; always null in production.
   final String? initialLocation;
@@ -59,6 +66,7 @@ class _PlatformAppState extends State<PlatformApp> {
         // same faked wire a widget test already substitutes here.
         RepositoryProvider<PeopleApi>.value(value: widget.peopleApi),
         RepositoryProvider<MaintenanceApi>.value(value: widget.maintenanceApi),
+        RepositoryProvider<FloorDeviceGateway>.value(value: widget.floorDeviceGateway),
       ],
       child: BlocProvider<AccountBloc>.value(
         value: _accountBloc,
