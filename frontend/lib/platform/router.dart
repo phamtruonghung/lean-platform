@@ -12,15 +12,21 @@ import '../maintenance/assets_bloc.dart';
 import '../maintenance/assets_screen.dart';
 import '../maintenance/downtime_bloc.dart';
 import '../maintenance/downtime_screen.dart';
+import '../maintenance/job_plans_bloc.dart';
+import '../maintenance/job_plans_screen.dart';
 import '../maintenance/maintenance_api.dart';
 import '../maintenance/my_requests_bloc.dart';
 import '../maintenance/my_requests_screen.dart';
+import '../maintenance/pm_schedules_bloc.dart';
+import '../maintenance/pm_schedules_screen.dart';
 import '../maintenance/requests_bloc.dart';
 import '../maintenance/requests_screen.dart';
 import '../maintenance/work_order.dart';
 import '../maintenance/work_order_assign_dialog.dart';
 import '../maintenance/work_order_cancel_dialog.dart';
 import '../maintenance/work_order_complete_dialog.dart';
+import '../maintenance/work_order_detail_bloc.dart';
+import '../maintenance/work_order_detail_screen.dart';
 import '../maintenance/work_order_dialog_host.dart';
 import '../maintenance/work_order_form_dialog.dart';
 import '../maintenance/work_orders_bloc.dart';
@@ -62,6 +68,8 @@ abstract final class Routes {
   static const String requests = '/requests';
   static const String myRequests = '/my-requests';
   static const String downtime = '/downtime';
+  static const String pmSchedules = '/pm-schedules';
+  static const String jobPlans = '/job-plans';
   static const String directory = '/directory';
   static const String jobRoles = '/job-roles';
   static const String orgUnits = '/org-units';
@@ -522,6 +530,30 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                       );
                     },
                   ),
+                  // `/work-orders/:id` — the Work order detail read (issue
+                  // #74), a Screen of its own rather than a dialog because it
+                  // fetches the Work order and its copied tasks from
+                  // `GET /work-orders/:id`, which the Site-wide list
+                  // deliberately does not carry. Declared after the literal
+                  // `new` and the `:id/action` routes so none of them is
+                  // shadowed; a malformed or unknown id resolves to a failure
+                  // state with a retry on the Screen itself.
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      if (account is! AccountApproved) return const SizedBox.shrink();
+                      final workOrderId = state.pathParameters['id']!;
+                      return BlocProvider<WorkOrderDetailBloc>(
+                        create: (context) => WorkOrderDetailBloc(
+                          maintenanceApi: context.read<MaintenanceApi>(),
+                          authGateway: context.read<AuthGateway>(),
+                          workOrderId: workOrderId,
+                        )..add(const WorkOrderDetailStarted()),
+                        child: WorkOrderDetailScreen(workOrderId: workOrderId),
+                      );
+                    },
+                  ),
                 ],
               ),
             ],
@@ -599,6 +631,55 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const DowntimeStarted()),
                 child: DowntimeScreen(canAct: account.account.orgUnitScope.canWriteSomewhere),
+              );
+            },
+          ),
+          // PM schedules (issue #74) are maintenance's own work, gated to the
+          // same Module role set Assets, Work orders and the Triage queue use.
+          // The same per-Screen access check they make: leaving the destination
+          // out of the sidebar hides the door, this locks it for a caller who
+          // types the address. Creating a schedule and toggling one both need a
+          // write Grant, so the create button and the row toggle read the same
+          // coarse `canWriteSomewhere` signal.
+          GoRoute(
+            path: Routes.pmSchedules,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<PmSchedulesBloc>(
+                create: (context) => PmSchedulesBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const PmSchedulesStarted()),
+                child: PmSchedulesScreen(canAct: account.account.orgUnitScope.canWriteSomewhere),
+              );
+            },
+          ),
+          // Job plans (issue #74) is the administrator-managed catalogue. Its
+          // Destination is administrator-only, but the route admits the same
+          // maintenance role set as the other Maintenance reads: the server's
+          // GET /job-plans is open to any approved Account, and only the write
+          // affordances inside the Screen are gated (to `isAdmin`). A caller
+          // outside the Module still gets AccessDeniedScreen for typing the
+          // address.
+          GoRoute(
+            path: Routes.jobPlans,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<JobPlansBloc>(
+                create: (context) => JobPlansBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const JobPlansStarted()),
+                child: JobPlansScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
           ),

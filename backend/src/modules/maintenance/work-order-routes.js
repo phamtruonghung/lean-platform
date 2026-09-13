@@ -257,6 +257,27 @@ router.post(
   }
 );
 
+// The work order detail read (issue #74): a site-wide read per ADR-0009,
+// carrying the tasks copied from the job plan that raised it, each with its
+// required Skill's NAME. Deliberately NOT attached to the Site-wide list
+// above — a list row stays as it is, because attaching tasks to every row
+// would be an N+1. Reads carry no Grant filter; a malformed or unknown id is a
+// clean 404 naming the Work order because findWorkOrderWithTasks is total.
+router.get(
+  '/work-orders/:id',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const workOrder = await workOrders.findWorkOrderWithTasks(req.params.id);
+      if (!workOrder) throw notFound('Work order');
+      res.json({ workOrder });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 router.get(
   '/sites/:siteId/work-orders',
   people.authenticate,

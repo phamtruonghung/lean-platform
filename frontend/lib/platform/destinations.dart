@@ -233,6 +233,30 @@ const List<Destination> platformDestinations = [
     roles: ModuleRoles.maintenance,
     group: DestinationGroupNames.maintenance,
   ),
+  // PM schedules (issue #74) follow the same Module role set as the rest of
+  // maintenance: a supervisor, engineer, manager or administrator attaches a
+  // Job plan to an Asset and reads what comes round next. An operator does
+  // not, the same as every other Maintenance Destination but My requests.
+  Destination(
+    label: 'PM schedules',
+    icon: Icons.event_repeat_outlined,
+    path: Routes.pmSchedules,
+    roles: ModuleRoles.maintenance,
+    group: DestinationGroupNames.maintenance,
+  ),
+  // Job plans (issue #74) is the administrator-managed catalogue a PM
+  // schedule is built from, so its Destination is administrator-only — unlike
+  // Skills and Job roles, whose reads the server leaves open, job-plan-routes.js
+  // gates the whole catalogue's write surface on the administrator role and the
+  // ticket treats it as an admin catalogue. The route itself admits maintenance
+  // roles to read; this hides the door from everyone else's sidebar.
+  Destination(
+    label: 'Job plans',
+    icon: Icons.description_outlined,
+    path: Routes.jobPlans,
+    roles: {Roles.admin},
+    group: DestinationGroupNames.maintenance,
+  ),
   // Administrator only (issue #89) — `GET .../skill-coverage` is deliberately
   // narrower than every other Site-shaped read in the People Module
   // (skill-routes.js's own header: "how the plant is being run", not "who

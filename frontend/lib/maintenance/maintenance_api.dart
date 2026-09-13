@@ -13,6 +13,8 @@ import 'package:http/http.dart' as http;
 
 import 'asset.dart';
 import 'downtime_event.dart';
+import 'job_plan.dart';
+import 'pm_schedule.dart';
 import 'request.dart';
 import 'work_order.dart';
 
@@ -563,6 +565,212 @@ class MaintenanceApi {
     }
   }
 
+  /// The Job plan catalogue (`GET /api/maintenance/job-plans`, issue #74) —
+  /// the shared, administrator-managed description of each recurring job,
+  /// each carrying its ordered tasks with the required Skill's name already
+  /// resolved by the server's own join. Every plan is read by default
+  /// [includeInactive], so the catalogue can reach a deactivated plan worth
+  /// reactivating; `includeInactive: false` narrows to active ones, the same
+  /// shape [fetchSkills] already follows.
+  Future<List<JobPlan>> fetchJobPlans(String accessToken, {bool includeInactive = true}) async {
+    const path = '/api/maintenance/job-plans';
+    final uri = includeInactive
+        ? Uri.parse(path)
+        : Uri.parse(path).replace(queryParameters: {'includeInactive': 'false'});
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final plan in body['jobPlans'] as List<dynamic>)
+          _jobPlanFrom(plan as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Creates a Job plan and its tasks in one request (`POST
+  /// /api/maintenance/job-plans`, administrator only, issue #74). [workType]
+  /// is one of `jobPlanWorkTypes`; each task's `skillId` is optional, and a
+  /// task that names none is sent without the key.
+  Future<JobPlan> createJobPlan(
+    String accessToken, {
+    required String code,
+    required String name,
+    String? description,
+    required String workType,
+    num? estimatedHours,
+    bool? requiresShutdown,
+    String? safetyNote,
+    required List<JobPlanTaskDraft> tasks,
+  }) async {
+    const path = '/api/maintenance/job-plans';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'code': code,
+          'name': name,
+          'workType': workType,
+          'description': ?description,
+          'estimatedHours': ?estimatedHours,
+          'requiresShutdown': ?requiresShutdown,
+          'safetyNote': ?safetyNote,
+          'tasks': [
+            for (final task in tasks)
+              {
+                'stepNo': task.stepNo,
+                'instruction': task.instruction,
+                'skillId': ?task.skillId,
+                'estimatedHours': ?task.estimatedHours,
+              },
+          ],
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _jobPlanFrom(body['jobPlan'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Deactivates or reactivates a Job plan (`PATCH
+  /// /api/maintenance/job-plans/:id`, administrator only, issue #74).
+  /// Deactivation is never deletion — the plan stays readable, and a Work
+  /// order already copied from it keeps its tasks.
+  Future<JobPlan> setJobPlanActive(String accessToken, String id, {required bool isActive}) async {
+    final path = '/api/maintenance/job-plans/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'isActive': isActive}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _jobPlanFrom(body['jobPlan'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The PM schedules at a Site (`GET
+  /// /api/maintenance/sites/:siteId/pm-schedules`, issue #74) — active ones
+  /// by default, inactive ones too when [includeInactive] asks for them by
+  /// name. Site-wide and carrying no Grant filter (ADR-0009).
+  Future<List<PmSchedule>> fetchPmSchedules(
+    String accessToken, {
+    required String siteId,
+    bool includeInactive = false,
+  }) async {
+    final path = '/api/maintenance/sites/$siteId/pm-schedules';
+    final uri = includeInactive
+        ? Uri.parse(path).replace(queryParameters: {'includeInactive': 'true'})
+        : Uri.parse(path);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final schedule in body['pmSchedules'] as List<dynamic>)
+          _pmScheduleFrom(schedule as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Attaches a Job plan to an Asset as a calendar PM schedule (`POST
+  /// /api/maintenance/pm-schedules`, issue #74). No `orgUnitId` and no code:
+  /// the server derives the former from the Asset and issues the latter from
+  /// the Site's own sequence. [nextDueOn] is a `YYYY-MM-DD` date; left null
+  /// the server starts the clock from today.
+  Future<PmSchedule> createPmSchedule(
+    String accessToken, {
+    required String assetId,
+    required String jobPlanId,
+    required int intervalDays,
+    required String anchor,
+    int? leadTimeDays,
+    int? priority,
+    String? nextDueOn,
+  }) async {
+    const path = '/api/maintenance/pm-schedules';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'assetId': assetId,
+          'jobPlanId': jobPlanId,
+          'intervalDays': intervalDays,
+          'anchor': anchor,
+          'leadTimeDays': ?leadTimeDays,
+          'priority': ?priority,
+          'nextDueOn': ?nextDueOn,
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _pmScheduleFrom(body['pmSchedule'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Deactivates or reactivates a PM schedule (`PATCH
+  /// /api/maintenance/pm-schedules/:id`, issue #74). A schedule switched off
+  /// stops raising Work orders but stays readable.
+  Future<PmSchedule> setPmScheduleActive(String accessToken, String id, {required bool isActive}) async {
+    final path = '/api/maintenance/pm-schedules/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'isActive': isActive}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _pmScheduleFrom(body['pmSchedule'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One Work order with the tasks copied from the Job plan that raised it
+  /// (`GET /api/maintenance/work-orders/:id`, issue #74) — the detail read the
+  /// Site-wide list deliberately leaves tasks off (it would be an N+1). A
+  /// malformed or unknown id is surfaced through [_send] like any other
+  /// refusal.
+  Future<WorkOrder> fetchWorkOrder(String accessToken, String id) async {
+    final path = '/api/maintenance/work-orders/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _workOrderFrom(body['workOrder'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// A local time the picker chose, as the UTC instant the wire carries —
   /// `timestamptz` on the server side. The server supplies now() when the
   /// field is left blank, so a caller sends nothing rather than a default.
@@ -591,6 +799,77 @@ class MaintenanceApi {
         status: workOrder['status'] as String,
         assignedTo: workOrder['assignedTo']?.toString(),
         assigneeName: workOrder['assigneeName'] as String?,
+        tasks: [
+          for (final task in (workOrder['tasks'] as List<dynamic>? ?? const []))
+            _workOrderTaskFrom(task as Map<String, dynamic>),
+        ],
+      );
+
+  // `toWorkOrderTask` (work-orders.js): `id, stepNo, instruction, skillId,
+  // skillName, status, note, reading` — the seven fields a copied step
+  // carries, with the required Skill's name resolved by the server's join.
+  static WorkOrderTask _workOrderTaskFrom(Map<String, dynamic> task) => WorkOrderTask(
+        id: task['id'].toString(),
+        stepNo: (task['stepNo'] as num).toInt(),
+        instruction: task['instruction'] as String,
+        skillId: task['skillId']?.toString(),
+        skillName: task['skillName'] as String?,
+        status: task['status'] as String? ?? 'pending',
+        note: task['note'] as String?,
+        reading: task['reading'] as num?,
+      );
+
+  // `toJobPlan` (job-plans.js) sends a flat row plus an ordered `tasks` list;
+  // `toJobPlanTask` carries the required Skill's name from that file's own
+  // join. A later field added to one side should prompt a look at the other.
+  static JobPlan _jobPlanFrom(Map<String, dynamic> plan) => JobPlan(
+        id: plan['id'].toString(),
+        code: plan['code'] as String,
+        name: plan['name'] as String,
+        description: plan['description'] as String?,
+        workType: plan['workType'] as String,
+        estimatedHours: plan['estimatedHours'] as num?,
+        requiresShutdown: plan['requiresShutdown'] as bool? ?? false,
+        safetyNote: plan['safetyNote'] as String?,
+        isActive: plan['isActive'] as bool? ?? true,
+        tasks: [
+          for (final task in (plan['tasks'] as List<dynamic>? ?? const []))
+            _jobPlanTaskFrom(task as Map<String, dynamic>),
+        ],
+      );
+
+  static JobPlanTask _jobPlanTaskFrom(Map<String, dynamic> task) => JobPlanTask(
+        id: task['id'].toString(),
+        stepNo: (task['stepNo'] as num).toInt(),
+        instruction: task['instruction'] as String,
+        skillId: task['skillId']?.toString(),
+        skillName: task['skillName'] as String?,
+        estimatedHours: task['estimatedHours'] as num?,
+      );
+
+  // `toPmSchedule` (pm-schedules.js) sends a flat row key for key: `id, code,
+  // name, assetId, assetCode, assetName, orgUnitId, orgUnitName, jobPlanId,
+  // jobPlanName, intervalDays, anchor, leadTimeDays, priority,
+  // lastCompletedOn, nextDueOn, isActive, daysUntilDue`.
+  static PmSchedule _pmScheduleFrom(Map<String, dynamic> schedule) => PmSchedule(
+        id: schedule['id'].toString(),
+        code: schedule['code'] as String,
+        name: schedule['name'] as String,
+        assetId: schedule['assetId'].toString(),
+        assetCode: schedule['assetCode'] as String,
+        assetName: schedule['assetName'] as String,
+        orgUnitId: schedule['orgUnitId'].toString(),
+        orgUnitName: schedule['orgUnitName'] as String,
+        jobPlanId: schedule['jobPlanId'].toString(),
+        jobPlanName: schedule['jobPlanName'] as String,
+        intervalDays: (schedule['intervalDays'] as num).toInt(),
+        anchor: schedule['anchor'] as String,
+        leadTimeDays: (schedule['leadTimeDays'] as num?)?.toInt() ?? 7,
+        priority: (schedule['priority'] as num?)?.toInt() ?? 3,
+        lastCompletedOn: schedule['lastCompletedOn'] as String?,
+        nextDueOn: schedule['nextDueOn'] as String?,
+        isActive: schedule['isActive'] as bool? ?? true,
+        daysUntilDue: (schedule['daysUntilDue'] as num?)?.toInt(),
       );
 
   // `toRequest` (requests.js) sends a flat row, the same shape `toWorkOrder`

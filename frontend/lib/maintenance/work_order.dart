@@ -3,6 +3,12 @@
 /// cancelled rows from that read (issue #57); a completed or cancelled row
 /// too when the caller asks for history (issue #63). `closed` stays
 /// unreachable through this endpoint either way.
+///
+/// `GET /api/maintenance/work-orders/:id` (issue #74) sends the same flat row
+/// plus the [tasks] copied from the Job plan that raised it. The list read
+/// deliberately omits them — attaching every row's tasks would be an N+1 — so
+/// [tasks] is empty on a row that came from the list and populated only on a
+/// detail read.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -55,6 +61,7 @@ class WorkOrder {
     required this.status,
     required this.assignedTo,
     required this.assigneeName,
+    this.tasks = const [],
   });
 
   final String id;
@@ -101,6 +108,12 @@ class WorkOrder {
   /// Never rendered as a blank — the Screen shows "Unassigned" instead.
   final String? assigneeName;
 
+  /// The steps copied from the Job plan that raised this Work order, in
+  /// `stepNo` order — populated only by the detail read (issue #74). Empty
+  /// on a row that came from the Site-wide list, which deliberately carries
+  /// none.
+  final List<WorkOrderTask> tasks;
+
   String get workTypeLabel =>
       _labelFor(workType, [for (final t in WorkType.values) (t.wire, t.label)]);
 
@@ -125,6 +138,54 @@ class WorkOrder {
     }
     return wire;
   }
+}
+
+/// The states one step inside a Work order can be in, mirroring the CHECK
+/// constraint on `work_order_tasks.status`. `pending` is the default a copied
+/// task starts at; the other three record how the step actually went.
+const Map<String, String> _taskStatusLabels = {
+  'pending': 'Pending',
+  'done': 'Done',
+  'skipped': 'Skipped',
+  'failed': 'Failed',
+};
+
+/// One step copied onto a Work order from the Job plan that raised it, as
+/// `GET /api/maintenance/work-orders/:id` sends it (issue #74). Mirrors the
+/// Job plan task shape plus the three execution fields a task carries once it
+/// has been worked — [status], [note] and [reading] — and, like the plan's
+/// own task, carries the required Skill's name resolved by the server's join,
+/// so nothing is looked up separately on the client.
+@immutable
+class WorkOrderTask {
+  const WorkOrderTask({
+    required this.id,
+    required this.stepNo,
+    required this.instruction,
+    required this.skillId,
+    required this.skillName,
+    required this.status,
+    required this.note,
+    required this.reading,
+  });
+
+  final String id;
+  final int stepNo;
+  final String instruction;
+
+  /// The required Skill's id, or null when the step requires none.
+  final String? skillId;
+  final String? skillName;
+
+  /// The wire status string, shown through [statusLabel].
+  final String status;
+  final String? note;
+  final num? reading;
+
+  /// Whether this step names a required Skill worth showing.
+  bool get hasSkill => skillName != null && skillName!.isNotEmpty;
+
+  String get statusLabel => _taskStatusLabels[status] ?? status;
 }
 
 /// The transitions offered from a status (issue #63) — `approved` offers
