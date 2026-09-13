@@ -19,6 +19,8 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import 'labour_booking_dialog.dart';
+import 'part_booking_dialog.dart';
 import 'task_reading_dialog.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
@@ -27,10 +29,18 @@ class WorkOrderDetailScreen extends StatelessWidget {
   const WorkOrderDetailScreen({
     super.key,
     required this.workOrderId,
-    required this.canRecord,
+    this.canBook = false,
+    this.canRecord = false,
   });
 
   final String workOrderId;
+
+  /// Whether this caller holds a write Grant anywhere at all — read off
+  /// `/me`'s own `orgUnitScope`, the same coarse signal `AssetsScreen` and
+  /// `StoreStockScreen` use. False hides the two booking affordances
+  /// entirely, because an action the server would refuse is not offered in
+  /// the first place.
+  final bool canBook;
 
   /// Whether this caller holds a write Grant somewhere at all — the same
   /// coarse signal the list's own writable affordances use. A task that names
@@ -44,6 +54,16 @@ class WorkOrderDetailScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('work-order-detail-failed');
   static const ValueKey<String> emptyTasksKey = ValueKey<String>('work-order-detail-empty-tasks');
   static const ValueKey<String> noticeKey = ValueKey<String>('work-order-detail-notice');
+  static const ValueKey<String> bookLabourKey = ValueKey<String>('work-order-detail-book-labour');
+  static const ValueKey<String> bookPartKey = ValueKey<String>('work-order-detail-book-part');
+  static const ValueKey<String> emptyLabourKey = ValueKey<String>('work-order-cost-empty-labour');
+  static const ValueKey<String> emptyPartsKey = ValueKey<String>('work-order-cost-empty-parts');
+  static const ValueKey<String> labourHoursKey = ValueKey<String>('work-order-cost-labour-hours');
+  static const ValueKey<String> overtimeKey = ValueKey<String>('work-order-cost-overtime');
+  static const ValueKey<String> partsTotalKey = ValueKey<String>('work-order-cost-parts-total');
+  static ValueKey<String> activityKey(String activity) =>
+      ValueKey<String>('work-order-cost-activity-$activity');
+  static ValueKey<String> partKey(String id) => ValueKey<String>('work-order-cost-part-$id');
   static ValueKey<String> taskKey(String id) => ValueKey<String>('work-order-task-$id');
   static ValueKey<String> recordReadingKey(String id) =>
       ValueKey<String>('work-order-task-reading-$id');
@@ -56,7 +76,10 @@ class WorkOrderDetailScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Header(workOrder: state is WorkOrderDetailLoaded ? state.workOrder : null),
+          _Header(
+            workOrder: state is WorkOrderDetailLoaded ? state.workOrder : null,
+            canBook: canBook,
+          ),
           if (state is WorkOrderDetailLoaded && state.notice != null)
             _Notice(message: state.notice!),
           Expanded(
@@ -71,7 +94,7 @@ class WorkOrderDetailScreen extends StatelessWidget {
                       context.read<WorkOrderDetailBloc>().add(const WorkOrderDetailStarted()),
                 ),
               WorkOrderDetailLoaded(workOrder: final workOrder) =>
-                _WorkOrderTasks(workOrder: workOrder, canRecord: canRecord),
+                _WorkOrderBody(workOrder: workOrder, canRecord: canRecord),
             },
           ),
         ],
@@ -121,9 +144,23 @@ class _Notice extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.workOrder});
+  const _Header({required this.workOrder, required this.canBook});
 
   final WorkOrder? workOrder;
+  final bool canBook;
+
+  /// Opens a dialog under the Navigator route-scoped `WorkOrderDetailBloc`
+  /// lives in — `showDialog` builds its route as a sibling, not a descendant,
+  /// so the Bloc is handed across explicitly the same way `ReceiveDialog.open`
+  /// hands `StoreStockBloc` across.
+  void _open(BuildContext context, Widget dialog) {
+    final bloc = context.read<WorkOrderDetailBloc>();
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => BlocProvider<WorkOrderDetailBloc>.value(value: bloc, child: dialog),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +191,33 @@ class _Header extends StatelessWidget {
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
+                if (canBook) ...[
+                  const SizedBox(height: Spacing.md),
+                  Wrap(
+                    spacing: Spacing.sm,
+                    runSpacing: Spacing.xs,
+                    children: [
+                      FilledButton.icon(
+                        key: WorkOrderDetailScreen.bookLabourKey,
+                        onPressed: () => _open(
+                          context,
+                          LabourBookingDialog(workOrderId: workOrder!.id),
+                        ),
+                        icon: const Icon(Icons.schedule),
+                        label: const Text('Book labour'),
+                      ),
+                      FilledButton.icon(
+                        key: WorkOrderDetailScreen.bookPartKey,
+                        onPressed: () => _open(
+                          context,
+                          PartBookingDialog(siteId: workOrder!.siteId),
+                        ),
+                        icon: const Icon(Icons.inventory_2_outlined),
+                        label: const Text('Book a part'),
+                      ),
+                    ],
+                  ),
+                ],
               ] else
                 Text(
                   'The tasks copied from the Job plan that raised it.',
@@ -168,8 +232,8 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _WorkOrderTasks extends StatelessWidget {
-  const _WorkOrderTasks({required this.workOrder, required this.canRecord});
+class _WorkOrderBody extends StatelessWidget {
+  const _WorkOrderBody({required this.workOrder, required this.canRecord});
 
   final WorkOrder workOrder;
   final bool canRecord;
@@ -202,12 +266,154 @@ class _WorkOrderTasks extends StatelessWidget {
                   ],
                 ),
               ),
+            const SizedBox(height: Spacing.xl),
+            _CostSummary(cost: workOrder.cost),
           ],
         ),
       ),
     );
   }
 }
+
+/// What the Work order has cost so far, shown as its two separate facts:
+/// hours by activity, and the parts fitted with their total. The distinction
+/// is stated on the screen rather than buried, because summing labour here
+/// with plant labour cost would double-count every technician (the schema's
+/// own warning above `work_order_labour`).
+class _CostSummary extends StatelessWidget {
+  const _CostSummary({required this.cost});
+
+  final WorkOrderCost? cost;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final shown = cost ?? const WorkOrderCost.empty();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Cost so far', style: theme.textTheme.titleSmall),
+        const SizedBox(height: Spacing.sm),
+        if (!shown.hasLabour)
+          Text(
+            'No labour has been booked.',
+            key: WorkOrderDetailScreen.emptyLabourKey,
+            style: muted,
+          )
+        else
+          Card(
+            margin: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (final activity in shown.labourByActivity)
+                  ListTile(
+                    key: WorkOrderDetailScreen.activityKey(activity.activity),
+                    dense: true,
+                    title: Text(activity.label),
+                    trailing: Text(
+                      activity.overtimeHours > 0
+                          ? '${_hours(activity.hours)} · ${_hours(activity.overtimeHours)} overtime'
+                          : _hours(activity.hours),
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                Padding(
+                  key: WorkOrderDetailScreen.labourHoursKey,
+                  padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, Spacing.md),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Booked labour is part of the plant labour cost already reported, not new money.',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (shown.overtimeHours > 0)
+                  Padding(
+                    key: WorkOrderDetailScreen.overtimeKey,
+                    padding: const EdgeInsets.fromLTRB(Spacing.md, 0, Spacing.md, Spacing.sm),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${_hours(shown.overtimeHours)} of it is overtime.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        const SizedBox(height: Spacing.lg),
+        if (!shown.hasParts)
+          Text(
+            'No parts have been fitted.',
+            key: WorkOrderDetailScreen.emptyPartsKey,
+            style: muted,
+          )
+        else
+          Card(
+            margin: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (final part in shown.parts)
+                  ListTile(
+                    key: WorkOrderDetailScreen.partKey(part.id),
+                    dense: true,
+                    title: Text(part.name),
+                    subtitle: Text(
+                      '${_count(part.quantity)} ${part.uomCode} · ${part.sourcedLabel}',
+                    ),
+                    trailing: Text(
+                      part.totalCost == null
+                          ? 'No cost recorded'
+                          : _money(part.totalCost!, part.currency),
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                Padding(
+                  key: WorkOrderDetailScreen.partsTotalKey,
+                  padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, Spacing.md),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Parts are new cost — the one maintenance component that adds.',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      Text(
+                        shown.partsCost == null
+                            ? 'No cost recorded'
+                            : _money(shown.partsCost!, shown.parts.first.currency),
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// A quantity or hours figure without a pointless trailing `.0` — `2.5`
+  /// stays `2.5`, `2.0` reads as `2`.
+  static String _count(num value) =>
+      value == value.roundToDouble() ? value.toInt().toString() : value.toString();
+
+  static String _hours(num value) => '${_count(value)} h';
+
+  static String _money(num value, String currency) => '${_count(value)} $currency';
+}
+
 
 class _WorkOrderTaskRow extends StatelessWidget {
   const _WorkOrderTaskRow({required this.task, required this.canRecord});

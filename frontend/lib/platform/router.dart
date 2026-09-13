@@ -19,10 +19,16 @@ import '../maintenance/meters_bloc.dart';
 import '../maintenance/meters_screen.dart';
 import '../maintenance/my_requests_bloc.dart';
 import '../maintenance/my_requests_screen.dart';
+import '../maintenance/parts_bloc.dart';
+import '../maintenance/parts_screen.dart';
 import '../maintenance/pm_schedules_bloc.dart';
 import '../maintenance/pm_schedules_screen.dart';
 import '../maintenance/requests_bloc.dart';
 import '../maintenance/requests_screen.dart';
+import '../maintenance/store_stock_bloc.dart';
+import '../maintenance/store_stock_screen.dart';
+import '../maintenance/stores_bloc.dart';
+import '../maintenance/stores_screen.dart';
 import '../maintenance/tier_board_bloc.dart';
 import '../maintenance/tier_board_screen.dart';
 import '../maintenance/work_order.dart';
@@ -75,6 +81,8 @@ abstract final class Routes {
   static const String pmSchedules = '/pm-schedules';
   static const String meters = '/meters';
   static const String jobPlans = '/job-plans';
+  static const String parts = '/parts';
+  static const String stores = '/stores';
   static const String directory = '/directory';
   static const String jobRoles = '/job-roles';
   static const String orgUnits = '/org-units';
@@ -392,6 +400,70 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               );
             },
           ),
+          // The parts catalogue and the stores that hold parts (issue #80).
+          // Both offered to the same Maintenance role set as Assets and Work
+          // orders — reading them is open server-side, but the destination is
+          // a product decision about who does maintenance's own work. Adding a
+          // Part is administrator-only inside the Screen; receiving is offered
+          // to a caller holding a write Grant somewhere, and the server is the
+          // real gate.
+          GoRoute(
+            path: Routes.parts,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<PartsBloc>(
+                create: (context) => PartsBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const PartsStarted()),
+                child: PartsScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.stores,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              return BlocProvider<StoresBloc>(
+                create: (context) => StoresBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const StoresStarted()),
+                child: const StoresScreen(),
+              );
+            },
+          ),
+          // One store's stock, reached from the stores list above. The same
+          // role guard; receiving is gated on the coarse write-Grant signal,
+          // the same rule Assets applies to its own add button.
+          GoRoute(
+            path: '${Routes.stores}/:id',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved ||
+                  !ModuleRoles.maintenance.contains(account.account.role)) {
+                return const AccessDeniedScreen();
+              }
+              final storeId = state.pathParameters['id']!;
+              return BlocProvider<StoreStockBloc>(
+                create: (context) => StoreStockBloc(
+                  maintenanceApi: context.read<MaintenanceApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                  storeId: storeId,
+                )..add(const StoreStockStarted()),
+                child: StoreStockScreen(canReceive: account.account.orgUnitScope.canWriteSomewhere),
+              );
+            },
+          ),
           // Work orders (issue #104) — a `ShellRoute` of its own, nested
           // inside the outer one above, so `WorkOrdersBloc` is created
           // exactly once and shared by the list (`Routes.workOrders`) and
@@ -579,9 +651,13 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                         child: WorkOrderDetailScreen(
                           workOrderId: workOrderId,
                           // Same coarse signal the list's own writable
-                          // affordances use (issue #79): a task that names a
-                          // meter offers a reading action to a caller who
-                          // could write one, and the server is the real gate.
+                          // affordances use: a caller with no write Grant
+                          // anywhere is offered no booking button, since the
+                          // server would refuse it anyway; likewise (issue #79)
+                          // a task that names a meter offers a reading action
+                          // to a caller who could write one, and the server is
+                          // the real gate.
+                          canBook: account.account.orgUnitScope.canWriteSomewhere,
                           canRecord: account.account.orgUnitScope.canWriteSomewhere,
                         ),
                       );

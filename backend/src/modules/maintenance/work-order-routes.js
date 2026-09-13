@@ -53,6 +53,7 @@ const people = require('../people');
 const assets = require('./assets');
 const meters = require('./meters');
 const workOrders = require('./work-orders');
+const workOrderCost = require('./work-order-cost');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
@@ -83,16 +84,18 @@ async function requireKnownSite(req, res, next) {
 // that way: canAct's `write` defaults to FALSE, so dropping it would
 // silently authorise this write for any read Grant, with no error anywhere
 // to notice.
+async function writeGrantReachesAsset(account, assetId) {
+  const asset = await assets.findAsset(assetId);
+  if (!asset) throw notFound('Asset');
+
+  const allowed = await people.canAct({ account, orgUnitId: asset.orgUnitId, write: true });
+  if (!allowed) throw httpError(403, people.OUTSIDE_GRANTED_ORG_UNITS);
+  return asset;
+}
+
 async function requireAssetWriteScope(req, res, next) {
   try {
-    const asset = await assets.findAsset(req.body?.assetId);
-    if (!asset) throw notFound('Asset');
-
-    const allowed = await people.canAct({ account: req.account, orgUnitId: asset.orgUnitId, write: true });
-    if (!allowed) {
-      return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
-    }
-    req.asset = asset;
+    req.asset = await writeGrantReachesAsset(req.account, req.body?.assetId);
     return next();
   } catch (error) {
     return handleError(error, res, next);
@@ -153,6 +156,29 @@ async function requireWorkOrderWriteScope(req, res, next) {
     if (!allowed) {
       return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
     }
+    req.workOrder = workOrder;
+    return next();
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+}
+
+// Booking labour or a part (issue #75) needs a write Grant reaching the Org
+// Unit the Work order's ASSET sits at — the same rule requireAssetWriteScope
+// above enforces for raising one, reached one step differently. The Work
+// order is resolved from the URL first, so an unknown or malformed id is a
+// clean 404 naming it (existence before scope); then the Asset is read LIVE
+// through its own asset_id and the scope question asked. Reading the Asset
+// live, rather than work_orders.org_unit_id the denormalised copy
+// requireWorkOrderWriteScope uses, is what makes this check follow a
+// relocated Asset — see that middleware's own comment on why the copy can go
+// stale.
+async function requireWorkOrderAssetWriteScope(req, res, next) {
+  try {
+    const workOrder = await workOrders.findWorkOrder(req.params.id);
+    if (!workOrder) throw notFound('Work order');
+
+    req.asset = await writeGrantReachesAsset(req.account, workOrder.assetId);
     req.workOrder = workOrder;
     return next();
   } catch (error) {
@@ -258,6 +284,80 @@ router.post(
   }
 );
 
+// Booking labour or a part against a Work order (issue #75). Both routes sit
+// behind requireWorkOrderAssetWriteScope above: existence of the Work order,
+// then a write Grant reaching its Asset's Org Unit. Neither accepts `hours`
+// (it is generated from the window, so a client has no say) and neither
+// accepts `orgUnitId` (the database fills it).
+//
+// The domain file (work-order-cost.js) owns the record's own fields and the
+// `stores`-sourced booking's one transaction; this file owns resolving the
+// Employee or Part a caller named first, so an unknown one is a clean 404
+// before the write ever reaches the domain. `sourced` defaults to `stores` in
+// the domain, the same value the column's own default carries.
+router.post(
+  '/work-orders/:id/labour',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderAssetWriteScope,
+  async (req, res, next) => {
+    try {
+      const employeeId = parseId(req.body?.employeeId);
+      if (employeeId === null) {
+        return res.status(400).json({ message: 'employeeId must be a valid Employee id' });
+      }
+      const employee = await people.findEmployee(employeeId);
+      if (!employee) throw notFound('Employee');
+
+      const labour = await workOrderCost.bookLabour(
+        req.workOrder.id,
+        {
+          employeeId: employee.id,
+          startedAt: req.body?.startedAt,
+          endedAt: req.body?.endedAt,
+          activity: req.body?.activity,
+          isOvertime: req.body?.isOvertime,
+          note: req.body?.note
+        },
+        req.account.id
+      );
+      res.status(201).json({ labour });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+router.post(
+  '/work-orders/:id/parts',
+  people.authenticate,
+  people.requireActive,
+  requireWorkOrderAssetWriteScope,
+  async (req, res, next) => {
+    try {
+      const part = await workOrderCost.bookPart(
+        req.workOrder.id,
+        {
+          sourced: req.body?.sourced,
+          partId: req.body?.partId,
+          storeId: req.body?.storeId,
+          partNo: req.body?.partNo,
+          description: req.body?.description,
+          quantity: req.body?.quantity,
+          uomCode: req.body?.uomCode,
+          unitCost: req.body?.unitCost,
+          currency: req.body?.currency,
+          fittedAt: req.body?.fittedAt
+        },
+        req.account.id
+      );
+      res.status(201).json({ part });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 // The work order detail read (issue #74): a site-wide read per ADR-0009,
 // carrying the tasks copied from the job plan that raised it, each with its
 // required Skill's NAME. Deliberately NOT attached to the Site-wide list
@@ -272,7 +372,13 @@ router.get(
     try {
       const workOrder = await workOrders.findWorkOrderWithTasks(req.params.id);
       if (!workOrder) throw notFound('Work order');
-      res.json({ workOrder });
+      // What the job has cost so far rides on the detail read (issue #75):
+      // hours by activity and the parts fitted, each delivered as its own
+      // fact. `cost` never folds the two together — see work-order-cost.js's
+      // own warning on why labour here is a slice of COST_LABOUR rather than
+      // new money.
+      const cost = await workOrderCost.workOrderCost(workOrder.id);
+      res.json({ workOrder: { ...workOrder, cost } });
     } catch (error) {
       handleError(error, res, next);
     }

@@ -15,8 +15,11 @@ import 'asset.dart';
 import 'downtime_event.dart';
 import 'job_plan.dart';
 import 'meter.dart';
+import 'part.dart';
 import 'pm_schedule.dart';
 import 'request.dart';
+import 'stock_level.dart';
+import 'store.dart';
 import 'tier_board.dart';
 import 'work_order.dart';
 
@@ -795,9 +798,10 @@ class MaintenanceApi {
     }
   }
 
-  /// The unit-of-measure catalogue the meter form chooses from (`GET
-  /// /api/maintenance/units-of-measure`, issue #79) — the baseline reference
-  /// table, so a unit is chosen rather than typed (ADR-0023).
+  /// The unit-of-measure catalogue the meter form (issue #79) and the Part
+  /// form (issue #80) both choose from (`GET
+  /// /api/maintenance/units-of-measure`) — the baseline reference table, so a
+  /// unit is chosen rather than typed (ADR-0023).
   Future<List<UnitOfMeasure>> fetchUnitsOfMeasure(String accessToken) async {
     const path = '/api/maintenance/units-of-measure';
     final response = await _send(
@@ -966,6 +970,83 @@ class MaintenanceApi {
     }
   }
 
+  /// Books an Employee's window of time against a Work order
+  /// (`POST /api/maintenance/work-orders/:id/labour`, issue #75). The window
+  /// is the only input that decides the hours — `hours` is never sent, because
+  /// the server's own column is generated from `startedAt`/`endedAt` and a
+  /// client-sent figure is ignored. [startedAt]/[endedAt] cross the wire as
+  /// UTC instants; [activity] is one of `LabourActivity`'s wires. A write
+  /// Grant reaching the Work order's Asset's Org Unit is required (403).
+  /// Nothing is returned: the caller re-reads the Work order, whose own detail
+  /// read now carries the updated cost.
+  Future<void> bookLabour(
+    String accessToken,
+    String workOrderId, {
+    required String employeeId,
+    required DateTime startedAt,
+    required DateTime endedAt,
+    required String activity,
+    bool isOvertime = false,
+    String? note,
+  }) async {
+    final path = '/api/maintenance/work-orders/$workOrderId/labour';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'employeeId': employeeId,
+          'startedAt': startedAt.toUtc().toIso8601String(),
+          'endedAt': endedAt.toUtc().toIso8601String(),
+          'activity': activity,
+          'isOvertime': isOvertime,
+          'note': ?note,
+        }),
+      ),
+      path,
+    );
+  }
+
+  /// Books a part against a Work order
+  /// (`POST /api/maintenance/work-orders/:id/parts`, issue #75). `sourced`
+  /// decides which fields apply: a `stores` booking names the catalogue
+  /// [partId] and the [storeId] it came from and decrements that shelf; a
+  /// `purchased`, `refurbished` or `cannibalised` booking names its own
+  /// [partNo] (free text, may be null), [description] and [uomCode] and
+  /// touches no stock. Nothing is returned: the caller re-reads the Work
+  /// order for the updated cost, the same as [bookLabour].
+  Future<void> bookWorkOrderPart(
+    String accessToken,
+    String workOrderId, {
+    required String sourced,
+    required num quantity,
+    String? partId,
+    String? storeId,
+    String? partNo,
+    String? description,
+    String? uomCode,
+    num? unitCost,
+  }) async {
+    final path = '/api/maintenance/work-orders/$workOrderId/parts';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'sourced': sourced,
+          'quantity': quantity,
+          'partId': ?partId,
+          'storeId': ?storeId,
+          'partNo': ?partNo,
+          'description': ?description,
+          'uomCode': ?uomCode,
+          'unitCost': ?unitCost,
+        }),
+      ),
+      path,
+    );
+  }
+
   /// The tier board (`GET /api/maintenance/sites/:siteId/board`, issue #76):
   /// the KPIs under all five Pillars for a Site, optionally narrowed to an Org
   /// Unit and everything beneath it, over one period. [periodType] is required
@@ -1003,6 +1084,140 @@ class MaintenanceApi {
     }
   }
 
+  /// The shared parts catalogue (`GET /api/maintenance/parts`, issue #80) —
+  /// active parts by default, retired ones too when [includeInactive] asks for
+  /// them by name. Readable by any approved Account (ADR-0005's shared
+  /// catalogue).
+  Future<List<Part>> fetchParts(String accessToken, {bool includeInactive = false}) async {
+    const path = '/api/maintenance/parts';
+    final uri = includeInactive
+        ? Uri.parse(path).replace(queryParameters: {'includeInactive': 'true'})
+        : Uri.parse(path);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final part in body['parts'] as List<dynamic>) _partFrom(part as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Defines a Part in the shared catalogue (`POST /api/maintenance/parts`,
+  /// administrator only, issue #80). [uomCode] is one of the codes
+  /// [fetchUnitsOfMeasure] lists.
+  Future<Part> createPart(
+    String accessToken, {
+    required String partNo,
+    required String description,
+    required String uomCode,
+  }) async {
+    const path = '/api/maintenance/parts';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'partNo': partNo, 'description': description, 'uomCode': uomCode}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _partFrom(body['part'] as Map<String, dynamic>);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The stores at a Site (`GET /api/maintenance/sites/:siteId/stores`, issue
+  /// #80) — active ones by default. Site-wide and carrying no Grant filter
+  /// (ADR-0009).
+  Future<List<Store>> fetchStores(
+    String accessToken, {
+    required String siteId,
+    bool includeInactive = false,
+  }) async {
+    final path = '/api/maintenance/sites/$siteId/stores';
+    final uri = includeInactive
+        ? Uri.parse(path).replace(queryParameters: {'includeInactive': 'true'})
+        : Uri.parse(path);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final store in body['stores'] as List<dynamic>) _storeFrom(store as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One store and the stock it holds (`GET
+  /// /api/maintenance/stores/:storeId/stock`, issue #80). The read carries no
+  /// Grant filter (ADR-0009); the level is the sum of the store's movements,
+  /// derived server-side.
+  Future<(Store, List<StockLevel>)> fetchStoreStock(String accessToken, String storeId) async {
+    final path = '/api/maintenance/stores/$storeId/stock';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (
+        _storeFrom(body['store'] as Map<String, dynamic>),
+        [
+          for (final row in body['stock'] as List<dynamic>)
+            _stockLevelFrom(row as Map<String, dynamic>),
+        ],
+      );
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Receives [quantity] of a Part into a store (`POST
+  /// /api/maintenance/stores/:storeId/receipts`, issue #80). A write Grant
+  /// reaching the store's Org Unit is required; the server refuses a movement
+  /// that would take the shelf below zero (409) with a message naming the part
+  /// and what is actually on the shelf. Returns the resulting level.
+  Future<num> receiveStock(
+    String accessToken,
+    String storeId, {
+    required String partId,
+    required num quantity,
+    String? reason,
+    DateTime? occurredAt,
+  }) async {
+    final path = '/api/maintenance/stores/$storeId/receipts';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'partId': partId,
+          'quantity': quantity,
+          'reason': ?reason,
+          'occurredAt': ?_timestamp(occurredAt),
+        }),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return body['onHand'] as num;
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// A local time the picker chose, as the UTC instant the wire carries —
   /// `timestamptz` on the server side. The server supplies now() when the
   /// field is left blank, so a caller sends nothing rather than a default.
@@ -1012,11 +1227,12 @@ class MaintenanceApi {
   }
 
   // The server sends a flat row — `id, workOrderNo, assetId, assetCode,
-  // assetName, orgUnitId, orgUnitName, summary, description, workType,
-  // priority, status, assignedTo, assigneeName, createdAt, updatedAt`
-  // (`toWorkOrder`, work-orders.js) — no nested `asset`/`orgUnit` map and no
-  // `assignee` string, so this reads the same flat keys `_assetFrom` already
-  // does for the Asset register.
+  // assetName, orgUnitId, orgUnitName, siteId, summary, description,
+  // workType, priority, status, assignedTo, assigneeName, createdAt,
+  // updatedAt` (`toWorkOrder`, work-orders.js) — no nested `asset`/`orgUnit`
+  // map and no `assignee` string, so this reads the same flat keys
+  // `_assetFrom` already does for the Asset register. The `cost` object
+  // (issue #75) rides only the detail read.
   static WorkOrder _workOrderFrom(Map<String, dynamic> workOrder) => WorkOrder(
         id: workOrder['id'].toString(),
         workOrderNo: workOrder['workOrderNo'] as String,
@@ -1025,6 +1241,7 @@ class MaintenanceApi {
         assetName: workOrder['assetName'] as String,
         orgUnitId: workOrder['orgUnitId'].toString(),
         orgUnitName: workOrder['orgUnitName'] as String,
+        siteId: workOrder['siteId'].toString(),
         summary: workOrder['summary'] as String,
         workType: workOrder['workType'] as String,
         priority: (workOrder['priority'] as num).toInt(),
@@ -1035,6 +1252,47 @@ class MaintenanceApi {
           for (final task in (workOrder['tasks'] as List<dynamic>? ?? const []))
             _workOrderTaskFrom(task as Map<String, dynamic>),
         ],
+        cost: workOrder['cost'] == null
+            ? null
+            : _workOrderCostFrom(workOrder['cost'] as Map<String, dynamic>),
+      );
+
+  // `workOrderCost` (work-order-cost.js): `labourHours, overtimeHours,
+  // labourByActivity, parts, partsCost`. Labour hours and the parts cost are
+  // returned as two separate facts and never summed — see the backend's own
+  // warning that booked labour is a slice of plant labour cost while parts
+  // are new money.
+  static WorkOrderCost _workOrderCostFrom(Map<String, dynamic> cost) => WorkOrderCost(
+        labourHours: cost['labourHours'] as num? ?? 0,
+        overtimeHours: cost['overtimeHours'] as num? ?? 0,
+        labourByActivity: [
+          for (final row in (cost['labourByActivity'] as List<dynamic>? ?? const []))
+            WorkOrderLabourActivity(
+              activity: (row as Map<String, dynamic>)['activity'] as String,
+              hours: row['hours'] as num? ?? 0,
+              overtimeHours: row['overtimeHours'] as num? ?? 0,
+            ),
+        ],
+        parts: [
+          for (final row in (cost['parts'] as List<dynamic>? ?? const []))
+            _workOrderPartFrom(row as Map<String, dynamic>),
+        ],
+        partsCost: cost['partsCost'] as num?,
+      );
+
+  // `toBookedPart` (work-order-cost.js): `id, workOrderId, partNo,
+  // description, quantity, uomCode, unitCost, currency, totalCost, sourced,
+  // fittedAt`.
+  static WorkOrderPartLine _workOrderPartFrom(Map<String, dynamic> part) => WorkOrderPartLine(
+        id: part['id'].toString(),
+        partNo: part['partNo'] as String?,
+        description: part['description'] as String,
+        quantity: part['quantity'] as num,
+        uomCode: part['uomCode'] as String,
+        unitCost: part['unitCost'] as num?,
+        currency: part['currency'] as String? ?? 'USD',
+        totalCost: part['totalCost'] as num?,
+        sourced: part['sourced'] as String,
       );
 
   // `toWorkOrderTask` (work-orders.js): `id, stepNo, instruction, skillId,
@@ -1288,6 +1546,39 @@ class MaintenanceApi {
         siteId: asset['siteId'].toString(),
         isActive: asset['isActive'] as bool? ?? true,
         parentId: asset['parentId']?.toString(),
+      );
+
+  // `toPart` (inventory.js) sends `id, partNo, description, uomCode, isActive,
+  // createdAt, updatedAt`. A later field added to one side should prompt a
+  // look at the other.
+  static Part _partFrom(Map<String, dynamic> part) => Part(
+        id: part['id'].toString(),
+        partNo: part['partNo'] as String,
+        description: part['description'] as String,
+        uomCode: part['uomCode'] as String,
+        isActive: part['isActive'] as bool? ?? true,
+      );
+
+  // `toStore` (inventory.js) sends `id, siteId, orgUnitId, orgUnitCode,
+  // orgUnitName, code, name, isActive, createdAt, updatedAt`.
+  static Store _storeFrom(Map<String, dynamic> store) => Store(
+        id: store['id'].toString(),
+        siteId: store['siteId'].toString(),
+        orgUnitId: store['orgUnitId'].toString(),
+        orgUnitName: store['orgUnitName'] as String,
+        code: store['code'] as String,
+        name: store['name'] as String,
+        isActive: store['isActive'] as bool? ?? true,
+      );
+
+  // `toStockLevel` (inventory.js) sends `partId, partNo, description, uomCode,
+  // quantity`; the quantity is already a JSON number, derived from movements.
+  static StockLevel _stockLevelFrom(Map<String, dynamic> row) => StockLevel(
+        partId: row['partId'].toString(),
+        partNo: row['partNo'] as String,
+        description: row['description'] as String,
+        uomCode: row['uomCode'] as String,
+        quantity: row['quantity'] as num,
       );
 
   /// Accepts any 2xx, the same rule `PeopleApi._send` follows (issue #87):

@@ -140,6 +140,7 @@ Map<String, dynamic> workOrderJson(
   String assetName = 'Press 1',
   String orgUnitId = '10',
   String orgUnitName = 'Line 1',
+  String siteId = '1',
   String? description,
   String workType = 'corrective',
   int priority = 3,
@@ -160,6 +161,7 @@ Map<String, dynamic> workOrderJson(
       'assetName': assetName,
       'orgUnitId': orgUnitId,
       'orgUnitName': orgUnitName,
+      'siteId': siteId,
       'summary': summary,
       'description': description,
       'workType': workType,
@@ -169,6 +171,56 @@ Map<String, dynamic> workOrderJson(
       'assigneeName': assigneeName,
       'createdAt': (createdAt ?? DateTime.now()).toUtc().toIso8601String(),
       'updatedAt': (updatedAt ?? DateTime.now()).toUtc().toIso8601String(),
+    };
+
+/// One activity's booked hours as `workOrderCost.labourByActivity` sends it —
+/// mirrors `work-order-cost.js`'s own row shape.
+Map<String, dynamic> labourActivityJson(String activity, num hours, {num overtimeHours = 0}) =>
+    {'activity': activity, 'hours': hours, 'overtimeHours': overtimeHours};
+
+/// One fitted part as `workOrderCost.parts` sends it — mirrors
+/// `toBookedPart` (work-order-cost.js) key for key.
+Map<String, dynamic> workOrderPartJson(
+  String id, {
+  String? partNo,
+  String description = 'Bought for this job',
+  num quantity = 1,
+  String uomCode = 'EA',
+  num? unitCost,
+  String currency = 'USD',
+  num? totalCost,
+  String sourced = 'purchased',
+}) =>
+    {
+      'id': id,
+      'workOrderId': '101',
+      'partNo': partNo,
+      'description': description,
+      'quantity': quantity,
+      'uomCode': uomCode,
+      'unitCost': unitCost,
+      'currency': currency,
+      'totalCost': totalCost,
+      'sourced': sourced,
+      'fittedAt': null,
+    };
+
+/// What a Work order has cost so far (issue #75), as the `cost` object on the
+/// detail read sends it — mirrors `workOrderCost` (work-order-cost.js). Labour
+/// hours and the parts cost are two separate facts; no combined total exists.
+Map<String, dynamic> workOrderCostJson({
+  num labourHours = 0,
+  num overtimeHours = 0,
+  List<Map<String, dynamic>>? labourByActivity,
+  List<Map<String, dynamic>>? parts,
+  num? partsCost,
+}) =>
+    {
+      'labourHours': labourHours,
+      'overtimeHours': overtimeHours,
+      'labourByActivity': labourByActivity ?? const [],
+      'parts': parts ?? const [],
+      'partsCost': partsCost,
     };
 
 /// The Work order an accepted Request produced, as the nested `workOrder` map
@@ -448,7 +500,8 @@ Map<String, dynamic> meterJson(
     };
 
 /// One unit of measure as `GET /api/maintenance/units-of-measure` sends it
-/// (issue #79) — the baseline catalogue the meter form chooses from.
+/// (issue #79, reused by #80) — the baseline catalogue the meter form and the
+/// Part form both choose from.
 Map<String, dynamic> unitOfMeasureJson(String code, String name, {String dimension = 'time'}) => {
       'code': code,
       'name': name,
@@ -711,6 +764,63 @@ Map<String, dynamic> skillCoverageEntryJson(
       'qualifiedHeadcount': qualifiedHeadcount,
       'expiredHeadcount': expiredHeadcount,
       'shortfall': shortfall,
+    };
+
+/// One Part as `GET /api/maintenance/parts` sends it (issue #80) — mirrors
+/// `toPart` (inventory.js) key for key.
+Map<String, dynamic> partJson(
+  String id,
+  String partNo,
+  String description, {
+  String uomCode = 'EA',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'partNo': partNo,
+      'description': description,
+      'uomCode': uomCode,
+      'isActive': isActive,
+    };
+
+/// One Store as `GET /api/maintenance/sites/:siteId/stores` and
+/// `GET /api/maintenance/stores/:id` send it (issue #80) — mirrors `toStore`
+/// (inventory.js) key for key.
+Map<String, dynamic> storeJson(
+  String id,
+  String code,
+  String name, {
+  String siteId = '1',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'siteId': siteId,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'code': code,
+      'name': name,
+      'isActive': isActive,
+    };
+
+/// One row of a store's stock as `GET
+/// /api/maintenance/stores/:storeId/stock` sends it (issue #80) — mirrors
+/// `toStockLevel` (inventory.js) key for key.
+Map<String, dynamic> stockLevelJson(
+  String partId,
+  String partNo,
+  String description,
+  num quantity, {
+  String uomCode = 'EA',
+}) =>
+    {
+      'partId': partId,
+      'partNo': partNo,
+      'description': description,
+      'uomCode': uomCode,
+      'quantity': quantity,
     };
 
 Map<String, dynamic> pendingJson(
@@ -1013,9 +1123,25 @@ class FakeWire {
     this.rolloverMessage = 'That rollover could not be recorded.',
     Map<String, List<Map<String, dynamic>>>? workOrderTasks,
     this.workOrderDetailStatus = 200,
+    Map<String, Map<String, dynamic>>? workOrderCosts,
+    this.labourBookingStatus = 201,
+    this.labourBookingMessage = 'That labour could not be booked.',
+    this.partBookingStatus = 201,
+    this.partBookingMessage = 'That part could not be booked.',
     this.board,
     this.boardStatus = 200,
     this.boardMessage = 'The tier board is unavailable.',
+    List<Map<String, dynamic>>? parts,
+    this.partsStatus = 200,
+    this.createPartStatus = 201,
+    this.createPartMessage = 'a Part with this part number already exists',
+    Map<String, List<Map<String, dynamic>>>? stores,
+    this.storesStatus = 200,
+    Map<String, Map<String, dynamic>>? storeRows,
+    Map<String, List<Map<String, dynamic>>>? stock,
+    this.storeStockStatus = 200,
+    this.createReceiptStatus = 201,
+    this.createReceiptMessage = 'Part X has only 0 EA on the shelf; this movement would take it below zero.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         accounts = accounts ?? [],
@@ -1045,7 +1171,12 @@ class FakeWire {
               unitOfMeasureJson('EA', 'Each', dimension: 'count'),
             ],
         meters = meters ?? {},
-        workOrderTasks = workOrderTasks ?? {};
+        workOrderTasks = workOrderTasks ?? {},
+        workOrderCosts = workOrderCosts ?? {},
+        parts = parts ?? [],
+        stores = stores ?? {},
+        storeRows = storeRows ?? {},
+        stock = stock ?? {};
 
   final String role;
 
@@ -1586,8 +1717,8 @@ class FakeWire {
   /// When set, a PM schedule read hangs until the test completes it.
   Completer<void>? pmSchedulesGate;
 
-  /// `GET /api/maintenance/units-of-measure` (issue #79) — the meter form's
-  /// unit picker.
+  /// `GET /api/maintenance/units-of-measure` (issue #79, reused by #80) — the
+  /// unit picker the meter form and the Part form both read.
   List<Map<String, dynamic>> unitsOfMeasure;
   int unitsOfMeasureStatus;
 
@@ -1639,6 +1770,27 @@ class FakeWire {
   /// When set, a Work order detail read hangs until the test completes it.
   Completer<void>? workOrderDetailGate;
 
+  /// What a Work order has cost so far (issue #75), keyed by Work order id —
+  /// the `cost` object the detail read answers with. Absent means the empty
+  /// cost. A booking handler appends to this so the re-read reflects it.
+  Map<String, Map<String, dynamic>> workOrderCosts;
+
+  /// `POST /api/maintenance/work-orders/:id/labour` (issue #75).
+  int labourBookingStatus;
+  String labourBookingMessage;
+
+  /// Every labour booking that reached the wire, as `(workOrderId, body)` — so
+  /// a test can assert exactly one request was sent and what window and
+  /// activity it carried.
+  final List<(String, Map<String, dynamic>)> labourPosts = [];
+
+  /// `POST /api/maintenance/work-orders/:id/parts` (issue #75).
+  int partBookingStatus;
+  String partBookingMessage;
+
+  /// Every part booking that reached the wire, as `(workOrderId, body)`.
+  final List<(String, Map<String, dynamic>)> partBookingPosts = [];
+
   /// `GET /api/maintenance/sites/:siteId/board` (issue #76) — the scripted
   /// board body, or null for an empty board (no Pillars). The Site, Org Unit,
   /// period and date the request carried are scripted onto the body by the
@@ -1656,6 +1808,45 @@ class FakeWire {
   /// device [pmSchedulesGate] uses, needed to prove the board shows its own
   /// placeholder while a read is still in flight.
   Completer<void>? boardGate;
+
+  /// `GET /api/maintenance/parts` (issue #80) — the shared catalogue.
+  List<Map<String, dynamic>> parts;
+  int partsStatus;
+
+  /// `POST /api/maintenance/parts` (administrator only).
+  int createPartStatus;
+  String createPartMessage;
+
+  /// Every Part body that actually reached the wire, decoded — so a test can
+  /// assert exactly one request was sent and what it carried.
+  final List<Map<String, dynamic>> partPosts = [];
+
+  /// `GET /api/maintenance/sites/:siteId/stores`, keyed by Site id.
+  Map<String, List<Map<String, dynamic>>> stores;
+  int storesStatus;
+
+  /// Every Site id a stores read was made for, in the order it reached the
+  /// wire.
+  final List<String> storeSites = [];
+
+  /// The single store rows `GET /api/maintenance/stores/:id` and
+  /// `GET /api/maintenance/stores/:id/stock` answer with, keyed by store id.
+  Map<String, Map<String, dynamic>> storeRows;
+
+  /// `GET /api/maintenance/stores/:storeId/stock`, keyed by store id.
+  Map<String, List<Map<String, dynamic>>> stock;
+  int storeStockStatus;
+
+  /// Every stock read's store id, in the order it reached the wire.
+  final List<String> stockReads = [];
+
+  /// `POST /api/maintenance/stores/:storeId/receipts`.
+  int createReceiptStatus;
+  String createReceiptMessage;
+
+  /// Every receipt that actually reached the wire, as `(storeId, body)` — so a
+  /// test can assert exactly one request was sent and what it carried.
+  final List<(String, Map<String, dynamic>)> receiptPosts = [];
 
   int _nextEmployeeId = 900;
   int _nextAssignmentId = 500;
@@ -2437,10 +2628,100 @@ class FakeWire {
                 ...row,
                 'pmScheduleId': null,
                 'tasks': workOrderTasks[id] ?? const [],
+                'cost': workOrderCosts[id] ?? workOrderCostJson(),
               },
             }),
             200,
           );
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/work-orders/') &&
+            path.endsWith('/labour')) {
+          final workOrderId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          labourPosts.add((workOrderId, body));
+          if (labourBookingStatus != 201) {
+            return http.Response(jsonEncode({'message': labourBookingMessage}), labourBookingStatus);
+          }
+          // Reflect the booking on the next detail read, the same way the
+          // server recomputes the cost: the hours follow from the window.
+          final start = DateTime.parse(body['startedAt'] as String);
+          final end = DateTime.parse(body['endedAt'] as String);
+          final hours = end.difference(start).inMinutes / 60;
+          final prior = workOrderCosts[workOrderId] ?? workOrderCostJson();
+          final activities = [
+            for (final row in (prior['labourByActivity'] as List<dynamic>).cast<Map<String, dynamic>>())
+              Map<String, dynamic>.from(row),
+          ];
+          activities.add(labourActivityJson(
+            body['activity'] as String,
+            hours,
+            overtimeHours: body['isOvertime'] == true ? hours : 0,
+          ));
+          final totalHours = activities.fold<num>(0, (sum, row) => sum + (row['hours'] as num));
+          final overtime = activities.fold<num>(0, (sum, row) => sum + (row['overtimeHours'] as num));
+          workOrderCosts = {
+            ...workOrderCosts,
+            workOrderId: {
+              ...prior,
+              'labourHours': totalHours,
+              'overtimeHours': overtime,
+              'labourByActivity': activities,
+            },
+          };
+          return http.Response(jsonEncode({'labour': {'id': '900', ...body, 'hours': hours}}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/work-orders/') &&
+            path.endsWith('/parts')) {
+          final workOrderId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          partBookingPosts.add((workOrderId, body));
+          if (partBookingStatus != 201) {
+            return http.Response(jsonEncode({'message': partBookingMessage}), partBookingStatus);
+          }
+          final quantity = body['quantity'] as num;
+          final unitCost = body['unitCost'] as num?;
+          final totalCost = unitCost == null ? null : quantity * unitCost;
+          final partNo = body['partNo'] as String?;
+          // A `stores` booking derives its part number from the catalogue; the
+          // fake resolves it off the scripted parts, the same way the real
+          // server does.
+          final catalogue = body['partId'] == null
+              ? null
+              : parts.firstWhere(
+                  (p) => p['id'].toString() == body['partId'].toString(),
+                  orElse: () => const <String, dynamic>{},
+                );
+          final prior = workOrderCosts[workOrderId] ?? workOrderCostJson();
+          final booked = workOrderPartJson(
+            '900',
+            partNo: (partNo ?? catalogue?['partNo']) as String?,
+            description: (body['description'] as String?) ??
+                (catalogue?['description'] as String?) ??
+                'Booked part',
+            quantity: quantity,
+            uomCode: (body['uomCode'] as String?) ?? (catalogue?['uomCode'] as String?) ?? 'EA',
+            unitCost: unitCost,
+            totalCost: totalCost,
+            sourced: body['sourced'] as String? ?? 'stores',
+          );
+          final bookedParts = [
+            ...(prior['parts'] as List<dynamic>).cast<Map<String, dynamic>>(),
+            booked,
+          ];
+          final priced = bookedParts.where((p) => p['totalCost'] != null);
+          workOrderCosts = {
+            ...workOrderCosts,
+            workOrderId: {
+              ...prior,
+              'parts': bookedParts,
+              'partsCost': priced.isEmpty
+                  ? null
+                  : priced.fold<num>(0, (sum, p) => sum + (p['totalCost'] as num)),
+            },
+          };
+          return http.Response(jsonEncode({'part': booked}), 201);
         }
         if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/work-orders')) {
           final siteId = path.split('/')[4];
@@ -3247,6 +3528,115 @@ class FakeWire {
           final id = path.split('/')[4];
           queue = [for (final a in queue) if (a['id'] != id) a];
           return http.Response(jsonEncode({'account': {'id': id}}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/parts') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          partPosts.add(sent);
+          if (createPartStatus != 201) {
+            return http.Response(jsonEncode({'message': createPartMessage}), createPartStatus);
+          }
+          final created = partJson(
+            '900',
+            sent['partNo'] as String,
+            sent['description'] as String,
+            uomCode: sent['uomCode'] as String,
+          );
+          parts = [...parts, created];
+          return http.Response(jsonEncode({'part': created}), 201);
+        }
+        if (path == '/api/maintenance/parts') {
+          if (partsStatus != 200) {
+            return http.Response(jsonEncode({'message': 'The parts catalogue is unavailable.'}), partsStatus);
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final sent = includeInactive ? parts : [for (final p in parts) if (p['isActive'] != false) p];
+          return http.Response(jsonEncode({'parts': sent}), 200);
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/stores')) {
+          final siteId = path.split('/')[4];
+          storeSites.add(siteId);
+          if (storesStatus != 200) {
+            return http.Response(jsonEncode({'message': 'The stores are unavailable.'}), storesStatus);
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final siteStores = stores[siteId] ?? [];
+          final sent = includeInactive
+              ? siteStores
+              : [for (final s in siteStores) if (s['isActive'] != false) s];
+          return http.Response(jsonEncode({'stores': sent}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/stores/') &&
+            path.endsWith('/receipts')) {
+          final storeId = path.split('/')[4];
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          receiptPosts.add((storeId, sent));
+          if (createReceiptStatus != 201) {
+            return http.Response(jsonEncode({'message': createReceiptMessage}), createReceiptStatus);
+          }
+          final partId = sent['partId'].toString();
+          final quantity = sent['quantity'] as num;
+          final existing = [...(stock[storeId] ?? const <Map<String, dynamic>>[])];
+          final index = existing.indexWhere((row) => row['partId'].toString() == partId);
+          final prior = index >= 0 ? existing[index]['quantity'] as num : 0;
+          final onHand = prior + quantity;
+          final part = parts.firstWhere(
+            (p) => p['id'].toString() == partId,
+            orElse: () => const <String, dynamic>{},
+          );
+          final row = stockLevelJson(
+            partId,
+            part['partNo'] as String? ?? 'PART',
+            part['description'] as String? ?? '',
+            onHand,
+            uomCode: part['uomCode'] as String? ?? 'EA',
+          );
+          if (index >= 0) {
+            existing[index] = row;
+          } else {
+            existing.add(row);
+          }
+          stock = {...stock, storeId: existing};
+          return http.Response(
+            jsonEncode({
+              'movement': {
+                'id': '900',
+                'partId': partId,
+                'partNo': row['partNo'],
+                'description': row['description'],
+                'uomCode': row['uomCode'],
+                'storeId': storeId,
+                'quantity': quantity,
+                'movementType': 'receipt',
+                'reason': sent['reason'] ?? 'received',
+                'occurredAt': DateTime.now().toUtc().toIso8601String(),
+              },
+              'onHand': onHand,
+            }),
+            201,
+          );
+        }
+        if (path.startsWith('/api/maintenance/stores/') && path.endsWith('/stock')) {
+          final storeId = path.split('/')[4];
+          stockReads.add(storeId);
+          if (storeStockStatus != 200) {
+            return http.Response(jsonEncode({'message': 'That store could not be read.'}), storeStockStatus);
+          }
+          final store = storeRows[storeId];
+          if (store == null) {
+            return http.Response(jsonEncode({'message': 'Store not found'}), 404);
+          }
+          return http.Response(jsonEncode({'store': store, 'stock': stock[storeId] ?? []}), 200);
+        }
+        if (request.method == 'GET' &&
+            path.startsWith('/api/maintenance/stores/') &&
+            path.split('/').length == 5) {
+          final storeId = path.split('/')[4];
+          final store = storeRows[storeId];
+          if (store == null) {
+            return http.Response(jsonEncode({'message': 'Store not found'}), 404);
+          }
+          return http.Response(jsonEncode({'store': store}), 200);
         }
         return http.Response('{}', 404);
       });
