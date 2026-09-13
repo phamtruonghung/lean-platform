@@ -111,18 +111,41 @@ local and CI run — that is expected, not a broken test. This is the only
 skip pattern found in the integration suite; do not assume other tests skip
 without checking their own `t.skip` calls.
 
-Frontend commands need Flutter. **There is no Flutter binary on this host.**
-CI and `frontend/Dockerfile` both pin `3.44.0` (`ghcr.io/cirruslabs/flutter`
-is the image `frontend/Dockerfile`'s build stage uses; CI's `flutter-action`
-pins the same version number). Run Flutter commands through that image:
+Frontend commands need Flutter. CI and `frontend/Dockerfile` both pin `3.44.0`
+(`ghcr.io/cirruslabs/flutter` is the image `frontend/Dockerfile`'s build stage
+uses; CI's `flutter-action` pins the same version number). **Docker's WSL
+integration is not enabled on this host**, so use the Linux SDK installed at
+`~/flutter` (`~/flutter/bin/flutter`) and give each phase its own `timeout`, so
+a stuck fetch or a lockfile rewrite cannot hang the session:
 
 ```bash
 # From the repo root. Work against a COPY, never the real frontend/ — see below.
+export PATH="$HOME/flutter/bin:$PATH"
 rm -rf /tmp/frontend-check && cp -r frontend /tmp/frontend-check
+(cd /tmp/frontend-check \
+  && timeout 900 flutter pub get \
+  && timeout 900 flutter analyze \
+  && timeout 1800 flutter test)
+rm -rf /tmp/frontend-check
+```
+
+If Docker's WSL integration is enabled instead, the pinned image is the
+canonical environment and replaces the local SDK:
+
+```bash
 docker run --rm -v /tmp/frontend-check:/app -w /app \
   ghcr.io/cirruslabs/flutter:3.44.0 \
   bash -c "flutter pub get && flutter analyze && flutter test"
-rm -rf /tmp/frontend-check
+```
+
+**If `pub get` fails with `no versions of <package> match <version>`.** An
+earlier `pub get` that was interrupted (a killed session, a reboot) can leave
+zero-byte package directories under `~/.pub-cache/hosted/pub.dev/<name>-<ver>`
+whose `pubspec.yaml` is empty, and pub then treats that version as if it did
+not exist. Delete every damaged directory and re-run:
+
+```bash
+for d in ~/.pub-cache/hosted/pub.dev/*/; do [ -s "$d/pubspec.yaml" ] || rm -rf "$d"; done
 ```
 
 **Do this against a COPY of `frontend/`, never a bind-mount of the real
