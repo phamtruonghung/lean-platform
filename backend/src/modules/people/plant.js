@@ -307,6 +307,20 @@ const ORG_UNIT_SEARCH_LIMIT = 50;
 // EXISTS), deliberately not authorization.grantedEntryPointIds's entry-point
 // dedup — search asks "is this row inside my reach", not "where does my
 // reach begin", so no dedup is wanted or correct here.
+//
+// The predicate a scoped search applies twice — to the matched row and, since
+// issue #145/ADR-0024, to a hit's ancestors — is one containment test, so it is
+// written once. `pathExpr` is whichever alias the caller is filtering; `<@` is
+// "is at or beneath", so the filtered row must sit under one of the caller's
+// granted Org Units.
+function grantContainmentClause(pathExpr, grantParam) {
+  return `EXISTS (
+            SELECT 1 FROM org_units granted
+             WHERE granted.id = ANY(${grantParam}::bigint[])
+               AND ${pathExpr} <@ granted.path
+          )`;
+}
+
 async function searchOrgUnits(siteId, { search, withinOrgUnitIds } = {}) {
   await getSite(siteId); // 404s if the Site itself does not exist.
 
@@ -332,17 +346,9 @@ async function searchOrgUnits(siteId, { search, withinOrgUnitIds } = {}) {
     params.push(withinOrgUnitIds);
     const grantParam = `$${params.length}`;
     scopeClause = `
-       AND EXISTS (
-             SELECT 1 FROM org_units granted
-              WHERE granted.id = ANY(${grantParam}::bigint[])
-                AND ou.path <@ granted.path
-           )`;
+       AND ${grantContainmentClause('ou.path', grantParam)}`;
     ancestorScopeClause = `
-         AND EXISTS (
-               SELECT 1 FROM org_units granted
-                WHERE granted.id = ANY(${grantParam}::bigint[])
-                  AND a.path <@ granted.path
-             )`;
+         AND ${grantContainmentClause('a.path', grantParam)}`;
   }
   params.push(ORG_UNIT_SEARCH_LIMIT + 1); // one extra row: the truncation probe.
 
@@ -377,7 +383,7 @@ async function searchOrgUnits(siteId, { search, withinOrgUnitIds } = {}) {
   return {
     orgUnits: rows.slice(0, ORG_UNIT_SEARCH_LIMIT).map((row) => ({
       ...toOrgUnit(row),
-      ancestors: row.ancestors ?? []
+      ancestors: row.ancestors
     })),
     truncated
   };

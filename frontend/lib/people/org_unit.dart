@@ -133,10 +133,10 @@ enum GrantLevel {
 /// One Org Unit chosen in the picker, at the level chosen for it.
 ///
 /// [where] is the breadcrumb captured when it was added — the Site and the
-/// ancestors that were on screen above it at that moment. There is no Org Unit
-/// search endpoint and no ancestor lookup, so this is the only honest way to
-/// say where a granted Org Unit sits; for an entry point (no ancestors were
-/// ever fetched) it is the Site alone, which is all the caller was told.
+/// ancestors that were on screen above it at that moment. A Grant records the
+/// location it was made at rather than re-deriving it later, and for an entry
+/// point (no ancestors were ever fetched) that is the Site alone, which is all
+/// the caller was told.
 @immutable
 class GrantedOrgUnit {
   const GrantedOrgUnit({required this.orgUnit, required this.level, required this.where});

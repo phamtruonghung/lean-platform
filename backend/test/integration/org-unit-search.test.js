@@ -364,10 +364,11 @@ test('a literal % in the query matches literally, not as a SQL wildcard', async 
 });
 
 // ---------------------------------------------------------------------------
-// 8. Result rows have exactly toOrgUnit's existing shape.
+// 8. Result rows are toOrgUnit's existing shape plus the hit's own ancestors
+// (issue #145).
 // ---------------------------------------------------------------------------
 
-test('a result row has exactly the existing Org Unit shape', async () => {
+test('a result row is the existing Org Unit shape plus its ancestors', async () => {
   const response = await searchRequest(site, `search=${encodeURIComponent('Granted Dept')}`);
   assert.strictEqual(response.status, 200);
   const body = await response.json();

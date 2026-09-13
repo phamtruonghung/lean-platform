@@ -317,6 +317,13 @@ void main() {
     );
     await openOrgUnits(tester, wire);
 
+    // Issue #130's own "2+ characters" criterion: a single character never
+    // reaches the wire.
+    await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'L');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    expect(wire.orgUnitSearchRequests, isEmpty);
+
     await tester.enterText(find.byKey(OrgUnitsScreen.searchFieldKey), 'Line');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();

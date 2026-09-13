@@ -425,26 +425,31 @@ Map<String, dynamic> orgUnitJson(
   String unitType = 'area',
   String? path,
   List<Map<String, String>> ancestors = const [],
-}) =>
-    {
-      'id': id,
-      'parentId': parentId,
-      'code': name.toUpperCase().replaceAll(' ', '-'),
-      'name': name,
-      'unitType': unitType,
-      // Real rows carry the full root-first ancestor chain (`n<id>.n<id>...`,
-      // issue #130) — a caller revealing a deeply nested search hit passes
-      // its own [path] explicitly; the bare id is only a fixture default for
-      // the many existing tests that never look past this node's own row.
-      'path': path ?? id,
-      // Only the search route resolves these (`plant.searchOrgUnits`, issue
-      // #145, ADR-0024); every other response omits the key, which the client
-      // reads as no ancestors. Pass `ancestors` on a search fixture when the
-      // test cares about a hit's breadcrumb.
-      'ancestors': ancestors,
-      'sortOrder': 0,
-      'isActive': true,
-    };
+}) {
+  final row = <String, dynamic>{
+    'id': id,
+    'parentId': parentId,
+    'code': name.toUpperCase().replaceAll(' ', '-'),
+    'name': name,
+    'unitType': unitType,
+    // Real rows carry the full root-first ancestor chain (`n<id>.n<id>...`,
+    // issue #130) — a caller revealing a deeply nested search hit passes
+    // its own [path] explicitly; the bare id is only a fixture default for
+    // the many existing tests that never look past this node's own row.
+    'path': path ?? id,
+    'sortOrder': 0,
+    'isActive': true,
+  };
+  // Only the search route resolves ancestors (`plant.searchOrgUnits`, issue
+  // #145, ADR-0024); a browsed level's response omits the key entirely, so
+  // this fake does too — which is what exercises the client's absent-key
+  // fallback in `_orgUnitNodeFrom`. A search fixture that cares about a hit's
+  // breadcrumb passes `ancestors` explicitly.
+  if (ancestors.isNotEmpty) {
+    row['ancestors'] = ancestors;
+  }
+  return row;
+}
 
 /// One Account as `GET /api/people/accounts` sends it.
 Map<String, dynamic> accountJson(

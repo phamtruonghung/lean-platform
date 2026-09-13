@@ -29,8 +29,11 @@ Two shapes were on the table:
 ## The decision
 
 The search response carries each hit's ancestor names, root-first, as
-`[{id, name}]`, scoped by the same `path <@ granted.path` predicate the match
-itself was scoped by.
+`[{id, name}]`, scoped by the same `path <@ granted.path` grant-containment
+predicate the match itself was scoped by. The route hands `searchOrgUnits` the
+caller's whole grant set, which may span Sites, but an ancestor of a row in the
+requested Site is in that Site too, so the same predicate answers both
+questions without a second, Site-scoped rule.
 
 ## Why not the alternatives
 
