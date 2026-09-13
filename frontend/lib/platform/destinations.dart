@@ -222,6 +222,17 @@ const List<Destination> platformDestinations = [
     roles: ModuleRoles.maintenance,
     group: DestinationGroupNames.maintenance,
   ),
+  // Downtime (issue #73) is maintenance's own work too — closing and
+  // classifying the stops reported on the floor, and recording a Breakdown —
+  // so it follows the same Module role set as Assets, Work orders and the
+  // Triage queue, and is deliberately not offered to an operator.
+  Destination(
+    label: 'Downtime',
+    icon: Icons.warning_amber_outlined,
+    path: Routes.downtime,
+    roles: ModuleRoles.maintenance,
+    group: DestinationGroupNames.maintenance,
+  ),
   // Administrator only (issue #89) — `GET .../skill-coverage` is deliberately
   // narrower than every other Site-shaped read in the People Module
   // (skill-routes.js's own header: "how the plant is being run", not "who
