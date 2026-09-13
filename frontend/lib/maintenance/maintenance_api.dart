@@ -16,6 +16,7 @@ import 'downtime_event.dart';
 import 'job_plan.dart';
 import 'pm_schedule.dart';
 import 'request.dart';
+import 'tier_board.dart';
 import 'work_order.dart';
 
 /// The request could not be answered at all. Deliberately its own type rather
@@ -771,6 +772,43 @@ class MaintenanceApi {
     }
   }
 
+  /// The tier board (`GET /api/maintenance/sites/:siteId/board`, issue #76):
+  /// the KPIs under all five Pillars for a Site, optionally narrowed to an Org
+  /// Unit and everything beneath it, over one period. [periodType] is required
+  /// by the server (`shift`/`day`/`week`/`month`); [date] is a `YYYY-MM-DD`
+  /// production day the server resolves to the period containing it, and is
+  /// omitted to let the Site's own shift calendar decide which production day
+  /// "today" falls in. A `shift` period additionally needs [shiftInstanceId]
+  /// — the model and this call carry it, though no picker offers it yet. The
+  /// read is Site-wide and carries no Grant filter (ADR-0009).
+  Future<TierBoard> fetchBoard(
+    String accessToken, {
+    required String siteId,
+    required String periodType,
+    String? orgUnitId,
+    String? date,
+    String? shiftInstanceId,
+  }) async {
+    final path = '/api/maintenance/sites/$siteId/board';
+    final queryParameters = {
+      'periodType': periodType,
+      'orgUnitId': ?orgUnitId,
+      'date': ?date,
+      'shiftInstanceId': ?shiftInstanceId,
+    };
+    final uri = Uri.parse(path).replace(queryParameters: queryParameters);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return _tierBoardFrom(body);
+    } catch (error) {
+      throw MaintenanceApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// A local time the picker chose, as the UTC instant the wire carries —
   /// `timestamptz` on the server side. The server supplies now() when the
   /// field is left blank, so a caller sends nothing rather than a default.
@@ -870,6 +908,64 @@ class MaintenanceApi {
         nextDueOn: schedule['nextDueOn'] as String?,
         isActive: schedule['isActive'] as bool? ?? true,
         daysUntilDue: (schedule['daysUntilDue'] as num?)?.toInt(),
+      );
+
+  // `getBoard` (board.js) sends the Site, the optional chosen Org Unit, the
+  // resolved period and one entry per Pillar in catalogue order. `value` and
+  // `targetValue` are `number | null`: a null `value` is the wire's own way of
+  // saying "nothing was measured", which is why it is parsed as a nullable
+  // double and never defaulted to zero.
+  static TierBoard _tierBoardFrom(Map<String, dynamic> board) => TierBoard(
+        site: _boardSiteFrom(board['site'] as Map<String, dynamic>),
+        orgUnit: board['orgUnit'] == null
+            ? null
+            : _boardOrgUnitFrom(board['orgUnit'] as Map<String, dynamic>),
+        period: _boardPeriodFrom(board['period'] as Map<String, dynamic>),
+        pillars: [
+          for (final pillar in (board['pillars'] as List<dynamic>? ?? const []))
+            _pillarFrom(pillar as Map<String, dynamic>),
+        ],
+      );
+
+  static BoardSite _boardSiteFrom(Map<String, dynamic> site) => BoardSite(
+        id: site['id'].toString(),
+        name: site['name'] as String,
+        timezone: site['timezone'] as String,
+      );
+
+  static BoardOrgUnit _boardOrgUnitFrom(Map<String, dynamic> orgUnit) => BoardOrgUnit(
+        id: orgUnit['id'].toString(),
+        name: orgUnit['name'] as String,
+        path: orgUnit['path'] as String,
+      );
+
+  static BoardPeriod _boardPeriodFrom(Map<String, dynamic> period) => BoardPeriod(
+        type: period['type'] as String,
+        start: period['start'] as String,
+        end: period['end'] as String,
+      );
+
+  static Pillar _pillarFrom(Map<String, dynamic> pillar) => Pillar(
+        code: pillar['code'] as String,
+        name: pillar['name'] as String,
+        sortOrder: (pillar['sortOrder'] as num).toInt(),
+        hasData: pillar['hasData'] as bool? ?? false,
+        kpis: [
+          for (final kpi in (pillar['kpis'] as List<dynamic>? ?? const []))
+            _boardKpiFrom(kpi as Map<String, dynamic>),
+        ],
+      );
+
+  static BoardKpi _boardKpiFrom(Map<String, dynamic> kpi) => BoardKpi(
+        code: kpi['code'] as String,
+        name: kpi['name'] as String,
+        unit: kpi['unit'] as String? ?? '',
+        direction: kpi['direction'] as String,
+        decimalPlaces: (kpi['decimalPlaces'] as num?)?.toInt() ?? 0,
+        formulaText: kpi['formulaText'] as String? ?? '',
+        value: (kpi['value'] as num?)?.toDouble(),
+        status: kpi['status'] as String,
+        targetValue: (kpi['targetValue'] as num?)?.toDouble(),
       );
 
   // `toRequest` (requests.js) sends a flat row, the same shape `toWorkOrder`

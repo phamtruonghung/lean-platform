@@ -1,0 +1,303 @@
+/// The tier board (issue #76), with the wire faked — the one client seam
+/// (ADR-0012). The real app, the real router, the real Blocs, `MockClient` at
+/// the HTTP boundary and `FakeAuthGateway` at the auth boundary.
+///
+/// What these tests claim and what they do not: that all five Pillars render
+/// from a scripted board; that a KPI with no data is visibly distinguished from
+/// one measured as zero and is never formatted as a number; that changing the
+/// Org Unit or the period type dispatches exactly one board request carrying
+/// the new value; and that the loading, empty and failure-with-retry states
+/// render. Not that the server resolves the period per Site, rolls up the
+/// subtree, or evaluates a target — those are proved on the backend, and
+/// neither substitutes for the other.
+library;
+
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lean_platform/maintenance/org_unit_chooser.dart';
+import 'package:lean_platform/maintenance/tier_board_screen.dart';
+import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/skeleton_list.dart';
+
+import 'harness.dart';
+
+/// The five Pillars the server always returns, in its own catalogue order
+/// (Safety, Quality, Delivery, Cost, People), with a measured MTBF under
+/// Delivery by default so the board has something real in it.
+List<Map<String, dynamic>> fivePillars({
+  List<Map<String, dynamic>>? deliveryKpis,
+}) =>
+    [
+      boardPillarJson('S', 'Safety', sortOrder: 1, kpis: const []),
+      boardPillarJson('Q', 'Quality', sortOrder: 2, kpis: const []),
+      boardPillarJson(
+        'D',
+        'Delivery',
+        sortOrder: 3,
+        kpis: deliveryKpis ??
+            [
+              boardKpiJson(
+                'MNT_MTBF',
+                'Mean time between failures',
+                unit: 'hours',
+                decimalPlaces: 1,
+                value: 7,
+                status: 'no_target',
+              ),
+            ],
+      ),
+      boardPillarJson('C', 'Cost', sortOrder: 4, kpis: const []),
+      boardPillarJson('P', 'People', sortOrder: 5, kpis: const []),
+    ];
+
+Map<String, dynamic> boardBody({
+  String siteId = '1',
+  String? orgUnitId,
+  String periodType = 'day',
+  String date = '2026-03-10',
+  List<Map<String, dynamic>>? pillars,
+}) =>
+    {
+      'site': {'id': siteId, 'name': 'Ho Chi Minh', 'timezone': 'Asia/Ho_Chi_Minh'},
+      'orgUnit': orgUnitId == null
+          ? null
+          : {'id': orgUnitId, 'name': 'Assembly', 'path': 'n$orgUnitId'},
+      'period': {'type': periodType, 'start': date, 'end': date},
+      'pillars': pillars ?? fivePillars(),
+    };
+
+FakeWire boardWire({
+  String role = Roles.supervisor,
+  Map<String, dynamic>? board,
+  int boardStatus = 200,
+  List<Map<String, dynamic>>? sites,
+  Map<String?, List<Map<String, dynamic>>>? orgUnits,
+}) =>
+    FakeWire(
+      role: role,
+      sites: sites ?? [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: orgUnits ?? const {},
+      board: board ?? boardBody(),
+      boardStatus: boardStatus,
+    );
+
+void main() {
+  testWidgets('a supervisor is offered the Tier board Destination', (tester) async {
+    final wire = boardWire();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    expect(find.byKey(const ValueKey('nav-item-Tier board')), findsOneWidget);
+    expect(find.byType(TierBoardScreen), findsOneWidget);
+  });
+
+  testWidgets('all five Pillars render from a scripted board', (tester) async {
+    final wire = boardWire();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    for (final code in ['S', 'Q', 'D', 'C', 'P']) {
+      expect(find.byKey(TierBoardScreen.pillarKey(code)), findsOneWidget);
+    }
+    for (final name in ['Safety', 'Quality', 'Delivery', 'Cost', 'People']) {
+      expect(find.text(name), findsOneWidget);
+    }
+    // Safety has no KPI and no data behind it: it says so rather than standing
+    // as an empty box.
+    expect(find.byKey(TierBoardScreen.pillarNoDataKey('S')), findsOneWidget);
+    expect(find.text('No data yet'), findsWidgets);
+    // Exactly one board read for the initial load.
+    expect(wire.boardRequests.length, 1);
+  });
+
+  testWidgets('a KPI with no data is distinguished from a KPI reading zero',
+      (tester) async {
+    final wire = boardWire(
+      board: boardBody(
+        pillars: [
+          boardPillarJson('S', 'Safety', sortOrder: 1, kpis: const []),
+          boardPillarJson('Q', 'Quality', sortOrder: 2, kpis: const []),
+          boardPillarJson(
+            'D',
+            'Delivery',
+            sortOrder: 3,
+            kpis: [
+              boardKpiJson(
+                'MNT_MTBF',
+                'Mean time between failures',
+                unit: 'hours',
+                decimalPlaces: 1,
+                value: null,
+                status: 'no_data',
+              ),
+              boardKpiJson(
+                'MNT_PARTS_COST',
+                'Parts cost',
+                unit: 'GBP',
+                decimalPlaces: 0,
+                value: 0,
+                status: 'no_target',
+              ),
+            ],
+          ),
+          boardPillarJson('C', 'Cost', sortOrder: 4, kpis: const []),
+          boardPillarJson('P', 'People', sortOrder: 5, kpis: const []),
+        ],
+      ),
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    final noDataCard = find.byKey(TierBoardScreen.kpiKey('MNT_MTBF'));
+    expect(noDataCard, findsOneWidget);
+    // The unmeasured KPI shows the no-data affordance and an em dash, and
+    // never a zero.
+    expect(
+      find.descendant(of: noDataCard, matching: find.text('No data')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: noDataCard, matching: find.text('—')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: noDataCard, matching: find.text('0')),
+      findsNothing,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('MNT_MTBF'))).data,
+      '—',
+    );
+
+    final zeroCard = find.byKey(TierBoardScreen.kpiKey('MNT_PARTS_COST'));
+    expect(zeroCard, findsOneWidget);
+    // A measured zero is a real value and reads as one.
+    expect(
+      find.descendant(of: zeroCard, matching: find.text('0')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: zeroCard, matching: find.text('No data')),
+      findsNothing,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('MNT_PARTS_COST'))).data,
+      '0',
+    );
+  });
+
+  testWidgets('changing the Org Unit sends exactly one board request with the new orgUnitId',
+      (tester) async {
+    final wire = boardWire(
+      orgUnits: {
+        null: [orgUnitJson('10', 'Assembly')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    expect(wire.boardRequests.length, 1);
+    expect(wire.boardRequests.single.$2, isNull);
+
+    await tapIn(tester, find.byKey(TierBoardScreen.orgUnitFilterKey));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
+
+    expect(wire.boardRequests.length, 2);
+    expect(wire.boardRequests.last.$2, '10');
+  });
+
+  testWidgets('changing the period type sends exactly one board request with the new periodType',
+      (tester) async {
+    final wire = boardWire();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    expect(wire.boardRequests.length, 1);
+    expect(wire.boardRequests.single.$3, 'day');
+
+    await tapIn(tester, find.byKey(TierBoardScreen.periodTypeKey));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.text('Week').last);
+
+    expect(wire.boardRequests.length, 2);
+    expect(wire.boardRequests.last.$3, 'week');
+  });
+
+  testWidgets('the board shows placeholders in its own shape while it loads',
+      (tester) async {
+    final wire = boardWire()..boardGate = Completer<void>();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+      settle: false,
+    );
+
+    expect(find.byKey(TierBoardScreen.loadingKey), findsOneWidget);
+    expect(find.byType(SkeletonGrid), findsOneWidget);
+    expect(find.byKey(TierBoardScreen.emptyKey), findsNothing);
+
+    wire.boardGate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(TierBoardScreen.loadingKey), findsNothing);
+    expect(find.byKey(TierBoardScreen.pillarKey('D')), findsOneWidget);
+  });
+
+  testWidgets('a board with no Pillars says so plainly', (tester) async {
+    final wire = boardWire(board: boardBody(pillars: const []));
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    expect(find.byKey(TierBoardScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(TierBoardScreen.failedKey), findsNothing);
+  });
+
+  testWidgets('a failed load explains itself and the retry works', (tester) async {
+    final wire = boardWire(boardStatus: 503);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    expect(find.byKey(TierBoardScreen.failedKey), findsOneWidget);
+    expect(find.byKey(TierBoardScreen.emptyKey), findsNothing);
+    expect(find.text('The tier board is unavailable.'), findsOneWidget);
+
+    wire.boardStatus = 200;
+    await tapIn(tester, find.byKey(TierBoardScreen.retryKey));
+
+    expect(find.byKey(TierBoardScreen.failedKey), findsNothing);
+    expect(find.byKey(TierBoardScreen.pillarKey('S')), findsOneWidget);
+  });
+}
