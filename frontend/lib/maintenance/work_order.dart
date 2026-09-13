@@ -55,6 +55,7 @@ class WorkOrder {
     required this.assetName,
     required this.orgUnitId,
     required this.orgUnitName,
+    required this.siteId,
     required this.summary,
     required this.workType,
     required this.priority,
@@ -62,6 +63,7 @@ class WorkOrder {
     required this.assignedTo,
     required this.assigneeName,
     this.tasks = const [],
+    this.cost,
   });
 
   final String id;
@@ -81,6 +83,11 @@ class WorkOrder {
   /// onto the row the same way [assetId] and its siblings are.
   final String orgUnitId;
   final String orgUnitName;
+
+  /// The Site the Work order's Org Unit belongs to. Resolved server-side and
+  /// carried so the parts booking dialog can offer that Site's stores without
+  /// reading the list Bloc's own state.
+  final String siteId;
 
   final String summary;
 
@@ -113,6 +120,12 @@ class WorkOrder {
   /// on a row that came from the Site-wide list, which deliberately carries
   /// none.
   final List<WorkOrderTask> tasks;
+
+  /// What the job has cost so far (issue #75) — hours by activity and the
+  /// parts fitted, each its own fact. Null on a row that came from the
+  /// Site-wide list, which carries no cost; populated only by the detail
+  /// read, the same way [tasks] is.
+  final WorkOrderCost? cost;
 
   String get workTypeLabel =>
       _labelFor(workType, [for (final t in WorkType.values) (t.wire, t.label)]);
@@ -204,3 +217,134 @@ class WorkOrderTask {
 bool offersStart(String status) => status == 'approved';
 bool offersComplete(String status) => status == 'in_progress';
 bool offersCancel(String status) => status == 'approved' || status == 'in_progress';
+
+/// The kinds of activity a booked window records, mirroring the CHECK on
+/// `work_order_labour.activity` and the backend's own `LABOUR_ACTIVITIES`.
+/// All five are offered by the booking dialog; a plant whose technicians
+/// spend a third of the job waiting for a permit has a scheduling problem,
+/// not a staffing one, so `waiting` is worth keeping honest.
+enum LabourActivity {
+  work('work', 'Work'),
+  travel('travel', 'Travel'),
+  waiting('waiting', 'Waiting'),
+  diagnosis('diagnosis', 'Diagnosis'),
+  documentation('documentation', 'Documentation');
+
+  const LabourActivity(this.wire, this.label);
+
+  final String wire;
+  final String label;
+
+  static String labelFor(String wire) {
+    for (final activity in LabourActivity.values) {
+      if (activity.wire == wire) return activity.label;
+    }
+    return wire;
+  }
+}
+
+/// How a fitted part reached the job, mirroring the CHECK on
+/// `work_order_parts.sourced`. Only `stores` draws down inventory (ADR-0015);
+/// the other three are a cost line with no shelf behind them.
+enum PartSource {
+  stores('stores', 'Stores'),
+  purchased('purchased', 'Purchased'),
+  refurbished('refurbished', 'Refurbished'),
+  cannibalised('cannibalised', 'Cannibalised');
+
+  const PartSource(this.wire, this.label);
+
+  final String wire;
+  final String label;
+
+  static String labelFor(String wire) {
+    for (final source in PartSource.values) {
+      if (source.wire == wire) return source.label;
+    }
+    return wire;
+  }
+}
+
+/// One activity's booked hours on a Work order, with overtime split out so it
+/// is distinguishable from ordinary hours at the point of reading.
+@immutable
+class WorkOrderLabourActivity {
+  const WorkOrderLabourActivity({
+    required this.activity,
+    required this.hours,
+    required this.overtimeHours,
+  });
+
+  final String activity;
+  final num hours;
+  final num overtimeHours;
+
+  String get label => LabourActivity.labelFor(activity);
+}
+
+/// One part fitted to a Work order (issue #75) — mirrors `toBookedPart`
+/// (work-order-cost.js) key for key. [totalCost] is generated server-side from
+/// [quantity] and [unitCost], null when no cost was recorded.
+@immutable
+class WorkOrderPartLine {
+  const WorkOrderPartLine({
+    required this.id,
+    required this.partNo,
+    required this.description,
+    required this.quantity,
+    required this.uomCode,
+    required this.unitCost,
+    required this.currency,
+    required this.totalCost,
+    required this.sourced,
+  });
+
+  final String id;
+  final String? partNo;
+  final String description;
+  final num quantity;
+  final String uomCode;
+  final num? unitCost;
+  final String currency;
+  final num? totalCost;
+  final String sourced;
+
+  String get sourcedLabel => PartSource.labelFor(sourced);
+
+  String get name => partNo == null || partNo!.isEmpty ? description : '$partNo · $description';
+}
+
+/// What a Work order has cost so far (issue #75): hours by activity and the
+/// parts fitted with their total. [labourHours] and [partsCost] are two
+/// separate facts, never summed: labour booked here is a slice of plant
+/// labour cost, already costed from attendance, while parts are the one
+/// component of maintenance cost that adds.
+@immutable
+class WorkOrderCost {
+  const WorkOrderCost({
+    required this.labourHours,
+    required this.overtimeHours,
+    required this.labourByActivity,
+    required this.parts,
+    required this.partsCost,
+  });
+
+  const WorkOrderCost.empty()
+      : labourHours = 0,
+        overtimeHours = 0,
+        labourByActivity = const [],
+        parts = const [],
+        partsCost = null;
+
+  final num labourHours;
+  final num overtimeHours;
+  final List<WorkOrderLabourActivity> labourByActivity;
+  final List<WorkOrderPartLine> parts;
+
+  /// The sum of the parts' own totals, or null when no part carries a cost —
+  /// an unpriced shelf is a gap in the data, not a measured zero.
+  final num? partsCost;
+
+  bool get hasLabour => labourByActivity.isNotEmpty;
+  bool get hasParts => parts.isNotEmpty;
+}

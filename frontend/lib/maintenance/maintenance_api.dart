@@ -775,7 +775,83 @@ class MaintenanceApi {
     }
   }
 
-  /// The tier board (`GET /api/maintenance/sites/:siteId/board`, issue #76):
+  /// Books an Employee's window of time against a Work order
+  /// (`POST /api/maintenance/work-orders/:id/labour`, issue #75). The window
+  /// is the only input that decides the hours — `hours` is never sent, because
+  /// the server's own column is generated from `startedAt`/`endedAt` and a
+  /// client-sent figure is ignored. [startedAt]/[endedAt] cross the wire as
+  /// UTC instants; [activity] is one of `LabourActivity`'s wires. A write
+  /// Grant reaching the Work order's Asset's Org Unit is required (403).
+  /// Nothing is returned: the caller re-reads the Work order, whose own detail
+  /// read now carries the updated cost.
+  Future<void> bookLabour(
+    String accessToken,
+    String workOrderId, {
+    required String employeeId,
+    required DateTime startedAt,
+    required DateTime endedAt,
+    required String activity,
+    bool isOvertime = false,
+    String? note,
+  }) async {
+    final path = '/api/maintenance/work-orders/$workOrderId/labour';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'employeeId': employeeId,
+          'startedAt': startedAt.toUtc().toIso8601String(),
+          'endedAt': endedAt.toUtc().toIso8601String(),
+          'activity': activity,
+          'isOvertime': isOvertime,
+          'note': ?note,
+        }),
+      ),
+      path,
+    );
+  }
+
+  /// Books a part against a Work order
+  /// (`POST /api/maintenance/work-orders/:id/parts`, issue #75). `sourced`
+  /// decides which fields apply: a `stores` booking names the catalogue
+  /// [partId] and the [storeId] it came from and decrements that shelf; a
+  /// `purchased`, `refurbished` or `cannibalised` booking names its own
+  /// [partNo] (free text, may be null), [description] and [uomCode] and
+  /// touches no stock. Nothing is returned: the caller re-reads the Work
+  /// order for the updated cost, the same as [bookLabour].
+  Future<void> bookWorkOrderPart(
+    String accessToken,
+    String workOrderId, {
+    required String sourced,
+    required num quantity,
+    String? partId,
+    String? storeId,
+    String? partNo,
+    String? description,
+    String? uomCode,
+    num? unitCost,
+  }) async {
+    final path = '/api/maintenance/work-orders/$workOrderId/parts';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'sourced': sourced,
+          'quantity': quantity,
+          'partId': ?partId,
+          'storeId': ?storeId,
+          'partNo': ?partNo,
+          'description': ?description,
+          'uomCode': ?uomCode,
+          'unitCost': ?unitCost,
+        }),
+      ),
+      path,
+    );
+  }
+
   /// the KPIs under all five Pillars for a Site, optionally narrowed to an Org
   /// Unit and everything beneath it, over one period. [periodType] is required
   /// by the server (`shift`/`day`/`week`/`month`); [date] is a `YYYY-MM-DD`
@@ -976,11 +1052,12 @@ class MaintenanceApi {
   }
 
   // The server sends a flat row — `id, workOrderNo, assetId, assetCode,
-  // assetName, orgUnitId, orgUnitName, summary, description, workType,
-  // priority, status, assignedTo, assigneeName, createdAt, updatedAt`
-  // (`toWorkOrder`, work-orders.js) — no nested `asset`/`orgUnit` map and no
-  // `assignee` string, so this reads the same flat keys `_assetFrom` already
-  // does for the Asset register.
+  // assetName, orgUnitId, orgUnitName, siteId, summary, description,
+  // workType, priority, status, assignedTo, assigneeName, createdAt,
+  // updatedAt` (`toWorkOrder`, work-orders.js) — no nested `asset`/`orgUnit`
+  // map and no `assignee` string, so this reads the same flat keys
+  // `_assetFrom` already does for the Asset register. The `cost` object
+  // (issue #75) rides only the detail read.
   static WorkOrder _workOrderFrom(Map<String, dynamic> workOrder) => WorkOrder(
         id: workOrder['id'].toString(),
         workOrderNo: workOrder['workOrderNo'] as String,
@@ -989,6 +1066,7 @@ class MaintenanceApi {
         assetName: workOrder['assetName'] as String,
         orgUnitId: workOrder['orgUnitId'].toString(),
         orgUnitName: workOrder['orgUnitName'] as String,
+        siteId: workOrder['siteId'].toString(),
         summary: workOrder['summary'] as String,
         workType: workOrder['workType'] as String,
         priority: (workOrder['priority'] as num).toInt(),
@@ -999,6 +1077,47 @@ class MaintenanceApi {
           for (final task in (workOrder['tasks'] as List<dynamic>? ?? const []))
             _workOrderTaskFrom(task as Map<String, dynamic>),
         ],
+        cost: workOrder['cost'] == null
+            ? null
+            : _workOrderCostFrom(workOrder['cost'] as Map<String, dynamic>),
+      );
+
+  // `workOrderCost` (work-order-cost.js): `labourHours, overtimeHours,
+  // labourByActivity, parts, partsCost`. Labour hours and the parts cost are
+  // returned as two separate facts and never summed — see the backend's own
+  // warning that booked labour is a slice of plant labour cost while parts
+  // are new money.
+  static WorkOrderCost _workOrderCostFrom(Map<String, dynamic> cost) => WorkOrderCost(
+        labourHours: cost['labourHours'] as num? ?? 0,
+        overtimeHours: cost['overtimeHours'] as num? ?? 0,
+        labourByActivity: [
+          for (final row in (cost['labourByActivity'] as List<dynamic>? ?? const []))
+            WorkOrderLabourActivity(
+              activity: (row as Map<String, dynamic>)['activity'] as String,
+              hours: row['hours'] as num? ?? 0,
+              overtimeHours: row['overtimeHours'] as num? ?? 0,
+            ),
+        ],
+        parts: [
+          for (final row in (cost['parts'] as List<dynamic>? ?? const []))
+            _workOrderPartFrom(row as Map<String, dynamic>),
+        ],
+        partsCost: cost['partsCost'] as num?,
+      );
+
+  // `toBookedPart` (work-order-cost.js): `id, workOrderId, partNo,
+  // description, quantity, uomCode, unitCost, currency, totalCost, sourced,
+  // fittedAt`.
+  static WorkOrderPartLine _workOrderPartFrom(Map<String, dynamic> part) => WorkOrderPartLine(
+        id: part['id'].toString(),
+        partNo: part['partNo'] as String?,
+        description: part['description'] as String,
+        quantity: part['quantity'] as num,
+        uomCode: part['uomCode'] as String,
+        unitCost: part['unitCost'] as num?,
+        currency: part['currency'] as String? ?? 'USD',
+        totalCost: part['totalCost'] as num?,
+        sourced: part['sourced'] as String,
       );
 
   // `toWorkOrderTask` (work-orders.js): `id, stepNo, instruction, skillId,

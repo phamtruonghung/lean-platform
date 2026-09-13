@@ -140,6 +140,7 @@ Map<String, dynamic> workOrderJson(
   String assetName = 'Press 1',
   String orgUnitId = '10',
   String orgUnitName = 'Line 1',
+  String siteId = '1',
   String? description,
   String workType = 'corrective',
   int priority = 3,
@@ -160,6 +161,7 @@ Map<String, dynamic> workOrderJson(
       'assetName': assetName,
       'orgUnitId': orgUnitId,
       'orgUnitName': orgUnitName,
+      'siteId': siteId,
       'summary': summary,
       'description': description,
       'workType': workType,
@@ -169,6 +171,56 @@ Map<String, dynamic> workOrderJson(
       'assigneeName': assigneeName,
       'createdAt': (createdAt ?? DateTime.now()).toUtc().toIso8601String(),
       'updatedAt': (updatedAt ?? DateTime.now()).toUtc().toIso8601String(),
+    };
+
+/// One activity's booked hours as `workOrderCost.labourByActivity` sends it —
+/// mirrors `work-order-cost.js`'s own row shape.
+Map<String, dynamic> labourActivityJson(String activity, num hours, {num overtimeHours = 0}) =>
+    {'activity': activity, 'hours': hours, 'overtimeHours': overtimeHours};
+
+/// One fitted part as `workOrderCost.parts` sends it — mirrors
+/// `toBookedPart` (work-order-cost.js) key for key.
+Map<String, dynamic> workOrderPartJson(
+  String id, {
+  String? partNo,
+  String description = 'Bought for this job',
+  num quantity = 1,
+  String uomCode = 'EA',
+  num? unitCost,
+  String currency = 'USD',
+  num? totalCost,
+  String sourced = 'purchased',
+}) =>
+    {
+      'id': id,
+      'workOrderId': '101',
+      'partNo': partNo,
+      'description': description,
+      'quantity': quantity,
+      'uomCode': uomCode,
+      'unitCost': unitCost,
+      'currency': currency,
+      'totalCost': totalCost,
+      'sourced': sourced,
+      'fittedAt': null,
+    };
+
+/// What a Work order has cost so far (issue #75), as the `cost` object on the
+/// detail read sends it — mirrors `workOrderCost` (work-order-cost.js). Labour
+/// hours and the parts cost are two separate facts; no combined total exists.
+Map<String, dynamic> workOrderCostJson({
+  num labourHours = 0,
+  num overtimeHours = 0,
+  List<Map<String, dynamic>>? labourByActivity,
+  List<Map<String, dynamic>>? parts,
+  num? partsCost,
+}) =>
+    {
+      'labourHours': labourHours,
+      'overtimeHours': overtimeHours,
+      'labourByActivity': labourByActivity ?? const [],
+      'parts': parts ?? const [],
+      'partsCost': partsCost,
     };
 
 /// The Work order an accepted Request produced, as the nested `workOrder` map
@@ -994,6 +1046,11 @@ class FakeWire {
     this.patchPmScheduleMessage = 'That PM schedule could not be changed.',
     Map<String, List<Map<String, dynamic>>>? workOrderTasks,
     this.workOrderDetailStatus = 200,
+    Map<String, Map<String, dynamic>>? workOrderCosts,
+    this.labourBookingStatus = 201,
+    this.labourBookingMessage = 'That labour could not be booked.',
+    this.partBookingStatus = 201,
+    this.partBookingMessage = 'That part could not be booked.',
     this.board,
     this.boardStatus = 200,
     this.boardMessage = 'The tier board is unavailable.',
@@ -1034,6 +1091,7 @@ class FakeWire {
         jobPlans = jobPlans ?? [],
         pmSchedules = pmSchedules ?? {},
         workOrderTasks = workOrderTasks ?? {},
+        workOrderCosts = workOrderCosts ?? {},
         parts = parts ?? [],
         unitsOfMeasure = unitsOfMeasure ?? [unitOfMeasureJson('EA', 'Each')],
         stores = stores ?? {},
@@ -1591,6 +1649,27 @@ class FakeWire {
 
   /// When set, a Work order detail read hangs until the test completes it.
   Completer<void>? workOrderDetailGate;
+
+  /// What a Work order has cost so far (issue #75), keyed by Work order id —
+  /// the `cost` object the detail read answers with. Absent means the empty
+  /// cost. A booking handler appends to this so the re-read reflects it.
+  Map<String, Map<String, dynamic>> workOrderCosts;
+
+  /// `POST /api/maintenance/work-orders/:id/labour` (issue #75).
+  int labourBookingStatus;
+  String labourBookingMessage;
+
+  /// Every labour booking that reached the wire, as `(workOrderId, body)` — so
+  /// a test can assert exactly one request was sent and what window and
+  /// activity it carried.
+  final List<(String, Map<String, dynamic>)> labourPosts = [];
+
+  /// `POST /api/maintenance/work-orders/:id/parts` (issue #75).
+  int partBookingStatus;
+  String partBookingMessage;
+
+  /// Every part booking that reached the wire, as `(workOrderId, body)`.
+  final List<(String, Map<String, dynamic>)> partBookingPosts = [];
 
   /// `GET /api/maintenance/sites/:siteId/board` (issue #76) — the scripted
   /// board body, or null for an empty board (no Pillars). The Site, Org Unit,
@@ -2249,10 +2328,100 @@ class FakeWire {
                 ...row,
                 'pmScheduleId': null,
                 'tasks': workOrderTasks[id] ?? const [],
+                'cost': workOrderCosts[id] ?? workOrderCostJson(),
               },
             }),
             200,
           );
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/work-orders/') &&
+            path.endsWith('/labour')) {
+          final workOrderId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          labourPosts.add((workOrderId, body));
+          if (labourBookingStatus != 201) {
+            return http.Response(jsonEncode({'message': labourBookingMessage}), labourBookingStatus);
+          }
+          // Reflect the booking on the next detail read, the same way the
+          // server recomputes the cost: the hours follow from the window.
+          final start = DateTime.parse(body['startedAt'] as String);
+          final end = DateTime.parse(body['endedAt'] as String);
+          final hours = end.difference(start).inMinutes / 60;
+          final prior = workOrderCosts[workOrderId] ?? workOrderCostJson();
+          final activities = [
+            for (final row in (prior['labourByActivity'] as List<dynamic>).cast<Map<String, dynamic>>())
+              Map<String, dynamic>.from(row),
+          ];
+          activities.add(labourActivityJson(
+            body['activity'] as String,
+            hours,
+            overtimeHours: body['isOvertime'] == true ? hours : 0,
+          ));
+          final totalHours = activities.fold<num>(0, (sum, row) => sum + (row['hours'] as num));
+          final overtime = activities.fold<num>(0, (sum, row) => sum + (row['overtimeHours'] as num));
+          workOrderCosts = {
+            ...workOrderCosts,
+            workOrderId: {
+              ...prior,
+              'labourHours': totalHours,
+              'overtimeHours': overtime,
+              'labourByActivity': activities,
+            },
+          };
+          return http.Response(jsonEncode({'labour': {'id': '900', ...body, 'hours': hours}}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/work-orders/') &&
+            path.endsWith('/parts')) {
+          final workOrderId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          partBookingPosts.add((workOrderId, body));
+          if (partBookingStatus != 201) {
+            return http.Response(jsonEncode({'message': partBookingMessage}), partBookingStatus);
+          }
+          final quantity = body['quantity'] as num;
+          final unitCost = body['unitCost'] as num?;
+          final totalCost = unitCost == null ? null : quantity * unitCost;
+          final partNo = body['partNo'] as String?;
+          // A `stores` booking derives its part number from the catalogue; the
+          // fake resolves it off the scripted parts, the same way the real
+          // server does.
+          final catalogue = body['partId'] == null
+              ? null
+              : parts.firstWhere(
+                  (p) => p['id'].toString() == body['partId'].toString(),
+                  orElse: () => const <String, dynamic>{},
+                );
+          final prior = workOrderCosts[workOrderId] ?? workOrderCostJson();
+          final booked = workOrderPartJson(
+            '900',
+            partNo: (partNo ?? catalogue?['partNo']) as String?,
+            description: (body['description'] as String?) ??
+                (catalogue?['description'] as String?) ??
+                'Booked part',
+            quantity: quantity,
+            uomCode: (body['uomCode'] as String?) ?? (catalogue?['uomCode'] as String?) ?? 'EA',
+            unitCost: unitCost,
+            totalCost: totalCost,
+            sourced: body['sourced'] as String? ?? 'stores',
+          );
+          final bookedParts = [
+            ...(prior['parts'] as List<dynamic>).cast<Map<String, dynamic>>(),
+            booked,
+          ];
+          final priced = bookedParts.where((p) => p['totalCost'] != null);
+          workOrderCosts = {
+            ...workOrderCosts,
+            workOrderId: {
+              ...prior,
+              'parts': bookedParts,
+              'partsCost': priced.isEmpty
+                  ? null
+                  : priced.fold<num>(0, (sum, p) => sum + (p['totalCost'] as num)),
+            },
+          };
+          return http.Response(jsonEncode({'part': booked}), 201);
         }
         if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/work-orders')) {
           final siteId = path.split('/')[4];

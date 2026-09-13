@@ -100,6 +100,18 @@ async function listUnitsOfMeasure() {
   return rows.map((row) => ({ code: row.code, name: row.name, dimension: row.dimension }));
 }
 
+// One active unit by its code, or null. A booking that is not drawn from the
+// catalogue names its own unit, and this is what turns an unknown or retired
+// code into a clean 404 rather than a raw foreign-key violation.
+async function findUnitOfMeasure(code) {
+  if (typeof code !== 'string' || code.trim() === '') return null;
+  const { rows } = await getPool().query(
+    'SELECT code, name, dimension FROM units_of_measure WHERE code = $1 AND is_active',
+    [code]
+  );
+  return rows[0] ? { code: rows[0].code, name: rows[0].name, dimension: rows[0].dimension } : null;
+}
+
 // ---------------------------------------------------------------------------
 // Parts — the shared catalogue.
 // ---------------------------------------------------------------------------
@@ -396,6 +408,43 @@ async function insertMovement({ storeId, partId, quantity, movementType, reason,
   }
 }
 
+// A withdrawal on a CALLER'S transaction, for a `stores`-sourced parts
+// booking (issue #75). `insertMovement` above opens a withActor of its own,
+// which is right for a receipt or an adjustment recorded on its own; a
+// booking is not: the shelf and the `work_order_parts` line are one fact
+// (ADR-0015), so the withdrawal must commit or roll back with the booking
+// row, on the booking's client. `quantity` is positive here and the sign is
+// applied inside — the caller is expressing how much left the shelf, not a
+// signed delta.
+//
+// The refusal is the migration's own `stock_movements_non_negative` trigger
+// (a 23514), so a booking more than the shelf holds is refused exactly the
+// way #80 refuses a receipt that would go negative. That error is mapped by
+// the booking service after its transaction has rolled back, where
+// `insufficientStock` can read the real balance honestly.
+async function withdrawStock(client, { storeId, partId, quantity, reason, occurredAt }) {
+  requireNonEmptyString('reason', reason);
+  const amount = Number(quantity);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw httpError(400, 'quantity must be greater than zero');
+  }
+
+  const { rows: [row] } = await client.query(
+    `WITH inserted AS (
+       INSERT INTO stock_movements
+         (part_id, store_id, quantity, movement_type, reason, occurred_at, created_by)
+       VALUES ($1, $2, $3, 'adjustment', $4, COALESCE($5::timestamptz, now()),
+               NULLIF(current_setting('app.user_id', true), '')::BIGINT)
+       RETURNING *
+     )
+     SELECT ${MOVEMENT_COLUMNS}
+       FROM inserted m
+       ${MOVEMENT_FROM}`,
+    [partId, storeId, -amount, reason.trim(), occurredAt ?? null]
+  );
+  return toMovement(row);
+}
+
 // Receive stock: a positive movement. `reason` is optional — "received" is
 // the honest default when nobody wrote a line about it.
 async function receiveStock(storeId, { partId, quantity, reason, occurredAt }, accountId) {
@@ -437,6 +486,7 @@ async function adjustStock(storeId, { partId, quantityDelta, reason, occurredAt 
 module.exports = {
   MOVEMENT_TYPES,
   listUnitsOfMeasure,
+  findUnitOfMeasure,
   listParts,
   findPart,
   createPart,
@@ -446,6 +496,8 @@ module.exports = {
   listStockForStore,
   stockOnHand,
   listMovementsForStore,
+  insufficientStock,
+  withdrawStock,
   receiveStock,
   adjustStock
 };

@@ -58,6 +58,7 @@ const WORK_ORDER_COLUMNS = `
   wo.created_at, wo.updated_at,
   a.code AS asset_code, a.name AS asset_name,
   ou.name AS org_unit_name,
+  ou.site_id AS site_id,
   e.display_name AS assignee_name
 `;
 
@@ -80,6 +81,7 @@ function toWorkOrder(row) {
     assetName: row.asset_name,
     orgUnitId: row.org_unit_id,
     orgUnitName: row.org_unit_name,
+    siteId: row.site_id,
     summary: row.summary,
     description: row.description,
     workType: row.work_type,

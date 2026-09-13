@@ -13,6 +13,7 @@
 library;
 
 export 'assignee_candidate.dart' show AssigneeCandidate, HeldSkill;
+export 'employee.dart' show Employee;
 export 'org_unit.dart' show OrgUnitNode, Site;
 export 'org_unit_picker_bloc.dart'
     show
