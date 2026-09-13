@@ -302,6 +302,32 @@ function requireSiteScope({ paramName = 'siteId' } = {}) {
   };
 }
 
+// "Must be an administrator, and the named Site must exist" — the Site
+// correction route (issue #137). Correcting a Site is administrator-only, the
+// same rule `POST /sites` carries, because a Site is not owned by an Org Unit
+// and there is no Grant to scope it by. It is a separate middleware from
+// `requireAdmin` only to keep issue #8's existence-before-scope ordering: the
+// id is resolved first, so an unknown or malformed id is a 404 (never a 403
+// that would let a caller tell "no such Site" from "not allowed"), and the
+// role is checked—with `requireAdmin`'s own wording—only once the Site is
+// known to exist. The resolved row is stashed on `req.site`, as
+// `requireSiteScope` does.
+function requireSiteAdmin({ paramName = 'siteId' } = {}) {
+  return async (req, res, next) => {
+    try {
+      const siteId = parseId(req.params[paramName]);
+      const site = await plant.getSite(siteId); // throws the 404.
+      if (!isAdmin(req.account)) {
+        return res.status(403).json({ message: 'This action requires the administrator role.' });
+      }
+      req.site = site;
+      return next();
+    } catch (error) {
+      return handleError(error, res, next);
+    }
+  };
+}
+
 module.exports = {
   ROLES,
   isAdmin,
@@ -311,5 +337,6 @@ module.exports = {
   orgUnitScopeFor,
   requireAdmin,
   requireOrgUnitScope,
-  requireSiteScope
+  requireSiteScope,
+  requireSiteAdmin
 };

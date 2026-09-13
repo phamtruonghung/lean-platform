@@ -125,6 +125,52 @@ async function getSite(id) {
   return site;
 }
 
+// Correcting a Site (issue #137, ADR-0025). `code`, `name` and `country_code`
+// are labels and are always replaceable; `timezone` is what the Site's shift
+// calendar was generated from (`generate_shift_instances`) and what recorded
+// production days resolve against (`shift_instance_at`, `fill_shift_instance`,
+// `plant_date` — ADR-0017), so it is replaceable only while no shift instance
+// exists for the Site. That check and the write share one transaction, with
+// the Site row locked, so a concurrent calendar generation cannot land between
+// them. A caller sending the stored zone unchanged is not changing the
+// timezone and is always allowed.
+const SITE_TIMEZONE_LOCKED =
+  'This Site already has a shift calendar, so its timezone cannot be corrected';
+
+async function updateSite(id, { code, name, timezone, countryCode }, accountId) {
+  await getSite(id); // 404s if it does not exist at all.
+
+  requireNonEmptyString('code', code);
+  requireNonEmptyString('name', name);
+  requireNonEmptyString('timezone', timezone);
+
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [current] } = await client.query(
+        'SELECT timezone FROM sites WHERE id = $1 FOR UPDATE',
+        [id]
+      );
+      if (current.timezone !== timezone.trim()) {
+        const { rows: [calendar] } = await client.query(
+          'SELECT EXISTS (SELECT 1 FROM shift_instances WHERE site_id = $1) AS has_calendar',
+          [id]
+        );
+        if (calendar.has_calendar) throw httpError(409, SITE_TIMEZONE_LOCKED);
+      }
+      const { rows: [row] } = await client.query(
+        `UPDATE sites
+            SET code = $2, name = $3, timezone = $4, country_code = $5
+          WHERE id = $1
+          RETURNING ${SITE_COLUMNS}`,
+        [id, code.trim(), name.trim(), timezone.trim(), countryCode ?? null]
+      );
+      return toSite(row);
+    });
+  } catch (error) {
+    throw mapSiteWriteError(error);
+  }
+}
+
 // The timezone list a Site's `timezone` is chosen from (issue #123,
 // ADR-0023's "a value with a known set is chosen, never typed"). Postgres's
 // own pg_timezone_names is the authority `sites_validate_timezone` (the
@@ -444,6 +490,7 @@ async function setOrgUnitActive(id, isActive, accountId) {
 
 module.exports = {
   createSite,
+  updateSite,
   listSites,
   getSite,
   findSite,

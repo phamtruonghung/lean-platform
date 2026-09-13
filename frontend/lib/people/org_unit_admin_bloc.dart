@@ -51,6 +51,28 @@ class OrgUnitAdminSiteCreated extends OrgUnitAdminEvent {
   final String? countryCode;
 }
 
+/// The edit-Site form has decided (`PATCH /api/people/sites/:siteId`, issue
+/// #137, ADR-0025) — the labels always, the timezone only while the Site has
+/// no shift calendar. Distinct from [OrgUnitAdminSiteCreated] in the route and
+/// the presence of [siteId]; the failure path is identical, so the server's own
+/// refusal (a 409 for a locked timezone, a 400 for an unknown zone) lands in
+/// the same `mutationFailure` the dialog already renders.
+class OrgUnitAdminSiteUpdated extends OrgUnitAdminEvent {
+  const OrgUnitAdminSiteUpdated({
+    required this.siteId,
+    required this.code,
+    required this.name,
+    required this.timezone,
+    this.countryCode,
+  });
+
+  final String siteId;
+  final String code;
+  final String name;
+  final String timezone;
+  final String? countryCode;
+}
+
 /// The add-Org-Unit form has decided (`POST /sites/:siteId/org-units`).
 /// [parentId] null means a new root branch — offered to an administrator
 /// only (ADR-0008), enforced by `OrgUnitsScreen` not even showing the control
@@ -235,6 +257,7 @@ class OrgUnitAdminBloc extends Bloc<OrgUnitAdminEvent, OrgUnitAdminState> {
         _auth = authGateway,
         super(const OrgUnitAdminState()) {
     on<OrgUnitAdminSiteCreated>(_onSiteCreated);
+    on<OrgUnitAdminSiteUpdated>(_onSiteUpdated);
     on<OrgUnitAdminOrgUnitCreated>(_onOrgUnitCreated);
     on<OrgUnitAdminActiveSet>(_onActiveSet);
     on<OrgUnitAdminImportRequested>(_onImportRequested);
@@ -258,6 +281,29 @@ class OrgUnitAdminBloc extends Bloc<OrgUnitAdminEvent, OrgUnitAdminState> {
     try {
       await _api.createSite(
         token,
+        code: event.code,
+        name: event.name,
+        timezone: event.timezone,
+        countryCode: event.countryCode,
+      );
+      emit(state.copyWith(isMutating: false, effect: const OrgUnitAdminSitesChanged()));
+    } on PeopleApiException catch (error) {
+      emit(state.copyWith(isMutating: false, mutationFailure: error.message));
+    }
+  }
+
+  Future<void> _onSiteUpdated(OrgUnitAdminSiteUpdated event, Emitter<OrgUnitAdminState> emit) async {
+    if (state.isMutating) return;
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(state.copyWith(mutationFailure: signedOutMessage));
+      return;
+    }
+    emit(state.copyWith(isMutating: true, clearMutationFailure: true));
+    try {
+      await _api.updateSite(
+        token,
+        event.siteId,
         code: event.code,
         name: event.name,
         timezone: event.timezone,

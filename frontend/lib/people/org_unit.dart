@@ -5,11 +5,27 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class Site {
-  const Site({required this.id, required this.code, required this.name});
+  const Site({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.timezone = '',
+    this.countryCode,
+  });
 
   final String id;
   final String code;
   final String name;
+
+  /// The IANA zone a Site's production days resolve against (ADR-0017).
+  /// Defaulted to `''` because two fixtures build a `Site` from a shape that
+  /// carries none; the list this client actually reads
+  /// (`GET /api/people/sites`) always sends one, and it is what
+  /// `SiteFormDialog`'s edit mode seeds its timezone field from (issue #137).
+  final String timezone;
+
+  /// The optional ISO country code, as the create/correct routes carry it.
+  final String? countryCode;
 }
 
 /// One row of `GET /api/people/sites/:siteId/org-units`.
