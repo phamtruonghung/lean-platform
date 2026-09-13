@@ -28,6 +28,7 @@ const requestRoutes = require('./request-routes');
 const downtimeRoutes = require('./downtime-routes');
 const jobPlanRoutes = require('./job-plan-routes');
 const pmScheduleRoutes = require('./pm-schedule-routes');
+const meterRoutes = require('./meter-routes');
 const inventoryRoutes = require('./inventory-routes');
 const boardRoutes = require('./board-routes');
 
@@ -38,6 +39,7 @@ router.use(requestRoutes);
 router.use(downtimeRoutes);
 router.use(jobPlanRoutes);
 router.use(pmScheduleRoutes);
+router.use(meterRoutes);
 router.use(inventoryRoutes);
 router.use(boardRoutes);
 

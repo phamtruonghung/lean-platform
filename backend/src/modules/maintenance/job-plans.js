@@ -42,7 +42,9 @@ const JOB_PLAN_COLUMNS = `
 // back as a string).
 const JOB_PLAN_TASK_COLUMNS = `
   t.id, t.job_plan_id, t.step_no, t.instruction, t.skill_id, t.estimated_hours,
-  s.name AS skill_name
+  t.records_meter_id,
+  s.name AS skill_name,
+  am.code AS meter_code, am.name AS meter_name
 `;
 
 function toJobPlan(row, tasks) {
@@ -67,7 +69,13 @@ function toJobPlanTask(row) {
     instruction: row.instruction,
     skillId: row.skill_id,
     skillName: row.skill_name ?? null,
-    estimatedHours: row.estimated_hours === null ? null : Number(row.estimated_hours)
+    estimatedHours: row.estimated_hours === null ? null : Number(row.estimated_hours),
+    // The meter a step records a number against, if any (issue #79). Copied
+    // onto the Work order task at raise time; null for a step that records no
+    // number.
+    recordsMeterId: row.records_meter_id ?? null,
+    meterCode: row.meter_code ?? null,
+    meterName: row.meter_name ?? null
   };
 }
 
@@ -133,11 +141,23 @@ function normalizeTasks(tasks) {
       }
     }
 
+    // The meter this step records a number against, if any (issue #79). A
+    // malformed id is refused here; whether it names a real meter is checked
+    // once for the whole plan before the insert.
+    let recordsMeterId = null;
+    if (task.recordsMeterId !== undefined && task.recordsMeterId !== null) {
+      recordsMeterId = parseId(task.recordsMeterId);
+      if (recordsMeterId === null) {
+        throw httpError(400, 'each task recordsMeterId must be a valid Meter id');
+      }
+    }
+
     return {
       stepNo,
       instruction: task.instruction.trim(),
       skillId,
-      estimatedHours: resolveEstimatedHours('each task estimatedHours', task.estimatedHours)
+      estimatedHours: resolveEstimatedHours('each task estimatedHours', task.estimatedHours),
+      recordsMeterId
     };
   });
 
@@ -173,6 +193,7 @@ async function loadTasksByPlan(db, planIds) {
     `SELECT ${JOB_PLAN_TASK_COLUMNS}
        FROM job_plan_tasks t
        LEFT JOIN skills s ON s.id = t.skill_id
+       LEFT JOIN asset_meters am ON am.id = t.records_meter_id
       WHERE t.job_plan_id = ANY($1::bigint[])
       ORDER BY t.job_plan_id, t.step_no`,
     [planIds]
@@ -261,11 +282,27 @@ async function createJobPlan(
         ]
       );
 
+      // A task's meter is checked once for the whole plan, so an unknown one
+      // is a clean 404 naming the Meter rather than the foreign key's own
+      // error (which names tables and columns, and cannot say which of the
+      // two references — Skill or Meter — was at fault).
+      const meterIds = [
+        ...new Set(normalizedTasks.map((task) => task.recordsMeterId).filter((id) => id !== null))
+      ];
+      if (meterIds.length > 0) {
+        const { rows: found } = await client.query(
+          `SELECT id FROM asset_meters WHERE id = ANY($1::bigint[])`,
+          [meterIds]
+        );
+        if (found.length !== meterIds.length) throw notFound('Meter');
+      }
+
       for (const task of normalizedTasks) {
         await client.query(
-          `INSERT INTO job_plan_tasks (job_plan_id, step_no, instruction, skill_id, estimated_hours)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [plan.id, task.stepNo, task.instruction, task.skillId, task.estimatedHours]
+          `INSERT INTO job_plan_tasks
+             (job_plan_id, step_no, instruction, skill_id, estimated_hours, records_meter_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [plan.id, task.stepNo, task.instruction, task.skillId, task.estimatedHours, task.recordsMeterId]
         );
       }
 

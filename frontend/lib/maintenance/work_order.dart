@@ -180,6 +180,9 @@ class WorkOrderTask {
     required this.status,
     required this.note,
     required this.reading,
+    this.assetMeterId,
+    this.meterCode,
+    this.meterName,
   });
 
   final String id;
@@ -195,8 +198,18 @@ class WorkOrderTask {
   final String? note;
   final num? reading;
 
+  /// The meter this step records a number against, if any (issue #79) —
+  /// copied from the Job plan task's own `records_meter_id`. A step with none
+  /// records no number.
+  final String? assetMeterId;
+  final String? meterCode;
+  final String? meterName;
+
   /// Whether this step names a required Skill worth showing.
   bool get hasSkill => skillName != null && skillName!.isNotEmpty;
+
+  /// Whether this step records a meter reading a technician can enter.
+  bool get hasMeter => assetMeterId != null;
 
   String get statusLabel => _taskStatusLabels[status] ?? status;
 }

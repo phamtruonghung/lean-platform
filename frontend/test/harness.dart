@@ -410,7 +410,16 @@ Map<String, dynamic> pmScheduleJson(
   String orgUnitName = 'Line 1',
   String jobPlanId = '5',
   String jobPlanName = 'Annual service',
-  int intervalDays = 30,
+  int? intervalDays = 30,
+  String? assetMeterId,
+  String? meterCode,
+  String? meterName,
+  String? meterType,
+  num? intervalMeter,
+  num? lastCompletedMeter,
+  num? nextDueMeter,
+  num? currentMeter,
+  bool meterDue = false,
   String anchor = 'completed',
   int leadTimeDays = 7,
   int priority = 3,
@@ -431,6 +440,15 @@ Map<String, dynamic> pmScheduleJson(
       'jobPlanId': jobPlanId,
       'jobPlanName': jobPlanName,
       'intervalDays': intervalDays,
+      'assetMeterId': assetMeterId,
+      'meterCode': meterCode,
+      'meterName': meterName,
+      'meterType': meterType,
+      'intervalMeter': intervalMeter,
+      'lastCompletedMeter': lastCompletedMeter,
+      'nextDueMeter': nextDueMeter,
+      'currentMeter': currentMeter,
+      'meterDue': meterDue,
       'anchor': anchor,
       'leadTimeDays': leadTimeDays,
       'priority': priority,
@@ -438,6 +456,56 @@ Map<String, dynamic> pmScheduleJson(
       'nextDueOn': nextDueOn,
       'isActive': isActive,
       'daysUntilDue': daysUntilDue,
+    };
+
+/// One meter as `GET /api/maintenance/sites/:siteId/meters` sends it (issue
+/// #79) — mirrors `toMeter` (meters.js) key for key.
+Map<String, dynamic> meterJson(
+  String id,
+  String code,
+  String name, {
+  String assetId = '7',
+  String assetCode = 'PRESS-1',
+  String assetName = 'Press 1',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String uomCode = 'H',
+  String uomName = 'Hour',
+  String meterType = 'cumulative',
+  num rolloverOffset = 0,
+  bool isActive = true,
+  num? latestReading,
+  String? latestReadAt,
+  num accumulatedUse = 0,
+}) =>
+    {
+      'id': id,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'code': code,
+      'name': name,
+      'uomCode': uomCode,
+      'uomName': uomName,
+      'meterType': meterType,
+      'rolloverOffset': rolloverOffset,
+      'isActive': isActive,
+      'latestReading': latestReading,
+      'latestReadAt': latestReadAt,
+      'accumulatedUse': accumulatedUse,
+    };
+
+/// One unit of measure as `GET /api/maintenance/units-of-measure` sends it
+/// (issue #79, reused by #80) — the baseline catalogue the meter form and the
+/// Part form both choose from.
+Map<String, dynamic> unitOfMeasureJson(String code, String name, {String dimension = 'time'}) => {
+      'code': code,
+      'name': name,
+      'dimension': dimension,
     };
 
 /// One Work order task as `GET /api/maintenance/work-orders/:id` sends it
@@ -451,6 +519,9 @@ Map<String, dynamic> workOrderTaskJson(
   String status = 'pending',
   String? note,
   num? reading,
+  String? assetMeterId,
+  String? meterCode,
+  String? meterName,
 }) =>
     {
       'id': id,
@@ -461,6 +532,9 @@ Map<String, dynamic> workOrderTaskJson(
       'status': status,
       'note': note,
       'reading': reading,
+      'assetMeterId': assetMeterId,
+      'meterCode': meterCode,
+      'meterName': meterName,
     };
 
 /// One held skill as `GET /api/people/employees/assignee-candidates` sends
@@ -690,14 +764,6 @@ Map<String, dynamic> skillCoverageEntryJson(
       'qualifiedHeadcount': qualifiedHeadcount,
       'expiredHeadcount': expiredHeadcount,
       'shortfall': shortfall,
-    };
-
-/// One unit of measure as `GET /api/maintenance/units-of-measure` sends it
-/// (issue #80) — the existing baseline catalogue the Part form chooses from.
-Map<String, dynamic> unitOfMeasureJson(String code, String name, {String dimension = 'count'}) => {
-      'code': code,
-      'name': name,
-      'dimension': dimension,
     };
 
 /// One Part as `GET /api/maintenance/parts` sends it (issue #80) — mirrors
@@ -1044,6 +1110,17 @@ class FakeWire {
     this.createPmScheduleMessage = 'That PM schedule could not be created.',
     this.patchPmScheduleStatus = 200,
     this.patchPmScheduleMessage = 'That PM schedule could not be changed.',
+    List<Map<String, dynamic>>? unitsOfMeasure,
+    this.unitsOfMeasureStatus = 200,
+    Map<String, List<Map<String, dynamic>>>? meters,
+    this.metersStatus = 200,
+    this.createMeterStatus = 201,
+    this.createMeterMessage = 'this Asset already has a meter with that code',
+    this.recordReadingStatus = 201,
+    this.recordReadingMessage =
+        'a cumulative meter cannot read lower than its last reading; record a rollover if the counter was reset',
+    this.rolloverStatus = 201,
+    this.rolloverMessage = 'That rollover could not be recorded.',
     Map<String, List<Map<String, dynamic>>>? workOrderTasks,
     this.workOrderDetailStatus = 200,
     Map<String, Map<String, dynamic>>? workOrderCosts,
@@ -1058,8 +1135,6 @@ class FakeWire {
     this.partsStatus = 200,
     this.createPartStatus = 201,
     this.createPartMessage = 'a Part with this part number already exists',
-    List<Map<String, dynamic>>? unitsOfMeasure,
-    this.unitsOfMeasureStatus = 200,
     Map<String, List<Map<String, dynamic>>>? stores,
     this.storesStatus = 200,
     Map<String, Map<String, dynamic>>? storeRows,
@@ -1090,10 +1165,15 @@ class FakeWire {
         skillCoverage = skillCoverage ?? {},
         jobPlans = jobPlans ?? [],
         pmSchedules = pmSchedules ?? {},
+        unitsOfMeasure = unitsOfMeasure ??
+            [
+              unitOfMeasureJson('H', 'Hour'),
+              unitOfMeasureJson('EA', 'Each', dimension: 'count'),
+            ],
+        meters = meters ?? {},
         workOrderTasks = workOrderTasks ?? {},
         workOrderCosts = workOrderCosts ?? {},
         parts = parts ?? [],
-        unitsOfMeasure = unitsOfMeasure ?? [unitOfMeasureJson('EA', 'Each')],
         stores = stores ?? {},
         storeRows = storeRows ?? {},
         stock = stock ?? {};
@@ -1637,6 +1717,46 @@ class FakeWire {
   /// When set, a PM schedule read hangs until the test completes it.
   Completer<void>? pmSchedulesGate;
 
+  /// `GET /api/maintenance/units-of-measure` (issue #79, reused by #80) — the
+  /// unit picker the meter form and the Part form both read.
+  List<Map<String, dynamic>> unitsOfMeasure;
+  int unitsOfMeasureStatus;
+
+  /// `GET /api/maintenance/sites/:siteId/meters` (issue #79), keyed by Site id.
+  Map<String, List<Map<String, dynamic>>> meters;
+  int metersStatus;
+
+  /// Every meter read's Site id, in the order it reached the wire.
+  final List<String> meterSites = [];
+
+  /// When set, a meter read hangs until the test completes it.
+  Completer<void>? metersGate;
+
+  /// `POST /api/maintenance/meters`.
+  int createMeterStatus;
+  String createMeterMessage;
+
+  /// Every meter create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> meterPosts = [];
+
+  /// `POST /api/maintenance/meters/:id/readings`.
+  int recordReadingStatus;
+  String recordReadingMessage;
+
+  /// Every reading that reached the wire, as `(meterId, body)`.
+  final List<(String, Map<String, dynamic>)> meterReadingPosts = [];
+
+  /// `POST /api/maintenance/meters/:id/rollover`.
+  int rolloverStatus;
+  String rolloverMessage;
+
+  /// Every rollover that reached the wire, as `(meterId, body)`.
+  final List<(String, Map<String, dynamic>)> meterRolloverPosts = [];
+
+  /// Every Work order task reading that reached the wire, as
+  /// `(workOrderId, taskId, body)` (issue #79).
+  final List<(String, String, Map<String, dynamic>)> taskReadingPosts = [];
+
   /// `GET /api/maintenance/work-orders/:id` (issue #74) — the tasks copied
   /// onto each Work order, keyed by Work order id, merged onto whatever row
   /// [workOrders] holds for the same id.
@@ -1700,10 +1820,6 @@ class FakeWire {
   /// Every Part body that actually reached the wire, decoded — so a test can
   /// assert exactly one request was sent and what it carried.
   final List<Map<String, dynamic>> partPosts = [];
-
-  /// `GET /api/maintenance/units-of-measure` — the Part form's own picker.
-  List<Map<String, dynamic>> unitsOfMeasure;
-  int unitsOfMeasureStatus;
 
   /// `GET /api/maintenance/sites/:siteId/stores`, keyed by Site id.
   Map<String, List<Map<String, dynamic>>> stores;
@@ -1927,6 +2043,31 @@ class FakeWire {
       }
     }
     return null;
+  }
+
+  /// The meter row this Fake Wire holds naming [id], or null.
+  Map<String, dynamic>? _meterRow(String id) {
+    for (final list in meters.values) {
+      for (final meter in list) {
+        if (meter['id'] == id) return meter;
+      }
+    }
+    return null;
+  }
+
+  /// Applies a reading's or rollover's own changes to every meter row this
+  /// Fake Wire holds naming [id], across every Site's list. Returns the updated
+  /// row, or null when no list holds it.
+  Map<String, dynamic>? _applyMeterChanges(String id, Map<String, dynamic> changes) {
+    Map<String, dynamic>? updated;
+    meters = {
+      for (final entry in meters.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) (updated = {...row, ...changes}) else row,
+        ],
+    };
+    return updated;
   }
 
   /// The Downtime event row this Fake Wire holds naming [id], or null.
@@ -2244,6 +2385,9 @@ class FakeWire {
             (p) => p['id'] == jobPlanId,
             orElse: () => const <String, dynamic>{},
           );
+          final meterId = sent['assetMeterId'] as String?;
+          final meter = meterId == null ? null : _meterRow(meterId);
+          final intervalMeter = sent['intervalMeter'] as num?;
           final created = pmScheduleJson(
             '900',
             'PM-900',
@@ -2253,7 +2397,16 @@ class FakeWire {
             assetName: asset['name'] as String? ?? 'Asset',
             jobPlanId: jobPlanId,
             jobPlanName: jobPlan['name'] as String? ?? 'Job plan',
-            intervalDays: (sent['intervalDays'] as num).toInt(),
+            intervalDays: (sent['intervalDays'] as num?)?.toInt(),
+            assetMeterId: meterId,
+            meterCode: meter?['code'] as String?,
+            meterName: meter?['name'] as String?,
+            meterType: meter?['meterType'] as String?,
+            intervalMeter: intervalMeter,
+            currentMeter: meter?['accumulatedUse'] as num?,
+            nextDueMeter: meter == null || intervalMeter == null
+                ? null
+                : (meter['accumulatedUse'] as num) + intervalMeter,
             anchor: sent['anchor'] as String? ?? 'completed',
             leadTimeDays: (sent['leadTimeDays'] as num?)?.toInt() ?? 7,
             priority: (sent['priority'] as num?)?.toInt() ?? 3,
@@ -2302,6 +2455,153 @@ class FakeWire {
               ? siteSchedules
               : [for (final schedule in siteSchedules) if (schedule['isActive'] != false) schedule];
           return http.Response(jsonEncode({'pmSchedules': sent}), 200);
+        }
+        if (path == '/api/maintenance/units-of-measure') {
+          if (unitsOfMeasureStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The units of measure are unavailable.'}),
+              unitsOfMeasureStatus,
+            );
+          }
+          return http.Response(jsonEncode({'unitsOfMeasure': unitsOfMeasure}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/maintenance/meters') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          meterPosts.add(sent);
+          if (createMeterStatus != 201) {
+            return http.Response(jsonEncode({'message': createMeterMessage}), createMeterStatus);
+          }
+          final assetId = sent['assetId'] as String;
+          final siteId = _siteOfAsset(assetId);
+          final siteAssets = siteId == null ? const <Map<String, dynamic>>[] : (assets[siteId] ?? []);
+          final asset = siteAssets.firstWhere(
+            (a) => a['id'] == assetId,
+            orElse: () => const <String, dynamic>{},
+          );
+          final created = meterJson(
+            '900',
+            sent['code'] as String,
+            sent['name'] as String,
+            assetId: assetId,
+            assetCode: asset['code'] as String? ?? 'ASSET',
+            assetName: asset['name'] as String? ?? 'Asset',
+            orgUnitId: asset['orgUnitId'] as String? ?? '10',
+            orgUnitName: asset['orgUnitName'] as String? ?? 'Line 1',
+            uomCode: sent['uomCode'] as String,
+            meterType: sent['meterType'] as String? ?? 'cumulative',
+          );
+          if (siteId != null) {
+            meters = {
+              ...meters,
+              siteId: [...(meters[siteId] ?? []), created],
+            };
+          }
+          return http.Response(jsonEncode({'meter': created}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/meters/') &&
+            path.endsWith('/readings')) {
+          final meterId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          meterReadingPosts.add((meterId, body));
+          if (recordReadingStatus != 201) {
+            return http.Response(jsonEncode({'message': recordReadingMessage}), recordReadingStatus);
+          }
+          final current = _meterRow(meterId);
+          if (current == null) {
+            return http.Response(jsonEncode({'message': 'Meter not found'}), 404);
+          }
+          final reading = body['reading'] as num;
+          final updated = _applyMeterChanges(meterId, {
+            'latestReading': reading,
+            'latestReadAt': DateTime.now().toUtc().toIso8601String(),
+            'accumulatedUse': reading + (current['rolloverOffset'] as num),
+          });
+          return http.Response(
+            jsonEncode({
+              'reading': {'id': '900', 'assetMeterId': meterId, 'reading': reading, 'source': 'manual'},
+              'meter': updated,
+            }),
+            201,
+          );
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/meters/') &&
+            path.endsWith('/rollover')) {
+          final meterId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          meterRolloverPosts.add((meterId, body));
+          if (rolloverStatus != 201) {
+            return http.Response(jsonEncode({'message': rolloverMessage}), rolloverStatus);
+          }
+          final current = _meterRow(meterId);
+          if (current == null) {
+            return http.Response(jsonEncode({'message': 'Meter not found'}), 404);
+          }
+          final carried = current['accumulatedUse'] as num;
+          final newReading = (body['reading'] as num?) ?? 0;
+          final updated = _applyMeterChanges(meterId, {
+            'rolloverOffset': carried,
+            'latestReading': newReading,
+            'latestReadAt': DateTime.now().toUtc().toIso8601String(),
+            'accumulatedUse': carried + newReading,
+          });
+          return http.Response(
+            jsonEncode({
+              'reading': {'id': '901', 'assetMeterId': meterId, 'reading': newReading, 'source': 'manual'},
+              'meter': updated,
+            }),
+            201,
+          );
+        }
+        if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/meters')) {
+          final siteId = path.split('/')[4];
+          meterSites.add(siteId);
+          if (metersGate != null) await metersGate!.future;
+          if (metersStatus != 200) {
+            return http.Response(jsonEncode({'message': 'The meters are unavailable.'}), metersStatus);
+          }
+          final assetId = request.url.queryParameters['assetId'];
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          var sent = meters[siteId] ?? [];
+          if (assetId != null) {
+            sent = [for (final meter in sent) if (meter['assetId'] == assetId) meter];
+          }
+          if (!includeInactive) {
+            sent = [for (final meter in sent) if (meter['isActive'] != false) meter];
+          }
+          return http.Response(jsonEncode({'meters': sent}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/maintenance/work-orders/') &&
+            path.contains('/tasks/') &&
+            path.endsWith('/reading')) {
+          // '', 'api', 'maintenance', 'work-orders', ':id', 'tasks', ':taskId', 'reading'.
+          final segments = path.split('/');
+          final workOrderId = segments[4];
+          final taskId = segments[6];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          taskReadingPosts.add((workOrderId, taskId, body));
+          final reading = body['reading'] as num;
+          Map<String, dynamic>? updatedTask;
+          final tasks = workOrderTasks[workOrderId] ?? [];
+          workOrderTasks = {
+            ...workOrderTasks,
+            workOrderId: [
+              for (final task in tasks)
+                if (task['id'] == taskId) (updatedTask = {...task, 'reading': reading}) else task,
+            ],
+          };
+          if (updatedTask == null) {
+            return http.Response(jsonEncode({'message': 'Work order task not found'}), 404);
+          }
+          return http.Response(
+            jsonEncode({
+              'reading': {'id': '902', 'reading': reading, 'source': 'manual'},
+              'task': updatedTask,
+            }),
+            201,
+          );
         }
         if (request.method == 'GET' && path.startsWith('/api/maintenance/work-orders/')) {
           final id = path.split('/')[4];
@@ -3228,15 +3528,6 @@ class FakeWire {
           final id = path.split('/')[4];
           queue = [for (final a in queue) if (a['id'] != id) a];
           return http.Response(jsonEncode({'account': {'id': id}}), 200);
-        }
-        if (path == '/api/maintenance/units-of-measure') {
-          if (unitsOfMeasureStatus != 200) {
-            return http.Response(
-              jsonEncode({'message': 'The units of measure are unavailable.'}),
-              unitsOfMeasureStatus,
-            );
-          }
-          return http.Response(jsonEncode({'unitsOfMeasure': unitsOfMeasure}), 200);
         }
         if (request.method == 'POST' && path == '/api/maintenance/parts') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;

@@ -36,14 +36,17 @@ class PmSchedulesSiteSelected extends PmSchedulesEvent {
 }
 
 /// The create form has decided: attach [jobPlanId] to [assetId] with an
-/// interval in days. The dialog decides, the Bloc only ever sees a decision
-/// already made.
+/// interval. The dialog decides, the Bloc only ever sees a decision already
+/// made. The interval is one of two mechanisms (issue #79): [intervalDays] for
+/// elapsed time, or [assetMeterId] plus [intervalMeter] for accumulated use.
 class PmScheduleCreateConfirmed extends PmSchedulesEvent {
   const PmScheduleCreateConfirmed({
     required this.assetId,
     required this.jobPlanId,
-    required this.intervalDays,
     required this.anchor,
+    this.intervalDays,
+    this.assetMeterId,
+    this.intervalMeter,
     this.leadTimeDays,
     this.priority,
     this.nextDueOn,
@@ -51,8 +54,10 @@ class PmScheduleCreateConfirmed extends PmSchedulesEvent {
 
   final String assetId;
   final String jobPlanId;
-  final int intervalDays;
   final String anchor;
+  final int? intervalDays;
+  final String? assetMeterId;
+  final num? intervalMeter;
   final int? leadTimeDays;
   final int? priority;
   final String? nextDueOn;
@@ -250,8 +255,10 @@ class PmSchedulesBloc extends Bloc<PmSchedulesEvent, PmSchedulesState> {
         token,
         assetId: event.assetId,
         jobPlanId: event.jobPlanId,
-        intervalDays: event.intervalDays,
         anchor: event.anchor,
+        intervalDays: event.intervalDays,
+        assetMeterId: event.assetMeterId,
+        intervalMeter: event.intervalMeter,
         leadTimeDays: event.leadTimeDays,
         priority: event.priority,
         nextDueOn: event.nextDueOn,

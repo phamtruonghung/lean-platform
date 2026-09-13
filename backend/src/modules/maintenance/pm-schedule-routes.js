@@ -37,6 +37,7 @@ const express = require('express');
 const people = require('../people');
 const assets = require('./assets');
 const jobPlans = require('./job-plans');
+const meters = require('./meters');
 const pmSchedules = require('./pm-schedules');
 const { httpError, notFound, handleError } = require('./errors');
 
@@ -139,11 +140,22 @@ router.post(
         throw httpError(400, 'this Job plan is not active, so it cannot be scheduled');
       }
 
+      // A meter-driven schedule resolves its meter after scope, so an unknown
+      // one is a clean 404 naming the Meter. Whether it belongs to the same
+      // Asset and whether it is cumulative are the domain file's checks.
+      let meter = null;
+      if (req.body?.assetMeterId !== undefined && req.body?.assetMeterId !== null) {
+        meter = await meters.findMeter(req.body.assetMeterId);
+        if (!meter) throw notFound('Meter');
+      }
+
       const pmSchedule = await pmSchedules.createPmSchedule(
         {
           assetId: req.asset.id,
           jobPlanId: jobPlan.id,
           intervalDays: req.body?.intervalDays,
+          meter,
+          intervalMeter: req.body?.intervalMeter,
           anchor: req.body?.anchor,
           leadTimeDays: req.body?.leadTimeDays,
           priority: req.body?.priority,

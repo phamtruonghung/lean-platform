@@ -5,6 +5,11 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+// The baseline `UnitOfMeasure` catalogue is defined once, in meter.dart
+// (issue #79); the Part form (issue #80) chooses from the same catalogue, so
+// the one type is re-exported here rather than declared twice.
+export 'meter.dart' show UnitOfMeasure;
+
 @immutable
 class Part {
   const Part({
@@ -26,16 +31,4 @@ class Part {
   final bool isActive;
 
   String get label => '$partNo · $description';
-}
-
-/// One unit of measure as `GET /api/maintenance/units-of-measure` sends it —
-/// the existing baseline catalogue, read-only, so the Part form chooses a unit
-/// rather than typing one (ADR-0023).
-@immutable
-class UnitOfMeasure {
-  const UnitOfMeasure({required this.code, required this.name, required this.dimension});
-
-  final String code;
-  final String name;
-  final String dimension;
 }

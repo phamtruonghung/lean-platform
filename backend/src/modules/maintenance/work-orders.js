@@ -25,6 +25,7 @@
 
 const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
+const meters = require('./meters');
 
 // Mirrors the CHECK constraint on work_orders.work_type in the baseline, so a
 // bad value is a 400 with a clear message rather than a raw constraint
@@ -100,8 +101,9 @@ function toWorkOrder(row) {
 // carries once it has been worked.
 const WORK_ORDER_TASK_COLUMNS = `
   wot.id, wot.work_order_id, wot.step_no, wot.instruction, wot.skill_id,
-  wot.status, wot.note, wot.reading,
-  s.name AS skill_name
+  wot.status, wot.note, wot.reading, wot.asset_meter_id,
+  s.name AS skill_name,
+  am.code AS meter_code, am.name AS meter_name
 `;
 
 function toWorkOrderTask(row) {
@@ -116,7 +118,13 @@ function toWorkOrderTask(row) {
     // NUMERIC(18,4) crosses the wire as a string by default; a reading that
     // fits this column comfortably is converted to a Number, the same choice
     // downtime.js's durationMinutes makes.
-    reading: row.reading === null ? null : Number(row.reading)
+    reading: row.reading === null ? null : Number(row.reading),
+    // The meter this step records to (issue #79), copied from the Job plan
+    // task's own `records_meter_id` at raise time. Null for a step that
+    // records no number.
+    assetMeterId: row.asset_meter_id ?? null,
+    meterCode: row.meter_code ?? null,
+    meterName: row.meter_name ?? null
   };
 }
 
@@ -129,6 +137,7 @@ async function listWorkOrderTasks(workOrderId, client = getPool()) {
     `SELECT ${WORK_ORDER_TASK_COLUMNS}
        FROM work_order_tasks wot
        LEFT JOIN skills s ON s.id = wot.skill_id
+       LEFT JOIN asset_meters am ON am.id = wot.asset_meter_id
       WHERE wot.work_order_id = $1
       ORDER BY wot.step_no`,
     [workOrderId]
@@ -473,32 +482,58 @@ async function completeWorkOrder(workOrderId, { note } = {}, accountId) {
         [workOrderId, note.trim()]
       );
 
-      // A PM work order completing advances its schedule (issue #74), in the
-      // same transaction as the completion — either the work order is
-      // completed and the schedule moved on, or neither. Only a work order
-      // that came from a schedule does this; a manually raised one leaves
-      // every schedule alone.
+      // A PM work order completing advances its schedule (issue #74, extended
+      // for meter-driven schedules by issue #79), in the same transaction as
+      // the completion — either the work order is completed and the schedule
+      // moved on, or neither. Only a work order that came from a schedule does
+      // this; a manually raised one leaves every schedule alone.
       //
-      // `last_completed_on` records when the work was actually done. The next
-      // due date depends on the schedule's own `anchor`:
-      //   - 'completed': the clock starts when the work was done, so it rolls
-      //     from today — a service done late simply slides.
-      //   - 'due': the obligation is fixed, so it rolls from the ORIGINAL due
-      //     date (or today, if there was none) — doing a statutory inspection
-      //     three weeks late does not push next year's date back.
-      // `interval_days` is NULL only for a meter-only schedule, which this
-      // slice does not create; the arithmetic then yields NULL, which is the
-      // honest answer rather than an invented date.
+      // `last_completed_on` records when the work was actually done, on both
+      // clocks. The next due point depends on the schedule's own `anchor` and
+      // on which interval it carries:
+      //   - calendar, 'completed': the clock starts when the work was done, so
+      //     it rolls from today — a service done late simply slides.
+      //   - calendar, 'due': the obligation is fixed, so it rolls from the
+      //     ORIGINAL due date (or today, if there was none) — doing a
+      //     statutory inspection three weeks late does not push next year's
+      //     date back.
+      //   - meter: the target moves one interval past where the meter stands
+      //     now, and 'due' anchors it on the previous target rather than on
+      //     the actual reading (ADR-0029). `accumulatedUse` is read inside
+      //     this transaction so the meter cannot advance mid-completion.
+      // A schedule carrying both advances both, and each stays null for the
+      // interval it does not carry.
       if (row.pm_schedule_id !== null) {
+        const { rows: [schedule] } = await client.query(
+          `SELECT interval_days, interval_meter, asset_meter_id
+             FROM pm_schedules
+            WHERE id = $1
+            FOR UPDATE`,
+          [row.pm_schedule_id]
+        );
+        const accumulated = schedule.interval_meter === null
+          ? null
+          : await meters.accumulatedUse(client, schedule.asset_meter_id);
+
         await client.query(
           `UPDATE pm_schedules
               SET last_completed_on = CURRENT_DATE,
                   next_due_on = CASE
-                    WHEN anchor = 'completed' THEN CURRENT_DATE + interval_days
-                    ELSE COALESCE(next_due_on, CURRENT_DATE) + interval_days
+                    WHEN $2::int IS NULL THEN next_due_on
+                    WHEN anchor = 'completed' THEN CURRENT_DATE + $2::int
+                    ELSE COALESCE(next_due_on, CURRENT_DATE) + $2::int
+                  END,
+                  last_completed_meter = CASE
+                    WHEN $3::numeric IS NULL THEN last_completed_meter
+                    ELSE $3::numeric
+                  END,
+                  next_due_meter = CASE
+                    WHEN $3::numeric IS NULL THEN next_due_meter
+                    WHEN anchor = 'completed' THEN $3::numeric + $4::numeric
+                    ELSE COALESCE(next_due_meter, $3::numeric) + $4::numeric
                   END
             WHERE id = $1`,
-          [row.pm_schedule_id]
+          [row.pm_schedule_id, schedule.interval_days, accumulated, schedule.interval_meter]
         );
       }
 
@@ -552,6 +587,39 @@ async function cancelWorkOrder(workOrderId, { reason } = {}, accountId) {
   }
 }
 
+// Records the number a Work order task observed, and stores it on the task
+// (issue #79). The route has already resolved the Work order's write scope and
+// the meter the reading belongs to, and has called meters.recordReading, which
+// applies the cumulative backward check and resolves the shift instance. This
+// only stamps the task with the value; it deliberately does not settle the
+// task's status — a task's own completion is a separate write this slice does
+// not offer.
+async function setTaskReading(workOrderId, taskId, reading, accountId) {
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [updated] } = await client.query(
+        `UPDATE work_order_tasks SET reading = $1
+          WHERE id = $2 AND work_order_id = $3
+          RETURNING id`,
+        [reading, taskId, workOrderId]
+      );
+      if (!updated) throw notFound('Work order task');
+
+      const { rows: [row] } = await client.query(
+        `SELECT ${WORK_ORDER_TASK_COLUMNS}
+           FROM work_order_tasks wot
+           LEFT JOIN skills s ON s.id = wot.skill_id
+           LEFT JOIN asset_meters am ON am.id = wot.asset_meter_id
+          WHERE wot.id = $1`,
+        [taskId]
+      );
+      return toWorkOrderTask(row);
+    });
+  } catch (error) {
+    throw mapWorkOrderWriteError(error);
+  }
+}
+
 module.exports = {
   WORK_TYPES,
   OPEN_STATUSES,
@@ -563,5 +631,6 @@ module.exports = {
   assignWorkOrder,
   startWorkOrder,
   completeWorkOrder,
-  cancelWorkOrder
+  cancelWorkOrder,
+  setTaskReading
 };

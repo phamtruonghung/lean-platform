@@ -6,6 +6,11 @@
 /// re-read on arrival rather than restored stale. The id is handed in at
 /// construction because the Screen it drives is addressed at one Work order.
 ///
+/// Recording a reading against a task that names a meter (issue #79) writes
+/// through the Maintenance API and then re-reads the Work order, so the task's
+/// new reading and the meter's own accumulated use are both the server's
+/// answer rather than a client-side splice.
+///
 /// Booking labour or a part lives here rather than on `WorkOrdersBloc`
 /// because the cost summary it changes lives on this Screen: after a booking
 /// the Work order is re-read, so the summary the caller just changed is the
@@ -26,6 +31,20 @@ sealed class WorkOrderDetailEvent {
 /// Fetch the Work order this Bloc was built for, or retry a failed read.
 class WorkOrderDetailStarted extends WorkOrderDetailEvent {
   const WorkOrderDetailStarted();
+}
+
+/// The task-reading form has decided: record [reading] against the meter
+/// [taskId] names (issue #79).
+class WorkOrderTaskReadingConfirmed extends WorkOrderDetailEvent {
+  const WorkOrderTaskReadingConfirmed({
+    required this.taskId,
+    required this.reading,
+    this.note,
+  });
+
+  final String taskId;
+  final num reading;
+  final String? note;
 }
 
 /// The labour dialog has decided: this Employee worked this window on this
@@ -85,11 +104,25 @@ class WorkOrderDetailLoading extends WorkOrderDetailState {
 class WorkOrderDetailLoaded extends WorkOrderDetailState {
   const WorkOrderDetailLoaded({
     required this.workOrder,
+    this.isRecording = false,
+    this.readingFailure,
+    this.notice,
     this.isBooking = false,
     this.bookingFailure,
   });
 
   final WorkOrder workOrder;
+
+  /// A task reading is in flight — one flag, the same reasoning
+  /// `PmSchedulesLoaded.isMutating` gives its own writes.
+  final bool isRecording;
+
+  /// Why the last task reading did not land. Reported by the open dialog,
+  /// which stays open so the caller can fix the number.
+  final String? readingFailure;
+
+  /// What the last successful task reading had to say for itself.
+  final String? notice;
 
   /// A booking is in flight. Kept on the state, not only in the dialog, so the
   /// Screen can refuse a second one.
@@ -101,11 +134,17 @@ class WorkOrderDetailLoaded extends WorkOrderDetailState {
 
   WorkOrderDetailLoaded copyWith({
     WorkOrder? workOrder,
+    bool? isRecording,
+    String? readingFailure,
+    String? notice,
     bool? isBooking,
     String? bookingFailure,
   }) =>
       WorkOrderDetailLoaded(
         workOrder: workOrder ?? this.workOrder,
+        isRecording: isRecording ?? this.isRecording,
+        readingFailure: readingFailure,
+        notice: notice,
         isBooking: isBooking ?? this.isBooking,
         // Always overwritten, never carried forward — the same rule
         // StoreStockLoaded.copyWith gives receiveFailure.
@@ -127,6 +166,7 @@ class WorkOrderDetailBloc extends Bloc<WorkOrderDetailEvent, WorkOrderDetailStat
         _auth = authGateway,
         super(const WorkOrderDetailLoading()) {
     on<WorkOrderDetailStarted>(_onStarted);
+    on<WorkOrderTaskReadingConfirmed>(_onTaskReadingConfirmed);
     on<WorkOrderLabourBookingConfirmed>(_onLabourBookingConfirmed);
     on<WorkOrderPartBookingConfirmed>(_onPartBookingConfirmed);
   }
@@ -149,6 +189,40 @@ class WorkOrderDetailBloc extends Bloc<WorkOrderDetailEvent, WorkOrderDetailStat
       emit(WorkOrderDetailLoaded(workOrder: workOrder));
     } on MaintenanceApiException catch (error) {
       emit(WorkOrderDetailUnavailable(message: error.message));
+    }
+  }
+
+  Future<void> _onTaskReadingConfirmed(
+    WorkOrderTaskReadingConfirmed event,
+    Emitter<WorkOrderDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! WorkOrderDetailLoaded || current.isRecording) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(readingFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isRecording: true, readingFailure: null));
+    try {
+      await _maintenance.recordTaskReading(
+        token,
+        workOrderId,
+        event.taskId,
+        reading: event.reading,
+        note: event.note,
+      );
+      // Re-read rather than splice: the server owns both the task's reading
+      // and the meter's accumulated use, and the detail read is the honest
+      // way to show what it decided.
+      final workOrder = await _maintenance.fetchWorkOrder(token, workOrderId);
+      emit(WorkOrderDetailLoaded(workOrder: workOrder, notice: 'The reading has been recorded.'));
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! WorkOrderDetailLoaded) return;
+      emit(settled.copyWith(isRecording: false, readingFailure: error.message));
     }
   }
 
