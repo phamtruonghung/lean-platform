@@ -53,10 +53,20 @@ connection already pre-registered.
 `docker compose up` alone leaves the schema unmigrated, since compose has no
 equivalent of the migration step `deploy/deploy.sh` runs before starting
 production. `./scripts/review.sh` does the equivalent locally — build, wait for
-Postgres, migrate, wait for the app to answer — so a reviewer gets one command
-that ends at a stack that is actually usable, at <http://localhost:3002>, rather
-than a backend erroring against an empty database. `./scripts/review.sh help`
-lists `down`, `reset`, `logs`, and `status` alongside the default `up`.
+Postgres, migrate, seed the Demo Plant, wait for the app to answer — so a
+reviewer gets one command that ends at a stack that is actually usable, at
+<http://localhost:3002>, rather than a backend erroring against an empty
+database. `./scripts/review.sh help` lists `down`, `reset`, `logs`, `status`,
+`seed` and `grant-account` alongside the default `up`.
+
+The seed it applies is `dev/seed-demo.sql` — a versioned, idempotent demo
+dataset: a Demo Plant with Org Units, Employees, Assets, a parts catalogue and
+stock, meters and PM schedules, work orders and their cost, and the plant's
+shifts and production. `./scripts/review.sh seed` re-applies it on demand
+without rebuilding. An Account only gains a Grant after signing in, so
+`./scripts/review.sh grant-account <email> <org-unit-code> [--write]` gives a
+signed-in Account a Grant on a Demo Org Unit — the thing that makes the
+Org-Unit-scoped behaviour visible.
 
 ## Tests
 
