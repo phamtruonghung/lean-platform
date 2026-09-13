@@ -79,9 +79,21 @@ Map<String, dynamic> _meBody(String role, String selfId, Map<String, dynamic>? o
     };
 
 /// One Grant as `/me` reports it — `canWrite` is what decides whether a Screen
-/// offers a write affordance.
-Map<String, dynamic> scopeGrantJson(String orgUnitId, {String siteId = '1', bool canWrite = false}) =>
-    {'orgUnitId': orgUnitId, 'siteId': siteId, 'canWrite': canWrite};
+/// offers a write affordance. `orgUnitIds` is the Grant's whole reach, the
+/// granted unit plus every descendant (issue #110); left unset, the wire keeps
+/// the older "reaches only its own Org Unit" shape.
+Map<String, dynamic> scopeGrantJson(
+  String orgUnitId, {
+  String siteId = '1',
+  bool canWrite = false,
+  List<String>? orgUnitIds,
+}) =>
+    {
+      'orgUnitId': orgUnitId,
+      'siteId': siteId,
+      'canWrite': canWrite,
+      'orgUnitIds': ?orgUnitIds,
+    };
 
 /// One Asset as `GET /api/maintenance/sites/:siteId/assets` sends it.
 Map<String, dynamic> assetJson(

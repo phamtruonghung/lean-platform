@@ -1158,6 +1158,50 @@ test('a root Org Unit and a descendant beneath it, both granted directly, both c
   assert.deepStrictEqual(grantedIds, [String(root.id), String(child.id)].sort());
 });
 
+// Issue #110: a Grant alone says which Org Unit was granted, not which Org
+// Units that Grant *reaches* — a Grant reaches downward (CONTEXT.md's Grant,
+// ADR-0008), so a client counting work "on my Org Units" cannot tell from the
+// raw rows alone that a descendant sits inside a Grant. /me therefore carries
+// each Grant's own reach, the granted unit plus every descendant, so the
+// client matches ids instead of walking the tree.
+test('a Grant reports the Org Units it reaches — the granted unit and every descendant beneath it', async () => {
+  const { root, child, grandchild } = await createSiteWithTree();
+  const { token } = await approveFreshAccount('supervisor', [
+    { orgUnitId: root.id, canWrite: true }
+  ]);
+
+  const response = await me(token);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  const [grant] = orgUnitScope.grants;
+  assert.strictEqual(grant.canWrite, true);
+  assert.deepStrictEqual(
+    grant.orgUnitIds.map(String).sort(),
+    [String(root.id), String(child.id), String(grandchild.id)].sort()
+  );
+});
+
+// The other half of the same rule, pinned deliberately: a Grant reaches
+// downward only, so a Grant on the child names the child and its descendants
+// but never the root above it. Without this, a bug that returned the whole
+// Site's Org Units would pass the test above.
+test('a deep Grant reaches downward only — its reach never names an ancestor above it', async () => {
+  const { root, child, grandchild } = await createSiteWithTree();
+  const { token } = await approveFreshAccount('supervisor', [
+    { orgUnitId: child.id, canWrite: true }
+  ]);
+
+  const response = await me(token);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  const [grant] = orgUnitScope.grants;
+  assert.deepStrictEqual(
+    grant.orgUnitIds.map(String).sort(),
+    [String(child.id), String(grandchild.id)].sort()
+  );
+  assert.ok(!grant.orgUnitIds.map(String).includes(String(root.id)));
+});
+
 // ---------------------------------------------------------------------------
 // Issue #53: an administrator cannot act on their own Account.
 // ---------------------------------------------------------------------------

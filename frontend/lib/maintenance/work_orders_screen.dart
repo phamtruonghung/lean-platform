@@ -97,20 +97,25 @@ class WorkOrdersScreen extends StatelessWidget {
   /// is still an invitation to fail.
   final bool canRaiseWorkOrder;
 
-  /// Same coarse signal as [canRaiseWorkOrder], and the same reason (issue
-  /// #62): `/me` reports which Org Units are granted but not their ancestry,
-  /// so the client cannot tell whether a Grant *reaches* this particular Work
-  /// order's Org Unit. The server is the real gate (403); this only avoids
-  /// offering an action to a caller who holds no write Grant anywhere at all.
-  /// False hides the assign affordance entirely, for the same reason —
-  /// absent, not disabled.
-  final bool canAssignWorkOrder;
+  /// Whether this caller holds a write Grant *reaching the Org Unit a given
+  /// Work order sits at* (issue #62) — read off `/me`'s own `orgUnitScope`
+  /// (issue #43), and since issue #110 (ADR-0027) that scope names every Org
+  /// Unit beneath each Grant, so this is the same mechanism `HomeBloc`'s
+  /// awaiting-assignment count reads rather than a second, coarser rule. A
+  /// predicate, not a bool, because the answer is per-record: a write Grant on
+  /// one line says nothing about a Work order on another. False for a row
+  /// hides that row's assign affordance; the server is still the real gate
+  /// (403).
+  final bool Function(String orgUnitId) canAssignWorkOrder;
 
-  /// Same coarse signal as [canAssignWorkOrder], and the same reason (issue
+  /// The same coarse signal as [canRaiseWorkOrder], and the same reason (issue
   /// #63): a separate flag rather than reusing [canAssignWorkOrder] — each
-  /// affordance carries its own justification in this codebase, even though
-  /// both read off the same `orgUnitScope.canWriteSomewhere` today. False
-  /// hides Start, Complete and Cancel entirely — absent, not disabled.
+  /// affordance carries its own justification in this codebase. This one still
+  /// reads `orgUnitScope.canWriteSomewhere` (a write Grant anywhere at all),
+  /// because Start, Complete and Cancel are transitions the row's own status
+  /// offers; only assigning has moved to the per-Org-Unit [canAssignWorkOrder]
+  /// check (issue #110). False hides Start, Complete and Cancel entirely —
+  /// absent, not disabled.
   final bool canWorkWorkOrder;
 
   static const double maxWidth = 960;
@@ -552,7 +557,11 @@ class _WorkOrdersList extends StatelessWidget {
   const _WorkOrdersList({required this.workOrders, required this.canAssign, required this.canWork});
 
   final List<WorkOrder> workOrders;
-  final bool canAssign;
+
+  /// The per-Org-Unit write check [WorkOrdersScreen.canAssignWorkOrder]
+  /// carries — applied to each row's own Org Unit here, once, rather than
+  /// once for the whole Screen.
+  final bool Function(String orgUnitId) canAssign;
   final bool canWork;
 
   @override
@@ -582,7 +591,7 @@ class _WorkOrdersList extends StatelessWidget {
                     separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
                     itemBuilder: (context, index) => _WorkOrderCard(
                       workOrder: workOrders[index],
-                      canAssign: canAssign,
+                      canAssign: canAssign(workOrders[index].orgUnitId),
                       canWork: canWork,
                     ),
                   )
@@ -593,7 +602,7 @@ class _WorkOrdersList extends StatelessWidget {
                       for (final workOrder in workOrders)
                         _WorkOrderTableRow(
                           workOrder: workOrder,
-                          canAssign: canAssign,
+                          canAssign: canAssign(workOrder.orgUnitId),
                           canWork: canWork,
                         ),
                     ],

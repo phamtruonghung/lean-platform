@@ -765,6 +765,60 @@ void main() {
     expect(find.byKey(WorkOrdersScreen.assignKey('101')), findsNothing);
   });
 
+  // Issue #110: the assign affordance is per-Org-Unit, not a single
+  // "somewhere" flag. A write Grant reaches downward, and `/me` now names
+  // every Org Unit a Grant reaches, so a row beneath a granted unit offers
+  // assign while a row outside that reach does not — even though the caller
+  // holds a write Grant somewhere either way.
+  testWidgets('a Work order beneath a write Grant is offered assign', (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {
+        'everywhere': false,
+        'grants': [
+          scopeGrantJson('10', canWrite: true, orgUnitIds: ['10', '11']),
+        ],
+      },
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'On the line', orgUnitId: '11')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await openRowMenu(tester, '101');
+    expect(find.byKey(WorkOrdersScreen.assignKey('101')), findsOneWidget);
+  });
+
+  testWidgets('a Work order outside the write Grant\'s reach is offered no assign, though the '
+      'caller holds a write Grant elsewhere', (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {
+        'everywhere': false,
+        'grants': [
+          scopeGrantJson('10', canWrite: true, orgUnitIds: ['10', '11']),
+        ],
+      },
+      workOrders: {
+        '1': [workOrderJson('102', 'WO-102', 'Elsewhere', orgUnitId: '12')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    await openRowMenu(tester, '102');
+    expect(find.byKey(WorkOrdersScreen.assignKey('102')), findsNothing);
+  });
+
   testWidgets('a Departed Employee is not offered as a candidate', (tester) async {
     final wire = wireWith(
       workOrders: {

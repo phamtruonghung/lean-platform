@@ -33,7 +33,9 @@
  *     holds no grant rows (the first bullet above), so entry points for one
  *     would come back empty — exactly the "empty reads as nowhere" reading
  *     this function exists to rule out with an explicit `everywhere` flag
- *     instead.
+ *     instead. Each Grant also names the Org Units it reaches, itself plus its
+ *     descendants (issue #110, ADR-0027), so a client can answer "is this
+ *     Work order's Org Unit within my reach" without walking the tree itself.
  *
  * Nothing here is cached, memoised, or stashed on the token: `canAct` and
  * `canSeeSite` query `app_user_org_units` fresh on every call, the same
@@ -204,15 +206,32 @@ async function grantedEntryPointIds({ account, siteId }) {
 // invariant a caller may rely on: everywhere === true implies grants is
 // always empty, and vice versa.
 //
-// Returns the caller's raw Grant rows — both a line and a cell beneath it
-// can both appear if both are individually granted — deliberately not
-// collapsed to entry points; that stays grantedEntryPointIds's own job,
-// answered per-Site on demand by GET /sites/:siteId/org-units (ADR-0008).
+// Returns the caller's Grant rows — both a line and a cell beneath it can
+// both appear if both are individually granted — deliberately not collapsed
+// to entry points; that stays grantedEntryPointIds's own job, answered
+// per-Site on demand by GET /sites/:siteId/org-units (ADR-0008).
+//
+// Each Grant also carries `orgUnitIds`: every Org Unit that Grant reaches,
+// the granted unit itself plus its descendants (issue #110, ADR-0027). A
+// Grant reaches downward (`canAct`'s `target.path <@ granted.path`), so a
+// caller holding only the granted ids cannot tell whether a Work order
+// sitting on a descendant Org Unit is within its scope; resolving that tree
+// here keeps the subtree walk on the server, where `path <@` and its GiST
+// index already live, and leaves the client an exact-id membership test
+// rather than an `ltree` it would have to parse. The granted unit is included
+// in the list, so `reaches` and `canWriteAt` need one lookup and no special
+// case for the row's own id.
 async function orgUnitScopeFor({ account }) {
   if (isAdmin(account)) return { everywhere: true, grants: [] };
 
   const { rows } = await getPool().query(
-    `SELECT auo.org_unit_id, ou.site_id, auo.can_write
+    `SELECT auo.org_unit_id, ou.site_id, auo.can_write,
+            ARRAY(
+              SELECT descendant.id::text
+                FROM org_units descendant
+               WHERE descendant.path <@ ou.path
+               ORDER BY descendant.id
+            ) AS org_unit_ids
        FROM app_user_org_units auo
        JOIN org_units ou ON ou.id = auo.org_unit_id
       WHERE auo.app_user_id = $1
@@ -225,7 +244,8 @@ async function orgUnitScopeFor({ account }) {
     grants: rows.map((row) => ({
       orgUnitId: row.org_unit_id,
       siteId: row.site_id,
-      canWrite: row.can_write
+      canWrite: row.can_write,
+      orgUnitIds: row.org_unit_ids
     }))
   };
 }
