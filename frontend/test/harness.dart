@@ -873,9 +873,14 @@ Map<String, dynamic> orgUnitJson(
   String unitType = 'area',
   String? path,
   List<Map<String, String>> ancestors = const [],
+  String siteId = '1',
 }) {
   final row = <String, dynamic>{
     'id': id,
+    // `toOrgUnit` (plant.js) carries the Site id on every row it sends; a
+    // fixture that moves an Asset between Sites needs it, which is why it is
+    // here rather than left out.
+    'siteId': siteId,
     'parentId': parentId,
     'code': name.toUpperCase().replaceAll(' ', '-'),
     'name': name,
@@ -1904,18 +1909,23 @@ class FakeWire {
   int _nextSiteId = 90;
   int _nextOrgUnitId = 990;
 
-  /// The Org Unit name for [orgUnitId], resolved off whatever tree rows this
+  /// The Org Unit row for [orgUnitId], resolved off whatever tree rows this
   /// Fake Wire was given (any `parentId` key) — there is no Org Unit lookup
   /// endpoint for this client to call instead, the same reason
   /// `GrantedOrgUnit.where` (org_unit.dart) has no better source either.
-  String _orgUnitNameFor(String orgUnitId) {
+  Map<String, dynamic>? _orgUnitRowFor(String orgUnitId) {
     for (final nodes in orgUnits.values) {
       for (final node in nodes) {
-        if (node['id'] == orgUnitId) return node['name'] as String;
+        if (node['id'] == orgUnitId) return node;
       }
     }
-    return 'Org Unit $orgUnitId';
+    return null;
   }
+
+  /// The Org Unit name for [orgUnitId] — see [_orgUnitRowFor] for why it has
+  /// to be resolved off the fixture rather than fetched.
+  String _orgUnitNameFor(String orgUnitId) =>
+      _orgUnitRowFor(orgUnitId)?['name'] as String? ?? 'Org Unit $orgUnitId';
 
   String? _jobRoleNameFor(String? jobRoleId) {
     if (jobRoleId == null) return null;
@@ -2372,12 +2382,33 @@ class FakeWire {
           if (patchAssetStatus != 200) {
             return http.Response(jsonEncode({'message': patchAssetMessage}), patchAssetStatus);
           }
+          // A move (issue #171) is the one Asset PATCH whose answer the fake
+          // cannot produce by echoing the request back: the real server
+          // re-reads the row through its own Org Unit join, so the caller sees
+          // where the Asset arrived — name included — rather than the id it
+          // named. A fake that only echoed the id would let a passing test
+          // assert a row the server could never send.
+          final movedTo = body['orgUnitId'] as String?;
+          final movedToRow = movedTo == null ? null : _orgUnitRowFor(movedTo);
           Map<String, dynamic>? updated;
           assets = {
             for (final entry in assets.entries)
               entry.key: [
                 for (final a in entry.value)
-                  if (a['id'] == id) (updated = {...a, ...body}) else a,
+                  if (a['id'] == id)
+                    (updated = {
+                      ...a,
+                      ...body,
+                      if (movedToRow != null) ...{
+                        'orgUnitName': movedToRow['name'] as String,
+                        'orgUnitCode': movedToRow['code'] as String,
+                        // The Org Unit's own Site, as `toOrgUnit` sends it —
+                        // this is what tells the client a move left the Site
+                        // the register is showing.
+                        'siteId': movedToRow['siteId'] ?? a['siteId'],
+                      },
+                    })
+                  else a,
               ],
           };
           if (updated == null) {

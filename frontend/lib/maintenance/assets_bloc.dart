@@ -77,6 +77,16 @@ class AssetParentChanged extends AssetsEvent {
   final String? parentId;
 }
 
+/// Change where one Asset sits (issue #171) — the Org Unit that decides who
+/// may work on it. The server requires a write Grant reaching both the Org
+/// Unit the Asset is leaving and the one it is going to, so a caller whose
+/// reach does not cover both is refused (403) rather than half-served.
+class AssetOrgUnitChanged extends AssetsEvent {
+  const AssetOrgUnitChanged({required this.assetId, required this.orgUnitId});
+  final String assetId;
+  final String orgUnitId;
+}
+
 sealed class AssetsState {
   const AssetsState();
 }
@@ -181,6 +191,7 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
     on<AssetsShowRetiredChanged>(_onShowRetiredChanged);
     on<AssetActiveToggled>(_onActiveToggled);
     on<AssetParentChanged>(_onParentChanged);
+    on<AssetOrgUnitChanged>(_onOrgUnitChanged);
   }
 
   final MaintenanceApi _maintenance;
@@ -301,17 +312,9 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
       emit(
         settled.copyWith(
           isAdding: false,
-          // Sorted by (orgUnitName, code) to match the server's own `ORDER BY
-          // ou.name, a.code` (assets.js) — the client's order must agree with
-          // the server's, or every existing row visibly reshuffles on an add
-          // and flips back on the next read.
+          // Sorted into the register's own order — see [_inRegisterOrder].
           assets: asset.siteId == settled.siteId
-              ? ([...settled.assets, asset]..sort(
-                  (a, b) {
-                    final byOrgUnit = a.orgUnitName.compareTo(b.orgUnitName);
-                    return byOrgUnit != 0 ? byOrgUnit : a.code.compareTo(b.code);
-                  },
-                ))
+              ? _inRegisterOrder([...settled.assets, asset])
               : settled.assets,
           notice: '${asset.code} is on the register, at ${asset.orgUnitName}.',
         ),
@@ -408,6 +411,86 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
       emit(settled.copyWith(clearMutatingAssetId: true, notice: error.message));
     }
   }
+
+  /// Moves one Asset to another Org Unit (issue #171).
+  ///
+  /// Two things this does that its neighbours do not. The list is re-sorted:
+  /// a move changes the Org Unit name the register orders by, so leaving the
+  /// row where it was would show the machine in the wrong place until the
+  /// next read. And a move to another Site takes the row out of the list
+  /// rather than leaving it there — this register is one Site's, and an Asset
+  /// that has left that Site is not on it. The notice says where it went, so
+  /// a row that disappears is accounted for rather than doubted.
+  Future<void> _onOrgUnitChanged(AssetOrgUnitChanged event, Emitter<AssetsState> emit) async {
+    final current = state;
+    if (current is! AssetsLoaded) return;
+    if (current.isAdding || current.mutatingAssetId != null) {
+      emit(current.copyWith(notice: inFlightMessage));
+      return;
+    }
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(notice: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(mutatingAssetId: event.assetId));
+    try {
+      final asset = await _maintenance.setAssetOrgUnit(
+        token,
+        event.assetId,
+        orgUnitId: event.orgUnitId,
+      );
+      final settled = state;
+      if (settled is! AssetsLoaded) return;
+
+      final staysOnThisRegister = asset.siteId == settled.siteId;
+      final destinationSite = _siteNameFor(settled.sites, asset.siteId);
+      final notice = staysOnThisRegister
+          ? '${asset.code} now sits at ${asset.orgUnitName}.'
+          : destinationSite == null
+              ? '${asset.code} has left this Site — it now sits at ${asset.orgUnitName}.'
+              : '${asset.code} has left this Site — it now sits at '
+                  '${asset.orgUnitName}, at $destinationSite.';
+
+      emit(
+        settled.copyWith(
+          clearMutatingAssetId: true,
+          assets: staysOnThisRegister
+              ? _inRegisterOrder(_applyMutation(settled, asset))
+              : [for (final row in settled.assets) if (row.id != asset.id) row],
+          notice: notice,
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! AssetsLoaded) return;
+      emit(settled.copyWith(clearMutatingAssetId: true, notice: error.message));
+    }
+  }
+
+  /// The Sites the caller can see, by id — used only to name a Site the
+  /// register is no longer showing, so `null` costs a shorter sentence rather
+  /// than a wrong one.
+  String? _siteNameFor(List<Site> sites, String? siteId) {
+    for (final site in sites) {
+      if (site.id == siteId) return site.name;
+    }
+    return null;
+  }
+
+  /// The register in the order the server sends it — `ORDER BY ou.name,
+  /// a.code` (assets.js). The client's order has to agree with the server's,
+  /// or every row reshuffles visibly on a mutation and flips back on the next
+  /// read; a move is the mutation that changes the Org Unit name itself, so
+  /// this matters most there.
+  List<Asset> _inRegisterOrder(List<Asset> assets) => [...assets]..sort(
+        (a, b) {
+          final byOrgUnit = a.orgUnitName.compareTo(b.orgUnitName);
+          return byOrgUnit != 0 ? byOrgUnit : a.code.compareTo(b.code);
+        },
+      );
 
   /// The register patched in place with one Asset's new state, rather than
   /// re-read — same reasoning [_onAddConfirmed] follows. An Asset that has

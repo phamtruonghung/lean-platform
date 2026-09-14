@@ -16,6 +16,7 @@ import '../status_tone.dart';
 import '../widgets/status_chip.dart';
 import 'asset.dart';
 import 'asset_form_dialog.dart';
+import 'asset_move_dialog.dart';
 import 'assets_bloc.dart';
 
 class AssetsScreen extends StatelessWidget {
@@ -41,6 +42,7 @@ class AssetsScreen extends StatelessWidget {
   static ValueKey<String> reinstateKey(String id) => ValueKey<String>('asset-reinstate-$id');
   static ValueKey<String> nestKey(String id) => ValueKey<String>('asset-nest-$id');
   static ValueKey<String> detachKey(String id) => ValueKey<String>('asset-detach-$id');
+  static ValueKey<String> orgUnitKey(String id) => ValueKey<String>('asset-org-unit-$id');
   static ValueKey<String> parentOptionKey(String id) => ValueKey<String>('asset-parent-option-$id');
   static const ValueKey<String> parentChooserKey = ValueKey<String>('asset-parent-chooser');
 
@@ -416,7 +418,13 @@ class _AssetRow extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: Spacing.sm),
-              Row(
+              // A `Wrap` rather than a `Row` since issue #171: three actions
+              // are wide enough to overflow at the narrowest window the Shell
+              // allows, and a second line of buttons is honest where a clipped
+              // one is not. With one or two actions the layout is unchanged.
+              Wrap(
+                spacing: Spacing.sm,
+                runSpacing: Spacing.sm,
                 children: [
                   OutlinedButton(
                     key: asset.isActive
@@ -425,7 +433,14 @@ class _AssetRow extends StatelessWidget {
                     onPressed: disabled ? null : () => _toggleActive(context, asset),
                     child: Text(asset.isActive ? 'Retire' : 'Reinstate'),
                   ),
-                  const SizedBox(width: Spacing.sm),
+                  // Labelled for what it changes, not "Move": the register
+                  // already reads "move" as Nest under…/Detach, which moves an
+                  // Asset in the tree rather than across Org Units.
+                  OutlinedButton(
+                    key: AssetsScreen.orgUnitKey(asset.id),
+                    onPressed: disabled ? null : () => AssetMoveDialog.open(context, asset: asset),
+                    child: const Text('Change Org Unit…'),
+                  ),
                   if (asset.parentId != null)
                     OutlinedButton(
                       key: AssetsScreen.detachKey(asset.id),
