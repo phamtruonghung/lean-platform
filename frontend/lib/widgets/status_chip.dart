@@ -11,12 +11,17 @@ import '../theme.dart';
 /// to tell apart — were painted identically. This widget is that same `Chip`
 /// with its fill and label colour resolved from a [StatusTone].
 ///
-/// Deliberately thin. It keeps `visualDensity: VisualDensity.compact` and the
-/// `labelLarge` label style the call sites already had — the wide Work orders
-/// table measures its own Status column from `labelLarge`
-/// (`_statusColumnWidth`), so a different label style here would silently
-/// clip the longest status again, which is the bug issue #105 fixed — and it
-/// adds no interaction, no state and no knowledge of any Bloc. All it adds is
+/// Deliberately thin. It renders `visualDensity: VisualDensity.compact` and a
+/// `labelLarge` label — the density every call site already had, and the label
+/// size the status call sites had (the wide Work orders table measures its own
+/// Status column from `labelLarge` — `_statusColumnWidth` — so a different
+/// label style here would silently clip the longest status again, which is the
+/// bug issue #105 fixed). The chips converted from the error container are the
+/// one place its size differs from what was there before: they were 11px
+/// (`labelSmall`) and are now 14px like every other status, which is a
+/// consequence of there being one chip rather than a decision to enlarge them.
+///
+/// It adds no interaction, no state and no Bloc knowledge. All it adds is
 /// colour.
 ///
 /// **The label is always rendered.** Colour groups a status; it never carries
