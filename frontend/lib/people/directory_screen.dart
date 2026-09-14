@@ -17,6 +17,8 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/skeleton_list.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'directory_bloc.dart';
 import 'directory_org_unit_filter_dialog.dart';
 import 'employee.dart';
@@ -340,14 +342,7 @@ class _EmployeeRow extends StatelessWidget {
                         ),
                         if (!employee.isActive) ...[
                           const SizedBox(width: Spacing.sm),
-                          Chip(
-                            key: DirectoryScreen.departedChipKey(employee.id),
-                            label: const Text('Departed'),
-                            visualDensity: VisualDensity.compact,
-                            backgroundColor: theme.colorScheme.errorContainer,
-                            labelStyle: theme.textTheme.labelMedium
-                                ?.copyWith(color: theme.colorScheme.onErrorContainer),
-                          ),
+                          StatusChip(key: DirectoryScreen.departedChipKey(employee.id), label: 'Departed', tone: StatusTone.neutral),
                         ],
                       ],
                     ),

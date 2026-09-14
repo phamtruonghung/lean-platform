@@ -18,6 +18,8 @@ import '../theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'job_role.dart';
 import 'job_role_form_dialog.dart';
 import 'job_roles_bloc.dart';
@@ -163,14 +165,7 @@ class _JobRoleRow extends StatelessWidget {
                 ),
                 if (!jobRole.isActive) ...[
                   const SizedBox(width: Spacing.sm),
-                  Chip(
-                    key: JobRolesScreen.inactiveChipKey(jobRole.id),
-                    label: const Text('Inactive'),
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: theme.colorScheme.errorContainer,
-                    labelStyle:
-                        theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onErrorContainer),
-                  ),
+                  StatusChip(key: JobRolesScreen.inactiveChipKey(jobRole.id), label: 'Inactive', tone: StatusTone.neutral),
                 ],
               ],
             ),

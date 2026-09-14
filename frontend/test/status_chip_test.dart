@@ -9,6 +9,13 @@
 ///    values off a pumped widget the same way, and `work_orders_test.dart`,
 ///    which pumps the real Screen over `FakeWire` (the one client seam,
 ///    ADR-0012).
+///
+///    This claim is asserted on **every surface the spec's own user story 7
+///    names**: the Work orders Screen, a Request's own list, the Downtime log
+///    and a Work order's own steps. The vocabulary is shared
+///    (`lib/status_tone.dart`), so a single surface passing proves the widget
+///    works but not that the other three map onto it — each status-bearing
+///    model keeps its own map, and each map is the one its Screen reads.
 /// 2. Every tone's fill/foreground pair meets the 4.5:1 floor the spec's own
 ///    user story 6 asks for. This is a measurement rather than a comment, so
 ///    a later token change that quietly drops below the floor fails here
@@ -19,7 +26,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lean_platform/maintenance/downtime_screen.dart';
+import 'package:lean_platform/maintenance/my_requests_screen.dart';
+import 'package:lean_platform/maintenance/work_order_detail_screen.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
+import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/status_tone.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/status_chip.dart';
@@ -44,10 +55,17 @@ Future<void> _pinSurface(WidgetTester tester, {required double width}) async {
   addTearDown(tester.view.reset);
 }
 
-/// The Wire, faked the way the Screen's own tests fake it — Sites, Org Units
-/// and Assets included, because this Screen reads a Site at a time and will
-/// not read anything without one.
-FakeWire _wireWith(Map<String, List<Map<String, dynamic>>> workOrders) => FakeWire(
+/// The Wire behind the Work orders Screen, faked the way that Screen's own
+/// tests fake it — Sites, Org Units and Assets included, because this Screen
+/// reads a Site at a time and will not read anything without one.
+///
+/// `workOrderTasks` is what the detail read merges onto a row, keyed by Work
+/// order id, so the same builder serves both the list and the detail.
+FakeWire _workOrderWire(
+  Map<String, List<Map<String, dynamic>>> workOrders, {
+  Map<String, List<Map<String, dynamic>>>? workOrderTasks,
+}) =>
+    FakeWire(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       orgUnits: {
         null: [orgUnitJson('10', 'Assembly')],
@@ -55,17 +73,50 @@ FakeWire _wireWith(Map<String, List<Map<String, dynamic>>> workOrders) => FakeWi
       },
       assets: {'1': []},
       workOrders: workOrders,
+      workOrderTasks: workOrderTasks,
+    );
+
+/// The Wire behind a Request's own list (`/my-requests`) — the operator the
+/// raise Destination belongs to, holding a read Grant at Org Unit 10, the same
+/// caller `requests_test.dart` pumps with.
+FakeWire _requestWire(List<Map<String, dynamic>> myRequests) => FakeWire(
+      role: Roles.operator,
+      orgUnitScope: {
+        'everywhere': false,
+        'grants': [scopeGrantJson('10')],
+      },
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Assembly')],
+      },
+      assets: {'1': []},
+      myRequests: {'1': myRequests},
+    );
+
+/// The Wire behind the Downtime log — the supervisor holding a write Grant at
+/// Org Unit 10, the same caller `downtime_test.dart` pumps with.
+FakeWire _downtimeWire(List<Map<String, dynamic>> downtime) => FakeWire(
+      role: Roles.supervisor,
+      orgUnitScope: {
+        'everywhere': false,
+        'grants': [scopeGrantJson('10', canWrite: true)],
+      },
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Assembly')],
+      },
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1')],
+      },
+      downtime: {'1': downtime},
     );
 
 /// The tone a given row's own Status chip was painted with, read off the
 /// pumped widget tree — the fill the `StatusChip` handed to its `Chip`, which
 /// is the colour a person sees.
-Color? _rowStatusFill(WidgetTester tester, String rowId) {
+Color? _statusFillIn(WidgetTester tester, Finder row) {
   final chip = tester.widget<Chip>(find.descendant(
-    of: find.descendant(
-      of: find.byKey(WorkOrdersScreen.rowKey(rowId)),
-      matching: find.byType(StatusChip),
-    ),
+    of: find.descendant(of: row, matching: find.byType(StatusChip)),
     matching: find.byType(Chip),
   ));
   return chip.backgroundColor;
@@ -86,6 +137,8 @@ double _contrastRatio(Color foreground, Color background) {
 
 void main() {
   group('a Work order\'s status is painted with the meaning it carries', () {
+    Finder row(String id) => find.byKey(WorkOrdersScreen.rowKey(id));
+
     testWidgets('every status shows its own tone, and its own word', (tester) async {
       // All eight wire statuses on one Screen, so the assertion is about the
       // mapping rather than about one row's luck.
@@ -96,7 +149,7 @@ void main() {
       // closed Work order's own tone is only ever seen through the history
       // read. Asserting those three without asking for history would have been
       // a test that could not fail for the right reason.
-      final wire = _wireWith({
+      final wire = _workOrderWire({
         '1': [
           workOrderJson('101', 'WO-101', 'A draft', status: 'draft'),
           workOrderJson('102', 'WO-102', 'Ready to work', status: 'approved'),
@@ -119,14 +172,14 @@ void main() {
       await tapIn(tester, find.byKey(WorkOrdersScreen.showHistoryKey));
       expect(wire.workOrderRequests.last, ('1', null, true));
 
-      expect(_rowStatusFill(tester, '101'), AppComponentColors.statusFill(StatusTone.neutral));
-      expect(_rowStatusFill(tester, '102'), AppComponentColors.statusFill(StatusTone.info));
-      expect(_rowStatusFill(tester, '103'), AppComponentColors.statusFill(StatusTone.info));
-      expect(_rowStatusFill(tester, '104'), AppComponentColors.statusFill(StatusTone.info));
-      expect(_rowStatusFill(tester, '105'), AppComponentColors.statusFill(StatusTone.warning));
-      expect(_rowStatusFill(tester, '106'), AppComponentColors.statusFill(StatusTone.success));
-      expect(_rowStatusFill(tester, '107'), AppComponentColors.statusFill(StatusTone.success));
-      expect(_rowStatusFill(tester, '108'), AppComponentColors.statusFill(StatusTone.neutral));
+      expect(_statusFillIn(tester, row('101')), AppComponentColors.statusFill(StatusTone.neutral));
+      expect(_statusFillIn(tester, row('102')), AppComponentColors.statusFill(StatusTone.info));
+      expect(_statusFillIn(tester, row('103')), AppComponentColors.statusFill(StatusTone.info));
+      expect(_statusFillIn(tester, row('104')), AppComponentColors.statusFill(StatusTone.info));
+      expect(_statusFillIn(tester, row('105')), AppComponentColors.statusFill(StatusTone.warning));
+      expect(_statusFillIn(tester, row('106')), AppComponentColors.statusFill(StatusTone.success));
+      expect(_statusFillIn(tester, row('107')), AppComponentColors.statusFill(StatusTone.success));
+      expect(_statusFillIn(tester, row('108')), AppComponentColors.statusFill(StatusTone.neutral));
 
       // The word is still there, on every one of them: colour groups a status,
       // it never carries one on its own (user story 5).
@@ -141,7 +194,7 @@ void main() {
       // The whole point of the mapping, asserted as a relationship rather than
       // as eight separate colours: of a live Work order's statuses, exactly one
       // is painted as something the reader has to act on.
-      final wire = _wireWith({
+      final wire = _workOrderWire({
         '1': [
           workOrderJson('101', 'WO-101', 'Ready to work', status: 'approved'),
           workOrderJson('102', 'WO-102', 'Being worked', status: 'in_progress'),
@@ -159,12 +212,161 @@ void main() {
 
       final warning = AppComponentColors.statusFill(StatusTone.warning);
       final fills = [
-        _rowStatusFill(tester, '101'),
-        _rowStatusFill(tester, '102'),
-        _rowStatusFill(tester, '103'),
+        _statusFillIn(tester, row('101')),
+        _statusFillIn(tester, row('102')),
+        _statusFillIn(tester, row('103')),
       ];
       expect(fills.where((fill) => fill == warning), hasLength(1));
-      expect(_rowStatusFill(tester, '103'), warning);
+      expect(_statusFillIn(tester, row('103')), warning);
+    });
+  });
+
+  // The other three surfaces user story 7 names. Each one is a different map
+  // in a different file (`request.dart`, `downtime_event.dart`,
+  // `work_order.dart`'s own task map), so each one is a separate chance to
+  // drift — the shared vocabulary is only shared if every Screen reads it.
+  group('a Request\'s own list carries the same vocabulary', () {
+    testWidgets('every Request state shows its own tone, and its own word', (tester) async {
+      final wire = _requestWire([
+        requestJson('101', 'MR-101', 'Pump is noisy', status: 'new'),
+        requestJson('102', 'MR-102', 'Guard is loose', status: 'triaged'),
+        requestJson(
+          '103',
+          'MR-103',
+          'Belt is slipping',
+          status: 'accepted',
+          workOrder: requestWorkOrderJson('900', 'WO-900'),
+        ),
+        requestJson('104', 'MR-104', 'Not a job for us', status: 'rejected'),
+        requestJson('105', 'MR-105', 'Already raised', status: 'duplicate'),
+      ]);
+
+      await _pinSurface(tester, width: 900);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/my-requests',
+      );
+
+      Finder row(String id) => find.byKey(MyRequestsScreen.rowKey(id));
+
+      // `new` is this list's `warning` for the same reason `on_hold` is the
+      // Work orders table's: it is the one state waiting on the reader.
+      expect(_statusFillIn(tester, row('101')), AppComponentColors.statusFill(StatusTone.warning));
+      expect(_statusFillIn(tester, row('102')), AppComponentColors.statusFill(StatusTone.info));
+      expect(_statusFillIn(tester, row('103')), AppComponentColors.statusFill(StatusTone.success));
+      // A decline and a duplicate are decisions somebody made, not faults — so
+      // neither is painted `danger`.
+      expect(_statusFillIn(tester, row('104')), AppComponentColors.statusFill(StatusTone.neutral));
+      expect(_statusFillIn(tester, row('105')), AppComponentColors.statusFill(StatusTone.neutral));
+
+      for (final label in ['New', 'Triaged', 'Accepted', 'Rejected', 'Duplicate']) {
+        expect(find.text(label), findsWidgets, reason: '$label should still be readable');
+      }
+    });
+  });
+
+  group('the Downtime log carries the same vocabulary', () {
+    testWidgets('a running stop is the one that catches the eye, and a closed one is quiet',
+        (tester) async {
+      final wire = _downtimeWire([
+        downtimeJson('1', status: 'open'),
+        downtimeJson(
+          '2',
+          status: 'unclassified',
+          startedAt: DateTime.utc(2024, 1, 1, 6),
+          endedAt: DateTime.utc(2024, 1, 1, 8),
+          durationMinutes: 120,
+        ),
+        downtimeJson(
+          '3',
+          status: 'closed',
+          startedAt: DateTime.utc(2024, 1, 1, 6),
+          endedAt: DateTime.utc(2024, 1, 1, 7),
+          durationMinutes: 60,
+          downtimeReasonId: '5',
+          downtimeReasonName: 'Mechanical',
+        ),
+      ]);
+
+      await _pinSurface(tester, width: 900);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/downtime',
+      );
+
+      Finder row(String id) => find.byKey(DowntimeScreen.rowKey(id));
+
+      // Only the open stop is on this Screen, and that is the read's own shape
+      // rather than a gap in the test: the Downtime log is served open stops by
+      // default (the Wire fakes exactly that), and this Screen offers no
+      // history toggle the way the Work orders list does. `DowntimeEvent`'s own
+      // tone map covers all three of its states — a closed stop is `success`
+      // and an unclassified one `info` — but only `open` reaches a reader
+      // today, so only `open` is asserted here. Asserting the other two through
+      // this Screen would have been a test that could not fail for the right
+      // reason: rows 2 and 3 never render, so it would have failed on the Wire
+      // rather than on the vocabulary.
+      expect(_statusFillIn(tester, row('1')), AppComponentColors.statusFill(StatusTone.warning));
+      expect(find.text('Open'), findsWidgets);
+    });
+  });
+
+  group('a Work order\'s own steps carry the same vocabulary', () {
+    testWidgets('a failed step is the only fault, and a finished one stops competing',
+        (tester) async {
+      final wire = _workOrderWire(
+        {
+          '1': [workOrderJson('101', 'WO-101', 'Belt is slipping', status: 'in_progress')],
+        },
+        workOrderTasks: {
+          '101': [
+            workOrderTaskJson('t1', 1, 'Isolate the press', status: 'done'),
+            workOrderTaskJson('t2', 2, 'Replace the belt', status: 'pending'),
+            workOrderTaskJson('t3', 3, 'Check the guard', status: 'skipped'),
+            workOrderTaskJson('t4', 4, 'Re-tension the belt', status: 'failed'),
+          ],
+        },
+      );
+
+      await _pinSurface(tester, width: 900);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      // Reached the way a person reaches it — the row's own link, not the
+      // address directly, so the tap path is exercised too.
+      await tapIn(tester, find.byKey(WorkOrdersScreen.detailsKey('101')));
+      expect(find.byType(WorkOrderDetailScreen), findsOneWidget);
+
+      Finder step(String id) => find.byKey(WorkOrderDetailScreen.taskKey(id));
+
+      expect(_statusFillIn(tester, step('t1')), AppComponentColors.statusFill(StatusTone.success));
+      expect(_statusFillIn(tester, step('t2')), AppComponentColors.statusFill(StatusTone.neutral));
+      // Somebody chose to step over it, so it is not a warning.
+      expect(_statusFillIn(tester, step('t3')), AppComponentColors.statusFill(StatusTone.neutral));
+      expect(_statusFillIn(tester, step('t4')), AppComponentColors.statusFill(StatusTone.danger));
+
+      // `danger` is reserved for faults: of these four states, exactly the
+      // failed one is painted with it.
+      final danger = AppComponentColors.statusFill(StatusTone.danger);
+      final fills = [
+        _statusFillIn(tester, step('t1')),
+        _statusFillIn(tester, step('t2')),
+        _statusFillIn(tester, step('t3')),
+        _statusFillIn(tester, step('t4')),
+      ];
+      expect(fills.where((fill) => fill == danger), hasLength(1));
+
+      for (final label in ['Done', 'Pending', 'Skipped', 'Failed']) {
+        expect(find.text(label), findsWidgets, reason: '$label should still be readable');
+      }
     });
   });
 

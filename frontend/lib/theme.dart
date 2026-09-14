@@ -239,6 +239,31 @@ abstract final class AppColors {
   /// orange-800 at 6.38:1 on the orange tint, which is the middle of the three
   /// the moment a reader looks at a list.
   static const Color statusWarning = _Primitives.warning;
+
+  // --- status fills ---
+  //
+  // The fills half of the same five bindings, named here rather than reached
+  // for as primitives by [AppComponentColors.statusFill] — the layer this file
+  // declares says a component token binds a *semantic* value, and a component
+  // reaching past this layer into `_Primitives` would be the one shortcut in
+  // the file that makes the layering a story rather than a rule.
+
+  /// The quiet fill: a settled state, a deliberate cancellation, a retirement.
+  static const Color statusNeutralFill = _Primitives.neutralFill;
+
+  /// The live fill — shared with [AppComponentColors.navSelectedBackground],
+  /// because an actionable status and the selected Destination say the same
+  /// thing.
+  static const Color statusInfoFill = _Primitives.primaryContainer;
+
+  /// The finished fill.
+  static const Color statusSuccessFill = _Primitives.successFill;
+
+  /// The fill that wants a decision.
+  static const Color statusWarningFill = _Primitives.warningFill;
+
+  /// The fill for a fault — a step that failed.
+  static const Color statusDangerFill = _Primitives.dangerFill;
 }
 
 /// Layer 3 — component tokens: a semantic value bound to a shape that
@@ -314,11 +339,11 @@ abstract final class AppComponentColors {
   /// spender today; every Screen that shows a status goes through that widget
   /// rather than reaching for this method directly.
   static Color statusFill(StatusTone tone) => switch (tone) {
-        StatusTone.neutral => _Primitives.neutralFill,
-        StatusTone.info => _Primitives.primaryContainer,
-        StatusTone.success => _Primitives.successFill,
-        StatusTone.warning => _Primitives.warningFill,
-        StatusTone.danger => _Primitives.dangerFill,
+        StatusTone.neutral => AppColors.statusNeutralFill,
+        StatusTone.info => AppColors.statusInfoFill,
+        StatusTone.success => AppColors.statusSuccessFill,
+        StatusTone.warning => AppColors.statusWarningFill,
+        StatusTone.danger => AppColors.statusDangerFill,
       };
 
   /// The text (and icon) colour paired with [statusFill], per [tone] — the

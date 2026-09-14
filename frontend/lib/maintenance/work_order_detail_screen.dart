@@ -188,10 +188,19 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: Spacing.xxs),
                 Text(
                   '${workOrder!.workOrderNo} · ${workOrder!.assetName} '
-                  '(${workOrder!.assetCode}) · ${workOrder!.statusLabel}',
+                  '(${workOrder!.assetCode})',
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
+                // This Screen used to render the Work order's own status as
+                // one more word in the identity line above (issue #168's own
+                // user story 7, corrected here after review): the detail read
+                // is where somebody checks *what state this job is in*, and it
+                // was the one place in the Platform still showing that state as
+                // plain text. It is the same `StatusChip` every list uses, next
+                // to the identity rather than inside it.
+                const SizedBox(height: Spacing.sm),
+                StatusChip(label: workOrder!.statusLabel, tone: workOrder!.statusTone),
                 if (canBook) ...[
                   const SizedBox(height: Spacing.md),
                   Wrap(

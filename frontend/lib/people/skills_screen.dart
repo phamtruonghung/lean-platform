@@ -19,6 +19,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'skill.dart';
 import 'skill_form_dialog.dart';
 import 'skill_qualified_employees_dialog.dart';
@@ -149,14 +151,7 @@ class _SkillRow extends StatelessWidget {
               ),
               if (!skill.isActive) ...[
                 const SizedBox(width: Spacing.sm),
-                Chip(
-                  key: SkillsScreen.inactiveChipKey(skill.id),
-                  label: const Text('Inactive'),
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: theme.colorScheme.errorContainer,
-                  labelStyle:
-                      theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onErrorContainer),
-                ),
+                StatusChip(key: SkillsScreen.inactiveChipKey(skill.id), label: 'Inactive', tone: StatusTone.neutral),
               ],
             ],
           ),

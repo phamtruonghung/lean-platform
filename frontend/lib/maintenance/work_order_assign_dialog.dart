@@ -18,6 +18,8 @@ import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
 
@@ -273,12 +275,22 @@ class _CandidateRow extends StatelessWidget {
   /// about whether they should get this Work order — see ADR-0018 for why
   /// this dialog never renders a warning or a disabled row either.
   Widget _skillChip(ThemeData theme, AssigneeCandidate candidate, HeldSkill skill) {
-    final chip = Chip(
-      key: WorkOrderAssignDialog.skillChipKey(candidate.id, skill.skillId),
-      label: Text(skill.isLapsed ? '${skill.name} · Lapsed' : skill.name),
-      backgroundColor: skill.isLapsed ? theme.colorScheme.errorContainer : null,
-      visualDensity: VisualDensity.compact,
-    );
+    // The lapsed chip used to wear the error container's red, which is the one
+    // colour this doc comment says this dialog never renders — a judgement
+    // about a candidate. It is the neutral tone now (issues #168/#169), so the
+    // colour agrees with the rule: the chip states what somebody holds, and
+    // "· Lapsed" carries the rest.
+    final chip = skill.isLapsed
+        ? StatusChip(
+            key: WorkOrderAssignDialog.skillChipKey(candidate.id, skill.skillId),
+            label: '${skill.name} · Lapsed',
+            tone: StatusTone.neutral,
+          )
+        : Chip(
+            key: WorkOrderAssignDialog.skillChipKey(candidate.id, skill.skillId),
+            label: Text(skill.name),
+            visualDensity: VisualDensity.compact,
+          );
     return skill.isLapsed
         ? KeyedSubtree(
             key: WorkOrderAssignDialog.lapsedChipKey(candidate.id, skill.skillId),
