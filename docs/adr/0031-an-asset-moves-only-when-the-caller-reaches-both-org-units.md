@@ -69,9 +69,11 @@ Requests and Downtime events denormalise `org_unit_id` through a trigger that
 fires on INSERT or on a change to `asset_id`; a move fires neither, so a Work
 order raised while the machine stood on Line A still reads as Line A's work.
 Roughly: a machine that walks to another Line does not rewrite last month's
-work. The integration test asserts this rather than adding code for it, and it
-is the reading the shift- and reason-level downtime views already take, since
-they attribute a stop by `downtime_events.org_unit_id`.
+work. The integration test asserts this rather than adding code for it, and the
+views that read a record's own Org Unit already take the same reading:
+`v_asset_reliability` groups by the Work order's `org_unit_id`, and
+`v_shift_downtime` and `v_downtime_pareto` attribute a stop by
+`downtime_events.org_unit_id`.
 
 ## Where the past still moves
 
@@ -106,10 +108,12 @@ because those are separate transactions and a compound request could commit one
 and fail the other. The empty-body refusal now names all of the operations the
 route accepts, rather than the two it used to.
 
-No schema change was needed and no counter had to be updated: everything that
-reads an Asset's placement reads the Asset row — the register, the per-Asset
-reliability view, the Org Unit Asset count — so those follow the move
-immediately, and the three denormalising triggers stay silent by construction.
+No schema change was needed and no denormalised copy had to be rewritten:
+everything that reads an Asset's **current** placement reads the Asset row —
+the register's own read, and the two Asset-anchored rollups named above — so
+those follow the move immediately, while every view that reads a record's own
+Org Unit stays where the work happened. The three denormalising triggers stay
+silent by construction.
 
 ## What this does not settle
 
