@@ -265,7 +265,7 @@ class _PmScheduleCard extends StatelessWidget {
                     label: const Text('Inactive'),
                     visualDensity: VisualDensity.compact,
                     backgroundColor: theme.colorScheme.errorContainer,
-                    labelStyle: theme.textTheme.labelSmall
+                    labelStyle: theme.textTheme.labelMedium
                         ?.copyWith(color: theme.colorScheme.onErrorContainer),
                   ),
               ],

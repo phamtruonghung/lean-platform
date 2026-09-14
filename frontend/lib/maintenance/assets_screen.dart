@@ -397,7 +397,7 @@ class _AssetRow extends StatelessWidget {
                                 label: const Text('Retired'),
                                 visualDensity: VisualDensity.compact,
                                 backgroundColor: theme.colorScheme.errorContainer,
-                                labelStyle: theme.textTheme.labelSmall
+                                labelStyle: theme.textTheme.labelMedium
                                     ?.copyWith(color: theme.colorScheme.onErrorContainer),
                               ),
                             ],

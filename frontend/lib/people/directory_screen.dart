@@ -345,7 +345,7 @@ class _EmployeeRow extends StatelessWidget {
                             label: const Text('Departed'),
                             visualDensity: VisualDensity.compact,
                             backgroundColor: theme.colorScheme.errorContainer,
-                            labelStyle: theme.textTheme.labelSmall
+                            labelStyle: theme.textTheme.labelMedium
                                 ?.copyWith(color: theme.colorScheme.onErrorContainer),
                           ),
                         ],

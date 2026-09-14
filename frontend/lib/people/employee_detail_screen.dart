@@ -323,7 +323,7 @@ class _AssignmentRow extends StatelessWidget {
                         label: const Text('Current'),
                         visualDensity: VisualDensity.compact,
                         backgroundColor: theme.colorScheme.primaryContainer,
-                        labelStyle: theme.textTheme.labelSmall
+                        labelStyle: theme.textTheme.labelMedium
                             ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
                       ),
                     ],

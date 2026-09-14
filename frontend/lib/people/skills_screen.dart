@@ -155,7 +155,7 @@ class _SkillRow extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   backgroundColor: theme.colorScheme.errorContainer,
                   labelStyle:
-                      theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onErrorContainer),
+                      theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onErrorContainer),
                 ),
               ],
             ],

@@ -234,7 +234,7 @@ class _TreeRow extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
                   child: Text(
                     'Granted · ${level!.label}',
-                    style: theme.textTheme.labelSmall
+                    style: theme.textTheme.labelMedium
                         ?.copyWith(color: theme.colorScheme.primary),
                   ),
                 )
@@ -265,7 +265,7 @@ class _TreeRow extends StatelessWidget {
               padding: const EdgeInsets.only(left: 32, bottom: Spacing.xs),
               child: Text(
                 row.failure!,
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
+                style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.error),
               ),
             )
           else if (row.isExpanded && row.childrenLoaded && row.childCount == 0)
@@ -273,7 +273,7 @@ class _TreeRow extends StatelessWidget {
               padding: const EdgeInsets.only(left: 32, bottom: Spacing.xs),
               child: Text(
                 'Nothing beneath this',
-                style: theme.textTheme.labelSmall
+                style: theme.textTheme.labelMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ),
@@ -321,12 +321,12 @@ class _GrantedPane extends StatelessWidget {
                             // name are not mistaken for each other.
                             Text(
                               entry.where,
-                              style: theme.textTheme.labelSmall
+                              style: theme.textTheme.labelMedium
                                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                             ),
                             Text(
                               entry.level.label,
-                              style: theme.textTheme.labelSmall
+                              style: theme.textTheme.labelMedium
                                   ?.copyWith(color: theme.colorScheme.primary),
                             ),
                           ],

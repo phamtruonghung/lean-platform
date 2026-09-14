@@ -665,7 +665,7 @@ class _Grants extends StatelessWidget {
           Chip(
             visualDensity: VisualDensity.compact,
             label: Text('${grant.siteName} › ${grant.name} · ${grant.level.label}'),
-            labelStyle: theme.textTheme.labelSmall,
+            labelStyle: theme.textTheme.labelMedium,
           ),
       ],
     );

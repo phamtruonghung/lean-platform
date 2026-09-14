@@ -44,6 +44,12 @@ class PlatformShell extends StatelessWidget {
   /// sidebar becomes an icon rail.
   static const double railBreakpoint = 700;
   static const double expandedWidth = 260;
+
+  /// The width of the bar drawn beside the selected Destination (issue #168)
+  /// — narrow enough to read as a mark rather than a second border, wide
+  /// enough to survive a scaled-down display. Its gutter is reserved on every
+  /// Destination so selection never moves a label.
+  static const double _selectedMarkWidth = 3;
   static const double collapsedWidth = 64;
 
   static const ValueKey<String> sidebarKey = ValueKey<String>('platform-shell-sidebar');
@@ -199,10 +205,18 @@ class _Brand extends StatelessWidget {
 /// rule honest — giving a heading an address is the exact failure mode
 /// ADR-0020's "What this costs" section names to watch for.
 ///
-/// Deliberately quieter than a [_NavItem]: small, uppercase, letter-spaced
-/// and [AppColors.textMuted], so it reads as a section label rather than
+/// Deliberately quieter than a [_NavItem]: uppercase, letter-spaced and
+/// [AppColors.textMuted], so it reads as a section label rather than
 /// competing with the destinations filed beneath it. Never rendered into the
 /// collapsed rail — see the boundary hairline in `_Sidebar.build` instead.
+///
+/// **At the Platform's own type floor** (issue #168). This used `labelSmall`
+/// — 11px — which is below the floor [AppTypography]'s own doc comment
+/// declares ("Nothing in the Platform goes below this": `bodySmall`, 12px).
+/// A heading was the wrong place to break that rule: it is the label that
+/// organizes everything under it, and it was the smallest type on the
+/// surface. `labelMedium` is that floor, and being quieter is now carried by
+/// the colour and the letter-spacing alone.
 class _GroupHeading extends StatelessWidget {
   const _GroupHeading({required this.name});
 
@@ -215,7 +229,7 @@ class _GroupHeading extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.md, Spacing.md, Spacing.xs),
       child: Text(
         name.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
+        style: theme.textTheme.labelMedium?.copyWith(
           color: AppColors.textMuted,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.8,
@@ -262,6 +276,32 @@ class _NavItem extends StatelessWidget {
         child: Row(
           mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: [
+            // The selected Destination's own mark (issue #168) — a short bar
+            // in the action colour, and the one selected-state cue that is
+            // not a colour difference: fill, foreground and weight all
+            // already change, and all three are the kind of cue a monochrome
+            // display or a low-vision reader loses. Its width is reserved on
+            // every Destination, selected or not, so the icons and labels
+            // below it never shift sideways as the selection moves.
+            //
+            // Not drawn on the rail: below [railBreakpoint] the Destination
+            // is an icon alone, and there is no room for a mark beside it
+            // without moving the icon off centre.
+            if (!collapsed) ...[
+              SizedBox(
+                width: PlatformShell._selectedMarkWidth,
+                child: selected
+                    ? DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppComponentColors.navSelectedAccent,
+                          borderRadius: BorderRadius.circular(PlatformShell._selectedMarkWidth / 2),
+                        ),
+                        child: const SizedBox(height: 20, width: PlatformShell._selectedMarkWidth),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: Spacing.sm),
+            ],
             Icon(destination.icon, size: 20, color: foreground),
             if (!collapsed) ...[
               const SizedBox(width: Spacing.md),

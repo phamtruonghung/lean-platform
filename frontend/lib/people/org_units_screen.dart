@@ -336,7 +336,7 @@ class _SuggestionTile extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   backgroundColor: theme.colorScheme.errorContainer,
                   labelStyle:
-                      theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onErrorContainer),
+                      theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onErrorContainer),
                 ),
             ],
           ),
@@ -476,7 +476,7 @@ class _TreeRow extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     backgroundColor: theme.colorScheme.errorContainer,
                     labelStyle:
-                        theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onErrorContainer),
+                        theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onErrorContainer),
                   ),
                 ),
               IconButton(
@@ -514,7 +514,7 @@ class _TreeRow extends StatelessWidget {
               padding: const EdgeInsets.only(left: 32),
               child: Text(
                 row.failure!,
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
+                style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.error),
               ),
             ),
           ],
