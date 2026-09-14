@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'status_tone.dart';
+
 /// Design tokens for the app: spacing, radius, and — as of issue #102 — a
 /// three-layer colour system plus a named type scale.
 ///
@@ -85,6 +87,23 @@ abstract final class _Primitives {
 
   /// 6.45:1 against white.
   static const Color warning = Color(0xFF8A5100);
+
+  /// The paired foreground for [primaryContainer] — the exact value
+  /// `ColorScheme.fromSeed(0xFF0F172A)` produces for `onPrimaryContainer` on
+  /// the pinned Flutter 3.44.0, recorded here because an `info` status chip
+  /// (issue #168) needs a text colour to sit on that fill. 7.25:1 against it.
+  static const Color onPrimaryContainer = Color(0xFF2F4578);
+
+  /// The status fills (issue #168) — one tint per [StatusTone], each measured
+  /// against its own foreground below and none below 4.5:1. `info` has no new
+  /// value here: it deliberately reuses [primaryContainer], because an
+  /// actionable status and the selected Destination are saying the same thing
+  /// ("this is the live one") and two near-identical blues a reader has to
+  /// tell apart would be worse than one that repeats.
+  static const Color neutralFill = Color(0xFFEDEEF3);
+  static const Color successFill = Color(0xFFDEEFE1);
+  static const Color warningFill = Color(0xFFFAECD6);
+  static const Color dangerFill = Color(0xFFFBE0DF);
 
   /// The scaffold background, unchanged by #102 — a cool off-white that
   /// lets cards read as one surface next to the sidebar.
@@ -181,6 +200,85 @@ abstract final class AppComponentColors {
   /// user story 21) has a token to reach for rather than a reason to invent
   /// a colour; [buildAppTheme]'s own `focusColor` already spends it.
   static const Color focusRing = AppColors.actionPrimary;
+
+  /// The mark drawn beside the selected Destination in the Shell (issue #168).
+  ///
+  /// The selected Destination already differed by fill
+  /// ([navSelectedBackground]), by foreground ([navSelectedForeground]) and by
+  /// label weight — but a pale tint against near-white is precisely the cue a
+  /// low-vision reader or a badly calibrated display loses first, and a weight
+  /// step on 14px text is a faint one. This is the cue that survives both,
+  /// and it is the same action colour the selected label is already set in,
+  /// so nothing new is being introduced into the palette.
+  static const Color navSelectedAccent = AppColors.actionPrimary;
+
+  /// The band behind a table's column labels (issue #168).
+  ///
+  /// The wide Work orders table's header row used to sit on the same white as
+  /// its data, separated by one hairline — so it read as a fifth row rather
+  /// than as a header.
+  ///
+  /// This first shipped as [AppColors.canvas] (`#F7F7FB`) and that was wrong,
+  /// caught by looking at the regenerated golden rather than by any test:
+  /// against a white row, `#F7F7FB` measures 1.02:1, which is a band nobody
+  /// can see, so the header still read as a data row. It is the neutral status
+  /// fill instead (`#EDEEF3`, 1.16:1) — still quiet, but visibly a band, the
+  /// same weight of grey every table header anybody has used already is. The
+  /// value is shared with [StatusTone.neutral] deliberately: "quiet fill"
+  /// means the same thing in both places, and two nearly identical greys would
+  /// be two things to keep in step for no gain.
+  static const Color tableHeaderFill = _Primitives.neutralFill;
+
+  /// The highlight under the pointer as it tracks across a table row
+  /// (issue #168).
+  ///
+  /// A row here is seven columns wide and is itself tappable (`_WorkOrderTableRow`'s
+  /// own `InkWell`, which opens the Work order), so the pointer's own position
+  /// is the only thing tying an ID at the left edge to an action at the right.
+  /// Material's default hover highlight is deliberately faint and, on a white
+  /// row beside six other white rows, effectively invisible — this is the
+  /// action colour at 10% over white (`#ECEEF4`), which is legible as a band
+  /// without becoming a selection state. Body text on it still measures above
+  /// 15:1, so the highlight never costs anybody readability.
+  static const Color rowHoverFill = Color(0x1A475D92);
+
+  /// The fill a status chip wears for [tone] (issue #168).
+  ///
+  /// A switch rather than a map so that adding a [StatusTone] is a compile
+  /// error here until it is given a fill — the same reason [StatusTone] keeps
+  /// the five meanings in one place. `widgets/status_chip.dart` is the only
+  /// spender today; every Screen that shows a status goes through that widget
+  /// rather than reaching for this method directly.
+  static Color statusFill(StatusTone tone) => switch (tone) {
+        StatusTone.neutral => _Primitives.neutralFill,
+        StatusTone.info => _Primitives.primaryContainer,
+        StatusTone.success => _Primitives.successFill,
+        StatusTone.warning => _Primitives.warningFill,
+        StatusTone.danger => _Primitives.dangerFill,
+      };
+
+  /// The text (and icon) colour paired with [statusFill], per [tone] — the
+  /// other half of the same binding. Every pair is measured and none is below
+  /// 4.5:1 (issue #168; `status_chip_test.dart` asserts this rather than
+  /// trusting the comment):
+  ///
+  /// | tone | against its own fill |
+  /// |------|----------------------|
+  /// | neutral | 8.11:1 |
+  /// | info | 7.25:1 |
+  /// | success | 5.46:1 |
+  /// | warning | 5.54:1 |
+  /// | danger | 5.18:1 |
+  ///
+  /// The three status roles are [AppColors]' own semantic values rather than
+  /// new ones, so a status colour is written down exactly once in this file.
+  static Color statusForeground(StatusTone tone) => switch (tone) {
+        StatusTone.neutral => AppColors.textMuted,
+        StatusTone.info => _Primitives.onPrimaryContainer,
+        StatusTone.success => AppColors.statusSuccess,
+        StatusTone.warning => AppColors.statusWarning,
+        StatusTone.danger => AppColors.statusDanger,
+      };
 }
 
 /// The Platform's type scale (issue #102). Material 3's own scale already
@@ -195,7 +293,11 @@ abstract final class AppComponentColors {
 /// - **Dense** — `bodyMedium`, 14px / 20px. Still correct for labels,
 ///   metadata and dense table cells; not being replaced.
 /// - **Floor** — `bodySmall`, 12px / 16px. Nothing in the Platform goes
-///   below this.
+///   below this. **Enforced as of issue #168**: the last labels that sat below
+///   it — including the Shell's own Destination-group heading, at 11px — were
+///   brought up to `labelMedium`, and `labelSmall` is no longer spent anywhere
+///   under `lib/`. A new label below this floor is a regression, not a
+///   judgement call.
 ///
 /// The existing Screens still reach for `bodyMedium` as their body
 /// default — migrating all of them is deliberately out of scope for #102

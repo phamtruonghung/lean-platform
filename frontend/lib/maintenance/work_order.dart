@@ -13,6 +13,8 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../status_tone.dart';
+
 /// The kinds of work a Work order can be, mirroring the CHECK constraint on
 /// `work_orders.work_type` and the backend's own `WORK_TYPES`.
 enum WorkType {
@@ -43,6 +45,36 @@ const Map<String, String> _statusLabels = {
   'completed': 'Completed',
   'closed': 'Closed',
   'cancelled': 'Cancelled',
+};
+
+/// What each of those states MEANS to somebody scanning a list (issue #168).
+///
+/// Keyed by the same wire strings as [_statusLabels] and sitting directly
+/// under it, so a status added to one map has to be considered for the other
+/// in the same edit. The mapping is deliberate rather than derived from the
+/// name, and follows the scanning question "what wants me?":
+///
+/// - `on_hold` is the only `warning`. It is the one state where work has
+///   stopped and a person has to decide something; a list that paints it like
+///   its neighbours hides the only line that needs reading.
+/// - `approved`, `scheduled` and `in_progress` share `info`: all three are
+///   live and nothing is being asked of the reader, so they group rather than
+///   compete. Their own labels still tell them apart.
+/// - `completed` and `closed` share `success`, so finished work stops
+///   competing for attention.
+/// - `draft` and `cancelled` are `neutral` — not `danger`. A cancellation is a
+///   decision somebody made, not a fault; `danger` is reserved for something
+///   actually wrong (see `StatusTone`), and spending it here would make an
+///   ordinary cancellation look like an error on every list that shows one.
+const Map<String, StatusTone> _statusTones = {
+  'draft': StatusTone.neutral,
+  'approved': StatusTone.info,
+  'scheduled': StatusTone.info,
+  'in_progress': StatusTone.info,
+  'on_hold': StatusTone.warning,
+  'completed': StatusTone.success,
+  'closed': StatusTone.success,
+  'cancelled': StatusTone.neutral,
 };
 
 @immutable
@@ -135,6 +167,12 @@ class WorkOrder {
   /// [workTypeLabel] follows.
   String get statusLabel => _statusLabels[status] ?? status;
 
+  /// What [status] means to somebody scanning this list (issue #168) — the
+  /// tone `widgets/status_chip.dart` paints. Falls back to [StatusTone.neutral]
+  /// for a status this build does not know about, matching [statusLabel]'s own
+  /// fallback: an unknown state is shown plainly rather than shouted about.
+  StatusTone get statusTone => _statusTones[status] ?? StatusTone.neutral;
+
   /// Every label [statusLabel] can produce for a status this build knows
   /// about (issue #105) — the wide table's own Status column reads this to
   /// size itself to the longest one, rather than a width tuned to whichever
@@ -161,6 +199,18 @@ const Map<String, String> _taskStatusLabels = {
   'done': 'Done',
   'skipped': 'Skipped',
   'failed': 'Failed',
+};
+
+/// What each step's state means (issue #168). `failed` is the client's one
+/// legitimate `danger`: a step that was attempted and did not work is the
+/// only status in the Platform that is a fault rather than a stage or a
+/// decision. `skipped` is `neutral` rather than a warning — somebody chose to
+/// step over it, and a finished Work order full of amber would be noise.
+const Map<String, StatusTone> _taskStatusTones = {
+  'pending': StatusTone.neutral,
+  'done': StatusTone.success,
+  'skipped': StatusTone.neutral,
+  'failed': StatusTone.danger,
 };
 
 /// One step copied onto a Work order from the Job plan that raised it, as
@@ -212,6 +262,10 @@ class WorkOrderTask {
   bool get hasMeter => assetMeterId != null;
 
   String get statusLabel => _taskStatusLabels[status] ?? status;
+
+  /// What [status] means to somebody reading a Work order's steps (issue
+  /// #168) — see [_taskStatusTones].
+  StatusTone get statusTone => _taskStatusTones[status] ?? StatusTone.neutral;
 }
 
 /// The transitions offered from a status (issue #63) — `approved` offers

@@ -19,6 +19,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'labour_booking_dialog.dart';
 import 'part_booking_dialog.dart';
 import 'task_reading_dialog.dart';
@@ -471,7 +472,7 @@ class _WorkOrderTaskRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: Spacing.sm),
-          Chip(label: Text(task.statusLabel), visualDensity: VisualDensity.compact),
+          StatusChip(label: task.statusLabel, tone: task.statusTone),
         ],
       ),
     );

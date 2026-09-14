@@ -14,6 +14,8 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../status_tone.dart';
+
 /// The Downtime event states, mirroring the GENERATED `downtime_events.status`
 /// column. A label for each known value, with the wire string itself as the
 /// fallback for one this build does not know about — the same fallback
@@ -22,6 +24,19 @@ const Map<String, String> _statusLabels = {
   'open': 'Open',
   'unclassified': 'Unclassified',
   'closed': 'Closed',
+};
+
+/// What each Downtime state means to somebody reading the log (issue #168).
+///
+/// `open` is `warning` — an Asset that is not running is the thing a shift is
+/// losing minutes to, so it is the one state that has to catch the eye.
+/// `unclassified` is `info`: the event is over or being handled but still
+/// wants a reason, which is a task rather than an alarm. `closed` is
+/// `success`, the same "finished" reading a completed Work order gets.
+const Map<String, StatusTone> _statusTones = {
+  'open': StatusTone.warning,
+  'unclassified': StatusTone.info,
+  'closed': StatusTone.success,
 };
 
 /// One Downtime reason from `GET /api/maintenance/downtime-reasons` — the
@@ -114,6 +129,11 @@ class DowntimeEvent {
   static const String closedStatus = 'closed';
 
   String get statusLabel => _statusLabels[status] ?? status;
+
+  /// What [status] means to somebody reading the log (issue #168) — the tone
+  /// `widgets/status_chip.dart` paints. Falls back to [StatusTone.neutral] for
+  /// a status this build does not know about, matching [statusLabel].
+  StatusTone get statusTone => _statusTones[status] ?? StatusTone.neutral;
 
   /// Whether the stop is still running — the one state Close is offered in.
   bool get isOpen => status == openStatus;

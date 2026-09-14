@@ -10,6 +10,8 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../status_tone.dart';
+
 /// The urgency the reporter chose, mirroring the CHECK constraint on
 /// `maintenance_requests.urgency` and the backend's own `URGENCIES`. This is
 /// the reporter's judgement and is deliberately **not** the Work order's own
@@ -37,6 +39,22 @@ const Map<String, String> _statusLabels = {
   'accepted': 'Accepted',
   'rejected': 'Rejected',
   'duplicate': 'Duplicate',
+};
+
+/// What each Request state means to whoever is reading the queue (issue #168).
+///
+/// `new` is the `warning` here for the same reason `on_hold` is for a Work
+/// order: it is the one state that is waiting on the reader to do something.
+/// `triaged` is `info` (in hand, moving), `accepted` is `success` (it became a
+/// Work order), and `rejected`/`duplicate` are `neutral` — both are decisions
+/// somebody made, and painting either red would make an ordinary triage
+/// outcome look like a failure.
+const Map<String, StatusTone> _statusTones = {
+  'new': StatusTone.warning,
+  'triaged': StatusTone.info,
+  'accepted': StatusTone.success,
+  'rejected': StatusTone.neutral,
+  'duplicate': StatusTone.neutral,
 };
 
 /// The Work order an accepted Request produced, as the nested `workOrder` map
@@ -132,6 +150,12 @@ class Request {
       ]);
 
   String get statusLabel => _statusLabels[status] ?? status;
+
+  /// What [status] means to whoever is reading the queue (issue #168) — the
+  /// tone `widgets/status_chip.dart` paints. Falls back to
+  /// [StatusTone.neutral] for a status this build does not know about, the
+  /// same way [statusLabel] falls back to the wire string.
+  StatusTone get statusTone => _statusTones[status] ?? StatusTone.neutral;
 
   static String _labelFor(String wire, List<(String, String)> known) {
     for (final (value, label) in known) {
