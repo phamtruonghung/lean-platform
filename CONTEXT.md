@@ -143,9 +143,10 @@ Assignment is what it produces)
 **Asset**:
 The machine, cell, tool or utility that work is done on. An Asset sits at
 exactly one Org Unit, and that placement is what decides who may work on it —
-scope follows the Asset, never the job. Assets nest, so a gearbox belongs to
-the press it is fitted to, and "everything on this line" reaches the components
-beneath it.
+scope follows the Asset, never the job. That placement can be corrected, and the
+work already recorded against the Asset keeps the Org Unit it was raised at.
+Assets nest, so a gearbox belongs to the press it is fitted to, and
+"everything on this line" reaches the components beneath it.
 _Avoid_: Equipment, machine (one kind of Asset), item, resource, tag
 
 **Request**:
