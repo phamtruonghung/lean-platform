@@ -55,76 +55,131 @@ abstract final class AppRadius {
 /// Layer 1 — primitives. Raw values only, and only the ones a semantic or
 /// component token below actually spends.
 ///
-/// `primary`, `onPrimary`, `primaryContainer`, `error`, `onSurface` and
-/// `onSurfaceVariant` are `ColorScheme.fromSeed(0xFF0F172A)`'s own output on
-/// the pinned Flutter 3.44.0 — dumped once against the real SDK and
-/// recorded here as literals rather than re-derived, since `fromSeed`'s
-/// algorithm is not guaranteed stable across Flutter releases (issue #102).
-/// The same seed also produces `onPrimaryContainer` (`#2F4578`), `outline`
-/// (`#757780`), `outlineVariant` (`#C5C6D0`) and `surfaceContainerHighest`
-/// (`#E2E2E9`); those four earn no constant here because nothing in the app
-/// spends them by name — they are read straight off
-/// `Theme.of(context).colorScheme` where they are used (the selected nav
-/// item's `_AccountFooter` avatar in `platform/shell.dart`, and
-/// `widgets/skeleton_list.dart`'s placeholder fill), which is theme-derived
-/// rather than a literal, so naming them again here would just be a second
-/// copy of a value Flutter already hands out.
+/// **Where these values come from (issue #169).** The palette is the
+/// `ui-ux-pro-max` design skill's own "Analytics Dashboard" scheme, adopted
+/// wholesale on the user's explicit approval: primary `#1E40AF` with white on
+/// it, secondary `#3B82F6`, background `#F8FAFC`, foreground `#1E3A8A`,
+/// muted `#E9EEF6` with `#475569` on it, border `#DBEAFE`, destructive
+/// `#DC2626`, and a primary-coloured ring. The skill's own accent (`#D97706`,
+/// amber) is the family this Platform already spends through
+/// [StatusTone.warning], so it is not carried as a separate token nothing
+/// would read.
 ///
-/// `success` and `warning` fill the two status roles Material 3 does not
-/// define. Both were chosen, and measured rather than estimated, to sit
-/// alongside `primary` and `error`, which each measure 6.46:1 against
-/// white.
+/// This **supersedes #102's own choice of seed**, which kept the standalone
+/// dark slate the Platform was born with (`#0F172A`) and recorded its
+/// `fromSeed` output as literals. #102's reasoning was that the Platform
+/// absorbs two predecessor applications and should not inherit either one's
+/// palette — a concern this palette does not raise, because it comes from the
+/// design skill's own dashboard scheme rather than from
+/// `employee-management`'s indigo. Two things #102 got right and this keeps:
+/// the values are still written down exactly once, here, and the three-layer
+/// structure above is untouched.
+///
+/// Every pair this file hands out was measured rather than estimated, and the
+/// ratio is recorded beside it (a measurement, not a claim that something
+/// "looks fine"): foreground 10.36:1 on a card and 9.90:1 on the canvas, muted
+/// foreground 7.58:1 and 7.24:1, white on primary 8.72:1, primary on its own
+/// container 8.49:1, and all five status tones between 5.3:1 and 8.5:1
+/// (see [AppComponentColors.statusForeground]'s own table).
 abstract final class _Primitives {
-  static const Color primary = Color(0xFF475D92);
+  /// The skill's `--color-primary`. 8.72:1 against white, in both directions.
+  static const Color primary = Color(0xFF1E40AF);
   static const Color onPrimary = Color(0xFFFFFFFF);
-  static const Color primaryContainer = Color(0xFFD9E2FF);
-  static const Color error = Color(0xFFBA1A1A);
-  static const Color onSurface = Color(0xFF1A1B20);
-  static const Color onSurfaceVariant = Color(0xFF44464F);
 
-  /// 6.53:1 against white.
-  static const Color success = Color(0xFF146C2E);
+  /// The skill's `--color-secondary` `#3B82F6` and its own `on-secondary`.
+  /// Nothing spends these yet — the Platform has one action colour and does
+  /// not need a second — but they are what the scheme pairs, and a future
+  /// secondary affordance should reach for them rather than invent a blue.
+  static const Color secondary = Color(0xFF3B82F6);
+  static const Color onSecondary = Color(0xFF000000);
 
-  /// 6.45:1 against white.
-  static const Color warning = Color(0xFF8A5100);
+  /// The selected Destination's fill and the colour on it: the skill's
+  /// `--color-border` blue-100 reused as a container, with the scheme's own
+  /// foreground on top (8.49:1).
+  static const Color primaryContainer = Color(0xFFDBEAFE);
+  static const Color onPrimaryContainer = Color(0xFF1E3A8A);
 
-  /// The paired foreground for [primaryContainer] — the exact value
-  /// `ColorScheme.fromSeed(0xFF0F172A)` produces for `onPrimaryContainer` on
-  /// the pinned Flutter 3.44.0, recorded here because an `info` status chip
-  /// (issue #168) needs a text colour to sit on that fill. 7.25:1 against it.
-  static const Color onPrimaryContainer = Color(0xFF2F4578);
+  /// The skill's `--color-destructive`. 4.83:1 against white — the floor for
+  /// text, and exactly why the *status* red below is a shade darker: red on
+  /// its own tint is not the same measurement as red on white.
+  static const Color error = Color(0xFFDC2626);
+  static const Color onError = Color(0xFFFFFFFF);
+
+  /// The container a Chip wears when it is saying "this one is out of action"
+  /// — Retired, Departed, Inactive — and the text on it (6.8:1).
+  static const Color errorContainer = Color(0xFFFEE2E2);
+  static const Color onErrorContainer = Color(0xFF991B1B);
+
+  /// The skill's `--color-background`: the scaffold behind every card.
+  static const Color canvas = Color(0xFFF8FAFC);
+
+  /// The skill's `--color-foreground`. 10.36:1 on a card, 9.90:1 on the
+  /// canvas. A cool near-black rather than the neutral one the Platform used
+  /// to carry: against a slate canvas and blue-bordered cards, a neutral
+  /// black reads as a colour from a different family.
+  static const Color onSurface = Color(0xFF1E3A8A);
+
+  /// The skill's `--color-muted-foreground`. 7.58:1 on a card, 7.24:1 on the
+  /// canvas.
+  static const Color onSurfaceVariant = Color(0xFF475569);
+
+  /// The skill's `--color-muted` — the canvas the selected Destination and the
+  /// table's own header band are drawn on, and the neutral status tone's fill.
+  /// Against white it is 1.17:1: a band, never text.
+  static const Color muted = Color(0xFFE9EEF6);
+
+  /// The skill's `--color-border` — the hairline around a flattened card and
+  /// under a table's header band. 1.22:1 against white: a hairline, never
+  /// text.
+  static const Color edge = Color(0xFFDBEAFE);
+
+  /// Plain white: the panel surface, a card's own fill, and the fill of every
+  /// input.
+  static const Color white = Color(0xFFFFFFFF);
+
+  /// The three status roles Material 3 does not define: success, warning and
+  /// the darker red a status wears *on its own tint* (5.3:1 there, where
+  /// [error] alone would measure 3.95:1). Each is the darker shade of its own
+  /// family — green-800, orange-800, red-700 — chosen for the floor rather
+  /// than for taste, and each measured against its own fill below.
+  ///
+  /// **Warning is orange, not amber** (`#9A3412`, orange-800). The first value
+  /// tried was amber-800 (`#92400E`), which measures 6.37:1 and is legible —
+  /// and next to the green it reads as *brown*, which nobody scans as "warn".
+  /// Orange-800 measures 6.56:1 on the amber tint and 6.38:1 on the orange one
+  /// below, and is unmistakably the middle of the three.
+  static const Color success = Color(0xFF166534);
+  static const Color warning = Color(0xFF9A3412);
+  static const Color danger = Color(0xFFB91C1C);
+
+  /// The rim of an outlined control — an `OutlinedButton`, a picker's own
+  /// panel, an input's border. 4.76:1 against white, which matters twice: a
+  /// border below 3:1 fails WCAG 1.4.11 (non-text contrast) outright, and the
+  /// near-white hairline this Platform used to derive from its seed left every
+  /// outlined control reading as disabled rather than pressable. It is slate,
+  /// not blue: a blue rim at this weight competes with the action colour,
+  /// which is what a border is supposed to sit behind.
+  static const Color outline = Color(0xFF64748B);
 
   /// The status fills (issue #168) — one tint per [StatusTone], each measured
   /// against its own foreground below and none below 4.5:1. `info` has no new
-  /// value here: it deliberately reuses [primaryContainer], because an
-  /// actionable status and the selected Destination are saying the same thing
-  /// ("this is the live one") and two near-identical blues a reader has to
-  /// tell apart would be worse than one that repeats.
-  static const Color neutralFill = Color(0xFFEDEEF3);
-  static const Color successFill = Color(0xFFDEEFE1);
-  static const Color warningFill = Color(0xFFFAECD6);
-  static const Color dangerFill = Color(0xFFFBE0DF);
-
-  /// The scaffold background, unchanged by #102 — a cool off-white that
-  /// lets cards read as one surface next to the sidebar.
-  static const Color canvas = Color(0xFFF7F7FB);
-
-  /// The hairline every flattened card and panel uses, unchanged by #102.
-  static const Color edge = Color(0xFFE3E3EC);
-
-  /// Plain white — the sidebar and filled-input surface. Unchanged by
-  /// #102: it was already this exact value as a `Colors.white` literal in
-  /// `platform/shell.dart` and in this file's own `InputDecorationTheme`
-  /// before this rewrite gave it a name.
-  static const Color white = Color(0xFFFFFFFF);
+  /// value: it deliberately reuses [primaryContainer], because an actionable
+  /// status and the selected Destination are saying the same thing ("this is
+  /// the live one") and two near-identical blues a reader has to tell apart
+  /// would be worse than one that repeats.
+  static const Color neutralFill = Color(0xFFE9EEF6);
+  static const Color successFill = Color(0xFFDCFCE7);
+  static const Color warningFill = Color(0xFFFFEDD5);
+  static const Color dangerFill = Color(0xFFFEE2E2);
 }
 
 /// Layer 2 — semantic tokens, named for the role they play rather than
 /// their appearance. This is the layer a Screen reaches for; see this
 /// file's top doc comment for the full three-layer picture (issue #102).
 ///
-/// `canvas` and `edge` predate this rewrite and keep both their names and
-/// their values unchanged — only their place in the layering is new.
+/// `canvas` and `edge` keep both their names and their places; their values
+/// are the skill's own `--color-background` and `--color-border` (issue
+/// #169), where #102 had them as a cool off-white and a neutral hairline.
 abstract final class AppColors {
   // --- surface ---
 
@@ -161,18 +216,28 @@ abstract final class AppColors {
 
   // --- status ---
 
-  /// An error, or a destructive action. Backed by Material 3's own `error`
-  /// role, carried across under a status name so a Screen never has to
-  /// choose between this and `theme.colorScheme.error` and risk two
-  /// different answers.
-  static const Color statusDanger = _Primitives.error;
+  /// An error, or a destructive action — but the *darker* red (5.3:1), not
+  /// the theme's own `colorScheme.error` (`#DC2626`, 4.83:1 on white). The two
+  /// are the same family and different jobs: `#DC2626` is red on white, which
+  /// is what a destructive button and a form error need; this is red on its
+  /// own pale tint, where `#DC2626` measures 3.95:1 and would fail the floor.
+  /// A Screen reaches for this one whenever the red is a status rather than a
+  /// call to action.
+  static const Color statusDanger = _Primitives.danger;
 
-  /// Success. Material 3 has no role for this, so #102 adds one — 6.53:1
-  /// against white. Replaces the `Colors.green.shade700` that used to sit
-  /// in `home_screen.dart` at 4.12:1, below the 4.5:1 floor.
+  /// Success. Material 3 has no role for this, so #102 adds one. The value is
+  /// the skill palette's green family at the shade that measures against its
+  /// own tint rather than against white — 6.49:1, where green-600 (`#16A34A`)
+  /// measures 3.0:1 and would be a status nobody with ordinary sight could
+  /// read on a chip.
   static const Color statusSuccess = _Primitives.success;
 
-  /// Warning. Likewise absent from Material 3 — 6.45:1 against white.
+  /// Warning. Likewise absent from Material 3, and **orange rather than
+  /// amber**: the skill's accent (`#D97706`) is this family's mid-tone and
+  /// measures 2.86:1 on the tint — a highlight, never a text colour — and
+  /// amber-800 measures 6.37:1 but reads as brown beside the green. This is
+  /// orange-800 at 6.38:1 on the orange tint, which is the middle of the three
+  /// the moment a reader looks at a list.
   static const Color statusWarning = _Primitives.warning;
 }
 
@@ -218,15 +283,14 @@ abstract final class AppComponentColors {
   /// its data, separated by one hairline — so it read as a fifth row rather
   /// than as a header.
   ///
-  /// This first shipped as [AppColors.canvas] (`#F7F7FB`) and that was wrong,
-  /// caught by looking at the regenerated golden rather than by any test:
-  /// against a white row, `#F7F7FB` measures 1.02:1, which is a band nobody
-  /// can see, so the header still read as a data row. It is the neutral status
-  /// fill instead (`#EDEEF3`, 1.16:1) — still quiet, but visibly a band, the
-  /// same weight of grey every table header anybody has used already is. The
-  /// value is shared with [StatusTone.neutral] deliberately: "quiet fill"
-  /// means the same thing in both places, and two nearly identical greys would
-  /// be two things to keep in step for no gain.
+  /// The first band value shipped was `#F7F7FB`, and that was wrong, caught by
+  /// looking at the regenerated golden rather than by any test: against a white
+  /// row it measures 1.02:1, a band nobody can see, so the header still read as
+  /// a data row. It is the palette's own muted `#E9EEF6` (1.17:1) — still
+  /// quiet, but visibly a band. The value is shared with
+  /// [StatusTone.neutral] deliberately: "quiet fill" means the same thing in
+  /// both places, and two nearly identical greys would be two things to keep in
+  /// step for no gain.
   static const Color tableHeaderFill = _Primitives.neutralFill;
 
   /// The highlight under the pointer as it tracks across a table row
@@ -237,10 +301,10 @@ abstract final class AppComponentColors {
   /// is the only thing tying an ID at the left edge to an action at the right.
   /// Material's default hover highlight is deliberately faint and, on a white
   /// row beside six other white rows, effectively invisible — this is the
-  /// action colour at 10% over white (`#ECEEF4`), which is legible as a band
-  /// without becoming a selection state. Body text on it still measures above
-  /// 15:1, so the highlight never costs anybody readability.
-  static const Color rowHoverFill = Color(0x1A475D92);
+  /// action colour at 10% over white (`#E8ECF7`), which is legible as a band
+  /// without becoming a selection state. Body text on it measures 8.77:1 and
+  /// muted metadata 6.41:1, so the highlight never costs anybody readability.
+  static const Color rowHoverFill = Color(0x1A1E40AF);
 
   /// The fill a status chip wears for [tone] (issue #168).
   ///
@@ -258,17 +322,17 @@ abstract final class AppComponentColors {
       };
 
   /// The text (and icon) colour paired with [statusFill], per [tone] — the
-  /// other half of the same binding. Every pair is measured and none is below
-  /// 4.5:1 (issue #168; `status_chip_test.dart` asserts this rather than
-  /// trusting the comment):
+  /// other half of the same binding. Every pair is measured, none is below the
+  /// 4.5:1 floor, and `status_chip_test.dart` measures them again rather than
+  /// trusting this table:
   ///
   /// | tone | against its own fill |
   /// |------|----------------------|
-  /// | neutral | 8.11:1 |
-  /// | info | 7.25:1 |
-  /// | success | 5.46:1 |
-  /// | warning | 5.54:1 |
-  /// | danger | 5.18:1 |
+  /// | neutral | 6.50:1 |
+  /// | info | 8.49:1 |
+  /// | success | 6.49:1 |
+  /// | warning | 6.38:1 |
+  /// | danger | 5.30:1 |
   ///
   /// The three status roles are [AppColors]' own semantic values rather than
   /// new ones, so a status colour is written down exactly once in this file.
@@ -315,21 +379,24 @@ abstract final class AppTypography {
 
 /// Builds the app theme.
 ///
-/// Matches the pre-existing look exactly — same seed, same canvas, same
-/// flattened cards and filled inputs — just moved here so screens share it
-/// instead of each shipping their own copy. The seed is the Platform's own
-/// dark slate, moved here from the inline `ThemeData` that used to live in
-/// `main.dart`; `employee-management`'s indigo is deliberately not inherited
-/// — the Platform absorbs both predecessors, and adopting either predecessor's
-/// palette would make it read as that application grown larger (issue #33's
-/// Implementation Decisions).
+/// The palette is the `ui-ux-pro-max` design skill's own "Analytics Dashboard"
+/// scheme (issue #169), approved by the user: blue data, amber warnings, red
+/// failures. `colorScheme` is built from that palette and pinned role by role
+/// rather than left to `fromSeed` alone — the scheme's own algorithm picks
+/// *companion* tones for the roles this file does not name, but every role the
+/// Platform reads is the value written down in [_Primitives], so a Flutter
+/// upgrade cannot quietly restyle the app.
 ///
-/// #102 changes what feeds this function, not what it produces: every
-/// colour written here is now a named token from [AppColors] or
-/// [AppComponentColors] rather than a literal, and no pixel moves as a
-/// result — [AppColors.card] and [AppComponentColors.cardBorder] are the
-/// same white and the same hairline the old `Colors.white` literal and
-/// `AppColors.edge` already were.
+/// This **replaces #102's seed** (`#0F172A`, the dark slate the Platform was
+/// born with). #102's own reasoning — that the Platform absorbs two
+/// predecessor applications and should read as neither — still holds, and this
+/// palette does not raise it: it is the design skill's own dashboard scheme,
+/// not a predecessor's colours.
+///
+/// #102's other decision is untouched: every colour here is a named token from
+/// [AppColors] or [AppComponentColors], never a literal at a call site, and
+/// the flattened cards, filled inputs and flattened elevation below are
+/// unchanged.
 ThemeData buildAppTheme() {
   // A focused control's own visible ring (#99 user story 21, #104's own
   // accessibility criteria): `focusColor` above feeds `InkWell`/`Focus`
@@ -353,9 +420,57 @@ ThemeData buildAppTheme() {
         : null,
   );
 
+  // The palette, pinned role by role (issue #169). `fromSeed` still picks the
+  // *companion* tones for the roles this file does not name — the inverse
+  // roles, the tertiary family, the surface tints nothing here reads — but
+  // every role the Platform actually renders is the value written down in
+  // `_Primitives`, so `fromSeed`'s algorithm (which #102 already noted is not
+  // guaranteed stable across Flutter releases) cannot quietly restyle the app
+  // on the next upgrade.
+  final scheme = ColorScheme.fromSeed(seedColor: _Primitives.primary).copyWith(
+    primary: _Primitives.primary,
+    onPrimary: _Primitives.onPrimary,
+    primaryContainer: _Primitives.primaryContainer,
+    onPrimaryContainer: _Primitives.onPrimaryContainer,
+    secondary: _Primitives.secondary,
+    onSecondary: _Primitives.onSecondary,
+    error: _Primitives.error,
+    onError: _Primitives.onError,
+    errorContainer: _Primitives.errorContainer,
+    onErrorContainer: _Primitives.onErrorContainer,
+    surface: _Primitives.white,
+    onSurface: _Primitives.onSurface,
+    onSurfaceVariant: _Primitives.onSurfaceVariant,
+    // The hairline. Every table row, card and panel reaches for this through
+    // `outlineVariant` (`_WorkOrderTableRow`'s own bottom border), so it is
+    // the palette's border rather than a generated one.
+    outlineVariant: _Primitives.edge,
+    // The rim of an outlined control, which is a different job from the
+    // hairline above and needs a different weight to do it: 4.76:1 rather than
+    // 1.22:1, so an OutlinedButton or an input reads as something you can
+    // press. Left to `fromSeed`, this came out a neutral grey at roughly 1.6:1
+    // and every outlined control read as disabled.
+    outline: _Primitives.outline,
+    // Read by the skeleton placeholders and the sidebar's own avatar fill.
+    surfaceContainerHighest: _Primitives.muted,
+    // A deliberate binding to what this client actually paints with the role
+    // (issue #169): every write confirmation in the Platform — "Work order
+    // raised", "Employee corrected" — is a notice banner wearing
+    // `secondaryContainer` with `onSecondaryContainer` on it, and failures wear
+    // `errorContainer` beside them. So the "something worked" surface is the
+    // success pair, and a confirmation reads green the way the green status
+    // does rather than as a second, unexplained lavender.
+    //
+    // This is a statement about this client's use of the role, not a claim
+    // about Material's secondary semantics: a future Screen that wants a real
+    // secondary colour needs its own token rather than this one.
+    secondaryContainer: _Primitives.successFill,
+    onSecondaryContainer: _Primitives.success,
+  );
+
   return ThemeData(
     useMaterial3: true,
-    colorSchemeSeed: const Color(0xFF0F172A),
+    colorScheme: scheme,
     fontFamily: 'Roboto',
     scaffoldBackgroundColor: AppColors.canvas,
     focusColor: AppComponentColors.focusRing.withValues(alpha: 0.12),
