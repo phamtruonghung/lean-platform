@@ -10,6 +10,8 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../status_tone.dart';
+
 /// The urgency the reporter chose, mirroring the CHECK constraint on
 /// `maintenance_requests.urgency` and the backend's own `URGENCIES`. This is
 /// the reporter's judgement and is deliberately **not** the Work order's own
@@ -31,12 +33,21 @@ enum RequestUrgency {
 /// `maintenance_requests.status`. A label for each known value, with the wire
 /// string itself as the fallback for one this build does not know about — the
 /// same fallback `WorkOrder.statusLabel` follows.
-const Map<String, String> _statusLabels = {
-  'new': 'New',
-  'triaged': 'Triaged',
-  'accepted': 'Accepted',
-  'rejected': 'Rejected',
-  'duplicate': 'Duplicate',
+///
+/// One map per state set — label and tone together, the same shape
+/// `WorkOrder`'s own map uses (issue #168).
+/// `new` is the `warning` here for the same reason `on_hold` is for a Work
+/// order: it is the one state that is waiting on the reader to do something.
+/// `triaged` is `info` (in hand, moving), `accepted` is `success` (it became a
+/// Work order), and `rejected`/`duplicate` are `neutral` — both are decisions
+/// somebody made, and painting either red would make an ordinary triage
+/// outcome look like a failure.
+const Map<String, (String, StatusTone)> _statuses = {
+  'new': ('New', StatusTone.warning),
+  'triaged': ('Triaged', StatusTone.info),
+  'accepted': ('Accepted', StatusTone.success),
+  'rejected': ('Rejected', StatusTone.neutral),
+  'duplicate': ('Duplicate', StatusTone.neutral),
 };
 
 /// The Work order an accepted Request produced, as the nested `workOrder` map
@@ -52,7 +63,12 @@ class RequestWorkOrder {
   final String workOrderNo;
   final String status;
 
-  String get statusLabel => _statusLabels[status] ?? status;
+  /// The nested Work order's own state. Looked up in the Request's map, which
+  /// is a latent bug rather than a decision (a Work order status is not a
+  /// Request status, so this falls back to the raw wire string today) — but
+  /// nothing renders it (issue #168 verified that by grep), so it is left for
+  /// a ticket that can fix it with a test rather than fixed blind here.
+  String get statusLabel => _statuses[status]?.$1 ?? status;
 }
 
 @immutable
@@ -131,7 +147,13 @@ class Request {
         for (final urgency in RequestUrgency.values) (urgency.wire, urgency.label),
       ]);
 
-  String get statusLabel => _statusLabels[status] ?? status;
+  String get statusLabel => _statuses[status]?.$1 ?? status;
+
+  /// What [status] means to whoever is reading the queue (issue #168) — the
+  /// tone `widgets/status_chip.dart` paints. Falls back to
+  /// [StatusTone.neutral] for a status this build does not know about, the
+  /// same way [statusLabel] falls back to the wire string.
+  StatusTone get statusTone => _statuses[status]?.$2 ?? StatusTone.neutral;
 
   static String _labelFor(String wire, List<(String, String)> known) {
     for (final (value, label) in known) {

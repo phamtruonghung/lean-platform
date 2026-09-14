@@ -45,6 +45,8 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_search_field.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
 import 'org_unit_form_dialog.dart';
@@ -331,13 +333,7 @@ class _SuggestionTile extends StatelessWidget {
                 child: Text('${orgUnit.name} · ${orgUnit.code}', style: theme.textTheme.bodyMedium),
               ),
               if (!orgUnit.isActive)
-                Chip(
-                  label: const Text('Retired'),
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: theme.colorScheme.errorContainer,
-                  labelStyle:
-                      theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onErrorContainer),
-                ),
+                StatusChip(label: 'Retired', tone: StatusTone.neutral),
             ],
           ),
           if (ancestorNames.isNotEmpty)
@@ -471,13 +467,7 @@ class _TreeRow extends StatelessWidget {
                 Padding(
                   key: OrgUnitsScreen.retiredChipKey(node.id),
                   padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                  child: Chip(
-                    label: const Text('Retired'),
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: theme.colorScheme.errorContainer,
-                    labelStyle:
-                        theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onErrorContainer),
-                  ),
+                  child: StatusChip(label: 'Retired', tone: StatusTone.neutral),
                 ),
               IconButton(
                 key: OrgUnitsScreen.addChildKey(node.id),
@@ -514,7 +504,7 @@ class _TreeRow extends StatelessWidget {
               padding: const EdgeInsets.only(left: 32),
               child: Text(
                 row.failure!,
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
+                style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.error),
               ),
             ),
           ],

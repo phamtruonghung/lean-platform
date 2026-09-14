@@ -76,6 +76,8 @@ import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/disclosing_text.dart';
+import '../widgets/status_chip.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import 'org_unit_chooser.dart';
@@ -151,6 +153,32 @@ class WorkOrdersScreen extends StatelessWidget {
   static const ValueKey<String> clearFilterKey = ValueKey<String>('work-orders-clear-filter');
   static const ValueKey<String> noticeKey = ValueKey<String>('work-orders-notice');
   static const ValueKey<String> retryKey = ValueKey<String>('work-orders-retry');
+
+  /// The line that says how many Work orders are on screen (issue #168).
+  static const ValueKey<String> countKey = ValueKey<String>('work-orders-count');
+
+  /// What [countKey]'s line reads, given the loaded state (issue #168).
+  ///
+  /// Private, and the tests go through the Screen rather than calling this: a
+  /// review of the first version pointed out that it was public "so the wording
+  /// is asserted directly", while every test asserting the wording did so
+  /// through `find.text` — a public accessor with no caller, kept alive by a
+  /// doc comment. The three wordings it can produce *are* covered
+  /// (`work_orders_test.dart`'s own `legibility (#168)` group asserts the
+  /// plural, the singular, a narrowing and the history opt-in, and asserts the
+  /// line is absent where the empty state speaks).
+  ///
+  /// The noun is the domain's own ("Work order", per CONTEXT.md), singular
+  /// when there is exactly one. Narrowing and history are named only when
+  /// they are actually in force, so nothing here claims a filter nobody set.
+  static String _countLabel(WorkOrdersLoaded loaded) {
+    final count = loaded.workOrders.length;
+    final noun = count == 1 ? 'Work order' : 'Work orders';
+    final narrowed =
+        loaded.orgUnitFilterName == null ? '' : ', narrowed to ${loaded.orgUnitFilterName}';
+    final history = loaded.showHistory ? ', including completed and cancelled' : '';
+    return '$count $noun$narrowed$history';
+  }
 
   /// The "nothing has ever been raised" empty state (issue #103's
   /// `EmptyStateVariant.noneExist`) — unfiltered, genuinely nothing at this
@@ -421,6 +449,27 @@ class _Header extends StatelessWidget {
                       : (value) =>
                           context.read<WorkOrdersBloc>().add(WorkOrdersShowHistoryChanged(value)),
                 ),
+                // How much is on screen, in the domain's own words (issue
+                // #168). Not a footer under the list, and that is a deliberate
+                // departure from the ticket's own first wording: the list is a
+                // lazy `ListView`, so a footer is only reached by scrolling to
+                // the bottom — the one place a reader who is wondering "is this
+                // everything?" is least likely to be. Here, beside the controls
+                // that changed it, it is always visible.
+                //
+                // Suppressed when nothing is shown: the empty state already
+                // speaks, and "0 Work orders" above it would be the same fact
+                // said twice (and would read as an error rather than as the
+                // state the Screen has its own words for).
+                if (loaded.workOrders.isNotEmpty) ...[
+                  const SizedBox(height: Spacing.md),
+                  Text(
+                    WorkOrdersScreen._countLabel(loaded),
+                    key: WorkOrdersScreen.countKey,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
               ],
             ],
           ),
@@ -659,21 +708,38 @@ class _WorkOrderTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context)
-        .textTheme
-        .labelMedium
-        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
+    final theme = Theme.of(context);
+    // The header reads as a header (issue #168) by spending two things the
+    // data rows do not: a band behind it, and weight on its labels. The
+    // labels were `onSurfaceVariant` in `labelMedium` — the same colour and
+    // size as the metadata in the rows below, separated from them by one
+    // hairline, which is why the row read as a fifth row of data.
+    //
+    // Sentence case and 12px are kept deliberately: uppercasing is the
+    // Shell's own Destination-group device (`_GroupHeading`), and the column
+    // names are the domain's words ("WO#", "Org Unit"), not decoration. The
+    // hairline under the band is the same `outlineVariant` every row's own
+    // bottom border uses, so the table still reads as one table.
+    final style = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurface,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.2,
+    );
     Widget label(String text, int flex) => Expanded(flex: flex, child: Text(text, style: style));
-    return Padding(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppComponentColors.tableHeaderFill,
+        border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
       child: Row(
         children: [
           label('WO#', 2),
           label('Summary', 4),
-          label('Asset', 3),
+          label('Asset', 4),
           label('Org Unit', 2),
           SizedBox(width: _statusColumnWidth(context), child: Text('Status', style: style)),
-          label('Assignee', 2),
+          label('Assignee', 3),
           SizedBox(width: _actionsColumnWidth, child: Text('Actions', style: style)),
         ],
       ),
@@ -695,11 +761,20 @@ class _WorkOrderTableRow extends StatelessWidget {
     final busy = state is WorkOrdersLoaded && (state.isAssigning || state.isTransitioning);
     final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
 
-    Widget cell(String text, int flex, {TextStyle? style}) => Expanded(
+    // `disclose` covers the two cells whose values are genuinely unbounded —
+    // an Asset's name and code, and an Assignee's name — so a clipped value
+    // can still be read in full (issue #168, `DisclosingText`). The other
+    // cells hold values this Screen's own schema bounds (a Work order number,
+    // a status label, an Org Unit name that the column split now fits), so
+    // wrapping them too would put a tooltip on every cell of every row for no
+    // reason.
+    Widget cell(String text, int flex, {TextStyle? style, bool disclose = false}) => Expanded(
           flex: flex,
           child: Padding(
             padding: const EdgeInsets.only(right: Spacing.sm),
-            child: Text(text, overflow: TextOverflow.ellipsis, style: style),
+            child: disclose
+                ? DisclosingText(text, style: style)
+                : Text(text, overflow: TextOverflow.ellipsis, style: style),
           ),
         );
 
@@ -711,23 +786,41 @@ class _WorkOrderTableRow extends StatelessWidget {
       child: InkWell(
         key: WorkOrdersScreen.detailsKey(workOrder.id),
         onTap: () => context.go('${Routes.workOrders}/${workOrder.id}'),
+        // A deliberate highlight rather than Material's own faint default
+        // (issue #168) — see [AppComponentColors.rowHoverFill]. Set here, on
+        // this row, rather than globally on `ThemeData.hoverColor`: the reason
+        // a row needs to be trackable is that this row is seven columns wide,
+        // and nothing about the rest of the Platform's InkWells follows from
+        // it.
+        hoverColor: AppComponentColors.rowHoverFill,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             cell(workOrder.workOrderNo, 2, style: muted),
             cell(workOrder.summary, 4, style: theme.textTheme.bodyMedium),
-            cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}', 3,
-                style: muted),
+            // Asset and Assignee each hold one more share of the table than
+            // they did before (issue #168): 3→4 and 2→3. These are the two
+            // cells whose values are unbounded, and both used to ellipsize in
+            // ordinary use ("Press 1 (PRESS-…", "Unassign…"). The two that
+            // clip nothing — the Work order number, which the Site's own
+            // sequence bounds, and the Org Unit name — keep what they had, and
+            // Summary is unchanged at 4 rather than being raided to pay for
+            // the rest.
+            cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}', 4,
+                style: muted, disclose: true),
             cell(workOrder.orgUnitName, 2, style: muted),
             SizedBox(
               width: _statusColumnWidth(context),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child:
-                    Chip(label: Text(workOrder.statusLabel), visualDensity: VisualDensity.compact),
+                child: StatusChip(
+                  label: workOrder.statusLabel,
+                  tone: workOrder.statusTone,
+                ),
               ),
             ),
-            cell(workOrder.assigneeName ?? 'Unassigned', 2, style: theme.textTheme.bodyMedium),
+            cell(workOrder.assigneeName ?? 'Unassigned', 3, style: theme.textTheme.bodyMedium,
+                disclose: true),
             SizedBox(
               width: _actionsColumnWidth,
               child:
@@ -763,6 +856,10 @@ class _WorkOrderCard extends StatelessWidget {
       child: InkWell(
         key: WorkOrdersScreen.detailsKey(workOrder.id),
         onTap: () => context.go('${Routes.workOrders}/${workOrder.id}'),
+        // The same deliberate highlight the wide row carries (issue #168): a
+        // card is one Work order and its actions sit at the bottom of it, so
+        // the pointer needs the same help staying with the card it started on.
+        hoverColor: AppComponentColors.rowHoverFill,
         child: Padding(
         padding: const EdgeInsets.all(Spacing.lg),
         child: Column(
@@ -792,7 +889,10 @@ class _WorkOrderCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                Chip(label: Text(workOrder.statusLabel), visualDensity: VisualDensity.compact),
+                StatusChip(
+                  label: workOrder.statusLabel,
+                  tone: workOrder.statusTone,
+                ),
               ],
             ),
             const SizedBox(height: Spacing.sm),

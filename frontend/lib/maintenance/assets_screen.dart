@@ -12,6 +12,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/skeleton_list.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'asset.dart';
 import 'asset_form_dialog.dart';
 import 'assets_bloc.dart';
@@ -392,14 +394,7 @@ class _AssetRow extends StatelessWidget {
                             ),
                             if (!asset.isActive) ...[
                               const SizedBox(width: Spacing.sm),
-                              Chip(
-                                key: AssetsScreen.retiredChipKey(asset.id),
-                                label: const Text('Retired'),
-                                visualDensity: VisualDensity.compact,
-                                backgroundColor: theme.colorScheme.errorContainer,
-                                labelStyle: theme.textTheme.labelSmall
-                                    ?.copyWith(color: theme.colorScheme.onErrorContainer),
-                              ),
+                              StatusChip(key: AssetsScreen.retiredChipKey(asset.id), label: 'Retired', tone: StatusTone.neutral),
                             ],
                           ],
                         ),

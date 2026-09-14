@@ -18,6 +18,8 @@ import '../theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'job_plan.dart';
 import 'job_plan_form_dialog.dart';
 import 'job_plans_bloc.dart';
@@ -221,14 +223,7 @@ class _JobPlanCard extends StatelessWidget {
                 ),
                 const SizedBox(width: Spacing.md),
                 if (!plan.isActive)
-                  Chip(
-                    key: JobPlansScreen.inactiveChipKey(plan.id),
-                    label: const Text('Inactive'),
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: theme.colorScheme.errorContainer,
-                    labelStyle: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.onErrorContainer),
-                  ),
+                  StatusChip(key: JobPlansScreen.inactiveChipKey(plan.id), label: 'Inactive', tone: StatusTone.neutral),
               ],
             ),
             if (plan.description != null && plan.description!.isNotEmpty) ...[

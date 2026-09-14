@@ -1173,6 +1173,16 @@ void main() {
         ],
       },
     );
+    // Pinned taller than the default 800x600 test surface (issue #168). The
+    // list is lazy, so a card below the fold is not built at all — and the
+    // count line this ticket adds above the list costs the header one line,
+    // which is exactly enough to put the second card out of reach on the
+    // default surface. The claim under test is that history is asked for and
+    // its rows come back; the height of the window should not be what decides
+    // whether the second row exists.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(800, 1000);
+    addTearDown(tester.view.reset);
     await pumpApp(
       tester,
       gateway: FakeAuthGateway(accessToken: 'a-token'),
@@ -1703,5 +1713,200 @@ void main() {
     final narrowWidth = tester.getSize(find.text('In progress')).width;
 
     expect(wideWidth, closeTo(narrowWidth, 0.5));
+  });
+
+  // ---------------------------------------------------------------------------
+  // Legibility (issue #168) — the header reads as a header, a row under the
+  // pointer is the row being read, a cell that clipped can still be read in
+  // full, and the Screen says how much it is showing. All four are assertions
+  // about what is painted or rendered, never about a private field.
+  // ---------------------------------------------------------------------------
+
+  group('legibility (#168)', () {
+    /// The wide layout is chosen by *content* width, so these tests pin a
+    /// window wide enough to leave more than
+    /// [WorkOrdersScreen.narrowBreakpoint] past the Shell's own sidebar.
+    void pinWide(WidgetTester tester) {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1600, 900);
+      addTearDown(tester.view.reset);
+    }
+
+    testWidgets('the header row is banded and weighted, not a fifth data row',
+        (tester) async {
+      final wire = wireWith(
+        workOrders: {'1': [workOrderJson('101', 'WO-101', 'Belt is slipping')]},
+      );
+      pinWide(tester);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      // The band behind the column labels.
+      final band = tester.widget<Container>(
+        find.ancestor(of: find.text('WO#'), matching: find.byType(Container)).first,
+      );
+      final decoration = band.decoration! as BoxDecoration;
+      expect(decoration.color, AppComponentColors.tableHeaderFill);
+      // The same hairline every data row draws above itself, so the table
+      // still reads as one table rather than as a panel glued to a list.
+      final context = tester.element(find.text('WO#'));
+      expect(
+        decoration.border,
+        Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+      );
+
+      // Weight and colour, so the labels are not the same type as the
+      // metadata below them.
+      final label = tester.widget<Text>(find.text('WO#'));
+      expect(label.style?.fontWeight, FontWeight.w700);
+      expect(label.style?.color, Theme.of(context).colorScheme.onSurface);
+    });
+
+    testWidgets('a row carries a deliberate highlight under the pointer', (tester) async {
+      final wire = wireWith(
+        workOrders: {'1': [workOrderJson('101', 'WO-101', 'Belt is slipping')]},
+      );
+      pinWide(tester);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      final row = tester.widget<InkWell>(
+        find
+            .descendant(
+              of: find.byKey(WorkOrdersScreen.rowKey('101')),
+              matching: find.byType(InkWell),
+            )
+            .first,
+      );
+      expect(row.hoverColor, AppComponentColors.rowHoverFill);
+    });
+
+    testWidgets('a cell whose value may be clipped can disclose the whole of it',
+        (tester) async {
+      final wire = wireWith(
+        workOrders: {'1': [workOrderJson('101', 'WO-101', 'Belt is slipping')]},
+      );
+      pinWide(tester);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      // The Asset cell's value in full, disclosed…
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == 'Press 1 (PRESS-1) · Corrective',
+        ),
+        findsOneWidget,
+      );
+      // …and still rendered as the text itself, never replaced by the tooltip.
+      expect(find.text('Press 1 (PRESS-1) · Corrective'), findsOneWidget);
+      // The Assignee cell is disclosed too — it is the other unbounded one.
+      expect(
+        find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == 'Unassigned'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the Screen says how much it is showing', (tester) async {
+      final wire = wireWith(
+        workOrders: {
+          '1': [
+            workOrderJson('101', 'WO-101', 'Belt is slipping'),
+            workOrderJson('102', 'WO-102', 'Guard is loose'),
+          ],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      expect(find.byKey(WorkOrdersScreen.countKey), findsOneWidget);
+      expect(find.text('2 Work orders'), findsOneWidget);
+    });
+
+    testWidgets('one Work order reads in the singular', (tester) async {
+      final wire = wireWith(
+        workOrders: {'1': [workOrderJson('101', 'WO-101', 'Belt is slipping')]},
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      expect(find.text('1 Work order'), findsOneWidget);
+    });
+
+    testWidgets('a narrowed read says it is narrowed', (tester) async {
+      final wire = wireWith(
+        workOrders: {
+          '1': [
+            workOrderJson('101', 'WO-101', 'Belt is slipping'),
+            workOrderJson('102', 'WO-102', 'Guard is loose', orgUnitId: '10', orgUnitName: 'Assembly'),
+          ],
+        },
+      );
+      wire.workOrdersByFilter['1|10'] = [
+        workOrderJson('102', 'WO-102', 'Guard is loose', orgUnitId: '10', orgUnitName: 'Assembly'),
+      ];
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      await tapIn(tester, find.byKey(WorkOrdersScreen.filterKey));
+      await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
+
+      // A filtered list is never left looking like the whole Site.
+      expect(find.text('1 Work order, narrowed to Assembly'), findsOneWidget);
+    });
+
+    testWidgets('a read that brought history back says so', (tester) async {
+      final wire = wireWith(
+        workOrders: {'1': [workOrderJson('101', 'WO-101', 'Belt is slipping')]},
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      await tapIn(tester, find.byKey(WorkOrdersScreen.showHistoryKey));
+
+      expect(wire.workOrderRequests.last, ('1', null, true));
+      expect(find.text('1 Work order, including completed and cancelled'), findsOneWidget);
+    });
+
+    testWidgets('no count is shown where the empty state is already speaking',
+        (tester) async {
+      final wire = wireWith(workOrders: {'1': []});
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/work-orders',
+      );
+
+      expect(find.byKey(WorkOrdersScreen.countKey), findsNothing);
+      expect(find.byKey(WorkOrdersScreen.emptyKey), findsOneWidget);
+    });
   });
 }

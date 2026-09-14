@@ -159,7 +159,7 @@ class _CoverageRow extends StatelessWidget {
             label: Text('Short ${entry.shortfall}'),
             visualDensity: VisualDensity.compact,
             backgroundColor: theme.colorScheme.errorContainer,
-            labelStyle: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onErrorContainer),
+            labelStyle: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onErrorContainer),
           ),
         ],
       ),

@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/status_chip.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import 'my_requests_bloc.dart';
@@ -266,7 +267,7 @@ class _MyRequestCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                Chip(label: Text(request.statusLabel), visualDensity: VisualDensity.compact),
+                StatusChip(label: request.statusLabel, tone: request.statusTone),
               ],
             ),
             if (workOrder != null) ...[

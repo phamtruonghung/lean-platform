@@ -25,6 +25,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
 import 'employee_assignment_dialog.dart';
@@ -160,12 +162,10 @@ class _Detail extends StatelessWidget {
                   ),
                 ),
                 if (!employee.isActive)
-                  Chip(
+                  StatusChip(
                     key: EmployeeDetailScreen.departedKey,
-                    label: const Text('Departed'),
-                    backgroundColor: theme.colorScheme.errorContainer,
-                    labelStyle:
-                        theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onErrorContainer),
+                    label: 'Departed',
+                    tone: StatusTone.neutral,
                   ),
               ],
             ),
@@ -318,13 +318,10 @@ class _AssignmentRow extends StatelessWidget {
                     ),
                     if (assignment.isCurrent) ...[
                       const SizedBox(width: Spacing.sm),
-                      Chip(
+                      StatusChip(
                         key: EmployeeDetailScreen.currentAssignmentKey(assignment.id),
-                        label: const Text('Current'),
-                        visualDensity: VisualDensity.compact,
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        labelStyle: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+                        label: 'Current',
+                        tone: StatusTone.info,
                       ),
                     ],
                   ],
@@ -370,13 +367,24 @@ class _SkillChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final chip = Chip(
-      key: EmployeeDetailScreen.skillChipKey(skill.skillId),
-      label: Text(skill.isLapsed ? '${skill.name} · Lapsed' : skill.name),
-      backgroundColor: skill.isLapsed ? theme.colorScheme.errorContainer : null,
-      visualDensity: VisualDensity.compact,
-    );
+    // A lapsed qualification is stated, not judged (issues #168/#169, and the
+    // same rule ADR-0018 records for the assign dialog: the colour and the
+    // trailing "· Lapsed" state a fact about what somebody holds, never a
+    // claim about what should happen to them). It used to wear the error
+    // container's red, which *was* a judgement — an expiry shown as a failure
+    // — so it is the neutral tone now, beside every other factual status in
+    // the Platform.
+    final chip = skill.isLapsed
+        ? StatusChip(
+            key: EmployeeDetailScreen.skillChipKey(skill.skillId),
+            label: '${skill.name} · Lapsed',
+            tone: StatusTone.neutral,
+          )
+        : Chip(
+            key: EmployeeDetailScreen.skillChipKey(skill.skillId),
+            label: Text(skill.name),
+            visualDensity: VisualDensity.compact,
+          );
     final keyedChip = skill.isLapsed
         ? KeyedSubtree(key: EmployeeDetailScreen.lapsedSkillChipKey(skill.skillId), child: chip)
         : chip;

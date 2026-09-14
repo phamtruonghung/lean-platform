@@ -20,6 +20,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
+import '../widgets/status_chip.dart';
 import 'floor_bloc.dart';
 import 'floor_technician_dialog.dart';
 import 'work_order.dart';
@@ -245,7 +246,12 @@ class _FloorWorkOrderCard extends StatelessWidget {
                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-                Text(workOrder.statusLabel, style: theme.textTheme.titleMedium),
+                // The floor surface is not the desktop list narrowed (ADR-0016),
+                // but a status means the same thing on both — issue #168's own
+                // user story 7 names this surface, and it was the last list in
+                // the Platform showing a state as plain text while every other
+                // one painted it.
+                StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone),
               ],
             ),
             const SizedBox(height: Spacing.sm),

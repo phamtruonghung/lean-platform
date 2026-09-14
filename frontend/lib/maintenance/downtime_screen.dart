@@ -21,6 +21,7 @@ import '../theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'breakdown_report_dialog.dart';
 import 'downtime_bloc.dart';
 import 'downtime_classify_dialog.dart';
@@ -272,7 +273,7 @@ class _DowntimeCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                Chip(label: Text(event.statusLabel), visualDensity: VisualDensity.compact),
+                StatusChip(label: event.statusLabel, tone: event.statusTone),
               ],
             ),
             const SizedBox(height: Spacing.sm),

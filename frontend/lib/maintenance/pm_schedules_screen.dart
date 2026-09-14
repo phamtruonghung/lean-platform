@@ -20,6 +20,8 @@ import '../theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../status_tone.dart';
+import '../widgets/status_chip.dart';
 import 'pm_schedule.dart';
 import 'pm_schedule_form_dialog.dart';
 import 'pm_schedules_bloc.dart';
@@ -260,14 +262,7 @@ class _PmScheduleCard extends StatelessWidget {
                 ),
                 const SizedBox(width: Spacing.md),
                 if (!schedule.isActive)
-                  Chip(
-                    key: PmSchedulesScreen.inactiveChipKey(schedule.id),
-                    label: const Text('Inactive'),
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: theme.colorScheme.errorContainer,
-                    labelStyle: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.onErrorContainer),
-                  ),
+                  StatusChip(key: PmSchedulesScreen.inactiveChipKey(schedule.id), label: 'Inactive', tone: StatusTone.neutral),
               ],
             ),
             const SizedBox(height: Spacing.sm),
