@@ -348,6 +348,50 @@ void main() {
     expect(router.state.uri.path, '/assets');
   });
 
+  // The selected Destination's own mark (issue #168). The golden holds it too,
+  // but a golden cannot tell one DecoratedBox from another and says nothing
+  // about the rail — and the rail is where this deliberately is NOT drawn
+  // (there is no room for a mark beside an icon without pushing it off centre).
+  group('the selected Destination\'s mark', () {
+    Finder mark() => find.byWidgetPredicate(
+          (widget) =>
+              widget is DecoratedBox &&
+              widget.decoration is BoxDecoration &&
+              (widget.decoration as BoxDecoration).color ==
+                  AppComponentColors.navSelectedAccent,
+        );
+
+    testWidgets('is drawn in the selected Destination and nowhere else',
+        (tester) async {
+      _useWideWindow(tester);
+      await tester.pumpWidget(_harness(destinations: _groupedDestinations));
+      await tester.pumpAndSettle();
+
+      // `_harness` opens on the first Destination's own path, so Home is the
+      // selected one here.
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('nav-item-Home')), matching: mark()),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('nav-item-Directory')), matching: mark()),
+        findsNothing,
+      );
+      // One mark, not one per Destination: the gutter is reserved on every
+      // Destination so selection never shifts a label, and only the selected
+      // one fills it.
+      expect(mark(), findsOneWidget);
+    });
+
+    testWidgets('is not drawn on the collapsed rail', (tester) async {
+      _useNarrowWindow(tester);
+      await tester.pumpWidget(_harness(destinations: _groupedDestinations));
+      await tester.pumpAndSettle();
+
+      expect(mark(), findsNothing);
+    });
+  });
+
   // Golden tests (issue #105): the Shell's own chrome, either side of the
   // 700px rail breakpoint. These extend this file's own `_harness` mount
   // rather than introducing a second one — AGENTS.md §5 allows exactly two

@@ -20,23 +20,22 @@ import '../status_tone.dart';
 /// column. A label for each known value, with the wire string itself as the
 /// fallback for one this build does not know about — the same fallback
 /// `WorkOrder.statusLabel` and `Request.statusLabel` follow.
-const Map<String, String> _statusLabels = {
-  'open': 'Open',
-  'unclassified': 'Unclassified',
-  'closed': 'Closed',
-};
-
-/// What each Downtime state means to somebody reading the log (issue #168).
+/// One map per state set — label and tone together, the same shape
+/// `WorkOrder`'s own map uses (issue #168).
 ///
 /// `open` is `warning` — an Asset that is not running is the thing a shift is
 /// losing minutes to, so it is the one state that has to catch the eye.
 /// `unclassified` is `info`: the event is over or being handled but still
 /// wants a reason, which is a task rather than an alarm. `closed` is
 /// `success`, the same "finished" reading a completed Work order gets.
-const Map<String, StatusTone> _statusTones = {
-  'open': StatusTone.warning,
-  'unclassified': StatusTone.info,
-  'closed': StatusTone.success,
+///
+/// Only `open` reaches a reader today: the log is served open stops and the
+/// Screen offers no history toggle, so the other two tones are here for the
+/// model's own completeness rather than for a surface that shows them.
+const Map<String, (String, StatusTone)> _statuses = {
+  'open': ('Open', StatusTone.warning),
+  'unclassified': ('Unclassified', StatusTone.info),
+  'closed': ('Closed', StatusTone.success),
 };
 
 /// One Downtime reason from `GET /api/maintenance/downtime-reasons` — the
@@ -128,12 +127,12 @@ class DowntimeEvent {
   static const String unclassifiedStatus = 'unclassified';
   static const String closedStatus = 'closed';
 
-  String get statusLabel => _statusLabels[status] ?? status;
+  String get statusLabel => _statuses[status]?.$1 ?? status;
 
   /// What [status] means to somebody reading the log (issue #168) — the tone
   /// `widgets/status_chip.dart` paints. Falls back to [StatusTone.neutral] for
   /// a status this build does not know about, matching [statusLabel].
-  StatusTone get statusTone => _statusTones[status] ?? StatusTone.neutral;
+  StatusTone get statusTone => _statuses[status]?.$2 ?? StatusTone.neutral;
 
   /// Whether the stop is still running — the one state Close is offered in.
   bool get isOpen => status == openStatus;

@@ -159,16 +159,19 @@ class WorkOrdersScreen extends StatelessWidget {
 
   /// What [countKey]'s line reads, given the loaded state (issue #168).
   ///
-  /// A pure function rather than a string built inline, so the wording is
-  /// asserted directly instead of through a finder — the sentence carries
-  /// three facts (how many, whether the read is narrowed, whether history is
-  /// included) and a test that proves one of them by pumping a Screen would
-  /// need three Screens to prove all three.
+  /// Private, and the tests go through the Screen rather than calling this: a
+  /// review of the first version pointed out that it was public "so the wording
+  /// is asserted directly", while every test asserting the wording did so
+  /// through `find.text` — a public accessor with no caller, kept alive by a
+  /// doc comment. The three wordings it can produce *are* covered
+  /// (`work_orders_test.dart`'s own `legibility (#168)` group asserts the
+  /// plural, the singular, a narrowing and the history opt-in, and asserts the
+  /// line is absent where the empty state speaks).
   ///
   /// The noun is the domain's own ("Work order", per CONTEXT.md), singular
   /// when there is exactly one. Narrowing and history are named only when
   /// they are actually in force, so nothing here claims a filter nobody set.
-  static String countLabel(WorkOrdersLoaded loaded) {
+  static String _countLabel(WorkOrdersLoaded loaded) {
     final count = loaded.workOrders.length;
     final noun = count == 1 ? 'Work order' : 'Work orders';
     final narrowed =
@@ -461,7 +464,7 @@ class _Header extends StatelessWidget {
                 if (loaded.workOrders.isNotEmpty) ...[
                   const SizedBox(height: Spacing.md),
                   Text(
-                    WorkOrdersScreen.countLabel(loaded),
+                    WorkOrdersScreen._countLabel(loaded),
                     key: WorkOrdersScreen.countKey,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),

@@ -206,9 +206,11 @@ class _Brand extends StatelessWidget {
 /// ADR-0020's "What this costs" section names to watch for.
 ///
 /// Deliberately quieter than a [_NavItem]: uppercase, letter-spaced and
-/// [AppColors.textMuted], so it reads as a section label rather than
-/// competing with the destinations filed beneath it. Never rendered into the
-/// collapsed rail — see the boundary hairline in `_Sidebar.build` instead.
+/// [AppColors.textMuted], so it reads as a heading over the destinations filed
+/// beneath it rather than competing with them — never the word "section",
+/// which CONTEXT.md lists under `_Avoid_` for a Destination group. Never
+/// rendered into the collapsed rail — see the boundary hairline in
+/// `_Sidebar.build` instead.
 ///
 /// **At the Platform's own type floor** (issue #168). This used `labelSmall`
 /// — 11px — which is below the floor [AppTypography]'s own doc comment

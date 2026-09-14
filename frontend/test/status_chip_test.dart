@@ -17,9 +17,12 @@
 ///    works but not that the other three map onto it — each status-bearing
 ///    model keeps its own map, and each map is the one its Screen reads.
 /// 2. Every tone's fill/foreground pair meets the 4.5:1 floor the spec's own
-///    user story 6 asks for. This is a measurement rather than a comment, so
-///    a later token change that quietly drops below the floor fails here
-///    instead of shipping.
+///    user story 6 asks for — measured on the pair a `StatusChip` actually
+///    resolves, not on the tokens in isolation (the rendered ratio is computed
+///    inside `_expectTone`, from the colours read back off a pumped widget),
+///    with one token-level sweep underneath it for a tone no Screen paints yet.
+///    A measurement rather than a comment, so a later token change that quietly
+///    drops below the floor fails here instead of shipping.
 library;
 
 import 'dart:math' as math;
@@ -114,12 +117,39 @@ FakeWire _downtimeWire(List<Map<String, dynamic>> downtime) => FakeWire(
 /// The tone a given row's own Status chip was painted with, read off the
 /// pumped widget tree — the fill the `StatusChip` handed to its `Chip`, which
 /// is the colour a person sees.
-Color? _statusFillIn(WidgetTester tester, Finder row) {
+Color? _statusFillIn(WidgetTester tester, Finder row) =>
+    _renderedChipIn(tester, row).$1;
+
+/// The fill and the label colour a `StatusChip` actually resolved inside
+/// [row], read off the pumped widget tree.
+///
+/// Both halves, not just the fill: a review of the first version of this file
+/// pointed out that its header claimed the fill *and* the label colour were
+/// asserted while only the fill was read, and that the contrast floor was
+/// checked against the tokens rather than against what a `StatusChip`
+/// resolves. Reading the pair back off a rendered widget closes both.
+(Color?, Color?) _renderedChipIn(WidgetTester tester, Finder row) {
   final chip = tester.widget<Chip>(find.descendant(
     of: find.descendant(of: row, matching: find.byType(StatusChip)),
     matching: find.byType(Chip),
   ));
-  return chip.backgroundColor;
+  return (chip.backgroundColor, chip.labelStyle?.color);
+}
+
+/// Asserts everything a status has to be, off the rendered widget: the fill it
+/// was painted with, the colour of its own label, and the contrast ratio
+/// *between those two rendered colours* — which is the measurement issue #168's
+/// testing decisions ask for, and the one a person's eyes actually make.
+void _expectTone(WidgetTester tester, Finder row, StatusTone tone, {required String label}) {
+  final (fill, foreground) = _renderedChipIn(tester, row);
+  expect(fill, AppComponentColors.statusFill(tone), reason: '$label fill');
+  expect(foreground, AppComponentColors.statusForeground(tone), reason: '$label label colour');
+  final ratio = _contrastRatio(foreground!, fill!);
+  expect(
+    ratio,
+    greaterThanOrEqualTo(4.5),
+    reason: '$label measured ${ratio.toStringAsFixed(2)}:1 as rendered',
+  );
 }
 
 /// The relative luminance WCAG's own contrast ratio is built from.
@@ -172,14 +202,16 @@ void main() {
       await tapIn(tester, find.byKey(WorkOrdersScreen.showHistoryKey));
       expect(wire.workOrderRequests.last, ('1', null, true));
 
-      expect(_statusFillIn(tester, row('101')), AppComponentColors.statusFill(StatusTone.neutral));
-      expect(_statusFillIn(tester, row('102')), AppComponentColors.statusFill(StatusTone.info));
-      expect(_statusFillIn(tester, row('103')), AppComponentColors.statusFill(StatusTone.info));
-      expect(_statusFillIn(tester, row('104')), AppComponentColors.statusFill(StatusTone.info));
-      expect(_statusFillIn(tester, row('105')), AppComponentColors.statusFill(StatusTone.warning));
-      expect(_statusFillIn(tester, row('106')), AppComponentColors.statusFill(StatusTone.success));
-      expect(_statusFillIn(tester, row('107')), AppComponentColors.statusFill(StatusTone.success));
-      expect(_statusFillIn(tester, row('108')), AppComponentColors.statusFill(StatusTone.neutral));
+      // Fill, label colour and the rendered contrast ratio, per status — read
+      // off each row's own chip rather than off the tokens.
+      _expectTone(tester, row('101'), StatusTone.neutral, label: 'Draft');
+      _expectTone(tester, row('102'), StatusTone.info, label: 'Approved');
+      _expectTone(tester, row('103'), StatusTone.info, label: 'Scheduled');
+      _expectTone(tester, row('104'), StatusTone.info, label: 'In progress');
+      _expectTone(tester, row('105'), StatusTone.warning, label: 'On hold');
+      _expectTone(tester, row('106'), StatusTone.success, label: 'Completed');
+      _expectTone(tester, row('107'), StatusTone.success, label: 'Closed');
+      _expectTone(tester, row('108'), StatusTone.neutral, label: 'Cancelled');
 
       // The word is still there, on every one of them: colour groups a status,
       // it never carries one on its own (user story 5).
@@ -347,11 +379,14 @@ void main() {
 
       Finder step(String id) => find.byKey(WorkOrderDetailScreen.taskKey(id));
 
-      expect(_statusFillIn(tester, step('t1')), AppComponentColors.statusFill(StatusTone.success));
-      expect(_statusFillIn(tester, step('t2')), AppComponentColors.statusFill(StatusTone.neutral));
+      // The rendered pair and its ratio for every step — this is the only place
+      // `danger` reaches a reader, so it is the only place its rendered
+      // contrast can be measured at all.
+      _expectTone(tester, step('t1'), StatusTone.success, label: 'Done');
+      _expectTone(tester, step('t2'), StatusTone.neutral, label: 'Pending');
       // Somebody chose to step over it, so it is not a warning.
-      expect(_statusFillIn(tester, step('t3')), AppComponentColors.statusFill(StatusTone.neutral));
-      expect(_statusFillIn(tester, step('t4')), AppComponentColors.statusFill(StatusTone.danger));
+      _expectTone(tester, step('t3'), StatusTone.neutral, label: 'Skipped');
+      _expectTone(tester, step('t4'), StatusTone.danger, label: 'Failed');
 
       // `danger` is reserved for faults: of these four states, exactly the
       // failed one is painted with it.
@@ -371,6 +406,10 @@ void main() {
   });
 
   group('every tone is readable against its own fill', () {
+    // The rendering path is measured above, tone by tone, on the Screens that
+    // show each one. This is the sweep underneath it: it covers all five tones
+    // including any a Screen does not currently render, so a token change that
+    // drops below the floor is caught even when no surface paints it yet.
     test('the 4.5:1 floor holds for all five tones', () {
       for (final tone in StatusTone.values) {
         final ratio = _contrastRatio(
