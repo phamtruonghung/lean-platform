@@ -363,6 +363,53 @@ async function setAssetParent(id, parentId, accountId) {
   });
 }
 
+// Changes where one Asset sits (issue #171) — the one column the register's
+// own creation path sets and nothing could correct afterwards.
+//
+// No advisory lock, deliberately. ASSET_REPARENT_LOCK_KEY protects the
+// invariant "no active Asset has a retired parent, and no retired Asset has
+// active parts" (see its own comment); a placement change touches neither
+// parent_id nor is_active, so it can neither break nor race that invariant.
+//
+// The move is one row and nothing else. It does NOT cascade to the Assets
+// nested inside this one, and it does not touch is_active or parent_id: a
+// component may already sit at an Org Unit of its own choosing — setAssetParent
+// below never required the two to agree, and the baseline carries no constraint
+// that they do — so a machine moved without its gearbox leaves no state this
+// register could not already hold. Requiring agreement here instead would be a
+// new invariant on one route that the nesting route itself does not keep.
+//
+// Work already recorded against the Asset keeps the Org Unit it was raised at:
+// work_orders, maintenance_requests and downtime_events denormalise org_unit_id
+// through a BEFORE INSERT OR UPDATE OF asset_id trigger, which a change to
+// assets.org_unit_id does not fire. That is the wanted reading — history
+// records where the work happened, not where the machine is now.
+//
+// orgUnitId is assumed to be one the caller was already entitled to place an
+// Asset at, the same assumption createAsset above documents: asset-routes.js
+// resolves the Org Unit and asks people.canAct before this is ever called.
+async function setAssetOrgUnit(id, orgUnitId, accountId) {
+  const asset = await findAsset(id);
+  if (!asset) throw notFound('Asset');
+
+  return withActor(accountId, async (client) => {
+    try {
+      const { rows: [row] } = await client.query(
+        `WITH updated AS (
+           UPDATE assets SET org_unit_id = $1 WHERE id = $2 RETURNING *
+         )
+         SELECT ${ASSET_COLUMNS}
+           FROM updated a
+           JOIN org_units ou ON ou.id = a.org_unit_id`,
+        [orgUnitId, asset.id]
+      );
+      return toAsset(row);
+    } catch (error) {
+      throw mapAssetWriteError(error);
+    }
+  });
+}
+
 module.exports = {
   ASSET_TYPES,
   CRITICALITIES,
@@ -370,5 +417,6 @@ module.exports = {
   findAsset,
   createAsset,
   setAssetActive,
-  setAssetParent
+  setAssetParent,
+  setAssetOrgUnit
 };

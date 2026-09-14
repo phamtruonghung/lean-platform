@@ -23,6 +23,10 @@ const insertedAccountIds = [];
 const insertedSiteIds = [];
 const insertedOrgUnitIds = [];
 const insertedAssetIds = [];
+// Issue #171's own test raises a Work order to prove that recorded work keeps
+// the Org Unit it was raised at, so this file now inserts rows that point at
+// its Assets and must be deleted before them.
+const insertedWorkOrderIds = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -163,6 +167,10 @@ test.before(async () => {
 });
 
 test.after(async () => {
+  // Children before parents: a Work order holds a foreign key to its Asset, so
+  // deleting the Assets first would fail the constraint (and, before Node 20's
+  // own unhandled-rejection behaviour, hang the file rather than report it).
+  await pool.query('DELETE FROM work_orders WHERE id = ANY($1)', [insertedWorkOrderIds]);
   await pool.query('DELETE FROM assets WHERE id = ANY($1)', [insertedAssetIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
@@ -465,11 +473,14 @@ test('PATCH /assets/abc (malformed id) is a clean 404, not a 500', async () => {
   assert.strictEqual(response.status, 404);
 });
 
+// Issue #171 widened this route to a third field, so the empty-body message
+// names all three — a message that still said "isActive and/or parentId"
+// would be telling a caller that an orgUnitId-only request is impossible.
 test('an empty body is refused', async () => {
   const created = await postAsset(admin.token, assetBody(grantedLine.id));
   const { response, payload } = await patchAsset(admin.token, created.payload.asset.id, {});
   assert.strictEqual(response.status, 400);
-  assert.strictEqual(payload.message, 'isActive and/or parentId is required');
+  assert.strictEqual(payload.message, 'isActive, parentId and/or orgUnitId is required');
 });
 
 // ---------------------------------------------------------------------------
@@ -479,6 +490,8 @@ test('an empty body is refused', async () => {
 // Fix A: a combined PATCH can half-commit — setAssetParent and setAssetActive
 // are separate transactions, so refuse the combination outright rather than
 // let a caller see only a 409/500 while the parent has already changed.
+// Issue #171 keeps this rule and widens it to the third field it adds; the
+// orgUnitId half of that is the test below it.
 test('a PATCH naming both isActive and parentId is refused, and the Asset is unchanged', async () => {
   const parent = await postAsset(admin.token, assetBody(grantedLine.id));
   const created = await postAsset(admin.token, assetBody(grantedLine.id));
@@ -490,7 +503,7 @@ test('a PATCH naming both isActive and parentId is refused, and the Asset is unc
   assert.strictEqual(response.status, 400);
   assert.strictEqual(
     payload.message,
-    'isActive and parentId cannot be changed in the same request; send them as separate requests'
+    'only one of isActive, parentId and orgUnitId can be changed per request; send them as separate requests'
   );
 
   const { rows: [row] } = await pool.query(
@@ -584,4 +597,176 @@ test('nesting promotes a default machine to component, and detaching restores ma
   const detached = await patchAsset(admin.token, child.payload.asset.id, { parentId: null });
   assert.strictEqual(detached.response.status, 200);
   assert.strictEqual(detached.payload.asset.assetLevel, 'machine');
+});
+
+// ---------------------------------------------------------------------------
+// Changing where an Asset sits (issue #171).
+//
+// `orgUnit_id` is the one column the register's creation path sets and nothing
+// could correct afterwards: POST /assets takes an orgUnitId, and PATCH
+// /assets/:id took only isActive and parentId. These are the acceptance
+// criteria of the ticket that closes that hole.
+// ---------------------------------------------------------------------------
+
+test('an Asset moves to another Org Unit, and the row comes back carrying the new one', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const id = created.payload.asset.id;
+
+  const { response, payload } = await patchAsset(admin.token, id, { orgUnitId: otherLine.id });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.asset.orgUnitId, String(otherLine.id));
+  assert.strictEqual(payload.asset.orgUnitName, 'Line 2');
+
+  // A move is only a move: it is not quietly a retirement, and it neither
+  // detaches the machine nor re-nests it.
+  assert.strictEqual(payload.asset.isActive, true);
+  assert.strictEqual(payload.asset.parentId, null);
+  assert.strictEqual(payload.asset.assetLevel, 'machine');
+  assert.strictEqual(payload.asset.code, created.payload.asset.code);
+
+  // The row itself carries it, and the register reads the machine at the Org
+  // Unit it arrived at rather than the one it left.
+  const { rows: [row] } = await pool.query(
+    'SELECT org_unit_id, is_active, parent_id FROM assets WHERE id = $1',
+    [id]
+  );
+  assert.strictEqual(String(row.org_unit_id), String(otherLine.id));
+  assert.strictEqual(row.is_active, true);
+  assert.strictEqual(row.parent_id, null);
+
+  const listing = await fetch(`${base}/api/maintenance/sites/${site}/assets`, { headers: admin.token });
+  const { assets } = await listing.json();
+  const moved = assets.find((candidate) => candidate.id === id);
+  assert.strictEqual(moved.orgUnitId, String(otherLine.id));
+});
+
+// The source half of the scope rule is requireAssetWriteScope's, which asks
+// about the Org Unit the Asset sits at NOW. It needs its own test because the
+// destination half below could otherwise be mistaken for the whole rule: a
+// caller with a write Grant on where the machine is going still cannot take it
+// out of an Org Unit their Grants never reached.
+test('write scope on the destination but not on the source is refused', async () => {
+  // The Asset sits at otherSiteArea, where writerAccount holds nothing;
+  // writerAccount's own Grant is on grantedArea, which does reach grantedLine
+  // — the destination.
+  const created = await postAsset(admin.token, assetBody(otherSiteArea.id));
+
+  const { response, payload } = await patchAsset(writerAccount.token, created.payload.asset.id, {
+    orgUnitId: grantedLine.id
+  });
+  assert.strictEqual(response.status, 403);
+  assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+
+  const { rows: [row] } = await pool.query('SELECT org_unit_id FROM assets WHERE id = $1', [
+    created.payload.asset.id
+  ]);
+  assert.strictEqual(String(row.org_unit_id), String(otherSiteArea.id));
+});
+
+// And the destination half: writerAccount may act on the machine (it sits
+// inside grantedArea) but cannot hand it to an Org Unit outside its Grants.
+// This is the half that makes "there is a second record whose composition
+// changes" true for a move — the destination's own register gains a machine.
+test('write scope on the source but not on the destination is refused', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+
+  const { response, payload } = await patchAsset(writerAccount.token, created.payload.asset.id, {
+    orgUnitId: otherSiteArea.id
+  });
+  assert.strictEqual(response.status, 403);
+  assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+
+  const { rows: [row] } = await pool.query('SELECT org_unit_id FROM assets WHERE id = $1', [
+    created.payload.asset.id
+  ]);
+  assert.strictEqual(String(row.org_unit_id), String(grantedLine.id));
+});
+
+test('a malformed orgUnitId is a 400 and an unknown one is a 404 — even for an administrator', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const id = created.payload.asset.id;
+
+  // Existence before scope, and a typo is never a 500: the administrator's
+  // own `canAct` short-circuit is why the Org Unit is resolved first (see
+  // requireOrgUnitWriteScope's own comment for the same ordering on POST).
+  const malformed = await patchAsset(admin.token, id, { orgUnitId: 'abc' });
+  assert.strictEqual(malformed.response.status, 400);
+  assert.strictEqual(malformed.payload.message, 'orgUnitId must be a valid Org Unit id');
+
+  const unknown = await patchAsset(admin.token, id, { orgUnitId: 2147483000 });
+  assert.strictEqual(unknown.response.status, 404);
+
+  const { rows: [row] } = await pool.query('SELECT org_unit_id FROM assets WHERE id = $1', [id]);
+  assert.strictEqual(String(row.org_unit_id), String(grantedLine.id));
+});
+
+test('naming orgUnitId alongside another field is refused, and the Asset is unchanged', async () => {
+  const parent = await postAsset(admin.token, assetBody(grantedLine.id));
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+
+  const { response, payload } = await patchAsset(admin.token, created.payload.asset.id, {
+    orgUnitId: otherLine.id,
+    parentId: parent.payload.asset.id
+  });
+  assert.strictEqual(response.status, 400);
+  assert.strictEqual(
+    payload.message,
+    'only one of isActive, parentId and orgUnitId can be changed per request; send them as separate requests'
+  );
+
+  const { rows: [row] } = await pool.query(
+    'SELECT org_unit_id, parent_id FROM assets WHERE id = $1',
+    [created.payload.asset.id]
+  );
+  assert.strictEqual(String(row.org_unit_id), String(grantedLine.id));
+  assert.strictEqual(row.parent_id, null);
+});
+
+// The reading this ticket asserts rather than codes: `work_orders`,
+// `maintenance_requests` and `downtime_events` denormalise `org_unit_id`
+// through a trigger that fires on INSERT or on a change to `asset_id` only, so
+// a move leaves the work recorded against the machine where it happened. A
+// machine that walks to another Line does not rewrite last month's history,
+// and a Work order is the cheapest way to prove it over HTTP.
+test('work already recorded against a moved Asset keeps the Org Unit it was raised at', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const assetId = created.payload.asset.id;
+
+  const raised = await fetch(`${base}/api/maintenance/work-orders`, {
+    method: 'POST',
+    headers: { ...admin.token, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      assetId,
+      summary: 'Raised before the machine moved',
+      workType: 'corrective',
+      priority: 3
+    })
+  });
+  assert.strictEqual(raised.status, 201);
+  const { workOrder } = await raised.json();
+  insertedWorkOrderIds.push(workOrder.id);
+  assert.strictEqual(workOrder.orgUnitId, String(grantedLine.id));
+
+  const moved = await patchAsset(admin.token, assetId, { orgUnitId: otherLine.id });
+  assert.strictEqual(moved.response.status, 200);
+
+  const atSource = await fetch(
+    `${base}/api/maintenance/sites/${site}/work-orders?orgUnitId=${grantedLine.id}`,
+    { headers: admin.token }
+  );
+  const sourceBody = await atSource.json();
+  assert.ok(
+    sourceBody.workOrders.some((candidate) => candidate.id === workOrder.id),
+    'the Work order still reads at the Org Unit it was raised at'
+  );
+
+  const atDestination = await fetch(
+    `${base}/api/maintenance/sites/${site}/work-orders?orgUnitId=${otherLine.id}`,
+    { headers: admin.token }
+  );
+  const destinationBody = await atDestination.json();
+  assert.ok(
+    !destinationBody.workOrders.some((candidate) => candidate.id === workOrder.id),
+    'the Work order did not follow the machine to its new Org Unit'
+  );
 });

@@ -14,6 +14,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/asset_form_dialog.dart';
+import 'package:lean_platform/maintenance/asset_move_dialog.dart';
 import 'package:lean_platform/maintenance/assets_bloc.dart';
 import 'package:lean_platform/maintenance/assets_screen.dart';
 import 'package:lean_platform/maintenance/maintenance_api.dart';
@@ -29,6 +30,7 @@ FakeWire wireWith({
   String role = Roles.admin,
   Map<String, dynamic>? orgUnitScope,
   List<Map<String, dynamic>>? sites,
+  Map<String?, List<Map<String, dynamic>>>? orgUnits,
   Map<String, List<Map<String, dynamic>>>? assets,
   int assetsStatus = 200,
   int createAssetStatus = 201,
@@ -39,10 +41,11 @@ FakeWire wireWith({
       role: role,
       orgUnitScope: orgUnitScope,
       sites: sites ?? [siteJson('1', 'HCM', 'Ho Chi Minh')],
-      orgUnits: {
-        null: [orgUnitJson('10', 'Assembly')],
-        '10': [orgUnitJson('11', 'Line 1', parentId: '10', unitType: 'line')],
-      },
+      orgUnits: orgUnits ??
+          {
+            null: [orgUnitJson('10', 'Assembly')],
+            '10': [orgUnitJson('11', 'Line 1', parentId: '10', unitType: 'line')],
+          },
       assets: assets,
       assetsStatus: assetsStatus,
       createAssetStatus: createAssetStatus,
@@ -654,6 +657,151 @@ void main() {
     await tester.pumpAndSettle();
     expect(wire.assetPatches.length, 1);
     expect(find.byKey(AssetsScreen.rowKey('7')), findsNothing);
+  });
+
+  // -------------------------------------------------------------------------
+  // Changing where an Asset sits (issue #171): the Org Unit is the one field
+  // the register set at creation and could not correct afterwards.
+  // -------------------------------------------------------------------------
+
+  testWidgets(
+      'changing where an Asset sits names where it is now, sends exactly { orgUnitId }, and '
+      'leaves the row where the register orders it', (tester) async {
+    final wire = wireWith(assets: {
+      '1': [
+        // PRESS-1 at Assembly and CONV-2 at Line 1, so the register's own
+        // order (Org Unit name, then code) has PRESS-1 first until it moves.
+        assetJson('7', 'PRESS-1', 'Press 1', orgUnitId: '10', orgUnitName: 'Assembly'),
+        assetJson('8', 'CONV-2', 'Infeed conveyor', orgUnitId: '11', orgUnitName: 'Line 1'),
+      ],
+    });
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    expect(
+      tester.getTopLeft(find.byKey(AssetsScreen.rowKey('7'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(AssetsScreen.rowKey('8'))).dy),
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.orgUnitKey('7')));
+
+    // The dialog says where the machine sits now, and the Org Unit it is at is
+    // a standing choice rather than a destination: nothing has been chosen, so
+    // there is nothing to submit.
+    expect(find.text('Press 1 (PRESS-1) sits at Assembly now.'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byKey(AssetMoveDialog.submitKey)).onPressed,
+      isNull,
+    );
+
+    // The tree is browsed, not typed — expanding Assembly is what fetches
+    // Line 1 at all, the picker Bloc's own contract, reused unchanged.
+    await tapIn(tester, find.byKey(OrgUnitChooser.expandKey('10')));
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('11')));
+    expect(find.text('This Asset will sit at Line 1.'), findsOneWidget);
+
+    await tapIn(tester, find.byKey(AssetMoveDialog.submitKey));
+
+    // One request, one field: a move is not a retirement and not a re-parent,
+    // and the route refuses a body that names two of them.
+    expect(wire.assetPatches.length, 1);
+    expect(wire.assetPatches.single.$1, '7');
+    expect(wire.assetPatches.single.$2, {'orgUnitId': '11'});
+
+    expect(find.byType(AssetMoveDialog), findsNothing);
+    expect(find.text('PRESS-1 now sits at Line 1.'), findsOneWidget);
+
+    // The row re-renders at the Org Unit it arrived at, and the register's own
+    // order puts it after CONV-2 — both now at Line 1, ordered by code.
+    expect(
+      find.descendant(of: find.byKey(AssetsScreen.rowKey('7')), matching: find.text('Line 1')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getTopLeft(find.byKey(AssetsScreen.rowKey('8'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(AssetsScreen.rowKey('7'))).dy),
+    );
+  });
+
+  testWidgets('a move the server refuses leaves the row where it was and says why',
+      (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1', orgUnitId: '10', orgUnitName: 'Assembly')],
+      },
+      patchAssetStatus: 403,
+      patchAssetMessage: "Outside the caller's granted Org Units",
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.orgUnitKey('7')));
+    await tapIn(tester, find.byKey(OrgUnitChooser.expandKey('10')));
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('11')));
+    await tapIn(tester, find.byKey(AssetMoveDialog.submitKey));
+
+    expect(wire.assetPatches.single.$2, {'orgUnitId': '11'});
+    // The refusal is the server's own words, and the row still says Assembly:
+    // the register is patched from the answer, never from the request.
+    expect(find.text("Outside the caller's granted Org Units"), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(AssetsScreen.rowKey('7')), matching: find.text('Assembly')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a move to another Site takes the row off this register and says where it went',
+      (tester) async {
+    // A taller surface than the default 800x600 (issue #171's own test only):
+    // a caller with two Sites gets the register's Site chooser as well, and
+    // once this move empties the register the empty state — whose content is
+    // not scrollable — is 44px taller than what is left of the window. That is
+    // a pre-existing shape of `_AssetsEmpty` at a short height, not something
+    // this ticket changes, and the claim under test here is the notice and the
+    // row, not the layout of an empty state.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(800, 1000);
+    addTearDown(tester.view.reset);
+
+    final wire = wireWith(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh'), siteJson('2', 'DNA', 'Da Nang')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Assembly'), orgUnitJson('20', 'Elsewhere', siteId: '2')],
+        '10': [orgUnitJson('11', 'Line 1', parentId: '10', unitType: 'line')],
+      },
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1', orgUnitId: '10', orgUnitName: 'Assembly')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.orgUnitKey('7')));
+    await tapIn(tester, find.byKey(OrgUnitChooser.siteKey));
+    await tapIn(tester, find.text('Da Nang').last);
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('20')));
+    await tapIn(tester, find.byKey(AssetMoveDialog.submitKey));
+
+    expect(wire.assetPatches.single.$2, {'orgUnitId': '20'});
+    // This register is one Site's, and the machine has left it — so the row
+    // goes, and the notice accounts for it rather than letting it vanish.
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsNothing);
+    expect(
+      find.text('PRESS-1 has left this Site — it now sits at Elsewhere, at Da Nang.'),
+      findsOneWidget,
+    );
   });
 
   test(

@@ -115,6 +115,15 @@ class MaintenanceApi {
   Future<Asset> setAssetParent(String accessToken, String id, {required String? parentId}) =>
       _patchAsset(accessToken, id, {'parentId': parentId});
 
+  /// Changes where one Asset sits (issue #171) — the placement that decides
+  /// who may work on it. The server independently requires a write Grant
+  /// reaching BOTH the Org Unit the Asset is leaving and the one it is going
+  /// to (403), and refuses a malformed or unknown destination (400/404); this
+  /// call just reports whatever it decides, and the row it answers with
+  /// carries the new Org Unit's own name.
+  Future<Asset> setAssetOrgUnit(String accessToken, String id, {required String orgUnitId}) =>
+      _patchAsset(accessToken, id, {'orgUnitId': orgUnitId});
+
   Future<Asset> _patchAsset(String accessToken, String id, Map<String, dynamic> body) async {
     final path = '/api/maintenance/assets/$id';
     final response = await _send(

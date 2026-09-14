@@ -33,9 +33,12 @@
  * reuse `requireOrgUnitWriteScope` above: that one parses `req.body.orgUnitId`,
  * which is the right source for POST /assets (the caller is naming where a
  * brand new Asset goes) but wrong for PATCH /assets/:id, whose Org Unit is
- * read off the Asset ROW, not the URL or the body — an Asset's placement
- * does not change under retirement or nesting (see PATCH /assets/:id's own
- * comment: `org_unit_id` is untouched by nesting).
+ * read off the Asset ROW, not the URL or the body — retirement and nesting
+ * never move an Asset, so the row is the only thing that can say where the
+ * caller must be entitled to act. Issue #171's own `orgUnitId` on PATCH is a
+ * different question asked of a different record — where the Asset is GOING —
+ * and it is checked in the route, on top of this middleware rather than
+ * instead of it: the Asset's current placement still decides the first half.
  */
 
 const express = require('express');
@@ -162,12 +165,12 @@ router.post(
   }
 );
 
-// PATCH /assets/:id (issue #61): retiring/reinstating and nesting/detaching
-// an Asset, both through this one route — isActive and parentId are just two
-// columns on the same Asset row, not two resources. At least one of the two
-// must be present in the body; an empty `{}` is refused with 400 rather than
-// accepted as a no-op, the same shape PATCH /org-units/:id follows for its
-// own single field.
+// PATCH /assets/:id (issue #61): retiring/reinstating, nesting/detaching and
+// — since issue #171 — moving to another Org Unit, all through this one route.
+// isActive, parentId and orgUnitId are just three columns on the same Asset
+// row, not three resources. Exactly one of them must be present in the body;
+// an empty `{}` is refused with 400 rather than accepted as a no-op, the same
+// shape PATCH /org-units/:id follows for its own single field.
 //
 // `hasOwnProperty` is used for `parentId` rather than a truthiness check on
 // `req.body.parentId`, on purpose: `parentId: null` (detach — make this
@@ -175,17 +178,18 @@ router.post(
 // alone) have to read differently, and `!req.body.parentId` cannot tell them
 // apart — both are falsy.
 //
-// A body naming BOTH isActive and parentId is refused with 400 (issue #61
-// review, Fix A). setAssetParent and setAssetActive are separate
+// A body naming MORE THAN ONE of the three is refused with 400 (issue #61
+// review, Fix A; widened to the third field by issue #171).
+// setAssetParent, setAssetActive and setAssetOrgUnit are separate
 // transactions; a combined PATCH could commit the re-parent and then hit a
 // 409 or 500 on the retire half, and the caller — seeing only the failure —
 // would reasonably conclude nothing happened, when the parent had already
-// changed. These are two distinct operations on the same row, not one
-// compound edit: nothing asks for them to be combined, and the only sound
-// alternative — restructuring both service functions to accept a
-// caller-supplied transaction so they could commit together — would be built
-// for a caller that does not exist. Refusing is honest; half-committing is
-// not. Send them as two requests.
+// changed. These are distinct operations on the same row, not one compound
+// edit: nothing asks for them to be combined, and the only sound alternative —
+// restructuring three service functions to accept a caller-supplied
+// transaction so they could commit together — would be built for a caller that
+// does not exist. Refusing is honest; half-committing is not. Send them as
+// separate requests.
 //
 // The extra parent-scope rule below requires write scope on the Org Unit of
 // whichever parent is losing OR gaining the Asset when parentId changes —
@@ -210,12 +214,15 @@ router.patch(
       const body = req.body ?? {};
       const hasIsActive = Object.prototype.hasOwnProperty.call(body, 'isActive');
       const hasParentId = Object.prototype.hasOwnProperty.call(body, 'parentId');
-      if (!hasIsActive && !hasParentId) {
-        return res.status(400).json({ message: 'isActive and/or parentId is required' });
+      const hasOrgUnitId = Object.prototype.hasOwnProperty.call(body, 'orgUnitId');
+      const named = [hasIsActive, hasParentId, hasOrgUnitId].filter(Boolean).length;
+      if (named === 0) {
+        return res.status(400).json({ message: 'isActive, parentId and/or orgUnitId is required' });
       }
-      if (hasIsActive && hasParentId) {
+      if (named > 1) {
         return res.status(400).json({
-          message: 'isActive and parentId cannot be changed in the same request; send them as separate requests'
+          message:
+            'only one of isActive, parentId and orgUnitId can be changed per request; send them as separate requests'
         });
       }
       if (hasIsActive && typeof body.isActive !== 'boolean') {
@@ -256,12 +263,45 @@ router.patch(
         }
       }
 
+      // The destination Org Unit (issue #171). Existence before scope — the
+      // order AGENTS.md §6 fixes and this file's own middlewares follow: a
+      // malformed id is a 400, an unknown Org Unit a 404 even for an
+      // administrator, and only then the write check. The source half of the
+      // scope rule is already covered: requireAssetWriteScope above resolved
+      // this Asset and asked for write scope on the Org Unit it sits at now.
+      // Both halves are needed for the reason the parent-scope rule above
+      // gives — being entitled to act on the Asset is not enough when a second
+      // record changes with it, and here two Org Units do: one loses a machine
+      // from its register and one gains one.
+      if (hasOrgUnitId) {
+        const orgUnitId = parseId(body.orgUnitId);
+        if (orgUnitId === null) {
+          return res.status(400).json({ message: 'orgUnitId must be a valid Org Unit id' });
+        }
+        const orgUnit = await people.findOrgUnit(orgUnitId);
+        if (!orgUnit) throw notFound('Org Unit');
+
+        const allowedOnDestination = await people.canAct({
+          account: req.account,
+          orgUnitId: orgUnit.id,
+          write: true
+        });
+        if (!allowedOnDestination) {
+          return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+        }
+
+        req.orgUnit = orgUnit;
+      }
+
       let asset = req.asset;
       if (hasParentId) {
         asset = await assets.setAssetParent(req.params.id, body.parentId, req.account.id);
       }
       if (hasIsActive) {
         asset = await assets.setAssetActive(req.params.id, body.isActive, req.account.id);
+      }
+      if (hasOrgUnitId) {
+        asset = await assets.setAssetOrgUnit(req.params.id, req.orgUnit.id, req.account.id);
       }
 
       res.json({ asset });
