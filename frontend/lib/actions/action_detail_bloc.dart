@@ -22,6 +22,15 @@ class ActionDetailStarted extends ActionDetailEvent {
   final String actionId;
 }
 
+/// Call this Action off (issue #179). The reason is optional, and the dialog
+/// only ever sends one that was typed.
+class ActionCancellationRequested extends ActionDetailEvent {
+  const ActionCancellationRequested({required this.actionId, this.reason});
+
+  final String actionId;
+  final String? reason;
+}
+
 /// Raise a measure against this Concern (issue #178). The dialog decides the
 /// kind, the title and the optional fields; the Bloc only ever sees a decision
 /// already made.
@@ -79,6 +88,8 @@ class ActionDetailLoaded extends ActionDetailState {
     this.completionFailure,
     this.isAddingMeasure = false,
     this.measureFailure,
+    this.isCancelling = false,
+    this.cancellationFailure,
     this.notice,
   });
 
@@ -99,6 +110,15 @@ class ActionDetailLoaded extends ActionDetailState {
   /// Why the last measure did not land, reported by the dialog that asked.
   final String? measureFailure;
 
+  /// A cancellation is in flight (issue #179).
+  final bool isCancelling;
+
+  /// Why the last cancellation did not land. Reported by the dialog that asked,
+  /// which stays open — a refusal to call something off is nearly always "one
+  /// of its measures is still open", and that is a sentence worth reading
+  /// before deciding what to do next.
+  final String? cancellationFailure;
+
   /// What the last completion had to say for itself.
   final String? notice;
 
@@ -110,6 +130,9 @@ class ActionDetailLoaded extends ActionDetailState {
     bool? isAddingMeasure,
     String? measureFailure,
     bool clearMeasureFailure = false,
+    bool? isCancelling,
+    String? cancellationFailure,
+    bool clearCancellationFailure = false,
     String? notice,
     bool clearNotice = false,
   }) =>
@@ -118,6 +141,9 @@ class ActionDetailLoaded extends ActionDetailState {
         isCompleting: isCompleting ?? this.isCompleting,
         isAddingMeasure: isAddingMeasure ?? this.isAddingMeasure,
         measureFailure: clearMeasureFailure ? null : (measureFailure ?? this.measureFailure),
+        isCancelling: isCancelling ?? this.isCancelling,
+        cancellationFailure:
+            clearCancellationFailure ? null : (cancellationFailure ?? this.cancellationFailure),
         // Explicit clear flags rather than a null default: every emit would
         // otherwise wipe the reason a dialog is showing, and a caller reading
         // the Screen would never see it.
@@ -140,6 +166,7 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
     on<ActionDetailStarted>(_onStarted);
     on<ActionPhaseCompletionRequested>(_onPhaseCompletionRequested);
     on<ActionMeasureRaised>(_onMeasureRaised);
+    on<ActionCancellationRequested>(_onCancellationRequested);
   }
 
   final ActionsApi _actions;
@@ -158,6 +185,42 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
       emit(ActionDetailLoaded(await _actions.fetchAction(token, event.actionId)));
     } on ActionsApiException catch (error) {
       emit(ActionDetailUnavailable(message: error.message));
+    }
+  }
+
+  /// Calls the Action off and keeps what the server sends back, so the Screen
+  /// reads `Cancelled` with the note the cancellation wrote rather than
+  /// guessing at either.
+  Future<void> _onCancellationRequested(
+    ActionCancellationRequested event,
+    Emitter<ActionDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! ActionDetailLoaded || current.isCancelling) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(cancellationFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isCancelling: true, clearCancellationFailure: true));
+    try {
+      final action = await _actions.cancelAction(token, event.actionId, reason: event.reason);
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(
+        settled.copyWith(
+          action: action,
+          isCancelling: false,
+          clearCancellationFailure: true,
+          notice: '${action.actionNo} was called off.',
+        ),
+      );
+    } on ActionsApiException catch (error) {
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(settled.copyWith(isCancelling: false, cancellationFailure: error.message));
     }
   }
 

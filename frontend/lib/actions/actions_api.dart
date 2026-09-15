@@ -187,6 +187,25 @@ class ActionsApi {
     return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
   }
 
+  /// Calls one Action off (issue #179).
+  ///
+  /// The reason is optional and only sent when there is one: cancelling
+  /// withdraws a claim rather than making one, so it carries no evidence and
+  /// the server COALESCEs whatever arrives over any note already on the row.
+  Future<Action> cancelAction(String accessToken, String actionId, {String? reason}) async {
+    final path = '/api/actions/$actionId/cancel';
+    final body = <String, dynamic>{'reason': ?reason};
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
+  }
+
   /// The five Pillars, for the raise form's chooser (ADR-0023: a value with a
   /// known set is chosen, never typed).
   Future<List<Pillar>> fetchPillars(String accessToken) async {

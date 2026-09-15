@@ -724,6 +724,54 @@ async function completePhase(actionItemId, phase, { note, outcome = null }, acco
       throw httpError(409, `this Action is waiting on its ${open.phase} phase, not its ${phase}`);
     }
 
+    // Nothing closes a Concern unproven (issue #179, ADR-0033). Two refusals,
+    // and they are the Concern's own: a measure's Act is not held to either,
+    // because a Containment answers a Concern and has no countermeasures of
+    // its own — holding it to the same rule would make containment work
+    // unclosable.
+    //
+    // Both are read under `FOR UPDATE`, so a measure raised between the check
+    // and the write cannot slip under a Concern that has already been judged.
+    if (phase === 'act' && action.action_type === 'concern') {
+      const { rows: measures } = await client.query(
+        `SELECT action_no, title, action_type, status
+           FROM action_items
+          WHERE parent_action_item_id = $1
+          FOR UPDATE`,
+        [actionItemId]
+      );
+
+      // Outstanding work first, and deliberately: when a countermeasure is
+      // half-done both rules are true, and "AC-… is still open" names the work
+      // somebody has to finish, where "no countermeasure that held" would send
+      // the reader looking for one they already have.
+      const outstanding = measures.filter((measure) =>
+        OPEN_STATUSES.includes(measure.status)
+      );
+      if (outstanding.length > 0) {
+        throw httpError(
+          409,
+          `this Concern still has ${outstanding.length} open ` +
+            `${outstanding.length === 1 ? 'measure' : 'measures'}: ` +
+            outstanding.map((measure) => measure.action_no).join(', ')
+        );
+      }
+
+      // Nothing open, then: is anything behind this that actually fixed it? A
+      // Containment alone is not an answer — the Concern was contained, never
+      // answered — which is why this counts countermeasures rather than
+      // measures.
+      const closed = measures.some(
+        (measure) => measure.action_type === 'countermeasure' && measure.status === 'done'
+      );
+      if (!closed) {
+        throw httpError(
+          409,
+          'this Concern has no countermeasure that held, so it cannot be closed'
+        );
+      }
+    }
+
     await client.query(
       `UPDATE action_phases
           SET completed_at = now(), note = $3, outcome = $4
@@ -776,6 +824,71 @@ function nextPhase(open, outcome) {
   }
 }
 
+/**
+ * Calls one Action off (issue #179).
+ *
+ * The opposite rule from closing, on purpose: a `reason` is optional, because
+ * undoing a mistake should not demand prose (`cancelWorkOrder`'s own argument),
+ * and cancelling writes no evidence — it withdraws a claim. It is written to
+ * `closure_note`, COALESCEd, so cancelling without a reason never wipes a note
+ * that was already there; `action_items_done_has_time` makes the timestamp
+ * mandatory with the status, which is the database's backstop rather than the
+ * primary defence.
+ *
+ * One refusal beyond "already ended", and it is this Module's own discipline
+ * rather than a rule the ticket asked for: a Concern with a measure still open
+ * cannot be called off, because that would leave live work pointing at a
+ * decision that it was never a problem. Those measures are cancelled on their
+ * own, or the Concern is closed properly.
+ */
+async function cancelAction(actionItemId, { reason = null } = {}, accountId) {
+  return withActor(accountId, async (client) => {
+    const { rows: [action] } = await client.query(
+      'SELECT id, action_type, status FROM action_items WHERE id = $1 FOR UPDATE',
+      [actionItemId]
+    );
+    if (!action) throw notFound('Action');
+    if (action.status === 'done') {
+      throw httpError(409, 'this Action is closed, so it cannot be cancelled');
+    }
+    if (action.status === 'cancelled') {
+      throw httpError(409, 'this Action was already cancelled');
+    }
+
+    if (action.action_type === 'concern') {
+      const { rows: outstanding } = await client.query(
+        `SELECT action_no FROM action_items
+          WHERE parent_action_item_id = $1 AND status = ANY($2)
+          FOR UPDATE`,
+        [actionItemId, OPEN_STATUSES]
+      );
+      if (outstanding.length > 0) {
+        throw httpError(
+          409,
+          `this Concern still has ${outstanding.length} open ` +
+            `${outstanding.length === 1 ? 'measure' : 'measures'}: ` +
+            outstanding.map((measure) => measure.action_no).join(', ')
+        );
+      }
+    }
+
+    await client.query(
+      `UPDATE action_items
+          SET status = 'cancelled',
+              completed_at = now(),
+              closure_note = COALESCE($2, closure_note)
+        WHERE id = $1`,
+      [actionItemId, reason === null ? null : String(reason).trim() || null]
+    );
+
+    const { rows } = await client.query(
+      `SELECT ${ACTION_COLUMNS} ${ACTION_JOINS} WHERE ai.id = $1`,
+      [actionItemId]
+    );
+    return toActionDetail(rows[0], await listPhases(actionItemId, client), await listMeasures(actionItemId, client));
+  });
+}
+
 module.exports = {
   ACTION_TYPES,
   ACTION_STATUSES,
@@ -793,5 +906,6 @@ module.exports = {
   listMeasures,
   createAction,
   createMeasure,
-  completePhase
+  completePhase,
+  cancelAction
 };

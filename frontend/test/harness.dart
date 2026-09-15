@@ -1043,6 +1043,8 @@ class FakeWire {
     this.completePhaseMessage = 'this Action is waiting on its plan phase, not its do',
     this.createMeasureStatus = 201,
     this.createMeasureMessage = 'a measure answers a Concern, and that Action is not one',
+    this.cancelActionStatus = 200,
+    this.cancelActionMessage = 'this Concern still has 1 open measure: AC-TEST-2026-00008',
     this.createAssetStatus = 201,
     this.createAssetMessage = 'an Asset with this code already exists',
     this.patchAssetStatus = 200,
@@ -1259,6 +1261,11 @@ class FakeWire {
   final List<Map<String, dynamic>> actionPosts = [];
   int createActionStatus;
   String createActionMessage;
+
+  /// Every cancellation that reached the wire, as `(actionId, body)`.
+  final List<(String, Map<String, dynamic>)> cancellations = [];
+  int cancelActionStatus;
+  String cancelActionMessage;
 
   /// Every measure raise that reached the wire, as `(concernId, body)`.
   final List<(String, Map<String, dynamic>)> measurePosts = [];
@@ -3956,6 +3963,31 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'pillars': pillars}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/cancel')) {
+          // `/api/actions/:id/cancel` (issue #179). The stored Action ends the
+          // way the server ends it: the status, the timestamp and the note the
+          // cancellation wrote.
+          final id = path.split('/')[3];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          cancellations.add((id, body));
+          if (cancelActionStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': cancelActionMessage}),
+              cancelActionStatus,
+            );
+          }
+          final stored = actionDetails[id];
+          if (stored == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          stored['status'] = 'cancelled';
+          stored['completedAt'] = '2026-09-15T04:00:00.000Z';
+          stored['closureNote'] = body['reason'];
+          stored['openPhase'] = null;
+          return http.Response(jsonEncode({'action': stored}), 200);
         }
         if (request.method == 'POST' &&
             path.startsWith('/api/actions/') &&

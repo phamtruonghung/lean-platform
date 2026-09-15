@@ -9,6 +9,7 @@ import '../auth/sign_in_screen.dart';
 import '../actions/action_detail_bloc.dart';
 import '../actions/action_detail_screen.dart';
 import '../actions/action.dart';
+import '../actions/action_cancel_dialog.dart';
 import '../actions/action_form_dialog.dart';
 import '../actions/action_measure_dialog.dart';
 import '../actions/action_phase_complete_dialog.dart';
@@ -509,6 +510,17 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                           // kind comes off the address and is checked against
                           // the three the server accepts, so a mistyped one is
                           // refused by name rather than sent to be refused.
+                          // `/actions/:id/cancel` — calling it off (issue
+                          // #179), addressed rather than popped and nested
+                          // under the Action for the same reason the phase
+                          // dialog is.
+                          GoRoute(
+                            path: 'cancel',
+                            pageBuilder: (context, state) => DialogPage<void>(
+                              key: state.pageKey,
+                              builder: (dialogContext) => const ActionCancelDialogHost(),
+                            ),
+                          ),
                           GoRoute(
                             path: 'measures/:measureType/new',
                             pageBuilder: (context, state) {

@@ -382,4 +382,27 @@ router.post(
   }
 );
 
+// Call one Action off (issue #179). ADR-0019's shape once more: no status read
+// off the body, an optional `reason` (undoing a mistake should not demand
+// prose), the write guarded in actions.js over a locked row, and a second
+// cancel a 409 rather than a no-op.
+router.post(
+  '/:id/cancel',
+  people.authenticate,
+  people.requireActive,
+  requireActionWriteScope,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      if (body.reason !== undefined && body.reason !== null && typeof body.reason !== 'string') {
+        return res.status(400).json({ message: 'reason must be text' });
+      }
+      const action = await actions.cancelAction(req.action.id, { reason: body.reason ?? null }, req.account.id);
+      res.json({ action });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 module.exports = router;

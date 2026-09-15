@@ -36,6 +36,7 @@ class ActionDetailScreen extends StatelessWidget {
   static const ValueKey<String> completePhaseKey = ValueKey<String>('action-detail-complete-phase');
   static const ValueKey<String> cycleHistoryKey = ValueKey<String>('action-detail-cycle-history');
   static const ValueKey<String> noticeKey = ValueKey<String>('action-detail-notice');
+  static const ValueKey<String> cancelKey = ValueKey<String>('action-detail-cancel');
 
   static const ValueKey<String> addMeasureKey = ValueKey<String>('action-detail-add-measure');
   static const ValueKey<String> measuresHeadingKey = ValueKey<String>('action-detail-measures');
@@ -107,7 +108,21 @@ class _ActionDetail extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Spacing.md),
-            Text(action.actionNo, style: theme.textTheme.labelLarge),
+            Row(
+              children: [
+                Text(action.actionNo, style: theme.textTheme.labelLarge),
+                const Spacer(),
+                // Offered while the Action is still live, and never for one
+                // that has ended: a cancelled or closed record has nothing left
+                // to call off, and the address refuses it anyway (issue #179).
+                if (!const {'done', 'cancelled'}.contains(action.status))
+                  TextButton(
+                    key: ActionDetailScreen.cancelKey,
+                    onPressed: () => context.go('${Routes.actions}/${action.id}/cancel'),
+                    child: const Text('Call it off…'),
+                  ),
+              ],
+            ),
             const SizedBox(height: Spacing.xs),
             Text(action.title, style: theme.textTheme.headlineSmall),
             if (notice != null) ...[

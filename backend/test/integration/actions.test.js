@@ -1089,3 +1089,183 @@ test('the register counts the measures each Action is answered by', async () => 
   assert.strictEqual(row.measureCount, 2);
   assert.strictEqual(row.countermeasureCount, 1);
 });
+
+// ---------------------------------------------------------------------------
+// Nothing closes a Concern unproven (issue #179).
+// ---------------------------------------------------------------------------
+
+async function postCancel(token, actionId, body) {
+  const response = await fetch(`${base}/api/actions/${actionId}/cancel`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body ?? {})
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+// Walks one Action through a whole effective cycle, so a test can start from a
+// Concern whose Act is the only step left.
+async function driveToAct(token, actionId) {
+  await completePhase(token, actionId, 'plan', { note: 'Planned' });
+  await completePhase(token, actionId, 'do', { note: 'Done' });
+  await completePhase(token, actionId, 'check', { note: 'It held', outcome: 'effective' });
+}
+
+test('a Concern with no countermeasure cannot be closed', async () => {
+  const { concern } = await raiseConcern('Nobody has answered this');
+  await driveToAct(admin.token, concern.id);
+
+  const refused = await completePhase(admin.token, concern.id, 'act', { note: 'Closing anyway' });
+  assert.strictEqual(refused.response.status, 409);
+  assert.match(refused.payload.message, /no countermeasure that held/);
+
+  // A containment alone is not a fix: it was contained, never answered. It is
+  // closed properly first, so that what refuses the Concern is the *absence of
+  // a countermeasure* rather than the containment still being outstanding.
+  const { payload: containment } = await postMeasure(admin.token, concern.id, {
+    actionType: 'containment',
+    title: 'Clamp it for now'
+  });
+  insertedActionIds.push(containment.action.id);
+  await driveToAct(admin.token, containment.action.id);
+  await completePhase(admin.token, containment.action.id, 'act', {
+    note: 'Clamp is the working standard for now'
+  });
+
+  const stillRefused = await completePhase(admin.token, concern.id, 'act', { note: 'Closing anyway' });
+  assert.strictEqual(stillRefused.response.status, 409);
+  assert.match(stillRefused.payload.message, /no countermeasure that held/);
+});
+
+test('a Concern whose countermeasure is still being worked cannot be closed', async () => {
+  const { concern } = await raiseConcern('The fix is half done');
+  await driveToAct(admin.token, concern.id);
+
+  const { payload: countermeasure } = await postMeasure(admin.token, concern.id, {
+    actionType: 'countermeasure',
+    title: 'Re-rate the motor'
+  });
+  insertedActionIds.push(countermeasure.action.id);
+
+  const refused = await completePhase(admin.token, concern.id, 'act', { note: 'Closing anyway' });
+  assert.strictEqual(refused.response.status, 409);
+  assert.match(refused.payload.message, /1 open measure/);
+  assert.match(refused.payload.message, new RegExp(countermeasure.action.actionNo));
+
+  // Closing the countermeasure properly is what unblocks the Concern.
+  await driveToAct(admin.token, countermeasure.action.id);
+  await completePhase(admin.token, countermeasure.action.id, 'act', { note: 'Standard updated' });
+
+  const closed = await completePhase(admin.token, concern.id, 'act', {
+    note: 'The fix is the standard now'
+  });
+  assert.strictEqual(closed.response.status, 200);
+  assert.strictEqual(closed.payload.action.status, 'done');
+  assert.strictEqual(closed.payload.action.measureCount, 1);
+  assert.strictEqual(closed.payload.action.countermeasureCount, 1);
+});
+
+test('a measure own Act is not held to the Concern rules: a containment closes alone', async () => {
+  const { concern } = await raiseConcern('Contained and closed, cause untouched');
+  const { payload: containment } = await postMeasure(admin.token, concern.id, {
+    actionType: 'containment',
+    title: 'Clamp the guard'
+  });
+  insertedActionIds.push(containment.action.id);
+
+  await driveToAct(admin.token, containment.action.id);
+  const closed = await completePhase(admin.token, containment.action.id, 'act', {
+    note: 'Clamp is the working standard until the cause is found'
+  });
+  assert.strictEqual(closed.response.status, 200);
+  assert.strictEqual(closed.payload.action.status, 'done');
+});
+
+test('cancelling writes the status, the timestamp and an optional reason', async () => {
+  const { concern } = await raiseConcern('Raised about the wrong machine');
+
+  const noReason = await postCancel(admin.token, concern.id);
+  assert.strictEqual(noReason.response.status, 200);
+  assert.strictEqual(noReason.payload.action.status, 'cancelled');
+  assert.ok(noReason.payload.action.completedAt);
+  assert.strictEqual(noReason.payload.action.closureNote, null);
+
+  const { concern: other } = await raiseConcern('Also wrong');
+  const withReason = await postCancel(admin.token, other.id, { reason: 'Duplicate of the other one' });
+  assert.strictEqual(withReason.response.status, 200);
+  assert.strictEqual(withReason.payload.action.closureNote, 'Duplicate of the other one');
+
+  // A second cancel is refused rather than a no-op, and a cancelled Action
+  // refuses every phase afterwards.
+  const again = await postCancel(admin.token, other.id);
+  assert.strictEqual(again.response.status, 409);
+  assert.match(again.payload.message, /already cancelled/);
+
+  const advanced = await completePhase(admin.token, other.id, 'plan', { note: 'Too late' });
+  assert.strictEqual(advanced.response.status, 409);
+  assert.match(advanced.payload.message, /was cancelled/);
+
+  // A closed Action cannot be cancelled either.
+  const { concern: closing } = await raiseConcern('Properly closed');
+  const { payload: fix } = await postMeasure(admin.token, closing.id, {
+    actionType: 'countermeasure',
+    title: 'The real fix'
+  });
+  insertedActionIds.push(fix.action.id);
+  await driveToAct(admin.token, fix.action.id);
+  await completePhase(admin.token, fix.action.id, 'act', { note: 'Standard' });
+  await driveToAct(admin.token, closing.id);
+  await completePhase(admin.token, closing.id, 'act', { note: 'Closed on proof' });
+
+  const cancelClosed = await postCancel(admin.token, closing.id, { reason: 'Too late' });
+  assert.strictEqual(cancelClosed.response.status, 409);
+  assert.match(cancelClosed.payload.message, /closed/);
+});
+
+test('a Concern whose measures are still open cannot be called off', async () => {
+  const { concern } = await raiseConcern('Somebody is halfway through this');
+  const { payload: containment } = await postMeasure(admin.token, concern.id, {
+    actionType: 'containment',
+    title: 'Half-fitted clamp'
+  });
+  insertedActionIds.push(containment.action.id);
+
+  const refused = await postCancel(admin.token, concern.id, { reason: 'Never mind' });
+  assert.strictEqual(refused.response.status, 409);
+  assert.match(refused.payload.message, /1 open measure/);
+
+  // Cancelling the measure is what makes the Concern cancellable.
+  const cancelled = await postCancel(admin.token, containment.action.id, { reason: 'Overtaken' });
+  assert.strictEqual(cancelled.response.status, 200);
+
+  const thenConcern = await postCancel(admin.token, concern.id, { reason: 'Never mind' });
+  assert.strictEqual(thenConcern.response.status, 200);
+  assert.strictEqual(thenConcern.payload.action.status, 'cancelled');
+});
+
+test('cancelling needs a write Grant, and an unknown Action is a 404', async () => {
+  const { concern } = await raiseConcern('Raised by a reader and cancelled by the line');
+  const { rows: [row] } = await pool.query(
+    'SELECT org_unit_id FROM action_items WHERE id = $1',
+    [concern.id]
+  );
+  // The reader's own concern sits at an Org Unit they may read, not write.
+  const readOnlyConcern = await insertAction(row.org_unit_id, { title: 'Also out of reach' });
+
+  const refused = await postCancel(readOnlyAccount.token, readOnlyConcern.id);
+  assert.strictEqual(refused.response.status, 403);
+  assert.strictEqual(refused.payload.message, "Outside the caller's granted Org Units");
+
+  const allowed = await postCancel(admin.token, readOnlyConcern.id);
+  assert.strictEqual(allowed.response.status, 200);
+
+  const unknown = await postCancel(admin.token, '99999999');
+  assert.strictEqual(unknown.response.status, 404);
+
+  const malformed = await postCancel(admin.token, 'not-an-id');
+  assert.strictEqual(malformed.response.status, 404);
+
+  const badReason = await postCancel(admin.token, concern.id, { reason: 42 });
+  assert.strictEqual(badReason.response.status, 400);
+});

@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/actions/action.dart' hide Action;
 import 'package:lean_platform/actions/action_detail_screen.dart';
+import 'package:lean_platform/actions/action_cancel_dialog.dart';
 import 'package:lean_platform/actions/action_measure_dialog.dart';
 import 'package:lean_platform/actions/action_phase_complete_dialog.dart';
 import 'package:lean_platform/actions/action_form_dialog.dart';
@@ -40,6 +41,8 @@ FakeWire wireWith({
   String completePhaseMessage = 'this Action is waiting on its plan phase, not its do',
   int createMeasureStatus = 201,
   String createMeasureMessage = 'a measure answers a Concern, and that Action is not one',
+  int cancelActionStatus = 200,
+  String cancelActionMessage = 'this Concern still has 1 open measure: AC-TEST-2026-00008',
 }) =>
     FakeWire(
       role: role,
@@ -60,6 +63,8 @@ FakeWire wireWith({
       completePhaseMessage: completePhaseMessage,
       createMeasureStatus: createMeasureStatus,
       createMeasureMessage: createMeasureMessage,
+      cancelActionStatus: cancelActionStatus,
+      cancelActionMessage: cancelActionMessage,
     );
 
 void main() {
@@ -677,6 +682,127 @@ void main() {
 
     expect(find.byKey(ActionsScreen.measuresKey('501')), findsOneWidget);
     expect(find.textContaining('3 measures, 1 of them countermeasures'), findsOneWidget);
+  });
+
+  testWidgets('calling an Action off sends only the reason that was typed', (tester) async {
+    final wire = wireWith(
+      actionDetails: {
+        '501': actionJson(
+          '501',
+          'AC-HCM-2026-00001',
+          'Raised about the wrong machine',
+          phases: [phaseJson(1, 'plan')],
+          openPhase: phaseJson(1, 'plan'),
+        ),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.cancelKey));
+    expect(find.byType(ActionCancelDialog), findsOneWidget);
+
+    // No reason typed: the body carries none, because cancelling withdraws a
+    // claim rather than making one.
+    await tapIn(tester, find.byKey(ActionCancelDialog.submitKey));
+    expect(wire.cancellations.length, 1);
+    expect(wire.cancellations.single.$1, '501');
+    expect(wire.cancellations.single.$2.containsKey('reason'), isFalse);
+
+    expect(find.byType(ActionCancelDialog), findsNothing);
+    expect(find.text('Cancelled'), findsWidgets);
+    expect(find.byKey(ActionDetailScreen.cancelKey), findsNothing);
+    expect(find.byKey(ActionDetailScreen.noticeKey), findsOneWidget);
+  });
+
+  testWidgets('a reason that was typed is carried, and a refusal stays in the dialog', (tester) async {
+    final wire = wireWith(
+      cancelActionStatus: 409,
+      cancelActionMessage: 'this Concern still has 1 open measure: AC-HCM-2026-00006',
+      actionDetails: {
+        '501': actionJson(
+          '501',
+          'AC-HCM-2026-00001',
+          'Somebody is halfway through this',
+          status: 'in_progress',
+          phases: [phaseJson(1, 'plan'), phaseJson(1, 'do')],
+          openPhase: phaseJson(1, 'do'),
+        ),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.cancelKey));
+    await tester.enterText(find.byKey(ActionCancelDialog.reasonKey), 'Never mind');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(ActionCancelDialog.submitKey));
+
+    expect(wire.cancellations.single.$2['reason'], 'Never mind');
+    // The refusal names the measure that is holding it up, and the dialog stays
+    // open with it.
+    expect(find.byType(ActionCancelDialog), findsOneWidget);
+    expect(find.byKey(ActionCancelDialog.failureKey), findsOneWidget);
+    expect(find.textContaining('AC-HCM-2026-00006'), findsOneWidget);
+  });
+
+  testWidgets('an Action that has already ended is not offered a cancel form', (tester) async {
+    final wire = wireWith(
+      actionDetails: {
+        '501': actionJson('501', 'AC-HCM-2026-00001', 'Already closed', status: 'done'),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501/cancel',
+    );
+
+    expect(find.byKey(ActionCancelDialogHost.alreadyEndedKey), findsOneWidget);
+    expect(find.byType(ActionCancelDialog), findsNothing);
+    expect(wire.cancellations, isEmpty);
+  });
+
+  testWidgets('a refused Act names the measure that is holding the Concern up', (tester) async {
+    final wire = wireWith(
+      completePhaseStatus: 409,
+      completePhaseMessage: 'this Concern still has 1 open measure: AC-HCM-2026-00006',
+      actionDetails: {
+        '501': actionJson(
+          '501',
+          'AC-HCM-2026-00001',
+          'The fix is half done',
+          status: 'in_progress',
+          measureCount: 1,
+          phases: [phaseJson(1, 'plan'), phaseJson(1, 'do'), phaseJson(1, 'check', completedAt: '2026-09-10T02:00:00.000Z', outcome: 'effective', note: 'It held'), phaseJson(1, 'act')],
+          openPhase: phaseJson(1, 'act'),
+        ),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.completePhaseKey));
+    await tester.enterText(find.byKey(ActionPhaseCompleteDialog.noteKey), 'Closing anyway');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(ActionPhaseCompleteDialog.submitKey));
+
+    expect(find.byType(ActionPhaseCompleteDialog), findsOneWidget);
+    expect(find.textContaining('AC-HCM-2026-00006'), findsOneWidget);
+    expect(find.text('Closing anyway'), findsOneWidget);
   });
 
   testWidgets('an Action that is not there reports it rather than an empty Screen', (tester) async {
