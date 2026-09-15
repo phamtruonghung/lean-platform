@@ -1162,6 +1162,9 @@ test('a Concern whose countermeasure is still being worked cannot be closed', as
   assert.strictEqual(refused.response.status, 409);
   assert.match(refused.payload.message, /1 open measure/);
   assert.match(refused.payload.message, new RegExp(countermeasure.action.actionNo));
+  // The numbers, and then what to do about them (issue #183): a measure is an
+  // Action of its own and nothing on the Screen said so.
+  assert.match(refused.payload.message, /A measure closes when its own cycle reaches its Act/);
 
   // Closing the countermeasure properly is what unblocks the Concern.
   await driveToAct(admin.token, countermeasure.action.id);
@@ -1244,6 +1247,8 @@ test('a Concern whose measures are still open cannot be called off', async () =>
   const refused = await postCancel(admin.token, concern.id, { reason: 'Never mind' });
   assert.strictEqual(refused.response.status, 409);
   assert.match(refused.payload.message, /1 open measure/);
+  // Calling a Concern off has a different way out, and the message says which.
+  assert.match(refused.payload.message, /Run each one to its Act, or cancel it/);
 
   // Cancelling the measure is what makes the Concern cancellable.
   const cancelled = await postCancel(admin.token, containment.action.id, { reason: 'Overtaken' });

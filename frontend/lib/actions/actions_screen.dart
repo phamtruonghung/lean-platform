@@ -56,34 +56,70 @@ class ActionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<ActionsBloc>().state;
 
-    return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Header(state: state),
-          if (state is ActionsLoaded && state.notice != null) _Notice(message: state.notice!),
-          if (state is ActionsLoaded && state.truncated) const _Truncated(),
-          Expanded(
-            child: switch (state) {
-              ActionsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
-              ActionsUnavailable(message: final message) => PlatformFailureState(
-                  key: failedKey,
-                  title: 'The action log could not be read',
-                  message: message,
-                  retryKey: retryKey,
-                  onRetry: () => context.read<ActionsBloc>().add(const ActionsStarted()),
-                ),
-              ActionsLoaded(isLoadingActions: true) => const SkeletonList(rows: 4, maxWidth: maxWidth),
-              ActionsLoaded(actions: final actions, isFiltered: final isFiltered)
-                  when actions.isEmpty =>
-                _ActionsEmpty(isFiltered: isFiltered),
-              ActionsLoaded(actions: final actions) => _ActionsList(actions: actions),
-            },
-          ),
-        ],
+    return _RefreshOnMount(
+      child: Scaffold(
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Header(state: state),
+            if (state is ActionsLoaded && state.notice != null) _Notice(message: state.notice!),
+            if (state is ActionsLoaded && state.truncated) const _Truncated(),
+            Expanded(
+              child: switch (state) {
+                ActionsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
+                ActionsUnavailable(message: final message) => PlatformFailureState(
+                    key: failedKey,
+                    title: 'The action log could not be read',
+                    message: message,
+                    retryKey: retryKey,
+                    onRetry: () => context.read<ActionsBloc>().add(const ActionsStarted()),
+                  ),
+                ActionsLoaded(isLoadingActions: true) =>
+                  const SkeletonList(rows: 4, maxWidth: maxWidth),
+                ActionsLoaded(actions: final actions, isFiltered: final isFiltered)
+                    when actions.isEmpty =>
+                  _ActionsEmpty(isFiltered: isFiltered),
+                ActionsLoaded(actions: final actions) => _ActionsList(actions: actions),
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+/// Asks the register to re-read whenever the Screen is entered (issue #183).
+///
+/// This Module's `ShellRoute` creates `ActionsBloc` once and keeps it alive
+/// while the caller reads an Action and comes back, so a Screen that only read
+/// on `ActionsStarted` painted the list as it was when they left — rows raised
+/// elsewhere, measures closed, counts moved, none of it visible. The Bloc
+/// ignores the ask while its first load is still in flight, which is what a
+/// Screen mounting mid-load looks like.
+class _RefreshOnMount extends StatefulWidget {
+  const _RefreshOnMount({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_RefreshOnMount> createState() => _RefreshOnMountState();
+}
+
+class _RefreshOnMountState extends State<_RefreshOnMount> {
+  @override
+  void initState() {
+    super.initState();
+    // After this frame, never during it: dispatching an event from `initState`
+    // is a side effect while the tree is being built.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<ActionsBloc>().add(const ActionsRefreshed());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _Header extends StatelessWidget {

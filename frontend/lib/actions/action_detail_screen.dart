@@ -33,6 +33,10 @@ class ActionDetailScreen extends StatelessWidget {
   static const ValueKey<String> loadedKey = ValueKey<String>('action-detail-loaded');
   static const ValueKey<String> backKey = ValueKey<String>('action-detail-back');
   static const ValueKey<String> measuresEmptyKey = ValueKey<String>('action-detail-measures-empty');
+  static const ValueKey<String> measuresHintKey = ValueKey<String>('action-detail-measures-hint');
+
+  static ValueKey<String> measureCompleteKey(String id) =>
+      ValueKey<String>('action-detail-measure-complete-$id');
   static const ValueKey<String> completePhaseKey = ValueKey<String>('action-detail-complete-phase');
   static const ValueKey<String> cycleHistoryKey = ValueKey<String>('action-detail-cycle-history');
   static const ValueKey<String> noticeKey = ValueKey<String>('action-detail-notice');
@@ -93,15 +97,30 @@ class _ActionDetail extends StatelessWidget {
           key: ActionDetailScreen.loadedKey,
           padding: const EdgeInsets.all(Spacing.xl),
           children: [
-            Row(
+            // A `Wrap`, not a `Row`: the back label is a Destination's name and
+            // the status chip is a word, and together they are wider than an
+            // 800px window — where a `Row` overflows and a `Wrap` puts the chip
+            // on its own line. `spaceBetween` keeps the chip hard right at every
+            // width the app is used at.
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: Spacing.sm,
+              runSpacing: Spacing.sm,
               children: [
+                // `context.go`, never `maybePop`: every navigation in this
+                // Platform replaces the location rather than pushing a page
+                // (Work orders, the Directory, this Module), so there is
+                // nothing on the Navigator to pop and `maybePop` is a button
+                // that does nothing at all — which is exactly how it behaved on
+                // the deployed stack (issue #183). WorkOrderDetailScreen's own
+                // "Back to Work orders" is the convention this copies.
                 TextButton.icon(
                   key: ActionDetailScreen.backKey,
-                  onPressed: () => Navigator.of(context).maybePop(),
+                  onPressed: () => context.go(Routes.actions),
                   icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back'),
+                  label: const Text('Back to the action log'),
                 ),
-                const Spacer(),
                 StatusChip(
                   label: action.statusLabel,
                   tone: action.statusTone,
@@ -425,6 +444,18 @@ class _Measures extends StatelessWidget {
             ),
           ],
         ),
+        if (measures.isNotEmpty) ...[
+          const SizedBox(height: Spacing.xs),
+          // The sentence the deployed stack was missing (issue #183): a reader
+          // who has just been refused by the Act needs to be told what closes a
+          // measure, and that it is something they can go and do.
+          Text(
+            key: ActionDetailScreen.measuresHintKey,
+            'Each measure is an Action of its own: open one and run its own cycle to its Act, and '
+            'it counts as closed.',
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ],
         const SizedBox(height: Spacing.sm),
         if (measures.isEmpty)
           Text(
@@ -442,13 +473,34 @@ class _Measures extends StatelessWidget {
             child: ListTile(
               onTap: () => context.go('${Routes.actions}/${measure.id}'),
               title: Text(measure.title),
+              // Where the work is, on the row itself: a measure waiting on a
+              // phase offers that phase's completion, addressed at the
+              // measure's own Action — the same dialog it would get two taps
+              // later, one tap earlier, which is what the deployed stack's
+              // reader went looking for and did not find (issue #183). A
+              // measure with nothing open still opens, with the chevron the
+              // register's own rows carry.
+              trailing: measure.openPhase == null
+                  ? const Icon(Icons.chevron_right)
+                  : TextButton(
+                      key: ActionDetailScreen.measureCompleteKey(measure.id),
+                      onPressed: () => context.go(
+                        '${Routes.actions}/${measure.id}/phases/'
+                        '${measure.openPhase!.phase}/complete',
+                      ),
+                      child: Text('Complete the ${measure.openPhase!.phaseLabel}…'),
+                    ),
               subtitle: Text(
                 [
                   measure.typeLabel,
                   measure.statusLabel,
                   measure.ownerName ?? 'Nobody yet',
+                  // Two different facts, so both: when it is due and what it is
+                  // waiting on. (They used to be exclusive, which hid the phase
+                  // of exactly the measures a reader is most likely to be
+                  // looking for.)
                   if (measure.isOverdue) 'overdue by ${measure.daysOverdue} days',
-                  if (measure.openPhase != null && !measure.isOverdue)
+                  if (measure.openPhase != null)
                     'waiting on its ${measure.openPhase!.phaseLabel.toLowerCase()}',
                 ].join(' · '),
               ),

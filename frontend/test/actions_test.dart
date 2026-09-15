@@ -523,6 +523,12 @@ void main() {
 
   testWidgets('a Concern shows the measures answering it, and the counts on the register row',
       (tester) async {
+    // A taller window: the measures section is the last of the detail's
+    // sections and now carries a line of prose above its rows, so at 800x600 it
+    // is built below the fold and its keys do not exist yet.
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final wire = wireWith(
       actions: {
         '1': [
@@ -562,6 +568,246 @@ void main() {
     expect(find.byKey(ActionDetailScreen.measureKey('602')), findsOneWidget);
     expect(find.textContaining('Containment · Open · Ann Fitter'), findsOneWidget);
     expect(find.byKey(ActionDetailScreen.measuresEmptyKey), findsNothing);
+    // Issue #183: the row says what the measure waits on, says it opens (the
+    // chevron the register's own rows use), and the section says how a measure
+    // is closed at all.
+    expect(find.textContaining('waiting on its do'), findsOneWidget);
+    expect(find.byKey(ActionDetailScreen.measuresHintKey), findsOneWidget);
+    expect(find.textContaining('run its own cycle to its Act'), findsOneWidget);
+    // The row that is waiting on a phase offers that phase, addressed at the
+    // measure's own Action; the row with nothing open still opens.
+    expect(find.byKey(ActionDetailScreen.measureCompleteKey('601')), findsOneWidget);
+    expect(find.text('Complete the Do…'), findsOneWidget);
+    expect(find.byKey(ActionDetailScreen.measureCompleteKey('602')), findsNothing);
+    expect(find.byIcon(Icons.chevron_right), findsWidgets);
+  });
+
+  testWidgets('the measure row completes that measure own phase, not the Concern', (tester) async {
+    final wire = wireWith(
+      actionDetails: {
+        '501': actionJson(
+          '501',
+          'AC-HCM-2026-00001',
+          'Guard keeps working loose',
+          status: 'in_progress',
+          measureCount: 1,
+          countermeasureCount: 1,
+          measures: [
+            actionJson('601', 'AC-HCM-2026-00006', 'Change the pre-start check',
+                actionType: 'countermeasure', openPhase: phaseJson(1, 'check')),
+          ],
+          phases: [phaseJson(1, 'plan', completedAt: '2026-09-01T02:00:00.000Z')],
+          openPhase: phaseJson(1, 'plan'),
+        ),
+        // The measure's own read, which the shortcut lands on.
+        '601': actionJson(
+          '601',
+          'AC-HCM-2026-00006',
+          'Change the pre-start check',
+          actionType: 'countermeasure',
+          status: 'in_progress',
+          parentId: '501',
+          phases: [
+            phaseJson(1, 'plan', completedAt: '2026-09-01T02:00:00.000Z'),
+            phaseJson(1, 'do', completedAt: '2026-09-02T02:00:00.000Z'),
+            phaseJson(1, 'check'),
+          ],
+          openPhase: phaseJson(1, 'check'),
+        ),
+      },
+    );
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.measureCompleteKey('601')));
+
+    // It opened the MEASURE's own cycle dialog, over the measure's own read.
+    expect(find.byType(ActionPhaseCompleteDialog), findsOneWidget);
+    // The dialog's own title, and the row's button that opened it, say the same
+    // words; what matters is that the dialog is the MEASURE's.
+    expect(find.text('Complete the Check'), findsWidgets);
+    expect(
+      find.byKey(ActionPhaseCompleteDialog.noteKey),
+      findsOneWidget,
+      reason: 'the phase dialog is open over the measure own cycle',
+    );
+    expect(find.text('Change the pre-start check'), findsWidgets);
+  });
+
+  testWidgets('opening a measure shows the measure, not the Concern it answers', (tester) async {
+    // The bug the shortcut test walked into: go_router reuses a page when the
+    // route *pattern* matches, so tapping a measure kept the Concern's Bloc —
+    // and the Concern's own reading — on screen (issue #183).
+    final wire = wireWith(
+      actionDetails: {
+        '501': actionJson(
+          '501',
+          'AC-HCM-2026-00001',
+          'Guard keeps working loose',
+          status: 'in_progress',
+          measureCount: 1,
+          countermeasureCount: 1,
+          measures: [
+            actionJson('602', 'AC-HCM-2026-00007', 'Change the pre-start check',
+                actionType: 'countermeasure'),
+          ],
+          phases: [phaseJson(1, 'plan', completedAt: '2026-09-01T02:00:00.000Z'), phaseJson(1, 'do')],
+          openPhase: phaseJson(1, 'do'),
+        ),
+        '602': actionJson(
+          '602',
+          'AC-HCM-2026-00007',
+          'Change the pre-start check',
+          actionType: 'countermeasure',
+          status: 'open',
+          parentId: '501',
+          parent: {
+            'id': '501',
+            'actionNo': 'AC-HCM-2026-00001',
+            'title': 'Guard keeps working loose',
+            'actionType': 'concern',
+            'status': 'in_progress',
+          },
+          phases: [phaseJson(1, 'plan')],
+          openPhase: phaseJson(1, 'plan'),
+        ),
+      },
+    );
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.measureKey('602')));
+
+    // The measure's own read: it names its Concern and carries its own cycle.
+    // No measures list any more (this is not the Concern), its own cycle, and
+    // the Concern it answers named in the card that only a measure carries.
+    expect(find.byKey(ActionDetailScreen.measureKey('602')), findsNothing);
+    expect(find.text('Change the pre-start check'), findsWidgets);
+    expect(find.text('Countermeasure'), findsOneWidget);
+    expect(find.text('Complete the Plan'), findsOneWidget);
+    expect(find.byKey(ActionDetailScreen.parentKey), findsOneWidget);
+    expect(find.text('Guard keeps working loose'), findsOneWidget);
+  });
+
+  testWidgets('returning to the action log re-reads it rather than showing what was left',
+      (tester) async {
+    // Issue #183: the Module's ShellRoute keeps ActionsBloc alive across a
+    // visit to an Action, so the register has to ask again when it is entered.
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final wire = wireWith(
+      actions: {
+        '1': [
+          actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose'),
+        ],
+      },
+      actionDetails: {
+        '501': actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose'),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions',
+    );
+
+    expect(wire.actionReads.length, 1);
+    await tapIn(tester, find.byKey(ActionsScreen.rowKey('501')));
+    expect(find.byType(ActionDetailScreen), findsOneWidget);
+
+    // A row raised while the caller was away.
+    wire.actions['1'] = [
+      ...wire.actions['1']!,
+      actionJson('502', 'AC-HCM-2026-00002', 'Pallet wrapper jams'),
+    ];
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.backKey));
+
+    expect(find.byType(ActionsScreen), findsOneWidget);
+    expect(wire.actionReads.length, 2);
+    expect(find.byKey(ActionsScreen.rowKey('502')), findsOneWidget);
+  });
+
+  testWidgets('an overdue measure still says which phase it is waiting on', (tester) async {
+    // Two separate facts — when it is due and what it is waiting on — and the
+    // bug this pins is that the first used to hide the second (issue #183).
+    final wire = wireWith(
+      actionDetails: {
+        '501': actionJson(
+          '501',
+          'AC-HCM-2026-00001',
+          'Guard keeps working loose',
+          status: 'in_progress',
+          measureCount: 1,
+          countermeasureCount: 1,
+          measures: [
+            actionJson('601', 'AC-HCM-2026-00006', 'Change the pre-start check',
+                actionType: 'countermeasure',
+                dueDate: '2026-09-01',
+                isOverdue: true,
+                daysOverdue: 14,
+                openPhase: phaseJson(1, 'check')),
+          ],
+          phases: [phaseJson(1, 'plan', completedAt: '2026-09-01T02:00:00.000Z'), phaseJson(1, 'do')],
+          openPhase: phaseJson(1, 'do'),
+        ),
+      },
+    );
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    expect(find.textContaining('overdue by 14 days'), findsOneWidget);
+    expect(find.textContaining('waiting on its check'), findsOneWidget);
+  });
+
+  testWidgets('the Back button returns to the action log, even from a deep link', (tester) async {
+    // The bug the deployed stack hit (issue #183): `maybePop` in an app that
+    // never pushes is a button that does nothing. Reached by URL there is no
+    // history at all, which is the case that has to work.
+    final wire = wireWith(
+      actionDetails: {
+        '501': actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose'),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    expect(find.byType(ActionDetailScreen), findsOneWidget);
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.backKey));
+
+    expect(find.byType(ActionDetailScreen), findsNothing);
+    expect(find.byType(ActionsScreen), findsOneWidget);
+    // And it went through the register's own read rather than painting a Screen
+    // it had no data for.
+    expect(wire.actionReads, isNotEmpty);
   });
 
   testWidgets('raising a containment needs a title, and the kind comes off the address',
