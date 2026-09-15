@@ -22,6 +22,21 @@ class ActionDetailStarted extends ActionDetailEvent {
   final String actionId;
 }
 
+/// Hand this Action up to an Org Unit above it (issue #180).
+class ActionEscalationRequested extends ActionDetailEvent {
+  const ActionEscalationRequested({required this.actionId, required this.orgUnitId});
+
+  final String actionId;
+  final String orgUnitId;
+}
+
+/// Load the Org Units this Action may be handed up to (issue #180).
+class ActionEscalationTargetsRequested extends ActionDetailEvent {
+  const ActionEscalationTargetsRequested({required this.actionId});
+
+  final String actionId;
+}
+
 /// Call this Action off (issue #179). The reason is optional, and the dialog
 /// only ever sends one that was typed.
 class ActionCancellationRequested extends ActionDetailEvent {
@@ -88,6 +103,10 @@ class ActionDetailLoaded extends ActionDetailState {
     this.completionFailure,
     this.isAddingMeasure = false,
     this.measureFailure,
+    this.escalationTargets = const [],
+    this.isLoadingEscalationTargets = false,
+    this.isEscalating = false,
+    this.escalationFailure,
     this.isCancelling = false,
     this.cancellationFailure,
     this.notice,
@@ -110,6 +129,16 @@ class ActionDetailLoaded extends ActionDetailState {
   /// Why the last measure did not land, reported by the dialog that asked.
   final String? measureFailure;
 
+  /// The Org Units this Action may be handed up to, and whether they are still
+  /// being read. Both empty when the Action has ended: nothing is handed up
+  /// once it is over.
+  final List<EscalationTarget> escalationTargets;
+  final bool isLoadingEscalationTargets;
+
+  /// An escalation is in flight, and why the last one did not land.
+  final bool isEscalating;
+  final String? escalationFailure;
+
   /// A cancellation is in flight (issue #179).
   final bool isCancelling;
 
@@ -130,6 +159,11 @@ class ActionDetailLoaded extends ActionDetailState {
     bool? isAddingMeasure,
     String? measureFailure,
     bool clearMeasureFailure = false,
+    List<EscalationTarget>? escalationTargets,
+    bool? isLoadingEscalationTargets,
+    bool? isEscalating,
+    String? escalationFailure,
+    bool clearEscalationFailure = false,
     bool? isCancelling,
     String? cancellationFailure,
     bool clearCancellationFailure = false,
@@ -141,6 +175,12 @@ class ActionDetailLoaded extends ActionDetailState {
         isCompleting: isCompleting ?? this.isCompleting,
         isAddingMeasure: isAddingMeasure ?? this.isAddingMeasure,
         measureFailure: clearMeasureFailure ? null : (measureFailure ?? this.measureFailure),
+        escalationTargets: escalationTargets ?? this.escalationTargets,
+        isLoadingEscalationTargets:
+            isLoadingEscalationTargets ?? this.isLoadingEscalationTargets,
+        isEscalating: isEscalating ?? this.isEscalating,
+        escalationFailure:
+            clearEscalationFailure ? null : (escalationFailure ?? this.escalationFailure),
         isCancelling: isCancelling ?? this.isCancelling,
         cancellationFailure:
             clearCancellationFailure ? null : (cancellationFailure ?? this.cancellationFailure),
@@ -167,6 +207,8 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
     on<ActionPhaseCompletionRequested>(_onPhaseCompletionRequested);
     on<ActionMeasureRaised>(_onMeasureRaised);
     on<ActionCancellationRequested>(_onCancellationRequested);
+    on<ActionEscalationTargetsRequested>(_onEscalationTargetsRequested);
+    on<ActionEscalationRequested>(_onEscalationRequested);
   }
 
   final ActionsApi _actions;
@@ -185,6 +227,84 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
       emit(ActionDetailLoaded(await _actions.fetchAction(token, event.actionId)));
     } on ActionsApiException catch (error) {
       emit(ActionDetailUnavailable(message: error.message));
+    }
+  }
+
+  /// Reads the Org Units above this Action's own (issue #180).
+  ///
+  /// A failure to read them is not a failure of the Screen: the list is what
+  /// the escalate dialog needs, and saying so there beats blanking a record
+  /// that is perfectly readable.
+  Future<void> _onEscalationTargetsRequested(
+    ActionEscalationTargetsRequested event,
+    Emitter<ActionDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! ActionDetailLoaded || current.isLoadingEscalationTargets) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(escalationFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isLoadingEscalationTargets: true, clearEscalationFailure: true));
+    try {
+      final targets = await _actions.fetchEscalationTargets(token, event.actionId);
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(
+        settled.copyWith(
+          escalationTargets: targets,
+          isLoadingEscalationTargets: false,
+          clearEscalationFailure: true,
+        ),
+      );
+    } on ActionsApiException catch (error) {
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(
+        settled.copyWith(isLoadingEscalationTargets: false, escalationFailure: error.message),
+      );
+    }
+  }
+
+  /// Hands the Action up, and keeps what the server sends back: the row now
+  /// names the Org Unit it went to, and only the server knows that name.
+  Future<void> _onEscalationRequested(
+    ActionEscalationRequested event,
+    Emitter<ActionDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! ActionDetailLoaded || current.isEscalating) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(escalationFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isEscalating: true, clearEscalationFailure: true));
+    try {
+      final action = await _actions.escalateAction(
+        token,
+        event.actionId,
+        orgUnitId: event.orgUnitId,
+      );
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(
+        settled.copyWith(
+          action: action,
+          isEscalating: false,
+          clearEscalationFailure: true,
+          notice: '${action.actionNo} was handed up to ${action.escalatedToOrgUnitName}.',
+        ),
+      );
+    } on ActionsApiException catch (error) {
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(settled.copyWith(isEscalating: false, escalationFailure: error.message));
     }
   }
 

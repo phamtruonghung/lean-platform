@@ -20,6 +20,7 @@ import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'action.dart';
+import 'action_escalated_to_filter_dialog.dart';
 import 'action_org_unit_filter_dialog.dart';
 import 'actions_bloc.dart';
 
@@ -31,6 +32,8 @@ class ActionsScreen extends StatelessWidget {
   static const ValueKey<String> siteKey = ValueKey<String>('actions-site');
   static const ValueKey<String> orgUnitFilterKey = ValueKey<String>('actions-filter-org-unit');
   static const ValueKey<String> statusFilterKey = ValueKey<String>('actions-filter-status');
+  static const ValueKey<String> escalatedToFilterKey =
+      ValueKey<String>('actions-filter-escalated');
   static const ValueKey<String> typeFilterKey = ValueKey<String>('actions-filter-type');
   static const ValueKey<String> historyKey = ValueKey<String>('actions-show-closed');
   static const ValueKey<String> clearFiltersKey = ValueKey<String>('actions-clear-filters');
@@ -186,6 +189,20 @@ class _Filters extends StatelessWidget {
               onPressed: () => ActionOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
               icon: const Icon(Icons.account_tree_outlined),
               label: Text(loaded.orgUnitFilterName ?? 'All Org Units'),
+            ),
+            // What was handed up to whom (issue #180) — the plant manager's
+            // queue in one click, and a different question from where the work
+            // sits.
+            OutlinedButton.icon(
+              key: ActionsScreen.escalatedToFilterKey,
+              onPressed: () =>
+                  ActionEscalatedToFilterDialog.open(context, siteId: loaded.siteId),
+              icon: const Icon(Icons.arrow_upward),
+              label: Text(
+                loaded.escalatedToOrgUnitFilterName == null
+                    ? 'Escalated to anyone'
+                    : 'Escalated to ${loaded.escalatedToOrgUnitFilterName}',
+              ),
             ),
             SizedBox(
               width: 190,

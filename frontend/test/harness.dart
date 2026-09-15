@@ -1045,6 +1045,11 @@ class FakeWire {
     this.createMeasureMessage = 'a measure answers a Concern, and that Action is not one',
     this.cancelActionStatus = 200,
     this.cancelActionMessage = 'this Concern still has 1 open measure: AC-TEST-2026-00008',
+    this.escalationTargets = const [],
+    this.escalationTargetsStatus = 200,
+    this.escalationTargetsMessage = 'Action not found',
+    this.escalateActionStatus = 200,
+    this.escalateActionMessage = 'this Action has ended, so there is nothing to hand up',
     this.createAssetStatus = 201,
     this.createAssetMessage = 'an Asset with this code already exists',
     this.patchAssetStatus = 200,
@@ -1261,6 +1266,18 @@ class FakeWire {
   final List<Map<String, dynamic>> actionPosts = [];
   int createActionStatus;
   String createActionMessage;
+
+  /// The Org Units the fake says are above an Action, in the order the server
+  /// would send them, and what `escalation-targets` answers with when it is not
+  /// a plain 200.
+  List<Map<String, dynamic>> escalationTargets;
+  int escalationTargetsStatus;
+  String escalationTargetsMessage;
+
+  /// Every escalation that reached the wire, as `(actionId, body)`.
+  final List<(String, Map<String, dynamic>)> escalations = [];
+  int escalateActionStatus;
+  String escalateActionMessage;
 
   /// Every cancellation that reached the wire, as `(actionId, body)`.
   final List<(String, Map<String, dynamic>)> cancellations = [];
@@ -3963,6 +3980,48 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'pillars': pillars}), 200);
+        }
+        if (request.method == 'GET' && path.endsWith('/escalation-targets')) {
+          // `/api/actions/:id/escalation-targets` (issue #180). The list is the
+          // server's own tree walk; the fake is told it rather than working it
+          // out, because a fake that climbed the tree would be a second
+          // implementation of a rule the backend tests already pin.
+          if (escalationTargetsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': escalationTargetsMessage}),
+              escalationTargetsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'targets': escalationTargets}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/escalate')) {
+          // `/api/actions/:id/escalate` (issue #180): the row keeps its status
+          // and its cycle and only gains who has been told.
+          final id = path.split('/')[3];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          escalations.add((id, body));
+          if (escalateActionStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': escalateActionMessage}),
+              escalateActionStatus,
+            );
+          }
+          final stored = actionDetails[id];
+          if (stored == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          final targetId = body['orgUnitId'] as String;
+          Map<String, dynamic>? target;
+          for (final candidate in escalationTargets) {
+            if (candidate['id'].toString() == targetId) target = candidate;
+          }
+          stored['escalatedToOrgUnitId'] = targetId;
+          stored['escalatedToOrgUnitCode'] = target?['code'];
+          stored['escalatedToOrgUnitName'] = target?['name'];
+          stored['escalatedAt'] = '2026-09-15T04:00:00.000Z';
+          return http.Response(jsonEncode({'action': stored}), 200);
         }
         if (request.method == 'POST' &&
             path.startsWith('/api/actions/') &&

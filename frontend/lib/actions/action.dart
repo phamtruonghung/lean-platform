@@ -190,6 +190,17 @@ class ActionParent {
   StatusTone get statusTone => actionStatusTone(status);
 }
 
+/// One Org Unit an Action may be handed up to (issue #180) — an ancestor of
+/// the Org Unit it sits at, as the server's own tree walk returns it.
+@immutable
+class EscalationTarget {
+  const EscalationTarget({required this.id, required this.code, required this.name});
+
+  final String id;
+  final String code;
+  final String name;
+}
+
 @immutable
 class Action {
   const Action({

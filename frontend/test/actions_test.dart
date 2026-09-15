@@ -14,10 +14,14 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/actions/action.dart' hide Action;
 import 'package:lean_platform/actions/action_detail_screen.dart';
 import 'package:lean_platform/actions/action_cancel_dialog.dart';
+import 'package:lean_platform/actions/action_escalate_dialog.dart';
+import 'package:lean_platform/actions/action_escalated_to_filter_dialog.dart';
+import 'package:lean_platform/actions/actions_bloc.dart';
 import 'package:lean_platform/actions/action_measure_dialog.dart';
 import 'package:lean_platform/actions/action_phase_complete_dialog.dart';
 import 'package:lean_platform/actions/action_form_dialog.dart';
@@ -43,6 +47,11 @@ FakeWire wireWith({
   String createMeasureMessage = 'a measure answers a Concern, and that Action is not one',
   int cancelActionStatus = 200,
   String cancelActionMessage = 'this Concern still has 1 open measure: AC-TEST-2026-00008',
+  List<Map<String, dynamic>> escalationTargets = const [],
+  int escalationTargetsStatus = 200,
+  String escalationTargetsMessage = 'Action not found',
+  int escalateActionStatus = 200,
+  String escalateActionMessage = 'this Action has ended, so there is nothing to hand up',
 }) =>
     FakeWire(
       role: role,
@@ -65,6 +74,11 @@ FakeWire wireWith({
       createMeasureMessage: createMeasureMessage,
       cancelActionStatus: cancelActionStatus,
       cancelActionMessage: cancelActionMessage,
+      escalationTargets: escalationTargets,
+      escalationTargetsStatus: escalationTargetsStatus,
+      escalationTargetsMessage: escalationTargetsMessage,
+      escalateActionStatus: escalateActionStatus,
+      escalateActionMessage: escalateActionMessage,
     );
 
 void main() {
@@ -105,6 +119,13 @@ void main() {
         ],
       },
     );
+    // A taller window than the default 800x600, for the same reason the detail
+    // read's tests below take one: the filter bar is a Wrap and now carries the
+    // escalated-to control as well as the Org Unit, status and type ones, so at
+    // 600px it takes two lines and the second row is built below the fold.
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     await pumpApp(
       tester,
       gateway: FakeAuthGateway(accessToken: 'a-token'),
@@ -296,6 +317,13 @@ void main() {
         ),
       },
     );
+    // A taller window than the default 800x600: the detail read is a scrolling
+    // `ListView`, its last section is the measures collection, and the header
+    // now carries the two endings (hand it up, call it off) — at 600px the key
+    // would not be built yet.
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     await pumpApp(
       tester,
       gateway: FakeAuthGateway(accessToken: 'a-token'),
@@ -682,6 +710,230 @@ void main() {
 
     expect(find.byKey(ActionsScreen.measuresKey('501')), findsOneWidget);
     expect(find.textContaining('3 measures, 1 of them countermeasures'), findsOneWidget);
+  });
+
+  testWidgets('handing an Action up offers the Org Units above it, nearest first', (tester) async {
+    final wire = wireWith(
+      escalationTargets: [
+        {'id': '9', 'code': 'OU-HCM-AREA', 'name': 'Assembly Area'},
+        {'id': '2', 'code': 'OU-HCM-PLANT', 'name': 'HCMC Plant'},
+      ],
+      actionDetails: {
+        '501': actionJson(
+          '501',
+          'AC-HCM-2026-00001',
+          'The line cannot decide this one',
+          orgUnitName: 'Line 1',
+          status: 'in_progress',
+          phases: [phaseJson(1, 'plan')],
+          openPhase: phaseJson(1, 'plan'),
+        ),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.escalateKey));
+    expect(find.byType(ActionEscalateDialog), findsOneWidget);
+    // The server's order is the order offered, and the nearest one is named as
+    // such — the caller usually means the level that already holds the work.
+    expect(find.text('Assembly Area'), findsOneWidget);
+    expect(find.text('HCMC Plant'), findsOneWidget);
+    expect(find.text('OU-HCM-AREA · nearest above it'), findsOneWidget);
+
+    // The submit is refused until a target is chosen: there is no default, and
+    // handing work up by accident is not a thing to make easy.
+    final submit = tester.widget<FilledButton>(find.byKey(ActionEscalateDialog.submitKey));
+    expect(submit.onPressed, isNull);
+
+    await tapIn(tester, find.byKey(ActionEscalateDialog.targetKey('9')));
+    await tapIn(tester, find.byKey(ActionEscalateDialog.submitKey));
+
+    expect(wire.escalations.length, 1);
+    expect(wire.escalations.single.$1, '501');
+    expect(wire.escalations.single.$2, {'orgUnitId': '9'});
+    expect(find.byType(ActionEscalateDialog), findsNothing);
+    // The Action says who has been told, and says nothing else differently: the
+    // fact is a labelled row, not a sentence.
+    expect(find.text('Escalated to'), findsOneWidget);
+    expect(find.text('Assembly Area'), findsOneWidget);
+    // Nothing else moved: the same title, the same cycle, the same open phase.
+    // (The header row, with its status chip, is scrolled out of the lazily-built
+    // list by the tap that opened the dialog — the cycle rail is what says the
+    // Action is where it was.)
+    expect(find.text('The line cannot decide this one'), findsOneWidget);
+    expect(find.text('Cycle 1'), findsOneWidget);
+    expect(find.text('Complete the Plan'), findsOneWidget);
+    expect(find.byKey(ActionDetailScreen.noticeKey), findsOneWidget);
+  });
+
+  testWidgets('an Action with nothing above it says so instead of offering an empty list',
+      (tester) async {
+    final wire = wireWith(
+      escalationTargets: const [],
+      actionDetails: {
+        '501': actionJson(
+          '501',
+          'AC-HCM-2026-00001',
+          'Already as high as it gets',
+          orgUnitName: 'HCMC Plant',
+        ),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501/escalate',
+    );
+
+    expect(find.byKey(ActionEscalateDialogHost.nowhereKey), findsOneWidget);
+    expect(find.textContaining('already the top of'), findsOneWidget);
+    expect(find.byType(ActionEscalateDialog), findsNothing);
+    expect(wire.escalations, isEmpty);
+  });
+
+  testWidgets('a refused escalation stays in the dialog with the reason', (tester) async {
+    final wire = wireWith(
+      escalateActionStatus: 403,
+      escalateActionMessage: "Outside the caller's granted Org Units",
+      escalationTargets: [
+        {'id': '9', 'code': 'OU-HCM-AREA', 'name': 'Assembly Area'},
+      ],
+      actionDetails: {
+        '501': actionJson('501', 'AC-HCM-2026-00001', 'Refused at the top', orgUnitName: 'Line 1'),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501',
+    );
+
+    await tapIn(tester, find.byKey(ActionDetailScreen.escalateKey));
+    await tapIn(tester, find.byKey(ActionEscalateDialog.targetKey('9')));
+    await tapIn(tester, find.byKey(ActionEscalateDialog.submitKey));
+
+    expect(find.byType(ActionEscalateDialog), findsOneWidget);
+    expect(find.byKey(ActionEscalateDialog.failureKey), findsOneWidget);
+    expect(find.text("Outside the caller's granted Org Units"), findsOneWidget);
+    // Still chosen, so trying again is one tap rather than a re-pick.
+    final submit = tester.widget<FilledButton>(find.byKey(ActionEscalateDialog.submitKey));
+    expect(submit.onPressed, isNotNull);
+  });
+
+  testWidgets('an Action that has ended is refused by the address, not by a form', (tester) async {
+    final wire = wireWith(
+      escalationTargets: [
+        {'id': '9', 'code': 'OU-HCM-AREA', 'name': 'Assembly Area'},
+      ],
+      actionDetails: {
+        '501': actionJson('501', 'AC-HCM-2026-00001', 'Called off already', status: 'cancelled'),
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/501/escalate',
+    );
+
+    expect(find.byKey(ActionEscalateDialogHost.endedKey), findsOneWidget);
+    expect(find.textContaining('was called off'), findsOneWidget);
+    expect(find.byType(ActionEscalateDialog), findsNothing);
+    expect(wire.escalations, isEmpty);
+  });
+
+  testWidgets('the register narrows to what was handed up to one Org Unit', (tester) async {
+    final wire = wireWith(
+      actions: {
+        '1': [],
+      },
+    );
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions',
+    );
+
+    // The control says what it is showing before anyone opens it: "anyone" is
+    // the whole Site, never a blank.
+    expect(find.text('Escalated to anyone'), findsOneWidget);
+
+    // Choosing an Org Unit re-reads the log with the filter on it, rather than
+    // filtering rows the client already has: the queue is the server's answer.
+    final bloc = BlocProvider.of<ActionsBloc>(
+      tester.element(find.byType(ActionsScreen)),
+    );
+    bloc.add(const ActionsEscalatedToFilterSelected(
+      orgUnitId: '9',
+      orgUnitName: 'Assembly Area',
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Escalated to Assembly Area'), findsOneWidget);
+    final read = wire.actionReads.last;
+    expect(read.queryParameters['escalatedToOrgUnitId'], '9');
+    expect(read.queryParameters.containsKey('orgUnitId'), isFalse);
+  });
+
+  testWidgets('clearing every filter clears the escalated-to one with them', (tester) async {
+    final wire = wireWith(
+      actions: {
+        '1': [],
+      },
+    );
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions',
+    );
+
+    final bloc = BlocProvider.of<ActionsBloc>(tester.element(find.byType(ActionsScreen)));
+    bloc.add(const ActionsEscalatedToFilterSelected(
+      orgUnitId: '9',
+      orgUnitName: 'Assembly Area',
+    ));
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(ActionsScreen.clearFiltersKey));
+
+    expect(find.text('Escalated to anyone'), findsOneWidget);
+    final read = wire.actionReads.last;
+    expect(read.queryParameters.containsKey('escalatedToOrgUnitId'), isFalse);
+  });
+
+  testWidgets('the escalated-to filter is offered by its own dialog, and clears to anyone',
+      (tester) async {
+    final wire = wireWith(
+      actions: {
+        '1': [],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions',
+    );
+
+    await tapIn(tester, find.byKey(ActionsScreen.escalatedToFilterKey));
+    expect(find.byType(ActionEscalatedToFilterDialog), findsOneWidget);
+    await tapIn(tester, find.byKey(ActionEscalatedToFilterDialog.cancelKey));
+    expect(find.byType(ActionEscalatedToFilterDialog), findsNothing);
+    expect(wire.actionReads.length, 1);
   });
 
   testWidgets('calling an Action off sends only the reason that was typed', (tester) async {

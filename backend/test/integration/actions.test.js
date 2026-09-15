@@ -158,6 +158,8 @@ let otherSite;
 let grantedArea;
 let grantedLine;
 let otherLine;
+let subLine;
+let areaWriter;
 
 test.before(async () => {
   jwks = await createTestJwks();
@@ -198,7 +200,15 @@ test.before(async () => {
     name: 'Line 2'
   });
 
+  subLine = await insertOrgUnit(site.id, {
+    parentId: grantedLine.id,
+    unitType: 'line',
+    name: 'Line 1, Bay 2'
+  });
+  areaWriter = await insertAccount();
+
   await insertGrant({ accountId: readOnlyAccount.id, orgUnitId: grantedLine.id, canWrite: false });
+  await insertGrant({ accountId: areaWriter.id, orgUnitId: grantedArea.id, canWrite: true });
   await insertGrant({ accountId: writerAccount.id, orgUnitId: grantedLine.id, canWrite: true });
   await insertGrant({ accountId: siblingWriter.id, orgUnitId: otherLine.id, canWrite: true });
 });
@@ -1268,4 +1278,249 @@ test('cancelling needs a write Grant, and an unknown Action is a 404', async () 
 
   const badReason = await postCancel(admin.token, concern.id, { reason: 42 });
   assert.strictEqual(badReason.response.status, 400);
+});
+
+// ---------------------------------------------------------------------------
+// Handing a Concern up the tree (issue #180).
+// ---------------------------------------------------------------------------
+
+async function getEscalationTargets(token, actionId) {
+  const response = await fetch(`${base}/api/actions/${actionId}/escalation-targets`, {
+    headers: token
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+async function postEscalate(token, actionId, body) {
+  const response = await fetch(`${base}/api/actions/${actionId}/escalate`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body ?? {})
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+// A Concern at the bottom of the fixture's own tree: grantedArea -> grantedLine
+// -> subLine, so "above" has two answers and they have an order.
+async function raiseDeepConcern(title = 'This needs an area decision') {
+  const { response, payload } = await postAction(admin.token, site.id, {
+    orgUnitId: String(subLine.id),
+    title
+  });
+  assert.strictEqual(response.status, 201);
+  insertedActionIds.push(payload.action.id);
+  return payload.action;
+}
+
+test('the targets are the Org Units above, nearest first, and never the own one', async () => {
+  const concern = await raiseDeepConcern('Who is going to answer this?');
+
+  const { response, payload } = await getEscalationTargets(admin.token, concern.id);
+  assert.strictEqual(response.status, 200);
+  assert.deepStrictEqual(
+    payload.targets.map((target) => target.id),
+    [String(grantedLine.id), String(grantedArea.id)]
+  );
+  // Named well enough to choose between them without a second read.
+  assert.strictEqual(payload.targets[0].name, 'Line 1');
+  assert.ok(payload.targets[0].code);
+
+  // An Action at the top of the tree has nowhere to go, and that is an empty
+  // list rather than an error: there is nothing wrong with the question.
+  const { payload: topConcern } = await postAction(admin.token, site.id, {
+    orgUnitId: String(grantedArea.id),
+    title: 'Already as high as it gets'
+  });
+  insertedActionIds.push(topConcern.action.id);
+  const top = await getEscalationTargets(admin.token, topConcern.action.id);
+  assert.deepStrictEqual(top.payload.targets, []);
+});
+
+test('escalating records who was told and changes nothing else about the Action', async () => {
+  const concern = await raiseDeepConcern('The line cannot decide this one');
+  const before = await getAction(admin.token, concern.id);
+  assert.strictEqual(before.payload.action.escalatedToOrgUnitId, null);
+
+  const { response, payload } = await postEscalate(admin.token, concern.id, {
+    orgUnitId: String(grantedLine.id)
+  });
+  assert.strictEqual(response.status, 200);
+  const action = payload.action;
+
+  assert.strictEqual(action.escalatedToOrgUnitId, String(grantedLine.id));
+  assert.strictEqual(action.escalatedToOrgUnitName, 'Line 1');
+  assert.ok(action.escalatedAt);
+
+  // Not a handover: the same status, the same open phase, the same owner, the
+  // same cycle. Who has been told is a different question from who is doing it.
+  assert.strictEqual(action.status, before.payload.action.status);
+  assert.strictEqual(action.ownerEmployeeId, before.payload.action.ownerEmployeeId);
+  assert.deepStrictEqual(action.openPhase, before.payload.action.openPhase);
+  assert.strictEqual(action.phases.length, before.payload.action.phases.length);
+  assert.strictEqual(action.closedAt, before.payload.action.closedAt);
+
+  // The detail read agrees, and the Org Unit it is now at is no longer offered.
+  const after = await getAction(admin.token, concern.id);
+  assert.strictEqual(after.payload.action.escalatedToOrgUnitName, 'Line 1');
+  const targets = await getEscalationTargets(admin.token, concern.id);
+  assert.deepStrictEqual(
+    targets.payload.targets.map((target) => target.id),
+    [String(grantedArea.id)]
+  );
+});
+
+test('escalating again replaces the one before it rather than accumulating', async () => {
+  const concern = await raiseDeepConcern('It went up twice');
+
+  await postEscalate(admin.token, concern.id, { orgUnitId: String(grantedLine.id) });
+  const { response, payload } = await postEscalate(admin.token, concern.id, {
+    orgUnitId: String(grantedArea.id)
+  });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.action.escalatedToOrgUnitId, String(grantedArea.id));
+  assert.strictEqual(payload.action.escalatedToOrgUnitName, 'Granted Area');
+
+  // One row, one answer: there is no list of places it has been, so the only
+  // trace of the first escalation is that its target is no longer offered —
+  // what is above the Action is Line 1 and Granted Area, and it now sits at
+  // Granted Area.
+  const targets = await getEscalationTargets(admin.token, concern.id);
+  assert.deepStrictEqual(
+    targets.payload.targets.map((target) => target.id),
+    [String(grantedLine.id)]
+  );
+});
+
+test('an escalation needs a write Grant at the Org Unit it is handed up to', async () => {
+  // The area holds a write Grant on grantedArea, and the Action sits two levels
+  // below it: handing it up to the area is within the caller's own authority.
+  const { response: raised, payload: raisedPayload } = await postAction(areaWriter.token, site.id, {
+    orgUnitId: String(grantedLine.id),
+    title: 'Raised by the area for the area'
+  });
+  assert.strictEqual(raised.status, 201);
+  const concern = raisedPayload.action;
+  insertedActionIds.push(concern.id);
+
+  const allowed = await postEscalate(areaWriter.token, concern.id, {
+    orgUnitId: String(grantedArea.id)
+  });
+  assert.strictEqual(allowed.response.status, 200);
+  assert.strictEqual(allowed.payload.action.escalatedToOrgUnitId, String(grantedArea.id));
+
+  // The line's own writer holds write on grantedLine and nothing above it: the
+  // work may be theirs to do, but handing it to the area is not theirs to say.
+  const { response: lineRaised, payload: linePayload } = await postAction(
+    writerAccount.token,
+    site.id,
+    {
+      orgUnitId: String(grantedLine.id),
+      title: 'The line wants this decided upstairs'
+    }
+  );
+  assert.strictEqual(lineRaised.status, 201);
+  const lineConcern = linePayload.action;
+  insertedActionIds.push(lineConcern.id);
+
+  const refused = await postEscalate(writerAccount.token, lineConcern.id, {
+    orgUnitId: String(grantedArea.id)
+  });
+  assert.strictEqual(refused.response.status, 403);
+  assert.strictEqual(refused.payload.message, "Outside the caller's granted Org Units");
+});
+
+test('the four refusals come back in the order the decision fixed', async () => {
+  const concern = await raiseDeepConcern('Refused in four ways');
+
+  // An Org Unit below the Action: wrong about the tree, which is a 400 and not
+  // a 403 — the caller may well be allowed to act there, that is not the point.
+  const below = await postEscalate(admin.token, concern.id, {
+    orgUnitId: String(subLine.id)
+  });
+  assert.strictEqual(below.response.status, 400);
+  assert.strictEqual(below.payload.message, "orgUnitId must be an Org Unit above this Action's own");
+
+  const own = await postEscalate(admin.token, concern.id, { orgUnitId: String(concern.orgUnitId) });
+  assert.strictEqual(own.response.status, 400);
+
+  const sibling = await postEscalate(admin.token, concern.id, {
+    orgUnitId: String(otherLine.id)
+  });
+  assert.strictEqual(sibling.response.status, 400);
+
+  const malformedBody = await postEscalate(admin.token, concern.id, { orgUnitId: 'abc' });
+  assert.strictEqual(malformedBody.response.status, 400);
+  assert.strictEqual(malformedBody.payload.message, 'orgUnitId must be a valid Org Unit id');
+
+  const missingBody = await postEscalate(admin.token, concern.id, {});
+  assert.strictEqual(missingBody.response.status, 400);
+
+  const unknownOrgUnit = await postEscalate(admin.token, concern.id, { orgUnitId: '99999999' });
+  assert.strictEqual(unknownOrgUnit.response.status, 400);
+
+  // An Action that has ended has nothing left to hand up, whatever the target.
+  const { concern: endedConcern } = await raiseConcern('Called off before anyone was told');
+  const cancelled = await postCancel(admin.token, endedConcern.id, { reason: 'Wrong machine' });
+  assert.strictEqual(cancelled.response.status, 200);
+  const ended = await postEscalate(admin.token, endedConcern.id, {
+    orgUnitId: String(grantedLine.id)
+  });
+  assert.strictEqual(ended.response.status, 409);
+  assert.match(ended.payload.message, /has ended/);
+
+  // Existence beats everything: an id that is not an Action is a 404 whether or
+  // not the caller holds anything.
+  const unknown = await postEscalate(admin.token, '99999999', {
+    orgUnitId: String(grantedLine.id)
+  });
+  assert.strictEqual(unknown.response.status, 404);
+  const garbage = await postEscalate(noGrantAccount.token, 'not-an-id', {
+    orgUnitId: String(grantedLine.id)
+  });
+  assert.strictEqual(garbage.response.status, 404);
+
+  const noGrant = await postEscalate(noGrantAccount.token, concern.id, {
+    orgUnitId: String(grantedLine.id)
+  });
+  assert.strictEqual(noGrant.response.status, 403);
+
+  const readOnly = await postEscalate(readOnlyAccount.token, concern.id, {
+    orgUnitId: String(grantedLine.id)
+  });
+  assert.strictEqual(readOnly.response.status, 403);
+});
+
+test('the register can be narrowed to what was handed up to one Org Unit', async () => {
+  const escalated = await raiseDeepConcern('Handed up to the line');
+  const lonely = await raiseDeepConcern('Nobody has been told about this one');
+
+  await postEscalate(admin.token, escalated.id, { orgUnitId: String(grantedLine.id) });
+
+  const { response, payload } = await getRegister(
+    admin.token,
+    site.id,
+    `?escalatedToOrgUnitId=${grantedLine.id}`
+  );
+  assert.strictEqual(response.status, 200);
+  const ids = payload.actions.map((action) => action.id);
+  assert.ok(ids.includes(escalated.id));
+  assert.ok(!ids.includes(lonely.id));
+
+  // A target nobody's work sits at is an empty answer, not an error. (An Org
+  // Unit of its own: earlier tests in this file have already left Actions
+  // escalated to the fixture's areas, and a Site-wide register is a Site-wide
+  // register.)
+  const quietArea = await insertOrgUnit(site.id, { name: 'Quiet Area' });
+  const empty = await getRegister(
+    admin.token,
+    site.id,
+    `?escalatedToOrgUnitId=${quietArea.id}`
+  );
+  assert.deepStrictEqual(empty.payload.actions, []);
+
+  const garbage = await getRegister(admin.token, site.id, '?escalatedToOrgUnitId=abc');
+  assert.strictEqual(garbage.response.status, 400);
+  assert.strictEqual(garbage.payload.message, 'escalatedToOrgUnitId must be a valid id');
 });

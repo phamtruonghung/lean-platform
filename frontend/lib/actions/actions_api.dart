@@ -43,6 +43,7 @@ class ActionsApi {
     String? actionType,
     String? ownerEmployeeId,
     String? pillarCode,
+    String? escalatedToOrgUnitId,
     bool includeHistory = false,
   }) async {
     final path = '/api/actions/sites/$siteId/actions';
@@ -52,6 +53,7 @@ class ActionsApi {
       'actionType': ?actionType,
       'ownerEmployeeId': ?ownerEmployeeId,
       'pillarCode': ?pillarCode,
+      'escalatedToOrgUnitId': ?escalatedToOrgUnitId,
       if (includeHistory) 'includeHistory': 'true',
     };
     final uri = Uri.parse(path)
@@ -181,6 +183,47 @@ class ActionsApi {
         Uri.parse(path),
         headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
         body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
+  }
+
+  /// The Org Units this Action may be handed up to (issue #180): the ones
+  /// **above** the Org Unit it sits at, nearest first, as the server works them
+  /// out from the tree.
+  ///
+  /// Served rather than assembled here on purpose: what counts as "above" is
+  /// the Site's own hierarchy, and a client that computed it would be a second
+  /// implementation of the ltree rule.
+  Future<List<EscalationTarget>> fetchEscalationTargets(String accessToken, String actionId) async {
+    final path = '/api/actions/$actionId/escalation-targets';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return [
+      for (final target in _decode(response, path)['targets'] as List<dynamic>)
+        EscalationTarget(
+          id: (target as Map<String, dynamic>)['id'].toString(),
+          code: target['code'] as String,
+          name: target['name'] as String,
+        ),
+    ];
+  }
+
+  /// Hands one Action up to an Org Unit above it (issue #180).
+  Future<Action> escalateAction(
+    String accessToken,
+    String actionId, {
+    required String orgUnitId,
+  }) async {
+    final path = '/api/actions/$actionId/escalate';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'orgUnitId': orgUnitId}),
       ),
       path,
     );

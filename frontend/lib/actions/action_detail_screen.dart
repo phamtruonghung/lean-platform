@@ -37,6 +37,7 @@ class ActionDetailScreen extends StatelessWidget {
   static const ValueKey<String> cycleHistoryKey = ValueKey<String>('action-detail-cycle-history');
   static const ValueKey<String> noticeKey = ValueKey<String>('action-detail-notice');
   static const ValueKey<String> cancelKey = ValueKey<String>('action-detail-cancel');
+  static const ValueKey<String> escalateKey = ValueKey<String>('action-detail-escalate');
 
   static const ValueKey<String> addMeasureKey = ValueKey<String>('action-detail-add-measure');
   static const ValueKey<String> measuresHeadingKey = ValueKey<String>('action-detail-measures');
@@ -110,11 +111,21 @@ class _ActionDetail extends StatelessWidget {
             const SizedBox(height: Spacing.md),
             Row(
               children: [
-                Text(action.actionNo, style: theme.textTheme.labelLarge),
-                const Spacer(),
-                // Offered while the Action is still live, and never for one
-                // that has ended: a cancelled or closed record has nothing left
-                // to call off, and the address refuses it anyway (issue #179).
+                // Expanded rather than a Spacer: the number is what gives way
+                // when the two actions beside it need the width, not the Row.
+                Expanded(
+                  child: Text(action.actionNo, style: theme.textTheme.labelLarge),
+                ),
+                // Both offered while the Action is still live, and neither for
+                // one that has ended: a closed or cancelled record has nothing
+                // left to hand up or call off, and both addresses refuse it
+                // anyway (issues #179 and #180).
+                if (!const {'done', 'cancelled'}.contains(action.status))
+                  TextButton(
+                    key: ActionDetailScreen.escalateKey,
+                    onPressed: () => context.go('${Routes.actions}/${action.id}/escalate'),
+                    child: const Text('Hand it up…'),
+                  ),
                 if (!const {'done', 'cancelled'}.contains(action.status))
                   TextButton(
                     key: ActionDetailScreen.cancelKey,

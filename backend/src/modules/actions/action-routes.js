@@ -129,6 +129,10 @@ router.get(
         actions.ACTION_TYPES
       );
       const ownerEmployeeId = requireQueryId('ownerEmployeeId', req.query.ownerEmployeeId);
+      const escalatedToOrgUnitId = requireQueryId(
+        'escalatedToOrgUnitId',
+        req.query.escalatedToOrgUnitId
+      );
       // Only the exact string 'true' counts — absent, 'false' or garbage all
       // mean "no", the same convenience-filter rule assets.js's own
       // `includeRetired` follows. It is a filter over an already-visible
@@ -160,6 +164,7 @@ router.get(
         actionType,
         ownerEmployeeId,
         pillarCode,
+        escalatedToOrgUnitId,
         includeHistory
       });
 
@@ -375,6 +380,81 @@ router.post(
         { note: body.note, outcome: body.outcome ?? null },
         req.account.id
       );
+      res.json({ action });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Where this Action may be handed up to (issue #180): the Org Units above its
+// own, nearest first.
+//
+// No `canAct` here, and that is the register's rule rather than an oversight:
+// who may *know* the list of Org Units above a concern they can already read is
+// not a question Org Unit scope answers. The write it feeds is guarded
+// separately, below.
+router.get(
+  '/:id/escalation-targets',
+  people.authenticate,
+  people.requireActive,
+  requireKnownAction,
+  async (req, res, next) => {
+    try {
+      res.json({ targets: await actions.escalationTargets(req.action.id) });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Handing one Action up the tree (issue #180).
+//
+// Four refusals, in this order and for this reason: the id must be real (404,
+// from requireKnownAction), the Action must not have ended (409 — the row it
+// would hand up is a closed decision), the target must be an Org Unit *above*
+// this Action's own (400, asked of the same ltree walk the read above serves,
+// so there is one implementation of "above" and it is not re-spelled here), and
+// only then the Grant (403, `write: true` at the **target** — not at the Org
+// Unit the Action sits at: what this route changes is who has been told, and
+// the caller is asking somebody else's Org Unit to take it, which is a right
+// over the target and nowhere else).
+//
+// The 400 before the 403 matters: a caller who names an Org Unit below the
+// Action is wrong about the tree, and telling them so beats telling them they
+// are not allowed to do something that would not have worked anyway.
+router.post(
+  '/:id/escalate',
+  people.authenticate,
+  people.requireActive,
+  requireKnownAction,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const orgUnitId = parseId(body.orgUnitId);
+      if (orgUnitId === null) {
+        return res.status(400).json({ message: 'orgUnitId must be a valid Org Unit id' });
+      }
+
+      if (req.action.status === 'done' || req.action.status === 'cancelled') {
+        throw httpError(409, 'this Action has ended, so there is nothing to hand up');
+      }
+
+      const targets = await actions.escalationTargets(req.action.id);
+      if (!targets.some((target) => target.id === String(orgUnitId))) {
+        throw httpError(400, "orgUnitId must be an Org Unit above this Action's own");
+      }
+
+      const allowed = await people.canAct({
+        account: req.account,
+        orgUnitId,
+        write: true
+      });
+      if (!allowed) {
+        return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+      }
+
+      const action = await actions.escalateAction(req.action.id, orgUnitId, req.account.id);
       res.json({ action });
     } catch (error) {
       handleError(error, res, next);

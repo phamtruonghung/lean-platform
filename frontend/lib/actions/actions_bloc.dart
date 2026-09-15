@@ -47,6 +47,22 @@ class ActionsOrgUnitFilterCleared extends ActionsEvent {
   const ActionsOrgUnitFilterCleared();
 }
 
+/// Narrow the register to what has been handed up to one Org Unit (issue
+/// #180) — the plant manager's own queue. A read filter over an already-visible
+/// register, so it narrows by responsibility and never by entitlement.
+class ActionsEscalatedToFilterSelected extends ActionsEvent {
+  const ActionsEscalatedToFilterSelected({
+    required this.orgUnitId,
+    required this.orgUnitName,
+  });
+  final String orgUnitId;
+  final String orgUnitName;
+}
+
+class ActionsEscalatedToFilterCleared extends ActionsEvent {
+  const ActionsEscalatedToFilterCleared();
+}
+
 class ActionsStatusFilterChanged extends ActionsEvent {
   const ActionsStatusFilterChanged(this.status);
   final String? status;
@@ -114,6 +130,8 @@ class ActionsLoaded extends ActionsState {
     this.raiseFailure,
     this.orgUnitFilterId,
     this.orgUnitFilterName,
+    this.escalatedToOrgUnitFilterId,
+    this.escalatedToOrgUnitFilterName,
     this.statusFilter,
     this.typeFilter,
     this.includeHistory = false,
@@ -142,6 +160,10 @@ class ActionsLoaded extends ActionsState {
 
   final String? orgUnitFilterId;
   final String? orgUnitFilterName;
+
+  /// What has been handed up to one Org Unit, or null for the whole Site.
+  final String? escalatedToOrgUnitFilterId;
+  final String? escalatedToOrgUnitFilterName;
   final String? statusFilter;
   final String? typeFilter;
   final bool includeHistory;
@@ -161,7 +183,10 @@ class ActionsLoaded extends ActionsState {
   /// empty stories the Screen tells (issue #103): a Site with no concerns at
   /// all is not the same as a filter that matched none of them.
   bool get isFiltered =>
-      orgUnitFilterId != null || statusFilter != null || typeFilter != null;
+      orgUnitFilterId != null ||
+      escalatedToOrgUnitFilterId != null ||
+      statusFilter != null ||
+      typeFilter != null;
 
   ActionsLoaded copyWith({
     List<Action>? actions,
@@ -173,6 +198,9 @@ class ActionsLoaded extends ActionsState {
     String? orgUnitFilterId,
     String? orgUnitFilterName,
     bool clearOrgUnitFilter = false,
+    String? escalatedToOrgUnitFilterId,
+    String? escalatedToOrgUnitFilterName,
+    bool clearEscalatedToFilter = false,
     String? statusFilter,
     bool clearStatusFilter = false,
     String? typeFilter,
@@ -190,6 +218,12 @@ class ActionsLoaded extends ActionsState {
         raiseFailure: raiseFailure,
         orgUnitFilterId: clearOrgUnitFilter ? null : (orgUnitFilterId ?? this.orgUnitFilterId),
         orgUnitFilterName: clearOrgUnitFilter ? null : (orgUnitFilterName ?? this.orgUnitFilterName),
+        escalatedToOrgUnitFilterId: clearEscalatedToFilter
+            ? null
+            : (escalatedToOrgUnitFilterId ?? this.escalatedToOrgUnitFilterId),
+        escalatedToOrgUnitFilterName: clearEscalatedToFilter
+            ? null
+            : (escalatedToOrgUnitFilterName ?? this.escalatedToOrgUnitFilterName),
         // `clearX` flags rather than `copyWith(statusFilter: null)`, exactly as
         // the Org Unit filter already does: every re-read emits another
         // `copyWith`, and a plain `?? this.x` with a null default would clear a
@@ -220,6 +254,8 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
     on<ActionsSiteSelected>(_onSiteSelected);
     on<ActionsOrgUnitFilterSelected>(_onOrgUnitFilterSelected);
     on<ActionsOrgUnitFilterCleared>(_onOrgUnitFilterCleared);
+    on<ActionsEscalatedToFilterSelected>(_onEscalatedToFilterSelected);
+    on<ActionsEscalatedToFilterCleared>(_onEscalatedToFilterCleared);
     on<ActionsStatusFilterChanged>(_onStatusFilterChanged);
     on<ActionsTypeFilterChanged>(_onTypeFilterChanged);
     on<ActionsHistoryToggled>(_onHistoryToggled);
@@ -247,6 +283,8 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
   String? _lastSiteId;
   String? _lastOrgUnitFilterId;
   String? _lastOrgUnitFilterName;
+  String? _lastEscalatedToFilterId;
+  String? _lastEscalatedToFilterName;
   String? _lastStatusFilter;
   String? _lastTypeFilter;
   bool _lastIncludeHistory = false;
@@ -280,6 +318,8 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
         siteId: opensOn,
         isLoadingActions: true,
         orgUnitFilterId: _lastOrgUnitFilterId,
+        escalatedToOrgUnitFilterId: _lastEscalatedToFilterId,
+        escalatedToOrgUnitFilterName: _lastEscalatedToFilterName,
         orgUnitFilterName: _lastOrgUnitFilterName,
         statusFilter: _lastStatusFilter,
         typeFilter: _lastTypeFilter,
@@ -297,10 +337,15 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
     // goes with it — the same rule the Asset form applies to its own chooser.
     _lastOrgUnitFilterId = null;
     _lastOrgUnitFilterName = null;
+    // The same rule for what was handed up: an Org Unit filter chosen in one
+    // Site means nothing in the next one.
+    _lastEscalatedToFilterId = null;
+    _lastEscalatedToFilterName = null;
     emit(
       current.copyWith(
         siteId: event.siteId,
         clearOrgUnitFilter: true,
+        clearEscalatedToFilter: true,
         actions: const [],
         isLoadingActions: true,
       ),
@@ -336,6 +381,43 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
     _lastOrgUnitFilterId = null;
     _lastOrgUnitFilterName = null;
     emit(current.copyWith(clearOrgUnitFilter: true, actions: const [], isLoadingActions: true));
+    await _readLog(current.siteId, emit);
+  }
+
+  Future<void> _onEscalatedToFilterSelected(
+    ActionsEscalatedToFilterSelected event,
+    Emitter<ActionsState> emit,
+  ) async {
+    final current = state;
+    if (current is! ActionsLoaded) return;
+    _lastEscalatedToFilterId = event.orgUnitId;
+    _lastEscalatedToFilterName = event.orgUnitName;
+    emit(
+      current.copyWith(
+        escalatedToOrgUnitFilterId: event.orgUnitId,
+        escalatedToOrgUnitFilterName: event.orgUnitName,
+        actions: const [],
+        isLoadingActions: true,
+      ),
+    );
+    await _readLog(current.siteId, emit);
+  }
+
+  Future<void> _onEscalatedToFilterCleared(
+    ActionsEscalatedToFilterCleared event,
+    Emitter<ActionsState> emit,
+  ) async {
+    final current = state;
+    if (current is! ActionsLoaded) return;
+    _lastEscalatedToFilterId = null;
+    _lastEscalatedToFilterName = null;
+    emit(
+      current.copyWith(
+        clearEscalatedToFilter: true,
+        actions: const [],
+        isLoadingActions: true,
+      ),
+    );
     await _readLog(current.siteId, emit);
   }
 
@@ -388,11 +470,14 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
     if (current is! ActionsLoaded) return;
     _lastOrgUnitFilterId = null;
     _lastOrgUnitFilterName = null;
+    _lastEscalatedToFilterId = null;
+    _lastEscalatedToFilterName = null;
     _lastStatusFilter = null;
     _lastTypeFilter = null;
     emit(
       current.copyWith(
         clearOrgUnitFilter: true,
+        clearEscalatedToFilter: true,
         clearStatusFilter: true,
         clearTypeFilter: true,
         actions: const [],
@@ -421,6 +506,7 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
         token,
         siteId: siteId,
         orgUnitId: current.orgUnitFilterId,
+        escalatedToOrgUnitId: current.escalatedToOrgUnitFilterId,
         status: current.statusFilter,
         actionType: current.typeFilter,
         includeHistory: current.includeHistory,

@@ -317,6 +317,7 @@ async function listActionsAtSite(
     actionType = null,
     ownerEmployeeId = null,
     pillarCode = null,
+    escalatedToOrgUnitId = null,
     includeHistory = false
   } = {}
 ) {
@@ -342,6 +343,14 @@ async function listActionsAtSite(
   if (pillarCode !== null) {
     params.push(pillarCode);
     conditions.push(`ai.pillar_code = $${params.length}`);
+  }
+  // What was handed up to one Org Unit — the plant manager's own queue
+  // (issue #180). A convenience filter over an already-visible register, the
+  // same rule `ownerEmployeeId` keeps: it narrows by *area of responsibility*,
+  // never by entitlement.
+  if (escalatedToOrgUnitId !== null) {
+    params.push(escalatedToOrgUnitId);
+    conditions.push(`ai.escalated_to_org_unit_id = $${params.length}`);
   }
   if (!includeHistory) {
     conditions.push(`ai.status IN ('open', 'in_progress', 'blocked')`);
@@ -889,6 +898,86 @@ async function cancelAction(actionItemId, { reason = null } = {}, accountId) {
   });
 }
 
+/**
+ * The Org Units an Action may be handed up to (issue #180): the ancestors of
+ * the Org Unit it sits at, nearest first, minus the one it is already at.
+ *
+ * ltree does the walking — `@>` is "is an ancestor of" — rather than a client
+ * or a service climbing a parent pointer: the tree is already in the column,
+ * and one implementation of that rule beats two. `nlevel` orders them so the
+ * nearest superior is the first thing a picker offers, and the Action's own Org
+ * Unit is excluded because handing work to the people already holding it is not
+ * an escalation.
+ *
+ * The one it is already escalated to is excluded too, and that is the whole of
+ * the "replaces rather than accumulates" rule on the read side: a second
+ * escalation overwrites `escalated_to_org_unit_id` on the same row, so there is
+ * no list to append to and nothing to remove — only a target that would be a
+ * no-op to offer.
+ *
+ * An empty list is a real answer: the Action sits at the top of its Site and
+ * there is nowhere above it to go.
+ */
+async function escalationTargets(actionItemId) {
+  const { rows } = await getPool().query(
+    `SELECT ancestor.id, ancestor.code, ancestor.name
+       FROM action_items ai
+       JOIN org_units own ON own.id = ai.org_unit_id
+       JOIN org_units ancestor ON ancestor.path @> own.path
+      WHERE ai.id = $1
+        AND ancestor.id <> own.id
+        AND (ai.escalated_to_org_unit_id IS NULL
+             OR ancestor.id <> ai.escalated_to_org_unit_id)
+      ORDER BY nlevel(ancestor.path) DESC, ancestor.name ASC`,
+    [actionItemId]
+  );
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    code: row.code,
+    name: row.name
+  }));
+}
+
+/**
+ * Hands one Action up the tree (issue #180).
+ *
+ * The row changes in exactly two columns — who has now been told, and when —
+ * and nowhere else. That is the decision rather than an unfinished
+ * implementation: an escalation is not a handover. The status stays, the open
+ * phase stays, the owner stays, because the line still has to run the plan; who
+ * has been told is a different question from who is doing the work, and folding
+ * the two into one status transition would lose the second answer.
+ *
+ * The caller's right to act at the *target* is the route's business (ADR-0006 —
+ * People is another Module), and so are the existence and ancestry refusals;
+ * what happens here is the write, over a row locked for it, with the detail
+ * read the caller gets back taken inside the same transaction.
+ */
+async function escalateAction(actionItemId, orgUnitId, accountId) {
+  return withActor(accountId, async (client) => {
+    const { rows } = await client.query(
+      `UPDATE action_items
+          SET escalated_to_org_unit_id = $2,
+              escalated_at = now()
+        WHERE id = $1
+      RETURNING id`,
+      [actionItemId, orgUnitId]
+    );
+    if (rows.length === 0) throw notFound('Action');
+
+    const { rows: [row] } = await client.query(
+      `SELECT ${ACTION_COLUMNS} ${ACTION_JOINS} WHERE ai.id = $1`,
+      [actionItemId]
+    );
+    return toActionDetail(
+      row,
+      await listPhases(actionItemId, client),
+      await listMeasures(actionItemId, client)
+    );
+  });
+}
+
 module.exports = {
   ACTION_TYPES,
   ACTION_STATUSES,
@@ -907,5 +996,7 @@ module.exports = {
   createAction,
   createMeasure,
   completePhase,
-  cancelAction
+  cancelAction,
+  escalationTargets,
+  escalateAction
 };
