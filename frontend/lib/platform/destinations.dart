@@ -81,10 +81,17 @@ class Destination {
 abstract final class DestinationGroupNames {
   static const String people = 'People';
   static const String maintenance = 'Maintenance';
+  static const String actions = 'Actions';
   static const String insights = 'Insights';
   static const String administration = 'Administration';
 
-  static const List<String> order = [people, maintenance, insights, administration];
+  static const List<String> order = [
+    people,
+    maintenance,
+    actions,
+    insights,
+    administration,
+  ];
 }
 
 /// One heading the Shell's sidebar files [Destination]s under, plus the
@@ -313,6 +320,19 @@ const List<Destination> platformDestinations = [
     path: Routes.skillCoverage,
     roles: {Roles.admin},
     group: DestinationGroupNames.insights,
+  ),
+  // Actions (issue #176) — the action log, and the first Destination behind a
+  // Module of its own rather than one of the three that already existed
+  // (ADR-0032). Offered to every approved Account, no `roles` set, the same
+  // shape Home, the Directory and My requests use: anyone on the floor may
+  // raise a Concern where they found it, and raising needs only a read Grant
+  // reaching that Org Unit. Filed under its own heading, between the groups
+  // where work is done and the groups where the plant is read about.
+  Destination(
+    label: 'Action log',
+    icon: Icons.assignment_turned_in_outlined,
+    path: Routes.actions,
+    group: DestinationGroupNames.actions,
   ),
   // Approvals and Accounts administer the Platform itself — who may sign in,
   // and what they may reach — rather than the plant's workforce, so they sit

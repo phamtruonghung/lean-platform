@@ -18,6 +18,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:lean_platform/actions/actions_api.dart';
 import 'package:lean_platform/maintenance/maintenance_api.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/auth_gateway.dart';
@@ -1031,6 +1032,17 @@ class FakeWire {
     List<Map<String, dynamic>>? importOrgUnitsErrors,
     Map<String, List<Map<String, dynamic>>>? assets,
     this.assetsStatus = 200,
+    Map<String, List<Map<String, dynamic>>>? actions,
+    this.actionsStatus = 200,
+    Map<String, Map<String, dynamic>>? actionDetails,
+    List<Map<String, dynamic>>? pillars,
+    this.pillarsStatus = 200,
+    this.createActionStatus = 201,
+    this.createActionMessage = 'That concern could not be raised.',
+    this.completePhaseStatus = 200,
+    this.completePhaseMessage = 'this Action is waiting on its plan phase, not its do',
+    this.createMeasureStatus = 201,
+    this.createMeasureMessage = 'a measure answers a Concern, and that Action is not one',
     this.createAssetStatus = 201,
     this.createAssetMessage = 'an Asset with this code already exists',
     this.patchAssetStatus = 200,
@@ -1157,6 +1169,16 @@ class FakeWire {
     Map<String, dynamic>? floorEmployee,
   })  : queue = queue ?? [],
         assets = assets ?? {},
+        actions = actions ?? {},
+        actionDetails = actionDetails ?? {},
+        pillars = pillars ??
+            [
+              pillarJson('S', 'Safety', 1),
+              pillarJson('Q', 'Quality', 2),
+              pillarJson('D', 'Delivery', 3),
+              pillarJson('C', 'Cost', 4),
+              pillarJson('P', 'People', 5),
+            ],
         accounts = accounts ?? [],
         employeeLinkedAccounts = employeeLinkedAccounts ?? {},
         sites = sites ?? [],
@@ -1203,6 +1225,51 @@ class FakeWire {
   /// `GET /api/maintenance/sites/:siteId/assets`, keyed by Site id.
   Map<String, List<Map<String, dynamic>>> assets;
   int assetsStatus;
+
+  /// `GET /api/actions/sites/:siteId/actions` (issue #176), keyed by Site id.
+  ///
+  /// The wire applies the filters it has enough on a row to honour honestly:
+  /// `status`, `actionType`, `pillarCode` and `includeHistory` (a row whose
+  /// `status` is `done`/`cancelled` is sent only when history is asked for,
+  /// exactly as `actions.js`'s own `OPEN_STATUSES` clause does), plus
+  /// `orgUnitId` as an **exact match** on the row's Org Unit — the real
+  /// endpoint includes the whole branch beneath the one named, which a fake
+  /// holding flat rows cannot model, so a test asserting the branch behaviour
+  /// belongs in the backend suite rather than here.
+  Map<String, List<Map<String, dynamic>>> actions;
+  int actionsStatus;
+
+  /// Every Actions read's full URI, in the order it reached the wire — the
+  /// only way a widget test can prove which filters a Screen actually sent,
+  /// since the recorded `requests` list carries the path and not the query.
+  final List<Uri> actionReads = [];
+
+  /// When set, an Actions read hangs until the test completes it — what "in
+  /// flight" means to a widget test, the same shape `assetsGate` has.
+  Completer<void>? actionsGate;
+
+  /// `GET /api/actions/:id` — one Action by id, for the detail Screen.
+  Map<String, Map<String, dynamic>> actionDetails;
+
+  /// `GET /api/actions/pillars` — the raise form's Pillar catalogue.
+  List<Map<String, dynamic>> pillars;
+  int pillarsStatus;
+
+  /// Every body sent to `POST /api/actions/sites/:siteId/actions`.
+  final List<Map<String, dynamic>> actionPosts = [];
+  int createActionStatus;
+  String createActionMessage;
+
+  /// Every measure raise that reached the wire, as `(concernId, body)`.
+  final List<(String, Map<String, dynamic>)> measurePosts = [];
+  int createMeasureStatus;
+  String createMeasureMessage;
+
+  /// Every phase completion that reached the wire, as `(actionId, phase, body)`
+  /// — the assertion a test makes about what the dialog collected.
+  final List<(String, String, Map<String, dynamic>)> phaseCompletions = [];
+  int completePhaseStatus;
+  String completePhaseMessage;
 
   /// `POST /api/maintenance/assets`.
   int createAssetStatus;
@@ -2164,6 +2231,55 @@ class FakeWire {
       for (final entry in employeeDetails.entries)
         entry.key: entry.value['id'] == id ? merge(entry.value) : entry.value,
     };
+  }
+
+  /// Completes one stored Action's open phase and opens what follows, in place
+  /// — so a later read of the same Action sees the state the screen does.
+  Map<String, dynamic>? _completeStoredPhase(String id, String phase, Map<String, dynamic> body) {
+    Map<String, dynamic>? stored = actionDetails[id];
+    for (final rows in actions.values) {
+      for (final row in rows) {
+        if (row['id'] == id) stored = row;
+      }
+    }
+    if (stored == null) return null;
+
+    final phases = [
+      for (final row in (stored['phases'] as List<dynamic>? ?? const []))
+        Map<String, dynamic>.from(row as Map<String, dynamic>),
+    ];
+    final cycle = (stored['openPhase'] as Map<String, dynamic>?)?['cycle'] as int? ?? 1;
+    for (final row in phases) {
+      if (row['cycle'] == cycle && row['phase'] == phase) {
+        row['completedAt'] = '2026-09-15T03:00:00.000Z';
+        row['note'] = body['note'];
+        row['outcome'] = body['outcome'];
+      }
+    }
+
+    Map<String, dynamic>? next;
+    switch (phase) {
+      case 'plan':
+        next = phaseJson(cycle, 'do');
+      case 'do':
+        next = phaseJson(cycle, 'check');
+      case 'check':
+        next = body['outcome'] == 'effective'
+            ? phaseJson(cycle, 'act')
+            : phaseJson(cycle + 1, 'plan');
+      default:
+        next = null;
+    }
+    if (next != null) {
+      phases.add(next);
+      stored['openPhase'] = next;
+    } else {
+      stored['openPhase'] = null;
+    }
+    stored['phases'] = phases;
+    stored['status'] = phase == 'act' ? 'done' : 'in_progress';
+    stored['actionType'] = stored['actionType'];
+    return stored;
   }
 
   http.Client get client => MockClient((request) async {
@@ -3775,9 +3891,255 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'store': store}), 200);
         }
+        if (path.startsWith('/api/actions/sites/') && path.endsWith('/actions')) {
+          actionReads.add(request.url);
+          if (actionsGate != null) await actionsGate!.future;
+          if (actionsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The action log is unavailable.'}),
+              actionsStatus,
+            );
+          }
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            actionPosts.add(sent);
+            if (createActionStatus != 201) {
+              return http.Response(jsonEncode({'message': createActionMessage}), createActionStatus);
+            }
+            // The raised row comes back in the shape the server sends: the
+            // Org Unit it was raised at, the type it carries (the default is
+            // the concern itself), and the Site from the path.
+            final siteId = path.split('/')[4];
+            final created = actionJson(
+              '900',
+              'AC-TEST-2026-00009',
+              sent['title'] as String,
+              actionType: (sent['actionType'] as String?) ?? 'concern',
+              orgUnitId: sent['orgUnitId'] as String,
+              orgUnitName: 'Raised Line',
+              siteId: siteId,
+              description: sent['description'] as String?,
+              pillarCode: sent['pillarCode'] as String?,
+              ownerEmployeeId: sent['ownerEmployeeId'] as String?,
+              ownerName: sent['ownerEmployeeId'] == null ? null : 'Ann Fitter',
+              dueDate: sent['dueDate'] as String?,
+              priority: (sent['priority'] as int?) ?? 3,
+            );
+            actions = {
+              ...actions,
+              siteId: [...(actions[siteId] ?? const []), created],
+            };
+            return http.Response(jsonEncode({'action': created}), 201);
+          }
+          final siteId = path.split('/')[4];
+          final includeHistory = request.url.queryParameters['includeHistory'] == 'true';
+          final status = request.url.queryParameters['status'];
+          final actionType = request.url.queryParameters['actionType'];
+          final pillarCode = request.url.queryParameters['pillarCode'];
+          final orgUnitId = request.url.queryParameters['orgUnitId'];
+          final sent = [
+            for (final action in actions[siteId] ?? const <Map<String, dynamic>>[])
+              if (includeHistory ||
+                  !const {'done', 'cancelled'}.contains(action['status']))
+                if (status == null || action['status'] == status)
+                  if (actionType == null || action['actionType'] == actionType)
+                    if (pillarCode == null || action['pillarCode'] == pillarCode)
+                      if (orgUnitId == null || action['orgUnitId'] == orgUnitId) action,
+          ];
+          return http.Response(jsonEncode({'actions': sent, 'truncated': false}), 200);
+        }
+        if (request.method == 'GET' && path == '/api/actions/pillars') {
+          if (pillarsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Pillar catalogue is unavailable.'}),
+              pillarsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'pillars': pillars}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/measures')) {
+          // `/api/actions/:id/measures` (issue #178). The created measure is
+          // appended to the stored Concern so a re-read sees it, in the
+          // shape the server sends: an Action with a parent named. The
+          // ordering the real server applies (containment, then countermeasure,
+          // then preventive) is asserted in the backend suite, not here.
+          final concernId = path.split('/')[3];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          measurePosts.add((concernId, body));
+          if (createMeasureStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createMeasureMessage}),
+              createMeasureStatus,
+            );
+          }
+          final concern = actionDetails[concernId];
+          if (concern == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          final measure = actionJson(
+            '800',
+            'AC-TEST-2026-00008',
+            body['title'] as String,
+            actionType: body['actionType'] as String,
+            orgUnitId: (body['orgUnitId'] as String?) ?? concern['orgUnitId'] as String,
+            orgUnitName: (body['orgUnitId'] as String?) == null
+                ? concern['orgUnitName'] as String
+                : 'Another Unit',
+            siteId: concern['siteId'] as String,
+            ownerName: body['ownerEmployeeId'] == null ? null : 'Ann Fitter',
+            dueDate: body['dueDate'] as String?,
+            priority: (body['priority'] as int?) ?? 3,
+            parentId: concernId,
+            parent: {
+              'id': concernId,
+              'actionNo': concern['actionNo'],
+              'title': concern['title'],
+              'actionType': concern['actionType'],
+              'status': concern['status'],
+            },
+          )..['openPhase'] = phaseJson(1, 'plan');
+          concern['measures'] = [...(concern['measures'] as List<dynamic>? ?? const []), measure];
+          concern['measureCount'] = (concern['measureCount'] as int? ?? 0) + 1;
+          if (body['actionType'] == 'countermeasure') {
+            concern['countermeasureCount'] = (concern['countermeasureCount'] as int? ?? 0) + 1;
+          }
+          return http.Response(jsonEncode({'action': measure}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/complete')) {
+          // `/api/actions/:id/phases/:phase/complete`. The fake walks the cycle
+          // the way actions.js's own `nextPhase` does — completing the open
+          // phase, opening the next (or the next cycle's Plan after a Check
+          // that did not hold, or nothing after an Act) — because the point of
+          // these tests is what the Screen renders from the server's answer.
+          // The authority on the rule is the backend suite, not this.
+          final parts = path.split('/');
+          final id = parts[3];
+          final phase = parts[5];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          phaseCompletions.add((id, phase, body));
+          if (completePhaseStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': completePhaseMessage}),
+              completePhaseStatus,
+            );
+          }
+          final updated = _completeStoredPhase(id, phase, body);
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          return http.Response(jsonEncode({'action': updated}), 200);
+        }
+        if (request.method == 'GET' && path.startsWith('/api/actions/')) {
+          final id = path.split('/').last;
+          final action = actionDetails[id];
+          if (action == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          return http.Response(jsonEncode({'action': action}), 200);
+        }
         return http.Response('{}', 404);
       });
 }
+
+/// One Action as `/api/actions` sends it (issue #176) — the client-side
+/// counterpart of the backend's own `toAction`.
+Map<String, dynamic> actionJson(
+  String id,
+  String actionNo,
+  String title, {
+  String actionType = 'concern',
+  String status = 'open',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String? description,
+  String? pillarCode,
+  String? ownerEmployeeId,
+  String? ownerName,
+  String? dueDate,
+  bool isOverdue = false,
+  int? daysOverdue,
+  int priority = 3,
+  String? escalatedToOrgUnitId,
+  String? escalatedToOrgUnitName,
+  String raisedAt = '2026-09-15T02:00:00.000Z',
+  Map<String, dynamic>? parent,
+  String? parentId,
+  int measureCount = 0,
+  int countermeasureCount = 0,
+  List<Map<String, dynamic>> measures = const [],
+  List<Map<String, dynamic>> phases = const [],
+  Map<String, dynamic>? openPhase,
+}) =>
+    {
+      'id': id,
+      'actionNo': actionNo,
+      'title': title,
+      'description': description,
+      'actionType': actionType,
+      'pillarCode': pillarCode,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'ownerEmployeeId': ownerEmployeeId,
+      'ownerName': ownerName,
+      'raisedByEmployeeId': null,
+      'raisedByName': null,
+      'raisedAt': raisedAt,
+      'dueDate': dueDate,
+      'isOverdue': isOverdue,
+      'daysOverdue': daysOverdue,
+      'priority': priority,
+      'status': status,
+      'completedAt': null,
+      'closureNote': null,
+      'escalatedToOrgUnitId': escalatedToOrgUnitId,
+      'escalatedToOrgUnitName': escalatedToOrgUnitName,
+      'escalatedAt': null,
+      'sourceType': 'standalone',
+      'parentId': parentId,
+      'measureCount': measureCount,
+      'countermeasureCount': countermeasureCount,
+      'parent': parent,
+      'measures': measures,
+      'phases': phases,
+      'openPhase': openPhase,
+    };
+
+/// One phase as the Action's own `phases` array sends it (issue #177).
+Map<String, dynamic> phaseJson(
+  int cycle,
+  String phase, {
+  String? id,
+  String? note,
+  String? completedAt,
+  String? outcome,
+  String? ownerName,
+  String? dueDate,
+}) =>
+    {
+      'id': id,
+      'cycle': cycle,
+      'phase': phase,
+      'ownerEmployeeId': null,
+      'ownerName': ownerName,
+      'dueDate': dueDate,
+      'completedAt': completedAt,
+      'outcome': outcome,
+      'note': note,
+    };
+
+/// One Pillar as `GET /api/actions/pillars` sends it.
+Map<String, dynamic> pillarJson(String code, String name, int sortOrder) => {
+      'code': code,
+      'name': name,
+      'description': '$name measures',
+      'sortOrder': sortOrder,
+    };
 
 class FakeAuthGateway implements AuthGateway {
   FakeAuthGateway({String? accessToken}) : _token = accessToken;
@@ -3848,6 +4210,8 @@ Future<void> pumpApp(
       // One faked wire behind both Modules' API clients, so a test scripts the
       // whole app's network in one place.
       maintenanceApi: MaintenanceApi(client: client),
+      // The Actions Module's own client over the same faked wire.
+      actionsApi: ActionsApi(client: client),
       // The floor surface's device credential, faked at the same seam.
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       initialLocation: initialLocation,

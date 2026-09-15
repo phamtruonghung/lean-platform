@@ -92,13 +92,25 @@ void main() {
     );
 
     expect(find.byType(AccountsScreen), findsOneWidget);
-    expect(find.text('Name'), findsOneWidget);
-    expect(find.text('Email'), findsOneWidget);
-    expect(find.text('Role'), findsOneWidget);
-    expect(find.text('Standing'), findsOneWidget);
-    expect(find.text('Since'), findsOneWidget);
-    expect(find.text('Grants'), findsOneWidget);
-    expect(find.text('Actions'), findsOneWidget);
+    // Scoped to the Screen rather than a bare `find.text('Actions')` (issue
+    // #176): 'Actions' is now also the Shell's own group heading for the
+    // Actions Module, which is on screen beside this table and would make a
+    // bare finder find two widgets. What this asserts is unchanged — the
+    // table's own header carries all seven column labels, once each.
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Name')),
+        findsOneWidget);
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Email')),
+        findsOneWidget);
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Role')),
+        findsOneWidget);
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Standing')),
+        findsOneWidget);
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Since')),
+        findsOneWidget);
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Grants')),
+        findsOneWidget);
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Actions')),
+        findsOneWidget);
 
     expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
     expect(find.byKey(AccountsScreen.rowKey('8')), findsOneWidget);
@@ -200,8 +212,13 @@ void main() {
     // (table) layout ever renders — their absence, alongside the row's own
     // content still being fully present, is what distinguishes cards from a
     // squeezed table without reaching into anything but text on screen.
-    expect(find.text('Name'), findsNothing);
-    expect(find.text('Actions'), findsNothing);
+    // Scoped to this Screen for the same reason the header assertions above
+    // are (issue #176): the Shell's own 'Actions' group heading is on screen
+    // and is not this table's.
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Name')),
+        findsNothing);
+    expect(find.descendant(of: find.byType(AccountsScreen), matching: find.text('Actions')),
+        findsNothing);
     expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
     expect(find.text('admitted@b.c'), findsOneWidget);
   });

@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:lean_platform/auth/awaiting_approval_screen.dart';
 import 'package:lean_platform/auth/sign_in_screen.dart';
 import 'package:lean_platform/home_screen.dart';
+import 'package:lean_platform/actions/actions_api.dart';
 import 'package:lean_platform/maintenance/maintenance_api.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/not_found_screen.dart';
@@ -108,6 +109,7 @@ void main() {
         authGateway: gateway,
         peopleApi: PeopleApi(client: meClient(() => activeBody)),
         maintenanceApi: MaintenanceApi(client: meClient(() => activeBody)),
+        actionsApi: ActionsApi(client: meClient(() => activeBody)),
         initialLocation: '/',
       ),
     );

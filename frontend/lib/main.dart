@@ -16,6 +16,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'maintenance/maintenance_api.dart';
+import 'actions/actions_api.dart';
 import 'people_api.dart';
 import 'platform/auth_gateway.dart';
 import 'platform/floor_device_gateway.dart';
@@ -38,6 +39,7 @@ Future<void> main() async {
       authGateway: SupabaseAuthGateway(),
       peopleApi: PeopleApi(),
       maintenanceApi: MaintenanceApi(),
+      actionsApi: ActionsApi(),
       floorDeviceGateway: const ConfiguredFloorDeviceGateway(),
     ),
   );
