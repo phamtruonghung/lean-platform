@@ -222,6 +222,59 @@ Pillar are.
 _Avoid_: Corrective action (that is one half of it), 8D (that is one method of
 running one), ticket, issue
 
+### The action log
+
+**Action**:
+One thing somebody must do about something, recorded at the Org Unit it is about
+and owned by whoever will do it. The kinds are what an Action is to a problem: a
+**Concern** is the problem itself, a **Containment** stops its effect now, a
+**Countermeasure** removes its cause, a Preventive action stops the same failure
+appearing somewhere else, an Improvement raises the level, and a Routine action
+answers nothing — order the gloves, chase the supplier. Every Action runs its own
+PDCA cycle (see **Action phase**), a Concern's measures hang off it one level
+deep, and an Action's number is its own Site's.
+_Avoid_: Task (that is a step inside a Work order), item, to-do, ticket, issue,
+countermeasure (that is one kind of Action, not the whole of one)
+
+**Concern**:
+The Action recording something found wrong, and the thing its measures answer.
+Anyone on the floor may raise one where they found it, whether or not they hold a
+Grant reaching that Org Unit: a concern is a report, not a decision. An open
+Concern may be escalated to an Org Unit above the one it was raised at, and it
+stays open where it goes — the Org Unit on the record is where the problem is,
+never where it went.
+_Avoid_: Problem (an internal word — say Concern), issue, defect (a defect is a
+recorded non-conformance, a different thing), abnormality
+
+**Containment**:
+The Action that stops a Concern's effect now, and nothing more: clamp it, tag it,
+rework the batch. A Containment is raised before the cause is known, which is the
+point of it, and it is never the fix — an Action that removes the cause is a
+Countermeasure, and a Concern recorded with only a Containment behind it was
+contained rather than answered.
+_Avoid_: Quick fix, temporary action, band-aid, immediate corrective action
+
+**Countermeasure**:
+The Action that removes a Concern's cause, chosen once the cause is known. The
+word is deliberate: a fix that blames a person corrects nothing, and what a plant
+changes is the process a person works in. A Concern with no Countermeasure behind
+it cannot be closed, which is what makes the difference between a claim and a
+record.
+_Avoid_: Corrective action (the CAPA entry already avoids it, and the schema's
+own `action_type` value is `countermeasure` for the same reason), solution, fix,
+remedy
+
+**Action phase**:
+One step of an Action's current PDCA cycle — **Plan** names what will be
+different and who owns it, **Do** is the work, **Check** measures the result and
+records whether it held, **Act** names the standard that now holds it. Each phase
+carries its own owner and due date, and a Check that found the countermeasure did
+not hold opens the next cycle's Plan rather than ending the Action, so an Action
+may be several cycles long with every one of them kept.
+_Avoid_: Step (a step is what a Job plan and a Work order are made of), stage,
+status (the Action's own status is the schema's five words, and it is not one of
+these), PDCA stage
+
 ### The numbers
 
 **Pillar**:

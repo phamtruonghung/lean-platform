@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../maintenance/maintenance_api.dart';
+import '../actions/actions_api.dart';
 import '../people_api.dart';
 import '../theme.dart';
 import 'account_bloc.dart';
@@ -17,6 +18,7 @@ class PlatformApp extends StatefulWidget {
     required this.authGateway,
     required this.peopleApi,
     required this.maintenanceApi,
+    required this.actionsApi,
     this.floorDeviceGateway = const ConfiguredFloorDeviceGateway(),
     this.initialLocation,
   });
@@ -24,6 +26,7 @@ class PlatformApp extends StatefulWidget {
   final AuthGateway authGateway;
   final PeopleApi peopleApi;
   final MaintenanceApi maintenanceApi;
+  final ActionsApi actionsApi;
 
   /// The shared floor device's own credential, if this build was provisioned
   /// with one (issue #77). A build with none still serves the surface; it shows
@@ -66,6 +69,7 @@ class _PlatformAppState extends State<PlatformApp> {
         // same faked wire a widget test already substitutes here.
         RepositoryProvider<PeopleApi>.value(value: widget.peopleApi),
         RepositoryProvider<MaintenanceApi>.value(value: widget.maintenanceApi),
+        RepositoryProvider<ActionsApi>.value(value: widget.actionsApi),
         RepositoryProvider<FloorDeviceGateway>.value(value: widget.floorDeviceGateway),
       ],
       child: BlocProvider<AccountBloc>.value(

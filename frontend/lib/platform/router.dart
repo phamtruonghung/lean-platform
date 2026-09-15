@@ -6,6 +6,17 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/awaiting_approval_screen.dart';
 import '../auth/sign_in_screen.dart';
+import '../actions/action_detail_bloc.dart';
+import '../actions/action_detail_screen.dart';
+import '../actions/action.dart';
+import '../actions/action_cancel_dialog.dart';
+import '../actions/action_escalate_dialog.dart';
+import '../actions/action_form_dialog.dart';
+import '../actions/action_measure_dialog.dart';
+import '../actions/action_phase_complete_dialog.dart';
+import '../actions/actions_api.dart';
+import '../actions/actions_bloc.dart';
+import '../actions/actions_screen.dart';
 import '../home_bloc.dart';
 import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
@@ -92,6 +103,12 @@ abstract final class Routes {
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
   static const String tierBoard = '/tier-board';
+
+  /// The Actions Module's own Destinations (issue #176): the action log, and
+  /// one Action's detail read behind `${actions}/:id`. The raise form is
+  /// addressed at `${actions}/new` (ADR-0021), which cannot collide with the
+  /// detail route because `new` is not an id.
+  static const String actions = '/actions';
 
   /// The shared floor device's own Screen (issue #77, ADR-0016). Its own
   /// address, deliberately outside the Shell and never offered as a
@@ -371,6 +388,209 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 child: const TierBoardScreen(),
               );
             },
+          ),
+          // Actions (issue #176) — a `ShellRoute` of its own, for the same
+          // reason Work orders has one: `ActionsBloc` is created exactly once
+          // and shared by the register and the raise form's own address below
+          // (a child `GoRoute`'s page is a *sibling* of its parent's, so a Bloc
+          // provided inside the register's builder would not be visible to it).
+          //
+          // The guard is the whole Module rather than a role set: the log is a
+          // Site-wide read for every admitted Account, and raising needs only a
+          // read Grant reaching the Org Unit a concern is about (ADR-0032). An
+          // operator is offered this Destination exactly as a manager is.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<ActionsBloc>(
+                create: (context) => ActionsBloc(
+                  actionsApi: context.read<ActionsApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const ActionsStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.actions,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const ActionsScreen();
+                },
+                routes: [
+                  // `/actions/new` — the raise form, addressed rather than
+                  // popped (ADR-0021): a refresh lands on the register with the
+                  // form open, and `new` cannot collide with the detail route
+                  // below because it is not an id.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final actionsState = context.watch<ActionsBloc>().state;
+                          final siteId =
+                              actionsState is ActionsLoaded ? actionsState.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: ActionsScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          // The chooser inside the form browses People's tree
+                          // through the same Bloc the Asset form uses, scoped to
+                          // this dialog and opened on the Site on screen.
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: ActionFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  // `/actions/:id` and its own transition address — a
+                  // `ShellRoute` of its own so `ActionDetailBloc` is created
+                  // exactly once and shared by the Screen and the phase dialog
+                  // beside it (a child `GoRoute`'s page is a *sibling* of its
+                  // parent's, so a Bloc provided inside the detail route's
+                  // builder would not be visible to the dialog).
+                  ShellRoute(
+                    builder: (context, state, child) {
+                      final actionId = state.pathParameters['id']!;
+                      return BlocProvider<ActionDetailBloc>(
+                        create: (context) => ActionDetailBloc(
+                          actionsApi: context.read<ActionsApi>(),
+                          authGateway: context.read<AuthGateway>(),
+                        )..add(ActionDetailStarted(actionId)),
+                        child: child,
+                      );
+                    },
+                    routes: [
+                      GoRoute(
+                        path: ':id',
+                        builder: (context, state) => ActionDetailScreen(
+                          actionId: state.pathParameters['id']!,
+                        ),
+                        routes: [
+                          // `/actions/:id/phases/:phase/complete` — completing
+                          // the open phase, addressed rather than popped
+                          // (ADR-0021), and **nested under the Action's own
+                          // route** rather than sitting beside it as the Work
+                          // orders' transition dialogs do. That is a deliberate
+                          // difference: those dialogs belong to the *list*,
+                          // which stays on screen beneath them, while this one
+                          // belongs to one Action's detail read — a sibling
+                          // address would pop the caller back to the register
+                          // with the Action they were reading gone. The host
+                          // refuses the address when the Action is no longer
+                          // waiting on the phase it names, which is the
+                          // client's half of the server's own 409.
+                          GoRoute(
+                            path: 'phases/:phase/complete',
+                            pageBuilder: (context, state) => DialogPage<void>(
+                              key: state.pageKey,
+                              builder: (dialogContext) => ActionPhaseCompleteDialogHost(
+                                phase: state.pathParameters['phase']!,
+                              ),
+                            ),
+                          ),
+                          // `/actions/:id/measures/:measureType/new` — raising
+                          // a measure against this Concern (issue #178). Its
+                          // kind comes off the address and is checked against
+                          // the three the server accepts, so a mistyped one is
+                          // refused by name rather than sent to be refused.
+                          // `/actions/:id/escalate` — handing it up (issue
+                          // #180), addressed for the same reasons the other
+                          // two dialogs are.
+                          GoRoute(
+                            path: 'escalate',
+                            pageBuilder: (context, state) => DialogPage<void>(
+                              key: state.pageKey,
+                              builder: (dialogContext) => const ActionEscalateDialogHost(),
+                            ),
+                          ),
+                          // `/actions/:id/cancel` — calling it off (issue
+                          // #179), addressed rather than popped and nested
+                          // under the Action for the same reason the phase
+                          // dialog is.
+                          GoRoute(
+                            path: 'cancel',
+                            pageBuilder: (context, state) => DialogPage<void>(
+                              key: state.pageKey,
+                              builder: (dialogContext) => const ActionCancelDialogHost(),
+                            ),
+                          ),
+                          GoRoute(
+                            path: 'measures/:measureType/new',
+                            pageBuilder: (context, state) {
+                              final detail = context.watch<ActionDetailBloc>().state;
+                              return DialogPage<void>(
+                                key: state.pageKey,
+                                builder: (dialogContext) {
+                                  final current = context.watch<ActionDetailBloc>().state;
+                                  if (current is! ActionDetailLoaded || detail is! ActionDetailLoaded) {
+                                    return const AlertDialog(
+                                      key: ActionMeasureDialog.loadingKey,
+                                      content: SizedBox(
+                                        height: 80,
+                                        child: Center(child: CircularProgressIndicator()),
+                                      ),
+                                    );
+                                  }
+                                  final measureType = state.pathParameters['measureType']!;
+                                  if (!actionMeasureTypeOrder.contains(measureType)) {
+                                    return AlertDialog(
+                                      key: ActionMeasureDialog.unknownKindKey,
+                                      title: const Text('That is not a measure'),
+                                      content: const Text(
+                                        'A measure is a containment, a countermeasure or a '
+                                        'preventive action.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => context.pop(),
+                                          child: const Text('Back to the Action'),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                  // The chooser inside the form browses People's
+                                  // tree, scoped to this dialog, on the Site the
+                                  // Concern already sits in.
+                                  return BlocProvider<OrgUnitPickerBloc>(
+                                    create: (context) => OrgUnitPickerBloc(
+                                      peopleApi: context.read<PeopleApi>(),
+                                      authGateway: context.read<AuthGateway>(),
+                                      initialSiteId: current.action.siteId,
+                                    )..add(const OrgUnitPickerStarted()),
+                                    child: ActionMeasureDialog(
+                                      concern: current.action,
+                                      measureType: measureType,
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: Routes.approvals,
