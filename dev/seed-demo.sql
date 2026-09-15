@@ -627,4 +627,212 @@ SELECT kd.id, ou.id, 'month', v.target_value, v.lower_threshold, v.upper_thresho
     WHERE kt.kpi_definition_id = kd.id AND kt.org_unit_id = ou.id AND kt.period_type = 'month'
  );
 
+-- -----------------------------------------------------------------------------
+-- Actions — the action log, seeded with one row per shape a reviewer needs to
+-- see, because an empty register reads as a broken Screen rather than as a
+-- module waiting for data.
+--
+--   0001  a concern at the packing line, closed on proof: a containment done, a
+--         countermeasure done, and two turns of the circle — the first Check
+--         found the fix had not held, which is what sent it round again.
+--   0002  a concern mid-cycle: Plan done, Do open, its containment closed and
+--         its countermeasure still in its own Do phase.
+--   0003  an overdue concern with nobody named on it — the register's first row
+--         when it orders worst-first, and its "Nobody yet" rendering.
+--   0004  a concern handed up to the area above it: the two escalation columns
+--         are both set (`action_items_escalation_consistent`), which is what the
+--         manager's own queue filter has to find.
+--   0005  a standalone containment with no concern behind it, sitting in its
+--         Check — a measure that answers nothing, which the Module allows.
+--
+-- Every row is keyed by a `DEMO-AC-…` action number, every child by a NOT EXISTS
+-- on its parent's number, and `next_document_number()` is never called: a re-run
+-- leaves every count unchanged and `document_sequences` untouched, which is the
+-- contract this file's header states for the work order and PM sections too.
+--
+-- Nothing here is a state the API would refuse: 0001 has a countermeasure that
+-- is done and no measure still open, which is exactly what #179 requires before
+-- a concern's Act may be completed. A seed that could only exist by bypassing
+-- the Module's own rules would teach the wrong shape.
+--
+-- Dates are relative to CURRENT_DATE and now(), so the demo still reads as a
+-- live register a month from now, and the phase completions spread backwards
+-- over days so the rail reads as work in time rather than as rows written in one
+-- second. `owner_employee_id` and `raised_by` are resolved by `employee_no` from
+-- the Employees section above; 0003 deliberately has neither.
+-- `created_by`/`updated_by` are left null as every other section leaves them: no
+-- request context means no actor, which is the honest answer rather than a guess.
+-- -----------------------------------------------------------------------------
+INSERT INTO action_items
+  (action_no, org_unit_id, title, description, action_type, pillar_code, priority,
+   status, due_date, owner_employee_id, raised_by, raised_at, completed_at,
+   closure_note, escalated_to_org_unit_id, escalated_at)
+SELECT v.action_no,
+       ou.id,
+       v.title,
+       v.description,
+       v.action_type,
+       v.pillar_code,
+       v.priority,
+       v.status,
+       CASE WHEN v.due_in_days IS NULL THEN NULL ELSE CURRENT_DATE + v.due_in_days END,
+       owner.id,
+       raiser.id,
+       now() - (v.raised_days_ago || ' days')::interval,
+       CASE WHEN v.completed_days_ago IS NULL THEN NULL
+            ELSE now() - (v.completed_days_ago || ' days')::interval END,
+       v.closure_note,
+       escalated.id,
+       CASE WHEN escalated.id IS NULL THEN NULL
+            ELSE now() - (v.escalated_days_ago || ' days')::interval END
+  FROM (VALUES
+    ('DEMO-AC-0001', 'PKG-L1', 'Cases jamming on the pallet wrapper',
+     'The infeed guide shifts under load and the cases catch on it. Two shifts in a row lost '
+     'about twenty minutes each to clearing it.',
+     'concern', 'Q', 2, 'done', -2, 'DEMO-004', 'DEMO-004', 16, 1,
+     'Guide refitted to the revised setting and the setting is on the line board.',
+     NULL, NULL),
+    ('DEMO-AC-0002', 'A1-L1', 'Guard on the infeed works loose every shift',
+     'The guard on the infeed end works loose during a shift and has to be tightened by hand.',
+     'concern', 'S', 2, 'in_progress', 2, 'DEMO-001', 'DEMO-001', 6, NULL, NULL, NULL, NULL),
+    ('DEMO-AC-0003', 'A1-L1', 'Pallet stack height varies between shifts',
+     'Stacks come out between eight and eleven high with no standard written down, and the '
+     'taller ones lean.',
+     'concern', 'D', 4, 'open', -9, NULL, 'DEMO-005', 11, NULL, NULL, NULL, NULL),
+    ('DEMO-AC-0004', 'A1-L1', 'Night shift has no trained wrapper operator',
+     'Nobody on nights is signed off on the wrapper, so a jam waits until the day shift arrives.',
+     'concern', 'P', 3, 'in_progress', 5, 'DEMO-003', 'DEMO-003', 5, NULL, NULL, 'A1', 2),
+    ('DEMO-AC-0005', 'A1-L1-C1', 'Manual guide check added to the shift checklist',
+     'A five-second look at the guide before each shift, added to the operator checklist.',
+     'containment', 'S', 2, 'in_progress', 1, 'DEMO-005', 'DEMO-002', 8, NULL, NULL, NULL, NULL)
+  ) AS v(action_no, org_unit_code, title, description, action_type, pillar_code, priority,
+         status, due_in_days, owner_no, raised_by_no, raised_days_ago, completed_days_ago,
+         closure_note, escalated_to_code, escalated_days_ago)
+  JOIN org_units ou
+    ON ou.code = v.org_unit_code
+   AND ou.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+  LEFT JOIN employees owner  ON owner.employee_no = v.owner_no
+  LEFT JOIN employees raiser ON raiser.employee_no = v.raised_by_no
+  LEFT JOIN org_units escalated
+    ON escalated.code = v.escalated_to_code
+   AND escalated.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+ON CONFLICT (action_no) DO NOTHING;
+
+-- The measures the two answered concerns carry. A measure is an Action of its
+-- own with its own cycle and its own owner, which is the whole point of the
+-- containment/countermeasure split: 0001 has both, 0002 has both with the
+-- countermeasure still being worked, and none of the other three has one.
+INSERT INTO action_items
+  (action_no, org_unit_id, title, description, action_type, pillar_code, priority, status,
+   due_date, owner_employee_id, raised_by, raised_at, completed_at, closure_note,
+   parent_action_item_id)
+SELECT v.action_no,
+       ou.id,
+       v.title,
+       v.description,
+       v.action_type,
+       v.pillar_code,
+       v.priority,
+       v.status,
+       CASE WHEN v.due_in_days IS NULL THEN NULL ELSE CURRENT_DATE + v.due_in_days END,
+       owner.id,
+       raiser.id,
+       now() - (v.raised_days_ago || ' days')::interval,
+       CASE WHEN v.completed_days_ago IS NULL THEN NULL
+            ELSE now() - (v.completed_days_ago || ' days')::interval END,
+       v.closure_note,
+       parent.id
+  FROM (VALUES
+    ('DEMO-AC-0001-A', 'DEMO-AC-0001', 'PKG-L1', 'Run the wrapper at 80% and check the guide each shift',
+     'Holds the rate down until the guide is refitted, and catches a shift in the act of moving.',
+     'containment', 'Q', 2, 'done', -3, 'DEMO-004', 'DEMO-004', 15, 12,
+     'Ran for three shifts without a jam.'),
+    ('DEMO-AC-0001-B', 'DEMO-AC-0001', 'PKG-L1', 'Refit the infeed guide to the revised setting',
+     'The guide is re-seated, torqued to the revised figure and the setting written on the line '
+     'board so the next shift does not move it back.',
+     'countermeasure', 'Q', 2, 'done', 0, 'DEMO-004', 'DEMO-004', 13, 2,
+     'Standard setting recorded on the line board.'),
+    ('DEMO-AC-0002-A', 'DEMO-AC-0002', 'A1-L1', 'Clamp the guard and check it every shift',
+     'A temporary clamp holds the guard while the mounting is re-worked.',
+     'containment', 'S', 2, 'done', -1, 'DEMO-001', 'DEMO-001', 5, 3,
+     'Held for three shifts, so the hazard is contained but not removed.'),
+    ('DEMO-AC-0002-B', 'DEMO-AC-0002', 'A1-L1', 'Re-tap the mounting holes and fit the revised bolt',
+     'The two mounting holes are re-tapped and the longer bolt from the revised drawing is fitted.',
+     'countermeasure', 'S', 2, 'in_progress', 3, 'DEMO-002', 'DEMO-001', 4, NULL, NULL)
+  ) AS v(action_no, parent_no, org_unit_code, title, description, action_type, pillar_code,
+         priority, status, due_in_days, owner_no, raised_by_no, raised_days_ago,
+         completed_days_ago, closure_note)
+  JOIN action_items parent ON parent.action_no = v.parent_no
+  JOIN org_units ou
+    ON ou.code = v.org_unit_code
+   AND ou.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+  LEFT JOIN employees owner  ON owner.employee_no = v.owner_no
+  LEFT JOIN employees raiser ON raiser.employee_no = v.raised_by_no
+ON CONFLICT (action_no) DO NOTHING;
+
+-- The turns of the circle, one row per phase per cycle. 0001 carries two cycles
+-- because its first Check found the countermeasure had not held — a failed Check
+-- opens the NEXT cycle's Plan rather than closing anything, which is the reason
+-- `action_phases` is a table and not a status column.
+--
+-- A Check is the only phase with an `outcome` (`action_phases_outcome_only_on_check`),
+-- and an outcome without a completion is refused
+-- (`action_phases_outcome_needs_completion`), so an open Check here carries
+-- neither. One phase is open per Action at most — the invariant the service
+-- keeps, and the read the register's own "waiting on" column makes.
+INSERT INTO action_phases
+  (action_item_id, cycle, phase, owner_employee_id, due_date, completed_at, outcome, note)
+SELECT ai.id,
+       v.cycle,
+       v.phase,
+       owner.id,
+       CASE WHEN v.due_in_days IS NULL THEN NULL ELSE CURRENT_DATE + v.due_in_days END,
+       CASE WHEN v.done_days_ago IS NULL THEN NULL
+            ELSE now() - (v.done_days_ago || ' days')::interval END,
+       v.outcome,
+       v.note
+  FROM (VALUES
+    -- 0001, the concern: a first cycle that failed its Check, and a second that held.
+    ('DEMO-AC-0001', 1, 'plan',  'DEMO-004', -14, -15, NULL, 'Check the guide seating and measure the shift''s lost time.'),
+    ('DEMO-AC-0001', 1, 'do',    'DEMO-004', -12, -14, NULL, 'Guide checked each shift for a week.'),
+    ('DEMO-AC-0001', 1, 'check', 'DEMO-004', -11, -12, 'not_effective', 'Jam came back on the night shift, so the guide was still moving.'),
+    ('DEMO-AC-0001', 2, 'plan',  'DEMO-004', -10, -11, NULL, 'Re-seat the guide, not just check it, and write the setting down.'),
+    ('DEMO-AC-0001', 2, 'do',    'DEMO-004', -4,  -9,  NULL, 'Guide re-seated and torqued to the revised figure.'),
+    ('DEMO-AC-0001', 2, 'check', 'DEMO-004', -2,  -3,  'effective', 'A week of shifts without a jam, at full rate.'),
+    ('DEMO-AC-0001', 2, 'act',   'DEMO-004', -1,  -1,  NULL, 'Setting added to the line board and the checklist.'),
+    -- 0001-A, the containment: closed on its own evidence.
+    ('DEMO-AC-0001-A', 1, 'plan',  'DEMO-004', -14, -15, NULL, 'Hold the rate down and watch the guide.'),
+    ('DEMO-AC-0001-A', 1, 'do',    'DEMO-004', -13, -14, NULL, 'Ran at 80% with a per-shift check.'),
+    ('DEMO-AC-0001-A', 1, 'check', 'DEMO-004', -12, -12, 'effective', 'No jam over three shifts, so the rate cap holds.'),
+    ('DEMO-AC-0001-A', 1, 'act',   'DEMO-004', -12, -12, NULL, 'Kept in place until the guide was refitted.'),
+    -- 0001-B, the countermeasure.
+    ('DEMO-AC-0001-B', 1, 'plan',  'DEMO-004', -10, -11, NULL, 'Re-seat the guide and record the setting.'),
+    ('DEMO-AC-0001-B', 1, 'do',    'DEMO-004', -4,  -9,  NULL, 'Guide refitted and torqued.'),
+    ('DEMO-AC-0001-B', 1, 'check', 'DEMO-004', -2,  -3,  'effective', 'A week at full rate with no jam.'),
+    ('DEMO-AC-0001-B', 1, 'act',   'DEMO-004', -2,  -2,  NULL, 'Setting recorded on the line board.'),
+    -- 0002, the concern mid-cycle: Plan done, Do open.
+    ('DEMO-AC-0002', 1, 'plan', 'DEMO-001', 2, -6, NULL, 'Clamp it for now and re-work the mounting.'),
+    ('DEMO-AC-0002', 1, 'do',   'DEMO-001', 2, NULL, NULL, NULL),
+    -- 0002-A, the containment: done.
+    ('DEMO-AC-0002-A', 1, 'plan',  'DEMO-001', -1, -5, NULL, 'Clamp it and check the clamp each shift.'),
+    ('DEMO-AC-0002-A', 1, 'do',    'DEMO-001', -1, -4, NULL, 'Clamp fitted and checked each shift.'),
+    ('DEMO-AC-0002-A', 1, 'check', 'DEMO-001', -1, -3, 'effective', 'Held for three shifts with no movement.'),
+    ('DEMO-AC-0002-A', 1, 'act',   'DEMO-001', -1, -3, NULL, 'Clamp stays until the bolt is fitted.'),
+    -- 0002-B, the countermeasure: in its Do phase.
+    ('DEMO-AC-0002-B', 1, 'plan', 'DEMO-002', 3, -4, NULL, 'Re-tap both holes and fit the longer bolt.'),
+    ('DEMO-AC-0002-B', 1, 'do',   'DEMO-002', 3, NULL, NULL, NULL),
+    -- 0003, the overdue concern: nobody has planned it yet.
+    ('DEMO-AC-0003', 1, 'plan', 'DEMO-005', -9, NULL, NULL, NULL),
+    -- 0004, the escalated concern: underway, and the area has been told.
+    ('DEMO-AC-0004', 1, 'plan', 'DEMO-003', 5, -4, NULL, 'Sign two night operators off on the wrapper.'),
+    ('DEMO-AC-0004', 1, 'do',   'DEMO-003', 5, NULL, NULL, NULL),
+    -- 0005, the standalone containment: waiting on its Check.
+    ('DEMO-AC-0005', 1, 'plan',  'DEMO-005', 1, -8, NULL, 'Add the guide to the operator checklist.'),
+    ('DEMO-AC-0005', 1, 'do',    'DEMO-005', 1, -6, NULL, 'Checklist updated and laminated at the station.'),
+    ('DEMO-AC-0005', 1, 'check', 'DEMO-005', 1, NULL, NULL, NULL)
+  ) AS v(action_no, cycle, phase, owner_no, due_in_days, done_days_ago, outcome, note)
+  JOIN action_items ai ON ai.action_no = v.action_no
+  LEFT JOIN employees owner ON owner.employee_no = v.owner_no
+ON CONFLICT ON CONSTRAINT action_phases_unique DO NOTHING;
+
 COMMIT;
