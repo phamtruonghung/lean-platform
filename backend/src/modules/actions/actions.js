@@ -758,11 +758,17 @@ async function completePhase(actionItemId, phase, { note, outcome = null }, acco
         OPEN_STATUSES.includes(measure.status)
       );
       if (outstanding.length > 0) {
+        // The numbers first — a reader wants to know *which* — and then the
+        // step, because a measure is an Action of its own whose cycle is run
+        // exactly as this one's is, and nothing on the Screen they came from
+        // says so (issue #183: the sentence named the problem and stopped).
         throw httpError(
           409,
           `this Concern still has ${outstanding.length} open ` +
             `${outstanding.length === 1 ? 'measure' : 'measures'}: ` +
-            outstanding.map((measure) => measure.action_no).join(', ')
+            outstanding.map((measure) => measure.action_no).join(', ') +
+            '. A measure closes when its own cycle reaches its Act, so open each one and ' +
+            'complete its phases'
         );
       }
 
@@ -872,11 +878,15 @@ async function cancelAction(actionItemId, { reason = null } = {}, accountId) {
         [actionItemId, OPEN_STATUSES]
       );
       if (outstanding.length > 0) {
+        // The way out of *this* refusal is not running the measure: cancelling
+        // it is enough, which is the sentence a reader needs here.
         throw httpError(
           409,
           `this Concern still has ${outstanding.length} open ` +
             `${outstanding.length === 1 ? 'measure' : 'measures'}: ` +
-            outstanding.map((measure) => measure.action_no).join(', ')
+            outstanding.map((measure) => measure.action_no).join(', ') +
+            '. Run each one to its Act, or cancel it if it is not going to be done, and then ' +
+            'this Concern can be called off'
         );
       }
     }

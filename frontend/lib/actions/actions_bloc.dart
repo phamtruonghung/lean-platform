@@ -29,6 +29,18 @@ class ActionsStarted extends ActionsEvent {
   const ActionsStarted();
 }
 
+/// Re-read the log for the Site already on screen.
+///
+/// Sent by the register when it is entered *again* — the Module's own
+/// `ShellRoute` creates this Bloc once and keeps it alive while the caller
+/// reads an Action and comes back, so without this the list they return to is
+/// the list they left: rows raised, measures closed and counts moved elsewhere
+/// are all missing (issue #183). The first load is `ActionsStarted`; this is
+/// every visit after it.
+class ActionsRefreshed extends ActionsEvent {
+  const ActionsRefreshed();
+}
+
 /// Look at a different Site's log.
 class ActionsSiteSelected extends ActionsEvent {
   const ActionsSiteSelected(this.siteId);
@@ -251,6 +263,7 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
         _auth = authGateway,
         super(const ActionsLoading()) {
     on<ActionsStarted>(_onStarted);
+    on<ActionsRefreshed>(_onRefreshed);
     on<ActionsSiteSelected>(_onSiteSelected);
     on<ActionsOrgUnitFilterSelected>(_onOrgUnitFilterSelected);
     on<ActionsOrgUnitFilterCleared>(_onOrgUnitFilterCleared);
@@ -327,6 +340,16 @@ class ActionsBloc extends Bloc<ActionsEvent, ActionsState> {
       ),
     );
     await _readLog(opensOn, emit);
+  }
+
+  /// The refresh a returning caller gets: same Site, same filters, same
+  /// history switch, a fresh read. A no-op while the first load is still in
+  /// flight, so a Screen that mounts mid-load does not ask twice.
+  Future<void> _onRefreshed(ActionsRefreshed event, Emitter<ActionsState> emit) async {
+    final current = state;
+    if (current is! ActionsLoaded || current.isLoadingActions) return;
+    emit(current.copyWith(isLoadingActions: true));
+    await _readLog(current.siteId, emit);
   }
 
   Future<void> _onSiteSelected(ActionsSiteSelected event, Emitter<ActionsState> emit) async {
