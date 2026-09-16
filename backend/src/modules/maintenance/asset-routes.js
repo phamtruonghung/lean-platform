@@ -185,10 +185,10 @@ router.post(
 // restating it here.
 //
 // A body naming MORE THAN ONE of the four groups is refused with 400 (issue
-// #61 review, Fix A; widened to a third field by issue #171 and a fourth by
-// issue #173, with the wording left exactly as it was — a correction is a
-// distinct operation on the same row, refused by the same rule for the same
-// reason). setAssetParent, setAssetActive, setAssetOrgUnit and correctAsset
+// #61 review, Fix A; widened to a third field by issue #171 and to a fourth
+// group by issue #173 — the wording now names the correction group too,
+// rather than describing only the three single-column operations it used to
+// be the whole of). setAssetParent, setAssetActive, setAssetOrgUnit and correctAsset
 // are separate transactions; a combined PATCH could commit one and then hit
 // a 409 or 500 on another, and the caller — seeing only the failure — would
 // reasonably conclude nothing happened, when part of it had already changed.
@@ -233,12 +233,16 @@ router.patch(
       );
       const named = [hasIsActive, hasParentId, hasOrgUnitId, hasCorrection].filter(Boolean).length;
       if (named === 0) {
-        return res.status(400).json({ message: 'isActive, parentId and/or orgUnitId is required' });
+        return res.status(400).json({
+          message:
+            'isActive, parentId, orgUnitId, or a correction of code, name, assetType and criticality is required'
+        });
       }
       if (named > 1) {
         return res.status(400).json({
           message:
-            'only one of isActive, parentId and orgUnitId can be changed per request; send them as separate requests'
+            'only one of isActive, parentId, orgUnitId, or a correction of code, name, assetType and ' +
+            'criticality can be changed per request; send them as separate requests'
         });
       }
       if (hasIsActive && typeof body.isActive !== 'boolean') {

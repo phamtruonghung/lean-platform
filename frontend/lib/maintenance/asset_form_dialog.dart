@@ -188,7 +188,16 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
     } else {
       // The row's own mutation-in-flight marker covers "still running" —
       // no dedicated flag for a correction, the same reuse issue #173's own
-      // Implementation Decisions call for.
+      // Implementation Decisions call for. But this marker is shared with
+      // every other row mutation, so it is not enough on its own: if the
+      // Bloc refuses to even start (another row's mutation was already
+      // running, `AssetsBloc.inFlightMessage`), it emits with
+      // `mutatingAssetId` still naming that OTHER row and `correctionFailure`
+      // reset to null — neither branch below would catch that, and closing
+      // here would drop the caller's typed values on somebody else's news.
+      // The only state that actually says "my own correction is done" is the
+      // row itself carrying what was submitted, so that is the one thing
+      // checked before popping.
       if (state.mutatingAssetId == asset.id) return;
       if (state.correctionFailure != null) {
         setState(() {
@@ -197,8 +206,31 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
         });
         return;
       }
+      if (!_rowReflectsSubmission(state.assets)) return;
     }
     Navigator.of(context).pop();
+  }
+
+  /// Whether [assets] now carries this row corrected to exactly what was
+  /// last submitted — the positive signal that this dialog's own correction
+  /// landed, rather than merely the absence of an in-flight marker or a
+  /// failure (both of which are also true while the Bloc is reporting on a
+  /// completely different row's mutation, see [_onAssetsChanged]'s own
+  /// comment). Only called in correction mode, so `widget.asset`, `_type`
+  /// and the confirmed field text are all non-null by the time `_submit` has
+  /// run — the fields stay disabled for the whole wait, so none of them can
+  /// have changed since.
+  bool _rowReflectsSubmission(List<Asset> assets) {
+    final asset = widget.asset;
+    if (asset == null) return false;
+    for (final row in assets) {
+      if (row.id != asset.id) continue;
+      return row.code == _code.text.trim() &&
+          row.name == _name.text.trim() &&
+          row.assetType == _type!.wire &&
+          row.criticality == _criticality.wire;
+    }
+    return false;
   }
 
   // A chosen Org Unit belongs to the Site it was chosen in, so switching the

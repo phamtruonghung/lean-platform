@@ -326,9 +326,21 @@ void main() {
       ),
       findsOneWidget,
     );
+    // The field the caller typed still carries what they typed — a refusal
+    // must not clear the one field that caused it, forcing a retype.
+    expect(tester.widget<TextField>(find.byKey(AssetFormDialog.codeKey)).controller?.text, 'TAKEN');
+    // The register row behind the still-open dialog was never touched: it
+    // reads the ORIGINAL code (rendered as 'PRESS-1 · Machine', the row's
+    // own combined code-and-kind line), not the one the refused save tried
+    // to send. (The typed 'TAKEN' is also on screen, inside the dialog's own
+    // field — that assertion is the one just above, on the controller
+    // itself.)
+    expect(find.text('PRESS-1 · Machine'), findsOneWidget);
+
     // Closing the dialog shows the row exactly as it was.
     await tapIn(tester, find.byKey(AssetFormDialog.cancelKey));
     expect(find.text('Press 1'), findsOneWidget);
+    expect(find.text('PRESS-1 · Machine'), findsOneWidget);
   });
 
   testWidgets('a caller holding no write Grant reaching the Org Unit is offered no such action',
