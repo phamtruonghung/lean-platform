@@ -15,7 +15,7 @@ _Avoid_: The k3s platform, webapp-k8s-promox, infrastructure, system
 
 **Module**:
 A functional area of the Platform that records real work — Maintenance,
-Employees — and produces the measurements KPIs are calculated from. A Module is
+Employees, Quality — and produces the measurements KPIs are calculated from. A Module is
 a slice of one application, never a separately deployed app.
 _Avoid_: App, service, pillar, subsystem
 
@@ -120,7 +120,8 @@ or view and edit. A Grant reaches downward, so one on a department covers every
 line beneath it, and an Account holds exactly the Grants its last Approval gave
 it — Approval sets the whole set at once, replacing what was there before, never
 adding to it. This is the record Account, Approval and Entry point each already
-gesture at.
+gesture at. A Grant may also carry Quality authority, which is separate from
+its level.
 _Avoid_: Permission, scope (scope is the reach a Grant produces, not the record),
 access
 
@@ -214,13 +215,74 @@ something consumed)
 **CAPA**:
 A corrective and preventive action: the investigation opened when something
 went wrong badly enough to need a root cause and a fix that holds. A CAPA is
-raised from a quality escape, a customer complaint, a supplier non-conformance,
-a safety incident, or from nothing at all — so it belongs to no one Module and
-is owned by none. Which Module the problem surfaced in and which Module does
-the fixing are independent of each other, the same way a KPI's Module and its
-Pillar are.
+opened on a Concern, never beside one — the Concern stays the problem and its
+Containments, Countermeasures and Preventive actions are the CAPA's actions,
+while the CAPA adds the team, the root-cause analysis and the verification that
+the fix held. A quality engineer decides to open one; nothing opens one by
+itself. A CAPA is raised from a quality escape, a customer complaint, a
+supplier non-conformance, a safety incident, or from nothing at all — so it
+belongs to no one Module and is owned by none. Which Module the problem
+surfaced in and which Module does the fixing are independent of each other, the
+same way a KPI's Module and its Pillar are. One CAPA answers one Concern; a
+cause shared across Org Units is answered by escalating the Concern, not by
+linking several to one CAPA. A CAPA closes only when a root cause is confirmed
+for both why it happened and why it was not detected, its Concern is closed, and
+someone holding Quality authority other than its team lead has verified, some
+time later, that the problem has not come back.
 _Avoid_: Corrective action (that is one half of it), 8D (that is one method of
 running one), ticket, issue
+
+### Quality
+
+**Non-conformance**:
+Product found not to meet its requirement, recorded where it was found: what was
+wrong, how much of it, and what was done with it. A Non-conformance records the
+bad product, not the problem behind it — a Concern is raised from one only when
+someone decides the cause needs solving, so a Non-conformance may have no
+Concern and one Concern may answer several Non-conformances. It always names the
+Product, and it is finished once its whole quantity has a Disposition, whether or
+not the cause has been answered. The quantity found may grow as the product is
+sorted but never shrinks, and may be recorded by an Employee on a floor device.
+Its severity starts at its Defect code's own; whoever records it may raise that,
+and only Quality authority may lower it.
+_Avoid_: Quality issue, defect (that is what a Defect code names), reject, NC
+report, NCR (that is a supplier non-conformance)
+
+**Product**:
+What the plant makes, kept in one catalogue shared by every Site and maintained
+by an administrator. A lot is not a Product; it is a reference recorded against
+one.
+_Avoid_: Item, part (that is consumed doing maintenance), SKU, material
+
+**Quality authority**:
+The standing to decide about nonconforming product and its cause in an Org Unit:
+grant a Concession, reopen a Non-conformance, open a CAPA, verify one held. It
+is held on a Grant, so it reaches downward like the Grant does and belongs to a
+place rather than a job title — an engineer with it on Line 2 has none on Line 5.
+_Avoid_: Quality engineer (a job, not the authority), QA role, approver
+
+**Defect code**:
+The kind of thing found wrong on a Non-conformance, chosen from one list shared
+by every Site and maintained by an administrator, so the same failure carries
+the same code wherever it happens. Each code carries the severity a
+Non-conformance recorded against it starts at.
+Codes form a tree, so "every dimensional defect" is a single question.
+_Avoid_: Defect type, failure mode, reason code, category (that is a grouping of
+codes, not a code)
+
+**Disposition**:
+The decision about what happens to a Non-conformance's product — scrap, rework,
+use as is, or return to the supplier — for some or all of its quantity. A
+Non-conformance is dispositioned in parts as the product is sorted, and is not
+finished while any of it is undecided.
+_Avoid_: Decision, outcome, resolution, MRB result
+
+**Concession**:
+A Disposition to use nonconforming product as it is. Unlike scrap or rework it
+accepts the product rather than dealing with it, so only a quality engineer may
+grant one and their name stays on the record.
+_Avoid_: Deviation (that is permission granted before the product is made),
+waiver, use-as-is approval
 
 ### The action log
 
