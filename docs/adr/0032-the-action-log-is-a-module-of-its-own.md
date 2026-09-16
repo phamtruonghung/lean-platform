@@ -94,12 +94,21 @@ meeting list; the whole point of the log is that it is the same list for
 everybody in the room. `?orgUnitId=` narrows it by *area*, never by entitlement.
 
 Writes are branch-scoped as every other write in the Platform is, with one
-deliberate exception: **raising a Concern needs only a read Grant reaching its
-Org Unit**, because a concern is a report rather than a decision and the floor is
-where concerns are found. Requests already work this way ("raising needs only a
-read Grant reaching the Asset's Org Unit"). Everything that changes an Action
-afterwards — completing a phase, adding a measure, escalating, cancelling —
-needs a write Grant reaching it.
+deliberate exception: **raising a Concern needs only a Grant somewhere in the
+Site it is raised at — it does not have to reach the Org Unit named**, because a
+concern is a report rather than a decision and the floor is where concerns are
+found: the operator granted on Line 2 who finds a defect that came from Line 1
+raises it at Line 1 (issue #198, CONTEXT.md's Concern entry, which is the rule
+this ADR now records rather than the weaker one it first did). The test is the
+one GET /sites already filters by — any Grant, read or write, on any Org Unit
+within the Site — so an Account holding no Grant anywhere in the Site is still
+refused, and only the Concern kind is opened up: raising a Containment,
+Countermeasure, Preventive, Improvement or Routine action still needs a Grant
+reaching the Org Unit it is raised at, as every other write does. Requests work
+the same way they always did ("raising needs only a read Grant reaching the
+Asset's Org Unit"). Everything that changes an Action afterwards — completing a
+phase, adding a measure, escalating, cancelling — needs a write Grant reaching
+it.
 
 ## The group in the sidebar
 

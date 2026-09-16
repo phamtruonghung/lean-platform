@@ -152,6 +152,7 @@ let noGrantAccount; // approved, no Grant anywhere at all.
 let readOnlyAccount; // read Grant on grantedLine.
 let writerAccount; // write Grant on grantedLine.
 let siblingWriter; // write Grant on otherLine only.
+let deepReader; // read Grant on subLine only, and no write Grant anywhere.
 
 let site;
 let otherSite;
@@ -206,11 +207,16 @@ test.before(async () => {
     name: 'Line 1, Bay 2'
   });
   areaWriter = await insertAccount();
+  deepReader = await insertAccount();
 
   await insertGrant({ accountId: readOnlyAccount.id, orgUnitId: grantedLine.id, canWrite: false });
   await insertGrant({ accountId: areaWriter.id, orgUnitId: grantedArea.id, canWrite: true });
   await insertGrant({ accountId: writerAccount.id, orgUnitId: grantedLine.id, canWrite: true });
   await insertGrant({ accountId: siblingWriter.id, orgUnitId: otherLine.id, canWrite: true });
+  // Deliberately the deepest unit in the tree and read-only: this Account can
+  // see the Site (issue #198's criterion) while holding no write Grant at all,
+  // and its one Grant reaches nothing above subLine.
+  await insertGrant({ accountId: deepReader.id, orgUnitId: subLine.id, canWrite: false });
 });
 
 test.after(async () => {
@@ -378,7 +384,8 @@ test('raised_by is the caller own Employee link, and null for an Account without
 });
 
 // ---------------------------------------------------------------------------
-// Scope: a read Grant is enough to raise, and the floor is where concerns are.
+// Scope: a Concern may be raised anywhere in a Site the caller can see (#198),
+// and every other kind of Action keeps the Grant check it had.
 // ---------------------------------------------------------------------------
 
 test('a caller holding only a read Grant at the Org Unit can raise a concern', async () => {
@@ -392,7 +399,40 @@ test('a caller holding only a read Grant at the Org Unit can raise a concern', a
   assert.strictEqual(payload.action.orgUnitId, String(grantedLine.id));
 });
 
-test('a caller whose Grants reach nowhere near the Org Unit is refused with the shared wording', async () => {
+test('a caller who can see the Site raises a Concern at an Org Unit no Grant of theirs reaches (#198)', async () => {
+  // siblingWriter holds a write Grant on Line 2 and nothing at all reaching
+  // Line 1: it can see the Site, and a concern is a report rather than a
+  // decision, so Line 1 is fair game. This is the ticket's own case — the
+  // operator granted on one line who finds a defect that came from another.
+  const onAnotherLine = await postAction(siblingWriter.token, site.id, {
+    orgUnitId: String(grantedLine.id),
+    title: 'Found on a line I hold no Grant on'
+  });
+  assert.strictEqual(onAnotherLine.response.status, 201);
+  insertedActionIds.push(onAnotherLine.payload.action.id);
+  assert.strictEqual(onAnotherLine.payload.action.orgUnitId, String(grantedLine.id));
+  assert.strictEqual(onAnotherLine.payload.action.actionType, 'concern');
+
+  // ... and upwards, which a Grant can never do: a Grant reaches downward
+  // only, so deepReader's Grant on Line 1, Bay 2 does not reach the area
+  // above it. "Any Org Unit of that Site" means exactly that.
+  const atAncestor = await postAction(deepReader.token, site.id, {
+    orgUnitId: String(grantedArea.id),
+    title: 'Found in the area above my own line'
+  });
+  assert.strictEqual(atAncestor.response.status, 201);
+  insertedActionIds.push(atAncestor.payload.action.id);
+  assert.strictEqual(atAncestor.payload.action.orgUnitId, String(grantedArea.id));
+
+  // The widened door is the raise and nothing else: the same caller cannot
+  // advance the phase of the concern it just raised at that Org Unit.
+  const refusedPhase = await completePhase(siblingWriter.token, onAnotherLine.payload.action.id, 'plan', {
+    note: 'Not mine to advance'
+  });
+  assert.strictEqual(refusedPhase.response.status, 403);
+});
+
+test('an Account holding no Grant anywhere in the Site is still refused, in the shared wording (#198)', async () => {
   const noGrant = await postAction(noGrantAccount.token, site.id, {
     orgUnitId: String(grantedLine.id),
     title: 'Out of reach'
@@ -400,11 +440,82 @@ test('a caller whose Grants reach nowhere near the Org Unit is refused with the 
   assert.strictEqual(noGrant.response.status, 403);
   assert.match(noGrant.payload.message, /granted Org Units$/);
 
-  const sibling = await postAction(siblingWriter.token, site.id, {
-    orgUnitId: String(grantedLine.id),
-    title: 'A write Grant on another line is not this one'
+  // At an Org Unit of the Site that nobody holds a Grant on at all, so the
+  // refusal is about the caller rather than about the Org Unit.
+  const ownerless = await insertOrgUnit(site.id, { name: 'Nobody Granted Here' });
+  const nowhere = await postAction(noGrantAccount.token, site.id, {
+    orgUnitId: String(ownerless.id),
+    title: 'Still out of reach'
   });
-  assert.strictEqual(sibling.response.status, 403);
+  assert.strictEqual(nowhere.response.status, 403);
+  assert.match(nowhere.payload.message, /granted Org Units$/);
+});
+
+test('a Concern is refused at another Site, however visible the caller own Site is (#198)', async () => {
+  const elsewhere = await insertOrgUnit(otherSite.id, { name: 'Another Site Unit' });
+
+  const crossSite = await postAction(siblingWriter.token, otherSite.id, {
+    orgUnitId: String(elsewhere.id),
+    title: 'A concern in a Site I hold no Grant in'
+  });
+  assert.strictEqual(crossSite.response.status, 403);
+  assert.match(crossSite.payload.message, /granted Org Units$/);
+
+  // The same caller, at the same Org Unit, in the Site it can see: the refusal
+  // above is the Site, not the kind.
+  const ownSite = await postAction(siblingWriter.token, site.id, {
+    orgUnitId: String(grantedLine.id),
+    title: 'The same concern in the Site I can see'
+  });
+  assert.strictEqual(ownSite.response.status, 201);
+  insertedActionIds.push(ownSite.payload.action.id);
+});
+
+test('only raising a Concern is opened up: every other kind keeps its Grant check (#198)', async () => {
+  // siblingWriter can see the Site, so its Concerns at grantedLine are
+  // accepted (the test above) — but none of the other five kinds is a report,
+  // and not one of them gets through without a Grant reaching that Org Unit.
+  for (const actionType of [
+    'containment',
+    'countermeasure',
+    'preventive',
+    'improvement',
+    'routine'
+  ]) {
+    const refused = await postAction(siblingWriter.token, site.id, {
+      orgUnitId: String(grantedLine.id),
+      title: `A ${actionType} with no Grant reaching here`,
+      actionType
+    });
+    assert.strictEqual(
+      refused.response.status,
+      403,
+      `${actionType} should still be refused without a Grant reaching its Org Unit`
+    );
+    assert.match(refused.payload.message, /granted Org Units$/);
+  }
+
+  // A Countermeasure raised by an Account with no write Grant anywhere: still
+  // refused, because that Account holds no Grant at all reaching the Org Unit
+  // named.
+  const deepCountermeasure = await postAction(deepReader.token, site.id, {
+    orgUnitId: String(grantedArea.id),
+    title: 'A countermeasure for the area above my line',
+    actionType: 'countermeasure'
+  });
+  assert.strictEqual(deepCountermeasure.response.status, 403);
+
+  // And the check those kinds keep is the one they had before #198 — a Grant
+  // reaching the Org Unit, read or write alike — rather than a write Grant:
+  // #198 opened the Concern's door and moved nothing else. Nail it down, so a
+  // later tightening is a deliberate decision rather than a silent one.
+  const containment = await postAction(readOnlyAccount.token, site.id, {
+    orgUnitId: String(grantedLine.id),
+    title: 'A containment where I may only read',
+    actionType: 'containment'
+  });
+  assert.strictEqual(containment.response.status, 201);
+  insertedActionIds.push(containment.payload.action.id);
 });
 
 test('an unknown Org Unit, a malformed one and one in another Site are all refused before scope', async () => {
