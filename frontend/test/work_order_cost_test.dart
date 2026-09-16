@@ -67,8 +67,12 @@ void main() {
     expect(find.byKey(WorkOrderDetailScreen.emptyLabourKey), findsOneWidget);
 
     await tapIn(tester, find.byKey(WorkOrderDetailScreen.bookLabourKey));
-    await tapIn(tester, find.byKey(LabourBookingDialog.employeeKey));
-    await tapIn(tester, find.text('Jane Doe').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: LabourBookingDialog.employeeKey,
+      term: 'Jane',
+      suggestionKey: LabourBookingDialog.employeeSuggestionKey('20'),
+    );
     await tapIn(tester, find.byKey(LabourBookingDialog.activityKey));
     await tapIn(tester, find.text('Work').last);
     await tapIn(tester, find.byKey(LabourBookingDialog.overtimeKey));
@@ -97,10 +101,18 @@ void main() {
     expect(find.byKey(WorkOrderDetailScreen.emptyPartsKey), findsOneWidget);
 
     await tapIn(tester, find.byKey(WorkOrderDetailScreen.bookPartKey));
-    await tapIn(tester, find.byKey(PartBookingDialog.partKey));
-    await tapIn(tester, find.text('BRG-6204 · Bearing, 6204').last);
-    await tapIn(tester, find.byKey(PartBookingDialog.storeKey));
-    await tapIn(tester, find.text('A-STORE · Main store').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: PartBookingDialog.partKey,
+      term: 'BRG',
+      suggestionKey: PartBookingDialog.partSuggestionKey('3'),
+    );
+    await pickSuggestion(
+      tester,
+      fieldKey: PartBookingDialog.storeKey,
+      term: 'Main',
+      suggestionKey: PartBookingDialog.storeSuggestionKey('7'),
+    );
     await tester.enterText(find.byKey(PartBookingDialog.quantityKey), '3');
     await tester.enterText(find.byKey(PartBookingDialog.unitCostKey), '12.5');
     await tester.pump();

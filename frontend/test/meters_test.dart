@@ -193,8 +193,12 @@ void main() {
     await tapIn(tester, find.byKey(MetersScreen.createKey));
     await tester.pumpAndSettle();
 
-    await tapIn(tester, find.byKey(MeterFormDialog.assetKey));
-    await tapIn(tester, find.text('Press 1 (PRESS-1)').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: MeterFormDialog.assetKey,
+      term: 'Press',
+      suggestionKey: MeterFormDialog.assetSuggestionKey('7'),
+    );
     await tester.enterText(find.byKey(MeterFormDialog.codeKey), 'CYC');
     await tester.enterText(find.byKey(MeterFormDialog.nameKey), 'Cycles');
     await tester.pumpAndSettle();
@@ -269,10 +273,18 @@ void main() {
     await tapIn(tester, find.byKey(PmSchedulesScreen.createKey));
     await tester.pumpAndSettle();
 
-    await tapIn(tester, find.byKey(PmScheduleFormDialog.assetKey));
-    await tapIn(tester, find.text('Press 1 (PRESS-1)').last);
-    await tapIn(tester, find.byKey(PmScheduleFormDialog.jobPlanKey));
-    await tapIn(tester, find.text('Annual service').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: PmScheduleFormDialog.assetKey,
+      term: 'Press',
+      suggestionKey: PmScheduleFormDialog.assetSuggestionKey('7'),
+    );
+    await pickSuggestion(
+      tester,
+      fieldKey: PmScheduleFormDialog.jobPlanKey,
+      term: 'Annual',
+      suggestionKey: PmScheduleFormDialog.jobPlanSuggestionKey('5'),
+    );
     await tapIn(tester, find.byKey(PmScheduleFormDialog.basisKey));
     await tapIn(tester, find.text('Accumulated use').last);
     await tester.pumpAndSettle();

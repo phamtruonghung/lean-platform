@@ -202,8 +202,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tapIn(tester, find.byKey(JobPlanFormDialog.taskSkillKey(0)));
-    await tapIn(tester, find.text('Electrical').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: JobPlanFormDialog.taskSkillKey(0),
+      term: 'Elect',
+      suggestionKey: JobPlanFormDialog.taskSkillSuggestionKey(0, '3'),
+    );
 
     await tapIn(tester, find.byKey(JobPlanFormDialog.submitKey));
 
@@ -257,10 +261,18 @@ void main() {
     await tapIn(tester, find.byKey(PmSchedulesScreen.createKey));
     await tester.pumpAndSettle();
 
-    await tapIn(tester, find.byKey(PmScheduleFormDialog.assetKey));
-    await tapIn(tester, find.text('Press 1 (PRESS-1)').last);
-    await tapIn(tester, find.byKey(PmScheduleFormDialog.jobPlanKey));
-    await tapIn(tester, find.text('Annual service').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: PmScheduleFormDialog.assetKey,
+      term: 'Press',
+      suggestionKey: PmScheduleFormDialog.assetSuggestionKey('7'),
+    );
+    await pickSuggestion(
+      tester,
+      fieldKey: PmScheduleFormDialog.jobPlanKey,
+      term: 'Annual',
+      suggestionKey: PmScheduleFormDialog.jobPlanSuggestionKey('5'),
+    );
     await tester.enterText(find.byKey(PmScheduleFormDialog.intervalKey), '30');
     await tester.pumpAndSettle();
     await tapIn(tester, find.byKey(PmScheduleFormDialog.anchorKey));

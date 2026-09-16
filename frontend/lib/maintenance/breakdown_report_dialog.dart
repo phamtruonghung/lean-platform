@@ -21,6 +21,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
+import '../widgets/app_search_field.dart';
 import 'asset.dart';
 import 'downtime_bloc.dart';
 import 'maintenance_api.dart';
@@ -32,7 +33,21 @@ class BreakdownReportDialog extends StatefulWidget {
   /// only that Site's Assets.
   final String siteId;
 
-  static const ValueKey<String> assetKey = ValueKey<String>('breakdown-report-asset');
+  /// The Asset picker's own field name — the one string [assetKey] and
+  /// [assetSuggestionKey] are both derived from, so neither can drift from
+  /// what the field itself is built with (AGENTS.md §7).
+  static const String _assetFieldName = 'breakdown-report-asset';
+
+  /// The Asset picker's own `Key` (AGENTS.md §7). It was a
+  /// `DropdownButtonFormField` until issue #190: a Site's whole register is a
+  /// set nobody can scan, so the record is now found by typing rather than
+  /// scrolled to (ADR-0023).
+  static ValueKey<String> get assetKey => AppSearchField.fieldKey(_assetFieldName);
+
+  /// One Asset suggestion row's own `Key`, keyed by the Asset's id
+  /// (AGENTS.md §7).
+  static ValueKey<String> assetSuggestionKey(String assetId) =>
+      AppSearchField.suggestionKey(_assetFieldName, assetId);
   static const ValueKey<String> assetsFailedKey = ValueKey<String>('breakdown-report-assets-failed');
   static const ValueKey<String> startedAtKey = ValueKey<String>('breakdown-report-started-at');
   static const ValueKey<String> descriptionKey = ValueKey<String>('breakdown-report-description');
@@ -232,6 +247,16 @@ class _AssetField extends StatelessWidget {
   final VoidCallback onRetry;
   final ValueChanged<String?> onChanged;
 
+  /// The Asset the dialog's own id currently names, or null — the dialog
+  /// keeps holding the `String?` id its submit body already reads, while the
+  /// picker is controlled by the record itself, so this is how the two agree.
+  Asset? get _selected {
+    for (final asset in assets) {
+      if (asset.id == selectedId) return asset;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -256,16 +281,35 @@ class _AssetField extends StatelessWidget {
           ],
         );
       case _AssetsStatus.ready:
-        return DropdownButtonFormField<String>(
-          key: BreakdownReportDialog.assetKey,
-          initialValue: selectedId,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Asset', border: OutlineInputBorder()),
-          items: [
-            for (final asset in assets)
-              DropdownMenuItem<String>(value: asset.id, child: Text('${asset.name} (${asset.code})')),
-          ],
-          onChanged: enabled ? onChanged : null,
+        return AppSearchField<Asset>(
+          name: BreakdownReportDialog._assetFieldName,
+          label: 'Asset',
+          value: _selected,
+          enabled: enabled,
+          // A pick sets the dialog's own id; typing over the chosen Asset
+          // retires it, so this form can never submit an id its own field has
+          // stopped showing (ADR-0023 point 4).
+          onChanged: (asset) => onChanged(asset?.id),
+          onSelected: (asset) => onChanged(asset.id),
+          // A dumb in-memory filter over the register `initState` already
+          // read — no HTTP request of its own, so the field's per-term
+          // debounce never reaches the wire (ADR-0023). Matched on the two
+          // fields that identify an Asset: its name and its code.
+          fetchSuggestions: (term) async {
+            final lower = term.toLowerCase();
+            return [
+              for (final asset in assets)
+                if (asset.name.toLowerCase().contains(lower) ||
+                    asset.code.toLowerCase().contains(lower))
+                  asset,
+            ];
+          },
+          suggestionBuilder: (context, asset) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+            child: Text('${asset.name} (${asset.code})'),
+          ),
+          idOf: (asset) => asset.id,
+          displayStringFor: (asset) => '${asset.name} (${asset.code})',
         );
     }
   }

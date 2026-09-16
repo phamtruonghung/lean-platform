@@ -4345,6 +4345,39 @@ Future<void> tapIn(WidgetTester tester, Finder finder) async {
 String locationOf(WidgetTester tester, Finder screenFinder) =>
     GoRouter.of(tester.element(screenFinder)).routerDelegate.currentConfiguration.uri.toString();
 
+/// Types [term] into an `AppSearchField` (ADR-0023) and waits out the field's
+/// own ~300ms debounce (plus a frame for the fetch's future to land), leaving
+/// whatever the field now shows — suggestions, the no-match state, or nothing
+/// at all below its two-character minimum — on screen for the caller to assert
+/// on. No request is issued by any caller whose `fetchSuggestions` filters a
+/// list it already holds, which is the point of the test that uses this.
+Future<void> typeInSearchField(WidgetTester tester, Key fieldKey, String term) async {
+  await tester.enterText(find.byKey(fieldKey), term);
+  await tester.pump(const Duration(milliseconds: 350));
+  await tester.pump();
+}
+
+/// Picks one record out of an `AppSearchField` the way a person does: type a
+/// term, wait out the debounce, then tap the suggestion row the field offers.
+///
+/// A test that wants to assert what the field *displays* after the pick reads
+/// the `TextField`'s own controller — the field writes the chosen record's
+/// display string there and renders it as nothing else.
+Future<void> pickSuggestion(
+  WidgetTester tester, {
+  required Key fieldKey,
+  required String term,
+  required Key suggestionKey,
+}) async {
+  await typeInSearchField(tester, fieldKey, term);
+  await tapIn(tester, find.byKey(suggestionKey));
+}
+
+/// What an `AppSearchField` at [fieldKey] is currently displaying, read off
+/// the `TextField`'s own controller.
+String searchFieldText(WidgetTester tester, Key fieldKey) =>
+    tester.widget<TextField>(find.byKey(fieldKey)).controller!.text;
+
 /// Picks [date] through the real `showDatePicker` dialog an `AppDateField`
 /// opens (issue #126) — taps [fieldKey] to open it, then switches the
 /// picker into its own keyboard-entry mode (the picker's `InputDatePicker

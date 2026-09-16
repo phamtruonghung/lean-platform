@@ -29,6 +29,19 @@ import 'failure_state.dart';
 /// the client, a set the server bounds is narrowed by the server (or the client
 /// says it is bounded — ADR-0026).
 ///
+/// **A form picker over a set nobody can scan is this widget** (issue #190's
+/// sweep — eleven pickers across nine dialogs): every Asset at a Site, the whole
+/// parts catalogue, every Employee in the plant, the Skills and Job plans
+/// catalogues, a Site's Stores. Such a picker is controlled
+/// ([value]/[onChanged]) and its `fetchSuggestions` filters the list the dialog
+/// already read, so the per-term debounce never reaches the wire and no endpoint
+/// gains a `search` parameter. A fixed, enumerated set of under a dozen values —
+/// a work type, a priority, a meter type, a unit of measure, an interval basis,
+/// the source of a parts booking, a proficiency level — stays a
+/// `DropdownButtonFormField`, because a search box over eight rows is a worse
+/// control than a menu. `docs/frontend-layout.md` §3 carries the same rule, and
+/// `test/form_pickers_test.dart` enforces it for all eleven pickers.
+///
 /// **Generic over the suggestion record, [T].** The three eventual callers
 /// render different shapes — an Employee row, an Org Unit row, a timezone
 /// row — so this widget carries no assumption about what a suggestion looks
