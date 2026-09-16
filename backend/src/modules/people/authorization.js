@@ -46,19 +46,21 @@
  * caller's very next request (issue #8's own freshness criterion), not
  * when a token happens to expire.
  *
- * Mostly a Module internal (ADR-0006), with one exception as of issue #59:
- * `canAct` alone is re-exported through index.js, since Maintenance becomes
+ * Mostly a Module internal (ADR-0006), with two exceptions: `canAct` alone
+ * was re-exported through index.js as of issue #59, since Maintenance becomes
  * a second Module with routes of its own to guard (#56, #57, #61, #62, #63)
  * and needs the exact same read/write grant check on the Org Unit an Asset
- * sits at that this Module's own writes already use — see index.js's own
- * header for the full seven-export list and the reasoning behind each entry,
- * including why `canAct` crosses this boundary as a plain function rather
- * than a ready-made middleware. The other eight names here — isAdmin,
- * canSeeSite, grantedEntryPointIds, orgUnitScopeFor, requireAdmin,
- * requireOrgUnitScope, requireSiteScope, ROLES — stay internal: none of them
- * has a caller outside People today (again, see index.js's header for why,
- * one bullet each). `npm run lint`'s boundary check is the arbiter of what
- * actually crosses, not this comment.
+ * sits at that this Module's own writes already use, and `canSeeSite` joined
+ * it as of issue #198, since raising a Concern is a question about a whole
+ * Site rather than about one Org Unit and modules/actions has to ask the
+ * weaker of the two — see index.js's own header for the full nine-export
+ * list and the reasoning behind each entry, including why `canAct` crosses
+ * this boundary as a plain function rather than a ready-made middleware. The
+ * other seven names here — isAdmin, grantedEntryPointIds, orgUnitScopeFor,
+ * requireAdmin, requireOrgUnitScope, requireSiteScope, requireSiteAdmin,
+ * ROLES — stay internal: none of them has a caller outside People today
+ * (again, see index.js's header for why, one bullet each). `npm run lint`'s
+ * boundary check is the arbiter of what actually crosses, not this comment.
  */
 
 const { getPool } = require('../../platform/db');
@@ -109,7 +111,9 @@ async function canAct({ account, orgUnitId, write = false }) {
 
 // Whether the caller can see this Site at all — used to filter GET /sites
 // (plant-routes.js) to what an administrator sees everything of and
-// everyone else sees only in part. Distinct from canAct, which answers
+// everyone else sees only in part, and (as of issue #198) by
+// modules/actions' raise route to decide whether an Account may raise a
+// Concern somewhere in this Site. Distinct from canAct, which answers
 // about one particular Org Unit: a Site is visible if the caller holds any
 // grant, read or write, on any Org Unit within it, at any depth — not only
 // its root, since a grant deeper in the tree still means "I work somewhere

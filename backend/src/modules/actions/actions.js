@@ -17,9 +17,11 @@
  * Like plant.js and assets.js, this file is unaware of who is calling. An
  * orgUnitId reaching createAction is one the caller was already entitled to
  * raise at — and "entitled" is deliberately weaker here than for every other
- * write in the Platform: *raising a Concern needs only a read Grant reaching
- * its Org Unit*, because a concern is a report rather than a decision. The
- * route asks `canAct` with `write: false` and says so in its own comment.
+ * write in the Platform: a Concern is a report rather than a decision, and
+ * anyone who can see the Site may raise one at any Org Unit of it, whether or
+ * not a Grant reaches that Org Unit (CONTEXT.md's Concern entry, issue #198).
+ * The route asks `people.canSeeSite` for that kind and `people.canAct` at the
+ * Org Unit for every other one, and says so in its own comment.
  */
 
 const { getPool, withActor } = require('../../platform/db');

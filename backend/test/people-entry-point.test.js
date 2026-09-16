@@ -27,15 +27,18 @@ const assert = require('node:assert');
 
 const people = require('../src/modules/people');
 
-test('the People Module entry point exposes exactly eight names', () => {
+test('the People Module entry point exposes exactly nine names', () => {
   assert.deepStrictEqual(
     Object.keys(people).sort(),
-    ['OUTSIDE_GRANTED_ORG_UNITS', 'authenticate', 'canAct', 'findEmployee', 'findOrgUnit', 'findSite', 'requireActive', 'router'].sort()
+    ['OUTSIDE_GRANTED_ORG_UNITS', 'authenticate', 'canAct', 'canSeeSite', 'findEmployee', 'findOrgUnit', 'findSite', 'requireActive', 'router'].sort()
   );
 });
 
-test('canAct, findOrgUnit, findSite, findEmployee, authenticate, requireActive are functions', () => {
+test('canAct, canSeeSite, findOrgUnit, findSite, findEmployee, authenticate, requireActive are functions', () => {
   assert.strictEqual(typeof people.canAct, 'function');
+  // #198: raising a Concern asks about a whole Site rather than one Org Unit,
+  // so modules/actions needs this one as well as canAct.
+  assert.strictEqual(typeof people.canSeeSite, 'function');
   assert.strictEqual(typeof people.findOrgUnit, 'function');
   assert.strictEqual(typeof people.findSite, 'function');
   assert.strictEqual(typeof people.findEmployee, 'function');

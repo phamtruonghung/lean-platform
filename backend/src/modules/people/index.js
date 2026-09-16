@@ -44,7 +44,7 @@
  * refuses. The rule stays narrow — a Module may export middleware that
  * establishes the caller's identity, and only that.
  *
- * Exactly eight exports, each justified below against the sibling ticket
+ * Exactly nine exports, each justified below against the sibling ticket
  * that needs it:
  *
  *   - router — mounted by src/index.js, which lives outside `modules/` and so
@@ -74,6 +74,20 @@
  *     is true — resolve the Org Unit with findOrgUnit and handle null BEFORE
  *     asking about scope, which is the existence-before-scope ordering
  *     issue #8 already settled inside People.
+ *   - canSeeSite — #198: a Concern is a report rather than a decision, and
+ *     CONTEXT.md's Concern entry says anyone on the floor may raise one where
+ *     they found it "whether or not they hold a Grant reaching that Org Unit".
+ *     `modules/actions` therefore has to be able to ask the weaker of People's
+ *     two questions about a place — not `canAct` at one Org Unit, but "can
+ *     this Account see this Site at all", which is exactly the predicate
+ *     GET /sites already filters by (any Grant, read or write, on any Org Unit
+ *     within the Site, at any depth — authorization.js's canSeeSite). It
+ *     crosses this boundary for the same reason `canAct` above does: which
+ *     Org Units a Grant reaches is People's own judgment about People's own
+ *     rows, and a second Module re-spelling that query is the data seam
+ *     ADR-0006 refuses. Every other kind of Action — and everything that
+ *     changes one after it is raised — still goes through `canAct` at its own
+ *     Org Unit, unchanged by #198.
  *   - findOrgUnit — #56 only: the client picks `orgUnitId` in the request
  *     body when placing an Asset, so Maintenance must resolve it before it
  *     can even ask canAct about scope (existence before scope — the same
@@ -99,12 +113,15 @@
  *     sentences for the same refusal depending on which Module answered
  *     would itself be the real inconsistency.
  *
- * Deliberately NOT exported, and why: isAdmin, canSeeSite, requireAdmin,
+ * Deliberately NOT exported, and why: isAdmin, requireAdmin,
  * requireOrgUnitScope, requireSiteScope, grantedEntryPointIds,
- * orgUnitScopeFor, ROLES (all authorization.js) — Maintenance's reads are
- * Site-wide regardless of Grants (#55's rule, ADR-0009's own reasoning
- * extended to the second Module), so nothing in the chain needs
- * canSeeSite/requireSiteScope/grantedEntryPointIds/orgUnitScopeFor at all;
+ * orgUnitScopeFor, ROLES (all authorization.js) — `canSeeSite` used to be on
+ * this list and comes off it as of #198 (see its own bullet above: raising a
+ * Concern is a Site-level question, so it now has a caller outside People).
+ * Maintenance's reads are Site-wide regardless of Grants (#55's rule,
+ * ADR-0009's own reasoning extended to the second Module), so nothing in the
+ * maintenance chain needs requireSiteScope/grantedEntryPointIds/
+ * orgUnitScopeFor at all;
  * no Maintenance route is path-param-keyed on an Org Unit (see the canAct
  * bullet above), so requireOrgUnitScope has no caller; canAct already
  * short-circuits role `admin` internally, so requireAdmin/isAdmin have none
@@ -123,7 +140,7 @@ const directoryRoutes = require('./directory-routes');
 const jobRoleRoutes = require('./job-role-routes');
 const skillRoutes = require('./skill-routes');
 const { authenticate, requireActive } = require('./middleware');
-const { canAct } = require('./authorization');
+const { canAct, canSeeSite } = require('./authorization');
 const { findOrgUnit, findSite } = require('./plant');
 const { findEmployee } = require('./directory');
 const { OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
@@ -140,6 +157,7 @@ module.exports = {
   authenticate,
   requireActive,
   canAct,
+  canSeeSite,
   findOrgUnit,
   findSite,
   findEmployee,

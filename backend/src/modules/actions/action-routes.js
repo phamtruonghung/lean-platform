@@ -4,9 +4,9 @@
  *
  * This is the one file in the Module that talks to People, and it does so only
  * through `modules/people`'s entry point (ADR-0006): `authenticate`,
- * `requireActive`, `findSite`, `findOrgUnit`, `findEmployee`, `canAct` and the
- * shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything else about an Action
- * is actions.js's own business.
+ * `requireActive`, `findSite`, `findOrgUnit`, `findEmployee`, `canAct`,
+ * `canSeeSite` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
+ * else about an Action is actions.js's own business.
  *
  * Two scope rules, and they are deliberately different (ADR-0032):
  *
@@ -17,14 +17,20 @@
  *     (#55, ADR-0009): Org Unit scope decides where an Account may act, not
  *     what it may know about. `?orgUnitId=` narrows the list by *area*, never
  *     by entitlement.
- *   - Raising is the one write in the Platform that asks for a READ Grant.
- *     POST /sites/:siteId/actions resolves the Org Unit and asks
- *     `people.canAct({ …, write: false })`, because a concern is a report
- *     rather than a decision and the floor is where concerns are found; the
- *     Request's own create path already works this way. Everything that
- *     changes an Action *after* it is raised needs a write Grant reaching it —
- *     that is the later tickets' rule, and it is why `write: false` here is
- *     spelled out rather than left implicit.
+ *   - Raising is split by kind, because a Concern is a report and everything
+ *     else is a decision (#198, CONTEXT.md's Concern entry). A Concern may be
+ *     raised at any Org Unit of a Site the caller can see — `people.canSeeSite`,
+ *     the same predicate GET /sites filters by (any Grant, read or write, on
+ *     any Org Unit within the Site) — whether or not a Grant reaches the Org
+ *     Unit it names: the operator granted on Line 2 who finds a defect that
+ *     came from Line 1 raises it at Line 1. Every other kind of Action
+ *     (containment, countermeasure, preventive, improvement, routine) keeps
+ *     exactly the Grant check it had before #198: `people.canAct({ …,
+ *     write: false })` at the Org Unit it is raised at, so it still needs a
+ *     Grant reaching that Org Unit. Nothing that changes an Action *after* it
+ *     is raised moved either — that is all still `write: true` at the Org Unit
+ *     in question, which is why `write: false` below is spelled out rather
+ *     than left implicit.
  *
  * Existence before scope, in both cases, which is issue #8's 403-vs-404
  * ordering and AGENTS.md §6's fixed order: the Site, then the Org Unit, then
@@ -66,8 +72,10 @@ function requireQueryMemberOf(field, value, allowed) {
 }
 
 // Write scope on the Action named in the URL (issue #177) — the counterpart of
-// the read Grant the raise route asks for, and the rule everything that changes
-// an Action *after* it is raised follows.
+// the raise route's own scope check, and the rule everything that changes an
+// Action *after* it is raised follows. Stricter than raising a Concern is on
+// purpose: a write Grant reaching the Org Unit, never a read one (see the raise
+// route below and this file's header).
 //
 // Existence before scope, the order AGENTS.md §6 fixes: an unknown or malformed
 // id is a clean 404 (findAction is total, so a raw :id never reaches Postgres
@@ -175,8 +183,35 @@ router.get(
   }
 );
 
-// Raising a Concern (issue #176). No `write: true` anywhere in this path, and
-// that is the decision rather than an omission — see this file's header.
+// Raising an Action (issue #176, #198).
+//
+// Two scope questions, one per kind, and which one is asked turns on whether
+// the caller is raising a Concern:
+//
+//   - `concern` (the default, and what a POST without an `actionType` raises):
+//     `people.canSeeSite` — any Grant, read or write, on any Org Unit within
+//     the Site in the path. Nothing is asked about the Org Unit the Concern is
+//     raised at, because CONTEXT.md's Concern entry is explicit that anyone on
+//     the floor may raise one where they found it "whether or not they hold a
+//     Grant reaching that Org Unit: a concern is a report, not a decision"
+//     (#198). The operator granted on Line 2 whose defect came from Line 1 is
+//     the case this exists for, and an Account holding no Grant anywhere in
+//     the Site is still refused.
+//   - every other kind, and every unrecognised value: `people.canAct({ …,
+//     write: false })` at the Org Unit named in the body — unchanged by #198.
+//     A Containment, Countermeasure, Preventive, Improvement or Routine action
+//     is a decision rather than a report, and still needs a Grant reaching the
+//     Org Unit it is raised at. `write: false` is spelled out so that a reader
+//     can see which check each kind gets: the default is already false, so
+//     this is a read Grant by intent rather than by omission, and a future
+//     `write: true` here would be a deliberate tightening of these five kinds
+//     rather than a silent fix.
+//
+// An unrecognised `actionType` deliberately takes the second path rather than a
+// 400 raised here: which types exist is actions.js's knowledge (ACTION_TYPES,
+// mirroring the schema's CHECK), and naming a bad one is still a 400 from
+// there, exactly as it was before #198. Deciding scope first would otherwise
+// have to invent an answer for a type the Module does not know.
 //
 // The Employee named as owner is resolved here rather than in actions.js,
 // because it is another Module's record: parseId (400) -> findEmployee (404) ->
@@ -199,14 +234,11 @@ router.post(
       if (!orgUnit) throw notFound('Org Unit');
       if (orgUnit.siteId !== req.site.id) throw notFound('Org Unit');
 
-      const allowed = await people.canAct({
-        account: req.account,
-        orgUnitId: orgUnit.id,
-        // Explicitly false, and it must stay explicit: this is the one write
-        // in the Platform a read Grant is enough for, and a reader finding
-        // `write: true` here would be right to think it a fix.
-        write: false
-      });
+      const actionType = body.actionType ?? 'concern';
+
+      const allowed = actionType === 'concern'
+        ? await people.canSeeSite({ account: req.account, siteId: req.site.id })
+        : await people.canAct({ account: req.account, orgUnitId: orgUnit.id, write: false });
       if (!allowed) {
         return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
       }
@@ -229,7 +261,7 @@ router.post(
           orgUnitId: orgUnit.id,
           title: body.title,
           description: body.description ?? null,
-          actionType: body.actionType ?? 'concern',
+          actionType,
           pillarCode: body.pillarCode ?? null,
           ownerEmployeeId,
           dueDate: body.dueDate ?? null,
