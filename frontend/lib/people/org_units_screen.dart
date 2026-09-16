@@ -379,6 +379,10 @@ class _Tree extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       child: Column(
+        // Stated, not defaulted (issue #195): a Column centres its
+        // cross axis, so a row that sizes to its own content would
+        // float to the middle of this card.
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final row in state.rows)
             _TreeRow(
