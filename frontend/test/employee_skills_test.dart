@@ -36,8 +36,12 @@ void main() {
     await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
     expect(find.byType(EmployeeSkillFormDialog), findsOneWidget);
 
-    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.skillKey));
-    await tapIn(tester, find.text('Welding').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: EmployeeSkillFormDialog.skillKey,
+      term: 'Weld',
+      suggestionKey: EmployeeSkillFormDialog.skillSuggestionKey('30'),
+    );
     await tapIn(tester, find.byKey(EmployeeSkillFormDialog.proficiencyKey));
     await tapIn(tester, find.text('3').last);
     await tapIn(tester, find.byKey(EmployeeSkillFormDialog.submitKey));
@@ -202,8 +206,12 @@ void main() {
     await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
     await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
 
-    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.skillKey));
-    await tapIn(tester, find.text('Welding').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: EmployeeSkillFormDialog.skillKey,
+      term: 'Weld',
+      suggestionKey: EmployeeSkillFormDialog.skillSuggestionKey('30'),
+    );
 
     expect(find.byKey(AppDateField.clearKey('skill-assessed-on')), findsNothing);
     await pickDate(tester, EmployeeSkillFormDialog.assessedOnKey, DateTime(2024, 2, 10));
@@ -278,8 +286,12 @@ void main() {
     await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
     await tapIn(tester, find.byKey(EmployeeDetailScreen.recordSkillKey));
 
-    await tapIn(tester, find.byKey(EmployeeSkillFormDialog.skillKey));
-    await tapIn(tester, find.text('Welding').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: EmployeeSkillFormDialog.skillKey,
+      term: 'Weld',
+      suggestionKey: EmployeeSkillFormDialog.skillSuggestionKey('30'),
+    );
 
     expect(find.byKey(AppDateField.clearKey('skill-expires-on')), findsNothing);
     await pickDate(tester, EmployeeSkillFormDialog.expiresOnKey, DateTime(2026, 9, 5));

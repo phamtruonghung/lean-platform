@@ -134,8 +134,12 @@ void main() {
     await tapIn(tester, find.byKey(MyRequestsScreen.raiseKey));
     await tester.pumpAndSettle();
 
-    await tapIn(tester, find.byKey(RequestFormDialog.assetKey));
-    await tapIn(tester, find.text('Press 1 (PRESS-1)').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: RequestFormDialog.assetKey,
+      term: 'Press',
+      suggestionKey: RequestFormDialog.assetSuggestionKey('7'),
+    );
 
     await tester.enterText(find.byKey(RequestFormDialog.summaryKey), 'Belt is slipping');
     await tester.pumpAndSettle();

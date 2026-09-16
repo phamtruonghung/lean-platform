@@ -380,8 +380,12 @@ void main() {
     await tapIn(tester, find.byKey(WorkOrdersScreen.raiseKey));
     await tester.pumpAndSettle();
 
-    await tapIn(tester, find.byKey(WorkOrderFormDialog.assetKey));
-    await tapIn(tester, find.text('Press 1 (PRESS-1)').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: WorkOrderFormDialog.assetKey,
+      term: 'Press',
+      suggestionKey: WorkOrderFormDialog.assetSuggestionKey('7'),
+    );
 
     await tester.enterText(find.byKey(WorkOrderFormDialog.summaryKey), 'Belt is slipping');
     await tester.pumpAndSettle();
@@ -425,8 +429,12 @@ void main() {
 
     await tapIn(tester, find.byKey(WorkOrdersScreen.raiseKey));
     await tester.pumpAndSettle();
-    await tapIn(tester, find.byKey(WorkOrderFormDialog.assetKey));
-    await tapIn(tester, find.text('Press 1 (PRESS-1)').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: WorkOrderFormDialog.assetKey,
+      term: 'Press',
+      suggestionKey: WorkOrderFormDialog.assetSuggestionKey('7'),
+    );
     await tester.enterText(find.byKey(WorkOrderFormDialog.summaryKey), 'Belt is slipping');
     await tester.pumpAndSettle();
     await tapIn(tester, find.byKey(WorkOrderFormDialog.workTypeKey));
@@ -459,10 +467,10 @@ void main() {
 
     await tapIn(tester, find.byKey(WorkOrdersScreen.raiseKey));
     await tester.pumpAndSettle();
-    await tapIn(tester, find.byKey(WorkOrderFormDialog.assetKey));
+    await typeInSearchField(tester, WorkOrderFormDialog.assetKey, 'Press');
 
-    expect(find.text('Press 1 (PRESS-1)'), findsOneWidget);
-    expect(find.text('Press 2 (PRESS-2)'), findsNothing);
+    expect(find.byKey(WorkOrderFormDialog.assetSuggestionKey('7')), findsOneWidget);
+    expect(find.byKey(WorkOrderFormDialog.assetSuggestionKey('8')), findsNothing);
   });
 
   testWidgets('an operator is offered neither the destination nor the Screen', (tester) async {

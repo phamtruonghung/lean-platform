@@ -119,8 +119,12 @@ void main() {
     await tapIn(tester, find.byKey(DowntimeScreen.reportKey));
     await tester.pumpAndSettle();
 
-    await tapIn(tester, find.byKey(BreakdownReportDialog.assetKey));
-    await tapIn(tester, find.text('Press 1 (PRESS-1)').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: BreakdownReportDialog.assetKey,
+      term: 'Press',
+      suggestionKey: BreakdownReportDialog.assetSuggestionKey('7'),
+    );
     await tapIn(tester, find.byKey(BreakdownReportDialog.submitKey));
 
     expect(wire.downtimePosts.length, 1);
@@ -158,8 +162,12 @@ void main() {
 
     await tapIn(tester, find.byKey(DowntimeScreen.reportKey));
     await tester.pumpAndSettle();
-    await tapIn(tester, find.byKey(BreakdownReportDialog.assetKey));
-    await tapIn(tester, find.text('Press 1 (PRESS-1)').last);
+    await pickSuggestion(
+      tester,
+      fieldKey: BreakdownReportDialog.assetKey,
+      term: 'Press',
+      suggestionKey: BreakdownReportDialog.assetSuggestionKey('7'),
+    );
     await tapIn(tester, find.byKey(BreakdownReportDialog.submitKey));
 
     // The dialog stays open and the server's actionable sentence is shown.
