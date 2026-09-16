@@ -25,8 +25,12 @@ const insertedOrgUnitIds = [];
 const insertedAssetIds = [];
 // Issue #171's own test raises a Work order to prove that recorded work keeps
 // the Org Unit it was raised at, so this file now inserts rows that point at
-// its Assets and must be deleted before them.
+// its Assets and must be deleted before them. Issue #173 widens the same
+// proof to a Request and a Downtime event (user story 16), so this file now
+// inserts those too.
 const insertedWorkOrderIds = [];
+const insertedRequestIds = [];
+const insertedDowntimeEventIds = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -167,10 +171,15 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  // Children before parents: a Work order holds a foreign key to its Asset, so
-  // deleting the Assets first would fail the constraint (and, before Node 20's
-  // own unhandled-rejection behaviour, hang the file rather than report it).
+  // Children before parents: a Work order holds a foreign key to its Asset
+  // (and, when a Breakdown raised it, to the Downtime event it closed), a
+  // Request and a Downtime event each hold one to their own Asset too, so
+  // deleting the Assets first would fail the constraint (and, before Node
+  // 20's own unhandled-rejection behaviour, hang the file rather than report
+  // it). Work orders first, since one may point at a Downtime event.
   await pool.query('DELETE FROM work_orders WHERE id = ANY($1)', [insertedWorkOrderIds]);
+  await pool.query('DELETE FROM downtime_events WHERE id = ANY($1)', [insertedDowntimeEventIds]);
+  await pool.query('DELETE FROM maintenance_requests WHERE id = ANY($1)', [insertedRequestIds]);
   await pool.query('DELETE FROM assets WHERE id = ANY($1)', [insertedAssetIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
@@ -934,12 +943,20 @@ test('a retired Asset can still be corrected', async () => {
   assert.strictEqual(row.is_active, false);
 });
 
-test('a Work order raised before a correction reads the corrected code and name afterwards',
+// User story 16: nothing about history is rewritten by a correction. A Work
+// order, a Request and a Downtime event all denormalise `asset_code`/
+// `asset_name` through a live join on `asset_id` (assets.js's own
+// ASSET_COLUMNS-shaped comment says the same of org_unit_id), never a copy
+// taken at the moment each was raised — so a correction shows on every kind
+// of work already recorded against the machine, without touching any of
+// those rows, and each keeps pointing at the same Asset id throughout.
+test('Work orders, Requests and Downtime events raised before a correction read the corrected '
+  + 'code and name afterwards, still against the same Asset',
   async () => {
     const created = await postAsset(admin.token, assetBody(grantedLine.id));
     const assetId = created.payload.asset.id;
 
-    const raised = await fetch(`${base}/api/maintenance/work-orders`, {
+    const raisedWorkOrder = await fetch(`${base}/api/maintenance/work-orders`, {
       method: 'POST',
       headers: { ...admin.token, 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -949,9 +966,34 @@ test('a Work order raised before a correction reads the corrected code and name 
         priority: 3
       })
     });
-    assert.strictEqual(raised.status, 201);
-    const { workOrder } = await raised.json();
+    assert.strictEqual(raisedWorkOrder.status, 201);
+    const { workOrder } = await raisedWorkOrder.json();
     insertedWorkOrderIds.push(workOrder.id);
+
+    const raisedRequest = await fetch(`${base}/api/maintenance/requests`, {
+      method: 'POST',
+      headers: { ...admin.token, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        assetId,
+        summary: 'Raised before the machine was corrected'
+      })
+    });
+    assert.strictEqual(raisedRequest.status, 201);
+    const { request } = await raisedRequest.json();
+    insertedRequestIds.push(request.id);
+
+    const reportedBreakdown = await fetch(`${base}/api/maintenance/downtime`, {
+      method: 'POST',
+      headers: { ...admin.token, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        assetId,
+        description: 'Reported before the machine was corrected'
+      })
+    });
+    assert.strictEqual(reportedBreakdown.status, 201);
+    const { downtimeEvent, workOrder: breakdownWorkOrder } = await reportedBreakdown.json();
+    insertedDowntimeEventIds.push(downtimeEvent.id);
+    insertedWorkOrderIds.push(breakdownWorkOrder.id);
 
     const body = correctionBody();
     const corrected = await patchAsset(admin.token, assetId, body);
@@ -961,9 +1003,35 @@ test('a Work order raised before a correction reads the corrected code and name 
       headers: admin.token
     });
     assert.strictEqual(workOrderRead.status, 200);
-    const { workOrder: reread } = await workOrderRead.json();
-    assert.strictEqual(reread.assetCode, body.code);
-    assert.strictEqual(reread.assetName, body.name);
+    const { workOrder: rereadWorkOrder } = await workOrderRead.json();
+    assert.strictEqual(rereadWorkOrder.assetId, assetId);
+    assert.strictEqual(rereadWorkOrder.assetCode, body.code);
+    assert.strictEqual(rereadWorkOrder.assetName, body.name);
+
+    // No GET /requests/:id exists — the triage queue is the door a real
+    // client reads an open Request through, the same one requests.test.js's
+    // own tests use.
+    const requestQueue = await fetch(`${base}/api/maintenance/sites/${site}/requests`, {
+      headers: admin.token
+    });
+    assert.strictEqual(requestQueue.status, 200);
+    const { requests: rereadRequests } = await requestQueue.json();
+    const rereadRequest = rereadRequests.find((candidate) => candidate.id === request.id);
+    assert.ok(rereadRequest, 'the Request raised before the correction is still in the triage queue');
+    assert.strictEqual(rereadRequest.assetId, assetId);
+    assert.strictEqual(rereadRequest.assetCode, body.code);
+    assert.strictEqual(rereadRequest.assetName, body.name);
+
+    const downtimeList = await fetch(`${base}/api/maintenance/sites/${site}/downtime`, {
+      headers: admin.token
+    });
+    assert.strictEqual(downtimeList.status, 200);
+    const { downtimeEvents: rereadDowntimeEvents } = await downtimeList.json();
+    const rereadDowntimeEvent = rereadDowntimeEvents.find((candidate) => candidate.id === downtimeEvent.id);
+    assert.ok(rereadDowntimeEvent, 'the Downtime event reported before the correction is still open');
+    assert.strictEqual(rereadDowntimeEvent.assetId, assetId);
+    assert.strictEqual(rereadDowntimeEvent.assetCode, body.code);
+    assert.strictEqual(rereadDowntimeEvent.assetName, body.name);
   });
 
 // The reading this ticket asserts rather than codes: `work_orders`,
