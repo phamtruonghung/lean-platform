@@ -165,31 +165,39 @@ router.post(
   }
 );
 
-// PATCH /assets/:id (issue #61): retiring/reinstating, nesting/detaching and
-// — since issue #171 — moving to another Org Unit, all through this one route.
-// isActive, parentId and orgUnitId are just three columns on the same Asset
-// row, not three resources. Exactly one of them must be present in the body;
-// an empty `{}` is refused with 400 rather than accepted as a no-op, the same
-// shape PATCH /org-units/:id follows for its own single field.
+// PATCH /assets/:id (issue #61): retiring/reinstating, nesting/detaching,
+// moving to another Org Unit (issue #171) and — since issue #173 —
+// correcting the Asset's own code/name/assetType/criticality, all through
+// this one route. isActive, parentId, orgUnitId and the correction group are
+// four operations on the same Asset row, not four resources. Exactly one of
+// them must be present in the body; an empty `{}` is refused with 400 rather
+// than accepted as a no-op, the same shape PATCH /org-units/:id follows for
+// its own single field.
 //
 // `hasOwnProperty` is used for `parentId` rather than a truthiness check on
 // `req.body.parentId`, on purpose: `parentId: null` (detach — make this
 // Asset top-level again) and `parentId` simply absent (leave the parent
 // alone) have to read differently, and `!req.body.parentId` cannot tell them
-// apart — both are falsy.
+// apart — both are falsy. The correction group (`hasCorrection`) is detected
+// the same way: presence of ANY of its four fields, not all — a caller
+// naming only some of them is still asking for a correction, refused by
+// assets.correctAsset's own reused validation rather than by a shape check
+// restating it here.
 //
-// A body naming MORE THAN ONE of the three is refused with 400 (issue #61
-// review, Fix A; widened to the third field by issue #171).
-// setAssetParent, setAssetActive and setAssetOrgUnit are separate
-// transactions; a combined PATCH could commit the re-parent and then hit a
-// 409 or 500 on the retire half, and the caller — seeing only the failure —
-// would reasonably conclude nothing happened, when the parent had already
-// changed. These are distinct operations on the same row, not one compound
-// edit: nothing asks for them to be combined, and the only sound alternative —
-// restructuring three service functions to accept a caller-supplied
-// transaction so they could commit together — would be built for a caller that
-// does not exist. Refusing is honest; half-committing is not. Send them as
-// separate requests.
+// A body naming MORE THAN ONE of the four groups is refused with 400 (issue
+// #61 review, Fix A; widened to a third field by issue #171 and to a fourth
+// group by issue #173 — the wording now names the correction group too,
+// rather than describing only the three single-column operations it used to
+// be the whole of). setAssetParent, setAssetActive, setAssetOrgUnit and correctAsset
+// are separate transactions; a combined PATCH could commit one and then hit
+// a 409 or 500 on another, and the caller — seeing only the failure — would
+// reasonably conclude nothing happened, when part of it had already changed.
+// These are distinct operations on the same row, not one compound edit:
+// nothing asks for them to be combined, and the only sound alternative —
+// restructuring the service functions to accept a caller-supplied
+// transaction so they could commit together — would be built for a caller
+// that does not exist. Refusing is honest; half-committing is not. Send them
+// as separate requests.
 //
 // The extra parent-scope rule below requires write scope on the Org Unit of
 // whichever parent is losing OR gaining the Asset when parentId changes —
@@ -215,14 +223,26 @@ router.patch(
       const hasIsActive = Object.prototype.hasOwnProperty.call(body, 'isActive');
       const hasParentId = Object.prototype.hasOwnProperty.call(body, 'parentId');
       const hasOrgUnitId = Object.prototype.hasOwnProperty.call(body, 'orgUnitId');
-      const named = [hasIsActive, hasParentId, hasOrgUnitId].filter(Boolean).length;
+      // The fourth group (issue #173): correcting the Asset's own four
+      // fields. Detected by presence of ANY of the four, not all — a caller
+      // who names only some of them is still asking for a correction, and
+      // assets.correctAsset's own reused validation (validateAssetDetails)
+      // is what names the missing one, rather than restating that check here.
+      const hasCorrection = ['code', 'name', 'assetType', 'criticality'].some((field) =>
+        Object.prototype.hasOwnProperty.call(body, field)
+      );
+      const named = [hasIsActive, hasParentId, hasOrgUnitId, hasCorrection].filter(Boolean).length;
       if (named === 0) {
-        return res.status(400).json({ message: 'isActive, parentId and/or orgUnitId is required' });
+        return res.status(400).json({
+          message:
+            'isActive, parentId, orgUnitId, or a correction of code, name, assetType and criticality is required'
+        });
       }
       if (named > 1) {
         return res.status(400).json({
           message:
-            'only one of isActive, parentId and orgUnitId can be changed per request; send them as separate requests'
+            'only one of isActive, parentId, orgUnitId, or a correction of code, name, assetType and ' +
+            'criticality can be changed per request; send them as separate requests'
         });
       }
       if (hasIsActive && typeof body.isActive !== 'boolean') {
@@ -302,6 +322,9 @@ router.patch(
       }
       if (hasOrgUnitId) {
         asset = await assets.setAssetOrgUnit(req.params.id, req.orgUnit.id, req.account.id);
+      }
+      if (hasCorrection) {
+        asset = await assets.correctAsset(req.params.id, body, req.account.id);
       }
 
       res.json({ asset });

@@ -124,6 +124,26 @@ class MaintenanceApi {
   Future<Asset> setAssetOrgUnit(String accessToken, String id, {required String orgUnitId}) =>
       _patchAsset(accessToken, id, {'orgUnitId': orgUnitId});
 
+  /// Corrects an Asset's own four fields (issue #173) — a full replacement
+  /// of code, name, assetType and criticality, validated server-side by the
+  /// create route's own rules. The Asset's placement, its parent and
+  /// whether it is retired are untouched: each has its own call above, and a
+  /// body naming any of them alongside these four is refused (400).
+  Future<Asset> correctAsset(
+    String accessToken,
+    String id, {
+    required String code,
+    required String name,
+    required String assetType,
+    required String criticality,
+  }) =>
+      _patchAsset(accessToken, id, {
+        'code': code,
+        'name': name,
+        'assetType': assetType,
+        'criticality': criticality,
+      });
+
   Future<Asset> _patchAsset(String accessToken, String id, Map<String, dynamic> body) async {
     final path = '/api/maintenance/assets/$id';
     final response = await _send(

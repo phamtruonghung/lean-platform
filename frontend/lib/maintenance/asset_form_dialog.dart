@@ -1,10 +1,22 @@
-/// Adding an Asset: what it is called, what kind of thing it is, how critical
-/// it is, and — the decision that outlives all the others — where it sits.
+/// Adding an Asset (what it is called, what kind of thing it is, how critical
+/// it is, and — the decision that outlives all the others — where it sits) or
+/// correcting one (issue #173): [asset] decides which, the same shape
+/// `SiteFormDialog` uses for correcting a Site — null creates, an Asset
+/// corrects, seeding every field from its stored values.
 ///
 /// The Org Unit half is `OrgUnitChooser`, driven by a dialog-scoped
-/// `OrgUnitPickerBloc` built here and read once, at submission. Same shape as
-/// `AdmissionDialog`'s use of the Grant picker: widget and Bloc travel
-/// together, and neither outlives the dialog that mounted them.
+/// `OrgUnitPickerBloc` built here and read once, at submission — only when
+/// adding. A correction carries no Org Unit chooser at all: where an Asset
+/// sits is its own action with its own two-Org-Unit rule (issue #171,
+/// `AssetMoveDialog`), and offering it here would mean a save that has to
+/// send two requests with a possible half-applied outcome, which is exactly
+/// what the route's one-operation rule (issue #61 review, Fix A) exists to
+/// prevent. This dialog says so in one line instead, pointing at the
+/// register's own "Change Org Unit…" action.
+///
+/// The four field controls are shared between both paths on purpose (issue
+/// #173, user story 22) — one `TextField`/`DropdownButtonFormField` set, not
+/// two copies that could drift apart in labels, options or validation.
 library;
 
 import 'package:flutter/material.dart';
@@ -19,7 +31,11 @@ import 'assets_bloc.dart';
 import 'org_unit_chooser.dart';
 
 class AssetFormDialog extends StatefulWidget {
-  const AssetFormDialog({super.key});
+  const AssetFormDialog({super.key, this.asset});
+
+  /// The Asset being corrected, or null when adding one (issue #173). Its
+  /// stored values seed the four fields.
+  final Asset? asset;
 
   static const ValueKey<String> codeKey = ValueKey<String>('asset-form-code');
   static const ValueKey<String> nameKey = ValueKey<String>('asset-form-name');
@@ -34,10 +50,23 @@ class AssetFormDialog extends StatefulWidget {
   /// Navigator, which is not a descendant of the route-scoped `BlocProvider`
   /// the register lives in — so the Bloc is handed across explicitly.
   ///
-  /// The chooser opens on the Site the register is already showing, so the
-  /// caller does not have to re-find where they were.
-  static Future<void> open(BuildContext context, {String? siteId}) {
+  /// [asset] present opens in correction mode (issue #173): no
+  /// `OrgUnitPickerBloc` is built at all, since a correction offers no Org
+  /// Unit chooser. Absent, this opens to add, and the chooser opens on the
+  /// Site the register is already showing, so the caller does not have to
+  /// re-find where they were.
+  static Future<void> open(BuildContext context, {String? siteId, Asset? asset}) {
     final assetsBloc = context.read<AssetsBloc>();
+    if (asset != null) {
+      return showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => BlocProvider<AssetsBloc>.value(
+          value: assetsBloc,
+          child: AssetFormDialog(asset: asset),
+        ),
+      );
+    }
     final peopleApi = context.read<PeopleApi>();
     final authGateway = context.read<AuthGateway>();
     return showDialog<void>(
@@ -77,6 +106,27 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
   bool _awaiting = false;
   String? _failure;
 
+  /// Whether this dialog is correcting an existing Asset rather than adding
+  /// one (issue #173) — read once, off the widget the dialog was built with,
+  /// so every branch below reads the same test [widget.asset] does.
+  bool get _isCorrecting => widget.asset != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final asset = widget.asset;
+    if (asset != null) {
+      _code.text = asset.code;
+      _name.text = asset.name;
+      for (final type in AssetType.values) {
+        if (type.wire == asset.assetType) _type = type;
+      }
+      for (final level in Criticality.values) {
+        if (level.wire == asset.criticality) _criticality = level;
+      }
+    }
+  }
+
   @override
   void dispose() {
     _code.dispose();
@@ -84,11 +134,14 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
     super.dispose();
   }
 
-  bool get _complete =>
-      _code.text.trim().isNotEmpty &&
-      _name.text.trim().isNotEmpty &&
-      _type != null &&
-      _orgUnit != null;
+  bool get _complete {
+    final fieldsComplete =
+        _code.text.trim().isNotEmpty && _name.text.trim().isNotEmpty && _type != null;
+    // A correction carries no Org Unit chooser at all (issue #173) — where
+    // an Asset sits stays exactly as it was, so nothing here waits on
+    // `_orgUnit`, unlike the add path.
+    return _isCorrecting ? fieldsComplete : fieldsComplete && _orgUnit != null;
+  }
 
   void _submit() {
     if (!_complete || _awaiting) return;
@@ -96,27 +149,88 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
       _awaiting = true;
       _failure = null;
     });
-    context.read<AssetsBloc>().add(
-          AssetAddConfirmed(
-            orgUnitId: _orgUnit!.id,
-            code: _code.text.trim(),
-            name: _name.text.trim(),
-            assetType: _type!.wire,
-            criticality: _criticality.wire,
-          ),
-        );
+    final asset = widget.asset;
+    if (asset == null) {
+      context.read<AssetsBloc>().add(
+            AssetAddConfirmed(
+              orgUnitId: _orgUnit!.id,
+              code: _code.text.trim(),
+              name: _name.text.trim(),
+              assetType: _type!.wire,
+              criticality: _criticality.wire,
+            ),
+          );
+    } else {
+      context.read<AssetsBloc>().add(
+            AssetCorrectionConfirmed(
+              assetId: asset.id,
+              code: _code.text.trim(),
+              name: _name.text.trim(),
+              assetType: _type!.wire,
+              criticality: _criticality.wire,
+            ),
+          );
+    }
   }
 
   void _onAssetsChanged(BuildContext context, AssetsState state) {
-    if (!_awaiting || state is! AssetsLoaded || state.isAdding) return;
-    if (state.addFailure != null) {
-      setState(() {
-        _awaiting = false;
-        _failure = state.addFailure;
-      });
-      return;
+    if (!_awaiting || state is! AssetsLoaded) return;
+    final asset = widget.asset;
+    if (asset == null) {
+      if (state.isAdding) return;
+      if (state.addFailure != null) {
+        setState(() {
+          _awaiting = false;
+          _failure = state.addFailure;
+        });
+        return;
+      }
+    } else {
+      // The row's own mutation-in-flight marker covers "still running" —
+      // no dedicated flag for a correction, the same reuse issue #173's own
+      // Implementation Decisions call for. But this marker is shared with
+      // every other row mutation, so it is not enough on its own: if the
+      // Bloc refuses to even start (another row's mutation was already
+      // running, `AssetsBloc.inFlightMessage`), it emits with
+      // `mutatingAssetId` still naming that OTHER row and `correctionFailure`
+      // reset to null — neither branch below would catch that, and closing
+      // here would drop the caller's typed values on somebody else's news.
+      // The only state that actually says "my own correction is done" is the
+      // row itself carrying what was submitted, so that is the one thing
+      // checked before popping.
+      if (state.mutatingAssetId == asset.id) return;
+      if (state.correctionFailure != null) {
+        setState(() {
+          _awaiting = false;
+          _failure = state.correctionFailure;
+        });
+        return;
+      }
+      if (!_rowReflectsSubmission(state.assets)) return;
     }
     Navigator.of(context).pop();
+  }
+
+  /// Whether [assets] now carries this row corrected to exactly what was
+  /// last submitted — the positive signal that this dialog's own correction
+  /// landed, rather than merely the absence of an in-flight marker or a
+  /// failure (both of which are also true while the Bloc is reporting on a
+  /// completely different row's mutation, see [_onAssetsChanged]'s own
+  /// comment). Only called in correction mode, so `widget.asset`, `_type`
+  /// and the confirmed field text are all non-null by the time `_submit` has
+  /// run — the fields stay disabled for the whole wait, so none of them can
+  /// have changed since.
+  bool _rowReflectsSubmission(List<Asset> assets) {
+    final asset = widget.asset;
+    if (asset == null) return false;
+    for (final row in assets) {
+      if (row.id != asset.id) continue;
+      return row.code == _code.text.trim() &&
+          row.name == _name.text.trim() &&
+          row.assetType == _type!.wire &&
+          row.criticality == _criticality.wire;
+    }
+    return false;
   }
 
   // A chosen Org Unit belongs to the Site it was chosen in, so switching the
@@ -133,13 +247,18 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
     return MultiBlocListener(
       listeners: [
         BlocListener<AssetsBloc, AssetsState>(listener: _onAssetsChanged),
-        BlocListener<OrgUnitPickerBloc, OrgUnitPickerState>(
-          listenWhen: (previous, current) => previous.siteId != current.siteId,
-          listener: _onOrgUnitSiteChanged,
-        ),
+        // No `OrgUnitPickerBloc` exists at all in correction mode (`open`
+        // never builds one — a correction offers no Org Unit chooser), so
+        // this listener is skipped rather than reaching for a provider that
+        // is not there.
+        if (!_isCorrecting)
+          BlocListener<OrgUnitPickerBloc, OrgUnitPickerState>(
+            listenWhen: (previous, current) => previous.siteId != current.siteId,
+            listener: _onOrgUnitSiteChanged,
+          ),
       ],
       child: AlertDialog(
-        title: const Text('Add an Asset'),
+        title: Text(_isCorrecting ? 'Correct details' : 'Add an Asset'),
         content: SizedBox(
           width: 620,
           child: SingleChildScrollView(
@@ -205,21 +324,33 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
                   ],
                 ),
                 const SizedBox(height: Spacing.lg),
-                OrgUnitChooser(
-                  selectedId: _orgUnit?.id,
-                  enabled: !_awaiting,
-                  onSelected: (node) => setState(() => _orgUnit = node),
-                ),
-                if (_orgUnit != null)
-                  Padding(
-                    key: AssetFormDialog.chosenKey,
-                    padding: const EdgeInsets.only(top: Spacing.sm),
-                    child: Text(
-                      'This Asset will sit at ${_orgUnit!.name}.',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
+                if (_isCorrecting)
+                  // No Org Unit chooser here (issue #173): where an Asset
+                  // sits is its own action, with its own two-Org-Unit rule
+                  // (issue #171) and its own transaction — this dialog only
+                  // ever carries one.
+                  Text(
+                    'Where this Asset sits is changed with its own "Change Org Unit…" action.',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  )
+                else ...[
+                  OrgUnitChooser(
+                    selectedId: _orgUnit?.id,
+                    enabled: !_awaiting,
+                    onSelected: (node) => setState(() => _orgUnit = node),
                   ),
+                  if (_orgUnit != null)
+                    Padding(
+                      key: AssetFormDialog.chosenKey,
+                      padding: const EdgeInsets.only(top: Spacing.sm),
+                      child: Text(
+                        'This Asset will sit at ${_orgUnit!.name}.',
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ),
+                ],
                 if (_failure != null)
                   Padding(
                     key: AssetFormDialog.failureKey,
@@ -242,7 +373,7 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
           FilledButton(
             key: AssetFormDialog.submitKey,
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Add Asset'),
+            child: Text(_awaiting ? 'Saving…' : (_isCorrecting ? 'Save' : 'Add Asset')),
           ),
         ],
       ),

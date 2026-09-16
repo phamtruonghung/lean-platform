@@ -25,8 +25,12 @@ const insertedOrgUnitIds = [];
 const insertedAssetIds = [];
 // Issue #171's own test raises a Work order to prove that recorded work keeps
 // the Org Unit it was raised at, so this file now inserts rows that point at
-// its Assets and must be deleted before them.
+// its Assets and must be deleted before them. Issue #173 widens the same
+// proof to a Request and a Downtime event (user story 16), so this file now
+// inserts those too.
 const insertedWorkOrderIds = [];
+const insertedRequestIds = [];
+const insertedDowntimeEventIds = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -167,10 +171,15 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  // Children before parents: a Work order holds a foreign key to its Asset, so
-  // deleting the Assets first would fail the constraint (and, before Node 20's
-  // own unhandled-rejection behaviour, hang the file rather than report it).
+  // Children before parents: a Work order holds a foreign key to its Asset
+  // (and, when a Breakdown raised it, to the Downtime event it closed), a
+  // Request and a Downtime event each hold one to their own Asset too, so
+  // deleting the Assets first would fail the constraint (and, before Node
+  // 20's own unhandled-rejection behaviour, hang the file rather than report
+  // it). Work orders first, since one may point at a Downtime event.
   await pool.query('DELETE FROM work_orders WHERE id = ANY($1)', [insertedWorkOrderIds]);
+  await pool.query('DELETE FROM downtime_events WHERE id = ANY($1)', [insertedDowntimeEventIds]);
+  await pool.query('DELETE FROM maintenance_requests WHERE id = ANY($1)', [insertedRequestIds]);
   await pool.query('DELETE FROM assets WHERE id = ANY($1)', [insertedAssetIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
@@ -473,14 +482,18 @@ test('PATCH /assets/abc (malformed id) is a clean 404, not a 500', async () => {
   assert.strictEqual(response.status, 404);
 });
 
-// Issue #171 widened this route to a third field, so the empty-body message
-// names all three — a message that still said "isActive and/or parentId"
-// would be telling a caller that an orgUnitId-only request is impossible.
+// Issue #171 widened this route to a third field and issue #173 to a fourth
+// group, so the empty-body message names all four — a message that still
+// said "isActive and/or parentId" would be telling a caller that an
+// orgUnitId-only request, or a correction, is impossible.
 test('an empty body is refused', async () => {
   const created = await postAsset(admin.token, assetBody(grantedLine.id));
   const { response, payload } = await patchAsset(admin.token, created.payload.asset.id, {});
   assert.strictEqual(response.status, 400);
-  assert.strictEqual(payload.message, 'isActive, parentId and/or orgUnitId is required');
+  assert.strictEqual(
+    payload.message,
+    'isActive, parentId, orgUnitId, or a correction of code, name, assetType and criticality is required'
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -503,7 +516,7 @@ test('a PATCH naming both isActive and parentId is refused, and the Asset is unc
   assert.strictEqual(response.status, 400);
   assert.strictEqual(
     payload.message,
-    'only one of isActive, parentId and orgUnitId can be changed per request; send them as separate requests'
+    'only one of isActive, parentId, orgUnitId, or a correction of code, name, assetType and criticality can be changed per request; send them as separate requests'
   );
 
   const { rows: [row] } = await pool.query(
@@ -711,7 +724,7 @@ test('naming orgUnitId alongside another field is refused, and the Asset is unch
   assert.strictEqual(response.status, 400);
   assert.strictEqual(
     payload.message,
-    'only one of isActive, parentId and orgUnitId can be changed per request; send them as separate requests'
+    'only one of isActive, parentId, orgUnitId, or a correction of code, name, assetType and criticality can be changed per request; send them as separate requests'
   );
 
   const { rows: [row] } = await pool.query(
@@ -721,6 +734,305 @@ test('naming orgUnitId alongside another field is refused, and the Asset is unch
   assert.strictEqual(String(row.org_unit_id), String(grantedLine.id));
   assert.strictEqual(row.parent_id, null);
 });
+
+// ---------------------------------------------------------------------------
+// Correcting an Asset's own details (issue #173): a full replacement of
+// code, name, assetType and criticality — its placement, its nesting and
+// its retirement are untouched, each with its own action and its own rule.
+// ---------------------------------------------------------------------------
+
+function correctionBody(overrides = {}) {
+  return {
+    code: uniqueCode('CORRECTED'),
+    name: 'Corrected Press',
+    assetType: 'cell',
+    criticality: 'critical',
+    ...overrides
+  };
+}
+
+test('a correction changes all four fields and answers with the row, and a re-read agrees',
+  async () => {
+    const created = await postAsset(admin.token, assetBody(grantedLine.id));
+    const id = created.payload.asset.id;
+    const body = correctionBody();
+
+    const { response, payload } = await patchAsset(admin.token, id, body);
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(payload.asset.code, body.code);
+    assert.strictEqual(payload.asset.name, body.name);
+    assert.strictEqual(payload.asset.assetType, body.assetType);
+    assert.strictEqual(payload.asset.criticality, body.criticality);
+
+    const listing = await fetch(`${base}/api/maintenance/sites/${site}/assets`, {
+      headers: admin.token
+    });
+    const { assets: registerAssets } = await listing.json();
+    const reread = registerAssets.find((candidate) => candidate.id === id);
+    assert.strictEqual(reread.code, body.code);
+    assert.strictEqual(reread.name, body.name);
+    assert.strictEqual(reread.assetType, body.assetType);
+    assert.strictEqual(reread.criticality, body.criticality);
+  });
+
+test('a correction leaves the Asset\'s placement, nesting and retirement exactly as they were',
+  async () => {
+    const parent = await postAsset(admin.token, assetBody(grantedLine.id));
+    const created = await postAsset(admin.token, assetBody(grantedLine.id));
+    const id = created.payload.asset.id;
+    await patchAsset(admin.token, id, { parentId: parent.payload.asset.id });
+
+    const { response, payload } = await patchAsset(admin.token, id, correctionBody());
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(payload.asset.orgUnitId, String(grantedLine.id));
+    assert.strictEqual(payload.asset.parentId, String(parent.payload.asset.id));
+    assert.strictEqual(payload.asset.isActive, true);
+    assert.strictEqual(payload.asset.assetLevel, 'component');
+
+    const { rows: [row] } = await pool.query(
+      'SELECT org_unit_id, parent_id, is_active, asset_level FROM assets WHERE id = $1',
+      [id]
+    );
+    assert.strictEqual(String(row.org_unit_id), String(grantedLine.id));
+    assert.strictEqual(String(row.parent_id), String(parent.payload.asset.id));
+    assert.strictEqual(row.is_active, true);
+    assert.strictEqual(row.asset_level, 'component');
+  });
+
+test('a duplicate code is refused with the create path\'s own message, and the row is unchanged',
+  async () => {
+    const first = await postAsset(admin.token, assetBody(grantedLine.id));
+    const second = await postAsset(admin.token, assetBody(grantedLine.id));
+
+    const { response, payload } = await patchAsset(
+      admin.token,
+      second.payload.asset.id,
+      correctionBody({ code: first.payload.asset.code })
+    );
+    assert.strictEqual(response.status, 409);
+    assert.strictEqual(payload.message, 'an Asset with this code already exists');
+
+    const { rows: [row] } = await pool.query('SELECT code FROM assets WHERE id = $1', [
+      second.payload.asset.id
+    ]);
+    assert.strictEqual(row.code, second.payload.asset.code);
+  });
+
+test('a missing or blank code/name and a bad assetType/criticality are clean 400s naming the field',
+  async () => {
+    const created = await postAsset(admin.token, assetBody(grantedLine.id));
+    const id = created.payload.asset.id;
+
+    for (const [overrides, expectedMessage] of [
+      [{ code: undefined }, 'code is required'],
+      [{ code: '   ' }, 'code is required'],
+      [{ name: undefined }, 'name is required'],
+      [{ name: '' }, 'name is required'],
+      [{ assetType: 'spaceship' }, 'assetType must be one of: machine, cell, tool, utility, vehicle, other'],
+      [{ criticality: 'urgent' }, 'criticality must be one of: low, medium, high, critical']
+    ]) {
+      const body = correctionBody(overrides);
+      // hasOwnProperty, not a truthiness/undefined check on overrides.code:
+      // an overrides object that never mentions 'code' at all (e.g. the
+      // assetType/criticality cases below) also reads overrides.code as
+      // undefined, which would wrongly strip a perfectly valid code out of
+      // every other case's body too.
+      if (Object.prototype.hasOwnProperty.call(overrides, 'code') && overrides.code === undefined) {
+        delete body.code;
+      }
+      if (Object.prototype.hasOwnProperty.call(overrides, 'name') && overrides.name === undefined) {
+        delete body.name;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      const { response, payload } = await patchAsset(admin.token, id, body);
+      assert.strictEqual(response.status, 400, JSON.stringify(overrides));
+      assert.strictEqual(payload.message, expectedMessage, JSON.stringify(overrides));
+    }
+  });
+
+test('a body mixing a correction with each of the three operations is a 400, and nothing is written',
+  async () => {
+    const created = await postAsset(admin.token, assetBody(grantedLine.id));
+    const id = created.payload.asset.id;
+
+    for (const mixedWith of [{ isActive: false }, { parentId: null }, { orgUnitId: otherLine.id }]) {
+      // eslint-disable-next-line no-await-in-loop
+      const { response, payload } = await patchAsset(admin.token, id, {
+        ...correctionBody(),
+        ...mixedWith
+      });
+      assert.strictEqual(response.status, 400, JSON.stringify(mixedWith));
+      assert.strictEqual(
+        payload.message,
+        'only one of isActive, parentId, orgUnitId, or a correction of code, name, assetType and criticality can be changed per request; send them as separate requests'
+      );
+    }
+
+    const { rows: [row] } = await pool.query(
+      'SELECT code, name, asset_type, criticality, is_active, parent_id, org_unit_id FROM assets WHERE id = $1',
+      [id]
+    );
+    assert.strictEqual(row.code, created.payload.asset.code);
+    assert.strictEqual(row.name, created.payload.asset.name);
+    assert.strictEqual(row.asset_type, created.payload.asset.assetType);
+    assert.strictEqual(row.criticality, created.payload.asset.criticality);
+    // Nothing was written by any of the three refused bodies above — not
+    // only the correction's own four columns, but the isActive/parentId/
+    // orgUnitId each body also carried.
+    assert.strictEqual(row.is_active, created.payload.asset.isActive);
+    assert.strictEqual(row.parent_id, created.payload.asset.parentId);
+    assert.strictEqual(String(row.org_unit_id), created.payload.asset.orgUnitId);
+  });
+
+test("a read-only Grant on the Asset's Org Unit is refused", async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const { response, payload } = await patchAsset(
+    readOnlyAccount.token,
+    created.payload.asset.id,
+    correctionBody()
+  );
+  assert.strictEqual(response.status, 403);
+  assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+});
+
+// Issue #173, user story 18: a write Grant reaching the Asset's own Org Unit
+// is the whole rule — writerAccount holds nothing anywhere else (its only
+// Grant is on grantedArea, an ancestor of grantedLine), and no second Org
+// Unit is involved the way a move or a re-parent would need one.
+test("a write Grant reaching only the Asset's own Org Unit succeeds, with no Grant needed anywhere else",
+  async () => {
+    const created = await postAsset(admin.token, assetBody(grantedLine.id));
+    const body = correctionBody();
+
+    const { response, payload } = await patchAsset(writerAccount.token, created.payload.asset.id, body);
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(payload.asset.code, body.code);
+  });
+
+test('an unknown or malformed Asset id is a clean 404', async () => {
+  const unknown = await patchAsset(admin.token, 999999999, correctionBody());
+  assert.strictEqual(unknown.response.status, 404);
+
+  const malformed = await patchAsset(admin.token, 'not-an-id', correctionBody());
+  assert.strictEqual(malformed.response.status, 404);
+});
+
+test('a retired Asset can still be corrected', async () => {
+  const created = await postAsset(admin.token, assetBody(grantedLine.id));
+  const id = created.payload.asset.id;
+  const retired = await patchAsset(admin.token, id, { isActive: false });
+  assert.strictEqual(retired.response.status, 200);
+
+  const body = correctionBody();
+  const { response, payload } = await patchAsset(admin.token, id, body);
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.asset.isActive, false);
+  assert.strictEqual(payload.asset.code, body.code);
+  assert.strictEqual(payload.asset.name, body.name);
+  assert.strictEqual(payload.asset.assetType, body.assetType);
+  assert.strictEqual(payload.asset.criticality, body.criticality);
+
+  const { rows: [row] } = await pool.query(
+    'SELECT code, name, asset_type, criticality, is_active FROM assets WHERE id = $1',
+    [id]
+  );
+  assert.strictEqual(row.code, body.code);
+  assert.strictEqual(row.name, body.name);
+  assert.strictEqual(row.asset_type, body.assetType);
+  assert.strictEqual(row.criticality, body.criticality);
+  assert.strictEqual(row.is_active, false);
+});
+
+// User story 16: nothing about history is rewritten by a correction. A Work
+// order, a Request and a Downtime event all denormalise `asset_code`/
+// `asset_name` through a live join on `asset_id` (assets.js's own
+// ASSET_COLUMNS-shaped comment says the same of org_unit_id), never a copy
+// taken at the moment each was raised — so a correction shows on every kind
+// of work already recorded against the machine, without touching any of
+// those rows, and each keeps pointing at the same Asset id throughout.
+test('Work orders, Requests and Downtime events raised before a correction read the corrected '
+  + 'code and name afterwards, still against the same Asset',
+  async () => {
+    const created = await postAsset(admin.token, assetBody(grantedLine.id));
+    const assetId = created.payload.asset.id;
+
+    const raisedWorkOrder = await fetch(`${base}/api/maintenance/work-orders`, {
+      method: 'POST',
+      headers: { ...admin.token, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        assetId,
+        summary: 'Raised before the machine was corrected',
+        workType: 'corrective',
+        priority: 3
+      })
+    });
+    assert.strictEqual(raisedWorkOrder.status, 201);
+    const { workOrder } = await raisedWorkOrder.json();
+    insertedWorkOrderIds.push(workOrder.id);
+
+    const raisedRequest = await fetch(`${base}/api/maintenance/requests`, {
+      method: 'POST',
+      headers: { ...admin.token, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        assetId,
+        summary: 'Raised before the machine was corrected'
+      })
+    });
+    assert.strictEqual(raisedRequest.status, 201);
+    const { request } = await raisedRequest.json();
+    insertedRequestIds.push(request.id);
+
+    const reportedBreakdown = await fetch(`${base}/api/maintenance/downtime`, {
+      method: 'POST',
+      headers: { ...admin.token, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        assetId,
+        description: 'Reported before the machine was corrected'
+      })
+    });
+    assert.strictEqual(reportedBreakdown.status, 201);
+    const { downtimeEvent, workOrder: breakdownWorkOrder } = await reportedBreakdown.json();
+    insertedDowntimeEventIds.push(downtimeEvent.id);
+    insertedWorkOrderIds.push(breakdownWorkOrder.id);
+
+    const body = correctionBody();
+    const corrected = await patchAsset(admin.token, assetId, body);
+    assert.strictEqual(corrected.response.status, 200);
+
+    const workOrderRead = await fetch(`${base}/api/maintenance/work-orders/${workOrder.id}`, {
+      headers: admin.token
+    });
+    assert.strictEqual(workOrderRead.status, 200);
+    const { workOrder: rereadWorkOrder } = await workOrderRead.json();
+    assert.strictEqual(rereadWorkOrder.assetId, assetId);
+    assert.strictEqual(rereadWorkOrder.assetCode, body.code);
+    assert.strictEqual(rereadWorkOrder.assetName, body.name);
+
+    // No GET /requests/:id exists — the triage queue is the door a real
+    // client reads an open Request through, the same one requests.test.js's
+    // own tests use.
+    const requestQueue = await fetch(`${base}/api/maintenance/sites/${site}/requests`, {
+      headers: admin.token
+    });
+    assert.strictEqual(requestQueue.status, 200);
+    const { requests: rereadRequests } = await requestQueue.json();
+    const rereadRequest = rereadRequests.find((candidate) => candidate.id === request.id);
+    assert.ok(rereadRequest, 'the Request raised before the correction is still in the triage queue');
+    assert.strictEqual(rereadRequest.assetId, assetId);
+    assert.strictEqual(rereadRequest.assetCode, body.code);
+    assert.strictEqual(rereadRequest.assetName, body.name);
+
+    const downtimeList = await fetch(`${base}/api/maintenance/sites/${site}/downtime`, {
+      headers: admin.token
+    });
+    assert.strictEqual(downtimeList.status, 200);
+    const { downtimeEvents: rereadDowntimeEvents } = await downtimeList.json();
+    const rereadDowntimeEvent = rereadDowntimeEvents.find((candidate) => candidate.id === downtimeEvent.id);
+    assert.ok(rereadDowntimeEvent, 'the Downtime event reported before the correction is still open');
+    assert.strictEqual(rereadDowntimeEvent.assetId, assetId);
+    assert.strictEqual(rereadDowntimeEvent.assetCode, body.code);
+    assert.strictEqual(rereadDowntimeEvent.assetName, body.name);
+  });
 
 // The reading this ticket asserts rather than codes: `work_orders`,
 // `maintenance_requests` and `downtime_events` denormalise `org_unit_id`

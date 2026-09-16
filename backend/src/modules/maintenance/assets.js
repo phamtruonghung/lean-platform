@@ -94,6 +94,20 @@ function requireNonEmptyString(field, value) {
   }
 }
 
+// The create route's own validation (issue #56), factored out so issue #173's
+// correction reuses it rather than restating it: a value the register would
+// refuse at creation can never be written by a correction either.
+function validateAssetDetails({ code, name, assetType, criticality }) {
+  requireNonEmptyString('code', code);
+  requireNonEmptyString('name', name);
+  if (!ASSET_TYPES.includes(assetType)) {
+    throw httpError(400, `assetType must be one of: ${ASSET_TYPES.join(', ')}`);
+  }
+  if (!CRITICALITIES.includes(criticality)) {
+    throw httpError(400, `criticality must be one of: ${CRITICALITIES.join(', ')}`);
+  }
+}
+
 // `assets_code_unique` is UNIQUE (code) — GLOBAL, not per-Site, unlike
 // org_units' own (site_id, code). The message says so rather than implying a
 // Site-local clash the caller could resolve by moving the machine.
@@ -152,14 +166,7 @@ async function findAsset(id) {
 }
 
 async function createAsset({ orgUnitId, code, name, assetType, criticality }, accountId) {
-  requireNonEmptyString('code', code);
-  requireNonEmptyString('name', name);
-  if (!ASSET_TYPES.includes(assetType)) {
-    throw httpError(400, `assetType must be one of: ${ASSET_TYPES.join(', ')}`);
-  }
-  if (!CRITICALITIES.includes(criticality)) {
-    throw httpError(400, `criticality must be one of: ${CRITICALITIES.join(', ')}`);
-  }
+  validateAssetDetails({ code, name, assetType, criticality });
 
   try {
     return await withActor(accountId, async (client) => {
@@ -410,6 +417,43 @@ async function setAssetOrgUnit(id, orgUnitId, accountId) {
   });
 }
 
+// Corrects an Asset's own four fields (issue #173) — a full replacement of
+// code, name, assetType and criticality, validated by the exact same
+// validateAssetDetails createAsset above calls, so a value the register
+// would refuse at creation cannot be written by a correction. This is a
+// single UPDATE re-read through ASSET_COLUMNS, unlike setAssetActive and
+// setAssetParent above: it takes no advisory lock (ASSET_REPARENT_LOCK_KEY
+// protects "no active Asset has a retired parent, and no retired Asset has
+// active parts" — a correction touches neither parent_id nor is_active) and
+// no `FOR UPDATE` (there is no cross-row rule to check here, unlike the Site
+// correction's shift-calendar refusal, ADR-0025). A retired Asset can still
+// be corrected — nothing here reads or depends on is_active.
+async function correctAsset(id, { code, name, assetType, criticality }, accountId) {
+  const asset = await findAsset(id);
+  if (!asset) throw notFound('Asset');
+
+  validateAssetDetails({ code, name, assetType, criticality });
+
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [row] } = await client.query(
+        `WITH updated AS (
+           UPDATE assets SET code = $1, name = $2, asset_type = $3, criticality = $4
+            WHERE id = $5
+           RETURNING *
+         )
+         SELECT ${ASSET_COLUMNS}
+           FROM updated a
+           JOIN org_units ou ON ou.id = a.org_unit_id`,
+        [code.trim(), name.trim(), assetType, criticality, asset.id]
+      );
+      return toAsset(row);
+    });
+  } catch (error) {
+    throw mapAssetWriteError(error);
+  }
+}
+
 module.exports = {
   ASSET_TYPES,
   CRITICALITIES,
@@ -418,5 +462,6 @@ module.exports = {
   createAsset,
   setAssetActive,
   setAssetParent,
-  setAssetOrgUnit
+  setAssetOrgUnit,
+  correctAsset
 };

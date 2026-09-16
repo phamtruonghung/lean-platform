@@ -13,6 +13,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lean_platform/maintenance/asset.dart';
 import 'package:lean_platform/maintenance/asset_form_dialog.dart';
 import 'package:lean_platform/maintenance/asset_move_dialog.dart';
 import 'package:lean_platform/maintenance/assets_bloc.dart';
@@ -193,6 +194,173 @@ void main() {
     expect(find.byType(AssetFormDialog), findsOneWidget);
     expect(find.byKey(AssetFormDialog.failureKey), findsOneWidget);
     expect(find.text('an Asset with this code already exists'), findsOneWidget);
+  });
+
+  // -------------------------------------------------------------------------
+  // Correcting an Asset's own details (issue #173): the four fields the
+  // register asks for at creation, and nothing else — the placement, the
+  // nesting and the retirement all have their own actions.
+  // -------------------------------------------------------------------------
+
+  testWidgets("the row action opens the form pre-filled with that row's own four values",
+      (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [
+          assetJson('7', 'PRESS-1', 'Press 1', assetType: 'cell', criticality: 'high'),
+        ],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.correctKey('7')));
+
+    expect(
+      find.descendant(of: find.byType(AssetFormDialog), matching: find.text('Correct details')),
+      findsOneWidget,
+    );
+    expect(tester.widget<TextField>(find.byKey(AssetFormDialog.codeKey)).controller?.text, 'PRESS-1');
+    expect(tester.widget<TextField>(find.byKey(AssetFormDialog.nameKey)).controller?.text, 'Press 1');
+    expect(
+      tester.widget<DropdownButtonFormField<AssetType>>(find.byKey(AssetFormDialog.typeKey)).initialValue,
+      AssetType.cell,
+    );
+    expect(
+      tester
+          .widget<DropdownButtonFormField<Criticality>>(find.byKey(AssetFormDialog.criticalityKey))
+          .initialValue,
+      Criticality.high,
+    );
+    // No Org Unit chooser — placement is its own action.
+    expect(find.byType(OrgUnitChooser), findsNothing);
+    expect(find.text('Where this Asset sits is changed with its own "Change Org Unit…" action.'),
+        findsOneWidget);
+  });
+
+  testWidgets('saving sends exactly one PATCH carrying exactly the four fields, and the row '
+      "re-renders corrected, staying in the register's own order", (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [
+          // Both at the same Org Unit, so the register's own order (Org
+          // Unit name, then code) turns on the code alone — the column a
+          // correction changes.
+          assetJson('7', 'AAA-1', 'Press 1', orgUnitId: '10', orgUnitName: 'Assembly'),
+          assetJson('8', 'BBB-2', 'Infeed conveyor', orgUnitId: '10', orgUnitName: 'Assembly'),
+        ],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    expect(
+      tester.getTopLeft(find.byKey(AssetsScreen.rowKey('7'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(AssetsScreen.rowKey('8'))).dy),
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.correctKey('7')));
+    await tester.enterText(find.byKey(AssetFormDialog.codeKey), 'ZZZ-9');
+    await tester.enterText(find.byKey(AssetFormDialog.nameKey), 'Renamed Press');
+    await tapIn(tester, find.byKey(AssetFormDialog.typeKey));
+    await tapIn(tester, find.text('Utility').last);
+    await tapIn(tester, find.byKey(AssetFormDialog.criticalityKey));
+    await tapIn(tester, find.text('Critical').last);
+    await tapIn(tester, find.byKey(AssetFormDialog.submitKey));
+
+    expect(wire.assetPatches.length, 1);
+    expect(wire.assetPatches.single.$1, '7');
+    expect(wire.assetPatches.single.$2, {
+      'code': 'ZZZ-9',
+      'name': 'Renamed Press',
+      'assetType': 'utility',
+      'criticality': 'critical',
+    });
+
+    expect(find.byType(AssetFormDialog), findsNothing);
+    expect(find.text('Renamed Press'), findsOneWidget);
+    expect(find.text('ZZZ-9 · Utility'), findsOneWidget);
+    // Both still at 'Assembly' (that column is untouched), ordered by code:
+    // BBB-2 now sorts before ZZZ-9.
+    expect(
+      tester.getTopLeft(find.byKey(AssetsScreen.rowKey('8'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(AssetsScreen.rowKey('7'))).dy),
+    );
+    // Patched from the response, never re-read.
+    expect(wire.requests.where((r) => r == 'GET /api/maintenance/sites/1/assets').length, 1);
+  });
+
+  testWidgets('a 409 refusal is reported inside the form, which is still open, and the row is '
+      'unchanged', (tester) async {
+    final wire = wireWith(
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1')],
+      },
+      patchAssetStatus: 409,
+      patchAssetMessage: 'an Asset with this code already exists',
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.correctKey('7')));
+    await tester.enterText(find.byKey(AssetFormDialog.codeKey), 'TAKEN');
+    await tapIn(tester, find.byKey(AssetFormDialog.submitKey));
+
+    expect(find.byType(AssetFormDialog), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(AssetFormDialog.failureKey),
+        matching: find.text('an Asset with this code already exists'),
+      ),
+      findsOneWidget,
+    );
+    // The field the caller typed still carries what they typed — a refusal
+    // must not clear the one field that caused it, forcing a retype.
+    expect(tester.widget<TextField>(find.byKey(AssetFormDialog.codeKey)).controller?.text, 'TAKEN');
+    // The register row behind the still-open dialog was never touched: it
+    // reads the ORIGINAL code (rendered as 'PRESS-1 · Machine', the row's
+    // own combined code-and-kind line), not the one the refused save tried
+    // to send. (The typed 'TAKEN' is also on screen, inside the dialog's own
+    // field — that assertion is the one just above, on the controller
+    // itself.)
+    expect(find.text('PRESS-1 · Machine'), findsOneWidget);
+
+    // Closing the dialog shows the row exactly as it was.
+    await tapIn(tester, find.byKey(AssetFormDialog.cancelKey));
+    expect(find.text('Press 1'), findsOneWidget);
+    expect(find.text('PRESS-1 · Machine'), findsOneWidget);
+  });
+
+  testWidgets('a caller holding no write Grant reaching the Org Unit is offered no such action',
+      (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1', orgUnitId: '10')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    expect(find.text('Press 1'), findsOneWidget);
+    expect(find.byKey(AssetsScreen.correctKey('7')), findsNothing);
   });
 
   testWidgets('an operator is offered neither the destination nor the Screen', (tester) async {
