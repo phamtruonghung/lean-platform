@@ -32,17 +32,28 @@
  *
  * No migration and no schema change accompanies this file.
  *
- * THE KPI REGISTRY
- * ----------------
+ * THE KPI REGISTRY, AND WHERE IT LIVES NOW
+ * ----------------------------------------
  * `kpi_definitions` names the view a derived KPI comes from (`source_view`)
  * but not the column that holds its value, and the views differ in shape: one
  * is a per-asset average, one a per-org-unit ratio, one a snapshot with no
- * date at all. A small, explicit registry below is therefore the honest
- * mapping, not a general SQL-string engine: each seeded maintenance KPI code
- * is tied to { view, valueColumn | ratio, dateColumn, orgUnitColumn }. A
- * definition whose `source_view` is not reachable through this registry — the
- * whole Safety, Quality and People catalogue, whose Modules do not record work
- * yet — reports `no_data` rather than inventing an answer.
+ * date at all. A small, explicit mapping is therefore the honest reading, not
+ * a general SQL-string engine: each KPI code is tied to { view, valueColumn |
+ * ratio, dateColumn, orgUnitColumn }. A definition whose `source_view` is in
+ * no Module's contribution — the whole Safety, Quality and People catalogue,
+ * whose Modules do not record work yet — reports `no_data` rather than
+ * inventing an answer.
+ *
+ * That mapping is no longer this file's to hold (issue #202). Each Module's
+ * entry point contributes its own entries — this Module's eight are in
+ * `maintenance/kpi-registry.js`, exported as `maintenance.kpiRegistry` — and
+ * the registry is assembled where the application composes its Modules
+ * (`src/index.js`), which hands the result to the one route that needs it:
+ * `maintenance.createBoardRouter(kpiRegistry)`. This file receives it as an
+ * argument and knows no KPI by name, so a Module can put a number on the board
+ * without any file here changing, and without any Module requiring another
+ * (ADR-0006). An empty or missing registry is not an error: it is exactly the
+ * "no Module reports this" state, and every KPI answers `no_data`.
  *
  * THE COST WARNING, REPEATED WHERE IT COULD BE MISSED
  * --------------------------------------------------
@@ -109,65 +120,11 @@ const DEFINITIONS_SQL = `
    ORDER BY p.sort_order, kd.sort_order, kd.code
 `;
 
-// code -> how to read it out of its view. `ratio` entries recompute the ratio
-// from its numerator and denominator rather than averaging a pre-computed
-// percentage, so a week or a subtree is weighted by the underlying counts, not
-// by how many rows happened to fall in each bucket.
-const KPI_REGISTRY = {
-  MNT_PM_COMPLIANCE: {
-    view: 'v_pm_compliance',
-    dateColumn: 'period_start',
-    orgUnitColumn: 'org_unit_id',
-    ratio: { numerator: 'pm_on_time', denominator: 'pm_due', scale: 100 }
-  },
-  MNT_SCHEDULE_COMPLIANCE: {
-    view: 'v_maintenance_schedule_compliance',
-    dateColumn: 'production_date',
-    orgUnitColumn: 'org_unit_id',
-    ratio: { numerator: 'started_in_window', denominator: 'scheduled_jobs', scale: 100 }
-  },
-  MNT_MTBF: {
-    view: 'v_downtime_mtbf_mttr',
-    valueColumn: 'mtbf_hours',
-    dateColumn: 'production_date',
-    orgUnitColumn: 'org_unit_id'
-  },
-  MNT_MTTR: {
-    view: 'v_downtime_mtbf_mttr',
-    valueColumn: 'mttr_hours',
-    dateColumn: 'production_date',
-    orgUnitColumn: 'org_unit_id'
-  },
-  MNT_PLANNED_RATIO: {
-    view: 'v_maintenance_planned_ratio',
-    dateColumn: 'production_date',
-    orgUnitColumn: 'org_unit_id',
-    ratio: { numerator: 'planned_hours', denominator: 'total_hours', scale: 100 }
-  },
-  // A snapshot, not a period measure: v_maintenance_backlog has no date
-  // column at all, so it is summed over the subtree with no period filter.
-  // That is the honest reading — there is no "backlog for last Tuesday".
-  MNT_BACKLOG: {
-    view: 'v_maintenance_backlog',
-    valueColumn: 'backlog_hours',
-    dateColumn: null,
-    orgUnitColumn: 'org_unit_id'
-  },
-  // See THE COST WARNING above: total_cost is a SLICE of COST_LABOUR, never an
-  // addition to it. Only parts_cost is new money against the plant.
-  MNT_COST: {
-    view: 'v_maintenance_cost',
-    valueColumn: 'total_cost',
-    dateColumn: 'production_date',
-    orgUnitColumn: 'org_unit_id'
-  },
-  MNT_PARTS_COST: {
-    view: 'v_maintenance_cost',
-    valueColumn: 'parts_cost',
-    dateColumn: 'production_date',
-    orgUnitColumn: 'org_unit_id'
-  }
-};
+// The registry this board computes from arrives as an argument — see THE KPI
+// REGISTRY, AND WHERE IT LIVES NOW above and kpi-registry.js beside this file.
+// The constant that used to sit here (issue #76's eight hard-wired maintenance
+// codes) is Maintenance's own contribution now, exported through this Module's
+// entry point and assembled with every other Module's at src/index.js.
 
 // Mirrors kpi_actuals_evaluate() in the baseline, exactly, so a read board's
 // status agrees with the status a materialised row would carry. Computed on
@@ -298,10 +255,11 @@ async function resolveTargets(boardPath, periodType, periodStart) {
 }
 
 // One registry KPI over the rows whose Org Unit is in the subtree and whose
-// date falls in the period, aggregated the way the definition asks. A view
-// outside the registry, or no rows at all, returns null — never 0.
-async function computeRegistryKpi(definition, siteId, orgUnit, period) {
-  const entry = KPI_REGISTRY[definition.kpi_code];
+// date falls in the period, aggregated the way the definition asks. A code no
+// Module's registry contribution names — or no rows at all — returns null,
+// never 0.
+async function computeRegistryKpi(definition, siteId, orgUnit, period, kpiRegistry) {
+  const entry = kpiRegistry[definition.kpi_code];
   if (!entry || definition.calculation_type !== 'derived') return null;
 
   const params = [siteId];
@@ -355,7 +313,16 @@ async function computeRegistryKpi(definition, siteId, orgUnit, period) {
 // exist and is unaware of who is calling — a read carries no Grant filter
 // (ADR-0009), because Org Unit scope decides where an Account may act, not
 // what it may know about.
-async function getBoard(site, { orgUnit = null, periodType, date = null, shiftInstanceId = null } = {}) {
+//
+// `kpiRegistry` is the assembled contribution of every Module (issue #202):
+// this function computes the codes it names and nothing else, so a KPI no
+// Module claims keeps answering `no_data`. It defaults to an empty registry
+// rather than to Maintenance's own eight on purpose — the board belongs to the
+// Platform, and defaulting would quietly put this Module back in charge of it.
+async function getBoard(
+  site,
+  { orgUnit = null, periodType, date = null, shiftInstanceId = null, kpiRegistry = {} } = {}
+) {
   const period = await resolvePeriod(site, { periodType, date, shiftInstanceId });
   const { rows } = await getPool().query(DEFINITIONS_SQL);
 
@@ -381,7 +348,7 @@ async function getBoard(site, { orgUnit = null, periodType, date = null, shiftIn
 
     if (row.kpi_definition_id === null) continue;
 
-    const value = await computeRegistryKpi(row, site.id, orgUnit, period);
+    const value = await computeRegistryKpi(row, site.id, orgUnit, period, kpiRegistry);
     const target = targets.get(String(row.kpi_definition_id)) ?? null;
 
     pillar.kpis.push({
@@ -408,7 +375,6 @@ async function getBoard(site, { orgUnit = null, periodType, date = null, shiftIn
 }
 
 module.exports = {
-  KPI_REGISTRY,
   getBoard,
   evaluateStatus
 };

@@ -36,6 +36,28 @@ app.use(express.json({ limit: '100kb' }));
 const healthRoutes = health.mount(app);
 
 // ---------------------------------------------------------------------------
+// The tier board's KPI registry (issue #202)
+// ---------------------------------------------------------------------------
+// Assembled here, where the application composes its Modules, so that no
+// Module has to know about another to put a number on the board. Each Module's
+// entry point contributes its own entries — a KPI code mapped to how that
+// number is read out of the Module's own records (the entry shape is in
+// maintenance/kpi-registry.js's header) — and this is the one place they meet.
+// The board's own code knows no KPI by name: it computes whatever this registry
+// names and reports `no_data` for everything else, which is what the whole
+// Safety, Quality and People catalogue does today, its Modules not recording
+// work yet.
+//
+// Adding a Module's KPIs is one spread below and nothing else: no file in
+// another Module changes, and no Module requires another (ADR-0006). A KPI
+// code belongs to exactly one Module; the spread order is the tie-break if two
+// ever collide, and a collision is a mistake in the contributions rather than
+// something this file can resolve meaningfully.
+const kpiRegistry = {
+  ...maintenance.kpiRegistry
+};
+
+// ---------------------------------------------------------------------------
 // API
 // ---------------------------------------------------------------------------
 // The frontend and the API are served from one hostname by the reverse proxy,
@@ -55,6 +77,11 @@ app.use('/api/people', people.router);
 // so the mount is written here rather than hidden inside maintenance's router.
 app.use('/api/maintenance', people.floorRouter);
 app.use('/api/maintenance', maintenance.router);
+// Mounted beside the Module's other routes, but created with the assembled
+// registry above: the board route is the one thing that has to be handed it,
+// which is why it is a factory rather than a file inside `maintenance.router`
+// (see maintenance/index.js and board-routes.js). Its address is unchanged.
+app.use('/api/maintenance', maintenance.createBoardRouter(kpiRegistry));
 app.use('/api/actions', actions.router);
 
 // An unknown path under /api answers in JSON. Express's default 404 is an HTML
