@@ -19,6 +19,7 @@ import '../people/skill.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_search_field.dart';
 import 'job_plan.dart';
 import 'job_plans_bloc.dart';
 import 'work_order.dart' show WorkType;
@@ -43,7 +44,23 @@ class JobPlanFormDialog extends StatefulWidget {
   static ValueKey<String> taskStepKey(int index) => ValueKey<String>('job-plan-task-step-$index');
   static ValueKey<String> taskInstructionKey(int index) =>
       ValueKey<String>('job-plan-task-instruction-$index');
-  static ValueKey<String> taskSkillKey(int index) => ValueKey<String>('job-plan-task-skill-$index');
+  /// The step's own Skill picker field name — the one string
+  /// [taskSkillKey] and [taskSkillSuggestionKey] are both derived from, so
+  /// neither can drift from what the field itself is built with, and two
+  /// steps never share a set of keys (AGENTS.md §7).
+  static String _taskSkillFieldName(int index) => 'job-plan-task-skill-$index';
+
+  /// The step's Skill picker's own `Key` (AGENTS.md §7). It was a
+  /// `DropdownButtonFormField` until issue #190: the Skills catalogue is the
+  /// whole plant's, so the step's required Skill is now found by typing rather
+  /// than scrolled to (ADR-0023).
+  static ValueKey<String> taskSkillKey(int index) =>
+      AppSearchField.fieldKey(_taskSkillFieldName(index));
+
+  /// One Skill suggestion row's own `Key`, keyed by the Skill's id
+  /// (AGENTS.md §7).
+  static ValueKey<String> taskSkillSuggestionKey(int index, String skillId) =>
+      AppSearchField.suggestionKey(_taskSkillFieldName(index), skillId);
   static ValueKey<String> taskEstimatedHoursKey(int index) =>
       ValueKey<String>('job-plan-task-hours-$index');
   static ValueKey<String> removeTaskKey(int index) => ValueKey<String>('job-plan-task-remove-$index');
@@ -425,6 +442,16 @@ class _TaskFields extends StatelessWidget {
   final ValueChanged<String?> onSkillChanged;
   final VoidCallback onRemove;
 
+  /// The Skill this step's own id currently names, or null — the step keeps
+  /// holding the `String?` id the draft already reads, while the picker is
+  /// controlled by the record itself, so this is how the two agree.
+  Skill? get _selectedSkill {
+    for (final skill in skills) {
+      if (skill.id == task.skillId) return skill;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -473,21 +500,38 @@ class _TaskFields extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: JobPlanFormDialog.taskSkillKey(index),
-                  initialValue: task.skillId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Required skill (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final skill in skills)
-                      DropdownMenuItem<String>(value: skill.id, child: Text(skill.name)),
-                  ],
+                child: AppSearchField<Skill>(
+                  name: JobPlanFormDialog._taskSkillFieldName(index),
+                  label: 'Required skill (optional)',
+                  value: _selectedSkill,
                   // Disabled until the catalogue answers — the control is a
                   // known set, so it never falls back to free text (ADR-0023).
-                  onChanged: enabled && skillsReady ? onSkillChanged : null,
+                  enabled: enabled && skillsReady,
+                  // A pick sets this step's own id; typing over the chosen
+                  // Skill retires it, so a step cannot require a Skill its own
+                  // field has stopped showing (ADR-0023 point 4).
+                  onChanged: (skill) => onSkillChanged(skill?.id),
+                  onSelected: (skill) => onSkillChanged(skill.id),
+                  // A dumb in-memory filter over the catalogue `initState`
+                  // already read — no HTTP request of its own, so the field's
+                  // per-term debounce never reaches the wire (ADR-0023),
+                  // matching the Skill's own name as issue #190's rule says.
+                  fetchSuggestions: (term) async {
+                    final lower = term.toLowerCase();
+                    return [
+                      for (final skill in skills)
+                        if (skill.name.toLowerCase().contains(lower)) skill,
+                    ];
+                  },
+                  suggestionBuilder: (context, skill) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Spacing.md,
+                      vertical: Spacing.sm,
+                    ),
+                    child: Text(skill.name),
+                  ),
+                  idOf: (skill) => skill.id,
+                  displayStringFor: (skill) => skill.name,
                 ),
               ),
               const SizedBox(width: Spacing.sm),

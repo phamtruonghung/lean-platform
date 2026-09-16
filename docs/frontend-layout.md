@@ -50,6 +50,17 @@ answer, because it gives each row the card's full width.
 A set already read in full is filtered in the client. A set the server bounds is
 narrowed by the server, or the client says it is bounded (ADR-0026).
 
+**A picker reaches for `AppSearchField` or for a dropdown by the size of the set,
+not by taste** (issue #190, #191's counterpart). A set a person cannot scan —
+every Asset at a Site, the whole parts catalogue, every Employee in the plant,
+the Skills or Job plans catalogue, a Site's Stores — is a search box whose
+`fetchSuggestions` filters the list the caller already read, in memory, with no
+`search` parameter added to any endpoint. A fixed, enumerated set of under a
+dozen values — a work type, a priority, a meter type, a criticality, an urgency,
+a unit of measure, an interval basis, the source of a parts booking, a
+proficiency level — stays a `DropdownButtonFormField`, because a search box over
+eight rows is a worse control than a menu.
+
 **The trigger: a list that can outgrow a screen gets a filter** (#191). A register
 whose rows a reader has to find by name carries an `AppFilterField` above its
 rows — the sixteen Screens that sweep covered are the Work order register, Assets,
@@ -95,11 +106,15 @@ a control that narrows a list a reader is working through.
 | card alignment | `test/layout_rules_test.dart` | a `Card`'s direct child is a `Column` that does not state `crossAxisAlignment` |
 | one left edge | `test/page_alignment_test.dart` | a page's title, description, first card or first row's text is not where the rule says |
 | Screen coverage | `test/page_alignment_test.dart` | a new `*_screen.dart` is neither audited in that file's table nor excluded there with a reason |
+| a form picker finds a record | `test/form_pickers_test.dart` | one of the eleven pickers is no longer an `AppSearchField`, issues a request as a term is typed, stops showing its label, its record, the no-match state, or stops gating submission on a pick |
 
-Both are ordinary `flutter test` files, so `npm`-free CI runs them with everything
-else. They are *source* tests rather than widget tests — the exception
-`theme_skeleton_test.dart` already is, and for the same reason: what is asserted is
-a property of the code, not of one rendered tree.
+**The layout rows are ordinary `flutter test` files**, so `npm`-free CI runs them
+with everything else. They are *source* tests rather than widget tests — the
+exception `theme_skeleton_test.dart` already is, and for the same reason: what is
+asserted is a property of the code, not of one rendered tree. The picker row is
+the opposite case and is a **widget** test: what it asserts — a term typed, a
+record picked, a body posted, a gate still closed — is behaviour, and behaviour
+is only visible in a rendered tree (AGENTS.md §5's frontend seam).
 
 ## What is deliberately not a rule
 

@@ -23,6 +23,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
+import '../widgets/app_search_field.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
 
@@ -31,7 +32,21 @@ class LabourBookingDialog extends StatefulWidget {
 
   final String workOrderId;
 
-  static const ValueKey<String> employeeKey = ValueKey<String>('labour-booking-employee');
+  /// The Employee picker's own field name — the one string [employeeKey] and
+  /// [employeeSuggestionKey] are both derived from, so neither can drift from
+  /// what the field itself is built with (AGENTS.md §7).
+  static const String _employeeFieldName = 'labour-booking-employee';
+
+  /// The Employee picker's own `Key` (AGENTS.md §7). It was a
+  /// `DropdownButtonFormField` until issue #190: the set behind it is every
+  /// Employee in the plant, so a person is now found by typing rather than
+  /// hunted for in a menu (ADR-0023).
+  static ValueKey<String> get employeeKey => AppSearchField.fieldKey(_employeeFieldName);
+
+  /// One Employee suggestion row's own `Key`, keyed by the Employee's id
+  /// (AGENTS.md §7).
+  static ValueKey<String> employeeSuggestionKey(String employeeId) =>
+      AppSearchField.suggestionKey(_employeeFieldName, employeeId);
   static const ValueKey<String> employeesFailedKey = ValueKey<String>('labour-booking-employees-failed');
   static const ValueKey<String> activityKey = ValueKey<String>('labour-booking-activity');
   static const ValueKey<String> overtimeKey = ValueKey<String>('labour-booking-overtime');
@@ -274,6 +289,16 @@ class _EmployeeField extends StatelessWidget {
   final VoidCallback onRetry;
   final ValueChanged<String?> onChanged;
 
+  /// The Employee the dialog's own id currently names, or null — the dialog
+  /// keeps holding the `String?` id its submit body already reads, while the
+  /// picker is controlled by the record itself, so this is how the two agree.
+  Employee? get _selected {
+    for (final employee in employees) {
+      if (employee.id == selectedId) return employee;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -298,19 +323,36 @@ class _EmployeeField extends StatelessWidget {
           ],
         );
       case _EmployeesStatus.ready:
-        return DropdownButtonFormField<String>(
-          key: LabourBookingDialog.employeeKey,
-          initialValue: selectedId,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Employee', border: OutlineInputBorder()),
-          items: [
-            for (final employee in employees)
-              DropdownMenuItem<String>(
-                value: employee.id,
-                child: Text(employee.displayName, overflow: TextOverflow.ellipsis),
-              ),
-          ],
-          onChanged: enabled ? onChanged : null,
+        return AppSearchField<Employee>(
+          name: LabourBookingDialog._employeeFieldName,
+          label: 'Employee',
+          value: _selected,
+          enabled: enabled,
+          // A pick sets the dialog's own id; typing over the chosen person
+          // retires it, so a booking cannot record time against somebody its
+          // own field has stopped showing (ADR-0023 point 4).
+          onChanged: (employee) => onChanged(employee?.id),
+          onSelected: (employee) => onChanged(employee.id),
+          // A dumb in-memory filter over the directory `initState` already
+          // read — no HTTP request of its own, so the field's per-term
+          // debounce never reaches the wire (ADR-0023). Matched on the two
+          // fields that identify an Employee: their name and their Employee
+          // number.
+          fetchSuggestions: (term) async {
+            final lower = term.toLowerCase();
+            return [
+              for (final employee in employees)
+                if (employee.displayName.toLowerCase().contains(lower) ||
+                    employee.employeeNo.toLowerCase().contains(lower))
+                  employee,
+            ];
+          },
+          suggestionBuilder: (context, employee) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+            child: Text(employee.displayName, overflow: TextOverflow.ellipsis),
+          ),
+          idOf: (employee) => employee.id,
+          displayStringFor: (employee) => employee.displayName,
         );
     }
   }

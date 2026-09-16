@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_search_field.dart';
 import 'maintenance_api.dart';
 import 'part.dart';
 import 'store.dart';
@@ -34,8 +35,32 @@ class PartBookingDialog extends StatefulWidget {
   static const ValueKey<String> sourcedKey = ValueKey<String>('part-booking-sourced');
   static const ValueKey<String> quantityKey = ValueKey<String>('part-booking-quantity');
   static const ValueKey<String> unitCostKey = ValueKey<String>('part-booking-unit-cost');
-  static const ValueKey<String> partKey = ValueKey<String>('part-booking-part');
-  static const ValueKey<String> storeKey = ValueKey<String>('part-booking-store');
+  /// The Part picker's own field name — the one string [partKey] and
+  /// [partSuggestionKey] are both derived from, so neither can drift from
+  /// what the field itself is built with (AGENTS.md §7).
+  static const String _partFieldName = 'part-booking-part';
+
+  /// The Part picker's own `Key` (AGENTS.md §7). It was a
+  /// `DropdownButtonFormField` until issue #190: the parts catalogue is the
+  /// whole plant's, so a Part is now found by typing rather than scrolled to
+  /// (ADR-0023).
+  static ValueKey<String> get partKey => AppSearchField.fieldKey(_partFieldName);
+
+  /// One Part suggestion row's own `Key`, keyed by the Part's id
+  /// (AGENTS.md §7).
+  static ValueKey<String> partSuggestionKey(String partId) =>
+      AppSearchField.suggestionKey(_partFieldName, partId);
+
+  /// The Store picker's own field name — the one string [storeKey] and
+  /// [storeSuggestionKey] are both derived from (AGENTS.md §7).
+  static const String _storeFieldName = 'part-booking-store';
+
+  static ValueKey<String> get storeKey => AppSearchField.fieldKey(_storeFieldName);
+
+  /// One Store suggestion row's own `Key`, keyed by the Store's id
+  /// (AGENTS.md §7).
+  static ValueKey<String> storeSuggestionKey(String storeId) =>
+      AppSearchField.suggestionKey(_storeFieldName, storeId);
   static const ValueKey<String> partNoKey = ValueKey<String>('part-booking-part-no');
   static const ValueKey<String> descriptionKey = ValueKey<String>('part-booking-description');
   static const ValueKey<String> uomKey = ValueKey<String>('part-booking-uom');
@@ -116,6 +141,24 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
         _optionsFailure = error.message;
       });
     }
+  }
+
+  /// The Part the dialog's own id currently names, or null — the picker is
+  /// controlled by the record itself, while the submit body keeps reading
+  /// [_partId]; the same agreement [_selectedStore] keeps below.
+  Part? get _selectedPart {
+    for (final part in _parts) {
+      if (part.id == _partId) return part;
+    }
+    return null;
+  }
+
+  /// The Store the dialog's own id currently names, or null.
+  Store? get _selectedStore {
+    for (final store in _stores) {
+      if (store.id == _storeId) return store;
+    }
+    return null;
   }
 
   num? get _parsedQuantity {
@@ -227,34 +270,66 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
                     ],
                   )
                 else if (_sourced == PartSource.stores.wire) ...[
-                  DropdownButtonFormField<String>(
-                    key: PartBookingDialog.partKey,
-                    initialValue: _partId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Part', border: OutlineInputBorder()),
-                    items: [
-                      for (final part in _parts)
-                        DropdownMenuItem<String>(
-                          value: part.id,
-                          child: Text(part.label, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _partId = value),
+                  AppSearchField<Part>(
+                    name: PartBookingDialog._partFieldName,
+                    label: 'Part',
+                    value: _selectedPart,
+                    enabled: !_awaiting,
+                    // A pick sets the dialog's own id; typing over the chosen
+                    // Part retires it, so this booking cannot name a Part its
+                    // own field has stopped showing (ADR-0023 point 4).
+                    onChanged: (part) => setState(() => _partId = part?.id),
+                    onSelected: (part) => setState(() => _partId = part.id),
+                    // A dumb in-memory filter over the catalogue `initState`
+                    // already read — no HTTP request of its own (ADR-0023).
+                    // Matched on the two fields that identify a Part: its
+                    // part number and its description.
+                    fetchSuggestions: (term) async {
+                      final lower = term.toLowerCase();
+                      return [
+                        for (final part in _parts)
+                          if (part.partNo.toLowerCase().contains(lower) ||
+                              part.description.toLowerCase().contains(lower))
+                            part,
+                      ];
+                    },
+                    suggestionBuilder: (context, part) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Spacing.md,
+                        vertical: Spacing.sm,
+                      ),
+                      child: Text(part.label, overflow: TextOverflow.ellipsis),
+                    ),
+                    idOf: (part) => part.id,
+                    displayStringFor: (part) => part.label,
                   ),
                   const SizedBox(height: Spacing.md),
-                  DropdownButtonFormField<String>(
-                    key: PartBookingDialog.storeKey,
-                    initialValue: _storeId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Store', border: OutlineInputBorder()),
-                    items: [
-                      for (final store in _stores)
-                        DropdownMenuItem<String>(
-                          value: store.id,
-                          child: Text(store.label, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _storeId = value),
+                  AppSearchField<Store>(
+                    name: PartBookingDialog._storeFieldName,
+                    label: 'Store',
+                    value: _selectedStore,
+                    enabled: !_awaiting,
+                    onChanged: (store) => setState(() => _storeId = store?.id),
+                    onSelected: (store) => setState(() => _storeId = store.id),
+                    // A dumb in-memory filter over the Site's stores
+                    // `initState` already read, matching the Store's own name
+                    // (ADR-0023, issue #190's rule).
+                    fetchSuggestions: (term) async {
+                      final lower = term.toLowerCase();
+                      return [
+                        for (final store in _stores)
+                          if (store.name.toLowerCase().contains(lower)) store,
+                      ];
+                    },
+                    suggestionBuilder: (context, store) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Spacing.md,
+                        vertical: Spacing.sm,
+                      ),
+                      child: Text(store.label, overflow: TextOverflow.ellipsis),
+                    ),
+                    idOf: (store) => store.id,
+                    displayStringFor: (store) => store.label,
                   ),
                 ] else ...[
                   TextField(

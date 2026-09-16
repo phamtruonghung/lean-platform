@@ -27,6 +27,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_search_field.dart';
 import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
@@ -47,7 +48,21 @@ class EmployeeSkillFormDialog extends StatefulWidget {
   /// against a skill newly chosen from [skills].
   final HeldSkill? existing;
 
-  static const ValueKey<String> skillKey = ValueKey<String>('employee-skill-form-skill');
+  /// The Skill picker's own field name — the one string [skillKey] and
+  /// [skillSuggestionKey] are both derived from, so neither can drift from
+  /// what the field itself is built with (AGENTS.md §7).
+  static const String _skillFieldName = 'employee-skill-form-skill';
+
+  /// The Skill picker's own `Key` (AGENTS.md §7). It was a
+  /// `DropdownButtonFormField` until issue #190: the Skills catalogue is the
+  /// whole plant's, so the Skill is now found by typing rather than scrolled
+  /// to (ADR-0023).
+  static ValueKey<String> get skillKey => AppSearchField.fieldKey(_skillFieldName);
+
+  /// One Skill suggestion row's own `Key`, keyed by the Skill's id
+  /// (AGENTS.md §7).
+  static ValueKey<String> skillSuggestionKey(String skillId) =>
+      AppSearchField.suggestionKey(_skillFieldName, skillId);
   static const ValueKey<String> proficiencyKey = ValueKey<String>('employee-skill-form-proficiency');
   static const ValueKey<String> assessedOnKey = ValueKey<String>('employee-skill-form-assessed-on');
   static const ValueKey<String> expiresOnKey = ValueKey<String>('employee-skill-form-expires-on');
@@ -111,6 +126,17 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
     super.dispose();
   }
 
+  /// The Skill the dialog's own id currently names, out of the catalogue this
+  /// dialog offers, or null — the dialog keeps holding the `String?` id its
+  /// submit body already reads, while the picker is controlled by the record
+  /// itself, so this is how the two agree.
+  Skill? _selectedSkill(List<Skill> activeSkills) {
+    for (final skill in activeSkills) {
+      if (skill.id == _skillId) return skill;
+    }
+    return null;
+  }
+
   bool get _complete => _skillId != null;
 
   void _submit() {
@@ -165,21 +191,40 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<String>(
-                  key: EmployeeSkillFormDialog.skillKey,
-                  initialValue: _skillId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Skill', border: OutlineInputBorder()),
-                  items: [
-                    for (final skill in activeSkills)
-                      DropdownMenuItem<String>(value: skill.id, child: Text(skill.name)),
-                  ],
+                AppSearchField<Skill>(
+                  name: EmployeeSkillFormDialog._skillFieldName,
+                  label: 'Skill',
+                  value: _selectedSkill(activeSkills),
                   // Locked while re-assessing: a different skill is a first
                   // assessment against that skill, which the "Record skill"
                   // action (no `existing`) already covers.
-                  onChanged: (_awaiting || _isReassessment)
-                      ? null
-                      : (value) => setState(() => _skillId = value),
+                  enabled: !_awaiting && !_isReassessment,
+                  // A pick sets the dialog's own id; typing over the chosen
+                  // Skill retires it, so an assessment cannot be recorded
+                  // against a Skill its own field has stopped showing
+                  // (ADR-0023 point 4).
+                  onChanged: (skill) => setState(() => _skillId = skill?.id),
+                  onSelected: (skill) => setState(() => _skillId = skill.id),
+                  // A dumb in-memory filter over the catalogue this dialog was
+                  // handed — no HTTP request of its own, so the field's
+                  // per-term debounce never reaches the wire (ADR-0023),
+                  // matching the Skill's own name as issue #190's rule says.
+                  fetchSuggestions: (term) async {
+                    final lower = term.toLowerCase();
+                    return [
+                      for (final skill in activeSkills)
+                        if (skill.name.toLowerCase().contains(lower)) skill,
+                    ];
+                  },
+                  suggestionBuilder: (context, skill) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Spacing.md,
+                      vertical: Spacing.sm,
+                    ),
+                    child: Text(skill.name),
+                  ),
+                  idOf: (skill) => skill.id,
+                  displayStringFor: (skill) => skill.name,
                 ),
                 const SizedBox(height: Spacing.md),
                 DropdownButtonFormField<int>(
