@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/skeleton_list.dart';
 import 'admission_dialog.dart';
 import 'approval_queue_bloc.dart';
@@ -64,8 +65,8 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ApprovalQueueScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: ApprovalQueueScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: Column(
@@ -97,8 +98,8 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ApprovalQueueScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: ApprovalQueueScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
           child: Container(
@@ -142,8 +143,8 @@ class _QueueList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ApprovalQueueScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: ApprovalQueueScreen.maxWidth,
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           itemCount: accounts.length,

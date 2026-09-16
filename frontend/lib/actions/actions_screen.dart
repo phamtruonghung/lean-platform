@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -133,8 +134,8 @@ class _Header extends StatelessWidget {
     final loaded = state is ActionsLoaded ? state as ActionsLoaded : null;
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ActionsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: ActionsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: Column(
@@ -309,8 +310,8 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ActionsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: ActionsScreen.maxWidth,
         child: Padding(
           key: ActionsScreen.noticeKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
@@ -331,8 +332,8 @@ class _Truncated extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ActionsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: ActionsScreen.maxWidth,
         child: Padding(
           key: ActionsScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
@@ -391,8 +392,8 @@ class _ActionsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ActionsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: ActionsScreen.maxWidth,
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           itemCount: actions.length,

@@ -12,10 +12,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/status_chip.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'my_requests_bloc.dart';
 import 'request.dart';
 import 'request_form_dialog.dart';
@@ -89,8 +90,8 @@ class _Header extends StatelessWidget {
     final loaded = state is MyRequestsLoaded ? state as MyRequestsLoaded : null;
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: MyRequestsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: MyRequestsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: Column(
@@ -177,8 +178,8 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: MyRequestsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: MyRequestsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
           child: Container(
@@ -216,8 +217,8 @@ class _MyRequestsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: MyRequestsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: MyRequestsScreen.maxWidth,
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           itemCount: requests.length,

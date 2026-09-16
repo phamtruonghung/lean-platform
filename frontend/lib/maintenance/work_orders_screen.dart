@@ -75,11 +75,12 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
-import '../widgets/empty_state.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/disclosing_text.dart';
-import '../widgets/status_chip.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'org_unit_chooser.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
@@ -306,8 +307,8 @@ class _Header extends StatelessWidget {
     final loaded = state is WorkOrdersLoaded ? state as WorkOrdersLoaded : null;
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: WorkOrdersScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: WorkOrdersScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: Column(
@@ -546,8 +547,8 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: WorkOrdersScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: WorkOrdersScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
           child: Container(
@@ -631,8 +632,8 @@ class _WorkOrdersList extends StatelessWidget {
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < WorkOrdersScreen.narrowBreakpoint;
         return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: WorkOrdersScreen.maxWidth),
+          child: AppPageFrame(
+            maxWidth: WorkOrdersScreen.maxWidth,
             child: narrow
                 ? ListView.separated(
                     padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),

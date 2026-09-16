@@ -14,10 +14,11 @@ import 'package:go_router/go_router.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
+import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/skeleton_list.dart';
-import '../status_tone.dart';
 import '../widgets/status_chip.dart';
 import 'directory_bloc.dart';
 import 'directory_org_unit_filter_dialog.dart';
@@ -130,8 +131,8 @@ class _HeaderState extends State<_Header> {
     final loaded = widget.state is DirectoryLoaded ? widget.state as DirectoryLoaded : null;
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: DirectoryScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: DirectoryScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: Column(
@@ -288,8 +289,8 @@ class _DirectoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: DirectoryScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: DirectoryScreen.maxWidth,
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           itemCount: employees.length,

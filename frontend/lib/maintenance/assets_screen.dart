@@ -10,9 +10,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../theme.dart';
-import '../widgets/skeleton_list.dart';
 import '../status_tone.dart';
+import '../theme.dart';
+import '../widgets/app_page_frame.dart';
+import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'asset.dart';
 import 'asset_form_dialog.dart';
@@ -89,8 +90,8 @@ class _Header extends StatelessWidget {
     final loaded = state is AssetsLoaded ? state as AssetsLoaded : null;
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AssetsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: AssetsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: Column(
@@ -179,8 +180,8 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AssetsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: AssetsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
           child: Container(
@@ -317,8 +318,8 @@ class _AssetsList extends StatelessWidget {
     // silently reported as dropped rather than ever executed.
     final disabled = mutatingAssetId != null || isAdding;
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AssetsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: AssetsScreen.maxWidth,
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           itemCount: rows.length,

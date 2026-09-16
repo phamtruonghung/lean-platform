@@ -24,8 +24,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../theme.dart';
 import '../status_tone.dart';
+import '../theme.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/status_chip.dart';
 import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
@@ -112,8 +113,8 @@ class _Detail extends StatelessWidget {
     final theme = Theme.of(context);
     final employee = state.employee;
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: EmployeeDetailScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: EmployeeDetailScreen.maxWidth,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [

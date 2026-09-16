@@ -35,6 +35,7 @@ import 'home_bloc.dart';
 import 'people_api.dart';
 import 'platform/router.dart';
 import 'theme.dart';
+import 'widgets/app_page_frame.dart';
 import 'widgets/failure_state.dart';
 import 'widgets/skeleton_list.dart';
 
@@ -83,8 +84,8 @@ class _HomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: HomeScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: HomeScreen.maxWidth,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(Spacing.xl),
           child: Column(

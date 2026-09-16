@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 import '../platform/destinations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/skeleton_list.dart';
 import 'account_correction_dialog.dart';
 import 'account_employee_dialog.dart';
@@ -144,8 +145,8 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AccountsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: AccountsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: Column(
@@ -179,8 +180,8 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AccountsScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: AccountsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
           child: Container(
@@ -268,8 +269,8 @@ class _AccountsList extends StatelessWidget {
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < AccountsScreen.narrowBreakpoint;
         return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AccountsScreen.maxWidth),
+          child: AppPageFrame(
+            maxWidth: AccountsScreen.maxWidth,
             child: narrow
                 ? ListView.separated(
                     padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),

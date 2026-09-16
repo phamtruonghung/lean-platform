@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
@@ -91,8 +92,8 @@ class _ActionDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: ActionDetailScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: ActionDetailScreen.maxWidth,
         child: ListView(
           key: ActionDetailScreen.loadedKey,
           padding: const EdgeInsets.all(Spacing.xl),
