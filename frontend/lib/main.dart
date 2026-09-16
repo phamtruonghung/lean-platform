@@ -21,6 +21,7 @@ import 'people_api.dart';
 import 'platform/auth_gateway.dart';
 import 'platform/floor_device_gateway.dart';
 import 'platform/platform_app.dart';
+import 'quality/quality_api.dart';
 import 'supabase_config.dart';
 
 Future<void> main() async {
@@ -40,6 +41,7 @@ Future<void> main() async {
       peopleApi: PeopleApi(),
       maintenanceApi: MaintenanceApi(),
       actionsApi: ActionsApi(),
+      qualityApi: QualityApi(),
       floorDeviceGateway: const ConfiguredFloorDeviceGateway(),
     ),
   );

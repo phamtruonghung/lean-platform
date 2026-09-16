@@ -25,6 +25,7 @@ import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
+import 'package:lean_platform/quality/quality_api.dart';
 
 /// Loads the Platform's own bundled Roboto (`assets/fonts/README.md`,
 /// committed there for Flutter Web's CanvasKit renderer, not for this) into
@@ -506,12 +507,59 @@ Map<String, dynamic> meterJson(
     };
 
 /// One unit of measure as `GET /api/maintenance/units-of-measure` sends it
-/// (issue #79, reused by #80) — the baseline catalogue the meter form and the
-/// Part form both choose from.
+/// (issue #79, reused by #80) — the baseline catalogue the meter form, the
+/// Part form and the Quality Module's Product form (#203) all choose from.
 Map<String, dynamic> unitOfMeasureJson(String code, String name, {String dimension = 'time'}) => {
       'code': code,
       'name': name,
       'dimension': dimension,
+    };
+
+/// One Product as `GET /api/quality/products` sends it (issue #203) — mirrors
+/// `toProduct` (products.js) key for key, `uomName` included: the API joins the
+/// unit's own name onto the row, so a fixture that omitted it would let a test
+/// assert a catalogue the server cannot answer.
+Map<String, dynamic> productJson(
+  String id,
+  String code,
+  String name, {
+  String uomCode = 'EA',
+  String uomName = 'Each',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'uomCode': uomCode,
+      'uomName': uomName,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One Defect code as `GET /api/quality/defect-codes` sends it (issue #203) —
+/// mirrors `toDefectCode` (defect-codes.js) key for key: the tree is flat, each
+/// row naming its own parent rather than carrying children.
+Map<String, dynamic> defectCodeJson(
+  String id,
+  String code,
+  String name, {
+  String? parentId,
+  String category = 'product',
+  String defaultSeverity = 'minor',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'parentId': parentId,
+      'code': code,
+      'name': name,
+      'category': category,
+      'defaultSeverity': defaultSeverity,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
 /// One Work order task as `GET /api/maintenance/work-orders/:id` sends it
@@ -1183,6 +1231,18 @@ class FakeWire {
     this.floorIdentifyMessage = 'That Employee number and PIN were not recognised',
     this.floorIdentificationToken = 'identification-1',
     Map<String, dynamic>? floorEmployee,
+    List<Map<String, dynamic>>? products,
+    this.productsStatus = 200,
+    this.createProductStatus = 201,
+    this.createProductMessage = 'a Product with this code already exists',
+    this.updateProductStatus = 200,
+    this.updateProductMessage = 'That Product could not be changed.',
+    List<Map<String, dynamic>>? defectCodes,
+    this.defectCodesStatus = 200,
+    this.createDefectCodeStatus = 201,
+    this.createDefectCodeMessage = 'a Defect code with this code already exists',
+    this.updateDefectCodeStatus = 200,
+    this.updateDefectCodeMessage = 'That Defect code could not be changed.',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -1231,7 +1291,60 @@ class FakeWire {
         floor = floor ?? {'orgUnitId': '10', 'orgUnitName': 'Line 1', 'siteId': '1'},
         floorWorkOrders = floorWorkOrders ?? [],
         floorEmployee = floorEmployee ??
-            {'id': '20', 'employeeNo': 'EMP-20', 'displayName': 'Tess Technician'};
+            {'id': '20', 'employeeNo': 'EMP-20', 'displayName': 'Tess Technician'},
+        products = products ?? [],
+        defectCodes = defectCodes ?? [];
+
+  /// `GET /api/quality/products` (issue #203) — the Product catalogue.
+  List<Map<String, dynamic>> products;
+
+  int productsStatus;
+
+  /// `POST /api/quality/products` (administrator only).
+  int createProductStatus;
+  String createProductMessage;
+
+  /// `PATCH /api/quality/products/:id` (administrator only).
+  int updateProductStatus;
+  String updateProductMessage;
+
+  /// Every Product create body that actually reached the wire, decoded — so a
+  /// test can assert exactly one request was sent and what it carried.
+  final List<Map<String, dynamic>> productPosts = [];
+
+  /// Every Product correction body that actually reached the wire, as
+  /// `(id, body)` — so a test can assert that a correction sent only the field
+  /// that changed, and that a non-administrator's Screen sent nothing at all.
+  final List<(String, Map<String, dynamic>)> productPatches = [];
+
+  /// Every Product list request's query parameters, in the order they reached
+  /// the wire — `includeInactive` and `search` carried through exactly as sent,
+  /// so a test proves what the Screen asked for rather than what the Fake Wire
+  /// happened to apply.
+  final List<Map<String, String>> productListRequests = [];
+
+  /// `GET /api/quality/defect-codes`.
+  List<Map<String, dynamic>> defectCodes;
+
+  int defectCodesStatus;
+
+  /// `POST /api/quality/defect-codes` (administrator only).
+  int createDefectCodeStatus;
+  String createDefectCodeMessage;
+
+  /// `PATCH /api/quality/defect-codes/:id` (administrator only).
+  int updateDefectCodeStatus;
+  String updateDefectCodeMessage;
+
+  /// Every Defect code create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> defectCodePosts = [];
+
+  /// Every Defect code correction body that actually reached the wire, as
+  /// `(id, body)`.
+  final List<(String, Map<String, dynamic>)> defectCodePatches = [];
+
+  /// Every Defect code list request's query parameters.
+  final List<Map<String, String>> defectCodeListRequests = [];
 
   final String role;
 
@@ -2014,6 +2127,8 @@ class FakeWire {
   int _nextEmployeeSkillId = 800;
   int _nextSiteId = 90;
   int _nextOrgUnitId = 990;
+  int _nextProductId = 700;
+  int _nextDefectCodeId = 750;
 
   /// The Org Unit row for [orgUnitId], resolved off whatever tree rows this
   /// Fake Wire was given (any `parentId` key) — there is no Org Unit lookup
@@ -2356,6 +2471,130 @@ class FakeWire {
             }),
             200,
           );
+        }
+        // The Quality Module's two catalogues (issue #203). Each pair of
+        // handlers mirrors its own route file: the write answers the row the
+        // real one answers with, and the read applies `includeInactive` and
+        // `search` the way products.js's listProducts does — after every other
+        // filter, so a test can prove a search the way the registration test
+        // proves a query.
+        if (request.method == 'POST' && path == '/api/quality/products') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          productPosts.add(sent);
+          if (createProductStatus != 201) {
+            return http.Response(jsonEncode({'message': createProductMessage}), createProductStatus);
+          }
+          final id = (_nextProductId++).toString();
+          final uomCode = sent['uomCode'] as String;
+          String? uomName;
+          for (final row in unitsOfMeasure) {
+            if (row['code'] == uomCode) uomName = row['name'] as String?;
+          }
+          final created = productJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            uomCode: uomCode,
+            uomName: uomName ?? uomCode,
+          );
+          products = [...products, created];
+          return http.Response(jsonEncode({'product': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/quality/products/')) {
+          final id = path.substring('/api/quality/products/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          productPatches.add((id, body));
+          if (updateProductStatus != 200) {
+            return http.Response(jsonEncode({'message': updateProductMessage}), updateProductStatus);
+          }
+          Map<String, dynamic>? updated;
+          products = [
+            for (final product in products)
+              if (product['id'] == id) (updated = {...product, ...body}) else product,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Product not found'}), 404);
+          }
+          return http.Response(jsonEncode({'product': updated}), 200);
+        }
+        if (path == '/api/quality/products') {
+          productListRequests.add(request.url.queryParameters);
+          if (productsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Product catalogue is unavailable.'}),
+              productsStatus,
+            );
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final search = request.url.queryParameters['search'];
+          var sent = includeInactive
+              ? products
+              : [for (final product in products) if (product['isActive'] != false) product];
+          if (search != null && search.isNotEmpty) {
+            final needle = search.toLowerCase();
+            sent = [
+              for (final product in sent)
+                if ((product['code'] as String).toLowerCase().contains(needle) ||
+                    (product['name'] as String).toLowerCase().contains(needle))
+                  product,
+            ];
+          }
+          return http.Response(jsonEncode({'products': sent}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/quality/defect-codes') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          defectCodePosts.add(sent);
+          if (createDefectCodeStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createDefectCodeMessage}),
+              createDefectCodeStatus,
+            );
+          }
+          final id = (_nextDefectCodeId++).toString();
+          final created = defectCodeJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            parentId: sent['parentId']?.toString(),
+            category: sent['category'] as String? ?? 'product',
+            defaultSeverity: sent['defaultSeverity'] as String? ?? 'minor',
+          );
+          defectCodes = [...defectCodes, created];
+          return http.Response(jsonEncode({'defectCode': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/quality/defect-codes/')) {
+          final id = path.substring('/api/quality/defect-codes/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          defectCodePatches.add((id, body));
+          if (updateDefectCodeStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateDefectCodeMessage}),
+              updateDefectCodeStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          defectCodes = [
+            for (final code in defectCodes)
+              if (code['id'] == id) (updated = {...code, ...body}) else code,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Defect code not found'}), 404);
+          }
+          return http.Response(jsonEncode({'defectCode': updated}), 200);
+        }
+        if (path == '/api/quality/defect-codes') {
+          defectCodeListRequests.add(request.url.queryParameters);
+          if (defectCodesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Defect code catalogue is unavailable.'}),
+              defectCodesStatus,
+            );
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final sent = includeInactive
+              ? defectCodes
+              : [for (final code in defectCodes) if (code['isActive'] != false) code];
+          return http.Response(jsonEncode({'defectCodes': sent}), 200);
         }
         if (path == '/api/people/me') {
           return http.Response(jsonEncode(_meBody(role, selfId, orgUnitScope)), 200);
@@ -4324,6 +4563,8 @@ Future<void> pumpApp(
       maintenanceApi: MaintenanceApi(client: client),
       // The Actions Module's own client over the same faked wire.
       actionsApi: ActionsApi(client: client),
+      // The Quality Module's own client over the same faked wire (issue #203).
+      qualityApi: QualityApi(client: client),
       // The floor surface's device credential, faked at the same seam.
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       initialLocation: initialLocation,

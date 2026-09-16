@@ -72,6 +72,11 @@ import '../people/skill_coverage_screen.dart';
 import '../people/skills_bloc.dart';
 import '../people/skills_screen.dart';
 import '../people_api.dart';
+import '../quality/defect_codes_bloc.dart';
+import '../quality/defect_codes_screen.dart';
+import '../quality/products_bloc.dart';
+import '../quality/products_screen.dart';
+import '../quality/quality_api.dart';
 import 'access_denied_screen.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
@@ -103,6 +108,14 @@ abstract final class Routes {
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
   static const String tierBoard = '/tier-board';
+
+  /// The Quality Module's own Destinations (issue #203): the Product catalogue
+  /// and the Defect code tree, at their own addresses so each can be linked to
+  /// or bookmarked. The Module's later slices — Non-conformances, CAPAs —
+  /// arrive as siblings of these, the way `${actions}/:id` sits beside
+  /// [actions].
+  static const String products = '/products';
+  static const String defectCodes = '/defect-codes';
 
   /// The Actions Module's own Destinations (issue #176): the action log, and
   /// one Action's detail read behind `${actions}/:id`. The raise form is
@@ -346,6 +359,42 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const SkillsStarted()),
                 child: SkillsScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          // The Quality Module's two catalogues (issue #203): the Products the
+          // plant makes and the Defect codes a Non-conformance is recorded
+          // against, both shared by every Site (ADR-0005). Offered to every
+          // approved Account, the same openness `Routes.jobRoles` and
+          // `Routes.skills` above already have and for the same reason: neither
+          // read carries an admin or scope check of its own
+          // (product-routes.js/defect-code-routes.js). Only the write
+          // affordances inside each Screen are gated to `isAdmin`.
+          GoRoute(
+            path: Routes.products,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<ProductsBloc>(
+                create: (context) => ProductsBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const ProductsStarted()),
+                child: ProductsScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.defectCodes,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<DefectCodesBloc>(
+                create: (context) => DefectCodesBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const DefectCodesStarted()),
+                child: DefectCodesScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
           ),

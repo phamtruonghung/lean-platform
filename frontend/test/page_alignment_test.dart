@@ -91,6 +91,14 @@ const _pages = <_Page>[
   _Page('/actions', 'lib/actions/actions_screen.dart', 'Actions', ''),
   _Page('/tier-board', 'lib/maintenance/tier_board_screen.dart', 'Tier board', ''),
   _Page('/skill-coverage', 'lib/people/skill_coverage_screen.dart', 'Skill coverage', ''),
+  // The Quality Module's two catalogues (issue #203). Defect codes is a tree,
+  // so its rows indent by depth one level at a time — the first row is a root
+  // at the card's own padding, which is why the default bound holds here where
+  // the Org Units tree (whose first row leads with a disclosure control) needs
+  // its own.
+  _Page('/products', 'lib/quality/products_screen.dart', 'Products', 'What the plant makes'),
+  _Page('/defect-codes', 'lib/quality/defect_codes_screen.dart', 'Defect codes',
+      'The kinds of thing found wrong'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this
@@ -149,6 +157,11 @@ FakeWire _wire() => FakeWire(
       actions: {
         '1': [actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose')],
       },
+      // The Quality Module's two catalogues (issue #203), so both pages render
+      // their card rather than an empty state and the row assertion actually
+      // runs.
+      products: [productJson('40', 'PRD-1', 'Gearbox')],
+      defectCodes: [defectCodeJson('41', 'DIM-OOT', 'Out of tolerance')],
     );
 
 void main() {

@@ -1,0 +1,76 @@
+/*
+ * The Quality Module's entry point (issue #203), asserted at the export-set
+ * level — the same claim people-entry-point.test.js and
+ * maintenance-entry-point.test.js make, for the same reason: `npm run lint`'s
+ * module boundary checker only ever looks at require *paths*. It proves a
+ * Module cannot reach past another Module's entry point; it does not prove
+ * that an entry point still hands back what its consumers need, and nothing
+ * else in this suite consumes `modules/quality`'s exports at all.
+ *
+ * One export, and the assertion below is what keeps it one. `router` is this
+ * Module's routes — the Product catalogue and the Defect code tree — mounted
+ * by src/index.js at `/api/quality`, the documented mount-target special case
+ * every Module's `router` is (see index.js's own header for the full
+ * justification). Issue #203 adds no lookup about a Product or a Defect code
+ * for another Module to call, because nothing outside Quality asks one yet,
+ * and no KPI registry contribution, because a catalogue is not a number. A
+ * future slice that starts recording Quality work adds the KPI contribution;
+ * a sibling Module that needs a catalogue answer adds the lookup. Both are
+ * additions to this list, which is what this test exists to make visible —
+ * and dropping `router` would take the Module off the wire entirely, which
+ * nothing else here would notice.
+ *
+ * Needs no database: `getPool()` (platform/db.js) is lazy, so requiring the
+ * Module and inspecting its export shape never opens a connection.
+ */
+
+const test = require('node:test');
+const assert = require('node:assert');
+
+const quality = require('../src/modules/quality');
+
+test('the Quality Module entry point exposes exactly one name', () => {
+  assert.deepStrictEqual(Object.keys(quality).sort(), ['router']);
+});
+
+// A router, not a function: src/index.js mounts it with `app.use`, so what
+// this pins down is that it is a mountable Express router rather than
+// something a caller has to invoke first — the same thing
+// maintenance-entry-point.test.js asserts of the two routers there.
+test('router is a mountable Express router', () => {
+  assert.strictEqual(typeof quality.router, 'function');
+  assert.strictEqual(typeof quality.router.use, 'function');
+  assert.strictEqual(typeof quality.router.handle, 'function');
+});
+
+// The two catalogues are this Module's only surface today, and they are
+// asserted by the *paths* the router itself declares — walked through the
+// child routers it mounts, since a mounted router is a middleware layer rather
+// than a route, and read off the router's own stack rather than by making a
+// request (which is what the HTTP-level integration file is for). A ticket
+// that moves one of these addresses without moving its Screen fails here
+// first, without a database.
+function declaredRoutes(router) {
+  const declared = [];
+  for (const layer of router.stack) {
+    if (layer.route) {
+      for (const method of Object.keys(layer.route.methods)) {
+        declared.push(`${method.toUpperCase()} ${layer.route.path}`);
+      }
+    } else if (layer.handle && layer.handle.stack) {
+      declared.push(...declaredRoutes(layer.handle));
+    }
+  }
+  return declared;
+}
+
+test('the router carries the Product and Defect code paths, and nothing else', () => {
+  assert.deepStrictEqual(declaredRoutes(quality.router).sort(), [
+    'GET /defect-codes',
+    'GET /products',
+    'PATCH /defect-codes/:id',
+    'PATCH /products/:id',
+    'POST /defect-codes',
+    'POST /products'
+  ]);
+});

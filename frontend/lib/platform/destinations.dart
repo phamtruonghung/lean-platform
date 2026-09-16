@@ -81,6 +81,7 @@ class Destination {
 abstract final class DestinationGroupNames {
   static const String people = 'People';
   static const String maintenance = 'Maintenance';
+  static const String quality = 'Quality';
   static const String actions = 'Actions';
   static const String insights = 'Insights';
   static const String administration = 'Administration';
@@ -89,6 +90,7 @@ abstract final class DestinationGroupNames {
     people,
     maintenance,
     actions,
+    quality,
     insights,
     administration,
   ];
@@ -333,6 +335,36 @@ const List<Destination> platformDestinations = [
     icon: Icons.assignment_turned_in_outlined,
     path: Routes.actions,
     group: DestinationGroupNames.actions,
+  ),
+  // The Quality Module's two catalogues (issue #203) — the first Destinations
+  // behind a fourth Module of its own after People, Maintenance and Actions
+  // (ADR-0032's precedent for a Module earning its own heading). Offered to
+  // every approved Account, no `roles` set, the same shape Directory, Job
+  // roles, Skills and My requests use: both reads carry no admin and no Org
+  // Unit scope of their own (product-routes.js's and defect-code-routes.js's
+  // own headers — reference data everyone needs as a set of choices, ADR-0023),
+  // so hiding the doors behind a role would gate addresses the routes never
+  // refuse. Only the write affordances inside each Screen are gated to
+  // `isAdmin`.
+  //
+  // Filed under Quality's own heading between Actions and Insights. ADR-0032
+  // put Actions at the boundary between the groups where work is done and the
+  // groups where the plant is read about, and that position is pinned by
+  // actions_test.dart; Quality is filed beside it rather than in front of it,
+  // so a new Module does not displace a decision another ADR already recorded.
+  // The two catalogues are what this Module owns today; its Non-conformances
+  // and CAPAs arrive as their own slices and file here.
+  Destination(
+    label: 'Products',
+    icon: Icons.category_outlined,
+    path: Routes.products,
+    group: DestinationGroupNames.quality,
+  ),
+  Destination(
+    label: 'Defect codes',
+    icon: Icons.rule_outlined,
+    path: Routes.defectCodes,
+    group: DestinationGroupNames.quality,
   ),
   // Approvals and Accounts administer the Platform itself — who may sign in,
   // and what they may reach — rather than the plant's workforce, so they sit

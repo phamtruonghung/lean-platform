@@ -21,6 +21,7 @@ const lifecycle = require('./platform/lifecycle');
 const people = require('./modules/people');
 const maintenance = require('./modules/maintenance');
 const actions = require('./modules/actions');
+const quality = require('./modules/quality');
 
 const app = express();
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
@@ -83,6 +84,14 @@ app.use('/api/maintenance', maintenance.router);
 // (see maintenance/index.js and board-routes.js). Its address is unchanged.
 app.use('/api/maintenance', maintenance.createBoardRouter(kpiRegistry));
 app.use('/api/actions', actions.router);
+// The Quality Module's own prefix (issue #203): the Product catalogue and the
+// Defect code tree today, and whatever else this Module owns as its slices
+// land. A prefix of its own rather than a corner of another Module's — the two
+// catalogues are shared by every Site (ADR-0005) and belong to no Org Unit, so
+// neither `/api/people` nor `/api/maintenance` is their address. Its router is
+// mounted here, where the application composes its Modules, and it carries its
+// own copy of the administrator check (quality/index.js's own header).
+app.use('/api/quality', quality.router);
 
 // An unknown path under /api answers in JSON. Express's default 404 is an HTML
 // page, which a client that asked for JSON cannot parse — so a typo in a URL
