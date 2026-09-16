@@ -146,7 +146,8 @@ enum GrantLevel {
   final bool canWrite;
 }
 
-/// One Org Unit chosen in the picker, at the level chosen for it.
+/// One Org Unit chosen in the picker, at the level chosen for it, carrying
+/// whatever Quality authority has been set on it.
 ///
 /// [where] is the breadcrumb captured when it was added — the Site and the
 /// ancestors that were on screen above it at that moment. A Grant records the
@@ -155,13 +156,34 @@ enum GrantLevel {
 /// the caller was told.
 @immutable
 class GrantedOrgUnit {
-  const GrantedOrgUnit({required this.orgUnit, required this.level, required this.where});
+  const GrantedOrgUnit({
+    required this.orgUnit,
+    required this.level,
+    required this.where,
+    this.quality = false,
+  });
 
   final OrgUnitNode orgUnit;
   final GrantLevel level;
   final String where;
 
+  /// Whether this Grant carries Quality authority (issue #204, ADR-0035) — the
+  /// flag an administrator gives alongside the level, independent of it: a
+  /// view-only Grant may carry it and an edit Grant need not. Defaulted false
+  /// because it is given at Approval rather than derived from anything: a
+  /// Grant nobody has flagged does not hold it, which is the same reading the
+  /// column's own `DEFAULT FALSE` gives on the server. Flips through
+  /// `OrgUnitPickerGrantQualitySet` (org_unit_picker_bloc.dart) and rides the
+  /// wire as `qualityAuthority`.
+  final bool quality;
+
   /// The wire shape `approveAccount` validates
-  /// (`backend/src/modules/people/service.js`).
-  Map<String, Object?> toJson() => {'orgUnitId': orgUnit.id, 'canWrite': level.canWrite};
+  /// (`backend/src/modules/people/service.js`): the Org Unit, the Grant's own
+  /// level, and its Quality authority — three independent facts about one
+  /// Grant, never two of them folded into one value.
+  Map<String, Object?> toJson() => {
+        'orgUnitId': orgUnit.id,
+        'canWrite': level.canWrite,
+        'qualityAuthority': quality,
+      };
 }

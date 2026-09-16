@@ -89,7 +89,19 @@
  *     guard, so `canAct({ account: anAdmin, orgUnitId: null, write: true })`
  *     is true — resolve the Org Unit with findOrgUnit and handle null BEFORE
  *     asking about scope, which is the existence-before-scope ordering
- *     issue #8 already settled inside People.
+ *     issue #8 already settled inside People. Issue #204 adds a third option
+ *     beside `write` — `quality: true`, ADR-0035 — which asks the same
+ *     grant-reaching-downward question restricted to grants carrying Quality
+ *     authority (the flag migration 1799800000000 puts on a Grant). It is
+ *     for a different kind of decision, not a stricter write: the Quality
+ *     Module's later slices ask it before releasing nonconforming product or
+ *     opening an investigation (a Concession, reopening a Non-conformance,
+ *     opening or verifying a CAPA), and it is deliberately independent of
+ *     `write` in both directions because ADR-0035 rejects both "any write
+ *     grant" and "Quality authority implies write". It carries the same two
+ *     sharp edges as `write` — it defaults to FALSE, and an administrator
+ *     answers true with no Org Unit at all — so a caller outside People
+ *     resolves the Org Unit first, exactly as it already does for a write.
  *   - canSeeSite — #198: a Concern is a report rather than a decision, and
  *     CONTEXT.md's Concern entry says anyone on the floor may raise one where
  *     they found it "whether or not they hold a Grant reaching that Org Unit".

@@ -83,17 +83,21 @@ Map<String, dynamic> _meBody(String role, String selfId, Map<String, dynamic>? o
 /// One Grant as `/me` reports it — `canWrite` is what decides whether a Screen
 /// offers a write affordance. `orgUnitIds` is the Grant's whole reach, the
 /// granted unit plus every descendant (issue #110); left unset, the wire keeps
-/// the older "reaches only its own Org Unit" shape.
+/// the older "reaches only its own Org Unit" shape. `qualityAuthority` is the
+/// flag independent of `canWrite` (issue #204, ADR-0035), and defaults false
+/// exactly as the server's own column does.
 Map<String, dynamic> scopeGrantJson(
   String orgUnitId, {
   String siteId = '1',
   bool canWrite = false,
+  bool qualityAuthority = false,
   List<String>? orgUnitIds,
 }) =>
     {
       'orgUnitId': orgUnitId,
       'siteId': siteId,
       'canWrite': canWrite,
+      'qualityAuthority': qualityAuthority,
       'orgUnitIds': ?orgUnitIds,
     };
 
@@ -929,11 +933,15 @@ Map<String, dynamic> accountJson(
     };
 
 /// One Grant on an Account row, as the accounts listing sends it.
+/// `qualityAuthority` is the flag independent of the level (issue #204,
+/// ADR-0035) — false unless a test gives it, the same default the server's own
+/// column has.
 Map<String, dynamic> grantJson(
   String orgUnitId, {
   String name = 'Assembly',
   String siteName = 'Ho Chi Minh',
   bool canWrite = false,
+  bool qualityAuthority = false,
 }) =>
     {
       'orgUnitId': orgUnitId,
@@ -944,6 +952,7 @@ Map<String, dynamic> grantJson(
       'siteId': '1',
       'siteName': siteName,
       'canWrite': canWrite,
+      'qualityAuthority': qualityAuthority,
     };
 
 /// One KPI as `GET /api/maintenance/sites/:siteId/board` sends it (issue #76).
@@ -3794,6 +3803,11 @@ class FakeWire {
                       grantJson(
                         (g as Map<String, dynamic>)['orgUnitId'] as String,
                         canWrite: g['canWrite'] == true,
+                        // Quality authority (issue #204, ADR-0035) — carried
+                        // through exactly as sent, so a test that ticks the
+                        // picker's box sees it come back on the row rather
+                        // than only on the request.
+                        qualityAuthority: g['qualityAuthority'] == true,
                       ),
                   ],
                 }

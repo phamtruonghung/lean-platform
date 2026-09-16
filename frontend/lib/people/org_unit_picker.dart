@@ -31,6 +31,11 @@ class OrgUnitPicker extends StatelessWidget {
       ValueKey<String>('org-unit-picker-granted-$id');
   static ValueKey<String> removeKey(String id) => ValueKey<String>('org-unit-picker-remove-$id');
 
+  /// The Quality authority checkbox on one granted Org Unit (issue #204,
+  /// ADR-0035) — the control a test taps to give the flag, and the one it
+  /// reads to prove an existing Grant set opened holding it.
+  static ValueKey<String> qualityKey(String id) => ValueKey<String>('org-unit-picker-quality-$id');
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -45,6 +50,16 @@ class OrgUnitPicker extends StatelessWidget {
         Text(
           'Everything on the right is what this Account will hold. Nothing is '
           'added to what it has now — this is the whole set.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Spacing.xs),
+        // The flag's own one-liner (issue #204, ADR-0035), here rather than
+        // per Grant: it explains what the checkbox below means once, instead
+        // of repeating it on every row of the Granted pane.
+        Text(
+          'Quality authority is separate from the level — a view-only Grant '
+          'may carry it, and an edit Grant need not — and it reaches '
+          'everything beneath the Org Unit it is given on.',
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: Spacing.sm),
@@ -221,43 +236,68 @@ class _TreeRow extends StatelessWidget {
                         icon: Icon(row.isExpanded ? Icons.expand_more : Icons.chevron_right),
                       ),
               ),
+              // A Wrap rather than the Row that used to hold the name and its
+              // trailing chip directly: that chip's text grows with every
+              // ticket (the level label, and since #204 Quality authority),
+              // and a Row lays a non-flexible child out at its natural width
+              // whatever is left, so the row threw `RenderFlex overflowed` the
+              // moment the chip outgrew the pane (measured: 102px on the
+              // widget tests' 800px surface, where the test font is roughly
+              // twice a real one's advance). A Wrap keeps the chip hard right
+              // while it fits and drops it onto its own line when it does
+              // not, so the tree stays readable at any pane width and the
+              // name keeps its ellipsis.
               Expanded(
-                child: Text(
-                  row.node.name,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-              if (granted)
-                Padding(
-                  key: OrgUnitPicker.grantedBadgeKey(row.node.id),
-                  padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                  child: Text(
-                    'Granted · ${level!.label}',
-                    style: theme.textTheme.labelMedium
-                        ?.copyWith(color: theme.colorScheme.primary),
-                  ),
-                )
-              else
-                PopupMenuButton<GrantLevel>(
-                  key: OrgUnitPicker.addKey(row.node.id),
-                  enabled: enabled,
-                  tooltip: 'Grant this Org Unit',
-                  icon: const Icon(Icons.add_circle_outline, size: 18),
-                  // The level is part of the act of adding, not a default
-                  // applied afterwards: this menu has no "just add it" item.
-                  itemBuilder: (context) => [
-                    for (final choice in GrantLevel.values)
-                      PopupMenuItem<GrantLevel>(
-                        key: OrgUnitPicker.levelKey(row.node.id, choice),
-                        value: choice,
-                        child: Text(choice.label),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      row.node.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    if (granted)
+                      Padding(
+                        key: OrgUnitPicker.grantedBadgeKey(row.node.id),
+                        padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
+                        child: Text(
+                          // Quality authority rides on the badge rather than on
+                          // a second control here (issue #204): what the tree
+                          // row has to say is that a Grant exists and what it
+                          // carries, and the flipping lives on the Granted row
+                          // where the whole set is being assembled.
+                          state.qualityOf(row.node.id)
+                              ? 'Granted · ${level!.label} · Quality'
+                              : 'Granted · ${level!.label}',
+                          style: theme.textTheme.labelMedium
+                              ?.copyWith(color: theme.colorScheme.primary),
+                        ),
+                      )
+                    else
+                      PopupMenuButton<GrantLevel>(
+                        key: OrgUnitPicker.addKey(row.node.id),
+                        enabled: enabled,
+                        tooltip: 'Grant this Org Unit',
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        // The level is part of the act of adding, not a
+                        // default applied afterwards: this menu has no "just
+                        // add it" item.
+                        itemBuilder: (context) => [
+                          for (final choice in GrantLevel.values)
+                            PopupMenuItem<GrantLevel>(
+                              key: OrgUnitPicker.levelKey(row.node.id, choice),
+                              value: choice,
+                              child: Text(choice.label),
+                            ),
+                        ],
+                        onSelected: (choice) => bloc.add(
+                          OrgUnitPickerGrantAdded(orgUnitId: row.node.id, level: choice),
+                        ),
                       ),
                   ],
-                  onSelected: (choice) => bloc.add(
-                    OrgUnitPickerGrantAdded(orgUnitId: row.node.id, level: choice),
-                  ),
                 ),
+              ),
             ],
           ),
           if (row.failure != null)
@@ -328,6 +368,33 @@ class _GrantedPane extends StatelessWidget {
                               entry.level.label,
                               style: theme.textTheme.labelMedium
                                   ?.copyWith(color: theme.colorScheme.primary),
+                            ),
+                            // Quality authority, per Grant (issue #204,
+                            // ADR-0035). A checkbox rather than a third item
+                            // in the tree row's level menu, because the two
+                            // are independent: a Grant is added at a level and
+                            // this is given to it afterwards, and an
+                            // administrator reaching a Grant they already hold
+                            // (a correction) finds the box already ticked.
+                            CheckboxListTile(
+                              key: OrgUnitPicker.qualityKey(entry.orgUnit.id),
+                              value: entry.quality,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text(
+                                'Quality authority',
+                                style: theme.textTheme.labelMedium,
+                              ),
+                              onChanged: enabled
+                                  ? (value) => bloc.add(
+                                        OrgUnitPickerGrantQualitySet(
+                                          orgUnitId: entry.orgUnit.id,
+                                          quality: value ?? false,
+                                        ),
+                                      )
+                                  : null,
                             ),
                           ],
                         ),

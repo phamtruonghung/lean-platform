@@ -173,6 +173,10 @@ class PeopleApi {
               orgUnitId: grant['orgUnitId'].toString(),
               siteId: grant['siteId'].toString(),
               canWrite: grant['canWrite'] == true,
+              // Quality authority (issue #204, ADR-0035) — a Grant sent
+              // without the key holds none, the same "the server did not say
+              // so" default `canWrite` already gets.
+              qualityAuthority: grant['qualityAuthority'] == true,
               // The Org Units this Grant reaches, granted unit included
               // (issue #110). Absent means an older server, so it falls back
               // to "this Grant's own unit" rather than an empty reach.
@@ -1360,6 +1364,10 @@ class PeopleApi {
               siteId: grant['siteId'].toString(),
               siteName: grant['siteName'] as String,
               canWrite: grant['canWrite'] == true,
+              // Quality authority (issue #204, ADR-0035): the Accounts Screen
+              // shows it per Grant, and the correction dialog seeds the
+              // picker's checkbox from it.
+              qualityAuthority: grant['qualityAuthority'] == true,
             ),
       ],
     );

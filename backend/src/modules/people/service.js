@@ -194,6 +194,13 @@ async function createAccountForSubject({ subject, email, name }) {
          SELECT $1, ou.id, TRUE FROM org_units ou WHERE ou.parent_id IS NULL`,
         [inserted.id]
       );
+      // `quality_authority` is deliberately left at the column's own FALSE
+      // default (issue #204, ADR-0035): Quality authority is given at
+      // Approval, and this Account has never been through one. It loses
+      // nothing by the omission — an administrator answers `canAct` true for
+      // every option before any grant is even read — and writing TRUE here
+      // would make the bootstrap look like the one Approval that hands out an
+      // authority nobody chose.
     }
 
     return toAccount(inserted);
@@ -227,6 +234,7 @@ async function listGrantsByAccount() {
     `SELECT auo.app_user_id,
             auo.org_unit_id,
             auo.can_write,
+            auo.quality_authority,
             ou.parent_id,
             ou.code,
             ou.name,
@@ -250,7 +258,13 @@ async function listGrantsByAccount() {
       unitType: row.unit_type,
       siteId: row.site_id,
       siteName: row.site_name,
-      canWrite: row.can_write
+      canWrite: row.can_write,
+      // Quality authority (issue #204, ADR-0035) — carried beside the level
+      // rather than folded into it, because the Accounts Screen's whole job
+      // here is to tell an administrator which Grants hold it and which do
+      // not, at whatever level (AC: "The Accounts Screen ... show ... Quality
+      // authority per Grant").
+      qualityAuthority: row.quality_authority
     });
     byAccount.set(row.app_user_id, grants);
   }
@@ -423,6 +437,15 @@ function parseOptionalEmployeeId(employeeId) {
 // first recall and revoke what an earlier act left behind (see the
 // paragraph below on why re-approval is allowed at all).
 //
+// Quality authority (issue #204, ADR-0035) rides in each grant entry as
+// `qualityAuthority` and is set, and omitted, exactly as `canWrite` is:
+// Approval sends the whole set and the whole set replaces what was there, so
+// a later Approval that does not carry the flag removes it. That is the
+// ticket's own criterion ("a later Approval without it removes it") and it
+// falls out of this function already replacing the set rather than merging
+// into it — no second code path, and no "clear the flag" verb that would be
+// the one write in this Module able to contradict the set an Approval gave.
+//
 // Approving a rejected Account, and rejecting an already-approved one
 // (rejectAccount, below), are both allowed rather than refused as invalid
 // transitions. `approval_status` records an administrator's most recent
@@ -455,7 +478,18 @@ async function approveAccount(id, { role, grants, employeeId }, actingAccountId,
     if (orgUnitId === null) {
       throw httpError(400, `grants[${index}].orgUnitId must be a valid Org Unit id`);
     }
-    return { orgUnitId, canWrite: grant.canWrite === true };
+    return {
+      orgUnitId,
+      canWrite: grant.canWrite === true,
+      // Quality authority (issue #204, ADR-0035), validated the same way and
+      // no more strictly than `canWrite` is: anything but an explicit `true`
+      // is false. It is not cross-checked against the level in either
+      // direction, deliberately — a view-only Grant may carry it and an edit
+      // Grant need not, which is the independence the ticket's own criterion
+      // asks for. Omitting the key removes it, because Approval replaces the
+      // whole set: see this function's own header.
+      qualityAuthority: grant.qualityAuthority === true
+    };
   });
 
   const parsedEmployeeId = parseOptionalEmployeeId(employeeId);
@@ -507,9 +541,9 @@ async function approveAccount(id, { role, grants, employeeId }, actingAccountId,
         // pg client does not support concurrent queries on a single client.
         // eslint-disable-next-line no-await-in-loop
         await client.query(
-          `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write)
-           VALUES ($1, $2, $3)`,
-          [id, grant.orgUnitId, grant.canWrite]
+          `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write, quality_authority)
+           VALUES ($1, $2, $3, $4)`,
+          [id, grant.orgUnitId, grant.canWrite, grant.qualityAuthority]
         );
       }
 

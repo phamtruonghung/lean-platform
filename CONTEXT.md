@@ -121,7 +121,7 @@ line beneath it, and an Account holds exactly the Grants its last Approval gave
 it — Approval sets the whole set at once, replacing what was there before, never
 adding to it. This is the record Account, Approval and Entry point each already
 gesture at. A Grant may also carry Quality authority, which is separate from
-its level.
+its level and is set and replaced along with the rest of the set.
 _Avoid_: Permission, scope (scope is the reach a Grant produces, not the record),
 access
 
