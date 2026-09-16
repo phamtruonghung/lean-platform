@@ -10,6 +10,17 @@
  * plus Org Unit assignments, issue #10), job-role-routes.js (the job role
  * catalogue, issue #10), and skill-routes.js (the skills matrix — the skill
  * catalogue, an Employee holding a skill, and skill coverage, issue #11).
+ *
+ * `floorRouter` is a second router rather than a sixth file inside `router`,
+ * and that is issue #201's one deliberate oddity: floor-routes.js owns the
+ * shared floor device's HTTP surface (ADR-0016), which this Module took over
+ * from Maintenance, but its ADDRESS stayed under `/api/maintenance` because
+ * that is what deployed devices are pointed at and the frontend is not part
+ * of the move. `src/index.js` mounts it there — see that file's own comment
+ * and floor-routes.js's header. Folding it into `router` instead would have
+ * moved every floor device's URL to `/api/people/...`, which is exactly the
+ * change this prefactor exists to avoid.
+ *
  * All five belong to this Module per CONTEXT.md — see plant.js's own header
  * for why Sites/Org Units live here rather than in a Module of their own,
  * ADR-0009 for why the Employee directory is readable platform-wide rather
@@ -44,13 +55,18 @@
  * refuses. The rule stays narrow — a Module may export middleware that
  * establishes the caller's identity, and only that.
  *
- * Exactly nine exports, each justified below against the sibling ticket
+ * Exactly fourteen exports, each justified below against the sibling ticket
  * that needs it:
  *
  *   - router — mounted by src/index.js, which lives outside `modules/` and so
  *     is not a cross-Module caller the boundary checker even looks at; this
  *     is not really a clause-1/2/3 export at all, just the one every Module
  *     needs to be reachable over HTTP.
+ *   - floorRouter — the same special case as `router`, for the surface this
+ *     Module took over in #201: a router is mounted, never called, so none of
+ *     the three clauses evaluate it. It is kept apart from `router` only so
+ *     that src/index.js can mount it at the frozen `/api/maintenance`
+ *     prefix; see the header above.
  *   - authenticate, requireActive — every Maintenance route in #56, #57,
  *     #61, #62, #63 sits behind these two, the same as every People route
  *     does today; a second Module guarding its own routes needs the exact
@@ -105,6 +121,25 @@
  *     actually exists, and read `isActive` off the result so a departed
  *     Employee is never offered as an assignee, without reaching past this
  *     Module's boundary to query `employees` directly.
+ *   - findDeviceByCredential, findValidIdentification, deviceReachesOrgUnit,
+ *     findDeviceContext — #201: the shared floor device and the
+ *     identification presented on it moved into this Module, and Maintenance
+ *     keeps the two doors that consult them. `findDeviceByCredential` is
+ *     asked by a floor write and by Maintenance's own floor read ("is this a
+ *     device, and is it switched on", 401 when not);
+ *     `findValidIdentification` by a floor write only ("who does this device
+ *     say is standing at it" — null when the token is missing, expired or
+ *     from another device); `deviceReachesOrgUnit` by a floor write's scope
+ *     check, since the tree the device's reach is measured in is `org_units`,
+ *     this Module's own record; and `findDeviceContext` by Maintenance's
+ *     floor read, which needs the Site and Org Unit path the device is
+ *     registered at to bound its own list of Work orders. All four are
+ *     questions returning a value — null for "no such row" — over records
+ *     this Module owns, which is clauses 1 and 2 exactly. Deliberately not
+ *     exported with them: createFloorDevice, setEmployeePin, verifyPin,
+ *     findCredentialForEmployeeNo and createIdentification, this Module's own
+ *     writes and the secrets they handle (clause 1) — floor-routes.js reaches
+ *     them directly, as a People route reaches any People service.
  *   - OUTSIDE_GRANTED_ORG_UNITS — the exact 403 body every scope refusal
  *     already shares inside People (authorization.js, plant-routes.js); the
  *     one deliberate exception to "domain, not utility" (ADR-0006): it reads
@@ -127,10 +162,11 @@
  * short-circuits role `admin` internally, so requireAdmin/isAdmin have none
  * either, and ROLES is an input-validation concern local to People's own
  * Approval flow. Also not exported: every write in plant.js, directory.js,
- * service.js, skills.js and job-roles.js (clause 1 — a second Module never
- * writes People's own tables), and errors.js's parseId/httpError/notFound/
- * handleError/escapeLikePattern (clause 3 — Maintenance gets its own small
- * modules/maintenance/errors.js rather than importing People's).
+ * service.js, skills.js, job-roles.js and floor-devices.js (clause 1 — a
+ * second Module never writes People's own tables), and errors.js's
+ * parseId/httpError/notFound/handleError/escapeLikePattern (clause 3 —
+ * Maintenance gets its own small modules/maintenance/errors.js rather than
+ * importing People's).
  */
 
 const express = require('express');
@@ -139,10 +175,17 @@ const plantRoutes = require('./plant-routes');
 const directoryRoutes = require('./directory-routes');
 const jobRoleRoutes = require('./job-role-routes');
 const skillRoutes = require('./skill-routes');
+const floorRoutes = require('./floor-routes');
 const { authenticate, requireActive } = require('./middleware');
 const { canAct, canSeeSite } = require('./authorization');
 const { findOrgUnit, findSite } = require('./plant');
 const { findEmployee } = require('./directory');
+const {
+  findDeviceByCredential,
+  findDeviceContext,
+  findValidIdentification,
+  deviceReachesOrgUnit
+} = require('./floor-devices');
 const { OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
@@ -154,6 +197,9 @@ router.use(skillRoutes);
 
 module.exports = {
   router,
+  // Mounted at `/api/maintenance` by src/index.js, not at `/api/people` — see
+  // the header above. It is a router, not a route file added to `router`.
+  floorRouter: floorRoutes,
   authenticate,
   requireActive,
   canAct,
@@ -161,5 +207,9 @@ module.exports = {
   findOrgUnit,
   findSite,
   findEmployee,
+  findDeviceByCredential,
+  findDeviceContext,
+  findValidIdentification,
+  deviceReachesOrgUnit,
   OUTSIDE_GRANTED_ORG_UNITS
 };

@@ -44,6 +44,16 @@ const healthRoutes = health.mount(app);
 // an omission (ADR-0002).
 app.use('/api', healthRoutes);
 app.use('/api/people', people.router);
+// The shared floor device's own addresses — register it, set an Employee's
+// floor PIN, exchange them for an identification — are People's routes since
+// issue #201, but they stay mounted under `/api/maintenance`, which is where a
+// deployed device has always called them and where the frontend still calls
+// them. The prefix is an address kept, not a claim about which Module owns the
+// route: people/floor-routes.js's own header says so, and folding the router
+// into `people.router` instead would have moved every device's URL for no gain
+// a device can see. This file is where the application composes its Modules,
+// so the mount is written here rather than hidden inside maintenance's router.
+app.use('/api/maintenance', people.floorRouter);
 app.use('/api/maintenance', maintenance.router);
 app.use('/api/actions', actions.router);
 
