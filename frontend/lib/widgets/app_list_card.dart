@@ -46,7 +46,17 @@ class AppListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: EdgeInsets.zero,
+      // Stretch, not the `Column` default of `center` (issue #193). A row that
+      // sizes to its own content — a `Wrap` of a name and its actions, say —
+      // shrink-wraps inside a centre-aligned `Column`, and the whole row then
+      // floats to the middle of the card: measured on /skills, where the row
+      // text started 43px inside its own card and the actions sat against the
+      // text instead of the row's right-hand end. Stretching the column gives
+      // every row the card's full width, which is what makes a row's left edge
+      // the card's left edge and a `Wrap(spaceBetween)`'s trailing item land at
+      // the right.
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var index = 0; index < rows.length; index++) ...[
             if (index > 0) const Divider(height: 1, thickness: 1, color: AppColors.edge),

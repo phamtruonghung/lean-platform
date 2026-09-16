@@ -14,12 +14,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
-import '../status_tone.dart';
 import '../widgets/status_chip.dart';
 import 'job_role.dart';
 import 'job_role_form_dialog.dart';
@@ -81,8 +82,8 @@ class _Loaded extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: JobRolesScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: JobRolesScreen.maxWidth,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [

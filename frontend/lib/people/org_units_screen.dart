@@ -43,9 +43,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
-import '../theme.dart';
-import '../widgets/app_search_field.dart';
 import '../status_tone.dart';
+import '../theme.dart';
+import '../widgets/app_page_frame.dart';
+import '../widgets/app_search_field.dart';
 import '../widgets/status_chip.dart';
 import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
@@ -157,8 +158,8 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
       body: BlocListener<OrgUnitAdminBloc, OrgUnitAdminState>(
         listener: _onAdminChanged,
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: OrgUnitsScreen.maxWidth),
+          child: AppPageFrame(
+            maxWidth: OrgUnitsScreen.maxWidth,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
               children: [

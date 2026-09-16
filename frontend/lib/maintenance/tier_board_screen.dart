@@ -24,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -104,8 +105,8 @@ class _Header extends StatelessWidget {
     final loaded = state is TierBoardLoaded ? state as TierBoardLoaded : null;
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: TierBoardScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: TierBoardScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: Column(
@@ -242,8 +243,8 @@ class _TierBoardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: TierBoardScreen.maxWidth),
+      child: AppPageFrame(
+        maxWidth: TierBoardScreen.maxWidth,
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           child: Wrap(
