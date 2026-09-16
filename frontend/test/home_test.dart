@@ -15,6 +15,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/home_screen.dart';
@@ -331,5 +332,120 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(HomeScreen.openWorkOrdersCardKey), findsOneWidget);
+  });
+
+  // The cards are one grid (issue #188). What these tests claim is the geometry
+  // a reader can see — cards side by side at equal widths and equal heights, a
+  // next row starting at the left edge the previous one did, a lone card
+  // filling its own row instead of sitting at a column width, and one column
+  // when the page is narrow — never a particular pixel value beyond the surface
+  // each test pins for itself.
+  //
+  // The window width is what makes a column count here, and it is not the page
+  // width: the Shell takes 260px of it above its own 700px breakpoint and 64px
+  // below it, so a 1200px window leaves Home its full 900px page and a 620px
+  // window leaves it ~500px. Both numbers are asserted through what renders
+  // rather than recomputed here, so a Shell width change fails these tests as a
+  // layout change rather than silently re-flowing the grid.
+
+  /// The four cards an administrator's Home carries, at a window wide enough
+  /// for Home's own 900px page — the surface the grid is judged on.
+  Future<FakeWire> pumpWideAdminHome(WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 1400);
+    addTearDown(tester.view.reset);
+
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      queue: [pendingJson('7', 'new@b.c', DateTime.now())],
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+    return wire;
+  }
+
+  testWidgets('the cards sit side by side at one size, and the next row starts where the first did',
+      (tester) async {
+    await pumpWideAdminHome(tester);
+
+    // Section order: what is assigned to you (its context line is the long
+    // one in this fixture, since this Account carries no Employee link), the
+    // two Work order cards, then Approvals.
+    final myActionsSize = tester.getSize(find.byKey(HomeScreen.myActionsCardKey));
+    final openOrdersSize = tester.getSize(find.byKey(HomeScreen.openWorkOrdersCardKey));
+    final approvalsSize = tester.getSize(find.byKey(HomeScreen.approvalsCardKey));
+    final unassignedSize = tester.getSize(find.byKey(HomeScreen.unassignedCardKey));
+
+    // Equal widths within a row: two columns of the same 900px page.
+    expect(openOrdersSize.width, myActionsSize.width);
+    expect(approvalsSize.width, unassignedSize.width);
+    expect(approvalsSize.width, myActionsSize.width);
+
+    // Equal heights within a row, although one card's context line is three
+    // times the length of its neighbour's — a row shares the height of its
+    // tallest card rather than leaving a ragged bottom edge.
+    expect(openOrdersSize.height, myActionsSize.height);
+
+    // The second row starts at the same left edge the first one did, and above
+    // it: no card is islanded in the middle of a row, which is exactly what
+    // the three independent `Wrap`s this replaced produced.
+    final firstRowLeft = tester.getTopLeft(find.byKey(HomeScreen.myActionsCardKey)).dx;
+    final secondRowLeft = tester.getTopLeft(find.byKey(HomeScreen.unassignedCardKey)).dx;
+    expect(secondRowLeft, firstRowLeft);
+    expect(
+      tester.getTopLeft(find.byKey(HomeScreen.approvalsCardKey)).dx,
+      tester.getTopLeft(find.byKey(HomeScreen.openWorkOrdersCardKey)).dx,
+    );
+    expect(
+      tester.getTopLeft(find.byKey(HomeScreen.unassignedCardKey)).dy,
+      greaterThan(tester.getTopLeft(find.byKey(HomeScreen.myActionsCardKey)).dy),
+    );
+  });
+
+  testWidgets('a lone card fills its own row rather than sitting at a column width',
+      (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 1400);
+    addTearDown(tester.view.reset);
+
+    // An operator's Home carries one card (#185).
+    final wire = wireWith(role: Roles.operator);
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+    // Half of Home's 900px page would be ~420px; the whole content box is 852.
+    expect(tester.getSize(find.byKey(HomeScreen.myActionsCardKey)).width, greaterThan(800));
+  });
+
+  testWidgets('a narrow page lays the cards out in one column', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(620, 1600);
+    addTearDown(tester.view.reset);
+
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      queue: [pendingJson('7', 'new@b.c', DateTime.now())],
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+    final left = tester.getTopLeft(find.byKey(HomeScreen.myActionsCardKey)).dx;
+    for (final key in [
+      HomeScreen.openWorkOrdersCardKey,
+      HomeScreen.unassignedCardKey,
+      HomeScreen.approvalsCardKey,
+    ]) {
+      expect(tester.getTopLeft(find.byKey(key)).dx, left);
+    }
+    // One column means each card is the full content width, not half of it.
+    expect(
+      tester.getSize(find.byKey(HomeScreen.openWorkOrdersCardKey)).width,
+      tester.getSize(find.byKey(HomeScreen.myActionsCardKey)).width,
+    );
+    expect(
+      tester.getTopLeft(find.byKey(HomeScreen.unassignedCardKey)).dy,
+      greaterThan(tester.getTopLeft(find.byKey(HomeScreen.openWorkOrdersCardKey)).dy),
+    );
   });
 }
