@@ -24,7 +24,6 @@ import 'home_bloc.dart';
 import 'people_api.dart';
 import 'platform/router.dart';
 import 'theme.dart';
-import 'widgets/empty_state.dart';
 import 'widgets/failure_state.dart';
 import 'widgets/skeleton_list.dart';
 
@@ -38,10 +37,10 @@ class HomeScreen extends StatelessWidget {
   static const ValueKey<String> openWorkOrdersCardKey = ValueKey<String>('home-open-work-orders');
   static const ValueKey<String> unassignedCardKey = ValueKey<String>('home-unassigned-work-orders');
   static const ValueKey<String> approvalsCardKey = ValueKey<String>('home-approvals');
+  static const ValueKey<String> myActionsCardKey = ValueKey<String>('home-my-actions');
   static const ValueKey<String> workRetryKey = ValueKey<String>('home-work-retry');
   static const ValueKey<String> approvalsRetryKey = ValueKey<String>('home-approvals-retry');
-  static const ValueKey<String> emptyKey = ValueKey<String>('home-empty');
-  static const ValueKey<String> emptyDirectoryActionKey = ValueKey<String>('home-empty-directory');
+  static const ValueKey<String> myActionsRetryKey = ValueKey<String>('home-my-actions-retry');
 
   @override
   Widget build(BuildContext context) {
@@ -82,13 +81,28 @@ class _HomeBody extends StatelessWidget {
               const SizedBox(height: Spacing.sm),
               Text('${account.email} · ${account.role}', style: AppTypography.body(context)),
               const SizedBox(height: Spacing.xl),
-              if (state.earnsNoCards)
-                const _HomeEmpty()
-              else ...[
-                if (state.workSummary != null) _WorkSummarySection(section: state.workSummary!),
-                if (state.workSummary != null && state.approvals != null) const SizedBox(height: Spacing.lg),
-                if (state.approvals != null) _ApprovalsSection(section: state.approvals!),
-              ],
+              // What is assigned to *you* comes first: it is the one card on
+              // this Screen a person is personally on the hook for, and the
+              // reason most people open Home at all.
+              //
+              // The old no-cards empty state (#99 user story 6) is gone with
+              // it: the Actions Destination carries no `roles` set (ADR-0032),
+              // so every role that can reach Home earns this card and there is
+              // no longer a role whose Home has nothing on it. An Account with
+              // no work to show now reads "Assigned to you — 0", which says
+              // more than "nothing is waiting on you" did.
+              // No no-cards branch any more: it was #99 user story 6, and the
+              // Actions card above retired it — every role that can reach Home
+              // earns at least that one (`HomeReady.earnsNoCards` says so in
+              // the negative).
+              if (state.myActions != null) _MyActionsSection(section: state.myActions!),
+              if (state.myActions != null && state.workSummary != null)
+                const SizedBox(height: Spacing.lg),
+              if (state.workSummary != null) _WorkSummarySection(section: state.workSummary!),
+              if ((state.myActions != null || state.workSummary != null) &&
+                  state.approvals != null)
+                const SizedBox(height: Spacing.lg),
+              if (state.approvals != null) _ApprovalsSection(section: state.approvals!),
             ],
           ),
         ),
@@ -97,25 +111,51 @@ class _HomeBody extends StatelessWidget {
   }
 }
 
-/// The no-cards case (#99 user story 6): an operator earns no Work orders
-/// Destination and no Approvals, so there is nothing here to count. Still a
-/// coherent Screen, never a blank one — offers the one Destination every
-/// approved Account earns regardless of role (`destinationsFor`'s own
-/// unconditional `Directory` entry, ADR-0009).
-class _HomeEmpty extends StatelessWidget {
-  const _HomeEmpty();
+/// What is assigned to the caller: open Actions whose owner is their own
+/// Employee record (issue #185).
+///
+/// One card, and three stories it has to tell apart: a count, a failure of its
+/// own read, and the Account that cannot be assigned anything at all because
+/// it carries no Employee link. The last is why this is not simply a count —
+/// "0" and "nothing can be assigned to you" look the same in a number and mean
+/// very different things to the person reading it.
+class _MyActionsSection extends StatelessWidget {
+  const _MyActionsSection({required this.section});
+
+  final HomeSectionState<HomeMyActions> section;
 
   @override
   Widget build(BuildContext context) {
-    return PlatformEmptyState.noneExist(
-      key: HomeScreen.emptyKey,
-      title: 'Nothing is waiting on you',
-      message: 'Your role carries no open work orders and no Approvals to decide. '
-          'The Directory is still open to you, if you want to look around.',
-      actionLabel: 'Open the Directory',
-      actionKey: HomeScreen.emptyDirectoryActionKey,
-      onAction: () => context.go(Routes.directory),
-    );
+    return switch (section) {
+      HomeSectionLoading<HomeMyActions>() =>
+        const SkeletonGrid(tiles: 1, crossAxisCount: 1, maxWidth: HomeScreen.maxWidth),
+      HomeSectionFailed<HomeMyActions>(:final isScopeRefused, :final message) =>
+        isScopeRefused
+            ? const PlatformScopeRefusedState()
+            : PlatformFailureState(
+                title: 'Your Actions are unavailable',
+                message: message,
+                retryKey: HomeScreen.myActionsRetryKey,
+                onRetry: () => context.read<HomeBloc>().add(const HomeMyActionsRetried()),
+              ),
+      HomeSectionLoaded<HomeMyActions>(:final data) => Wrap(
+          spacing: Spacing.md,
+          runSpacing: Spacing.md,
+          children: [
+            _HomeCard(
+              cardKey: HomeScreen.myActionsCardKey,
+              icon: Icons.assignment_ind_outlined,
+              label: 'Assigned to you',
+              count: data.openCount,
+              context_: data.hasEmployeeLink
+                  ? 'Open Actions whose owner is you'
+                  : 'Your Account is not linked to an Employee record, so no Action can be '
+                      'assigned to you — link one under Accounts',
+              onTap: () => context.go(Routes.actions),
+            ),
+          ],
+        ),
+    };
   }
 }
 

@@ -203,6 +203,9 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 create: (context) => HomeBloc(
                   peopleApi: context.read<PeopleApi>(),
                   maintenanceApi: context.read<MaintenanceApi>(),
+                  // What is assigned to the caller is read from the action log
+                  // (ActionsApi), the same reads its own register makes.
+                  actionsApi: context.read<ActionsApi>(),
                   authGateway: context.read<AuthGateway>(),
                   accountRole: account.account.role,
                   accountOrgUnitScope: account.account.orgUnitScope,
