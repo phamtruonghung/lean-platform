@@ -28,6 +28,8 @@
 /// is centred on purpose, and is not a page header).
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -37,40 +39,81 @@ import 'package:lean_platform/platform/destinations.dart';
 
 import 'harness.dart';
 
-/// A page to audit: where it is reached, what its title says, a phrase from its
-/// description (empty when the Screen writes none), and the largest inset its
-/// first row's own text may have inside its card — 20 by default, which is one
-/// row's own padding plus a pixel of rounding.
+/// A page to audit: where it is reached, the file that renders it, what its title
+/// says, a phrase from its description (empty when the Screen writes none), the
+/// page's own left inset (16 by default, `Spacing.lg` — Home pads by
+/// `Spacing.xl`), and the largest inset its first row's own text may have inside
+/// its card (20 by default, which is one row's own padding plus a pixel of
+/// rounding; a row built around a 40px avatar is 68 in, and a tree indents by
+/// depth).
 class _Page {
-  const _Page(this.route, this.title, this.descriptionPrefix, {this.maxRowInset = 20});
+  const _Page(
+    this.route,
+    this.screenFile,
+    this.title,
+    this.descriptionPrefix, {
+    this.inset = Spacing.lg,
+    this.maxRowInset = 20,
+  });
 
   final String route;
+  final String screenFile;
   final String title;
   final String descriptionPrefix;
+  final double inset;
   final double maxRowInset;
 }
 
 const _pages = <_Page>[
-  _Page('/directory', 'Directory', 'Who works here', maxRowInset: 68),
-  _Page('/job-roles', 'Job roles', 'What an Employee does'),
-  _Page('/skills', 'Skills', 'What the plant qualifies'),
+  // Home's address is `/`, and its second line repeats the Shell's own footer
+  // text, so it is asserted by title and card rather than by that line.
+  _Page('/', 'lib/home_screen.dart', 'Welcome, A B', '', inset: Spacing.xl),
+  _Page('/directory', 'lib/people/directory_screen.dart', 'Directory', 'Who works here',
+      maxRowInset: 68),
+  _Page('/job-roles', 'lib/people/job_roles_screen.dart', 'Job roles', 'What an Employee does'),
+  _Page('/skills', 'lib/people/skills_screen.dart', 'Skills', 'What the plant qualifies'),
   // The tree indents by depth and leads with a disclosure control.
-  _Page('/org-units', 'Org Units', "A Site's own shape", maxRowInset: 44),
-  _Page('/assets', 'Assets', ''),
-  _Page('/parts', 'Parts', ''),
-  _Page('/stores', 'Stores', 'The shelves that hold parts'),
-  _Page('/work-orders', 'Work orders', ''),
-  _Page('/my-requests', 'My requests', ''),
-  _Page('/downtime', 'Downtime', ''),
-  _Page('/pm-schedules', 'PM schedules', ''),
-  _Page('/meters', 'Meters', ''),
-  _Page('/job-plans', 'Job plans', ''),
-  _Page('/accounts', 'Accounts', ''),
-  _Page('/approvals', 'Approval queue', '', maxRowInset: 68),
-  _Page('/actions', 'Actions', ''),
-  _Page('/tier-board', 'Tier board', ''),
-  _Page('/skill-coverage', 'Skill coverage', ''),
+  _Page('/org-units', 'lib/people/org_units_screen.dart', 'Org Units', "A Site's own shape",
+      maxRowInset: 44),
+  _Page('/assets', 'lib/maintenance/assets_screen.dart', 'Assets', ''),
+  _Page('/parts', 'lib/maintenance/parts_screen.dart', 'Parts', ''),
+  _Page('/stores', 'lib/maintenance/stores_screen.dart', 'Stores', 'The shelves that hold parts'),
+  _Page('/work-orders', 'lib/maintenance/work_orders_screen.dart', 'Work orders', ''),
+  _Page('/my-requests', 'lib/maintenance/my_requests_screen.dart', 'My requests', ''),
+  _Page('/requests', 'lib/maintenance/requests_screen.dart', 'Triage queue', ''),
+  _Page('/downtime', 'lib/maintenance/downtime_screen.dart', 'Downtime', ''),
+  _Page('/pm-schedules', 'lib/maintenance/pm_schedules_screen.dart', 'PM schedules', ''),
+  _Page('/meters', 'lib/maintenance/meters_screen.dart', 'Meters', ''),
+  _Page('/job-plans', 'lib/maintenance/job_plans_screen.dart', 'Job plans', ''),
+  _Page('/accounts', 'lib/people/accounts_screen.dart', 'Accounts', ''),
+  _Page('/approvals', 'lib/people/approval_queue_screen.dart', 'Approval queue', '',
+      maxRowInset: 68),
+  _Page('/actions', 'lib/actions/actions_screen.dart', 'Actions', ''),
+  _Page('/tier-board', 'lib/maintenance/tier_board_screen.dart', 'Tier board', ''),
+  _Page('/skill-coverage', 'lib/people/skill_coverage_screen.dart', 'Skill coverage', ''),
 ];
+
+/// Every Screen that is **not** audited, with the reason — so that a Screen this
+/// table does not cover is a decision somebody made rather than an omission. The
+/// coverage test below fails on a new `*_screen.dart` that is in neither this map
+/// nor the table above, and on a stale entry here whose file has been renamed or
+/// deleted.
+const _excluded = <String, String>{
+  'lib/actions/action_detail_screen.dart':
+      "its title is the Action's own title, not a page heading",
+  'lib/people/employee_detail_screen.dart':
+      "its title is the Employee's own name, not a page heading",
+  'lib/maintenance/work_order_detail_screen.dart':
+      "its title is the Work order's own number, not a page heading",
+  'lib/maintenance/store_stock_screen.dart':
+      "its title is the Store's own name, not a page heading",
+  'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
+  'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
+  'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',
+  'lib/platform/access_denied_screen.dart': 'a centred state on purpose',
+  'lib/platform/not_found_screen.dart': 'a centred state on purpose',
+  'lib/platform/session_error_screen.dart': 'a centred state on purpose',
+};
 
 /// One wire for every page in the table: each Screen finds the collection it
 /// reads, so what is measured is a rendered page rather than a loading
@@ -100,6 +143,9 @@ FakeWire _wire() => FakeWire(
       },
       accounts: [accountJson('1', 'admin@b.c', role: Roles.admin)],
       queue: [pendingJson('7', 'new@b.c', DateTime.now())],
+      triageRequests: {
+        '1': [requestJson('1', 'REQ-1', 'Motor running hot')],
+      },
       actions: {
         '1': [actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose')],
       },
@@ -125,7 +171,7 @@ void main() {
       final frame = find.byType(AppPageFrame);
       expect(frame, findsWidgets, reason: '${page.route} renders no page frame');
       final box = tester.getRect(frame.first);
-      final expected = box.left + Spacing.lg;
+      final expected = box.left + page.inset;
 
       // The Screen's own title, not the sidebar's label of the same word: a
       // title is `headlineSmall` (24px), the rail's label is `bodyMedium`.
@@ -184,4 +230,36 @@ void main() {
       );
     });
   }
+
+  // Coverage, so that adding a Screen is a decision rather than an omission
+  // (issue #195). Every Screen in the client is either audited above or named in
+  // `_excluded` with a reason; a new file fails here until its author chooses.
+  test('every Screen is either audited or excluded by name', () {
+    final screens = Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .map((file) => file.path)
+        .where((path) => path.endsWith('_screen.dart'))
+        .toList()
+      ..sort();
+
+    final audited = {for (final page in _pages) page.screenFile};
+    final uncovered = [
+      for (final path in screens)
+        if (!audited.contains(path) && !_excluded.containsKey(path))
+          '$path: neither audited in page_alignment_test.dart\'s table nor excluded '
+              'with a reason. Add it to one of them — an audit means asserting where '
+              'its title, description and first row start; an exclusion means saying why '
+              'the rule does not apply to it.',
+    ];
+    expect(uncovered, isEmpty, reason: uncovered.join('\n'));
+
+    // And the other direction: an exclusion for a file that no longer exists hides a
+    // Screen from this test rather than describing it.
+    final stale = [
+      for (final path in _excluded.keys)
+        if (!screens.contains(path)) '$path is excluded here but is not a Screen in lib/',
+    ];
+    expect(stale, isEmpty, reason: stale.join('\n'));
+  });
 }

@@ -271,6 +271,10 @@ class _WorkOrderBody extends StatelessWidget {
               Card(
                 margin: EdgeInsets.zero,
                 child: Column(
+                  // Stated, not defaulted (issue #195): a Column centres its
+                  // cross axis, so a row that sizes to its own content would
+                  // float to the middle of this card.
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (final task in workOrder.tasks)
                       _WorkOrderTaskRow(task: task, canRecord: canRecord),
@@ -317,6 +321,10 @@ class _CostSummary extends StatelessWidget {
           Card(
             margin: EdgeInsets.zero,
             child: Column(
+              // Stated, not defaulted (issue #195): a Column centres its
+              // cross axis, so a row that sizes to its own content would
+              // float to the middle of this card.
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final activity in shown.labourByActivity)
                   ListTile(
@@ -371,6 +379,10 @@ class _CostSummary extends StatelessWidget {
           Card(
             margin: EdgeInsets.zero,
             child: Column(
+              // Stated, not defaulted (issue #195): a Column centres its
+              // cross axis, so a row that sizes to its own content would
+              // float to the middle of this card.
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final part in shown.parts)
                   ListTile(
