@@ -13,6 +13,17 @@
 /// "Who holds this skill" (AC5) is offered to every Account too, from each
 /// row — `GET .../qualified-employees` is an open read as well
 /// (skill-routes.js's own header).
+///
+/// **It reads like the other catalogues now (issue #189).** This Screen was
+/// the older of the pair and had drifted from its own sibling: it loaded with a
+/// bare `CircularProgressIndicator` where job roles showed the shared skeleton,
+/// emptied with a sentence where job roles showed `PlatformEmptyState`, failed
+/// with a private widget, drew its rows with no rule between them, and put
+/// "Who holds this" and "Correct" *beneath* a row's text, which made every row
+/// twice as tall as a job role's with the right half of it empty. It now uses
+/// the three shared states, the shared `AppListCard` for its rows, the
+/// Platform's page width, and the same row shape job roles uses — name on the
+/// left, actions at the right-hand end of the same line.
 library;
 
 import 'package:flutter/material.dart';
@@ -20,6 +31,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../status_tone.dart';
+import '../widgets/app_list_card.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
+import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'skill.dart';
 import 'skill_form_dialog.dart';
@@ -33,12 +48,22 @@ class SkillsScreen extends StatelessWidget {
   /// role, the same shape `JobRolesScreen.isAdmin` follows.
   final bool isAdmin;
 
-  static const double maxWidth = 760;
+  /// The Platform's own page width (issue #189): this Screen used to declare
+  /// 760 while the Directory and Org Units declared 900, which is why a
+  /// catalogue page read as a narrower app than the two pages either side of
+  /// it. The number now comes from [AppLayout.pageWidth].
+  static const double maxWidth = AppLayout.pageWidth;
 
   static const ValueKey<String> addKey = ValueKey<String>('skills-add');
   static const ValueKey<String> failedKey = ValueKey<String>('skills-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('skills-retry');
   static const ValueKey<String> emptyKey = ValueKey<String>('skills-empty');
+
+  /// The empty state's own action, offered to an administrator — the same
+  /// key and shape `JobRolesScreen.emptyAddKey` already has, so an empty
+  /// catalogue offers the thing that would fill it (issue #189).
+  static const ValueKey<String> emptyAddKey = ValueKey<String>('skills-empty-add');
+
   static ValueKey<String> rowKey(String id) => ValueKey<String>('skills-row-$id');
   static ValueKey<String> correctKey(String id) => ValueKey<String>('skills-correct-$id');
   static ValueKey<String> inactiveChipKey(String id) => ValueKey<String>('skills-inactive-$id');
@@ -50,8 +75,17 @@ class SkillsScreen extends StatelessWidget {
 
     return Scaffold(
       body: switch (state) {
-        SkillsLoading() => const Center(child: CircularProgressIndicator()),
-        SkillsUnavailable(message: final message) => _Failed(message: message),
+        // The shared skeleton, not the bare spinner this Screen used to show
+        // (issue #189): six rows is `SkeletonList`'s own default and the same
+        // placeholder `JobRolesScreen` loads behind.
+        SkillsLoading() => const SkeletonList(maxWidth: SkillsScreen.maxWidth),
+        SkillsUnavailable(message: final message) => PlatformFailureState(
+            key: SkillsScreen.failedKey,
+            title: 'The skill catalogue could not be read',
+            message: message,
+            retryKey: SkillsScreen.retryKey,
+            onRetry: () => context.read<SkillsBloc>().add(const SkillsStarted()),
+          ),
         SkillsLoaded() => _Loaded(state: state, isAdmin: isAdmin),
       },
     );
@@ -102,20 +136,26 @@ class _Loaded extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.lg),
             if (state.skills.isEmpty)
-              Text(
-                'No skill has been defined yet.',
+              // The shared empty state, with the action that would fill it —
+              // a sentence on its own said what was missing and offered
+              // nothing (issue #189). `noneExist` is the right story: this
+              // catalogue carries no filter, so there is only ever the one
+              // empty case, the same reasoning `JobRolesScreen` records.
+              PlatformEmptyState.noneExist(
                 key: SkillsScreen.emptyKey,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                title: 'No skills yet',
+                message: 'Nothing has been defined in the catalogue.',
+                icon: Icons.school_outlined,
+                actionLabel: isAdmin ? 'Add skill' : null,
+                actionKey: SkillsScreen.emptyAddKey,
+                onAction: isAdmin ? () => SkillFormDialog.open(context) : null,
               )
             else
-              Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    for (final skill in state.skills)
-                      _SkillRow(skill: skill, isAdmin: isAdmin, isMutating: state.isMutating),
-                  ],
-                ),
+              AppListCard(
+                rows: [
+                  for (final skill in state.skills)
+                    _SkillRow(skill: skill, isAdmin: isAdmin, isMutating: state.isMutating),
+                ],
               ),
           ],
         ),
@@ -124,6 +164,16 @@ class _Loaded extends StatelessWidget {
   }
 }
 
+/// One row of the catalogue: what the skill is on the left, what can be done
+/// about it at the right-hand end of the same line (issue #189).
+///
+/// The actions used to sit *beneath* the skill's own text in a `Wrap`, which
+/// made every row twice as tall as a job role's and left the right half of each
+/// row empty. The actions are now the row's own second item, so they sit at the
+/// right-hand end of the name's line — and, because the whole row is a `Wrap`
+/// rather than a `Row`, they drop to their own line on a surface too narrow to
+/// hold them beside the name instead of overflowing it. A `Row` was tried first
+/// and overflowed by 77px at an 800px window, which is a supported width.
 class _SkillRow extends StatelessWidget {
   const _SkillRow({required this.skill, required this.isAdmin, required this.isMutating});
 
@@ -137,25 +187,36 @@ class _SkillRow extends StatelessWidget {
     return Padding(
       key: SkillsScreen.rowKey(skill.id),
       padding: const EdgeInsets.all(Spacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      // A `Wrap`, not a `Row` (issue #189): the actions sit at the right-hand
+      // end of the name's own line while there is room for them and drop to
+      // their own line when there is not — which is what a `Row` cannot do, and
+      // at an 800px window there is genuinely not (measured: two outlined
+      // buttons take ~400px, leaving 76px for the text and its `Inactive`
+      // chip). Same rule the repo's own header-overflow note records: `Wrap`,
+      // never a `Row` whose controls can outgrow it.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: Spacing.md,
+        runSpacing: Spacing.xs,
         children: [
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: Spacing.sm,
+            runSpacing: Spacing.xs,
             children: [
-              Flexible(
-                child: Text(
-                  '${skill.name} · ${skill.code} · ${skill.skillCategory}',
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
-                ),
+              Text(
+                '${skill.name} · ${skill.code} · ${skill.skillCategory}',
+                style: theme.textTheme.bodyMedium,
               ),
-              if (!skill.isActive) ...[
-                const SizedBox(width: Spacing.sm),
-                StatusChip(key: SkillsScreen.inactiveChipKey(skill.id), label: 'Inactive', tone: StatusTone.neutral),
-              ],
+              if (!skill.isActive)
+                StatusChip(
+                  key: SkillsScreen.inactiveChipKey(skill.id),
+                  label: 'Inactive',
+                  tone: StatusTone.neutral,
+                ),
             ],
           ),
-          const SizedBox(height: Spacing.xs),
           Wrap(
             spacing: Spacing.sm,
             runSpacing: Spacing.xs,
@@ -174,47 +235,6 @@ class _SkillRow extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Failed extends StatelessWidget {
-  const _Failed({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: SkillsScreen.failedKey,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              Text('The skill catalogue could not be read', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: Spacing.md),
-              FilledButton.tonal(
-                key: SkillsScreen.retryKey,
-                onPressed: () => context.read<SkillsBloc>().add(const SkillsStarted()),
-                child: const Text('Try again'),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

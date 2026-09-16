@@ -43,6 +43,7 @@ import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 
 import 'harness.dart';
@@ -652,6 +653,147 @@ void main() {
     final (id, body) = wire.workOrderAssignRequests.single;
     expect(id, '101');
     expect(body, {'employeeId': '21'});
+  });
+
+  // Finding a person in the assign dialog (issue #187). These tests claim what
+  // a reader sees and what the wire was asked for: typing narrows the rows, the
+  // term may be a name, a number or a qualification, the count line says how
+  // many of how many, a term matching nobody reads as "nobody matches" rather
+  // than as an empty plant, and a chosen Employee stays visible — and is what
+  // gets submitted — when the term later excludes them. They also claim the
+  // negative this ticket is made of: narrowing costs **no request**, because
+  // the candidate read is complete before the box can be typed into.
+
+  /// Three candidates with one qualification between them, so a term can be
+  /// aimed at a name, a number or a skill and land on a different row each time.
+  FakeWire candidatesWire() => wireWith(
+        workOrders: {
+          '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+        },
+        assigneeCandidates: [
+          assigneeCandidateJson(
+            '20',
+            'Jane Doe',
+            employeeNo: 'E-20',
+            skills: [heldSkillJson('1', '5', 'WELD', 'Welding')],
+          ),
+          assigneeCandidateJson('21', 'John Smith', employeeNo: 'E-21'),
+          assigneeCandidateJson('22', 'Ana Silva', employeeNo: 'E-22'),
+        ],
+      );
+
+  Future<void> openAssignDialog(WidgetTester tester, FakeWire wire) async {
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+    await openRowMenu(tester, '101');
+    await tapIn(tester, find.byKey(WorkOrdersScreen.assignKey('101')));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the assign dialog narrows the candidates as a term is typed, and asks the server nothing',
+      (tester) async {
+    final wire = candidatesWire();
+    await openAssignDialog(tester, wire);
+
+    // Who is offered before anything is typed, and what the wire has been asked
+    // so far — the baseline the "no request" claim is measured against.
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('20')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('21')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('22')), findsOneWidget);
+    final requestsBefore = wire.requests.length;
+
+    await tester.enterText(find.byKey(WorkOrderAssignDialog.searchFieldKey), 'jane');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('20')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('21')), findsNothing);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('22')), findsNothing);
+
+    // The whole point: the set was already here, so narrowing it is a rebuild.
+    expect(wire.requests.length, requestsBefore);
+    expect(wire.requests.any((r) => r.contains('search=jane')), isFalse);
+
+    // And clearing brings every one of them back (issue #187 story 10).
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.searchClearKey));
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('20')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('21')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('22')), findsOneWidget);
+  });
+
+  testWidgets('the term matches an employee number and a qualification, not only a name',
+      (tester) async {
+    final wire = candidatesWire();
+    await openAssignDialog(tester, wire);
+
+    await tester.enterText(find.byKey(WorkOrderAssignDialog.searchFieldKey), 'E-21');
+    await tester.pumpAndSettle();
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('21')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('20')), findsNothing);
+
+    // Lower case on purpose: a person does not capitalise a search term.
+    await tester.enterText(find.byKey(WorkOrderAssignDialog.searchFieldKey), 'weld');
+    await tester.pumpAndSettle();
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('20')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('21')), findsNothing);
+
+    // The qualification chips are unchanged by the search: a filtered list is
+    // the same list, narrower.
+    expect(find.byKey(WorkOrderAssignDialog.skillChipKey('20', '5')), findsOneWidget);
+  });
+
+  testWidgets('the count line says how many of how many, only while a term is set',
+      (tester) async {
+    final wire = candidatesWire();
+    await openAssignDialog(tester, wire);
+
+    expect(find.byKey(WorkOrderAssignDialog.searchCountKey), findsNothing);
+
+    await tester.enterText(find.byKey(WorkOrderAssignDialog.searchFieldKey), 'jane');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(WorkOrderAssignDialog.searchCountKey), findsOneWidget);
+    expect(find.text(AppFilterField.countLabel(1, 3)), findsOneWidget);
+  });
+
+  testWidgets('a term matching nobody says so, and Assign stays unavailable',
+      (tester) async {
+    final wire = candidatesWire();
+    await openAssignDialog(tester, wire);
+
+    await tester.enterText(find.byKey(WorkOrderAssignDialog.searchFieldKey), 'nguyne');
+    await tester.pumpAndSettle();
+
+    // "Nobody matches what you typed" — never "there is nobody to assign this
+    // to", which is a different fact and would be wrong here.
+    expect(find.byKey(WorkOrderAssignDialog.noMatchesKey), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.noCandidatesKey), findsNothing);
+    expect(find.text('Nobody matches "nguyne" — try a different name, number, or skill.'),
+        findsOneWidget);
+    expect(tester.widget<FilledButton>(find.byKey(WorkOrderAssignDialog.submitKey)).onPressed, isNull);
+  });
+
+  testWidgets('a chosen candidate stays visible, and is what is submitted, when the term excludes them',
+      (tester) async {
+    final wire = candidatesWire();
+    await openAssignDialog(tester, wire);
+
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.candidateKey('20')));
+    await tester.enterText(find.byKey(WorkOrderAssignDialog.searchFieldKey), 'john');
+    await tester.pumpAndSettle();
+
+    // Jane no longer matches, and is still on screen — a person can never
+    // submit a name that is off-screen (issue #187 story 7).
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('20')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('21')), findsOneWidget);
+    expect(find.byKey(WorkOrderAssignDialog.candidateKey('22')), findsNothing);
+    expect(find.text(AppFilterField.countLabel(2, 3)), findsOneWidget);
+
+    await tapIn(tester, find.byKey(WorkOrderAssignDialog.submitKey));
+    expect(wire.workOrderAssignRequests.single.$2, {'employeeId': '20'});
   });
 
   testWidgets('the assignee appears on the row afterwards, without re-reading the list',

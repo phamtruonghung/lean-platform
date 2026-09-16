@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -27,7 +28,9 @@ class PartsScreen extends StatelessWidget {
   /// Whether this caller may define a part — read off `/me`'s own role.
   final bool isAdmin;
 
-  static const double maxWidth = 800;
+  /// The Platform's own page width (issue #189): this Screen used to declare
+  /// 800, one of five numbers six catalogue Screens each picked for themselves.
+  static const double maxWidth = AppLayout.pageWidth;
 
   static const ValueKey<String> addKey = ValueKey<String>('parts-add');
   static const ValueKey<String> failedKey = ValueKey<String>('parts-failed');
@@ -109,13 +112,10 @@ class _Loaded extends StatelessWidget {
                 onAction: isAdmin ? () => PartFormDialog.open(context) : null,
               )
             else
-              Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    for (final part in state.parts) _PartRow(part: part),
-                  ],
-                ),
+              // One row per part, ruled apart from its neighbours
+              // (issue #189).
+              AppListCard(
+                rows: [for (final part in state.parts) _PartRow(part: part)],
               ),
           ],
         ),

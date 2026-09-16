@@ -1728,6 +1728,12 @@ class FakeWire {
   List<Map<String, dynamic>> skills;
   int skillsStatus;
 
+  /// When set, a `GET /api/people/skills` read hangs until the test completes
+  /// it — the same device [workOrdersGate] uses, needed to prove the catalogue
+  /// shows its placeholder while the read is in flight rather than a bare
+  /// spinner (issue #189).
+  Completer<void>? skillsGate;
+
   /// `POST /api/people/skills` (administrator only).
   int createSkillStatus;
   String createSkillMessage;
@@ -3527,6 +3533,7 @@ class FakeWire {
           return http.Response(jsonEncode({'employees': qualifiedEmployees}), 200);
         }
         if (path == '/api/people/skills') {
+          if (skillsGate != null) await skillsGate!.future;
           if (skillsStatus != 200) {
             return http.Response(jsonEncode({'message': 'The skill catalogue is unavailable.'}), skillsStatus);
           }

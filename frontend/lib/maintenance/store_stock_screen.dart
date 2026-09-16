@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -23,7 +24,9 @@ class StoreStockScreen extends StatelessWidget {
   /// `/me`'s own `orgUnitScope`. False hides the receive affordance entirely.
   final bool canReceive;
 
-  static const double maxWidth = 800;
+  /// The Platform's own page width (issue #189): this Screen used to declare
+  /// 800, one of five numbers six catalogue Screens each picked for themselves.
+  static const double maxWidth = AppLayout.pageWidth;
   static const ValueKey<String> receiveKey = ValueKey<String>('store-stock-receive');
   static const ValueKey<String> failedKey = ValueKey<String>('store-stock-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('store-stock-retry');
@@ -102,13 +105,10 @@ class _Loaded extends StatelessWidget {
                 icon: Icons.inventory_2_outlined,
               )
             else
-              Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    for (final level in state.stock) _StockRow(level: level),
-                  ],
-                ),
+              // One row per part on the shelf, ruled apart from its
+              // neighbours (issue #189).
+              AppListCard(
+                rows: [for (final level in state.stock) _StockRow(level: level)],
               ),
           ],
         ),

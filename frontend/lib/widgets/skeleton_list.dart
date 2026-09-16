@@ -189,11 +189,23 @@ class SkeletonDetail extends StatelessWidget {
 /// competes with the two bars for the space rather than leaving room for
 /// them.
 class SkeletonGrid extends StatelessWidget {
-  const SkeletonGrid({super.key, this.tiles = 6, this.crossAxisCount = 3, this.maxWidth = 900});
+  const SkeletonGrid({
+    super.key,
+    this.tiles = 6,
+    this.crossAxisCount = 3,
+    this.maxWidth = 900,
+    this.padding = const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+  });
 
   final int tiles;
   final int crossAxisCount;
   final double maxWidth;
+
+  /// The placeholder's own inset, defaulting to a Screen's page padding. A
+  /// caller that has already padded its body (Home's card grid, issue #188)
+  /// passes [EdgeInsets.zero] so the placeholder tiles line up with the cards
+  /// that will replace them rather than sitting 16px inside them.
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +217,7 @@ class SkeletonGrid extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+          padding: padding,
           shrinkWrap: true,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,

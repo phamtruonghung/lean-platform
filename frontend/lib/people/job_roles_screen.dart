@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -31,7 +32,11 @@ class JobRolesScreen extends StatelessWidget {
   /// own role, the same shape `DirectoryScreen.isAdmin` follows.
   final bool isAdmin;
 
-  static const double maxWidth = 700;
+  /// The Platform's own page width (issue #189). This Screen used to declare
+  /// 700 while the Directory and Org Units declared 900, which is why a
+  /// catalogue page read as a narrower app than the two pages either side of
+  /// it; the number now comes from [AppLayout.pageWidth].
+  static const double maxWidth = AppLayout.pageWidth;
 
   static const ValueKey<String> addKey = ValueKey<String>('job-roles-add');
   static const ValueKey<String> failedKey = ValueKey<String>('job-roles-failed');
@@ -122,14 +127,14 @@ class _Loaded extends StatelessWidget {
                 onAction: isAdmin ? () => JobRoleFormDialog.open(context) : null,
               )
             else
-              Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    for (final jobRole in state.jobRoles)
-                      _JobRoleRow(jobRole: jobRole, isAdmin: isAdmin, isMutating: state.isMutating),
-                  ],
-                ),
+              // One row per job role, ruled apart from its neighbours — the
+              // catalogue's record has an edge to follow across the page now
+              // (issue #189), rather than six lines of undifferentiated white.
+              AppListCard(
+                rows: [
+                  for (final jobRole in state.jobRoles)
+                    _JobRoleRow(jobRole: jobRole, isAdmin: isAdmin, isMutating: state.isMutating),
+                ],
               ),
           ],
         ),
