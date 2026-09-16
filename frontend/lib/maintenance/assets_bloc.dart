@@ -87,6 +87,28 @@ class AssetOrgUnitChanged extends AssetsEvent {
   final String orgUnitId;
 }
 
+/// Corrects an Asset's own four fields (issue #173) — a full replacement of
+/// code, name, assetType and criticality. The form has already decided, the
+/// same contract [AssetAddConfirmed] follows: this event carries a whole
+/// correction, not a single field. The Asset's placement, its parent and
+/// whether it is retired are untouched — each has its own action and its
+/// own event.
+class AssetCorrectionConfirmed extends AssetsEvent {
+  const AssetCorrectionConfirmed({
+    required this.assetId,
+    required this.code,
+    required this.name,
+    required this.assetType,
+    required this.criticality,
+  });
+
+  final String assetId;
+  final String code;
+  final String name;
+  final String assetType;
+  final String criticality;
+}
+
 sealed class AssetsState {
   const AssetsState();
 }
@@ -107,6 +129,7 @@ class AssetsLoaded extends AssetsState {
     this.showRetired = false,
     this.mutatingAssetId,
     this.notice,
+    this.correctionFailure,
   });
 
   final List<Site> sites;
@@ -140,6 +163,14 @@ class AssetsLoaded extends AssetsState {
   /// that is [AssetsUnavailable].
   final String? notice;
 
+  /// Why the last correction did not land (issue #173). Reported by the open
+  /// `AssetFormDialog`, which stays open so the caller can fix the one field
+  /// that caused it — the same treatment [addFailure] already gives the add
+  /// path's own refusal. No new in-flight flag is needed alongside it: the
+  /// correction is a row mutation like retiring, nesting or moving, so
+  /// [mutatingAssetId] already covers "one is running".
+  final String? correctionFailure;
+
   Site? get site {
     for (final candidate in sites) {
       if (candidate.id == siteId) return candidate;
@@ -157,6 +188,7 @@ class AssetsLoaded extends AssetsState {
     String? mutatingAssetId,
     bool clearMutatingAssetId = false,
     String? notice,
+    String? correctionFailure,
   }) =>
       AssetsLoaded(
         sites: sites,
@@ -168,6 +200,7 @@ class AssetsLoaded extends AssetsState {
         showRetired: showRetired ?? this.showRetired,
         mutatingAssetId: clearMutatingAssetId ? null : (mutatingAssetId ?? this.mutatingAssetId),
         notice: notice,
+        correctionFailure: correctionFailure,
       );
 }
 
@@ -192,6 +225,7 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
     on<AssetActiveToggled>(_onActiveToggled);
     on<AssetParentChanged>(_onParentChanged);
     on<AssetOrgUnitChanged>(_onOrgUnitChanged);
+    on<AssetCorrectionConfirmed>(_onCorrectionConfirmed);
   }
 
   final MaintenanceApi _maintenance;
@@ -467,6 +501,60 @@ class AssetsBloc extends Bloc<AssetsEvent, AssetsState> {
       final settled = state;
       if (settled is! AssetsLoaded) return;
       emit(settled.copyWith(clearMutatingAssetId: true, notice: error.message));
+    }
+  }
+
+  /// Corrects one Asset's own four fields (issue #173) — a full replacement
+  /// of code, name, assetType and criticality, validated server-side by the
+  /// same rule the add form's own submit is refused by. The register is
+  /// patched from the response and re-sorted, never re-read: a corrected
+  /// code is half the register's own ordering key (`orgUnitName`, then
+  /// `code`), so leaving the row where it was would show it in the wrong
+  /// place until the next read (the same reasoning [_onOrgUnitChanged]
+  /// follows for a move). A refusal is reported on [correctionFailure]
+  /// rather than [notice], so the open dialog can show it and stay open —
+  /// the placement, nesting and retirement stay exactly as they were either
+  /// way, since this event never touches them.
+  Future<void> _onCorrectionConfirmed(
+    AssetCorrectionConfirmed event,
+    Emitter<AssetsState> emit,
+  ) async {
+    final current = state;
+    if (current is! AssetsLoaded) return;
+    if (current.isAdding || current.mutatingAssetId != null) {
+      emit(current.copyWith(notice: inFlightMessage));
+      return;
+    }
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(notice: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(mutatingAssetId: event.assetId));
+    try {
+      final asset = await _maintenance.correctAsset(
+        token,
+        event.assetId,
+        code: event.code,
+        name: event.name,
+        assetType: event.assetType,
+        criticality: event.criticality,
+      );
+      final settled = state;
+      if (settled is! AssetsLoaded) return;
+      emit(
+        settled.copyWith(
+          clearMutatingAssetId: true,
+          assets: _inRegisterOrder(_applyMutation(settled, asset)),
+          notice: '${asset.code} has been corrected.',
+        ),
+      );
+    } on MaintenanceApiException catch (error) {
+      final settled = state;
+      if (settled is! AssetsLoaded) return;
+      emit(settled.copyWith(clearMutatingAssetId: true, correctionFailure: error.message));
     }
   }
 

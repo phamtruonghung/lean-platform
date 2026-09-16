@@ -21,13 +21,26 @@ import 'asset_move_dialog.dart';
 import 'assets_bloc.dart';
 
 class AssetsScreen extends StatelessWidget {
-  const AssetsScreen({super.key, required this.canPlaceAnAsset});
+  const AssetsScreen({super.key, required this.canPlaceAnAsset, required this.canCorrectAsset});
 
   /// Whether this caller holds a write Grant anywhere at all — read off
   /// `/me`'s own `orgUnitScope` (issue #43). False hides the add affordance
   /// entirely; it does not grey it out, because a disabled button is still an
   /// invitation to fail.
   final bool canPlaceAnAsset;
+
+  /// Whether this caller holds a write Grant *reaching the Org Unit a given
+  /// Asset sits at* (issue #173) — read off `/me`'s own `orgUnitScope`
+  /// (issue #43), the same `OrgUnitScope.canWriteAt` mechanism
+  /// `canAssignWorkOrder` already uses on `WorkOrdersScreen`. A predicate,
+  /// not a bool, because the answer is per-row: a write Grant on one line
+  /// says nothing about an Asset on another. Unlike this register's other
+  /// row actions (Retire, Change Org Unit…, Nest under…/Detach, which are
+  /// always offered and rely on the server's own 403), the correction
+  /// affordance is absent outright for a caller this check refuses — issue
+  /// #173's own Testing Decisions ask for no such action to be offered at
+  /// all, not merely a disabled one.
+  final bool Function(String orgUnitId) canCorrectAsset;
 
   static const double maxWidth = 900;
   static const ValueKey<String> addKey = ValueKey<String>('assets-add');
@@ -41,6 +54,7 @@ class AssetsScreen extends StatelessWidget {
   static ValueKey<String> retiredChipKey(String id) => ValueKey<String>('asset-retired-$id');
   static ValueKey<String> retireKey(String id) => ValueKey<String>('asset-retire-$id');
   static ValueKey<String> reinstateKey(String id) => ValueKey<String>('asset-reinstate-$id');
+  static ValueKey<String> correctKey(String id) => ValueKey<String>('asset-correct-$id');
   static ValueKey<String> nestKey(String id) => ValueKey<String>('asset-nest-$id');
   static ValueKey<String> detachKey(String id) => ValueKey<String>('asset-detach-$id');
   static ValueKey<String> orgUnitKey(String id) => ValueKey<String>('asset-org-unit-$id');
@@ -69,7 +83,12 @@ class AssetsScreen extends StatelessWidget {
                 mutatingAssetId: final mutatingAssetId,
                 isAdding: final isAdding
               ) =>
-                _AssetsList(assets: assets, mutatingAssetId: mutatingAssetId, isAdding: isAdding),
+                _AssetsList(
+                  assets: assets,
+                  mutatingAssetId: mutatingAssetId,
+                  isAdding: isAdding,
+                  canCorrectAsset: canCorrectAsset,
+                ),
             },
           ),
         ],
@@ -298,7 +317,12 @@ class _AssetTree {
 }
 
 class _AssetsList extends StatelessWidget {
-  const _AssetsList({required this.assets, required this.mutatingAssetId, required this.isAdding});
+  const _AssetsList({
+    required this.assets,
+    required this.mutatingAssetId,
+    required this.isAdding,
+    required this.canCorrectAsset,
+  });
 
   final List<Asset> assets;
   final String? mutatingAssetId;
@@ -307,6 +331,8 @@ class _AssetsList extends StatelessWidget {
   /// [mutatingAssetId], the same as the "Add an Asset" button and the "Show
   /// retired" chip.
   final bool isAdding;
+
+  final bool Function(String orgUnitId) canCorrectAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -331,6 +357,7 @@ class _AssetsList extends StatelessWidget {
               depth: depth,
               tree: tree,
               disabled: disabled,
+              canCorrectAsset: canCorrectAsset,
             );
           },
         ),
@@ -345,6 +372,7 @@ class _AssetRow extends StatelessWidget {
     required this.depth,
     required this.tree,
     required this.disabled,
+    required this.canCorrectAsset,
   });
 
   final Asset asset;
@@ -357,6 +385,8 @@ class _AssetRow extends StatelessWidget {
   /// -dispatch must not be able to reach the Bloc while a different write is
   /// still in progress.
   final bool disabled;
+
+  final bool Function(String orgUnitId) canCorrectAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -434,6 +464,17 @@ class _AssetRow extends StatelessWidget {
                     onPressed: disabled ? null : () => _toggleActive(context, asset),
                     child: Text(asset.isActive ? 'Retire' : 'Reinstate'),
                   ),
+                  // Absent outright for a caller without a write Grant
+                  // reaching this Asset's Org Unit (issue #173) — unlike
+                  // every other action on this row, which is offered
+                  // unconditionally and relies on the server's own 403.
+                  if (canCorrectAsset(asset.orgUnitId))
+                    OutlinedButton(
+                      key: AssetsScreen.correctKey(asset.id),
+                      onPressed:
+                          disabled ? null : () => AssetFormDialog.open(context, asset: asset),
+                      child: const Text('Correct details…'),
+                    ),
                   // Labelled for what it changes, not "Move": the register
                   // already reads "move" as Nest under…/Detach, which moves an
                   // Asset in the tree rather than across Org Units.

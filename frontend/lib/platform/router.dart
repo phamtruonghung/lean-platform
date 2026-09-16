@@ -660,6 +660,11 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   // exactly what `everywhere` means (issue #43).
                   canPlaceAnAsset: account.account.orgUnitScope.everywhere ||
                       account.account.orgUnitScope.grants.any((grant) => grant.canWrite),
+                  // Per-row, unlike `canPlaceAnAsset` above (issue #173): a
+                  // write Grant on one Org Unit says nothing about an Asset
+                  // sitting at another. The same `canWriteAt` mechanism
+                  // `canAssignWorkOrder` already uses below.
+                  canCorrectAsset: account.account.orgUnitScope.canWriteAt,
                 ),
               );
             },
