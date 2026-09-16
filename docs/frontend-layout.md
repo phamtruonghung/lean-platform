@@ -50,6 +50,27 @@ answer, because it gives each row the card's full width.
 A set already read in full is filtered in the client. A set the server bounds is
 narrowed by the server, or the client says it is bounded (ADR-0026).
 
+**The trigger: a list that can outgrow a screen gets a filter** (#191). A register
+whose rows a reader has to find by name carries an `AppFilterField` above its
+rows — the sixteen Screens that sweep covered are the Work order register, Assets,
+the triage and my-own Requests, PM schedules, Meters, Job plans, Downtime, the
+Parts catalogue, Stores, one Store's stock, Accounts, the Approval queue, Job
+roles, Skills and Skill coverage. Such a box narrows over the fields that identify
+each record (its name, its code, its number, and for a Work order its summary and
+its Asset), sits with the Screen's other controls at the page's own `Spacing.lg`
+padding, and owns its term in the Screen's own `State` — a filter is a view of the
+rows a Bloc already holds, so it is a `setState` and never a Bloc event. A term
+matching nothing renders `PlatformEmptyState.noneMatched`, never the Screen's own
+"there is nothing here" state.
+
+**The Screens that deliberately do not, so the seventeenth register is not argued
+about.** The Actions list (`ACTION_LIST_LIMIT`) and the Org Unit search
+(`ORG_UNIT_SEARCH_LIMIT`) are bounded by the server: a client filter over that
+page would answer "no such record" for one that exists further down the server's
+own order. Actions keeps its server-side filters. The Directory and the Org Units
+tree keep their `AppSearchField` (ADR-0023) — a control that reports a pick is not
+a control that narrows a list a reader is working through.
+
 ## The two traps behind all of it
 
 1. **A container sizes itself to its child, not to the space it is given.** A

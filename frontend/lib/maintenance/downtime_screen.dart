@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -51,6 +52,21 @@ class DowntimeScreen extends StatelessWidget {
   static ValueKey<String> rowKey(String id) => ValueKey<String>('downtime-row-$id');
   static ValueKey<String> closeKey(String id) => ValueKey<String>('downtime-close-$id');
   static ValueKey<String> classifyKey(String id) => ValueKey<String>('downtime-classify-$id');
+
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'downtime-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of this Site's downtime records renders — a
+  /// different fact from [emptyKey]: "nothing matched" is not "there is nothing
+  /// here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('downtime-no-match');
 
   @override
   Widget build(BuildContext context) {
@@ -217,22 +233,84 @@ class _Notice extends StatelessWidget {
   }
 }
 
-class _DowntimeList extends StatelessWidget {
+/// The list of stops. Stateful only because the filter box's term is the
+/// Screen's own (issue #191): a filter is a view of the rows the Bloc already
+/// holds, not a state of the domain, so typing costs a `setState` and never a
+/// Bloc event.
+class _DowntimeList extends StatefulWidget {
   const _DowntimeList({required this.events, required this.canAct});
 
   final List<DowntimeEvent> events;
   final bool canAct;
 
   @override
+  State<_DowntimeList> createState() => _DowntimeListState();
+}
+
+class _DowntimeListState extends State<_DowntimeList> {
+  /// What the filter box is narrowing the Site's stops to, `''` when nothing
+  /// is.
+  String _term = '';
+
+  /// Whether [event] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over what identifies a stop — the Asset that
+  /// went down, the reason it was classified as, and the words recorded
+  /// against it. No ranking and no fuzzy matching, the same rule the assign
+  /// dialog's own filter uses (issue #187).
+  static bool _matches(DowntimeEvent event, String term) =>
+      event.assetName.toLowerCase().contains(term) ||
+      event.assetCode.toLowerCase().contains(term) ||
+      (event.downtimeReasonName ?? '').toLowerCase().contains(term) ||
+      (event.description ?? '').toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<DowntimeEvent> get _matchingEvents {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.events;
+    return widget.events.where((event) => _matches(event, term)).toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Filtered here, immediately before the row widgets are built, so a term
+    // can only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingEvents;
     return Center(
       child: AppPageFrame(
         maxWidth: DowntimeScreen.maxWidth,
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: events.length,
-          separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) => _DowntimeCard(event: events[index], canAct: canAct),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: AppFilterField(
+                name: DowntimeScreen.filterFieldName,
+                label: 'Filter downtime',
+                helperText: 'By Asset, reason or description.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: widget.events.length,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            Expanded(
+              child: matches.isEmpty
+                  ? PlatformEmptyState.noneMatched(
+                      key: DowntimeScreen.noMatchKey,
+                      title: 'No downtime matches',
+                      message: 'This Site has downtime recorded, but none matches '
+                          '"${_term.trim()}". Try a different Asset, reason or description.',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                      itemCount: matches.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                      itemBuilder: (context, index) =>
+                          _DowntimeCard(event: matches[index], canAct: widget.canAct),
+                    ),
+            ),
+          ],
         ),
       ),
     );

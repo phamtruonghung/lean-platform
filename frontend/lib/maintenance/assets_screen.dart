@@ -12,6 +12,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
@@ -60,6 +62,20 @@ class AssetsScreen extends StatelessWidget {
   static ValueKey<String> orgUnitKey(String id) => ValueKey<String>('asset-org-unit-$id');
   static ValueKey<String> parentOptionKey(String id) => ValueKey<String>('asset-parent-option-$id');
   static const ValueKey<String> parentChooserKey = ValueKey<String>('asset-parent-chooser');
+
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'assets-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of this Site's Assets renders — a different fact
+  /// from [emptyKey]: "nothing matched" is not "there is nothing here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('assets-no-match');
 
   @override
   Widget build(BuildContext context) {
@@ -316,7 +332,12 @@ class _AssetTree {
   }
 }
 
-class _AssetsList extends StatelessWidget {
+/// The Asset register's list. Stateful only because the filter box's term is
+/// the Screen's own (issue #191): a filter is a view of the rows the Bloc
+/// already holds, not a state of the domain, so typing costs a `setState` and
+/// never a Bloc event — ADR-0012 asks for a Bloc where a Screen drives a
+/// state machine, not for one per text field.
+class _AssetsList extends StatefulWidget {
   const _AssetsList({
     required this.assets,
     required this.mutatingAssetId,
@@ -335,31 +356,88 @@ class _AssetsList extends StatelessWidget {
   final bool Function(String orgUnitId) canCorrectAsset;
 
   @override
+  State<_AssetsList> createState() => _AssetsListState();
+}
+
+class _AssetsListState extends State<_AssetsList> {
+  /// What the filter box is narrowing the register to, `''` when nothing is.
+  String _term = '';
+
+  /// Whether [asset] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over the two fields that identify an Asset —
+  /// its name and its code, which is how a technician standing at the machine
+  /// names it (issue #191, user story 2). No ranking and no fuzzy matching,
+  /// the same rule the assign dialog's own filter uses (issue #187).
+  static bool _matches(Asset asset, String term) =>
+      asset.name.toLowerCase().contains(term) || asset.code.toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<Asset> get _matchingAssets {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.assets;
+    return widget.assets.where((asset) => _matches(asset, term)).toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final tree = _AssetTree(assets);
+    // Filtered here, immediately before the rows are built, and the tree is
+    // built from the *matches*: `_AssetTree` treats an Asset whose parent is
+    // absent as a root, so a machine found at any depth still renders with
+    // whatever nesting it can still show, and never disappears because its
+    // parent's name did not match (issue #191).
+    final matches = _matchingAssets;
+    final tree = _AssetTree(matches);
     final rows = tree.rows;
     // Every row's actions are disabled by any mutation in flight, not only
     // the row it belongs to — a second row's confirm-then-dispatch would
     // otherwise reach the Bloc while the first is still mid-write and be
     // silently reported as dropped rather than ever executed.
-    final disabled = mutatingAssetId != null || isAdding;
+    final disabled = widget.mutatingAssetId != null || widget.isAdding;
     return Center(
       child: AppPageFrame(
         maxWidth: AssetsScreen.maxWidth,
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: rows.length,
-          separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) {
-            final (asset, depth) = rows[index];
-            return _AssetRow(
-              asset: asset,
-              depth: depth,
-              tree: tree,
-              disabled: disabled,
-              canCorrectAsset: canCorrectAsset,
-            );
-          },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: AppFilterField(
+                name: AssetsScreen.filterFieldName,
+                label: 'Filter Assets',
+                helperText: 'By name or code.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: widget.assets.length,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            Expanded(
+              child: matches.isEmpty
+                  ? PlatformEmptyState.noneMatched(
+                      key: AssetsScreen.noMatchKey,
+                      title: 'No Assets match',
+                      message: 'This Site has Assets on the register, but none matches '
+                          '"${_term.trim()}". Try a different name or code, or clear the '
+                          'filter.',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                      itemCount: rows.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                      itemBuilder: (context, index) {
+                        final (asset, depth) = rows[index];
+                        return _AssetRow(
+                          asset: asset,
+                          depth: depth,
+                          tree: tree,
+                          disabled: disabled,
+                          canCorrectAsset: widget.canCorrectAsset,
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );

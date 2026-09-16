@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+
 import 'package:lean_platform/people/account_correction_dialog.dart';
 import 'package:lean_platform/people/account_employee_dialog.dart';
 import 'package:lean_platform/people/accounts_screen.dart';
@@ -19,7 +20,7 @@ import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/shell.dart';
-
+import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'harness.dart'
     show FakeAuthGateway, FakeWire, accountJson, employeeJson, grantJson, orgUnitJson, pumpApp,
         siteJson, tapIn;
@@ -690,5 +691,57 @@ void main() {
     wire.putEmployeeLinkMessage = 'This Employee is already linked to a different Account';
     await tapIn(tester, find.byKey(AccountEmployeeDialog.submitKey));
     expect(find.text('This Employee is already linked to a different Account'), findsOneWidget);
+  });
+
+  // Issue #191: a register is narrowed by text, not by scrolling. Each Screen
+  // owns its own term and narrows the rows it has already read — the wire's
+  // own record is what proves no request was sent for the term.
+  // The Account register answers "who can sign in and what may they reach":
+  // a name, an email or a role is the term, and the row's own role is matched
+  // in both the wire's spelling and the label the table shows.
+  testWidgets('the Account register is narrowed by name, email or role, and typing costs no request', (tester) async {
+    // The filter box this register now carries (issue #191) sits above the
+    // rows, so a two-row register no longer fits flutter_test's default
+    // 800x600 surface: the rows below the fold are `ListView` children that
+    // have not been built yet, and `find.byKey` would find nothing. The taller
+    // window is the fixture's, not the Screen's — the same pin this repo's
+    // lazy-list tests already use.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1000, 1200);
+    addTearDown(tester.view.reset);
+
+    final wire = _plant(accounts: [
+      accountJson('7', 'admitted@b.c', role: Roles.supervisor),
+      accountJson('8', 'off@b.c', role: Roles.operator, isActive: false),
+    ]);
+    await openAccounts(tester, wire);
+
+    // Nothing narrowed yet: every row, and no count line to read.
+    expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.rowKey('8')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.filterCountKey), findsNothing);
+
+    final requestsBefore = wire.requests.length;
+    await tester.enterText(find.byKey(AccountsScreen.filterFieldKey), 'supervisor');
+    await tester.pumpAndSettle();
+
+    // (a) the rows narrow, (c) the count line says how many of how many.
+    expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.rowKey('8')), findsNothing);
+    expect(find.byKey(AccountsScreen.filterCountKey), findsOneWidget);
+    expect(find.text(AppFilterField.countLabel(1, 2)), findsOneWidget);
+
+    // (b) narrowing a register the client already holds costs no request.
+    expect(wire.requests.length, requestsBefore,
+        reason: 'typing must not read anything over the wire');
+
+    // (d) one clear affordance, and every row is back.
+    await tester.tap(find.byKey(AccountsScreen.filterClearKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.rowKey('8')), findsOneWidget);
+    expect(find.byKey(AccountsScreen.filterCountKey), findsNothing);
+    expect(wire.requests.length, requestsBefore);
   });
 }

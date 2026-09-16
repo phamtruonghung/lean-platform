@@ -31,6 +31,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
@@ -70,6 +71,20 @@ class SkillsScreen extends StatelessWidget {
   static ValueKey<String> inactiveChipKey(String id) => ValueKey<String>('skills-inactive-$id');
   static ValueKey<String> whoHoldsKey(String id) => ValueKey<String>('skills-who-holds-$id');
 
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'skills-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of the catalogue's rows renders — a different
+  /// fact from [emptyKey]: "nothing matched" is not "there is nothing here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('skills-no-match');
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<SkillsBloc>().state;
@@ -93,15 +108,47 @@ class SkillsScreen extends StatelessWidget {
   }
 }
 
-class _Loaded extends StatelessWidget {
+/// The catalogue's loaded view. Stateful only because the filter box's term
+/// is the Screen's own (issue #191): a filter is a view of the rows the Bloc
+/// already holds, not a state of the domain, so typing costs a `setState` and
+/// never a Bloc event.
+class _Loaded extends StatefulWidget {
   const _Loaded({required this.state, required this.isAdmin});
 
   final SkillsLoaded state;
   final bool isAdmin;
 
   @override
+  State<_Loaded> createState() => _LoadedState();
+}
+
+class _LoadedState extends State<_Loaded> {
+  /// What the filter box is narrowing the catalogue to, `''` when nothing is.
+  String _term = '';
+
+  /// Whether [skill] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over the fields that identify a skill — its
+  /// name, its code, and the category it is filed under. No ranking and no
+  /// fuzzy matching, the same rule the assign dialog's own filter uses
+  /// (issue #187).
+  static bool _matches(Skill skill, String term) =>
+      skill.name.toLowerCase().contains(term) ||
+      skill.code.toLowerCase().contains(term) ||
+      skill.skillCategory.toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<Skill> get _matchingSkills {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.state.skills;
+    return widget.state.skills.where((skill) => _matches(skill, term)).toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Filtered here, immediately before the row widgets are built, so a term
+    // can only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingSkills;
     return Center(
       child: AppPageFrame(
         maxWidth: SkillsScreen.maxWidth,
@@ -126,38 +173,61 @@ class _Loaded extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (isAdmin)
+                if (widget.isAdmin)
                   FilledButton.icon(
                     key: SkillsScreen.addKey,
-                    onPressed: state.isMutating ? null : () => SkillFormDialog.open(context),
+                    onPressed:
+                        widget.state.isMutating ? null : () => SkillFormDialog.open(context),
                     icon: const Icon(Icons.add),
                     label: const Text('Add skill'),
                   ),
               ],
             ),
             const SizedBox(height: Spacing.lg),
-            if (state.skills.isEmpty)
-              // The shared empty state, with the action that would fill it —
-              // a sentence on its own said what was missing and offered
-              // nothing (issue #189). `noneExist` is the right story: this
-              // catalogue carries no filter, so there is only ever the one
-              // empty case, the same reasoning `JobRolesScreen` records.
+            if (widget.state.skills.isEmpty)
+              // The shared empty state, with the action that would fill it
+              // (issue #189) — and, since this ticket, only the one empty
+              // story: a catalogue with no rows has nothing for a filter box
+              // to narrow, so "no skill matches" cannot arise here.
               PlatformEmptyState.noneExist(
                 key: SkillsScreen.emptyKey,
                 title: 'No skills yet',
                 message: 'Nothing has been defined in the catalogue.',
                 icon: Icons.school_outlined,
-                actionLabel: isAdmin ? 'Add skill' : null,
+                actionLabel: widget.isAdmin ? 'Add skill' : null,
                 actionKey: SkillsScreen.emptyAddKey,
-                onAction: isAdmin ? () => SkillFormDialog.open(context) : null,
+                onAction: widget.isAdmin ? () => SkillFormDialog.open(context) : null,
               )
-            else
-              AppListCard(
-                rows: [
-                  for (final skill in state.skills)
-                    _SkillRow(skill: skill, isAdmin: isAdmin, isMutating: state.isMutating),
-                ],
+            else ...[
+              AppFilterField(
+                name: SkillsScreen.filterFieldName,
+                label: 'Filter skills',
+                helperText: 'By name, code or category.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: widget.state.skills.length,
               ),
+              const SizedBox(height: Spacing.lg),
+              if (matches.isEmpty)
+                PlatformEmptyState.noneMatched(
+                  key: SkillsScreen.noMatchKey,
+                  title: 'No skills match',
+                  message: 'Nothing in the catalogue matches "${_term.trim()}". Try a '
+                      'different name, code or category, or clear the filter.',
+                )
+              else
+                AppListCard(
+                  rows: [
+                    for (final skill in matches)
+                      _SkillRow(
+                        skill: skill,
+                        isAdmin: widget.isAdmin,
+                        isMutating: widget.state.isMutating,
+                      ),
+                  ],
+                ),
+            ],
           ],
         ),
       ),

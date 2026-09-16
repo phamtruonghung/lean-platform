@@ -5,11 +5,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import 'package:lean_platform/people/job_role_form_dialog.dart';
 import 'package:lean_platform/people/job_roles_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/app_list_card.dart';
-
 import 'harness.dart';
 
 Future<void> openJobRoles(WidgetTester tester, FakeWire wire) => pumpApp(
@@ -155,5 +156,54 @@ void main() {
     // 900 minus the page's own 16px insets is 868; the old 700px page could
     // not produce a catalogue wider than 668.
     expect(tester.getSize(find.byType(AppListCard)).width, greaterThan(800));
+  });
+
+  // Issue #191: a register is narrowed by text, not by scrolling. Each Screen
+  // owns its own term and narrows the rows it has already read — the wire's
+  // own record is what proves no request was sent for the term.
+  testWidgets('the job role catalogue is narrowed by a typed term, and typing costs no request', (tester) async {
+    // The filter box this register now carries (issue #191) sits above the
+    // rows, so a two-row register no longer fits flutter_test's default
+    // 800x600 surface: the rows below the fold are `ListView` children that
+    // have not been built yet, and `find.byKey` would find nothing. The taller
+    // window is the fixture's, not the Screen's — the same pin this repo's
+    // lazy-list tests already use.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1000, 1200);
+    addTearDown(tester.view.reset);
+
+    final wire = FakeWire(jobRoles: [
+      jobRoleJson('20', 'WELD', 'Welder'),
+      jobRoleJson('21', 'FIT', 'Fitter'),
+    ]);
+    await openJobRoles(tester, wire);
+
+    // Nothing narrowed yet: every row, and no count line to read.
+    expect(find.byKey(JobRolesScreen.rowKey('21')), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.rowKey('20')), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.filterCountKey), findsNothing);
+
+    final requestsBefore = wire.requests.length;
+    await tester.enterText(find.byKey(JobRolesScreen.filterFieldKey), 'fitter');
+    await tester.pumpAndSettle();
+
+    // (a) the rows narrow, (c) the count line says how many of how many.
+    expect(find.byKey(JobRolesScreen.rowKey('21')), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.rowKey('20')), findsNothing);
+    expect(find.byKey(JobRolesScreen.filterCountKey), findsOneWidget);
+    expect(find.text(AppFilterField.countLabel(1, 2)), findsOneWidget);
+
+    // (b) narrowing a register the client already holds costs no request.
+    expect(wire.requests.length, requestsBefore,
+        reason: 'typing must not read anything over the wire');
+
+    // (d) one clear affordance, and every row is back.
+    await tester.tap(find.byKey(JobRolesScreen.filterClearKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(JobRolesScreen.rowKey('21')), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.rowKey('20')), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.filterCountKey), findsNothing);
+    expect(wire.requests.length, requestsBefore);
   });
 }

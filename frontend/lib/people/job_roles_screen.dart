@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
@@ -45,6 +46,20 @@ class JobRolesScreen extends StatelessWidget {
   static const ValueKey<String> emptyKey = ValueKey<String>('job-roles-empty');
   static const ValueKey<String> emptyAddKey = ValueKey<String>('job-roles-empty-add');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('job-roles-row-$id');
+
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'job-roles-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of the catalogue's rows renders — a different
+  /// fact from [emptyKey]: "nothing matched" is not "there is nothing here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('job-roles-no-match');
   static ValueKey<String> correctKey(String id) => ValueKey<String>('job-roles-correct-$id');
   static ValueKey<String> inactiveChipKey(String id) => ValueKey<String>('job-roles-inactive-$id');
 
@@ -72,15 +87,46 @@ class JobRolesScreen extends StatelessWidget {
   }
 }
 
-class _Loaded extends StatelessWidget {
+/// The catalogue's loaded view. Stateful only because the filter box's term
+/// is the Screen's own (issue #191): a filter is a view of the rows the Bloc
+/// already holds, not a state of the domain, so typing costs a `setState` and
+/// never a Bloc event.
+class _Loaded extends StatefulWidget {
   const _Loaded({required this.state, required this.isAdmin});
 
   final JobRolesLoaded state;
   final bool isAdmin;
 
   @override
+  State<_Loaded> createState() => _LoadedState();
+}
+
+class _LoadedState extends State<_Loaded> {
+  /// What the filter box is narrowing the catalogue to, `''` when nothing is.
+  String _term = '';
+
+  /// Whether [jobRole] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over the two fields that identify a job role —
+  /// its name and its code. No ranking and no fuzzy matching, the same rule
+  /// the assign dialog's own filter uses (issue #187).
+  static bool _matches(JobRole jobRole, String term) =>
+      jobRole.name.toLowerCase().contains(term) || jobRole.code.toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<JobRole> get _matchingJobRoles {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.state.jobRoles;
+    return widget.state.jobRoles
+        .where((jobRole) => _matches(jobRole, term))
+        .toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Filtered here, immediately before the row widgets are built, so a term
+    // can only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingJobRoles;
     return Center(
       child: AppPageFrame(
         maxWidth: JobRolesScreen.maxWidth,
@@ -104,39 +150,65 @@ class _Loaded extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (isAdmin)
+                if (widget.isAdmin)
                   FilledButton.icon(
                     key: JobRolesScreen.addKey,
-                    onPressed: state.isMutating ? null : () => JobRoleFormDialog.open(context),
+                    onPressed: widget.state.isMutating
+                        ? null
+                        : () => JobRoleFormDialog.open(context),
                     icon: const Icon(Icons.add),
                     label: const Text('Add job role'),
                   ),
               ],
             ),
             const SizedBox(height: Spacing.lg),
-            if (state.jobRoles.isEmpty)
-              // No "none matched" variant here (issue #103): this catalogue
-              // carries no filter to clear, only a whole-catalogue read, so
-              // there is only ever the one empty story to tell.
+            if (widget.state.jobRoles.isEmpty)
+              // No "none matched" variant while there is nothing to narrow
+              // (issue #103's own distinction, now carried by the filter box
+              // above the rows): this catalogue's own empty story is the only
+              // one to tell until it has rows.
               PlatformEmptyState.noneExist(
                 key: JobRolesScreen.emptyKey,
                 title: 'No job roles yet',
                 message: 'Nothing has been defined in the catalogue.',
                 icon: Icons.badge_outlined,
-                actionLabel: isAdmin ? 'Add job role' : null,
+                actionLabel: widget.isAdmin ? 'Add job role' : null,
                 actionKey: JobRolesScreen.emptyAddKey,
-                onAction: isAdmin ? () => JobRoleFormDialog.open(context) : null,
+                onAction: widget.isAdmin ? () => JobRoleFormDialog.open(context) : null,
               )
-            else
-              // One row per job role, ruled apart from its neighbours — the
-              // catalogue's record has an edge to follow across the page now
-              // (issue #189), rather than six lines of undifferentiated white.
-              AppListCard(
-                rows: [
-                  for (final jobRole in state.jobRoles)
-                    _JobRoleRow(jobRole: jobRole, isAdmin: isAdmin, isMutating: state.isMutating),
-                ],
+            else ...[
+              AppFilterField(
+                name: JobRolesScreen.filterFieldName,
+                label: 'Filter job roles',
+                helperText: 'By name or code.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: widget.state.jobRoles.length,
               ),
+              const SizedBox(height: Spacing.lg),
+              if (matches.isEmpty)
+                PlatformEmptyState.noneMatched(
+                  key: JobRolesScreen.noMatchKey,
+                  title: 'No job roles match',
+                  message: 'Nothing in the catalogue matches "${_term.trim()}". Try a '
+                      'different name or code, or clear the filter.',
+                )
+              else
+                // One row per job role, ruled apart from its neighbours — the
+                // catalogue's record has an edge to follow across the page now
+                // (issue #189), rather than six lines of undifferentiated white.
+                AppListCard(
+                  rows: [
+                    for (final jobRole in matches)
+                      _JobRoleRow(
+                        jobRole: jobRole,
+                        isAdmin: widget.isAdmin,
+                        isMutating: widget.state.isMutating,
+                      ),
+                  ],
+                ),
+            ],
           ],
         ),
       ),
