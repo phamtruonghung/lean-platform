@@ -18,6 +18,17 @@ import 'failure_state.dart';
 /// is to exist and be correct on its own, so behaviour cannot diverge across
 /// three call sites that each wire it up separately.
 ///
+/// **This widget fetches; `AppFilterField` does not (issue #187).** The
+/// Platform has two search controls and this is the *choosing* one: it asks the
+/// server for records as a term is typed and reports a pick to its caller, so
+/// it belongs where a value the system knows the set of is chosen — a form
+/// field or a picker. `widgets/app_filter_field.dart` is the *finding* one: it
+/// narrows rows the caller already holds, reports only the term, and issues no
+/// request, so it belongs in a list or a register a person is already reading.
+/// The rule that decides between them: a set already read in full is filtered in
+/// the client, a set the server bounds is narrowed by the server (or the client
+/// says it is bounded — ADR-0026).
+///
 /// **Generic over the suggestion record, [T].** The three eventual callers
 /// render different shapes — an Employee row, an Org Unit row, a timezone
 /// row — so this widget carries no assumption about what a suggestion looks

@@ -9,6 +9,18 @@
 ///
 /// This is a dialog, not a Screen and not a Destination — CONTEXT.md's own
 /// Screen entry says a dialog inside a Screen is not a Screen.
+///
+/// **Finding a person (issue #187).** The candidate read behind this dialog is
+/// deliberately unbounded — `listAssigneeCandidates` (directory.js) refuses
+/// nothing and limits nothing, because ADR-0018 asks "who could do this job"
+/// rather than an Org Unit question (issue #62). A plant therefore offers every
+/// Active Employee here, so the dialog carries a filter box over the rows it has
+/// already read: typing narrows them by display name, employee number, or the
+/// name of a qualification the candidate holds — "who can weld" is as
+/// answerable as "Nguyen". It is a filter and not a second read: the set is
+/// complete in this dialog already, and `AppFilterField` never touches the
+/// network (see its own doc comment for why this is a different control from
+/// `AppSearchField`).
 library;
 
 import 'package:flutter/material.dart';
@@ -19,6 +31,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../status_tone.dart';
+import '../widgets/app_filter_field.dart';
 import '../widgets/status_chip.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
@@ -29,6 +42,11 @@ class WorkOrderAssignDialog extends StatefulWidget {
   /// The Work order being given away — its current assignee, if any, decides
   /// whether the dialog's own caller renders "Assign" or "Reassign".
   final WorkOrder workOrder;
+
+  /// The filter box's `name`, seeding [searchFieldKey]/[searchClearKey]/
+  /// [searchCountKey] — kept in one place so none of them can drift from what
+  /// `build` actually renders.
+  static const String searchFieldName = 'work-order-assign-search';
 
   static ValueKey<String> candidateKey(String employeeId) =>
       ValueKey<String>('assign-candidate-$employeeId');
@@ -42,6 +60,16 @@ class WorkOrderAssignDialog extends StatefulWidget {
   static const ValueKey<String> candidatesFailedKey =
       ValueKey<String>('work-order-assign-candidates-failed');
   static const ValueKey<String> noCandidatesKey = ValueKey<String>('work-order-assign-none');
+
+  /// Present instead of [noCandidatesKey] when the candidates were read fine
+  /// but the term matches none of them — a different fact, and one the reader
+  /// can act on by typing something else.
+  static const ValueKey<String> noMatchesKey = ValueKey<String>('work-order-assign-no-matches');
+
+  static ValueKey<String> get searchFieldKey => AppFilterField.fieldKey(searchFieldName);
+  static ValueKey<String> get searchClearKey => AppFilterField.clearKey(searchFieldName);
+  static ValueKey<String> get searchCountKey => AppFilterField.countKey(searchFieldName);
+
 
   @override
   State<WorkOrderAssignDialog> createState() => _WorkOrderAssignDialogState();
@@ -58,8 +86,44 @@ class _WorkOrderAssignDialogState extends State<WorkOrderAssignDialog> {
   /// `WorkOrderFormDialog` keeps for its own `_assetId`.
   String? _employeeId;
 
+  /// What the filter box is narrowing the candidate list to, `''` when nothing
+  /// is. The rows are filtered in `build` off this, so typing costs a rebuild
+  /// and nothing else — no request, no Bloc event (issue #187).
+  String _term = '';
+
   bool _awaiting = false;
   String? _failure;
+
+  /// Whether [candidate] matches [term], already lower-cased and trimmed. Three
+  /// fields, because those are the three ways a supervisor knows who they mean:
+  /// the name they would say, the number they read off a badge or a work sheet,
+  /// and the qualification the job needs. No ranking and no fuzzy matching —
+  /// see issue #187's own decision.
+  static bool _matches(AssigneeCandidate candidate, String term) =>
+      candidate.displayName.toLowerCase().contains(term) ||
+      candidate.employeeNo.toLowerCase().contains(term) ||
+      candidate.skills.any((skill) => skill.name.toLowerCase().contains(term));
+
+  /// The candidates the term selects — every one of them when it is empty.
+  List<AssigneeCandidate> _matchingCandidates() {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return _candidates;
+    return _candidates.where((candidate) => _matches(candidate, term)).toList(growable: false);
+  }
+
+  /// The rows actually rendered: the matches, with the chosen candidate pinned
+  /// **first** when the term excludes them. A supervisor who picks a person and
+  /// then edits the term must not be able to submit a name that is off-screen —
+  /// the same silently-wrong-value hazard ADR-0023 point 4 exists to remove —
+  /// and appending the kept row would leave it below the fold of a 420px box.
+  List<AssigneeCandidate> _visibleCandidates(List<AssigneeCandidate> matches) {
+    final id = _employeeId;
+    if (id == null || matches.any((candidate) => candidate.id == id)) return matches;
+    for (final candidate in _candidates) {
+      if (candidate.id == id) return [candidate, ...matches];
+    }
+    return matches;
+  }
 
   @override
   void initState() {
@@ -122,6 +186,9 @@ class _WorkOrderAssignDialogState extends State<WorkOrderAssignDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final matching = _matchingCandidates();
+    final visible = _visibleCandidates(matching);
+    final hasTerm = _term.trim().isNotEmpty;
     return BlocListener<WorkOrdersBloc, WorkOrdersState>(
       listener: _onWorkOrdersChanged,
       child: AlertDialog(
@@ -129,14 +196,40 @@ class _WorkOrderAssignDialogState extends State<WorkOrderAssignDialog> {
         content: SizedBox(
           width: 560,
           height: 420,
-          child: _CandidatesList(
-            status: _status,
-            candidates: _candidates,
-            failure: _candidatesFailure,
-            selectedId: _employeeId,
-            enabled: !_awaiting,
-            onRetry: _loadCandidates,
-            onChanged: (id) => setState(() => _employeeId = id),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Only while there is a list to narrow. A filter box over a set
+              // that failed to load, or has not arrived yet, is a control that
+              // can do nothing, and the dialog's own failure state is what
+              // those two states need to be read as.
+              if (_status == _CandidatesStatus.ready && _candidates.isNotEmpty) ...[
+                AppFilterField(
+                  name: WorkOrderAssignDialog.searchFieldName,
+                  label: 'Find a person',
+                  helperText: 'By name, employee number, or the qualification they hold.',
+                  term: _term,
+                  enabled: !_awaiting,
+                  onChanged: (term) => setState(() => _term = term),
+                  shown: visible.length,
+                  total: _candidates.length,
+                ),
+                const SizedBox(height: Spacing.md),
+              ],
+              Expanded(
+                child: _CandidatesList(
+                  status: _status,
+                  candidates: visible,
+                  failure: _candidatesFailure,
+                  selectedId: _employeeId,
+                  term: _term,
+                  isFiltered: hasTerm,
+                  enabled: !_awaiting,
+                  onRetry: _loadCandidates,
+                  onChanged: (id) => setState(() => _employeeId = id),
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -171,6 +264,8 @@ class _CandidatesList extends StatelessWidget {
     required this.candidates,
     required this.failure,
     required this.selectedId,
+    required this.term,
+    required this.isFiltered,
     required this.enabled,
     required this.onRetry,
     required this.onChanged,
@@ -180,6 +275,18 @@ class _CandidatesList extends StatelessWidget {
   final List<AssigneeCandidate> candidates;
   final String? failure;
   final String? selectedId;
+
+  /// The filter box's own term, carried only so the empty-list sentence can
+  /// name what was typed.
+  final String term;
+
+  /// Whether a term is narrowing the list at all — the difference between
+  /// "there is nobody this Work order could be given to" (a fact about the
+  /// plant) and "nobody matches what you typed" (a fact about the search). The
+  /// two must never read the same, which is why this is passed in rather than
+  /// inferred from `candidates.isEmpty` (issue #187).
+  final bool isFiltered;
+
   final bool enabled;
   final VoidCallback onRetry;
   final ValueChanged<String?> onChanged;
@@ -208,10 +315,18 @@ class _CandidatesList extends StatelessWidget {
       case _CandidatesStatus.ready:
         if (candidates.isEmpty) {
           return Center(
-            key: WorkOrderAssignDialog.noCandidatesKey,
-            child: Text(
-              'There is nobody this Work order could be given to.',
-              style: theme.textTheme.bodyMedium,
+            key: isFiltered
+                ? WorkOrderAssignDialog.noMatchesKey
+                : WorkOrderAssignDialog.noCandidatesKey,
+            child: Padding(
+              padding: const EdgeInsets.all(Spacing.md),
+              child: Text(
+                isFiltered
+                    ? 'Nobody matches "${term.trim()}" — try a different name, number, or skill.'
+                    : 'There is nobody this Work order could be given to.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium,
+              ),
             ),
           );
         }
