@@ -22,7 +22,9 @@ library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'actions/actions_api.dart';
 import 'maintenance/maintenance_api.dart';
+import 'people/employee.dart';
 import 'people/org_unit_scope.dart';
 import 'people_api.dart';
 import 'platform/auth_gateway.dart';
@@ -50,6 +52,12 @@ class HomeWorkSummaryRetried extends HomeEvent {
 /// own sibling.
 class HomeApprovalsRetried extends HomeEvent {
   const HomeApprovalsRetried();
+}
+
+/// The "assigned to you" section's own retry. Leaves the other sections, if
+/// any, untouched — the same reasoning its siblings follow.
+class HomeMyActionsRetried extends HomeEvent {
+  const HomeMyActionsRetried();
 }
 
 /// One section's own reading of the server — loading, loaded, or failed.
@@ -111,6 +119,26 @@ class HomeWorkSummary {
   final bool unassignedScopedToGrants;
 }
 
+/// What is assigned to the caller: open Actions whose owner is their own
+/// Employee record.
+///
+/// Two facts rather than one, because "you have nothing assigned" and "nothing
+/// can be assigned to you" are different answers and only the second is
+/// actionable: an Action's owner is an Employee (`action_items.owner_employee_id`
+/// references `employees`), and an Account with no linked Employee can never be
+/// one. The server 404s `GET /employees/me` with that exact distinction, so it
+/// is carried here rather than being flattened into a count of zero.
+class HomeMyActions {
+  const HomeMyActions({required this.openCount, required this.hasEmployeeLink});
+
+  /// Open Actions owned by the caller's Employee, across every Site the caller
+  /// can see.
+  final int openCount;
+
+  /// Whether this Account is linked to an Employee at all.
+  final bool hasEmployeeLink;
+}
+
 sealed class HomeState {
   const HomeState();
 }
@@ -121,7 +149,7 @@ class HomeLoading extends HomeState {
 }
 
 class HomeReady extends HomeState {
-  const HomeReady({required this.role, this.workSummary, this.approvals});
+  const HomeReady({required this.role, this.workSummary, this.myActions, this.approvals});
 
   final String role;
 
@@ -129,21 +157,30 @@ class HomeReady extends HomeState {
   /// (`ModuleRoles.maintenance`) — never read in that case.
   final HomeSectionState<HomeWorkSummary>? workSummary;
 
+  /// What is assigned to the caller. Never null: every approved Account earns
+  /// the Actions Destination (ADR-0032 — the Module's register is a Site-wide
+  /// read and raising needs only a read Grant), so this section is read for
+  /// every role that can reach Home at all.
+  final HomeSectionState<HomeMyActions>? myActions;
+
   /// Null when this role is not `admin` — never read in that case.
   final HomeSectionState<int>? approvals;
 
-  /// Neither section applies to this role: the Screen's own no-cards case
-  /// (#99 user story 6), which gets its own deliberate empty state rather
-  /// than a blank Screen.
-  bool get earnsNoCards => workSummary == null && approvals == null;
+  /// Whether no section applies to this role — #99 user story 6's case, and
+  /// false for every role now: [myActions] is read for everyone, so there is
+  /// always at least one card. Kept because it is the honest statement of the
+  /// rule the Screen no longer needs to branch on.
+  bool get earnsNoCards => workSummary == null && myActions == null && approvals == null;
 
   HomeReady copyWith({
     HomeSectionState<HomeWorkSummary>? workSummary,
+    HomeSectionState<HomeMyActions>? myActions,
     HomeSectionState<int>? approvals,
   }) =>
       HomeReady(
         role: role,
         workSummary: workSummary ?? this.workSummary,
+        myActions: myActions ?? this.myActions,
         approvals: approvals ?? this.approvals,
       );
 }
@@ -156,22 +193,26 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   HomeBloc({
     required PeopleApi peopleApi,
     required MaintenanceApi maintenanceApi,
+    required ActionsApi actionsApi,
     required AuthGateway authGateway,
     required String accountRole,
     required OrgUnitScope accountOrgUnitScope,
   })  : _people = peopleApi,
         _maintenance = maintenanceApi,
+        _actions = actionsApi,
         _auth = authGateway,
         _role = accountRole,
         _orgUnitScope = accountOrgUnitScope,
         super(const HomeLoading()) {
     on<HomeStarted>(_onStarted);
     on<HomeWorkSummaryRetried>(_onWorkSummaryRetried);
+    on<HomeMyActionsRetried>(_onMyActionsRetried);
     on<HomeApprovalsRetried>(_onApprovalsRetried);
   }
 
   final PeopleApi _people;
   final MaintenanceApi _maintenance;
+  final ActionsApi _actions;
   final AuthGateway _auth;
   final String _role;
   final OrgUnitScope _orgUnitScope;
@@ -187,11 +228,19 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   /// `Routes.approvals` guard) — mirrored here for the same reason.
   bool get _earnsApprovals => _role == Roles.admin;
 
+  /// Every role earns what is assigned to it. The Actions Destination carries
+  /// no `roles` set (ADR-0032): the register is a Site-wide read for every
+  /// admitted Account, and an Account may own work whoever it is — an
+  /// operator on the floor most of all. So this is not a check, it is the
+  /// reason the section is unlike its two siblings.
+  bool get _earnsMyActions => true;
+
   Future<void> _onStarted(HomeStarted event, Emitter<HomeState> emit) async {
     emit(
       HomeReady(
         role: _role,
         workSummary: _earnsWorkSummary ? const HomeSectionLoading() : null,
+        myActions: _earnsMyActions ? const HomeSectionLoading() : null,
         approvals: _earnsApprovals ? const HomeSectionLoading() : null,
       ),
     );
@@ -201,6 +250,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     // contract): a fire-and-forget read racing past that point would throw.
     await Future.wait([
       if (_earnsWorkSummary) _loadWorkSummary(emit),
+      if (_earnsMyActions) _loadMyActions(emit),
       if (_earnsApprovals) _loadApprovals(emit),
     ]);
   }
@@ -210,6 +260,74 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     if (current is! HomeReady || current.workSummary == null) return;
     emit(current.copyWith(workSummary: const HomeSectionLoading()));
     await _loadWorkSummary(emit);
+  }
+
+  Future<void> _onMyActionsRetried(HomeMyActionsRetried event, Emitter<HomeState> emit) async {
+    final current = state;
+    if (current is! HomeReady || current.myActions == null) return;
+    emit(current.copyWith(myActions: const HomeSectionLoading()));
+    await _loadMyActions(emit);
+  }
+
+  /// What is assigned to the caller, read exactly the way the Actions register
+  /// reads it (`PeopleApi.fetchSites`, then `ActionsApi.fetchActions` per Site
+  /// with `ownerEmployeeId`) — no new endpoint, the same rule
+  /// [_loadWorkSummary] follows for Work orders.
+  ///
+  /// The one read here that the register does not make is `/employees/me`,
+  /// which is what turns "the caller" into an Employee id. Its 404 means this
+  /// Account carries no `employeeId` at all (directory-routes.js writes that
+  /// refusal itself), and that is an answer rather than a failure: it settles
+  /// as `hasEmployeeLink: false` and the card says so. Every other failure is
+  /// this section's own.
+  Future<void> _loadMyActions(Emitter<HomeState> emit) async {
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      _emitMyActions(emit, const HomeSectionFailed(message: signedOutMessage));
+      return;
+    }
+    try {
+      final EmployeeDetail me;
+      try {
+        me = await _people.fetchMyEmployeeRecord(token);
+      } on PeopleApiException catch (error) {
+        if (error.statusCode == 404) {
+          _emitMyActions(
+            emit,
+            const HomeSectionLoaded(
+              HomeMyActions(openCount: 0, hasEmployeeLink: false),
+            ),
+          );
+          return;
+        }
+        rethrow;
+      }
+
+      final sites = await _people.fetchSites(token);
+      var openCount = 0;
+      for (final site in sites) {
+        final register = await _actions.fetchActions(
+          token,
+          siteId: site.id,
+          ownerEmployeeId: me.id,
+        );
+        openCount += register.actions.length;
+      }
+      _emitMyActions(
+        emit,
+        HomeSectionLoaded(HomeMyActions(openCount: openCount, hasEmployeeLink: true)),
+      );
+    } on PeopleApiException catch (error) {
+      _emitMyActions(emit, HomeSectionFailed(message: error.message));
+    } on ActionsApiException catch (error) {
+      _emitMyActions(emit, HomeSectionFailed(message: error.message));
+    }
+  }
+
+  void _emitMyActions(Emitter<HomeState> emit, HomeSectionState<HomeMyActions> section) {
+    final current = state;
+    if (current is! HomeReady) return;
+    emit(current.copyWith(myActions: section));
   }
 
   Future<void> _onApprovalsRetried(HomeApprovalsRetried event, Emitter<HomeState> emit) async {

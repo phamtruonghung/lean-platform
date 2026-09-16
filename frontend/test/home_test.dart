@@ -20,7 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/people/approval_queue_screen.dart';
-import 'package:lean_platform/people/directory_screen.dart';
+import 'package:lean_platform/actions/actions_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 
@@ -34,6 +34,13 @@ FakeWire wireWith({
   int workOrdersStatus = 200,
   List<Map<String, dynamic>>? queue,
   int queueStatus = 200,
+  Map<String, List<Map<String, dynamic>>>? actions,
+  // The caller's own Employee record, under the key `/employees/me` is served
+  // from. Absent by default, which is the Account-with-no-link case the card
+  // has its own wording for (`employeeDetailStatus` 404s it).
+  Map<String, Map<String, dynamic>>? employeeDetails,
+  int employeeDetailStatus = 200,
+  String employeeDetailMessage = 'This Account has no linked Employee record',
 }) =>
     FakeWire(
       role: role,
@@ -43,26 +50,100 @@ FakeWire wireWith({
       workOrdersStatus: workOrdersStatus,
       queue: queue ?? [],
       queueStatus: queueStatus,
+      actions: actions ?? {'1': []},
+      employeeDetails: employeeDetails ?? const {},
+      employeeDetailStatus: employeeDetailStatus,
+      employeeDetailMessage: employeeDetailMessage,
     );
 
 void main() {
-  testWidgets('an operator earning no work-order Destination and no Approvals sees the deliberate '
-      'empty state, never a blank Screen', (tester) async {
+  testWidgets('an operator sees what is assigned to them and nothing else, and their Account '
+      'carries no Employee link — which the card says rather than showing a zero', (tester) async {
+    // Issue #185. Home used to have a deliberate no-cards empty state for this
+    // role (#99 user story 6); the Actions Destination belongs to every role
+    // (ADR-0032), so there is no such role left and this card is what an
+    // operator's Home shows instead.
     final wire = wireWith(role: Roles.operator);
     await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
 
-    // The welcome line survives from the placeholder this Screen used to be
-    // — still rendered above the cards (or, here, the empty state) by every
-    // role alike.
+    // The welcome line survives from the placeholder this Screen used to be —
+    // still rendered above the cards by every role alike.
     expect(find.text('Welcome, A B'), findsOneWidget);
     expect(find.text('admin@b.c · operator'), findsOneWidget);
-    expect(find.byKey(HomeScreen.emptyKey), findsOneWidget);
-    expect(find.text('Nothing is waiting on you'), findsOneWidget);
+    expect(find.byKey(HomeScreen.myActionsCardKey), findsOneWidget);
+    expect(find.text('Assigned to you'), findsOneWidget);
     expect(find.byKey(HomeScreen.openWorkOrdersCardKey), findsNothing);
     expect(find.byKey(HomeScreen.unassignedCardKey), findsNothing);
     expect(find.byKey(HomeScreen.approvalsCardKey), findsNothing);
-    // No read this role earns nothing from — no request beyond `/me` at all.
-    expect(wire.requests, ['GET /api/people/me']);
+    // A zero would be a lie here: the Account cannot be assigned anything at
+    // all until it is linked to an Employee.
+    expect(
+      find.textContaining('not linked to an Employee record, so no Action can be assigned'),
+      findsOneWidget,
+    );
+    // The reads this section makes, and no others: the caller's own Employee,
+    // and nothing beyond it — with no link there is no owner to filter by, so
+    // the Sites and the log are not read at all. (The default fixture serves
+    // `/employees/me` the way the server does for this Account: a 404 saying
+    // 'This Account has no linked Employee record'.)
+    expect(wire.requests, ['GET /api/people/me', 'GET /api/people/employees/me']);
+  });
+
+  testWidgets('an Account link to an Employee turns the card into a count of what is assigned',
+      (tester) async {
+    final wire = wireWith(
+      role: Roles.operator,
+      employeeDetails: {'me': employeeDetailJson('7', 'EMP-007', 'Nour Haddad')},
+      actions: {
+        '1': [
+          actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose'),
+          actionJson('502', 'AC-HCM-2026-00002', 'Pallet wrapper jams'),
+        ],
+      },
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+    expect(find.byKey(HomeScreen.myActionsCardKey), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('Open Actions whose owner is you'), findsOneWidget);
+    // The read names the caller's own Employee: what is counted is what is
+    // assigned to *them*, not what the Site holds (ADR-0009 lets the register
+    // return everything). Asserted on the recorded URI — the fake's own
+    // `requests` list records paths without their query.
+    expect(wire.actionReads, isNotEmpty);
+    expect(wire.actionReads.last.queryParameters['ownerEmployeeId'], '7');
+  });
+
+  testWidgets('the assigned-to-you card carries to the action log', (tester) async {
+    final wire = wireWith(
+      role: Roles.operator,
+      employeeDetails: {'me': employeeDetailJson('7', 'EMP-007', 'Nour Haddad')},
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+    await tapIn(tester, find.byKey(HomeScreen.myActionsCardKey));
+
+    expect(find.byType(ActionsScreen), findsOneWidget);
+  });
+
+  testWidgets('a failed read of what is assigned to you is its own failure, and hides nothing',
+      (tester) async {
+    final wire = wireWith(
+      role: Roles.admin,
+      employeeDetailStatus: 503,
+      employeeDetailMessage: 'The Directory is unavailable',
+      queue: [pendingJson('7', 'new@b.c', DateTime.now())],
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+    expect(find.text('Your Actions are unavailable'), findsOneWidget);
+    expect(find.text('The Directory is unavailable'), findsOneWidget);
+    // The Approvals section read on regardless.
+    expect(find.byKey(HomeScreen.approvalsCardKey), findsOneWidget);
+
+    // And its own retry asks again, rather than reloading the whole Screen.
+    await tapIn(tester, find.byKey(HomeScreen.myActionsRetryKey));
+    expect(wire.requests.where((r) => r.contains('employees/me')).length, 2);
   });
 
   testWidgets(
@@ -87,7 +168,6 @@ void main() {
     );
     await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
 
-    expect(find.byKey(HomeScreen.emptyKey), findsNothing);
     expect(find.byKey(HomeScreen.openWorkOrdersCardKey), findsOneWidget);
     expect(find.byKey(HomeScreen.unassignedCardKey), findsOneWidget);
     expect(find.byKey(HomeScreen.approvalsCardKey), findsNothing);
@@ -186,15 +266,6 @@ void main() {
     await tapIn(tester, find.byKey(HomeScreen.approvalsCardKey));
 
     expect(find.byType(ApprovalQueueScreen), findsOneWidget);
-  });
-
-  testWidgets("the empty state's own action carries an operator to the Directory", (tester) async {
-    final wire = wireWith(role: Roles.operator);
-    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
-
-    await tapIn(tester, find.byKey(HomeScreen.emptyDirectoryActionKey));
-
-    expect(find.byType(DirectoryScreen), findsOneWidget);
   });
 
   testWidgets('a failed Work order read renders the shared failure state, without hiding a '
