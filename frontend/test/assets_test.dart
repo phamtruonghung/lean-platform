@@ -13,6 +13,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import 'package:lean_platform/maintenance/asset.dart';
 import 'package:lean_platform/maintenance/asset_form_dialog.dart';
 import 'package:lean_platform/maintenance/asset_move_dialog.dart';
@@ -23,8 +24,8 @@ import 'package:lean_platform/maintenance/org_unit_chooser.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
-
 import 'harness.dart';
 
 FakeWire wireWith({
@@ -1009,5 +1010,63 @@ void main() {
 
     wire.assetPatchGate!.complete();
     await pumpEventQueue();
+  });
+
+  // Issue #191: a register is narrowed by text, not by scrolling. Each Screen
+  // owns its own term and narrows the rows it has already read — the wire's
+  // own record is what proves no request was sent for the term.
+  testWidgets('the Asset register is narrowed by a typed term, and typing costs no request', (tester) async {
+    // The filter box this register now carries (issue #191) sits above the
+    // rows, so a two-row register no longer fits flutter_test's default
+    // 800x600 surface: the rows below the fold are `ListView` children that
+    // have not been built yet, and `find.byKey` would find nothing. The taller
+    // window is the fixture's, not the Screen's — the same pin this repo's
+    // lazy-list tests already use.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1000, 1200);
+    addTearDown(tester.view.reset);
+
+    final wire = wireWith(
+      assets: {
+        '1': [
+          assetJson('7', 'PRESS-1', 'Press 1', orgUnitName: 'Line 1'),
+          assetJson('8', 'CONV-2', 'Infeed conveyor', orgUnitName: 'Line 2'),
+        ],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    // Nothing narrowed yet: every row, and no count line to read.
+    expect(find.byKey(AssetsScreen.rowKey('8')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.filterCountKey), findsNothing);
+
+    final requestsBefore = wire.requests.length;
+    await tester.enterText(find.byKey(AssetsScreen.filterFieldKey), 'conveyor');
+    await tester.pumpAndSettle();
+
+    // (a) the rows narrow, (c) the count line says how many of how many.
+    expect(find.byKey(AssetsScreen.rowKey('8')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsNothing);
+    expect(find.byKey(AssetsScreen.filterCountKey), findsOneWidget);
+    expect(find.text(AppFilterField.countLabel(1, 2)), findsOneWidget);
+
+    // (b) narrowing a register the client already holds costs no request.
+    expect(wire.requests.length, requestsBefore,
+        reason: 'typing must not read anything over the wire');
+
+    // (d) one clear affordance, and every row is back.
+    await tester.tap(find.byKey(AssetsScreen.filterClearKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AssetsScreen.rowKey('8')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.filterCountKey), findsNothing);
+    expect(wire.requests.length, requestsBefore);
   });
 }

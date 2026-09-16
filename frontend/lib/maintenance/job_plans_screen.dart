@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -43,6 +44,20 @@ class JobPlansScreen extends StatelessWidget {
   static ValueKey<String> rowKey(String id) => ValueKey<String>('job-plan-row-$id');
   static ValueKey<String> toggleKey(String id) => ValueKey<String>('job-plan-toggle-$id');
   static ValueKey<String> inactiveChipKey(String id) => ValueKey<String>('job-plan-inactive-$id');
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'job-plans-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of the Job plans renders — a different fact from
+  /// [emptyKey]: "nothing matched" is not "there is nothing here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('job-plans-no-match');
+
   static ValueKey<String> taskKey(String planId, String taskId) =>
       ValueKey<String>('job-plan-task-$planId-$taskId');
 
@@ -166,22 +181,83 @@ class _Notice extends StatelessWidget {
   }
 }
 
-class _JobPlansList extends StatelessWidget {
+/// The list of Job plans. Stateful only because the filter box's term is the
+/// Screen's own (issue #191): a filter is a view of the rows the Bloc already
+/// holds, not a state of the domain, so typing costs a `setState` and never a
+/// Bloc event.
+class _JobPlansList extends StatefulWidget {
   const _JobPlansList({required this.plans, required this.isAdmin});
 
   final List<JobPlan> plans;
   final bool isAdmin;
 
   @override
+  State<_JobPlansList> createState() => _JobPlansListState();
+}
+
+class _JobPlansListState extends State<_JobPlansList> {
+  /// What the filter box is narrowing the Job plans to, `''` when nothing is.
+  String _term = '';
+
+  /// Whether [plan] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over the fields that identify a Job plan —
+  /// its name, its code and what it sets out to do. A Job plan carries no
+  /// Asset of its own: an Asset is bound to a plan by a PM schedule, so the
+  /// Asset names a planner types are matched on the PM schedules Screen,
+  /// where that binding lives (issue #191).
+  static bool _matches(JobPlan plan, String term) =>
+      plan.name.toLowerCase().contains(term) ||
+      plan.code.toLowerCase().contains(term) ||
+      (plan.description ?? '').toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<JobPlan> get _matchingPlans {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.plans;
+    return widget.plans.where((plan) => _matches(plan, term)).toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Filtered here, immediately before the row widgets are built, so a term
+    // can only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingPlans;
     return Center(
       child: AppPageFrame(
         maxWidth: JobPlansScreen.maxWidth,
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: plans.length,
-          separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) => _JobPlanCard(plan: plans[index], isAdmin: isAdmin),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: AppFilterField(
+                name: JobPlansScreen.filterFieldName,
+                label: 'Filter Job plans',
+                helperText: 'By name, code or description.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: widget.plans.length,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            Expanded(
+              child: matches.isEmpty
+                  ? PlatformEmptyState.noneMatched(
+                      key: JobPlansScreen.noMatchKey,
+                      title: 'No Job plans match',
+                      message: 'The plant has Job plans, but none matches '
+                          '"${_term.trim()}". Try a different name, code or description.',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                      itemCount: matches.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                      itemBuilder: (context, index) =>
+                          _JobPlanCard(plan: matches[index], isAdmin: widget.isAdmin),
+                    ),
+            ),
+          ],
         ),
       ),
     );

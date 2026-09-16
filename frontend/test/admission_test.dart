@@ -63,9 +63,15 @@ void main() {
       Roles.manager,
       Roles.admin,
     ]);
-    // No free text for the role itself — the only TextField in the decision
-    // is the Employee link picker's own Directory search (issue #116).
-    expect(find.byType(TextField), findsOneWidget);
+    // No free text for the role itself — the only TextField *in the decision*
+    // is the Employee link picker's own Directory search (issue #116). Scoped
+    // to the dialog since issue #191: the queue this decision is taken on now
+    // carries the filter box every register has, and that control is not part
+    // of the decision. What this asserts is unchanged.
+    expect(
+      find.descendant(of: find.byType(AdmissionDialog), matching: find.byType(TextField)),
+      findsOneWidget,
+    );
     expect(find.byKey(EmployeeLinkPicker.searchFieldKey), findsOneWidget);
   });
 

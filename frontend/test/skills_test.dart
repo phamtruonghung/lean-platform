@@ -7,13 +7,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import 'package:lean_platform/people/skill_form_dialog.dart';
 import 'package:lean_platform/people/skill_qualified_employees_dialog.dart';
 import 'package:lean_platform/people/skills_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/app_list_card.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
-
 import 'harness.dart';
 
 Future<void> openSkills(WidgetTester tester, FakeWire wire) => pumpApp(
@@ -252,5 +253,57 @@ void main() {
     // 900 minus the page's own 16px insets is 868; the old 760px page could
     // not produce a catalogue wider than 728.
     expect(tester.getSize(find.byType(AppListCard)).width, greaterThan(800));
+  });
+
+  // Issue #191: a register is narrowed by text, not by scrolling. Each Screen
+  // owns its own term and narrows the rows it has already read — the wire's
+  // own record is what proves no request was sent for the term.
+  // The skill catalogue's rows are identified by name, code and category —
+  // "who is qualified to do this" starts at the category as often as at the
+  // name.
+  testWidgets('the skill catalogue is narrowed by a typed term, and typing costs no request', (tester) async {
+    // The filter box this register now carries (issue #191) sits above the
+    // rows, so a two-row register no longer fits flutter_test's default
+    // 800x600 surface: the rows below the fold are `ListView` children that
+    // have not been built yet, and `find.byKey` would find nothing. The taller
+    // window is the fixture's, not the Screen's — the same pin this repo's
+    // lazy-list tests already use.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1000, 1200);
+    addTearDown(tester.view.reset);
+
+    final wire = FakeWire(skills: [
+      skillJson('30', 'WELD', 'Welding', skillCategory: 'fabrication'),
+      skillJson('31', 'FORK', 'Forklift operation', skillCategory: 'logistics'),
+    ]);
+    await openSkills(tester, wire);
+
+    // Nothing narrowed yet: every row, and no count line to read.
+    expect(find.byKey(SkillsScreen.rowKey('31')), findsOneWidget);
+    expect(find.byKey(SkillsScreen.rowKey('30')), findsOneWidget);
+    expect(find.byKey(SkillsScreen.filterCountKey), findsNothing);
+
+    final requestsBefore = wire.requests.length;
+    await tester.enterText(find.byKey(SkillsScreen.filterFieldKey), 'logistics');
+    await tester.pumpAndSettle();
+
+    // (a) the rows narrow, (c) the count line says how many of how many.
+    expect(find.byKey(SkillsScreen.rowKey('31')), findsOneWidget);
+    expect(find.byKey(SkillsScreen.rowKey('30')), findsNothing);
+    expect(find.byKey(SkillsScreen.filterCountKey), findsOneWidget);
+    expect(find.text(AppFilterField.countLabel(1, 2)), findsOneWidget);
+
+    // (b) narrowing a register the client already holds costs no request.
+    expect(wire.requests.length, requestsBefore,
+        reason: 'typing must not read anything over the wire');
+
+    // (d) one clear affordance, and every row is back.
+    await tester.tap(find.byKey(SkillsScreen.filterClearKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(SkillsScreen.rowKey('31')), findsOneWidget);
+    expect(find.byKey(SkillsScreen.rowKey('30')), findsOneWidget);
+    expect(find.byKey(SkillsScreen.filterCountKey), findsNothing);
+    expect(wire.requests.length, requestsBefore);
   });
 }

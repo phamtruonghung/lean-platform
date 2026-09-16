@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -47,6 +48,20 @@ class PmSchedulesScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('pm-schedules-failed');
 
   static ValueKey<String> rowKey(String id) => ValueKey<String>('pm-schedule-row-$id');
+
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'pm-schedules-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of this Site's PM schedules renders — a different
+  /// fact from [emptyKey]: "nothing matched" is not "there is nothing here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('pm-schedules-no-match');
   static ValueKey<String> toggleKey(String id) => ValueKey<String>('pm-schedule-toggle-$id');
   static ValueKey<String> inactiveChipKey(String id) => ValueKey<String>('pm-schedule-inactive-$id');
 
@@ -201,23 +216,88 @@ class _Notice extends StatelessWidget {
   }
 }
 
-class _PmSchedulesList extends StatelessWidget {
+/// The list of PM schedules. Stateful only because the filter box's term is
+/// the Screen's own (issue #191): a filter is a view of the rows the Bloc
+/// already holds, not a state of the domain, so typing costs a `setState` and
+/// never a Bloc event.
+class _PmSchedulesList extends StatefulWidget {
   const _PmSchedulesList({required this.schedules, required this.canAct});
 
   final List<PmSchedule> schedules;
   final bool canAct;
 
   @override
+  State<_PmSchedulesList> createState() => _PmSchedulesListState();
+}
+
+class _PmSchedulesListState extends State<_PmSchedulesList> {
+  /// What the filter box is narrowing the Site's PM schedules to, `''` when
+  /// nothing is.
+  String _term = '';
+
+  /// Whether [schedule] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over the schedule's own name and code, the
+  /// Asset it is due on, and the Job plan it runs — the four ways a planner
+  /// names the schedule they mean. "A change of plan starts at the Asset",
+  /// so the Asset's name and code are the fields this filter most has to
+  /// carry (issue #191, user story 6).
+  static bool _matches(PmSchedule schedule, String term) =>
+      schedule.name.toLowerCase().contains(term) ||
+      schedule.code.toLowerCase().contains(term) ||
+      schedule.assetName.toLowerCase().contains(term) ||
+      schedule.assetCode.toLowerCase().contains(term) ||
+      schedule.jobPlanName.toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<PmSchedule> get _matchingSchedules {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.schedules;
+    return widget.schedules
+        .where((schedule) => _matches(schedule, term))
+        .toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Filtered here, immediately before the row widgets are built, so a term
+    // can only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingSchedules;
     return Center(
       child: AppPageFrame(
         maxWidth: PmSchedulesScreen.maxWidth,
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: schedules.length,
-          separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) =>
-              _PmScheduleCard(schedule: schedules[index], canAct: canAct),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: AppFilterField(
+                name: PmSchedulesScreen.filterFieldName,
+                label: 'Filter PM schedules',
+                helperText: 'By schedule name, Asset or Job plan.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: widget.schedules.length,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            Expanded(
+              child: matches.isEmpty
+                  ? PlatformEmptyState.noneMatched(
+                      key: PmSchedulesScreen.noMatchKey,
+                      title: 'No PM schedules match',
+                      message: 'This Site has PM schedules, but none matches '
+                          '"${_term.trim()}". Try a different name, Asset or Job plan.',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                      itemCount: matches.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                      itemBuilder: (context, index) =>
+                          _PmScheduleCard(schedule: matches[index], canAct: widget.canAct),
+                    ),
+            ),
+          ],
         ),
       ),
     );

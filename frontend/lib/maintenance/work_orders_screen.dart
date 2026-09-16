@@ -75,6 +75,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
@@ -199,6 +200,21 @@ class WorkOrdersScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('work-orders-failed');
   static const ValueKey<String> scopeRefusedKey = ValueKey<String>('work-orders-scope-refused');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('work-order-row-$id');
+
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'work-orders-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of the Site's open Work orders renders — a
+  /// different fact from [emptyKey]: "nothing matched" is not "there is nothing
+  /// here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('work-orders-no-match');
 
   /// The affordance that opens a row's detail (`/work-orders/:id`, issue #74)
   /// — the whole row is tappable, so the tasks copied from the Job plan are
@@ -603,7 +619,15 @@ class _Notice extends StatelessWidget {
 /// Both shapes key their outer widget with [WorkOrdersScreen.rowKey], so a
 /// test written against one Work order's row does not need to know which
 /// layout is rendering it.
-class _WorkOrdersList extends StatelessWidget {
+///
+/// **Stateful since issue #191, for the filter box's own term.** The box sits
+/// above either shape, at the page's own padding, and the rows are narrowed
+/// immediately before they are built — so a term can only ever hide rows this
+/// Screen already read. The term is this widget's own `setState` and never a
+/// Bloc event: a filter is a view of the rows the Bloc holds, not a state of
+/// the domain, and the Org Unit and status controls above it keep working
+/// exactly as they did.
+class _WorkOrdersList extends StatefulWidget {
   const _WorkOrdersList({required this.workOrders, required this.canAssign, required this.canWork});
 
   final List<WorkOrder> workOrders;
@@ -615,7 +639,40 @@ class _WorkOrdersList extends StatelessWidget {
   final bool canWork;
 
   @override
+  State<_WorkOrdersList> createState() => _WorkOrdersListState();
+}
+
+class _WorkOrdersListState extends State<_WorkOrdersList> {
+  /// What the filter box is narrowing the register to, `''` when nothing is.
+  String _term = '';
+
+  /// Whether [workOrder] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over the fields that identify a Work order —
+  /// its summary, the number it is known by, and the Asset it is against.
+  /// "Type a Work order's summary or asset code and see only those rows" is
+  /// the first thing this ticket asks for (user story 1). No ranking and no
+  /// fuzzy matching, the same rule the assign dialog's own filter uses
+  /// (issue #187).
+  static bool _matches(WorkOrder workOrder, String term) =>
+      workOrder.summary.toLowerCase().contains(term) ||
+      workOrder.workOrderNo.toLowerCase().contains(term) ||
+      workOrder.assetName.toLowerCase().contains(term) ||
+      workOrder.assetCode.toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<WorkOrder> get _matchingWorkOrders {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.workOrders;
+    return widget.workOrders
+        .where((workOrder) => _matches(workOrder, term))
+        .toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Filtered here, immediately before the rows are built, so a term can
+    // only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingWorkOrders;
     // `constraints.maxWidth` — the box this Screen actually got from its own
     // parent — not `MediaQuery.sizeOf(context).width`, the whole browser
     // window (issue #105). This Screen always renders inside the Shell's
@@ -634,29 +691,59 @@ class _WorkOrdersList extends StatelessWidget {
         return Center(
           child: AppPageFrame(
             maxWidth: WorkOrdersScreen.maxWidth,
-            child: narrow
-                ? ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                    itemCount: workOrders.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-                    itemBuilder: (context, index) => _WorkOrderCard(
-                      workOrder: workOrders[index],
-                      canAssign: canAssign(workOrders[index].orgUnitId),
-                      canWork: canWork,
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                    children: [
-                      const _WorkOrderTableHeader(),
-                      for (final workOrder in workOrders)
-                        _WorkOrderTableRow(
-                          workOrder: workOrder,
-                          canAssign: canAssign(workOrder.orgUnitId),
-                          canWork: canWork,
-                        ),
-                    ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+                  child: AppFilterField(
+                    name: WorkOrdersScreen.filterFieldName,
+                    label: 'Filter Work orders',
+                    helperText: 'By summary, Work order number or Asset.',
+                    term: _term,
+                    onChanged: (term) => setState(() => _term = term),
+                    shown: matches.length,
+                    total: widget.workOrders.length,
                   ),
+                ),
+                const SizedBox(height: Spacing.md),
+                Expanded(
+                  child: matches.isEmpty
+                      ? PlatformEmptyState.noneMatched(
+                          key: WorkOrdersScreen.noMatchKey,
+                          title: 'No Work orders match',
+                          message: 'Work is open at this Site, but none of it matches '
+                              '"${_term.trim()}". Try a different summary or Asset, or clear '
+                              'the filter.',
+                        )
+                      : narrow
+                          ? ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(
+                                  Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                              itemCount: matches.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                              itemBuilder: (context, index) => _WorkOrderCard(
+                                workOrder: matches[index],
+                                canAssign: widget.canAssign(matches[index].orgUnitId),
+                                canWork: widget.canWork,
+                              ),
+                            )
+                          : ListView(
+                              padding: const EdgeInsets.fromLTRB(
+                                  Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                              children: [
+                                const _WorkOrderTableHeader(),
+                                for (final workOrder in matches)
+                                  _WorkOrderTableRow(
+                                    workOrder: workOrder,
+                                    canAssign: widget.canAssign(workOrder.orgUnitId),
+                                    canWork: widget.canWork,
+                                  ),
+                              ],
+                            ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -671,26 +758,6 @@ class _WorkOrdersList extends StatelessWidget {
 /// aligned regardless of which row does or does not offer a primary button.
 const double _actionsColumnWidth = 232;
 
-/// The wide table's own fixed width for its Status column (issue #105) —
-/// sized to whichever of [WorkOrder.knownStatusLabels] paints widest under
-/// the `Chip`'s own Material 3 default label style (`textTheme.labelLarge`,
-/// `chip.dart`'s own `_ChipDefaultsM3.labelStyle`), plus that `Chip`'s own
-/// horizontal chrome at text scale 1 (`padding`: 8px each side; default
-/// `labelPadding`: 8px each side — both from `chip.dart`'s own defaults),
-/// with a further buffer on top rather than the exact figure.
-///
-/// This replaced an `Expanded(flex: 2)` cell that clipped "Approved" at the
-/// chip's own right edge — a `Chip` clips its label rather than overflowing
-/// loudly, so nothing here ever threw and no widget test caught it before a
-/// golden did (issue #105). A fixed width tied to the actual label set,
-/// rather than a bigger flex number tuned to fit today's longest label
-/// ("In progress"), keeps a later status added to `work_order.dart`'s own
-/// label map sized correctly without anyone needing to remember to also
-/// widen a column.
-///
-/// Shared between [_WorkOrderTableHeader]'s own label cell and every
-/// [_WorkOrderTableRow]'s own status cell, the same way [_actionsColumnWidth]
-/// already is, so the columns after Status stay aligned between rows.
 double _statusColumnWidth(BuildContext context) {
   final style = Theme.of(context).textTheme.labelLarge;
   final direction = Directionality.of(context);

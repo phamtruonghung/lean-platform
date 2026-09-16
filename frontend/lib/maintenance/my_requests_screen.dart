@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -43,6 +44,21 @@ class MyRequestsScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('my-requests-failed');
 
   static ValueKey<String> rowKey(String id) => ValueKey<String>('my-request-row-$id');
+
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'my-requests-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of the caller's own Requests renders — a
+  /// different fact from [emptyKey]: "nothing matched" is not "there is
+  /// nothing here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('my-requests-no-match');
 
   @override
   Widget build(BuildContext context) {
@@ -209,21 +225,83 @@ class _Notice extends StatelessWidget {
   }
 }
 
-class _MyRequestsList extends StatelessWidget {
+/// The caller's own Requests. Stateful only because the filter box's term is
+/// the Screen's own (issue #191): a filter is a view of the rows the Bloc
+/// already holds, not a state of the domain, so typing costs a `setState` and
+/// never a Bloc event.
+class _MyRequestsList extends StatefulWidget {
   const _MyRequestsList({required this.requests});
 
   final List<Request> requests;
 
   @override
+  State<_MyRequestsList> createState() => _MyRequestsListState();
+}
+
+class _MyRequestsListState extends State<_MyRequestsList> {
+  /// What the filter box is narrowing the caller's own Requests to, `''` when
+  /// nothing is.
+  String _term = '';
+
+  /// Whether [request] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over the fields that identify a Request — its
+  /// own number, the sentences that describe it, and the Asset it was raised
+  /// against — so chasing one is one term rather than a walk through them all
+  /// (issue #191, user story 7).
+  static bool _matches(Request request, String term) =>
+      request.requestNo.toLowerCase().contains(term) ||
+      request.summary.toLowerCase().contains(term) ||
+      (request.description ?? '').toLowerCase().contains(term) ||
+      request.assetName.toLowerCase().contains(term) ||
+      request.assetCode.toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<Request> get _matchingRequests {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.requests;
+    return widget.requests.where((request) => _matches(request, term)).toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Filtered here, immediately before the row widgets are built, so a term
+    // can only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingRequests;
     return Center(
       child: AppPageFrame(
         maxWidth: MyRequestsScreen.maxWidth,
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: requests.length,
-          separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) => _MyRequestCard(request: requests[index]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: AppFilterField(
+                name: MyRequestsScreen.filterFieldName,
+                label: 'Filter requests',
+                helperText: 'By description, Request number or Asset.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: widget.requests.length,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            Expanded(
+              child: matches.isEmpty
+                  ? PlatformEmptyState.noneMatched(
+                      key: MyRequestsScreen.noMatchKey,
+                      title: 'No requests match',
+                      message: 'You have Requests at this Site, but none matches '
+                          '"${_term.trim()}". Try a different description or Asset.',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                      itemCount: matches.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                      itemBuilder: (context, index) => _MyRequestCard(request: matches[index]),
+                    ),
+            ),
+          ],
         ),
       ),
     );

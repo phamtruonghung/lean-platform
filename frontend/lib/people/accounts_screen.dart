@@ -23,6 +23,8 @@ import 'package:go_router/go_router.dart';
 import '../platform/destinations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/skeleton_list.dart';
 import 'account_correction_dialog.dart';
@@ -107,6 +109,21 @@ class AccountsScreen extends StatelessWidget {
   /// pending Account — a link to the one place Approval is actually decided.
   static ValueKey<String> reviewInApprovalsKey(String id) =>
       ValueKey<String>('accounts-review-$id');
+
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'accounts-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of the plant's Accounts renders — a different
+  /// fact from the Screen's own empty state: "nothing matched" is not "there is
+  /// nothing here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('accounts-no-match');
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +252,15 @@ class _Notice extends StatelessWidget {
 /// rendering it. Accounts already arrive from [AccountsBloc] ordered pending
 /// first, then by email (Decision B); this list renders them in that order
 /// rather than re-sorting.
-class _AccountsList extends StatelessWidget {
+///
+/// **Stateful since issue #191, for the filter box's own term.** The box sits
+/// above either shape, at the page's own padding, and the rows are narrowed
+/// immediately before they are built — so a term can only ever hide rows this
+/// Screen already read. The term is this widget's own `setState` and never a
+/// Bloc event: a filter is a view of the rows the Bloc holds, not a state of
+/// the domain (ADR-0012 asks for a Bloc where a Screen drives a state machine,
+/// not for one per text field).
+class _AccountsList extends StatefulWidget {
   const _AccountsList({
     required this.accounts,
     required this.busyId,
@@ -251,8 +276,40 @@ class _AccountsList extends StatelessWidget {
   final String selfAccountId;
 
   @override
+  State<_AccountsList> createState() => _AccountsListState();
+}
+
+class _AccountsListState extends State<_AccountsList> {
+  /// What the filter box is narrowing the register to, `''` when nothing is.
+  String _term = '';
+
+  /// Whether [account] matches [term], already lower-cased and trimmed: a
+  /// case-insensitive substring over the three fields that identify an
+  /// Account — the name it signed up with, the email it signs in as, and the
+  /// role it holds (both the wire's own name for it and the label the table
+  /// shows, so "supervisor" and "Supervisor" both find it). No ranking and
+  /// no fuzzy matching, the same rule the assign dialog's own filter uses
+  /// (issue #187).
+  static bool _matches(ManagedAccount account, String term) =>
+      account.displayName.toLowerCase().contains(term) ||
+      account.email.toLowerCase().contains(term) ||
+      account.role.toLowerCase().contains(term) ||
+      roleLabel(account.role).toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<ManagedAccount> get _matchingAccounts {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.accounts;
+    return widget.accounts.where((account) => _matches(account, term)).toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    bool isBusy(String id) => id == busyId || id == correctingId || id == employeeLinkingId;
+    // Filtered here, immediately before the rows are built, so a term can
+    // only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingAccounts;
+    bool isBusy(String id) =>
+        id == widget.busyId || id == widget.correctingId || id == widget.employeeLinkingId;
     // `constraints.maxWidth` — the box this Screen actually got from its own
     // parent — not `MediaQuery.sizeOf(context).width`, the whole browser
     // window (issue #120). This Screen always renders inside the Shell's
@@ -271,29 +328,59 @@ class _AccountsList extends StatelessWidget {
         return Center(
           child: AppPageFrame(
             maxWidth: AccountsScreen.maxWidth,
-            child: narrow
-                ? ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                    itemCount: accounts.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-                    itemBuilder: (context, index) => _AccountCard(
-                      account: accounts[index],
-                      busy: isBusy(accounts[index].id),
-                      isSelf: accounts[index].id == selfAccountId,
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                    children: [
-                      const _AccountTableHeader(),
-                      for (final account in accounts)
-                        _AccountTableRow(
-                          account: account,
-                          busy: isBusy(account.id),
-                          isSelf: account.id == selfAccountId,
-                        ),
-                    ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+                  child: AppFilterField(
+                    name: AccountsScreen.filterFieldName,
+                    label: 'Filter Accounts',
+                    helperText: 'By name, email or role.',
+                    term: _term,
+                    onChanged: (term) => setState(() => _term = term),
+                    shown: matches.length,
+                    total: widget.accounts.length,
                   ),
+                ),
+                const SizedBox(height: Spacing.md),
+                Expanded(
+                  child: matches.isEmpty
+                      ? PlatformEmptyState.noneMatched(
+                          key: AccountsScreen.noMatchKey,
+                          title: 'No Accounts match',
+                          message: 'This plant has Accounts, but none matches '
+                              '"${_term.trim()}". Try a different name, email or role, or '
+                              'clear the filter.',
+                        )
+                      : narrow
+                          ? ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(
+                                  Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                              itemCount: matches.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                              itemBuilder: (context, index) => _AccountCard(
+                                account: matches[index],
+                                busy: isBusy(matches[index].id),
+                                isSelf: matches[index].id == widget.selfAccountId,
+                              ),
+                            )
+                          : ListView(
+                              padding: const EdgeInsets.fromLTRB(
+                                  Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                              children: [
+                                const _AccountTableHeader(),
+                                for (final account in matches)
+                                  _AccountTableRow(
+                                    account: account,
+                                    busy: isBusy(account.id),
+                                    isSelf: account.id == widget.selfAccountId,
+                                  ),
+                              ],
+                            ),
+                ),
+              ],
+            ),
           ),
         );
       },

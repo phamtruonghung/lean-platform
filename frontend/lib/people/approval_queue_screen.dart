@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_filter_field.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/skeleton_list.dart';
 import 'admission_dialog.dart';
@@ -22,6 +24,21 @@ class ApprovalQueueScreen extends StatelessWidget {
   const ApprovalQueueScreen({super.key});
 
   static const double maxWidth = 900;
+
+  /// The filter box's `name` (issue #191), seeding [filterFieldKey],
+  /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
+  /// own name and the keys a test reaches it by cannot drift, the same device
+  /// `WorkOrderAssignDialog.searchFieldName` uses (issue #187).
+  static const String filterFieldName = 'approvals-filter';
+
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// What a term matching none of the waiting Accounts renders — a different
+  /// fact from the queue's own empty state: "nothing matched" is not "there is
+  /// nothing here".
+  static const ValueKey<String> noMatchKey = ValueKey<String>('approvals-no-match');
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +146,11 @@ class _Notice extends StatelessWidget {
   }
 }
 
-class _QueueList extends StatelessWidget {
+/// The queue itself. Stateful only because the filter box's term is the
+/// Screen's own (issue #191): a filter is a view of the rows the Bloc already
+/// holds, not a state of the domain, so typing costs a `setState` and never a
+/// Bloc event.
+class _QueueList extends StatefulWidget {
   const _QueueList({
     required this.accounts,
     required this.rejectingId,
@@ -141,19 +162,72 @@ class _QueueList extends StatelessWidget {
   final String? admittingId;
 
   @override
+  State<_QueueList> createState() => _QueueListState();
+}
+
+class _QueueListState extends State<_QueueList> {
+  /// What the filter box is narrowing the queue to, `''` when nothing is.
+  String _term = '';
+
+  /// Whether [account] matches [term], already lower-cased and trimmed. An
+  /// email address is the only thing a waiting Account carries — an Account
+  /// need not correspond to an Employee, so there is no name to match on
+  /// (`pending_account.dart`'s own note). No ranking and no fuzzy matching,
+  /// the same rule the assign dialog's own filter uses (issue #187).
+  static bool _matches(PendingAccount account, String term) =>
+      account.email.toLowerCase().contains(term);
+
+  /// The rows actually rendered — every one of them while the term is empty.
+  List<PendingAccount> get _matchingAccounts {
+    final term = _term.trim().toLowerCase();
+    if (term.isEmpty) return widget.accounts;
+    return widget.accounts.where((account) => _matches(account, term)).toList(growable: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Filtered here, immediately before the row widgets are built, so a term
+    // can only ever narrow rows this Screen already read (issue #191).
+    final matches = _matchingAccounts;
     return Center(
       child: AppPageFrame(
         maxWidth: ApprovalQueueScreen.maxWidth,
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: accounts.length,
-          separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-          itemBuilder: (context, index) => _QueueRow(
-            account: accounts[index],
-            rejecting: accounts[index].id == rejectingId,
-            admitting: accounts[index].id == admittingId,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: AppFilterField(
+                name: ApprovalQueueScreen.filterFieldName,
+                label: 'Filter Accounts',
+                helperText: 'By email address.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: widget.accounts.length,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            Expanded(
+              child: matches.isEmpty
+                  ? PlatformEmptyState.noneMatched(
+                      key: ApprovalQueueScreen.noMatchKey,
+                      title: 'No Accounts match',
+                      message: 'Accounts are waiting, but none matches "${_term.trim()}". '
+                          'Try a different email address, or clear the filter.',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                      itemCount: matches.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                      itemBuilder: (context, index) => _QueueRow(
+                        account: matches[index],
+                        rejecting: matches[index].id == widget.rejectingId,
+                        admitting: matches[index].id == widget.admittingId,
+                      ),
+                    ),
+            ),
+          ],
         ),
       ),
     );
