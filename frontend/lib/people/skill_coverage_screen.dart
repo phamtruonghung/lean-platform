@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -24,7 +25,9 @@ import 'skill_coverage_bloc.dart';
 class SkillCoverageScreen extends StatelessWidget {
   const SkillCoverageScreen({super.key});
 
-  static const double maxWidth = 760;
+  /// The Platform's own page width (issue #189): this Screen used to declare
+  /// 760, one of five numbers six catalogue Screens each picked for themselves.
+  static const double maxWidth = AppLayout.pageWidth;
 
   static const ValueKey<String> siteKey = ValueKey<String>('skill-coverage-site');
   static const ValueKey<String> failedKey = ValueKey<String>('skill-coverage-failed');
@@ -113,11 +116,10 @@ class _Loaded extends StatelessWidget {
                 icon: Icons.task_alt_outlined,
               )
             else
-              Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  children: [for (final entry in state.entries) _CoverageRow(entry: entry)],
-                ),
+              // One row per requirement, ruled apart from its neighbours
+              // (issue #189).
+              AppListCard(
+                rows: [for (final entry in state.entries) _CoverageRow(entry: entry)],
               ),
           ],
         ),

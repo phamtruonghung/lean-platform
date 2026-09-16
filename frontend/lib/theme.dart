@@ -52,6 +52,28 @@ abstract final class AppRadius {
   static const double card = 14;
 }
 
+/// Layout tokens (issue #189): the sizes a Screen's own page agrees on,
+/// written down once rather than re-picked per Screen.
+///
+/// This exists because six Screens were each declaring their own
+/// `static const double maxWidth` — 700, 760, 760, 800, 800, 800 against the
+/// 900 the Directory, Org Units, the Approval queue and Home already used — and
+/// nothing said which was intended. A Screen still declares its own constant
+/// (so `SkeletonList(maxWidth: X.maxWidth)` keeps working and the Screen's own
+/// vocabulary stays in its file); it just does not decide the number.
+///
+/// **The wide pages are exceptions and name themselves as such.** The Work
+/// orders table, the maintenance registers, the Action log and the tier board
+/// lay out tables and boards that need more than [pageWidth]; the employee and
+/// Work order detail Screens are single-record pages whose narrower measure is
+/// a reading decision. Those keep their own numbers deliberately — this token
+/// names the default, not a rule every Screen must spend.
+abstract final class AppLayout {
+  /// A Screen's page: the box its title, controls and list are laid out in,
+  /// centred in whatever width the Shell leaves.
+  static const double pageWidth = 900;
+}
+
 /// Layer 1 — primitives. Raw values only, and only the ones a semantic or
 /// component token below actually spends.
 ///

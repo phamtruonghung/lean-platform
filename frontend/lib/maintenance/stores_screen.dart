@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -19,7 +20,9 @@ import 'stores_bloc.dart';
 class StoresScreen extends StatelessWidget {
   const StoresScreen({super.key});
 
-  static const double maxWidth = 800;
+  /// The Platform's own page width (issue #189): this Screen used to declare
+  /// 800, one of five numbers six catalogue Screens each picked for themselves.
+  static const double maxWidth = AppLayout.pageWidth;
   static const ValueKey<String> siteKey = ValueKey<String>('stores-site');
   static const ValueKey<String> failedKey = ValueKey<String>('stores-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('stores-retry');
@@ -136,20 +139,19 @@ class _StoresList extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           children: [
-            Card(
-              margin: EdgeInsets.zero,
-              child: Column(
-                children: [
-                  for (final store in stores)
-                    ListTile(
-                      key: StoresScreen.rowKey(store.id),
-                      title: Text(store.name),
-                      subtitle: Text('${store.code} · ${store.orgUnitName}'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.go('${Routes.stores}/${store.id}'),
-                    ),
-                ],
-              ),
+            // One row per Store, ruled apart from its neighbours (issue
+            // #189) — the same list card every catalogue now sits in.
+            AppListCard(
+              rows: [
+                for (final store in stores)
+                  ListTile(
+                    key: StoresScreen.rowKey(store.id),
+                    title: Text(store.name),
+                    subtitle: Text('${store.code} · ${store.orgUnitName}'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.go('${Routes.stores}/${store.id}'),
+                  ),
+              ],
             ),
             const SizedBox(height: Spacing.md),
             Text(

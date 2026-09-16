@@ -3,10 +3,12 @@
 /// the one client seam (ADR-0012).
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/people/job_role_form_dialog.dart';
 import 'package:lean_platform/people/job_roles_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_list_card.dart';
 
 import 'harness.dart';
 
@@ -113,5 +115,45 @@ void main() {
 
     expect(find.byKey(JobRolesScreen.failedKey), findsNothing);
     expect(find.text('Welder · WELD'), findsOneWidget);
+  });
+
+  // The catalogue's rows and its page width (issue #189). This Screen's rows
+  // used to sit in a bare `Card` with no rule between them, and its page was
+  // 700px wide where the Directory and Org Units beside it were 900 — which is
+  // what the user saw as a page that "is not ok".
+  testWidgets('rows are ruled apart by the shared list card', (tester) async {
+    final wire = FakeWire(
+      jobRoles: [
+        jobRoleJson('20', 'WELD', 'Welder'),
+        jobRoleJson('21', 'FIT', 'Fitter'),
+      ],
+    );
+    await openJobRoles(tester, wire);
+
+    expect(find.byType(AppListCard), findsOneWidget);
+    // Two rows, one rule between them — and still the rows' own keys. Scoped to
+    // the card: the Shell draws a hairline of its own, so counting `Divider`s
+    // page-wide would count that one too.
+    expect(
+      find.descendant(of: find.byType(AppListCard), matching: find.byType(Divider)),
+      findsOneWidget,
+    );
+    expect(find.byKey(JobRolesScreen.rowKey('20')), findsOneWidget);
+    expect(find.byKey(JobRolesScreen.rowKey('21')), findsOneWidget);
+  });
+
+  testWidgets('the catalogue page is the Platform page width, not a narrower one',
+      (tester) async {
+    // A window wide enough for the 900px page to fit whole.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 1000);
+    addTearDown(tester.view.reset);
+
+    final wire = FakeWire(jobRoles: [jobRoleJson('20', 'WELD', 'Welder')]);
+    await openJobRoles(tester, wire);
+
+    // 900 minus the page's own 16px insets is 868; the old 700px page could
+    // not produce a catalogue wider than 668.
+    expect(tester.getSize(find.byType(AppListCard)).width, greaterThan(800));
   });
 }
