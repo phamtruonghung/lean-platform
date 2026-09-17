@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'action.dart';
+import 'capa.dart';
 
 /// The request could not be answered at all. Deliberately its own type rather
 /// than People's `PeopleApiException` or Maintenance's: ADR-0006's third clause
@@ -330,6 +331,64 @@ class ActionsApi {
     return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
   }
 
+  /// Opens a CAPA on a Concern (issue #209, ADR-0034) — the Actions Module's
+  /// own write, on the Concern's own address, answering with the investigation
+  /// it created.
+  ///
+  /// The Org Unit is deliberately not in the body: a CAPA is filed at the
+  /// Concern's own Org Unit and follows it if the Concern is escalated, so the
+  /// server resolves it from the record rather than trusting a caller to name
+  /// it. Everything else a caller may choose is optional and left out rather
+  /// than sent as a null, so the server's own defaults are what a caller gets
+  /// when they choose nothing — including a CAPA with no team and no problem
+  /// description yet, which is a real state: the judgement is that this problem
+  /// needs an investigation, and who investigates it may be decided next.
+  Future<Capa> openCapa(
+    String accessToken,
+    String concernId, {
+    String? teamLeadEmployeeId,
+    List<String> teamMemberEmployeeIds = const [],
+    String? problemStatement,
+    String? dueDate,
+  }) async {
+    final path = '/api/actions/$concernId/capa';
+    final body = <String, dynamic>{
+      'teamLeadEmployeeId': ?teamLeadEmployeeId,
+      'problemStatement': ?problemStatement,
+      'dueDate': ?dueDate,
+      // A team with nobody on it is the same fact as no team, so the list is
+      // sent only when it has somebody in it — and a *replacement* list that
+      // empties a team is a change, not this create.
+      if (teamMemberEmployeeIds.isNotEmpty) 'teamMemberEmployeeIds': teamMemberEmployeeIds,
+    };
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
+  /// One CAPA (`GET /api/actions/capas/:id`), with the Concern it is about —
+  /// the Concern's own detail read, so its measures each carry the phases they
+  /// have been round (issue #209).
+  ///
+  /// This is the read the CAPA's Screen makes: what D3-D7 of the 8D are is
+  /// answered by the Concern's Containments, Countermeasures and Preventive
+  /// actions, recorded once in the action log and shown here rather than
+  /// recorded a second time.
+  Future<Capa> fetchCapa(String accessToken, String id) async {
+    final path = '/api/actions/capas/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
   /// The five Pillars, for the raise form's chooser (ADR-0023: a value with a
   /// known set is chosen, never typed).
   Future<List<Pillar>> fetchPillars(String accessToken) async {
@@ -387,6 +446,14 @@ class ActionsApi {
         escalatedAt: json['escalatedAt'] == null ? null : DateTime.parse(json['escalatedAt'] as String),
         sourceType: json['sourceType'] as String?,
         sourceNonconformanceId: json['sourceNonconformanceId']?.toString(),
+        // The CAPA opened on this Action, if one has been (issue #209).
+        capa: json['capa'] == null
+            ? null
+            : CapaLink(
+                id: (json['capa'] as Map<String, dynamic>)['id'].toString(),
+                capaNo: (json['capa'] as Map<String, dynamic>)['capaNo'] as String,
+                status: (json['capa'] as Map<String, dynamic>)['status'] as String,
+              ),
         parentId: json['parentId']?.toString(),
         measureCount: (json['measureCount'] as int?) ?? 0,
         countermeasureCount: (json['countermeasureCount'] as int?) ?? 0,
@@ -422,6 +489,52 @@ class ActionsApi {
         title: json['title'] as String,
         actionType: json['actionType'] as String,
         status: json['status'] as String,
+      );
+
+  /// One CAPA off the wire (issue #209). Every id is a string for the same
+  /// reason an Action's is: the server sends BIGINTs as strings, and a client
+  /// that coerced them to int would break on the first id past 2^53.
+  ///
+  /// The Concern comes back through the Action parser rather than a second
+  /// mapper of its own: a CAPA's `concern` *is* an Action's detail read — the
+  /// same fields, the same measures, the same phases — and a second parser
+  /// would be a second place for the two shapes to drift apart.
+  static Capa _capaFrom(Map<String, dynamic> json) => Capa(
+        id: json['id'].toString(),
+        capaNo: json['capaNo'] as String,
+        title: json['title'] as String,
+        method: json['method'] as String,
+        status: json['status'] as String,
+        orgUnitId: json['orgUnitId'].toString(),
+        orgUnitCode: json['orgUnitCode'] as String?,
+        orgUnitName: json['orgUnitName'] as String,
+        siteId: json['siteId'].toString(),
+        problemStatement: json['problemStatement'] as String?,
+        teamLead: json['teamLead'] == null
+            ? null
+            : _capaTeamMemberFrom(json['teamLead'] as Map<String, dynamic>),
+        teamMembers: [
+          for (final member in (json['teamMembers'] as List<dynamic>? ?? const []))
+            _capaTeamMemberFrom(member as Map<String, dynamic>),
+        ],
+        openedAt: json['openedAt'] == null ? null : DateTime.parse(json['openedAt'] as String),
+        dueDate: json['dueDate'] as String?,
+        closedAt: json['closedAt'] == null ? null : DateTime.parse(json['closedAt'] as String),
+        effectivenessCheckDueAt: json['effectivenessCheckDueAt'] as String?,
+        effectivenessVerifiedAt: json['effectivenessVerifiedAt'] == null
+            ? null
+            : DateTime.parse(json['effectivenessVerifiedAt'] as String),
+        effectivenessNote: json['effectivenessNote'] as String?,
+        concern: json['concern'] == null
+            ? null
+            : _actionFrom(json['concern'] as Map<String, dynamic>),
+      );
+
+  /// One Employee on a CAPA's team: the id an address needs and the name a
+  /// person reads.
+  static CapaTeamMember _capaTeamMemberFrom(Map<String, dynamic> json) => CapaTeamMember(
+        employeeId: json['employeeId'].toString(),
+        name: json['name'] as String? ?? '',
       );
 
   static ActionPhase _phaseFrom(Map<String, dynamic> json) => ActionPhase(

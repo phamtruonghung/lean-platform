@@ -17,6 +17,7 @@ library;
 import 'package:flutter/foundation.dart';
 
 import '../status_tone.dart';
+import 'capa.dart';
 
 /// What an Action is to a problem, mirroring the CHECK constraint on
 /// `action_items.action_type` (migration 1799500000000) and the backend's own
@@ -347,6 +348,7 @@ class Action {
     this.phases = const [],
     this.nonconformances = const [],
     this.sourceNonconformanceId,
+    this.capa,
   });
 
   final String id;
@@ -456,6 +458,12 @@ class Action {
   /// The Non-conformance this Action was raised from, if any (issue #208) —
   /// provenance rather than the link list, which is [nonconformances].
   final String? sourceNonconformanceId;
+
+  /// The CAPA somebody has opened on this Action, if anybody has (issue #209).
+  /// Set only on a Concern, and only once: a Concern has at most one
+  /// investigation, which is the server's own rule and the reason its Screen
+  /// offers opening one *or* a link to the one it has.
+  final CapaLink? capa;
 }
 
 /// A quantity as a number, whether the server sent `12` or `"12.0000"`.

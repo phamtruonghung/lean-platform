@@ -139,6 +139,12 @@ const ACTION_COLUMNS = `
   to_char(op.due_date, 'YYYY-MM-DD') AS open_phase_due_date,
   op.owner_employee_id AS open_phase_owner_id,
   ope.display_name AS open_phase_owner_name,
+  -- The CAPA opened on this Action, if one has been (issue #209). Carried on
+  -- every row rather than only on the detail read, because whether a Concern
+  -- already has an investigation is a fact about the Concern: the Screen that
+  -- shows it offers opening one or links to the one it has, and the register's
+  -- own row should be able to say so without a second read.
+  ai.capa_id, cp.capa_no, cp.status AS capa_status,
   ai.parent_action_item_id,
   par.action_no AS parent_action_no, par.title AS parent_title,
   par.action_type AS parent_action_type, par.status AS parent_status,
@@ -162,6 +168,10 @@ const ACTION_JOINS = `
      LIMIT 1
   ) op ON TRUE
   LEFT JOIN employees ope ON ope.id = op.owner_employee_id
+  -- The CAPA opened on this Action (issue #209). At most one row, by the
+  -- partial unique index action_items_capa_id_once; null for everything that
+  -- has not been turned into an investigation, which is most of the log.
+  LEFT JOIN capas cp ON cp.id = ai.capa_id
   -- The Concern this Action answers, if it answers one (issue #178).
   LEFT JOIN action_items par ON par.id = ai.parent_action_item_id
   -- How many measures answer this Action, and how many of them are
@@ -210,6 +220,15 @@ function toAction(row) {
     // Concern linked to four Non-conformances names all four in `nonconformances`
     // on its detail read, and this names the one it came from.
     sourceNonconformanceId: row.quality_issue_id ?? null,
+    // The CAPA opened on this Action (issue #209) — null for every Action but
+    // a Concern somebody has opened an investigation on, which is the rule the
+    // check constraint `action_items_capa_is_a_concern` keeps. Named rather
+    // than nested: a reader of a measure or a register row needs to know that
+    // the problem behind it is under investigation, not to receive that
+    // investigation here.
+    capa: row.capa_id
+      ? { id: String(row.capa_id), capaNo: row.capa_no, status: row.capa_status }
+      : null,
     parentId: row.parent_action_item_id,
     measureCount: Number(row.measure_count ?? 0),
     countermeasureCount: Number(row.countermeasure_count ?? 0),
@@ -1344,6 +1363,16 @@ async function escalationTargets(actionItemId) {
  * has been told is a different question from who is doing the work, and folding
  * the two into one status transition would lose the second answer.
  *
+ * **The CAPA follows its Concern (issue #209).** One thing outside this row
+ * does change, and it is a consequence of ADR-0034's shape rather than an
+ * exception to it: a CAPA is an investigation opened on a Concern and its Org
+ * Unit is the Concern's, so when the problem is handed to a higher tier the
+ * investigation goes with it. An investigation whose own row still named the
+ * line after the plant manager took the problem would be triaged by nobody —
+ * and it is *not* an escalation of the CAPA: nothing about the investigation's
+ * own status, team or dates moves, and `capas` has no escalation columns to
+ * move because an escalation is a fact about the Concern's ownership.
+ *
  * The caller's right to act at the *target* is the route's business (ADR-0006 —
  * People is another Module), and so are the existence and ancestry refusals;
  * what happens here is the write, over a row locked for it, with the detail
@@ -1361,6 +1390,16 @@ async function escalateAction(actionItemId, orgUnitId, accountId) {
     );
     if (rows.length === 0) throw notFound('Action');
 
+    // The investigation moves with the problem it is about. One statement, and
+    // a no-op for the overwhelming majority of Actions, which have no CAPA.
+    await client.query(
+      `UPDATE capas c
+          SET org_unit_id = $2
+        FROM action_items ai
+       WHERE ai.id = $1 AND ai.capa_id = c.id`,
+      [actionItemId, orgUnitId]
+    );
+
     const { rows: [row] } = await client.query(
       `SELECT ${ACTION_COLUMNS} ${ACTION_JOINS} WHERE ai.id = $1`,
       [actionItemId]
@@ -1370,6 +1409,473 @@ async function escalateAction(actionItemId, orgUnitId, accountId) {
       await listPhases(actionItemId, client),
       await listMeasures(actionItemId, client)
     );
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The CAPA (issue #209, ADR-0034)
+//
+// A CAPA is a formal investigation opened on an existing Concern, never a
+// record of its own that runs beside one: the Concern stays the problem, its
+// Containments, Countermeasures and Preventive actions ARE the CAPA's actions
+// (recorded in this same log, once), and the CAPA carries only what an
+// investigation adds on top — the team, the problem description, and later the
+// root-cause chains, the effectiveness check and the report.
+//
+// That is why `capa_steps` is not written anywhere in this file, and why
+// nothing ever will be: ADR-0034 rejected "a CAPA owns its own 8D steps" in as
+// many words, because the same fix would then be tracked twice — once as a step
+// and once as an Action — and the two would drift, the step marked done while
+// the Action's own Check said the countermeasure did not hold. What D1-D8 are
+// is answered by the Action log: the Concern for D2, its containments for D3,
+// its countermeasures for D5-D6, its preventive actions for D7, and this row's
+// team, root causes and effectiveness fields for D1, D4 and the verification.
+//
+// The primary key space is the CAPA's own (`capas.id`), not the Action log's,
+// so every address below is `/api/actions/capas/:id` rather than a second kind
+// of `action_items` row. The link that ties the two logs together is the
+// Concern's own `capa_id`.
+// ---------------------------------------------------------------------------
+
+// What a CAPA's 8D method is, and the one value this Module writes (issue
+// #209). The baseline's CHECK accepts `8d`, `5why`, `a3` and `simple`; a CAPA
+// opened from the Action log is an 8D by the ADR's own vocabulary ("a CAPA
+// system", D1-D8), and a later ticket that opens one from a safety incident
+// decides for itself whether that changes.
+const CAPA_METHOD = '8d';
+
+// The baseline's `capas_status_check`, split by whether the investigation is
+// over: `verifying` is still open — the fix is in and has not yet been proved
+// (#211) — and only the last two mean nothing may change any more.
+const CLOSED_CAPA_STATUSES = ['closed', 'cancelled'];
+
+// Every column a CAPA is read by, in the order a person reads it: what it is,
+// what it is about, whose it is, where it sits and how it is going. The Org
+// Unit join is inner (a CAPA is always filed somewhere — the Concern's own)
+// and the team-lead join is LEFT, because a CAPA may be opened with no team
+// named yet: the judgement is that this problem needs an investigation, and who
+// investigates it is a decision somebody makes next.
+const CAPA_COLUMNS = `
+  c.id, c.capa_no, c.title, c.problem_statement, c.method,
+  c.org_unit_id, ou.code AS org_unit_code, ou.name AS org_unit_name, ou.site_id,
+  c.team_lead_employee_id, lead.display_name AS team_lead_name,
+  c.opened_at, to_char(c.due_date, 'YYYY-MM-DD') AS due_date,
+  c.status, c.closed_at,
+  to_char(c.effectiveness_check_due_at, 'YYYY-MM-DD') AS effectiveness_check_due_at,
+  c.effectiveness_verified_at, c.effectiveness_note,
+  c.created_at, c.updated_at
+`;
+
+const CAPA_JOINS = `
+  FROM capas c
+  JOIN org_units ou ON ou.id = c.org_unit_id
+  LEFT JOIN employees lead ON lead.id = c.team_lead_employee_id
+`;
+
+function toCapa(row, { teamMembers = [], concern = null } = {}) {
+  return {
+    id: String(row.id),
+    capaNo: row.capa_no,
+    title: row.title,
+    problemStatement: row.problem_statement,
+    method: row.method,
+    orgUnitId: String(row.org_unit_id),
+    orgUnitCode: row.org_unit_code,
+    orgUnitName: row.org_unit_name,
+    siteId: String(row.site_id),
+    // The lead is a role on the investigation and the members are a set, so
+    // they are shaped differently on purpose (see the migration's own header).
+    teamLead: row.team_lead_employee_id
+      ? { employeeId: String(row.team_lead_employee_id), name: row.team_lead_name }
+      : null,
+    teamMembers,
+    openedAt: row.opened_at,
+    dueDate: row.due_date,
+    status: row.status,
+    closedAt: row.closed_at,
+    effectivenessCheckDueAt: row.effectiveness_check_due_at,
+    effectivenessVerifiedAt: row.effectiveness_verified_at,
+    effectivenessNote: row.effectiveness_note,
+    // The Concern this investigation is about, as its own detail read gives
+    // it — with its measures, each carrying its own phases (issue #209), and
+    // the Non-conformances it answers. Null only for a row written outside
+    // this service, which the unique index makes impossible for anything
+    // opened through the API.
+    concern,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
+ * The CAPA's team, in the order a person reads a team: alphabetical by name,
+ * because there is no seniority here — the lead is the role and everybody else
+ * is equally on the team.
+ */
+async function listCapaTeamMembers(capaId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT m.employee_id, e.display_name AS name, m.created_at
+       FROM capa_team_members m
+       JOIN employees e ON e.id = m.employee_id
+      WHERE m.capa_id = $1
+      ORDER BY e.display_name ASC, m.employee_id ASC`,
+    [capaId]
+  );
+  return rows.map((row) => ({
+    employeeId: String(row.employee_id),
+    name: row.name,
+    addedAt: row.created_at
+  }));
+}
+
+/**
+ * Every phase of every cycle the named Actions have been round, grouped by
+ * Action — the read the CAPA's own Screen needs and the Concern's detail read
+ * does not (issue #209).
+ *
+ * One query for the whole set rather than one per measure: a Concern with a
+ * containment, a countermeasure and a preventive action would otherwise be four
+ * round trips to render one page, and the phases are the point of the page.
+ */
+async function listPhasesForActions(actionItemIds, client = null) {
+  if (actionItemIds.length === 0) return {};
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT p.id, p.action_item_id, p.cycle, p.phase, p.owner_employee_id,
+            e.display_name AS owner_name,
+            to_char(p.due_date, 'YYYY-MM-DD') AS due_date,
+            p.completed_at, p.outcome, p.note
+       FROM action_phases p
+       LEFT JOIN employees e ON e.id = p.owner_employee_id
+      WHERE p.action_item_id = ANY($1::bigint[])
+      ORDER BY p.cycle ASC,
+               CASE p.phase WHEN 'plan' THEN 1 WHEN 'do' THEN 2
+                            WHEN 'check' THEN 3 ELSE 4 END`,
+    [actionItemIds.map(String)]
+  );
+  const byAction = {};
+  for (const row of rows) {
+    const key = String(row.action_item_id);
+    if (!byAction[key]) byAction[key] = [];
+    byAction[key].push(toPhase(row));
+  }
+  return byAction;
+}
+
+/**
+ * The Concern a CAPA was opened on, as its own detail read gives it, with each
+ * of its measures carrying its own phases (issue #209).
+ *
+ * "The Concern's Containments, Countermeasures and Preventive actions ARE the
+ * CAPA's actions" is ADR-0034's sentence, and this is where it is made
+ * readable: the CAPA's Screen shows the Concern's measures with the phase each
+ * one is waiting on and the rounds each has been round, rather than a second
+ * list of the same work.
+ */
+async function readCapaConcern(client, concernId) {
+  const concern = await readActionDetail(client, concernId);
+  const phases = await listPhasesForActions(
+    concern.measures.map((measure) => measure.id),
+    client
+  );
+  return {
+    ...concern,
+    measures: concern.measures.map((measure) => ({
+      ...measure,
+      phases: phases[String(measure.id)] ?? []
+    }))
+  };
+}
+
+// The detail read on a connection the caller names, so a write mid-transaction
+// answers with the rows it just wrote rather than with what the pool can see.
+async function readCapaDetail(client, capaId) {
+  const { rows } = await client.query(`SELECT ${CAPA_COLUMNS} ${CAPA_JOINS} WHERE c.id = $1`, [
+    capaId
+  ]);
+  if (!rows[0]) return null;
+
+  // The Concern is found from the link rather than carried on the CAPA row,
+  // because the link is the one fact and it lives on the Concern's side
+  // (ADR-0034's own shape). At most one row, by the partial unique index.
+  const { rows: linked } = await client.query(
+    'SELECT id FROM action_items WHERE capa_id = $1',
+    [capaId]
+  );
+
+  return toCapa(rows[0], {
+    teamMembers: await listCapaTeamMembers(capaId, client),
+    concern: linked[0] ? await readCapaConcern(client, linked[0].id) : null
+  });
+}
+
+/**
+ * One CAPA's whole read (issue #209), by its own id — what the CAPA's Screen
+ * renders, and the answer every write below gives.
+ *
+ * Total, like findAction: a malformed id resolves to null rather than reaching
+ * Postgres as a BIGINT parameter. Unknown ids are the route's 404.
+ */
+async function getCapaDetail(id) {
+  if (parseId(id) === null) return null;
+  return readCapaDetail(getPool(), id);
+}
+
+/**
+ * Just enough of a CAPA for a route to ask its two questions (issue #209):
+ * does it exist (404), and which Org Unit does it sit at, so Quality authority
+ * can be asked there (403).
+ *
+ * The Org Unit is the CAPA's own, which follows its Concern's (see
+ * escalateAction) — so what a caller needs authority at is where the
+ * investigation currently lives, not where it was filed.
+ */
+async function findCapa(id) {
+  if (parseId(id) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT c.id, c.capa_no, c.status, c.org_unit_id, ou.site_id
+       FROM capas c
+       JOIN org_units ou ON ou.id = c.org_unit_id
+      WHERE c.id = $1`,
+    [id]
+  );
+  if (!rows[0]) return null;
+  return {
+    id: rows[0].id,
+    capaNo: rows[0].capa_no,
+    status: rows[0].status,
+    orgUnitId: rows[0].org_unit_id,
+    siteId: rows[0].site_id
+  };
+}
+
+// Postgres' own constraint names, mapped to messages this Module wrote. The
+// same shape mapConcernLinkWriteError takes, and the same rule: a raw database
+// message names tables and columns and is never echoed to a caller.
+function mapCapaWriteError(error) {
+  if (error.code === '23505' && error.constraint === 'action_items_capa_id_once') {
+    return httpError(409, 'this Concern already has a CAPA');
+  }
+  if (error.code === '23514' && error.constraint === 'action_items_capa_is_a_concern') {
+    return httpError(400, 'a CAPA is opened on a Concern, and that Action is not one');
+  }
+  if (error.code === '23505' && error.constraint === 'capa_team_members_once') {
+    return httpError(409, 'that Employee is already on this CAPA team');
+  }
+  return error;
+}
+
+/**
+ * Opens a CAPA on a Concern (issue #209, ADR-0034).
+ *
+ * Three refusals, all of them facts about the row this is about and all read
+ * under SELECT ... FOR UPDATE so the Concern cannot change under the check:
+ *
+ *   - the Action must exist (404),
+ *   - it must be a Concern (400) — an investigation is opened on a problem, and
+ *     a Containment, a Countermeasure, a Preventive action, an Improvement or a
+ *     Routine action is not one. The check constraint says the same thing one
+ *     layer down; this is the door everybody uses,
+ *   - it must not already have a CAPA (409). A Concern has at most one, which
+ *     is what `action_items_capa_id_once` enforces; this reads the row first so
+ *     that a second open never creates an orphan `capas` row, and the index is
+ *     the backstop for the race the check cannot close.
+ *
+ * What the CAPA is given, and why:
+ *
+ *   - **its own number, from `next_document_number`** — `CA-<site code>-<year>-
+ *     00001`, the same function and the same shape a Work order's `WO-` and a
+ *     Concern's `AC-` already take (issue #50: "so that it can be referred to
+ *     in reports and audits"). A second numbering scheme for the same platform
+ *     is exactly what that reuse is for. The baseline column's own DEFAULT
+ *     (global, no Site) stays as the fallback for a row written outside a
+ *     request.
+ *   - **`method` = 8d and `status` = open** — the investigation is opened, not
+ *     started: which phase of the 8D it is in is a statement about its root
+ *     causes and its verification, and that is #211's business rather than a
+ *     field this route invents a value for.
+ *   - **the Concern's Org Unit**, so that "the investigation sits where the
+ *     problem does" is true from the first read. It follows the Concern if the
+ *     Concern is escalated (see escalateAction) — an investigation whose
+ *     problem has been handed to the plant manager but whose own Org Unit still
+ *     names the line is one nobody triages.
+ *   - **its title from the Concern's** — `capas.title` is NOT NULL and the ADR
+ *     says the Concern *is* the problem, so an investigation does not get to
+ *     restate it; what an investigation adds is the problem description
+ *     (`problem_statement`), D2's own field, which is the caller's to write.
+ *   - **its team, if the caller named one** — the lead on the row, the members
+ *     as rows. Both are Employees the route has already resolved and checked
+ *     as active, because that is People's record and not this Module's.
+ *
+ * The CAPA, the link on the Concern and the team are written in one
+ * transaction: a CAPA and the Concern that answers it are one fact about two
+ * rows, and half of it is not a state anything should ever read.
+ */
+async function openCapa(
+  concernId,
+  {
+    teamLeadEmployeeId = null,
+    teamMemberEmployeeIds = [],
+    problemStatement = null,
+    dueDate = null
+  } = {},
+  accountId
+) {
+  if (problemStatement !== null && problemStatement !== undefined && typeof problemStatement !== 'string') {
+    throw httpError(400, 'problemStatement must be text');
+  }
+
+  let due = null;
+  if (dueDate !== null && dueDate !== undefined) {
+    due = parseDateOnly(dueDate);
+    if (due === null) throw httpError(400, 'dueDate must be a valid YYYY-MM-DD date');
+  }
+
+  const members = [...new Set((teamMemberEmployeeIds ?? []).map(String))];
+
+  try {
+    return await withActor(accountId, async (client) => {
+      const { rows: [concern] } = await client.query(
+        `SELECT id, action_type, title, org_unit_id, capa_id
+           FROM action_items WHERE id = $1 FOR UPDATE`,
+        [concernId]
+      );
+      if (!concern) throw notFound('Concern');
+      if (concern.action_type !== 'concern') {
+        throw httpError(400, 'a CAPA is opened on a Concern, and that Action is not one');
+      }
+      if (concern.capa_id !== null && concern.capa_id !== undefined) {
+        throw httpError(409, 'this Concern already has a CAPA');
+      }
+
+      const { rows: [created] } = await client.query(
+        `WITH site AS (
+           SELECT s.code AS code FROM sites s
+            WHERE s.id = (SELECT site_id FROM org_units WHERE id = $1)
+         )
+         INSERT INTO capas
+           (capa_no, title, problem_statement, method, org_unit_id,
+            team_lead_employee_id, due_date, status)
+         VALUES
+           (next_document_number('CA', (SELECT code FROM site), EXTRACT(YEAR FROM now())::int),
+            $2, $3, $4, $1, $5, $6::date, 'open')
+         RETURNING id`,
+        [
+          concern.org_unit_id,
+          concern.title,
+          problemStatement === null || problemStatement === undefined
+            ? null
+            : problemStatement.trim() || null,
+          CAPA_METHOD,
+          teamLeadEmployeeId,
+          due
+        ]
+      );
+
+      // The link, in the same transaction as the row it points at. A database
+      // refusal here is the index or the check constraint, and both are mapped
+      // to the messages above rather than echoed.
+      try {
+        await client.query('UPDATE action_items SET capa_id = $2 WHERE id = $1', [
+          concern.id,
+          created.id
+        ]);
+      } catch (error) {
+        throw mapCapaWriteError(error);
+      }
+
+      if (members.length > 0) {
+        try {
+          await client.query(
+            `INSERT INTO capa_team_members (capa_id, employee_id)
+             SELECT $1, employee_id FROM unnest($2::bigint[]) AS employee_id`,
+            [created.id, members]
+          );
+        } catch (error) {
+          throw mapCapaWriteError(error);
+        }
+      }
+
+      return readCapaDetail(client, created.id);
+    });
+  } catch (error) {
+    throw mapCapaWriteError(error);
+  }
+}
+
+/**
+ * Changes what an open CAPA carries about itself (issue #209): the team lead,
+ * the team, and the problem description. Nothing else, and deliberately so —
+ * the method, the number and the status are not a caller's to set, and the
+ * effectiveness fields belong to the check #211 records.
+ *
+ * A partial update rather than a replacement document: a field the caller did
+ * not send is left alone, `null` on the lead clears it (a CAPA may lose its
+ * lead, which is a real state — the team lead departs), and a member list
+ * *replaces* the team, because that is what a form holding the whole team
+ * means when it is saved. The one refusal is the CAPA's own status: an
+ * investigation that is closed or cancelled is a record, not a worklist.
+ *
+ * The Employees are the route's business: every id reaching here has already
+ * been parsed and resolved against People's directory, so a departed Employee
+ * is refused in the same words every other Action refuses one.
+ */
+async function updateCapa(capaId, input, accountId) {
+  const body = input ?? {};
+  const setsProblemStatement = body.problemStatement !== undefined;
+  const setsTeamLead = body.teamLeadEmployeeId !== undefined;
+  const setsTeamMembers = body.teamMemberEmployeeIds !== undefined;
+
+  if (setsProblemStatement && body.problemStatement !== null && typeof body.problemStatement !== 'string') {
+    throw httpError(400, 'problemStatement must be text');
+  }
+  if (setsTeamMembers && !Array.isArray(body.teamMemberEmployeeIds)) {
+    throw httpError(400, 'teamMemberEmployeeIds must be a list of Employee ids');
+  }
+
+  return withActor(accountId, async (client) => {
+    const { rows: [capa] } = await client.query(
+      'SELECT id, status FROM capas WHERE id = $1 FOR UPDATE',
+      [capaId]
+    );
+    if (!capa) throw notFound('CAPA');
+    if (CLOSED_CAPA_STATUSES.includes(capa.status)) {
+      throw httpError(409, `this CAPA is ${capa.status}, so nothing about it can be changed`);
+    }
+
+    if (setsProblemStatement) {
+      const written = body.problemStatement === null ? '' : body.problemStatement.trim();
+      await client.query('UPDATE capas SET problem_statement = $2 WHERE id = $1', [
+        capaId,
+        written === '' ? null : written
+      ]);
+    }
+
+    if (setsTeamLead) {
+      await client.query('UPDATE capas SET team_lead_employee_id = $2 WHERE id = $1', [
+        capaId,
+        body.teamLeadEmployeeId
+      ]);
+    }
+
+    if (setsTeamMembers) {
+      const members = [...new Set(body.teamMemberEmployeeIds.map(String))];
+      await client.query('DELETE FROM capa_team_members WHERE capa_id = $1', [capaId]);
+      if (members.length > 0) {
+        try {
+          await client.query(
+            `INSERT INTO capa_team_members (capa_id, employee_id)
+             SELECT $1, employee_id FROM unnest($2::bigint[]) AS employee_id`,
+            [capaId, members]
+          );
+        } catch (error) {
+          throw mapCapaWriteError(error);
+        }
+      }
+    }
+
+    return readCapaDetail(client, capaId);
   });
 }
 
@@ -1398,5 +1904,13 @@ module.exports = {
   completePhase,
   cancelAction,
   escalationTargets,
-  escalateAction
+  escalateAction,
+  // The CAPA (issue #209): opening one on a Concern, reading one, changing its
+  // team and its problem description, and the two facts a route needs to ask
+  // its own questions about it.
+  CAPA_METHOD,
+  findCapa,
+  getCapaDetail,
+  openCapa,
+  updateCapa
 };

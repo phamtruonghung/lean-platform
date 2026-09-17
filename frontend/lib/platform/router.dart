@@ -18,6 +18,9 @@ import '../actions/action_unlink_nonconformance_dialog.dart';
 import '../actions/actions_api.dart';
 import '../actions/actions_bloc.dart';
 import '../actions/actions_screen.dart';
+import '../actions/capa_detail_bloc.dart';
+import '../actions/capa_detail_screen.dart';
+import '../actions/open_capa_dialog.dart';
 import '../home_bloc.dart';
 import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
@@ -992,6 +995,34 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                           builder: (dialogContext) => const ActionEscalateDialogHost(),
                         ),
                       ),
+                      // `/actions/:id/capa` — opening a CAPA on this Concern
+                      // (issue #209, ADR-0034). Nested under the Action's own
+                      // route for the same reason its cancel and phase dialogs
+                      // are: this belongs to one Concern's detail read, and a
+                      // sibling address would pop the caller back to the
+                      // register with the Concern they were reading gone. The
+                      // dialog reads the Concern off the Bloc and collects the
+                      // team and the problem description; the authority the act
+                      // needs is read inside it, in a build.
+                      GoRoute(
+                        path: 'capa',
+                        pageBuilder: (context, state) => DialogPage<void>(
+                          key: state.pageKey,
+                          builder: (dialogContext) {
+                            final current = context.watch<ActionDetailBloc>().state;
+                            if (current is! ActionDetailLoaded) {
+                              return const AlertDialog(
+                                key: OpenCapaDialog.loadingKey,
+                                content: SizedBox(
+                                  height: 80,
+                                  child: Center(child: CircularProgressIndicator()),
+                                ),
+                              );
+                            }
+                            return OpenCapaDialog(concern: current.action);
+                          },
+                        ),
+                      ),
                       // `/actions/:id/cancel` — calling it off (issue
                       // #179), addressed rather than popped and nested
                       // under the Action for the same reason the phase
@@ -1074,6 +1105,37 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 ],
               ),
             ],
+          ),
+          // `/actions/capas/:id` — one CAPA's own Screen (issue #209). A
+          // *sibling* of the Action detail route rather than a child of
+          // it: a CAPA has its own id space (`capas`, the baseline's own
+          // table) and its own Screen, and nesting it under the Concern
+          // would leave the Concern's page mounted underneath it. The
+          // address cannot be swallowed by `/actions/:id`: Express and
+          // go_router both match a path a segment at a time, so a
+          // three-segment path is never a two-segment one, and `capas` is
+          // not an id.
+          //
+          // Keyed on the CAPA in the address, for the reason every other
+          // detail route here is (issue #183): go_router reuses a route's
+          // page when the *pattern* matches, so moving from one CAPA to
+          // another would otherwise leave this Bloc — and the Screen
+          // reading it — holding the investigation before.
+          GoRoute(
+            path: '${Routes.actions}/capas/:id',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              final capaId = state.pathParameters['id']!;
+              return BlocProvider<CapaDetailBloc>(
+                key: ValueKey<String>('capa-$capaId'),
+                create: (context) => CapaDetailBloc(
+                  actionsApi: context.read<ActionsApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(CapaDetailStarted(capaId)),
+                child: CapaDetailScreen(capaId: capaId),
+              );
+            },
           ),
           GoRoute(
             path: Routes.approvals,

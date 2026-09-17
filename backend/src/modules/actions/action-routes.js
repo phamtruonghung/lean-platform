@@ -122,6 +122,80 @@ function requireQueryId(field, value) {
   return parsed;
 }
 
+// The CAPA (issue #209, ADR-0034) — opening one on a Concern, reading one and
+// changing its team and its problem description.
+//
+// The authority is Quality authority at the CAPA's Org Unit (ADR-0035), asked
+// through People's entry point exactly as the quality Module's four gated acts
+// ask it (`canAct({ …, quality: true })`, issue #206) — a CAPA is a judgement
+// about a problem rather than a piece of work on it, and ADR-0035's own list of
+// the decisions it guards names "opening a CAPA" first. It is deliberately NOT
+// `write: true`: the two flags are independent, and a caller who may record
+// work on a line is not therefore the one who decides the line needs an 8D.
+//
+// Opening asks it at the **Concern's** Org Unit and the two changes ask it at
+// the **CAPA's**, which are the same Org Unit until somebody escalates the
+// Concern — and identical again afterwards, because the investigation follows
+// the problem (actions.js's escalateAction). Asking about the row being changed
+// is what makes the question answerable at all: "may you do this here" needs a
+// here.
+const OPEN_CAPA_AUTHORITY_REQUIRED =
+  "opening a CAPA needs Quality authority at this Concern's Org Unit";
+const CHANGE_CAPA_AUTHORITY_REQUIRED =
+  "changing a CAPA needs Quality authority at its Org Unit";
+
+// The Employee named for a CAPA's team — the lead or one of the members —
+// resolved in the order every other Action's owner is: parseId (400) ->
+// findEmployee (404) -> isActive (409). People's directory is the record of who
+// works here, so a departed Employee is refused here rather than by a database
+// constraint nobody reads, and the refusal says what the person would
+// otherwise have been given.
+async function requireActiveCapaTeamEmployee(value, field) {
+  const employeeId = parseId(value);
+  if (employeeId === null) {
+    throw httpError(400, `${field} must be a valid Employee id`);
+  }
+  const employee = await people.findEmployee(employeeId);
+  if (!employee) throw notFound('Employee');
+  if (!employee.isActive) {
+    throw httpError(
+      409,
+      'this Employee has departed and cannot be given a place on a CAPA team'
+    );
+  }
+  return employeeId;
+}
+
+// A CAPA named in the URL, for the two addresses that change or read one. Like
+// requireKnownAction: existence first, so `canAct` is never asked about a null
+// id (which it answers `true` for an administrator), and a malformed or unknown
+// id is a clean 404 — findCapa is total, so a raw :id never reaches Postgres as
+// a BIGINT parameter.
+async function requireKnownCapa(req, res, next) {
+  try {
+    const capa = await actions.findCapa(req.params.id);
+    if (!capa) throw notFound('CAPA');
+    req.capa = capa;
+    return next();
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+}
+
+async function requireCapaQualityAuthority(req, res, next) {
+  return requireKnownCapa(req, res, async () => {
+    const allowed = await people.canAct({
+      account: req.account,
+      orgUnitId: req.capa.orgUnitId,
+      quality: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: CHANGE_CAPA_AUTHORITY_REQUIRED });
+    }
+    return next();
+  });
+}
+
 // The register: a Site's open Actions, worst first, history on request.
 router.get(
   '/sites/:siteId/actions',
@@ -527,6 +601,172 @@ router.get('/pillars', people.authenticate, people.requireActive, async (req, re
     handleError(error, res, next);
   }
 });
+
+// One CAPA, by its own id (issue #209) — the read the CAPA's Screen makes, and
+// a Site-wide read for the same reason an Action's is: which Org Unit a record
+// sits at decides where somebody may act on it, not who may read it.
+//
+// Declared here rather than beside the Action routes because `/capas/:id` and
+// `/:id` are different patterns: Express matches a path segment by segment, so
+// a two-segment path can never be shadowed by a one-segment one and the order
+// of the two declarations is a matter of where a reader looks first. What *is*
+// load-bearing is that it is declared before nothing — this route has no
+// sibling that could swallow it, unlike `/pillars` above, whose shorter name it
+// does not share.
+router.get('/capas/:id', people.authenticate, people.requireActive, async (req, res, next) => {
+  try {
+    const capa = await actions.getCapaDetail(req.params.id);
+    if (!capa) throw notFound('CAPA');
+    res.json({ capa });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+// Opening a CAPA on a Concern (issue #209, ADR-0034).
+//
+// The order of the two refusals is deliberate and matches the escalate route's
+// own 400-before-403 argument: the row is checked for *what it is* before the
+// caller is checked for what they may do, because telling somebody they lack
+// Quality authority to open an investigation on a Containment would send them
+// to ask for a right that could never let the act succeed. A caller wrong about
+// the record is told so; a caller wrong about their own authority is told that.
+//
+// The Concern's existing CAPA is a 409 from actions.js rather than from here,
+// because it is a fact about the row and it is read under a lock — a route that
+// checked it would be a second read racing the first.
+//
+// The team is resolved here, through People's entry point, because it is
+// People's record: every id is parsed (400), found (404) and checked as active
+// (409) before anything is written.
+router.post(
+  '/:id/capa',
+  people.authenticate,
+  people.requireActive,
+  requireKnownAction,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+
+      if (req.action.actionType !== 'concern') {
+        throw httpError(400, 'a CAPA is opened on a Concern, and that Action is not one');
+      }
+
+      const allowed = await people.canAct({
+        account: req.account,
+        orgUnitId: req.action.orgUnitId,
+        quality: true
+      });
+      if (!allowed) {
+        return res.status(403).json({ message: OPEN_CAPA_AUTHORITY_REQUIRED });
+      }
+
+      let teamLeadEmployeeId = null;
+      if (body.teamLeadEmployeeId !== undefined && body.teamLeadEmployeeId !== null) {
+        teamLeadEmployeeId = await requireActiveCapaTeamEmployee(
+          body.teamLeadEmployeeId,
+          'teamLeadEmployeeId'
+        );
+      }
+
+      let teamMemberEmployeeIds = [];
+      if (body.teamMemberEmployeeIds !== undefined && body.teamMemberEmployeeIds !== null) {
+        if (!Array.isArray(body.teamMemberEmployeeIds)) {
+          return res
+            .status(400)
+            .json({ message: 'teamMemberEmployeeIds must be a list of Employee ids' });
+        }
+        teamMemberEmployeeIds = [];
+        for (const memberId of body.teamMemberEmployeeIds) {
+          teamMemberEmployeeIds.push(
+            await requireActiveCapaTeamEmployee(memberId, 'teamMemberEmployeeIds')
+          );
+        }
+      }
+
+      const capa = await actions.openCapa(
+        req.action.id,
+        {
+          teamLeadEmployeeId,
+          teamMemberEmployeeIds,
+          problemStatement: body.problemStatement ?? null,
+          dueDate: body.dueDate ?? null
+        },
+        req.account.id
+      );
+
+      res.status(201).json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Changing what an open CAPA carries about itself (issue #209): its problem
+// description, its team lead and its team.
+//
+// PATCH rather than a `/team` or a `/problem` address of its own, and that is a
+// deliberate departure from the Action log's own shape: everything that changes
+// an Action *after* it is raised is an event with a name (`/cancel`,
+// `/escalate`, `/phases/:phase/complete`) because each one is a decision with a
+// state transition behind it. Setting a team or writing a description is not an
+// event — it is the record being filled in, possibly twice, possibly a field at
+// a time — and giving each field its own verb would invent a state machine for
+// an investigation's paperwork.
+//
+// What arrives is a partial update: a field the caller did not send is left
+// alone, a `null` lead clears it (the team lead departed, which is a real
+// state), a member list replaces the team it was sent with. A body naming
+// nothing is a 400 rather than a silent no-op, so a caller's mistake is visible.
+router.patch(
+  '/capas/:id',
+  people.authenticate,
+  people.requireActive,
+  requireCapaQualityAuthority,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const input = {};
+
+      if (body.problemStatement !== undefined) {
+        input.problemStatement = body.problemStatement;
+      }
+
+      if (body.teamLeadEmployeeId !== undefined) {
+        input.teamLeadEmployeeId =
+          body.teamLeadEmployeeId === null
+            ? null
+            : await requireActiveCapaTeamEmployee(body.teamLeadEmployeeId, 'teamLeadEmployeeId');
+      }
+
+      if (body.teamMemberEmployeeIds !== undefined) {
+        if (!Array.isArray(body.teamMemberEmployeeIds)) {
+          return res
+            .status(400)
+            .json({ message: 'teamMemberEmployeeIds must be a list of Employee ids' });
+        }
+        input.teamMemberEmployeeIds = [];
+        for (const memberId of body.teamMemberEmployeeIds) {
+          input.teamMemberEmployeeIds.push(
+            await requireActiveCapaTeamEmployee(memberId, 'teamMemberEmployeeIds')
+          );
+        }
+      }
+
+      if (Object.keys(input).length === 0) {
+        throw httpError(
+          400,
+          'send a problem description, a team lead or a team — there is nothing to change otherwise'
+        );
+      }
+
+      const capa = await actions.updateCapa(req.capa.id, input, req.account.id);
+      res.json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
 
 // One Action, by its own id. A Site-wide read for the same reason the register
 // is: an Action's Org Unit decides where somebody may act on it, not who may

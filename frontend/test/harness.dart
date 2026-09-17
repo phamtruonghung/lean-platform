@@ -1495,6 +1495,11 @@ class FakeWire {
     this.recordNonconformanceActStatus = 201,
     this.recordNonconformanceActMessage =
         'that is more than the quantity still undecided on this Non-conformance',
+    Map<String, Map<String, dynamic>>? capas,
+    this.capasStatus = 200,
+    this.capaMessage = 'That CAPA could not be read.',
+    this.createCapaStatus = 201,
+    this.createCapaMessage = 'this Concern already has a CAPA',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -1546,7 +1551,8 @@ class FakeWire {
             {'id': '20', 'employeeNo': 'EMP-20', 'displayName': 'Tess Technician'},
         products = products ?? [],
         defectCodes = defectCodes ?? [],
-        nonconformances = nonconformances ?? {};
+        nonconformances = nonconformances ?? {},
+        capas = capas ?? {};
 
   /// `GET /api/quality/products` (issue #203) — the Product catalogue.
   List<Map<String, dynamic>> products;
@@ -1804,6 +1810,43 @@ class FakeWire {
   /// appends to a stored detail when it can, and this is the escape hatch for
   /// a case where the stored detail is not the one under test.
   Map<String, List<Map<String, dynamic>>> linkedNonconformances = {};
+
+  /// `GET /api/actions/capas/:id` (issue #209) — one CAPA by id, keyed by its
+  /// own id (a CAPA's id space is `capas`', not the action log's).
+  ///
+  /// `POST /api/actions/:id/capa` writes into it, so a Screen that follows a
+  /// raise to the CAPA's own address reads the row that write produced rather
+  /// than a fixture a test had to keep in step with it.
+  Map<String, Map<String, dynamic>> capas;
+  int capasStatus;
+  String capaMessage;
+
+  /// Every CAPA open that reached the wire, as `(concernId, body)` — so a test
+  /// can assert that exactly one request was sent, what it carried, and that a
+  /// caller without Quality authority sent nothing at all.
+  final List<(String, Map<String, dynamic>)> capaPosts = [];
+
+  /// `POST /api/actions/:id/capa` — the refusal a test scripts (409 for a
+  /// second CAPA, 403 for a caller without Quality authority).
+  int createCapaStatus;
+  String createCapaMessage;
+
+  /// The CAPA a raise answers with, when a test wants its own ids to be the
+  /// ones on screen. Null means the fake builds one from the Concern.
+  Map<String, dynamic>? openedCapa;
+
+  /// One row of a CAPA's team, resolved off the `employees` fixture — the way
+  /// the server's own read joins the directory for a display name.
+  Map<String, dynamic>? _capaTeamRow(Object? employeeId) {
+    if (employeeId == null) return null;
+    final id = employeeId.toString();
+    for (final employee in employees) {
+      if (employee['id'] == id) {
+        return {'employeeId': id, 'name': employee['displayName']};
+      }
+    }
+    return {'employeeId': id, 'name': ''};
+  }
 
   /// `POST /api/maintenance/assets`.
   int createAssetStatus;
@@ -5374,6 +5417,62 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'action': updated}), 200);
         }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/capa')) {
+          // `/api/actions/:id/capa` (issue #209): opening a CAPA on a Concern.
+          // The row the server would write is built from the Concern the
+          // address names — the CAPA's Org Unit and title are the Concern's —
+          // and its own answer carries that Concern back with the `capa` link
+          // set, which is what the Screen behind the dialog reads next.
+          final concernId = path.split('/')[3];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          capaPosts.add((concernId, body));
+          if (createCapaStatus != 201) {
+            return http.Response(jsonEncode({'message': createCapaMessage}), createCapaStatus);
+          }
+          final concern = actionDetails[concernId];
+          if (concern == null) {
+            return http.Response(jsonEncode({'message': 'Concern not found'}), 404);
+          }
+          final capaId = (openedCapa?['id'] ?? '801').toString();
+          final capaNo = (openedCapa?['capaNo'] ?? 'CA-TEST-2026-00001').toString();
+          final linked = <String, dynamic>{
+            ...concern,
+            'capa': {'id': capaId, 'capaNo': capaNo, 'status': 'open'},
+          };
+          actionDetails[concernId] = linked;
+          final capa = capaJson(
+            capaId,
+            capaNo,
+            concern['title'] as String,
+            orgUnitId: concern['orgUnitId'] as String,
+            orgUnitName: concern['orgUnitName'] as String,
+            siteId: concern['siteId'] as String,
+            problemStatement: body['problemStatement'] as String?,
+            teamLead: _capaTeamRow(body['teamLeadEmployeeId']),
+            teamMembers: [
+              for (final member in (body['teamMemberEmployeeIds'] as List<dynamic>? ?? const []))
+                _capaTeamRow(member)!,
+            ],
+            concern: linked,
+          );
+          capas[capaId] = capa;
+          return http.Response(jsonEncode({'capa': capa}), 201);
+        }
+        if (request.method == 'GET' && path.startsWith('/api/actions/capas/')) {
+          // `/api/actions/capas/:id` (issue #209). Declared before the
+          // one-segment `/api/actions/:id` read below, which would otherwise
+          // take `capas/801` for an Action whose id is `801`.
+          if (capasStatus != 200) {
+            return http.Response(jsonEncode({'message': capaMessage}), capasStatus);
+          }
+          final capa = capas[path.split('/').last];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          return http.Response(jsonEncode({'capa': capa}), 200);
+        }
         if (request.method == 'GET' && path.startsWith('/api/actions/')) {
           final id = path.split('/').last;
           final action = actionDetails[id];
@@ -5417,6 +5516,7 @@ Map<String, dynamic> actionJson(
   Map<String, dynamic>? openPhase,
   String? sourceNonconformanceId,
   List<Map<String, dynamic>> nonconformances = const [],
+  Map<String, dynamic>? capa,
 }) =>
     {
       'id': id,
@@ -5455,6 +5555,57 @@ Map<String, dynamic> actionJson(
       // Concern was raised from, and every occurrence it answers.
       'sourceNonconformanceId': sourceNonconformanceId,
       'nonconformances': nonconformances,
+      // The CAPA opened on this Action, if one has been (issue #209) —
+      // `{id, capaNo, status}` or null, which is the state every Concern is in
+      // until somebody opens one.
+      'capa': capa,
+    };
+
+/// One CAPA as `GET /api/actions/capas/:id` sends it (issue #209) — the
+/// client-side counterpart of the backend's own `toCapa`, key for key.
+///
+/// `concern` is the Concern's own detail read (an [actionJson] row, with its
+/// `capa` link set): the server returns the Concern with its measures and every
+/// phase they have been round, so a fixture that omitted them would let a test
+/// assert a CAPA the API cannot answer.
+Map<String, dynamic> capaJson(
+  String id,
+  String capaNo,
+  String title, {
+  String method = '8d',
+  String status = 'open',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String? orgUnitCode,
+  String siteId = '1',
+  String? problemStatement,
+  Map<String, dynamic>? teamLead,
+  List<Map<String, dynamic>> teamMembers = const [],
+  String openedAt = '2026-09-16T02:00:00.000Z',
+  String? dueDate,
+  String? effectivenessCheckDueAt,
+  Map<String, dynamic>? concern,
+}) =>
+    {
+      'id': id,
+      'capaNo': capaNo,
+      'title': title,
+      'method': method,
+      'status': status,
+      'orgUnitId': orgUnitId,
+      'orgUnitCode': orgUnitCode ?? orgUnitName.toUpperCase().replaceAll(' ', '-'),
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'problemStatement': problemStatement,
+      'teamLead': teamLead,
+      'teamMembers': teamMembers,
+      'openedAt': openedAt,
+      'dueDate': dueDate,
+      'closedAt': null,
+      'effectivenessCheckDueAt': effectivenessCheckDueAt,
+      'effectivenessVerifiedAt': null,
+      'effectivenessNote': null,
+      'concern': concern,
     };
 
 /// One phase as the Action's own `phases` array sends it (issue #177).

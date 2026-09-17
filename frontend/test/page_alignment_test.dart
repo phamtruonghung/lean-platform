@@ -113,6 +113,8 @@ const _pages = <_Page>[
 const _excluded = <String, String>{
   'lib/actions/action_detail_screen.dart':
       "its title is the Action's own title, not a page heading",
+  'lib/actions/capa_detail_screen.dart':
+      "its title is the CAPA's own title, not a page heading",
   'lib/people/employee_detail_screen.dart':
       "its title is the Employee's own name, not a page heading",
   'lib/maintenance/work_order_detail_screen.dart':
