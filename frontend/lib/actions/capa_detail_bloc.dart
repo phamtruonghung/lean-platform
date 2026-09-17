@@ -75,6 +75,72 @@ class CapaDetailWhyRemoved extends CapaDetailEvent {
   final String whyId;
 }
 
+/// A candidate cause was recorded on the fishbone (issue #213), under one 6M
+/// category. A new cause is always a `candidate`: deciding it is a separate
+/// act with its own evidence.
+class CapaDetailCauseAdded extends CapaDetailEvent {
+  const CapaDetailCauseAdded({required this.category, required this.statement});
+
+  /// The one 6M category the cause hangs from — which is the decision the
+  /// caller made by opening the address this form sits at.
+  final String category;
+  final String statement;
+}
+
+/// One candidate cause was changed (issue #213): which of the six it is filed
+/// under, what it says, and the verdict with the evidence for it.
+///
+/// Each field is null when the caller did not ask for it, so a form that
+/// changed one thing sends one thing — the same partial-update shape the API
+/// takes. `verdict` and `evidenceNote` normally travel together, because the
+/// API refuses a decision without its evidence.
+class CapaDetailCauseChanged extends CapaDetailEvent {
+  const CapaDetailCauseChanged({
+    required this.causeId,
+    this.category,
+    this.statement,
+    this.verdict,
+    this.evidenceNote,
+  });
+
+  final String causeId;
+  final String? category;
+  final String? statement;
+
+  /// `candidate`, `confirmed` or `ruled_out`.
+  final String? verdict;
+
+  /// The evidence for `verdict`, in the caller's own words.
+  final String? evidenceNote;
+}
+
+/// One candidate cause was removed from the fishbone (issue #213).
+class CapaDetailCauseRemoved extends CapaDetailEvent {
+  const CapaDetailCauseRemoved(this.causeId);
+
+  final String causeId;
+}
+
+/// One of the two chains was started from a confirmed candidate cause (issue
+/// #213) — the chain's first Why.
+///
+/// The statement is optional: what the chain starts from is the cause the
+/// evidence confirmed, and its own sentence is what the server writes when the
+/// caller does not phrase it differently.
+class CapaDetailWhyStartedFromCause extends CapaDetailEvent {
+  const CapaDetailWhyStartedFromCause({
+    required this.causeId,
+    required this.chain,
+    this.statement,
+  });
+
+  final String causeId;
+
+  /// `occurrence` or `escape` — the chain this Why heads.
+  final String chain;
+  final String? statement;
+}
+
 /// The effectiveness check was recorded (issue #211) — the verdict, with the
 /// note that is its evidence.
 ///
@@ -149,6 +215,10 @@ class CapaDetailBloc extends Bloc<CapaDetailEvent, CapaDetailState> {
     on<CapaDetailWhyAdded>(_onWhyAdded);
     on<CapaDetailWhyChanged>(_onWhyChanged);
     on<CapaDetailWhyRemoved>(_onWhyRemoved);
+    on<CapaDetailCauseAdded>(_onCauseAdded);
+    on<CapaDetailCauseChanged>(_onCauseChanged);
+    on<CapaDetailCauseRemoved>(_onCauseRemoved);
+    on<CapaDetailWhyStartedFromCause>(_onWhyStartedFromCause);
     on<CapaDetailEffectivenessRecorded>(_onEffectivenessRecorded);
   }
 
@@ -218,6 +288,106 @@ class CapaDetailBloc extends Bloc<CapaDetailEvent, CapaDetailState> {
       emit,
       (token) => _actions.removeCapaWhy(token, capaId, event.whyId),
       notice: 'The Why was removed, and the chain renumbered around the gap.',
+    );
+  }
+
+  /// Records a candidate cause on the fishbone (issue #213). A cause with
+  /// nothing to say is not sent to be refused — the same guard the add-Why
+  /// handler makes, for the same reason.
+  Future<void> _onCauseAdded(CapaDetailCauseAdded event, Emitter<CapaDetailState> emit) async {
+    final capaId = _capaId;
+    if (capaId == null) return;
+    if (!capaCauseCategoryOrder.contains(event.category)) return;
+    if (event.statement.trim().isEmpty) return;
+    await _mutate(
+      emit,
+      (token) => _actions.addCapaCause(
+        token,
+        capaId,
+        category: event.category,
+        statement: event.statement.trim(),
+      ),
+      notice: 'The candidate cause is on the fishbone.',
+    );
+  }
+
+  /// Changes one candidate cause (issue #213) and repaints the Screen from the
+  /// answer.
+  ///
+  /// One guard is said again here rather than left to the server, because a
+  /// form must not send what it knows will be refused: a cause cannot be
+  /// decided without the evidence for it, and the verdict dialog's own submit
+  /// gate is the same rule said where the caller can see it. Everything else —
+  /// the authority, the CAPA's status, the category set — is the server's, and
+  /// its refusal comes back as `mutationFailure` beside the form.
+  Future<void> _onCauseChanged(
+    CapaDetailCauseChanged event,
+    Emitter<CapaDetailState> emit,
+  ) async {
+    final capaId = _capaId;
+    if (capaId == null) return;
+    if (event.category == null &&
+        event.statement == null &&
+        event.verdict == null &&
+        event.evidenceNote == null) {
+      return;
+    }
+    if (event.statement != null && event.statement!.trim().isEmpty) return;
+    if (event.verdict != null && !capaCauseDecisions.contains(event.verdict)) return;
+    if (event.evidenceNote != null && event.evidenceNote!.trim().isEmpty) return;
+
+    await _mutate(
+      emit,
+      (token) => _actions.updateCapaCause(
+        token,
+        capaId,
+        event.causeId,
+        category: event.category,
+        statement: event.statement?.trim(),
+        verdict: event.verdict,
+        evidenceNote: event.evidenceNote?.trim(),
+      ),
+      notice: _causeChangedNotice(event),
+    );
+  }
+
+  /// Removes one candidate cause from the fishbone (issue #213).
+  Future<void> _onCauseRemoved(CapaDetailCauseRemoved event, Emitter<CapaDetailState> emit) async {
+    final capaId = _capaId;
+    if (capaId == null) return;
+    await _mutate(
+      emit,
+      (token) => _actions.removeCapaCause(token, capaId, event.causeId),
+      notice: 'The cause was removed from the fishbone.',
+    );
+  }
+
+  /// Starts one of the two chains from a confirmed candidate cause (issue
+  /// #213) — the chain's first Why, whose statement is the cause's own unless
+  /// the caller phrased it differently.
+  ///
+  /// The two rules that make this act possible at all are the server's to
+  /// refuse (the cause must be confirmed, the chain must not have started);
+  /// what this handler declines to send is only what the form already knows is
+  /// empty, which is a statement of nothing.
+  Future<void> _onWhyStartedFromCause(
+    CapaDetailWhyStartedFromCause event,
+    Emitter<CapaDetailState> emit,
+  ) async {
+    final capaId = _capaId;
+    if (capaId == null) return;
+    if (!capaChainOrder.contains(event.chain)) return;
+    if (event.statement != null && event.statement!.trim().isEmpty) return;
+    await _mutate(
+      emit,
+      (token) => _actions.startCapaWhyFromCause(
+        token,
+        capaId,
+        event.causeId,
+        chain: event.chain,
+        statement: event.statement?.trim(),
+      ),
+      notice: 'The chain was started from the confirmed cause.',
     );
   }
 
@@ -292,5 +462,19 @@ class CapaDetailBloc extends Bloc<CapaDetailEvent, CapaDetailState> {
     return event.isRoot == true
         ? 'That Why is the confirmed root cause of its chain.'
         : 'The confirmed root cause was cleared.';
+  }
+
+  /// One sentence for the change that landed to a candidate cause (issue #213).
+  /// A verdict is the strongest thing a change can say — it is the decision the
+  /// fishbone exists for — so it wins over a revision to the sentence or the
+  /// category, and the evidence-only case is what is left when nothing else
+  /// changed.
+  static String _causeChangedNotice(CapaDetailCauseChanged event) {
+    if (event.verdict == 'confirmed') return 'That cause is confirmed by its evidence.';
+    if (event.verdict == 'ruled_out') return 'That cause is ruled out by its evidence.';
+    if (event.verdict == 'candidate') return 'That cause is a candidate again.';
+    if (event.category != null) return 'The cause was re-filed under another category.';
+    if (event.statement != null) return 'The cause was revised.';
+    return 'The evidence was revised.';
   }
 }

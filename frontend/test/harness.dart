@@ -1528,6 +1528,16 @@ class FakeWire {
     this.removeWhyStatus = 200,
     this.removeWhyMessage =
         "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team",
+    this.addCauseStatus = 201,
+    this.addCauseMessage =
+        "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team",
+    this.changeCauseStatus = 200,
+    this.changeCauseMessage = 'That cause could not be changed.',
+    this.removeCauseStatus = 200,
+    this.removeCauseMessage = 'That cause could not be removed.',
+    this.startWhyFromCauseStatus = 201,
+    this.startWhyFromCauseMessage =
+        'only a confirmed cause can start a chain, and this one is candidate',
     this.capaListStatus = 200,
     this.capaListMessage = 'The CAPA list could not be read.',
     this.effectivenessStatus = 200,
@@ -1906,6 +1916,50 @@ class FakeWire {
   /// two rows. Ids the fixture already carries are its own.
   int _nextWhyId = 900;
 
+  /// Every candidate cause recorded through the wire (issue #213), as
+  /// `(capaId, body)` — so a test can assert exactly one request was sent, that
+  /// it named the 6M category the form was opened at, and that a reader who may
+  /// not write sent nothing.
+  final List<(String, Map<String, dynamic>)> causePosts = [];
+
+  /// `POST /api/actions/capas/:id/causes` — the refusal a test scripts (403 for
+  /// a caller with neither edit access nor a place on the team, 409 for a
+  /// closed investigation, 400 for a category that is not one of the six).
+  int addCauseStatus;
+  String addCauseMessage;
+
+  /// Every change to one candidate cause, as `(capaId, causeId, body)` — the
+  /// body carrying only the fields the request named, which is the partial
+  /// update the API takes.
+  final List<(String, String, Map<String, dynamic>)> causePatches = [];
+
+  /// `PATCH /api/actions/capas/:id/causes/:causeId` — the refusal a test
+  /// scripts (400 for a verdict without its evidence).
+  int changeCauseStatus;
+  String changeCauseMessage;
+
+  /// Every candidate cause removed, as `(capaId, causeId)`.
+  final List<(String, String)> causeDeletions = [];
+
+  /// `DELETE /api/actions/capas/:id/causes/:causeId` — the refusal a test
+  /// scripts.
+  int removeCauseStatus;
+  String removeCauseMessage;
+
+  /// Every chain started from a cause (issue #213), as
+  /// `(capaId, causeId, body)` — so a test can assert the chain the form
+  /// offered was the one sent, and that a candidate's row sent no offer at all.
+  final List<(String, String, Map<String, dynamic>)> causeWhyPosts = [];
+
+  /// `POST /api/actions/capas/:id/causes/:causeId/whys` — the refusal a test
+  /// scripts (409 for a cause that is not confirmed, 409 for a chain that has
+  /// already started).
+  int startWhyFromCauseStatus;
+  String startWhyFromCauseMessage;
+
+  /// The next id the fake gives a candidate cause it creates.
+  int _nextCauseId = 950;
+
   /// `GET /api/actions/capas` (issue #211) — the CAPA list, and the query
   /// parameters every request carried, so a test proves what the Screen asked
   /// for (`orgUnitId`, `status`, `overdue`) rather than what the fake happened
@@ -2012,6 +2066,62 @@ class FakeWire {
       }
     }
     capa['whys'] = whys;
+    return true;
+  }
+
+  /// The stored candidate cause with this id, or null when the CAPA's fishbone
+  /// does not hold one.
+  static Map<String, dynamic>? _storedCause(Map<String, dynamic> capa, String causeId) {
+    for (final cause in (capa['causes'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()) {
+      if (cause['id'].toString() == causeId) return cause;
+    }
+    return null;
+  }
+
+  /// Applies a change to a stored CAPA's candidate cause the way the server
+  /// would (issue #213): the sentence and the category when they were sent, and
+  /// the verdict with its evidence together — `candidate` clearing the note it
+  /// no longer has a decision to be the evidence of. Returns whether the CAPA's
+  /// fishbone holds the cause at all; a request against one it does not is the
+  /// server's 404.
+  ///
+  /// The rules, not the wording: the backend suite is where they are proved.
+  /// What this buys is that a Screen's own rendering is tested against the
+  /// answer the API really gives.
+  static bool _changeStoredCause(
+    Map<String, dynamic> capa,
+    String causeId,
+    Map<String, dynamic> body,
+  ) {
+    final cause = _storedCause(capa, causeId);
+    if (cause == null) return false;
+
+    if (body.containsKey('category')) {
+      cause['category'] = body['category'];
+    }
+    if (body.containsKey('statement')) {
+      cause['statement'] = body['statement'];
+    }
+    if (body.containsKey('verdict')) {
+      cause['verdict'] = body['verdict'];
+      cause['evidenceNote'] = body['verdict'] == 'candidate' ? null : body['evidenceNote'];
+    } else if (body.containsKey('evidenceNote')) {
+      cause['evidenceNote'] = body['evidenceNote'];
+    }
+    return true;
+  }
+
+  /// Removes a stored CAPA's candidate cause the way the server does — the row
+  /// goes, and the category's remaining positions are left as they were
+  /// (issue #213). Returns whether the CAPA's fishbone held it.
+  static bool _removeStoredCause(Map<String, dynamic> capa, String causeId) {
+    final causes = (capa['causes'] as List<dynamic>? ?? <dynamic>[]);
+    final cause = _storedCause(capa, causeId);
+    if (cause == null) return false;
+
+    causes.remove(cause);
+    capa['causes'] = causes;
     return true;
   }
 
@@ -5596,6 +5706,120 @@ class FakeWire {
           return http.Response(jsonEncode({'action': updated}), 200);
         }
         if (request.method == 'POST' &&
+            path.startsWith('/api/actions/capas/') &&
+            path.endsWith('/causes')) {
+          // `/api/actions/capas/:id/causes` (issue #213): recording a candidate
+          // cause under one 6M category. The fake does what the server does —
+          // the position is the category's own next one, computed here rather
+          // than sent, and a new cause is a `candidate` — so a test asserting
+          // the fishbone on screen is asserting rows the API would really have
+          // returned.
+          final capaId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          causePosts.add((capaId, body));
+          if (addCauseStatus != 201) {
+            return http.Response(jsonEncode({'message': addCauseMessage}), addCauseStatus);
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          final category = body['category'].toString();
+          // Copied rather than added to in place: a fixture's own list may be a
+          // `const []` where none was passed, and the fake must be able to grow
+          // the CAPA it stores.
+          final causes = [...(capa['causes'] as List<dynamic>? ?? <dynamic>[])];
+          final sequence = causes
+                  .whereType<Map<String, dynamic>>()
+                  .where((cause) => cause['category'] == category)
+                  .length +
+              1;
+          causes.add(capaCauseJson(
+            '${_nextCauseId++}',
+            category,
+            sequence,
+            body['statement'].toString(),
+          ));
+          capa['causes'] = causes;
+          return http.Response(jsonEncode({'capa': capa}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/capas/') &&
+            path.contains('/causes/') &&
+            path.endsWith('/whys')) {
+          // `/api/actions/capas/:id/causes/:causeId/whys` (issue #213):
+          // starting one of the two chains from a confirmed cause. Declared
+          // **before** #210's own `/whys` handler below, deliberately: that one
+          // matches any POST under `/api/actions/capas/` ending in `/whys`, so
+          // this address would be read as an add-Why against a CAPA whose id is
+          // `causes`. The fake writes the chain's first Why, whose statement is
+          // the caller's or the cause's own — the server's own rule.
+          final parts = path.split('/');
+          final capaId = parts[4];
+          final causeId = parts[6];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          causeWhyPosts.add((capaId, causeId, body));
+          if (startWhyFromCauseStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': startWhyFromCauseMessage}),
+              startWhyFromCauseStatus,
+            );
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          final cause = _storedCause(capa, causeId);
+          if (cause == null) {
+            return http.Response(jsonEncode({'message': 'candidate cause not found'}), 404);
+          }
+          // Copied rather than added to in place, for the same reason the cause
+          // handler above copies: a fixture that passed no whys holds a
+          // `const []`.
+          final whys = [...(capa['whys'] as List<dynamic>? ?? <dynamic>[])];
+          whys.add(capaWhyJson(
+            '${_nextWhyId++}',
+            1,
+            (body['statement'] ?? cause['statement']).toString(),
+            chain: body['chain'].toString(),
+          ));
+          capa['whys'] = whys;
+          return http.Response(jsonEncode({'capa': capa}), 201);
+        }
+        if ((request.method == 'PATCH' || request.method == 'DELETE') &&
+            path.startsWith('/api/actions/capas/') &&
+            path.contains('/causes/')) {
+          // `/api/actions/capas/:id/causes/:causeId` (issue #213) — changing
+          // one candidate cause, or removing it. A change applies what the
+          // server would apply: the sentence and the category when they were
+          // sent, and the verdict with its evidence together — `candidate`
+          // clearing the note, for the same reason the server clears it. The
+          // rules themselves are the backend suite's to prove.
+          final parts = path.split('/');
+          final capaId = parts[4];
+          final causeId = parts[6];
+          final capa = capas[capaId];
+          if (request.method == 'PATCH') {
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            causePatches.add((capaId, causeId, body));
+            if (changeCauseStatus != 200) {
+              return http.Response(jsonEncode({'message': changeCauseMessage}), changeCauseStatus);
+            }
+            if (capa == null || !_changeStoredCause(capa, causeId, body)) {
+              return http.Response(jsonEncode({'message': 'candidate cause not found'}), 404);
+            }
+            return http.Response(jsonEncode({'capa': capa}), 200);
+          }
+          causeDeletions.add((capaId, causeId));
+          if (removeCauseStatus != 200) {
+            return http.Response(jsonEncode({'message': removeCauseMessage}), removeCauseStatus);
+          }
+          if (capa == null || !_removeStoredCause(capa, causeId)) {
+            return http.Response(jsonEncode({'message': 'candidate cause not found'}), 404);
+          }
+          return http.Response(jsonEncode({'capa': capa}), 200);
+        }
+        if (request.method == 'POST' &&
             path.startsWith('/api/actions/') &&
             path.endsWith('/capa')) {
           // `/api/actions/:id/capa` (issue #209): opening a CAPA on a Concern.
@@ -5887,6 +6111,7 @@ Map<String, dynamic> capaJson(
   Map<String, dynamic>? teamLead,
   List<Map<String, dynamic>> teamMembers = const [],
   List<Map<String, dynamic>> whys = const [],
+  List<Map<String, dynamic>> causes = const [],
   String openedAt = '2026-09-16T02:00:00.000Z',
   String? dueDate,
   int effectivenessCheckDelayDays = 30,
@@ -5913,6 +6138,9 @@ Map<String, dynamic> capaJson(
       // The two 5 Why chains (issue #210), in the order the server sends them:
       // `occurrence` first, then `escape`, each chain in its own order.
       'whys': whys,
+      // The fishbone (issue #213), in the order the server sends it: the 6M's
+      // own order, each category in the order its causes were recorded.
+      'causes': causes,
       'openedAt': openedAt,
       'dueDate': dueDate,
       'closedAt': null,
@@ -5945,6 +6173,30 @@ Map<String, dynamic> capaWhyJson(
       'sequence': sequence,
       'statement': statement,
       'isRoot': isRoot,
+      'createdAt': '2026-09-16T03:00:00.000Z',
+      'updatedAt': '2026-09-16T03:00:00.000Z',
+    };
+
+/// One candidate cause on a CAPA's fishbone, as `GET /api/actions/capas/:id`
+/// sends it (issue #213) — the client-side counterpart of the backend's own
+/// `toCause`, key for key. `verdict` defaults to `candidate` and `evidenceNote`
+/// to null, which is what recording a cause produces; a decided one carries
+/// both.
+Map<String, dynamic> capaCauseJson(
+  String id,
+  String category,
+  int sequence,
+  String statement, {
+  String verdict = 'candidate',
+  String? evidenceNote,
+}) =>
+    {
+      'id': id,
+      'category': category,
+      'sequence': sequence,
+      'statement': statement,
+      'verdict': verdict,
+      'evidenceNote': evidenceNote,
       'createdAt': '2026-09-16T03:00:00.000Z',
       'updatedAt': '2026-09-16T03:00:00.000Z',
     };

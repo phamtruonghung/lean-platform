@@ -531,6 +531,118 @@ class ActionsApi {
     return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
   }
 
+  /// Records a candidate cause on a CAPA's fishbone (issue #213), under one of
+  /// the 6M categories.
+  ///
+  /// The category is a body field rather than an address of its own, the
+  /// decision `/whys` already makes for the chain: a category is a column of
+  /// the cause, not a record — and unlike a chain, a cause may be re-filed
+  /// under another one later, which would make an address per category a lie
+  /// the moment somebody moved it.
+  ///
+  /// The answer is the whole CAPA as it now reads, like every other write in
+  /// this slice: the fishbone sits on the investigation the Screen is showing.
+  Future<Capa> addCapaCause(
+    String accessToken,
+    String capaId, {
+    required String category,
+    required String statement,
+  }) async {
+    final path = '/api/actions/capas/$capaId/causes';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'category': category, 'statement': statement}),
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
+  /// Changes one candidate cause (issue #213): which of the six it is filed
+  /// under, what it says, and the verdict with the evidence for it.
+  ///
+  /// Each field is sent only when the caller names it, so a form that changed
+  /// one thing cannot quietly rewrite the others — and a body naming nothing is
+  /// a 400 rather than a silent no-op. Deciding a cause carries its own
+  /// evidence: the API refuses `confirmed` or `ruled_out` without an
+  /// `evidenceNote` in the same request, which is why the two travel together
+  /// here.
+  Future<Capa> updateCapaCause(
+    String accessToken,
+    String capaId,
+    String causeId, {
+    String? category,
+    String? statement,
+    String? verdict,
+    String? evidenceNote,
+  }) async {
+    final path = '/api/actions/capas/$capaId/causes/$causeId';
+    // Built in two steps rather than with the null-aware element syntax: an
+    // `info`-level lint on that shape fails `flutter analyze` (the same rule
+    // `updateCapaWhy` follows).
+    final body = <String, dynamic>{};
+    if (category != null) body['category'] = category;
+    if (statement != null) body['statement'] = statement;
+    if (verdict != null) body['verdict'] = verdict;
+    if (evidenceNote != null) body['evidenceNote'] = evidenceNote;
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
+  /// Removes one candidate cause from a CAPA's fishbone (issue #213).
+  Future<Capa> removeCapaCause(String accessToken, String capaId, String causeId) async {
+    final path = '/api/actions/capas/$capaId/causes/$causeId';
+    final response = await _send(
+      () => _client.delete(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken'},
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
+  /// Starts one of a CAPA's two 5 Why chains from a confirmed candidate cause
+  /// (issue #213) — the chain's first Why, at the head of the chain named.
+  ///
+  /// The statement is optional: what a chain starts from is the cause the
+  /// evidence confirmed, and its own sentence is what the server writes when
+  /// the caller does not phrase it differently.
+  ///
+  /// The cause must be confirmed and the chain must not have started, both of
+  /// which the API answers as a 409 — the client's own half of that rule is
+  /// offering this act only on a confirmed cause and only for a chain with no
+  /// Whys in it yet (`Capa.confirmedCauses`, `Capa.chainsNotStarted`).
+  Future<Capa> startCapaWhyFromCause(
+    String accessToken,
+    String capaId,
+    String causeId, {
+    required String chain,
+    String? statement,
+  }) async {
+    final path = '/api/actions/capas/$capaId/causes/$causeId/whys';
+    final body = <String, dynamic>{'chain': chain};
+    if (statement != null) body['statement'] = statement;
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
   /// The five Pillars, for the raise form's chooser (ADR-0023: a value with a
   /// known set is chosen, never typed).
   Future<List<Pillar>> fetchPillars(String accessToken) async {
@@ -663,6 +775,14 @@ class ActionsApi {
           for (final why in (json['whys'] as List<dynamic>? ?? const []))
             _capaWhyFrom(why as Map<String, dynamic>),
         ],
+        // The fishbone (issue #213), in the order the server sends it — the
+        // 6M's own order, each category in the order its causes were recorded.
+        // Read as sent: the Screen renders the diagram the way it was drawn
+        // rather than assembling an order of its own.
+        causes: [
+          for (final cause in (json['causes'] as List<dynamic>? ?? const []))
+            _capaCauseFrom(cause as Map<String, dynamic>),
+        ],
         openedAt: json['openedAt'] == null ? null : DateTime.parse(json['openedAt'] as String),
         dueDate: json['dueDate'] as String?,
         closedAt: json['closedAt'] == null ? null : DateTime.parse(json['closedAt'] as String),
@@ -709,6 +829,19 @@ class ActionsApi {
         sequence: json['sequence'] as int,
         statement: json['statement'] as String,
         isRoot: json['isRoot'] == true,
+      );
+
+  /// One candidate cause on a CAPA's fishbone (issue #213). The verdict is read
+  /// with `candidate` behind it — a cause the server has not decided is a
+  /// candidate, and the column it reads is nullable — and the evidence note is
+  /// null on exactly those.
+  static CapaCause _capaCauseFrom(Map<String, dynamic> json) => CapaCause(
+        id: json['id'].toString(),
+        category: json['category'] as String,
+        sequence: json['sequence'] as int,
+        statement: json['statement'] as String,
+        verdict: json['verdict'] as String? ?? 'candidate',
+        evidenceNote: json['evidenceNote'] as String?,
       );
 
   static ActionPhase _phaseFrom(Map<String, dynamic> json) => ActionPhase(

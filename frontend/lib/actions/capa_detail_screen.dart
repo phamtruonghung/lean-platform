@@ -78,6 +78,39 @@ class CapaDetailScreen extends StatelessWidget {
       ValueKey<String>('capa-detail-chains-read-only');
   static const ValueKey<String> chainsClosedKey = ValueKey<String>('capa-detail-chains-closed');
 
+  /// The fishbone (issue #213): the section, one block per 6M category, the
+  /// cause rows inside it, and the two sentences the Screen says about writing
+  /// it. Read before the chains, because that is the order a team works in.
+  static const ValueKey<String> fishboneKey = ValueKey<String>('capa-detail-fishbone');
+  static const ValueKey<String> fishboneReadOnlyKey =
+      ValueKey<String>('capa-detail-fishbone-read-only');
+  static const ValueKey<String> fishboneClosedKey =
+      ValueKey<String>('capa-detail-fishbone-closed');
+
+  static ValueKey<String> causeCategoryKey(String category) =>
+      ValueKey<String>('capa-cause-category-$category');
+
+  static ValueKey<String> causeCategoryEmptyKey(String category) =>
+      ValueKey<String>('capa-cause-category-$category-empty');
+
+  static ValueKey<String> addCauseKey(String category) =>
+      ValueKey<String>('capa-cause-category-$category-add');
+
+  static ValueKey<String> causeKey(String id) => ValueKey<String>('capa-cause-$id');
+
+  static ValueKey<String> causeVerdictKey(String id) => ValueKey<String>('capa-cause-$id-verdict');
+
+  static ValueKey<String> causeEvidenceKey(String id) => ValueKey<String>('capa-cause-$id-evidence');
+
+  static ValueKey<String> causeDecideKey(String id) => ValueKey<String>('capa-cause-$id-decide');
+
+  static ValueKey<String> causeEditKey(String id) => ValueKey<String>('capa-cause-$id-edit');
+
+  static ValueKey<String> causeRemoveKey(String id) => ValueKey<String>('capa-cause-$id-remove');
+
+  static ValueKey<String> causeStartWhyKey(String id) =>
+      ValueKey<String>('capa-cause-$id-start-why');
+
   /// What the last write to this investigation did, and why the last one did
   /// not land — the page's own, above every section rather than inside the one
   /// that happened to make the request first. #210 put them under the chains
@@ -267,6 +300,11 @@ class _CapaDetail extends StatelessWidget {
             _Team(capa: capa),
             const SizedBox(height: Spacing.lg),
             _Problem(capa: capa),
+            const SizedBox(height: Spacing.lg),
+            // The fishbone before the chains, because that is the order the
+            // team works in: the candidate causes are reasoned about first, and
+            // a chain begins from the one the evidence confirmed (issue #213).
+            _Fishbone(capa: capa),
             const SizedBox(height: Spacing.lg),
             _Chains(capa: capa),
             if (concern != null) ...[
@@ -490,6 +528,245 @@ class _Problem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The fishbone (issue #213) — candidate causes by 6M category, each with the
+/// verdict its evidence produced. The step before the root-cause analysis, and
+/// the reason it is worth having one: a team lists what it suspects before it
+/// decides, and the bones nobody has looked at are as legible on this Screen as
+/// the causes on them.
+///
+/// **All six bones are always shown**, in the order an Ishikawa diagram is
+/// drawn. One with nothing under it says so rather than disappearing: a
+/// category the team has not considered is exactly what a reader — an auditor,
+/// a colleague picking the investigation up — needs to see, and a diagram that
+/// rendered only the categories in use would hide the question "did anybody
+/// think about the method?".
+///
+/// A `candidate` cause is a suspicion with a verdict still to come; `confirmed`
+/// and `ruled_out` carry the evidence in the row, because a verdict without its
+/// evidence is the thing this ticket exists to stop. The one control that
+/// crosses into the chains is offered only where the server would accept it: a
+/// **confirmed** cause, and a chain that has not been started — both of which a
+/// reader can see are true from the row and the chain beside it.
+///
+/// Who may write is asked once, here, and answered by `mayEditCapaChains` — the
+/// client's half of the server's own rule, shared with the chains because it is
+/// one rule (edit access at the CAPA's Org Unit, or a place on its team). A
+/// reader who may not write gets the fishbone and a sentence saying so rather
+/// than buttons whose requests would come back 403; a closed investigation gets
+/// the fishbone and a sentence saying it is a record. Reading is Site-wide, the
+/// same as reading any Action, so the causes themselves are never hidden.
+class _Fishbone extends StatelessWidget {
+  const _Fishbone({required this.capa});
+
+  final Capa capa;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mayWrite = capa.isOpen && mayEditCapaChains(context, capa);
+
+    return Column(
+      key: CapaDetailScreen.fishboneKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Candidate causes', style: theme.textTheme.titleSmall),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          'The fishbone: what the team suspected, by 6M category, and what the evidence said '
+          'about each one. The chain that follows begins with the cause it confirmed.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        if (!capa.isOpen)
+          Padding(
+            key: CapaDetailScreen.fishboneClosedKey,
+            padding: const EdgeInsets.only(top: Spacing.sm),
+            child: Text(
+              'This investigation is over, so its fishbone is a record rather than a worklist.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          )
+        else if (!mayWrite)
+          Padding(
+            key: CapaDetailScreen.fishboneReadOnlyKey,
+            padding: const EdgeInsets.only(top: Spacing.sm),
+            child: Text(
+              "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
+              'its team.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+        const SizedBox(height: Spacing.md),
+        for (final category in capaCauseCategoryOrder) ...[
+          _Bone(capa: capa, category: category, mayWrite: mayWrite),
+          const SizedBox(height: Spacing.md),
+        ],
+      ],
+    );
+  }
+}
+
+/// One of the six bones: its heading with how many causes hang from it, the
+/// sentence a bone nobody has recorded anything on reads, and its causes.
+class _Bone extends StatelessWidget {
+  const _Bone({required this.capa, required this.category, required this.mayWrite});
+
+  final Capa capa;
+  final String category;
+  final bool mayWrite;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final causes = capa.causesIn(category);
+
+    return Column(
+      key: CapaDetailScreen.causeCategoryKey(category),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // A `Wrap`, not a `Row`: the heading and the add control are wider
+        // together than the body of an 800px window, and a Wrap drops the
+        // control onto its own line rather than overflowing.
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: Spacing.sm,
+          runSpacing: Spacing.sm,
+          children: [
+            Text(
+              causes.isEmpty
+                  ? capaCauseCategoryLabel(category)
+                  : '${capaCauseCategoryLabel(category)} (${causes.length})',
+              style: theme.textTheme.titleSmall,
+            ),
+            if (mayWrite)
+              TextButton.icon(
+                key: CapaDetailScreen.addCauseKey(category),
+                onPressed: () => context.go(
+                  '${Routes.actions}/capas/${capa.id}/causes/$category/new',
+                ),
+                icon: const Icon(Icons.add),
+                label: const Text('Record a cause'),
+              ),
+          ],
+        ),
+        if (causes.isEmpty)
+          Padding(
+            key: CapaDetailScreen.causeCategoryEmptyKey(category),
+            padding: const EdgeInsets.only(top: Spacing.xs),
+            child: Text(
+              'Nothing is recorded under ${capaCauseCategoryLabel(category)}.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        for (final cause in causes)
+          _CauseRow(capa: capa, cause: cause, mayWrite: mayWrite),
+      ],
+    );
+  }
+}
+
+/// One candidate cause: what the team suspected, the verdict the evidence
+/// produced with the evidence itself, and the controls a writer has over it.
+///
+/// The controls are a `Wrap` rather than a `Row` — up to four of them, in a card
+/// under a 260px sidebar — for the reason every row of controls in this client
+/// is one. `Start a chain from it` is offered only for a **confirmed** cause
+/// whose chain has not begun, which are the server's own two conditions: an
+/// offer the request would refuse is worse than no offer.
+class _CauseRow extends StatelessWidget {
+  const _CauseRow({required this.capa, required this.cause, required this.mayWrite});
+
+  final Capa capa;
+  final CapaCause cause;
+  final bool mayWrite;
+
+  /// Whether a chain may begin with this cause (issue #213): the evidence
+  /// confirmed it, and one of the two chains is still empty.
+  bool get _canStartChain => cause.isConfirmed && capa.chainsNotStarted.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final base = '${Routes.actions}/capas/${capa.id}/causes/${cause.category}/${cause.id}';
+
+    return Card(
+      key: CapaDetailScreen.causeKey(cause.id),
+      margin: const EdgeInsets.only(top: Spacing.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.md, Spacing.lg, 0),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: Spacing.sm,
+              runSpacing: Spacing.sm,
+              children: [
+                Text('Cause ${cause.sequence}', style: theme.textTheme.titleSmall),
+                StatusChip(
+                  key: CapaDetailScreen.causeVerdictKey(cause.id),
+                  label: cause.verdictLabel,
+                  tone: cause.verdictTone,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xs, Spacing.lg, 0),
+            child: Text(cause.statement, style: theme.textTheme.bodyMedium),
+          ),
+          if (cause.evidenceNote != null)
+            Padding(
+              key: CapaDetailScreen.causeEvidenceKey(cause.id),
+              padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xs, Spacing.lg, 0),
+              child: Text(
+                'Evidence: ${cause.evidenceNote}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          if (mayWrite)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Spacing.sm, Spacing.xs, Spacing.sm, Spacing.sm),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xs,
+                children: [
+                  TextButton(
+                    key: CapaDetailScreen.causeDecideKey(cause.id),
+                    onPressed: () => context.go('$base/verdict'),
+                    child: Text(cause.isDecided ? 'Change the verdict' : 'Decide it'),
+                  ),
+                  TextButton(
+                    key: CapaDetailScreen.causeEditKey(cause.id),
+                    onPressed: () => context.go('$base/edit'),
+                    child: const Text('Revise'),
+                  ),
+                  if (_canStartChain)
+                    TextButton(
+                      key: CapaDetailScreen.causeStartWhyKey(cause.id),
+                      onPressed: () => context.go('$base/why'),
+                      child: const Text('Start a chain from it'),
+                    ),
+                  TextButton(
+                    key: CapaDetailScreen.causeRemoveKey(cause.id),
+                    onPressed: () => context.go('$base/remove'),
+                    child: const Text('Remove'),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -1081,6 +1081,140 @@ router.delete(
   }
 );
 
+// ---------------------------------------------------------------------------
+// A CAPA's fishbone — candidate causes by 6M category (issue #213)
+//
+// Four addresses, one per thing a team does to the list before it decides: add
+// a candidate cause under one of the six categories, change one (its category,
+// what it says, and the verdict with the evidence for it), remove one, and
+// **start a chain from a cause the evidence confirmed**. Each answers with the
+// whole CAPA as it now reads, the shape every other write in this slice takes —
+// the fishbone sits on the same record the chains do.
+//
+// **The write scope is #210's `requireCapaWhyWrite`, deliberately shared rather
+// than written a second time.** The rule is one rule — edit access at the
+// CAPA's Org Unit, or a place on its team — and two gates for one rule would be
+// two places to change the day a third thing on a CAPA gets written. Its
+// message already says "writing a CAPA's root causes", which is what a
+// candidate cause is, and its ordering (existence, then scope, then the
+// service's own status under its own lock) is the one these addresses need for
+// the same reasons: an unknown CAPA is a 404 before any authority is asked, and
+// a closed investigation is a 409 in exactly the words the chains give.
+//
+// **The verdict is a body field, not an address.** `/causes/:causeId/verdict`
+// would say deciding a cause is a transition with a record of its own, and it
+// is not: `verdict` and `evidenceNote` are two columns of the row, and the
+// evidence note is required in the same request that decides it (see
+// `updateCapaCause`). One address per row, the shape a Why's PATCH takes.
+//
+// **Starting a chain is a POST under the cause**, and the one thing here that
+// is not a plain edit: `/capas/:id/causes/:causeId/whys` writes a row of the
+// *other* half of `capa_root_causes` — the chain's first Why — which is why it
+// reads as "a Why, from this cause" rather than as a field of the cause. The
+// chain is in the body rather than in the address, for the reason #210's own
+// `/whys` gives: a chain is a column, and a Why never moves between chains.
+// ---------------------------------------------------------------------------
+
+// Adding a candidate cause under one 6M category.
+router.post(
+  '/capas/:id/causes',
+  people.authenticate,
+  people.requireActive,
+  requireCapaWhyWrite,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const capa = await actions.addCapaCause(
+        req.capa.id,
+        { category: body.category, statement: body.statement },
+        req.account.id
+      );
+      res.status(201).json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Changing one candidate cause: its category, what it says, and the verdict
+// with the evidence for it — a partial update, so a body naming none of the
+// four is a 400 from actions.js rather than a silent no-op. The route copies
+// the four fields and nothing else: a body may not smuggle a `capaId` or a
+// `causeType` in, which would be a second way to say what the address and the
+// row already say.
+router.patch(
+  '/capas/:id/causes/:causeId',
+  people.authenticate,
+  people.requireActive,
+  requireCapaWhyWrite,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const input = {};
+
+      if (body.category !== undefined) input.category = body.category;
+      if (body.statement !== undefined) input.statement = body.statement;
+      if (body.verdict !== undefined) input.verdict = body.verdict;
+      if (body.evidenceNote !== undefined) input.evidenceNote = body.evidenceNote;
+
+      const capa = await actions.updateCapaCause(
+        req.capa.id,
+        req.params.causeId,
+        input,
+        req.account.id
+      );
+      res.json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Removing a candidate cause from the fishbone.
+router.delete(
+  '/capas/:id/causes/:causeId',
+  people.authenticate,
+  people.requireActive,
+  requireCapaWhyWrite,
+  async (req, res, next) => {
+    try {
+      const capa = await actions.removeCapaCause(
+        req.capa.id,
+        req.params.causeId,
+        req.account.id
+      );
+      res.json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Starting one of the CAPA's two chains from a confirmed candidate cause: the
+// chain's first Why, at the head of the chain the body names. The cause must be
+// confirmed (409 otherwise) and the chain must not have started (409) — both
+// are actions.js's own refusals, read under the CAPA's lock.
+router.post(
+  '/capas/:id/causes/:causeId/whys',
+  people.authenticate,
+  people.requireActive,
+  requireCapaWhyWrite,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const capa = await actions.startCapaWhyFromCause(
+        req.capa.id,
+        req.params.causeId,
+        { chain: body.chain, statement: body.statement },
+        req.account.id
+      );
+      res.status(201).json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 // One Action, by its own id. A Site-wide read for the same reason the register
 // is: an Action's Org Unit decides where somebody may act on it, not who may
 // read it.

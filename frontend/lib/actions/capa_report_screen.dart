@@ -14,7 +14,9 @@
 ///   - D3 the containment, D5-D6 the Countermeasures and D7 the Preventive
 ///     actions with every PDCA phase each has been round: the Concern's own
 ///     measures, which ADR-0034 makes the CAPA's actions (issues #177, #209);
-///   - D4 both chains with their confirmed root causes: `whys` (issue #210);
+///   - D4 the fishbone of candidate causes with each verdict, then both chains
+///     with their confirmed root causes: `causes` and `whys` (issues #210,
+///     #213);
 ///   - D8 the effectiveness check with its verifier, date and note:
 ///     `effectivenessVerifiedBy`/`At`/`Note` (issue #211);
 ///   - the evidence: the Non-conformances the Concern answers, with their
@@ -123,8 +125,25 @@ class CapaReportScreen extends StatelessWidget {
   static const ValueKey<String> preventiveKey = ValueKey<String>('capa-report-preventive');
   static const ValueKey<String> noPreventiveKey = ValueKey<String>('capa-report-no-preventive');
 
-  /// D4 — the two 5 Why chains.
+  /// D4 — the two 5 Why chains, and the fishbone they begin from.
   static const ValueKey<String> rootCauseKey = ValueKey<String>('capa-report-root-cause');
+
+  /// The fishbone (issue #213) — the candidate causes by 6M category with each
+  /// one's verdict, read above the chains because that is the order the team
+  /// worked in and the order a customer's engineer reads a causality section.
+  static const ValueKey<String> fishboneKey = ValueKey<String>('capa-report-fishbone');
+  static const ValueKey<String> noCausesKey = ValueKey<String>('capa-report-no-causes');
+
+  static ValueKey<String> causeCategoryKey(String category) =>
+      ValueKey<String>('capa-report-cause-category-$category');
+
+  static ValueKey<String> causeKey(String id) => ValueKey<String>('capa-report-cause-$id');
+
+  static ValueKey<String> causeVerdictKey(String id) =>
+      ValueKey<String>('capa-report-cause-$id-verdict');
+
+  static ValueKey<String> causeEvidenceKey(String id) =>
+      ValueKey<String>('capa-report-cause-$id-evidence');
 
   /// D8 — the effectiveness check.
   static const ValueKey<String> effectivenessKey = ValueKey<String>('capa-report-effectiveness');
@@ -384,9 +403,12 @@ class _Report extends StatelessWidget {
       _Section(
         key: CapaReportScreen.rootCauseKey,
         heading: 'D4 · Root cause',
-        summary: 'Two chains, each ending at one confirmed root cause: why the problem '
-            'happened, and why it was not detected.',
+        summary: 'The candidate causes the team considered and the verdict on each, then two '
+            'chains ending at one confirmed root cause: why the problem happened, and why it '
+            'was not detected.',
         children: [
+          _ReportFishbone(capa: capa),
+          const SizedBox(height: Spacing.md),
           for (final chain in capaChainOrder) ...[
             _Chain(capa: capa, chain: chain),
             if (chain != capaChainOrder.last) const SizedBox(height: Spacing.md),
@@ -562,6 +584,94 @@ class _Measure extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// The fishbone as the report reads it (issue #213) — D4's own list of what the
+/// team considered, before the chains say what it concluded.
+///
+/// **Only the bones that carry a cause are printed**, unlike the Screen, which
+/// shows all six. The difference is deliberate and it is the medium's: a reader
+/// of a Screen is working on the investigation and wants to see which category
+/// nobody has thought about, where a printed 8D handed to a customer carries
+/// what the team found, and six lines of "nothing is recorded under Man" is
+/// noise in a document. A CAPA with no causes at all still says so in one
+/// sentence rather than printing nothing, because "no fishbone was done" is a
+/// fact about the investigation an auditor is entitled to read.
+class _ReportFishbone extends StatelessWidget {
+  const _ReportFishbone({required this.capa});
+
+  final Capa capa;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final categories = [
+      for (final category in capaCauseCategoryOrder)
+        if (capa.causesIn(category).isNotEmpty) category,
+    ];
+
+    return Column(
+      key: CapaReportScreen.fishboneKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('The candidate causes considered', style: theme.textTheme.titleSmall),
+        const SizedBox(height: Spacing.xs),
+        if (categories.isEmpty)
+          Text(
+            key: CapaReportScreen.noCausesKey,
+            'No candidate cause is recorded, so no fishbone was worked.',
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        for (final category in categories)
+          Padding(
+            key: CapaReportScreen.causeCategoryKey(category),
+            padding: const EdgeInsets.only(top: Spacing.xs),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(capaCauseCategoryLabel(category), style: theme.textTheme.labelLarge),
+                for (final cause in capa.causesIn(category))
+                  Padding(
+                    key: CapaReportScreen.causeKey(cause.id),
+                    padding: const EdgeInsets.fromLTRB(Spacing.sm, Spacing.xxs, 0, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cause.statement,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: Spacing.xxs),
+                          child: Wrap(
+                            spacing: Spacing.sm,
+                            runSpacing: Spacing.xs,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              StatusChip(
+                                key: CapaReportScreen.causeVerdictKey(cause.id),
+                                label: cause.verdictLabel,
+                                tone: cause.verdictTone,
+                              ),
+                              if (cause.evidenceNote != null)
+                                Text(
+                                  key: CapaReportScreen.causeEvidenceKey(cause.id),
+                                  'Evidence: ${cause.evidenceNote}',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

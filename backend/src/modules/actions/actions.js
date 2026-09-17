@@ -1625,7 +1625,7 @@ const CAPA_JOINS = `
   LEFT JOIN app_users verifier ON verifier.id = c.effectiveness_verified_by_account_id
 `;
 
-function toCapa(row, { teamMembers = [], whys = [], concern = null } = {}) {
+function toCapa(row, { teamMembers = [], whys = [], causes = [], concern = null } = {}) {
   return {
     id: String(row.id),
     capaNo: row.capa_no,
@@ -1648,6 +1648,13 @@ function toCapa(row, { teamMembers = [], whys = [], concern = null } = {}) {
     // one chain filters on the field it already has. `occurrence` comes first
     // — you work out what went wrong before you ask why nobody caught it.
     whys,
+    // The fishbone (issue #213): the candidate causes, in the 6M's own order
+    // and each category in the order its causes were recorded. BESIDE the two
+    // chains rather than mixed into them — one flat list, like `whys`, because
+    // a cause already says which category it is in and what its verdict is. A
+    // team reasons on this list first, then starts a chain from the cause it
+    // confirmed.
+    causes,
     openedAt: row.opened_at,
     dueDate: row.due_date,
     status: row.status,
@@ -1833,6 +1840,7 @@ async function readCapaDetail(client, capaId) {
   return toCapa(rows[0], {
     teamMembers: await listCapaTeamMembers(capaId, client),
     whys: await listCapaWhys(capaId, client),
+    causes: await listCapaCauses(capaId, client),
     concern: linked[0] ? await readCapaConcern(client, linked[0].id) : null
   });
 }
@@ -2524,6 +2532,440 @@ async function removeCapaWhy(capaId, whyId, accountId) {
 }
 
 // ---------------------------------------------------------------------------
+// The fishbone — candidate causes by 6M category (issue #213, ADR-0034)
+//
+// A team does not open an investigation holding its root cause. It opens one
+// holding a list of things it suspects, and the fishbone is where that list is
+// kept: each candidate cause filed under exactly one of Ishikawa's 6M
+// categories, and each marked `candidate` — still to be looked at — or
+// `confirmed` / `ruled_out`, with the evidence written down beside the verdict.
+// The chains are what the team does with a confirmed one: a chain's first Why
+// may be started **from** a cause the evidence backed, which is the whole point
+// of deciding between them.
+//
+// These rows are the *other* half of `capa_root_causes`, the half #210's own
+// section above filters out of every query it makes: `cause_type = 'fishbone'`
+// where a Why is `cause_type = 'why'`. The table carries both because they are
+// one thing said twice — a list of causes — and the schema's own constraints
+// already separate them: `chain` is NOT NULL exactly for a Why
+// (`capa_root_causes_chain_is_a_why`), a fishbone row must name a category
+// (`capa_root_causes_fishbone_has_category`), and `is_root` is a Why's
+// (`capa_root_causes_root_is_a_why`) because a candidate's answer is its own
+// `verdict` rather than a second way of saying "this is the one".
+//
+// **`verdict` and `evidence_note` were added by #210's migration
+// (1800200000000) and written by nobody until now.** That is why this ticket
+// adds no migration of its own: every column it needs already exists, the 6M
+// set is already a CHECK on `category` in the baseline, and the categories are
+// mirrored here as this file's own vocabulary (`CAPA_CAUSE_CATEGORIES`) exactly
+// as `CAPA_CHAINS` mirrors the chain's.
+//
+// **Three rules, and where each lives.**
+//
+//   - **One category, from the 6M set.** A `category` outside it is a 400
+//     naming the six, because the set is this file's knowledge the same way the
+//     chains are — not a raw 23514 from a CHECK whose message names a table.
+//   - **A verdict is paid for with evidence.** Choosing `confirmed` or
+//     `ruled_out` requires the evidence note *in the same request*: the note is
+//     the evidence for *that* verdict, and every note this table holds lives
+//     beside a decision. Going back to `candidate` clears it, because a cause
+//     under review again has nothing for the evidence to be about.
+//   - **A chain starts from a confirmed cause, once.** `startCapaWhyFromCause`
+//     below writes the chain's first Why from the cause the team confirmed —
+//     the fishbone and the chains connect, per the spec's own story — and a
+//     cause that is still `candidate` or has been `ruled_out` is a 409, as is a
+//     chain that has already started.
+//
+// **How the link between a cause and its chain is recorded: it is not.** The
+// chain's first Why *is* the cause's own statement, written at `sequence = 1`
+// of the chain, and that is the whole convention — the ticket's own
+// "`sequence = 1` convention", and the schema decision the Module spec records
+// ("add the chain for why rows, and a verdict plus evidence note for fishbone
+// rows"; it names no link column). A `cause_id` column would be a migration,
+// and a one-way door, for a fact nothing reads: the report names the confirmed
+// causes and the chains that began with them, and there is no question in this
+// Module that needs "which cause did this Why come from" answered months later.
+// The day one exists, the column and the migration come together.
+//
+// **And what this half does not do.** It touches no `why` row: every statement
+// below filters `cause_type = 'fishbone'`, so a Why id handed to these
+// addresses is a plain 404 rather than a second way to write a chain. Every
+// write takes `lockOpenCapa` first, so a closed investigation refuses all of
+// them in the same words the chains use.
+// ---------------------------------------------------------------------------
+
+// The 6M categories a candidate cause is filed under, in the order an Ishikawa
+// diagram is drawn and the order `listCapaCauses` reads them in. The values
+// mirror the `capa_root_causes.category` CHECK the baseline already carries —
+// the set exists in the schema, so this is the service's copy of it for the 400
+// rather than a second enforcement, exactly as `CAPA_CHAINS` mirrors the chain's.
+const CAPA_CAUSE_CATEGORIES = [
+  'man',
+  'machine',
+  'method',
+  'material',
+  'measurement',
+  'environment'
+];
+
+// What may be said about a candidate cause, mirroring
+// `capa_root_causes.verdict_check` (migration 1800200000000): it is a candidate
+// until somebody looks, and then it is either confirmed or ruled out. There is
+// deliberately no fourth value for "superseded" — a cause the team no longer
+// believes in is removed, the same way a Why that turned out wrong is.
+const CAPA_CAUSE_VERDICTS = ['candidate', 'confirmed', 'ruled_out'];
+
+// A fishbone's branches in the 6M's own order rather than alphabetically, which
+// would read machine, man, method … and put the categories in an order nobody
+// draws them in. A CASE for the same reason `CAPA_CHAIN_ORDER` is one.
+const CAPA_CAUSE_CATEGORY_ORDER = `CASE r.category
+  WHEN 'man' THEN 1
+  WHEN 'machine' THEN 2
+  WHEN 'method' THEN 3
+  WHEN 'material' THEN 4
+  WHEN 'measurement' THEN 5
+  ELSE 6
+END`;
+
+const CAUSE_COLUMNS = `
+  r.id, r.category, r.sequence, r.statement, r.verdict, r.evidence_note,
+  r.created_at, r.updated_at
+`;
+
+/**
+ * A candidate cause's statement, which is the only thing it says (issue #213).
+ * Required, and required to say something, for the reason a Why is: an empty
+ * cause is a branch that appears to hold a suspicion and does not.
+ */
+function requireCauseStatement(value) {
+  if (typeof value !== 'string') {
+    throw httpError(400, 'statement must be text');
+  }
+  const said = value.trim();
+  if (said === '') {
+    throw httpError(400, 'a candidate cause must have a statement');
+  }
+  return said;
+}
+
+function toCause(row) {
+  return {
+    id: String(row.id),
+    category: row.category,
+    // The branch's position among its own category's causes, so the order the
+    // team wrote them in survives a read. It is not a chain's `sequence`: a
+    // cause never moves, and the positions are not renumbered when one is
+    // removed, because "the third cause under Machine" is not a phrase anybody
+    // uses (a Why's position is).
+    sequence: row.sequence,
+    statement: row.statement,
+    // A cause with no verdict recorded is a candidate: `candidate` is the state
+    // a new cause is in, and the column's only writer is this service.
+    verdict: row.verdict ?? 'candidate',
+    // The evidence for that verdict, and null on a candidate — the field and
+    // the verdict travel together (see the section header).
+    evidenceNote: row.evidence_note,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
+ * One CAPA's candidate causes, read in the 6M's own order and each category in
+ * the order its causes were recorded (issue #213).
+ *
+ * The order is a fact about the diagram rather than a rendering choice, so it
+ * is written once here — the fishbone reads the way it is drawn, top to bottom,
+ * and a Screen that sorted them itself would be the second place that decides.
+ */
+async function listCapaCauses(capaId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${CAUSE_COLUMNS}
+       FROM capa_root_causes r
+      WHERE r.capa_id = $1 AND r.cause_type = 'fishbone'
+      ORDER BY ${CAPA_CAUSE_CATEGORY_ORDER}, r.sequence ASC, r.id ASC`,
+    [capaId]
+  );
+  return rows.map(toCause);
+}
+
+/**
+ * Records a candidate cause under one 6M category on an open CAPA (issue
+ * #213), as a `candidate` — the state before anybody has looked.
+ *
+ * The position is the next one *within its own category*, computed inside the
+ * transaction rather than accepted from the caller: a fishbone is six lists,
+ * not one, and "the next branch of Machine" is `MAX(sequence) + 1` of that
+ * category. `lockOpenCapa` is what makes that safe against a second caller
+ * adding one at the same moment, the same lock `addCapaWhy` takes.
+ *
+ * The verdict is written rather than defaulted: the column has no default
+ * (migration 1800200000000 is additive and gave it none), and a cause whose
+ * verdict the schema left null would read as undecided for a reason that is
+ * about the writer and not about the cause.
+ */
+async function addCapaCause(capaId, { category, statement } = {}, accountId) {
+  if (!CAPA_CAUSE_CATEGORIES.includes(category)) {
+    throw httpError(400, `category must be one of: ${CAPA_CAUSE_CATEGORIES.join(', ')}`);
+  }
+  const said = requireCauseStatement(statement);
+
+  return withActor(accountId, async (client) => {
+    await lockOpenCapa(client, capaId);
+
+    await client.query(
+      `INSERT INTO capa_root_causes
+         (capa_id, cause_type, category, sequence, statement, verdict)
+       VALUES ($1, 'fishbone', $2,
+               COALESCE((SELECT MAX(r.sequence) + 1
+                           FROM capa_root_causes r
+                          WHERE r.capa_id = $1 AND r.cause_type = 'fishbone'
+                            AND r.category = $2),
+                        1),
+               $3, 'candidate')`,
+      [capaId, category, said]
+    );
+
+    return readCapaDetail(client, capaId);
+  });
+}
+
+/**
+ * Changes one candidate cause on an open CAPA (issue #213): which category it
+ * is filed under, what it says, and the verdict with the evidence for it.
+ *
+ * A partial update, the shape `updateCapaWhy` takes: a field the caller did not
+ * send is left alone, and a body that names none of the four is a 400 rather
+ * than a silent no-op. Four fields, four rules:
+ *
+ *   - **`category`** — the cause moved to another of the six. Unlike a Why,
+ *     which never moves between chains, a cause genuinely may be re-filed: the
+ *     team argues about whether a worn jig is Machine or Method, and the
+ *     answer changing is the fishbone working rather than a second cause. A
+ *     category that is not one of the six is a 400 naming them.
+ *   - **`statement`** — what the cause says, revised. NOT NULL in the schema,
+ *     so an empty one is a 400 rather than a cleared field.
+ *   - **`verdict`** — `candidate`, `confirmed` or `ruled_out`. Choosing one of
+ *     the two decisions **requires the evidence note in the same request**: the
+ *     note is the evidence for that verdict, and it is the rule this ticket
+ *     states as a 400. Choosing `candidate` again clears the note — the cause
+ *     is under review once more, and its old evidence belongs to the decision
+ *     that was unmade.
+ *   - **`evidenceNote`** — the evidence of a decision already made, edited.
+ *     Only a decided cause has one, so a note on a body that also, or only,
+ *     says this cause is a `candidate` is a 400: there is no verdict for it to
+ *     be the evidence of.
+ *
+ * The lock order is the CAPA, then the cause — the order every write in this
+ * slice takes them in.
+ */
+async function updateCapaCause(capaId, causeId, input, accountId) {
+  // Total like findAction: a malformed id is "no such cause" rather than a
+  // BIGINT parameter Postgres would refuse to parse.
+  if (parseId(causeId) === null) throw notFound('candidate cause');
+
+  const body = input ?? {};
+  const setsCategory = body.category !== undefined;
+  const setsStatement = body.statement !== undefined;
+  const setsVerdict = body.verdict !== undefined;
+  const setsNote = body.evidenceNote !== undefined;
+
+  if (!setsCategory && !setsStatement && !setsVerdict && !setsNote) {
+    throw httpError(
+      400,
+      'send a category, a statement, a verdict or an evidence note — there is nothing to change otherwise'
+    );
+  }
+  if (setsCategory && !CAPA_CAUSE_CATEGORIES.includes(body.category)) {
+    throw httpError(400, `category must be one of: ${CAPA_CAUSE_CATEGORIES.join(', ')}`);
+  }
+  if (setsStatement) {
+    requireCauseStatement(body.statement);
+  }
+  if (setsVerdict && !CAPA_CAUSE_VERDICTS.includes(body.verdict)) {
+    throw httpError(400, `verdict must be one of: ${CAPA_CAUSE_VERDICTS.join(', ')}`);
+  }
+  if (setsNote && (typeof body.evidenceNote !== 'string' || body.evidenceNote.trim() === '')) {
+    throw httpError(400, 'an evidence note must say what the evidence was');
+  }
+  // Deciding a cause is paid for with its evidence, in the same request.
+  if (setsVerdict && body.verdict !== 'candidate' && !setsNote) {
+    throw httpError(
+      400,
+      `a cause cannot be ${body.verdict} without the evidence: send an evidenceNote saying what it was`
+    );
+  }
+
+  // Validated once, above, and carried into the transaction rather than
+  // re-checked inside it: the same values either way, and a reader of the write
+  // below should be reading the change, not its rules.
+  const said = setsStatement ? body.statement.trim() : null;
+  const note = setsNote ? body.evidenceNote.trim() : null;
+
+  return withActor(accountId, async (client) => {
+    await lockOpenCapa(client, capaId);
+
+    const { rows: [cause] } = await client.query(
+      `SELECT r.id, COALESCE(r.verdict, 'candidate') AS verdict
+         FROM capa_root_causes r
+        WHERE r.id = $1 AND r.capa_id = $2 AND r.cause_type = 'fishbone'
+        FOR UPDATE`,
+      [causeId, capaId]
+    );
+    if (!cause) throw notFound('candidate cause');
+
+    const verdict = setsVerdict ? body.verdict : cause.verdict;
+    if (verdict === 'candidate' && setsNote) {
+      throw httpError(400, 'a candidate has no verdict for an evidence note to be the evidence of');
+    }
+
+    if (setsCategory) {
+      await client.query('UPDATE capa_root_causes SET category = $2 WHERE id = $1', [
+        causeId,
+        body.category
+      ]);
+    }
+    if (setsStatement) {
+      await client.query('UPDATE capa_root_causes SET statement = $2 WHERE id = $1', [
+        causeId,
+        said
+      ]);
+    }
+    if (setsVerdict) {
+      // The verdict and the evidence for it land together: a decision whose
+      // note is missing is not a state this table may hold, which is why
+      // `candidate` clears the note in the same statement that writes it.
+      await client.query(
+        `UPDATE capa_root_causes
+            SET verdict = $2, evidence_note = $3
+          WHERE id = $1`,
+        [causeId, verdict, verdict === 'candidate' ? null : note]
+      );
+    } else if (setsNote) {
+      await client.query('UPDATE capa_root_causes SET evidence_note = $2 WHERE id = $1', [
+        causeId,
+        note
+      ]);
+    }
+
+    return readCapaDetail(client, capaId);
+  });
+}
+
+/**
+ * Removes a candidate cause from an open CAPA (issue #213).
+ *
+ * The row goes, for the reason a Why goes: a cause the team has established
+ * cannot be it — "that is not what we are looking at" — is not part of the
+ * reasoning any more, and leaving it in place marked as withdrawn would put
+ * every reader of the fishbone in the position of deciding which branches
+ * count. The category's remaining positions are left as they are: they are the
+ * order the causes were recorded in, not a chain whose third step anybody
+ * quotes, and renumbering them would be a rule invented for tidiness.
+ *
+ * A cause whose verdict is `confirmed` may be removed like any other. Nothing
+ * hangs off the row — a Why started from a cause keeps its own statement and
+ * its own place in its chain (see this section's header on why there is no link
+ * column), so there is nothing here to cascade and nothing to refuse.
+ */
+async function removeCapaCause(capaId, causeId, accountId) {
+  if (parseId(causeId) === null) throw notFound('candidate cause');
+
+  return withActor(accountId, async (client) => {
+    await lockOpenCapa(client, capaId);
+
+    const { rows: [removed] } = await client.query(
+      `DELETE FROM capa_root_causes
+        WHERE id = $1 AND capa_id = $2 AND cause_type = 'fishbone'
+        RETURNING id`,
+      [causeId, capaId]
+    );
+    if (!removed) throw notFound('candidate cause');
+
+    return readCapaDetail(client, capaId);
+  });
+}
+
+/**
+ * Starts one of a CAPA's two 5 Why chains from a confirmed candidate cause
+ * (issue #213) — the one door between the fishbone and the chains, and the
+ * reason the fishbone is worth keeping at all: the team reasons about a list of
+ * suspects, decides which one the evidence supports, and the chain it then
+ * builds begins with that cause rather than beside it.
+ *
+ * The Why written is the chain's **first**, at `sequence = 1`, and its
+ * statement is the cause's own unless the caller phrases it differently — a Why
+ * IS a cause written as a question's answer, so the confirmed cause's sentence
+ * is what the chain starts from, and a team that wants to say it another way
+ * may. That this is the first Why is the whole convention: there is no
+ * `cause_id` column recording where a chain came from (this section's header
+ * argues why), and the consequence is the rule below.
+ *
+ * Three refusals, in the order a caller meets them:
+ *
+ *   - the cause must be one of **this** CAPA's fishbone rows — anything else,
+ *     a Why's id included, is a 404 rather than a second way to write a chain;
+ *   - it must be **confirmed** (409). A `candidate` is still a suspicion and a
+ *     `ruled_out` one is a suspicion the evidence killed; starting a chain from
+ *     either would make the fishbone's verdicts decorative, and the ticket's
+ *     own words are that this is refused.
+ *   - the **chain must not have started** (409). A chain has exactly one first
+ *     Why, and which cause it began from is decided once; a chain that already
+ *     has Whys is one somebody has been reasoning in, and the honest way to add
+ *     to it is `addCapaWhy`.
+ */
+async function startCapaWhyFromCause(capaId, causeId, { chain, statement } = {}, accountId) {
+  if (!CAPA_CHAINS.includes(chain)) {
+    throw httpError(400, `chain must be one of: ${CAPA_CHAINS.join(', ')}`);
+  }
+  if (parseId(causeId) === null) throw notFound('candidate cause');
+  const said =
+    statement === undefined || statement === null ? null : requireWhyStatement(statement);
+
+  return withActor(accountId, async (client) => {
+    await lockOpenCapa(client, capaId);
+
+    const { rows: [cause] } = await client.query(
+      `SELECT r.id, r.statement, COALESCE(r.verdict, 'candidate') AS verdict
+         FROM capa_root_causes r
+        WHERE r.id = $1 AND r.capa_id = $2 AND r.cause_type = 'fishbone'
+        FOR UPDATE`,
+      [causeId, capaId]
+    );
+    if (!cause) throw notFound('candidate cause');
+    if (cause.verdict !== 'confirmed') {
+      throw httpError(
+        409,
+        `only a confirmed cause can start a chain, and this one is ${cause.verdict}`
+      );
+    }
+
+    const { rows: [started] } = await client.query(
+      `SELECT r.id
+         FROM capa_root_causes r
+        WHERE r.capa_id = $1 AND r.cause_type = 'why' AND r.chain = $2
+        LIMIT 1`,
+      [capaId, chain]
+    );
+    if (started) {
+      throw httpError(
+        409,
+        `${chain} has already been started, so its first Why is written: a chain begins once`
+      );
+    }
+
+    await client.query(
+      `INSERT INTO capa_root_causes (capa_id, cause_type, chain, sequence, statement)
+       VALUES ($1, 'why', $2, 1, $3)`,
+      [capaId, chain, said ?? cause.statement]
+    );
+
+    return readCapaDetail(client, capaId);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // The effectiveness check, and closing a CAPA (issue #211, ADR-0034)
 //
 // "The step every plant skips" — the baseline's own header on
@@ -2814,6 +3256,17 @@ module.exports = {
   addCapaWhy,
   updateCapaWhy,
   removeCapaWhy,
+  // ...and its fishbone (issue #213): candidate causes by 6M category, the
+  // verdict and the evidence behind it, and the one door from a confirmed
+  // cause into a chain. `CAPA_CAUSE_CATEGORIES` and `CAPA_CAUSE_VERDICTS` are
+  // exported beside `CAPA_CHAINS` for the same reason: the Module's own closed
+  // sets are what its callers and its tests name.
+  CAPA_CAUSE_CATEGORIES,
+  CAPA_CAUSE_VERDICTS,
+  addCapaCause,
+  updateCapaCause,
+  removeCapaCause,
+  startCapaWhyFromCause,
   // ...and its effectiveness check (issue #211): recording the verdict that
   // closes the investigation or sends its Concern round again. Where `#210`'s
   // chains are the team's own reasoning, this is the one act a CAPA does not

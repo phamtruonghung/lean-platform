@@ -19,6 +19,7 @@ import '../actions/actions_api.dart';
 import '../actions/actions_bloc.dart';
 import '../actions/actions_screen.dart';
 import '../actions/capa.dart';
+import '../actions/capa_cause_dialog.dart';
 import '../actions/capa_detail_bloc.dart';
 import '../actions/capa_detail_screen.dart';
 import '../actions/capa_effectiveness_dialog.dart';
@@ -1358,6 +1359,68 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                       builder: (dialogContext) => CapaWhyRemoveDialog(
                         chain: state.pathParameters['chain']!,
                         whyId: state.pathParameters['whyId']!,
+                      ),
+                    ),
+                  ),
+                  // The fishbone (issue #213): five addresses, one per thing a
+                  // team does to the candidate causes — record one under a 6M
+                  // category, revise it, decide it with the evidence, remove
+                  // it, and start a chain from one the evidence confirmed.
+                  // Nested under the CAPA's own route for the reason the three
+                  // chain dialogs above are: they share the `CapaDetailBloc`,
+                  // so a write repaints the fishbone behind the form.
+                  //
+                  // The category is in the address, because which of the six a
+                  // cause hangs from is the decision the caller made by opening
+                  // it — the same argument `/whys/:chain/new` makes for the
+                  // chain. `causes` is a literal segment where the three chain
+                  // addresses have `whys`, so no route here can be swallowed by
+                  // another.
+                  GoRoute(
+                    path: 'causes/:category/new',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) =>
+                          CapaCauseDialog(category: state.pathParameters['category']!),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'causes/:category/:causeId/edit',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaCauseEditDialog(
+                        category: state.pathParameters['category']!,
+                        causeId: state.pathParameters['causeId']!,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'causes/:category/:causeId/verdict',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaCauseVerdictDialog(
+                        category: state.pathParameters['category']!,
+                        causeId: state.pathParameters['causeId']!,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'causes/:category/:causeId/remove',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaCauseRemoveDialog(
+                        category: state.pathParameters['category']!,
+                        causeId: state.pathParameters['causeId']!,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'causes/:category/:causeId/why',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaWhyFromCauseDialog(
+                        category: state.pathParameters['category']!,
+                        causeId: state.pathParameters['causeId']!,
                       ),
                     ),
                   ),

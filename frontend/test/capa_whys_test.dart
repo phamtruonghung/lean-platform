@@ -488,6 +488,10 @@ void main() {
 
   testWidgets('each chain address refuses what the CAPA or the caller cannot answer',
       (tester) async {
+    // Taller than the default surface, because #213's fishbone sits above the
+    // chains and a shorter window leaves the read-only sentence below the fold
+    // of the lazily-built list.
+    _tallWindow(tester);
     // A caller with no edit access at the Org Unit and no place on the team:
     // the add address refuses rather than showing a form whose submit would be
     // refused.

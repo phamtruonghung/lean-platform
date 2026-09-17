@@ -142,6 +142,112 @@ class CapaWhy {
   String get chainLabel => capaChainLabel(chain);
 }
 
+/// The 6M categories a candidate cause is filed under (issue #213), and the
+/// words this client reads them by.
+///
+/// The wire values are Ishikawa's own six, which is what the schema's
+/// `capa_root_causes.category` CHECK carries; the labels are the capitalised
+/// words a Screen and a report print, because a fishbone is drawn with "Man",
+/// "Machine" and the rest on its bones and a printed report may not link to a
+/// map. A category this build does not know renders as its own wire value
+/// rather than throwing, the same fallback [capaStatusLabel] takes.
+const Map<String, String> capaCauseCategoryLabels = {
+  'man': 'Man',
+  'machine': 'Machine',
+  'method': 'Method',
+  'material': 'Material',
+  'measurement': 'Measurement',
+  'environment': 'Environment',
+};
+
+String capaCauseCategoryLabel(String wire) => capaCauseCategoryLabels[wire] ?? wire;
+
+/// The order the six are read in: the order an Ishikawa diagram is drawn, not
+/// alphabetical, which would read Machine, Man, Method … and put the bones in
+/// an order nobody draws them in. The server returns them in this order too
+/// (see `listCapaCauses` in the Actions Module), so a Screen written against
+/// this list and one written against the server's own order agree.
+const List<String> capaCauseCategoryOrder = [
+  'man',
+  'machine',
+  'method',
+  'material',
+  'measurement',
+  'environment',
+];
+
+/// The three verdicts a candidate cause can carry (issue #213), mirroring the
+/// API's own closed set, with the tone travelling with the label — the rule
+/// every status set in this client follows.
+///
+/// `candidate` is `neutral` rather than `warning`: a cause nobody has looked at
+/// yet is the ordinary state of a fishbone being built, and painting every
+/// fresh branch as a decision wanted would make the one that is genuinely open
+/// — a confirmed cause whose chain has not been started — impossible to pick
+/// out. `confirmed` is `success` (the evidence backed it) and `ruled_out` is
+/// `neutral` (the evidence settled it, and the answer was no: a decision
+/// somebody made on purpose is not a fault).
+const Map<String, (String, StatusTone)> capaCauseVerdicts = {
+  'candidate': ('Candidate', StatusTone.neutral),
+  'confirmed': ('Confirmed', StatusTone.success),
+  'ruled_out': ('Ruled out', StatusTone.neutral),
+};
+
+/// The verdicts a cause can be *decided* with, in the order the dialog offers
+/// them: the one the team is looking for first, because a fishbone usually ends
+/// with one cause confirmed and several ruled out.
+const List<String> capaCauseDecisions = ['confirmed', 'ruled_out'];
+
+String capaCauseVerdictLabel(String wire) => capaCauseVerdicts[wire]?.$1 ?? wire;
+
+StatusTone capaCauseVerdictTone(String wire) => capaCauseVerdicts[wire]?.$2 ?? StatusTone.neutral;
+
+/// One candidate cause on a CAPA's fishbone (issue #213).
+///
+/// [category] is the one 6M bone it hangs from, and [sequence] is its position
+/// among that category's own causes — the order the team wrote them in, which
+/// the server keeps and never renumbers. [verdict] is [capaCauseVerdicts]'s
+/// value and [evidenceNote] is the evidence for it, written with the verdict
+/// and null while the cause is still a `candidate`.
+@immutable
+class CapaCause {
+  const CapaCause({
+    required this.id,
+    required this.category,
+    required this.sequence,
+    required this.statement,
+    this.verdict = 'candidate',
+    this.evidenceNote,
+  });
+
+  final String id;
+  final String category;
+
+  /// The 1-based position among [category]'s own causes.
+  final int sequence;
+
+  final String statement;
+
+  /// `candidate`, `confirmed` or `ruled_out`.
+  final String verdict;
+
+  /// The evidence for [verdict], in the words of whoever wrote it — null on a
+  /// candidate, and never null on a decided cause, which is the server's rule
+  /// said as a 400.
+  final String? evidenceNote;
+
+  String get categoryLabel => capaCauseCategoryLabel(category);
+  String get verdictLabel => capaCauseVerdictLabel(verdict);
+  StatusTone get verdictTone => capaCauseVerdictTone(verdict);
+
+  /// Whether the evidence backed this cause — the one state a Why chain may be
+  /// started from, which is why a Screen reads it to decide what to offer.
+  bool get isConfirmed => verdict == 'confirmed';
+
+  /// Whether anybody has decided about it yet, either way.
+  bool get isDecided => verdict != 'candidate';
+}
+
 /// The CAPA a Concern has been turned into, as the Concern's own read names it
 /// (issue #209) — its id, the number a person quotes, and how the investigation
 /// is going.
@@ -192,6 +298,7 @@ class Capa {
     required this.siteId,
     required this.teamMembers,
     this.whys = const [],
+    this.causes = const [],
     this.problemStatement,
     this.orgUnitCode,
     this.teamLead,
@@ -243,6 +350,13 @@ class Capa {
   /// rather than two named ones, because a Why already says which chain it is
   /// in — [whysIn] and [rootCauseOf] are the two questions a Screen asks of it.
   final List<CapaWhy> whys;
+
+  /// The fishbone (issue #213): the candidate causes, in the order the server
+  /// returns them — the 6M's own order, each category in the order its causes
+  /// were recorded. One flat list, like [whys], because a cause already says
+  /// which category it is in and what its verdict is; [causesIn] and
+  /// [confirmedCauses] are the questions a Screen asks of it.
+  final List<CapaCause> causes;
 
   final DateTime? openedAt;
   final String? dueDate;
@@ -328,6 +442,31 @@ class Capa {
   /// before the request rather than after it.
   bool get bothChainsAnswered =>
       capaChainOrder.every((chain) => rootCauseOf(chain) != null);
+
+  /// One 6M category's own causes, in the order the team wrote them (issue
+  /// #213) — what a fishbone's bone is drawn with. The server's list is already
+  /// ordered by category; this is the filter a Screen renders one bone with,
+  /// kept here so the Screen is not the second place that knows the order is.
+  List<CapaCause> causesIn(String category) =>
+      [for (final cause in causes) if (cause.category == category) cause];
+
+  /// The causes the evidence backed (issue #213) — the ones a chain may be
+  /// started from, whatever else is on the fishbone.
+  List<CapaCause> get confirmedCauses =>
+      [for (final cause in causes) if (cause.isConfirmed) cause];
+
+  /// Whether a chain has been started yet: its first Why is written, so which
+  /// cause it began from has been decided (issue #213). A closed question,
+  /// which is why the Screen reads it rather than offering the choice again.
+  bool chainHasStarted(String chain) => whysIn(chain).isNotEmpty;
+
+  /// The chains that have not started yet — the choice a "start a chain from
+  /// this cause" form offers, which is empty exactly when every chain has been
+  /// begun and the act is no longer available.
+  List<String> get chainsNotStarted => [
+        for (final chain in capaChainOrder)
+          if (!chainHasStarted(chain)) chain,
+      ];
 }
 
 /// One read of the CAPA list (issue #211) — the rows and whether the server had

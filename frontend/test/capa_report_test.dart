@@ -149,6 +149,7 @@ Map<String, dynamic> _capa({
     {'employeeId': '8', 'name': 'Bo Member'},
   ],
   List<Map<String, dynamic>>? whys,
+  List<Map<String, dynamic>>? causes,
   String? effectivenessVerifiedAt = '2026-09-30T02:00:00.000Z',
   Map<String, dynamic>? effectivenessVerifiedBy = const {
     'accountId': '3',
@@ -176,6 +177,17 @@ Map<String, dynamic> _capa({
             capaWhyJson('2', 2, _occurrenceRoot, isRoot: true),
             capaWhyJson('3', 1, _escapeRoot, chain: 'escape', isRoot: true),
           ],
+      // The fishbone (issue #213): the causes the team considered before it
+      // decided, one of them confirmed by its evidence and one ruled out — the
+      // state a finished 8D's D4 is read for.
+      causes: causes ??
+          [
+            capaCauseJson('41', 'machine', 1, 'The retaining bolt is not torqued.',
+                verdict: 'confirmed', evidenceNote: 'The torque log is missing that cycle.'),
+            capaCauseJson('42', 'machine', 2, 'The fixture is worn.',
+                verdict: 'ruled_out', evidenceNote: 'Both fixtures measure in tolerance.'),
+            capaCauseJson('43', 'man', 1, 'The operator skipped the step.'),
+          ],
       effectivenessVerifiedAt: effectivenessVerifiedAt,
       effectivenessVerifiedBy: effectivenessVerifiedBy,
       effectivenessNote: effectivenessNote,
@@ -194,6 +206,9 @@ Map<String, dynamic> _openCapa() => _capa(
       teamLead: null,
       teamMembers: const [],
       whys: const [],
+      // No fishbone either: a report that has not been reasoned on says so in
+      // one sentence rather than printing six empty bones (issue #213).
+      causes: const [],
       effectivenessVerifiedAt: null,
       effectivenessVerifiedBy: null,
       effectivenessNote: null,
@@ -299,9 +314,34 @@ void main() {
         contains('Quarantined the batch'));
     expect(_textUnder(tester, CapaReportScreen.containmentKey), contains('Cycle 1 · Plan'));
 
-    // D4 — both chains, in the order they are reasoned, each with its steps and
-    // where it stopped.
+    // D4 — the fishbone the team reasoned on, then both chains in the order they
+    // are reasoned, each with its steps and where it stopped.
     final rootCause = _textUnder(tester, CapaReportScreen.rootCauseKey);
+    expect(rootCause, contains('The candidate causes considered'));
+    expect(rootCause, contains('Machine'));
+    expect(rootCause, contains('The retaining bolt is not torqued.'));
+    expect(rootCause, contains('Confirmed'));
+    expect(rootCause, contains('Evidence: The torque log is missing that cycle.'));
+    expect(rootCause, contains('The fixture is worn.'));
+    expect(rootCause, contains('Ruled out'));
+    expect(rootCause, contains('Evidence: Both fixtures measure in tolerance.'));
+    expect(rootCause, contains('Man'));
+    expect(rootCause, contains('The operator skipped the step.'));
+    expect(rootCause, contains('Candidate'));
+    // The bones read in the 6M's own order — Man first, then Machine — and the
+    // fishbone reads above the chains it begins: a reader meets what the team
+    // suspected before what it concluded.
+    expect(rootCause.indexOf('Man'), lessThan(rootCause.indexOf('Machine')));
+    expect(
+      rootCause.indexOf('The candidate causes considered'),
+      lessThan(rootCause.indexOf('Why it happened')),
+    );
+    // A cause nobody has decided carries no evidence sentence at all: the note
+    // and the verdict travel together.
+    expect(
+      _textUnder(tester, CapaReportScreen.causeKey('43')),
+      isNot(contains('Evidence:')),
+    );
     expect(rootCause, contains('Why it happened'));
     expect(rootCause, contains('Why 1 · The vibration loosened it.'));
     expect(rootCause, contains('Why 2 · $_occurrenceRoot'));
@@ -386,6 +426,9 @@ void main() {
     expect(find.byKey(CapaReportScreen.chainEmptyKey('occurrence')), findsOneWidget);
     expect(_textOf(tester, CapaReportScreen.chainRootKey('occurrence')),
         contains('This chain has no confirmed root cause yet.'));
+    expect(find.byKey(CapaReportScreen.noCausesKey), findsOneWidget);
+    expect(_textOf(tester, CapaReportScreen.noCausesKey),
+        contains('No candidate cause is recorded, so no fishbone was worked.'));
     expect(find.byKey(CapaReportScreen.effectivenessNotRecordedKey), findsOneWidget);
     expect(_textOf(tester, CapaReportScreen.effectivenessNotRecordedKey),
         contains('the Concern has not closed yet'));
