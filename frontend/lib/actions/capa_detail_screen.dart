@@ -57,6 +57,12 @@ class CapaDetailScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('capa-detail-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('capa-detail-retry');
   static const ValueKey<String> backKey = ValueKey<String>('capa-detail-back');
+
+  /// The report (issue #212) — the same investigation laid out as an 8D at its
+  /// own address, outside the Shell, which is what an auditor or a customer is
+  /// handed. The one control in this header that leads *away* from the record
+  /// rather than changing it.
+  static const ValueKey<String> reportKey = ValueKey<String>('capa-detail-report');
   static const ValueKey<String> problemKey = ValueKey<String>('capa-detail-problem');
   static const ValueKey<String> noProblemKey = ValueKey<String>('capa-detail-no-problem');
   static const ValueKey<String> teamKey = ValueKey<String>('capa-detail-team');
@@ -187,9 +193,9 @@ class _CapaDetail extends StatelessWidget {
           key: CapaDetailScreen.loadedKey,
           padding: const EdgeInsets.all(Spacing.xl),
           children: [
-            // A `Wrap`, not a `Row`: the back label and the status chip are
-            // wider together than an 800px window, and a `Wrap` puts the chip
-            // on its own line rather than overflowing.
+            // A `Wrap`, not a `Row`: the back label, the report link and the
+            // status chip are wider together than an 800px window, and a `Wrap`
+            // puts what does not fit on its own line rather than overflowing.
             Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,
@@ -203,6 +209,16 @@ class _CapaDetail extends StatelessWidget {
                   label: Text(
                     concern == null ? 'Back to the action log' : 'Back to ${concern.actionNo}',
                   ),
+                ),
+                // The report, offered to every reader rather than gated: the
+                // record itself is a Site-wide read (ADR-0009), and a reader
+                // who may read the investigation may hand its report to an
+                // auditor.
+                TextButton.icon(
+                  key: CapaDetailScreen.reportKey,
+                  onPressed: () => context.go(Routes.capaReport(capa.id)),
+                  icon: const Icon(Icons.description_outlined),
+                  label: const Text('The report'),
                 ),
                 StatusChip(label: capa.statusLabel, tone: capa.statusTone),
               ],

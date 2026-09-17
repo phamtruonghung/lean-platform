@@ -692,6 +692,11 @@ Map<String, dynamic> concernJson(
 /// #208) — mirrors `toLinkedNonconformance` (actions.js) key for key. Built
 /// from a `nonconformanceJson` row so the two fixtures cannot drift apart about
 /// what a Non-conformance is called.
+///
+/// The `dispositions` it carries (issue #212) are the row's own, passed through
+/// unchanged: the server's read sends Quality's `toDisposition` shape there, so
+/// a fixture built with `dispositionJson` rows is what the API would answer,
+/// and the CAPA report's own section reads exactly those keys.
 Map<String, dynamic> linkedNonconformanceJson(
   Map<String, dynamic> nonconformance, {
   bool isSource = false,
@@ -714,6 +719,7 @@ Map<String, dynamic> linkedNonconformanceJson(
       'defectCodeId': nonconformance['defectCodeId'],
       'defectCodeCode': nonconformance['defectCodeCode'],
       'defectCodeName': nonconformance['defectCodeName'],
+      'dispositions': nonconformance['dispositions'] ?? const <Map<String, dynamic>>[],
       'isSource': isSource,
       'linkedAt': '2026-09-15T03:00:00.000Z',
     };
@@ -1847,6 +1853,12 @@ class FakeWire {
   Map<String, Map<String, dynamic>> capas;
   int capasStatus;
   String capaMessage;
+
+  /// Every CAPA read (issues #209, #212) — the id each `GET
+  /// /api/actions/capas/:id` asked for, in the order the requests reached the
+  /// wire. A report Screen makes exactly one of them, and that is a fact a test
+  /// has to be able to read rather than assume.
+  final List<String> capaReads = [];
 
   /// Every CAPA open that reached the wire, as `(concernId, body)` — so a test
   /// can assert that exactly one request was sent, what it carried, and that a
@@ -5753,10 +5765,14 @@ class FakeWire {
           // `/api/actions/capas/:id` (issue #209). Declared before the
           // one-segment `/api/actions/:id` read below, which would otherwise
           // take `capas/801` for an Action whose id is `801`.
+          final capaId = path.split('/').last;
+          // Recorded before anything can refuse it, so a test can assert which
+          // report asked for which record even when the read fails.
+          capaReads.add(capaId);
           if (capasStatus != 200) {
             return http.Response(jsonEncode({'message': capaMessage}), capasStatus);
           }
-          final capa = capas[path.split('/').last];
+          final capa = capas[capaId];
           if (capa == null) {
             return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
           }

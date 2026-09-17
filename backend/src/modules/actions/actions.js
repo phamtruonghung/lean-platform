@@ -281,13 +281,13 @@ function toActionDetail(row, phases = [], measures = [], nonconformances = []) {
   };
 }
 
-// The Non-conformances a Concern answers (issue #208), in the shape the
-// Concern's own Screen reads: the number a person quotes, what was made wrong
-// (Product), why (Defect code) and how much of it. A cross-Module read done as
-// an ordinary SQL join — `products`, `defect_codes` and `org_units` are
-// Quality's and People's tables, and ADR-0006 makes that a query rather than a
-// boundary violation. Nothing here is written: this Module creates no Quality
-// row, ever.
+// The Non-conformances a Concern answers (issues #208, #212), in the shape the
+// Concern's own Screen reads and the CAPA report renders: the number a person
+// quotes, what was made wrong (Product), why (Defect code), how much of it, and
+// — since #212 — how the product was dealt with. A cross-Module read done as an
+// ordinary SQL join — `products`, `defect_codes` and `org_units` are Quality's
+// and People's tables, and ADR-0006 makes that a query rather than a boundary
+// violation. Nothing here is written: this Module creates no Quality row, ever.
 const LINKED_NONCONFORMANCE_COLUMNS = `
   qi.id, qi.issue_no, qi.status, qi.severity, qi.detection_point,
   qi.quantity_affected, qi.uom_code, qi.lot_ref, qi.detected_at,
@@ -310,7 +310,7 @@ const LINKED_NONCONFORMANCE_JOINS = `
   JOIN defect_codes dc ON dc.id = qi.defect_code_id
 `;
 
-function toLinkedNonconformance(row) {
+function toLinkedNonconformance(row, dispositions = []) {
   return {
     id: row.id,
     issueNo: row.issue_no,
@@ -329,6 +329,12 @@ function toLinkedNonconformance(row) {
     defectCodeId: row.defect_code_id,
     defectCodeCode: row.defect_code_code,
     defectCodeName: row.defect_code_name,
+    // How the product was dealt with (issue #212) — every Disposition recorded
+    // against this occurrence, oldest first. An empty array is "nothing has
+    // been decided about this product yet", which is what the CAPA report's own
+    // section says rather than a missing field, the same rule `measures` and
+    // `nonconformances` themselves follow.
+    dispositions,
     // The one it was raised from reads first, then the occurrences gathered
     // later, oldest first: a reader wants the origin before the additions.
     isSource: row.is_source === true,
@@ -336,10 +342,91 @@ function toLinkedNonconformance(row) {
   };
 }
 
+// The only value `quality_dispositions.disposition_type` carries for a
+// Concession — the baseline's own, and the one Disposition that accepts product
+// as it is rather than dealing with it. Named here rather than reached for
+// through Quality's entry point for the reason the SQL above is a join: it is a
+// value in a shared schema, not a judgement about a record.
+const USE_AS_IS_DISPOSITION_TYPE = 'use_as_is';
+
+// The Dispositions on the Non-conformances a Concern answers (issue #212) —
+// what the CAPA report has to show beside each occurrence it lists: how the
+// product was dealt with, how much of it, who decided it and when.
+//
+// The column list and the keys are Quality's own `listDispositions` verbatim,
+// copied rather than shared (ADR-0006's third clause — this Module's `errors.js`
+// is duplicated for the same reason), because the two reads describe one set of
+// rows: a report that disagreed with the record's own Screen about a
+// Disposition would be a second answer to one question. It is a SQL join for
+// the reason the joins above it are: this needs the rows, not Quality's
+// judgement about them.
+const LINKED_DISPOSITION_COLUMNS = `
+  qd.id, qd.quality_issue_id, qd.disposition_type, qd.quantity, qd.uom_code,
+  qd.rework_minutes, qd.decided_at, qd.approval_ref, qd.notes,
+  qd.decided_by_account_id, dau.display_name AS decided_by_account_name,
+  qd.decided_by, e.display_name AS decided_by_employee_name`;
+
+const LINKED_DISPOSITION_JOINS = `
+  FROM quality_dispositions qd
+  LEFT JOIN app_users dau ON dau.id = qd.decided_by_account_id
+  LEFT JOIN employees e ON e.id = qd.decided_by`;
+
+function toLinkedDisposition(row) {
+  return {
+    id: row.id,
+    dispositionType: row.disposition_type,
+    // A Concession is a Disposition to use the product as it is, said as a
+    // boolean the way Quality's own read says it: the report labels it
+    // "Concession" and nothing else needs to compare the wire value.
+    isConcession: row.disposition_type === USE_AS_IS_DISPOSITION_TYPE,
+    quantity: row.quantity === null || row.quantity === undefined ? null : Number(row.quantity),
+    uomCode: row.uom_code,
+    reworkMinutes:
+      row.rework_minutes === null || row.rework_minutes === undefined
+        ? null
+        : Number(row.rework_minutes),
+    decidedAt: row.decided_at,
+    reference: row.approval_ref ?? null,
+    note: row.notes ?? null,
+    decidedByAccountId: row.decided_by_account_id ?? null,
+    decidedByAccountName: row.decided_by_account_name ?? null,
+    decidedByEmployeeId: row.decided_by ?? null,
+    decidedByEmployeeName: row.decided_by_employee_name ?? null
+  };
+}
+
+/**
+ * The Dispositions of the Non-conformances a read has just gathered (issue
+ * #212), grouped by the Non-conformance each belongs to.
+ *
+ * One query for the whole set rather than one per occurrence, the shape
+ * `listPhasesForActions` takes for the same reason: a Concern answering four
+ * occurrences would otherwise be four more round trips to render one report.
+ */
+async function listDispositionsForIssues(qualityIssueIds, client = null) {
+  if (qualityIssueIds.length === 0) return {};
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${LINKED_DISPOSITION_COLUMNS}
+     ${LINKED_DISPOSITION_JOINS}
+      WHERE qd.quality_issue_id = ANY($1::bigint[])
+      ORDER BY qd.decided_at, qd.id`,
+    [qualityIssueIds.map(String)]
+  );
+  const byIssue = {};
+  for (const row of rows) {
+    const key = String(row.quality_issue_id);
+    if (!byIssue[key]) byIssue[key] = [];
+    byIssue[key].push(toLinkedDisposition(row));
+  }
+  return byIssue;
+}
+
 /**
  * The Non-conformances one Concern answers (issue #208), each with the number,
- * Product, Defect code and quantity a reader needs — and whether it is the one
- * the Concern was raised from.
+ * Product, Defect code and quantity a reader needs, the Dispositions recorded
+ * against it (issue #212), and whether it is the one the Concern was raised
+ * from.
  *
  * Any Action may be asked, and a measure answers no Non-conformance at all, so
  * an empty list is a real and common answer rather than a missing field: a
@@ -359,7 +446,11 @@ async function listLinkedNonconformances(actionItemId, client = null) {
       ORDER BY (cn.quality_issue_id = ai.quality_issue_id) DESC, cn.linked_at, cn.id`,
     [actionItemId]
   );
-  return rows.map(toLinkedNonconformance);
+  const dispositions = await listDispositionsForIssues(
+    rows.map((row) => row.id),
+    client
+  );
+  return rows.map((row) => toLinkedNonconformance(row, dispositions[String(row.id)] ?? []));
 }
 
 // The detail read, taken on a connection the caller names — so a write

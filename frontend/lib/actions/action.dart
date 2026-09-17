@@ -202,6 +202,97 @@ class EscalationTarget {
   final String name;
 }
 
+/// One Disposition on a Non-conformance a Concern answers (issue #212) — how
+/// the product was dealt with, how much of it, who decided it and when, as
+/// `actions.js`'s `toLinkedDisposition` sends it.
+///
+/// Deliberately not Quality's `Disposition`: that is the model of the record's
+/// own Screen, in a Module this one does not import (the dependency runs one
+/// way — see `actions.dart` and [LinkedNonconformance]'s own argument), and the
+/// two rows are the same fact in two sizes. What is missing here is the status
+/// vocabulary a *record* needs; what a report prints are the words for a kind
+/// and the quantity, which are the fields below.
+@immutable
+class LinkedDisposition {
+  const LinkedDisposition({
+    required this.id,
+    required this.dispositionType,
+    required this.isConcession,
+    required this.quantity,
+    required this.uomCode,
+    this.reworkMinutes,
+    this.decidedAt,
+    this.reference,
+    this.note,
+    this.decidedByAccountId,
+    this.decidedByAccountName,
+    this.decidedByEmployeeId,
+    this.decidedByEmployeeName,
+  });
+
+  factory LinkedDisposition.fromJson(Map<String, dynamic> json) => LinkedDisposition(
+        id: json['id'].toString(),
+        dispositionType: json['dispositionType'] as String? ?? '',
+        isConcession: json['isConcession'] == true,
+        quantity: _number(json['quantity']),
+        uomCode: json['uomCode'] as String? ?? '',
+        reworkMinutes: json['reworkMinutes'] == null ? null : _number(json['reworkMinutes']),
+        decidedAt:
+            json['decidedAt'] == null ? null : DateTime.tryParse(json['decidedAt'] as String),
+        reference: json['reference'] as String?,
+        note: json['note'] as String?,
+        decidedByAccountId: json['decidedByAccountId']?.toString(),
+        decidedByAccountName: json['decidedByAccountName'] as String?,
+        decidedByEmployeeId: json['decidedByEmployeeId']?.toString(),
+        decidedByEmployeeName: json['decidedByEmployeeName'] as String?,
+      );
+
+  final String id;
+
+  /// The wire value: `scrap`, `rework`, `return_to_supplier` or `use_as_is`.
+  final String dispositionType;
+
+  /// Whether this Disposition is the Concession — product accepted as it is,
+  /// which only a holder of Quality authority may grant.
+  final bool isConcession;
+
+  final double quantity;
+  final String uomCode;
+
+  /// How long a rework took, in minutes. Null for anything that is not one.
+  final double? reworkMinutes;
+
+  final DateTime? decidedAt;
+
+  /// The deviation or approval number a Concession was granted under.
+  final String? reference;
+
+  final String? note;
+
+  final String? decidedByAccountId;
+  final String? decidedByAccountName;
+  final String? decidedByEmployeeId;
+  final String? decidedByEmployeeName;
+
+  /// The day it was decided, as `YYYY-MM-DD` — what a report prints. Null when
+  /// the row has no timestamp, which every route in Quality refuses to write.
+  String? get decidedOn => decidedAt?.toLocal().toIso8601String().substring(0, 10);
+
+  /// Who decided it: the Employee named at a floor device first, then the
+  /// Account, and `Unknown` for a row with neither (which no route writes).
+  String get decidedBy {
+    final employee = decidedByEmployeeName;
+    if (employee != null && employee.isNotEmpty) return employee;
+    final account = decidedByAccountName;
+    if (account != null && account.isNotEmpty) return account;
+    return 'Unknown';
+  }
+
+  /// How much of the product this covers, without a trailing `.0`.
+  String get quantityLabel =>
+      '${quantity == quantity.roundToDouble() ? quantity.toStringAsFixed(0) : quantity} $uomCode';
+}
+
 /// One Non-conformance a Concern answers (issue #208), as the Concern's own
 /// detail read names it — the shape `actions.js`'s `toLinkedNonconformance`
 /// sends.
@@ -211,14 +302,17 @@ class EscalationTarget {
 /// needs to recognise the occurrence — the number it is quoted by, the Product
 /// that was made wrong, the Defect code it failed and how much of it there is —
 /// plus [isSource], which says whether this is the Non-conformance the Concern
-/// was *raised from* rather than one gathered to it later.
+/// was *raised from* rather than one gathered to it later, and, since issue
+/// #212, the [dispositions] an auditor reading an 8D has to see.
 ///
 /// No status label or tone here, unlike every other state in this client: that
 /// vocabulary belongs to the Quality Module, whose entry point this Module does
 /// not import (the dependency runs one way — see `actions.dart`), and inventing
 /// a second copy of it here is exactly the duplication the Module seam exists
 /// to prevent. The row names the record and links to its own address, which is
-/// where the status is read.
+/// where the status is read — and the CAPA report, which cannot link to
+/// anything a reader holds on paper, prints the Dispositions' own kind and
+/// quantity rather than the record's status.
 @immutable
 class LinkedNonconformance {
   const LinkedNonconformance({
@@ -241,6 +335,7 @@ class LinkedNonconformance {
     this.orgUnitId,
     this.orgUnitName,
     this.linkedAt,
+    this.dispositions = const [],
   });
 
   factory LinkedNonconformance.fromJson(Map<String, dynamic> json) => LinkedNonconformance(
@@ -263,6 +358,10 @@ class LinkedNonconformance {
         orgUnitId: json['orgUnitId']?.toString(),
         orgUnitName: json['orgUnitName'] as String?,
         linkedAt: json['linkedAt'] == null ? null : DateTime.tryParse(json['linkedAt'] as String),
+        dispositions: [
+          for (final disposition in json['dispositions'] as List<dynamic>? ?? const <dynamic>[])
+            LinkedDisposition.fromJson(disposition as Map<String, dynamic>),
+        ],
       );
 
   final String id;
@@ -297,6 +396,12 @@ class LinkedNonconformance {
   final String? orgUnitId;
   final String? orgUnitName;
   final DateTime? linkedAt;
+
+  /// Every Disposition recorded against this occurrence (issue #212), oldest
+  /// first — how the product was dealt with, how much of it and by whom. An
+  /// empty list is a real state ("nothing has been decided about this product
+  /// yet") rather than a missing field, and the CAPA report says so in words.
+  final List<LinkedDisposition> dispositions;
 
   /// What was made wrong, in one line: the Product's name and code.
   String get productLabel =>

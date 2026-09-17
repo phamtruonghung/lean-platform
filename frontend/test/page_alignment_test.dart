@@ -107,6 +107,18 @@ const _pages = <_Page>[
   // padding too, so the default bound holds here as well.
   _Page('/actions/capas', 'lib/actions/capas_screen.dart', 'CAPAs',
       'The investigations opened on a Concern'),
+  // The CAPA report (issue #212). Audited rather than excluded, and the
+  // audited shape is the point of the ticket: it is a page with a frame, a
+  // heading and a column of cards even though it is reached outside the Shell,
+  // so its title, its description and its first section must all start at the
+  // frame's own left edge like any other page's. It pads by `Spacing.xl` (the
+  // token its own `ListView`-free document layout spends) and its width is its
+  // own 1100 rather than `AppLayout.pageWidth` — a width this test deliberately
+  // does not assert, because page widths are not a rule here.
+  _Page('/actions/capas/801/report', 'lib/actions/capa_report_screen.dart',
+      'The guard keeps working loose',
+      'The 8D record of this investigation',
+      inset: Spacing.xl),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this
@@ -174,6 +186,13 @@ FakeWire _wire() => FakeWire(
       // runs.
       products: [productJson('40', 'PRD-1', 'Gearbox')],
       defectCodes: [defectCodeJson('41', 'DIM-OOT', 'Out of tolerance')],
+      // The investigation the CAPA report reads (issue #212). Its own read is a
+      // CAPA rather than a collection, so this table's one report page finds it
+      // by id and renders its sections rather than a loading placeholder.
+      capas: {
+        '801': capaJson('801', 'CA-HCM-2026-00001', 'The guard keeps working loose',
+            orgUnitId: '10', orgUnitName: 'Assembly'),
+      },
     );
 
 void main() {

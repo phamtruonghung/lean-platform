@@ -127,7 +127,11 @@ is only visible in a rendered tree (AGENTS.md §5's frontend seam).
   Nothing has broken because of that; #193 records it as an exclusion.
 - **Page widths.** The Work orders table, the maintenance registers, the Action log
   and the tier board are wider than `AppLayout.pageWidth` on purpose, and the two
-  detail Screens are narrower. Each names its own number.
+  detail Screens are narrower. Each names its own number. **The CAPA report
+  (#212) joins the wider list at 1100** — it is a document with two Why chains,
+  three kinds of measure and a table of evidence on it, so it spends the
+  registers' own width rather than the catalogues' 900, and its Screen says so
+  where the number is chosen.
 - **Goldens for every Screen.** `test/GOLDENS.md` scopes them to the Shell and the
   Work orders Screen: a golden per Screen fails on every ordinary content change and
   gets deleted. Geometry assertions catch this class without that cost.

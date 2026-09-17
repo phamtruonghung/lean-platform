@@ -22,6 +22,7 @@ import '../actions/capa.dart';
 import '../actions/capa_detail_bloc.dart';
 import '../actions/capa_detail_screen.dart';
 import '../actions/capa_effectiveness_dialog.dart';
+import '../actions/capa_report_screen.dart';
 import '../actions/capa_why_dialog.dart';
 import '../actions/capas_bloc.dart';
 import '../actions/capas_screen.dart';
@@ -163,6 +164,13 @@ abstract final class Routes {
   /// three segments.) One CAPA's address is unchanged by this ticket.
   static const String capas = '/actions/capas';
 
+  /// One CAPA's report (issue #212) — the whole investigation laid out as an
+  /// 8D, printable from the browser. A child address of the CAPA's own
+  /// (`/actions/capas/:id/report`) rather than a second collection, and routed
+  /// **outside the Shell** so that printing it prints the report rather than
+  /// the navigation around it — see `buildRouter`.
+  static String capaReport(String capaId) => '$capas/$capaId/report';
+
   /// The shared floor device's own Screen (issue #77, ADR-0016). Its own
   /// address, deliberately outside the Shell and never offered as a
   /// Destination: a device is not an Account, and this surface must be
@@ -289,6 +297,55 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
           )..add(const FloorStarted()),
           child: const FloorScreen(),
         ),
+      ),
+      // The CAPA report (issue #212) — the whole investigation laid out as an
+      // 8D at its own address, printable from the browser.
+      //
+      // **Outside the Shell, deliberately, and it is the ticket's own point.**
+      // A `ShellRoute` wraps every child in `PlatformShell`, so a report
+      // declared inside the CAPA's own `ShellRoute` below would carry the
+      // sidebar, the brand header and the account footer onto every printed
+      // page. Sign-in and awaiting-Approval are siblings of the Shell for the
+      // same reason, and so is the floor surface; `accountRedirect` is what
+      // decides who reaches the address, not the Shell's chrome.
+      //
+      // A sibling `GoRoute` rather than a child of the CAPA's own detail route,
+      // and it could not have been matched by one: `/actions/capas/:id/report`
+      // is four segments, and the routes inside the Shell declare no `:id`
+      // child that could take it (unlike `/actions/capas`, which the Action
+      // detail route *would* take for an Action whose id is `capas` — see the
+      // CAPA list's own note below). It is declared here, before the Shell,
+      // because that is where the addresses reached without chrome live.
+      //
+      // No gate of its own either: reading a CAPA is a platform-wide read for
+      // every active Account (ADR-0009, and `/api/actions/capas/:id` asks
+      // nothing more), so a report that refused a reader would be a second,
+      // stricter rule for one record's own Screen.
+      GoRoute(
+        path: '${Routes.actions}/capas/:id/report',
+        builder: (context, state) {
+          final account = context.watch<AccountBloc>().state;
+          // Sealed-state type narrowing, not a per-Screen access check — the
+          // same line the Shell's own builder takes: `accountRedirect` has
+          // already decided that nobody but an admitted Account reaches an
+          // address like this, and a caller on their way to sign-in must not
+          // see a refusal flash first.
+          if (account is! AccountApproved) return const SizedBox.shrink();
+          final capaId = state.pathParameters['id']!;
+          return BlocProvider<CapaDetailBloc>(
+            // Keyed on the CAPA this report is of, for the reason the CAPA's
+            // own Screen keys its Bloc: go_router reuses a route's page when
+            // the route *pattern* matches, so moving from one report to another
+            // without a new key would repaint the first investigation's report
+            // under the second one's address.
+            key: ValueKey<String>('capa-report-$capaId'),
+            create: (context) => CapaDetailBloc(
+              actionsApi: context.read<ActionsApi>(),
+              authGateway: context.read<AuthGateway>(),
+            )..add(CapaDetailStarted(capaId)),
+            child: CapaReportScreen(capaId: capaId),
+          );
+        },
       ),
       // Everything an admitted Account can reach sits inside the Shell.
       // Sign-in and awaiting-Approval are siblings of it, not children, so
