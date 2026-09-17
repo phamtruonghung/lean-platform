@@ -93,6 +93,16 @@ import '../quality/complaints_bloc.dart';
 import '../quality/complaints_screen.dart';
 import '../quality/customers_bloc.dart';
 import '../quality/customers_screen.dart';
+import '../quality/supplier_ncr_detail_bloc.dart';
+import '../quality/supplier_ncr_detail_screen.dart';
+import '../quality/supplier_ncr_disposition_dialog.dart';
+import '../quality/supplier_ncr_form_dialog.dart';
+import '../quality/supplier_ncr_link_dialog.dart';
+import '../quality/supplier_ncr_nonconformance_dialog.dart';
+import '../quality/supplier_ncrs_bloc.dart';
+import '../quality/supplier_ncrs_screen.dart';
+import '../quality/suppliers_bloc.dart';
+import '../quality/suppliers_screen.dart';
 import '../quality/defect_codes_bloc.dart';
 import '../quality/defect_codes_screen.dart';
 import '../quality/nonconformance_cancel_dialog.dart';
@@ -170,6 +180,20 @@ abstract final class Routes {
   /// three writes a reader makes from it (`/:id/respond`,
   /// `/:id/nonconformance`, `/:id/link`) — all addressed, per ADR-0021.
   static const String complaints = '/complaints';
+
+  /// The Supplier list (issue #215), at its own address so it can be linked to
+  /// or bookmarked. Defining and correcting a Supplier are dialogs over it
+  /// (`SupplierFormDialog.open`), the same shape the Customer list's write
+  /// surface takes — a Supplier carries the same three fields.
+  static const String suppliers = '/suppliers';
+
+  /// The supplier NCR register (issue #215), with the record form
+  /// (`/supplier-ncrs/new`), one NCR's detail (`/supplier-ncrs/:id`) and the
+  /// writes a reader opens from it (`/:id/disposition`, `/:id/nonconformance`,
+  /// `/:id/link`) — all addressed, per ADR-0021. Closing an NCR has no address
+  /// of its own: there is nothing to fill in, so the detail Screen's own button
+  /// dispatches it.
+  static const String supplierNcrs = '/supplier-ncrs';
 
   /// The Actions Module's own Destinations (issue #176): the action log, and
   /// one Action's detail read behind `${actions}/:id`. The raise form is
@@ -783,6 +807,201 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                                 );
                               }
                               return ComplaintLinkDialog(complaint: detail.complaint);
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // The Supplier list and the supplier NCR register (issue #215), the
+          // Module's two remaining Destinations and the same pair the Customer
+          // slice above files. The list is a catalogue read like the two above
+          // it (any approved Account, only its writes the administrator's), so
+          // it takes the same shape; the NCR register needs a `ShellRoute` of
+          // its own for the reason the complaint register does —
+          // `SupplierNcrsBloc` is created exactly once and shared by the
+          // register, the record form's own address and the detail Screen.
+          GoRoute(
+            path: Routes.suppliers,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<SuppliersBloc>(
+                create: (context) => SuppliersBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SuppliersStarted()),
+                child: SuppliersScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<SupplierNcrsBloc>(
+                create: (context) => SupplierNcrsBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SupplierNcrsStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.supplierNcrs,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const SupplierNcrsScreen();
+                },
+                routes: [
+                  // `/supplier-ncrs/new` — the record form, addressed rather
+                  // than popped (ADR-0021), and `new` cannot collide with the
+                  // detail route below because it is not an id.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final register = context.watch<SupplierNcrsBloc>().state;
+                          final siteId =
+                              register is SupplierNcrsLoaded ? register.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: SupplierNcrsScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          // The chooser inside the form browses People's tree
+                          // through the same Bloc the complaint form uses,
+                          // scoped to this dialog and opened on the Site on
+                          // screen.
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: SupplierNcrFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // `/supplier-ncrs/:id` and its four addresses — a `ShellRoute` of
+              // its own so `SupplierNcrDetailBloc` is created exactly once and
+              // shared by the Screen and the four dialogs beside it, and
+              // **keyed on the id in the address**: go_router reuses a route's
+              // page when the *pattern* matches, so moving from one NCR to
+              // another would otherwise leave this Bloc — and the Screen
+              // reading it — holding the record before (issue #183's own bug).
+              ShellRoute(
+                builder: (context, state, child) {
+                  final supplierNcrId = state.pathParameters['id']!;
+                  return BlocProvider<SupplierNcrDetailBloc>(
+                    key: ValueKey<String>(supplierNcrId),
+                    create: (context) => SupplierNcrDetailBloc(
+                      qualityApi: context.read<QualityApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(SupplierNcrDetailStarted(supplierNcrId)),
+                    child: child,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    // Absolute, because this route is a *sibling* of the
+                    // register's rather than a child of it: a relative `:id`
+                    // here resolves against the Module shell and matches
+                    // `/:id`, not `/supplier-ncrs/:id`.
+                    path: '${Routes.supplierNcrs}/:id',
+                    builder: (context, state) => SupplierNcrDetailScreen(
+                      supplierNcrId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      // `/supplier-ncrs/:id/disposition` — the Supplier's
+                      // disposition and what was recovered.
+                      GoRoute(
+                        path: 'disposition',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SupplierNcrDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SupplierNcrDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SupplierNcrDispositionDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SupplierNcrDispositionDialog(
+                                supplierNcr: detail.supplierNcr,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/supplier-ncrs/:id/nonconformance` — recording the
+                      // Non-conformance that controls the received lot.
+                      GoRoute(
+                        path: 'nonconformance',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SupplierNcrDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SupplierNcrDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SupplierNcrNonconformanceDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SupplierNcrNonconformanceDialog(
+                                supplierNcr: detail.supplierNcr,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/supplier-ncrs/:id/link` — linking one that exists.
+                      GoRoute(
+                        path: 'link',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SupplierNcrDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SupplierNcrDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SupplierNcrLinkDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SupplierNcrLinkDialog(
+                                supplierNcr: detail.supplierNcr,
+                              );
                             },
                           );
                         },

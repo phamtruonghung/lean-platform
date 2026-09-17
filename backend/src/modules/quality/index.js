@@ -7,8 +7,9 @@
  * `router` is this Module's own routes — the Product catalogue, the Defect
  * code tree, the Non-conformance log and the floor device's own door to
  * recording one, the Customer list and the Customer complaints a customer's
- * word becomes (issue #214), as they stand today — mounted by src/index.js
- * under
+ * word becomes (issue #214), and the Supplier list and the supplier NCRs an
+ * incoming lot becomes (issue #215), as they stand today — mounted by
+ * src/index.js under
  * `/api/quality`, a prefix of this Module's own beside
  * `/api/people`, `/api/maintenance` and `/api/actions`. src/index.js lives
  * outside `modules/` and is not a cross-Module caller the boundary checker
@@ -59,7 +60,12 @@
  * or change it). customer-routes.js and customer-complaint-routes.js (issue
  * #214) ask the same set as those two — the administrator check for the
  * Customer list's writes, and the Site and Grant questions for a complaint's
- * register and its own record. `modules/people/authorization.js` already answers the
+ * register and its own record. supplier-routes.js and supplier-ncr-routes.js
+ * (issue #215) ask that same set again for the Supplier list's writes and for a
+ * supplier NCR's register, its own record and its four writes — which is the
+ * whole of what a second outward-facing slice costs this Module in coupling:
+ * one more pair of files asking the questions People already answers.
+ * `modules/people/authorization.js` already answers the
  * Quality question this Module's later slices need
  * (`canAct({ quality: true })`, issue #204, ADR-0035) — that is People's
  * export, reached through People's entry point, not something re-exported
@@ -78,6 +84,8 @@ const defectCodeRoutes = require('./defect-code-routes');
 const nonconformanceRoutes = require('./nonconformance-routes');
 const customerRoutes = require('./customer-routes');
 const customerComplaintRoutes = require('./customer-complaint-routes');
+const supplierRoutes = require('./supplier-routes');
+const supplierNcrRoutes = require('./supplier-ncr-routes');
 const floorRoutes = require('./floor-routes');
 
 const router = express.Router();
@@ -86,6 +94,8 @@ router.use(defectCodeRoutes);
 router.use(nonconformanceRoutes);
 router.use(customerRoutes);
 router.use(customerComplaintRoutes);
+router.use(supplierRoutes);
+router.use(supplierNcrRoutes);
 router.use(floorRoutes);
 
 module.exports = {

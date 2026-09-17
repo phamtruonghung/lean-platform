@@ -49,6 +49,8 @@ import 'customer_complaint.dart';
 import 'defect_code.dart';
 import 'nonconformance.dart';
 import 'product.dart';
+import 'supplier.dart';
+import 'supplier_ncr.dart';
 
 /// The request could not be answered at all. Deliberately its own type rather
 /// than People's or Maintenance's: ADR-0006's third clause keeps generic
@@ -950,6 +952,320 @@ class QualityApi {
         for (final unit in body['unitsOfMeasure'] as List<dynamic>)
           UnitOfMeasure.fromJson(unit as Map<String, dynamic>),
       ];
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Suppliers and supplier NCRs (issue #215)
+  // -------------------------------------------------------------------------
+
+  /// The Supplier list (`GET /api/quality/suppliers`), readable and searchable
+  /// by any approved Account. Active Suppliers only, unless [includeInactive]
+  /// asks for the retired ones too — which is what the list's own Screen asks
+  /// for, so a deactivated Supplier can be reached and reactivated.
+  ///
+  /// [search] narrows by code or name on the server; the Screen's own filter box
+  /// matches the rows it already holds instead, and issues no request (issue
+  /// #187's two controls).
+  Future<List<Supplier>> fetchSuppliers(
+    String accessToken, {
+    String? search,
+    bool includeInactive = false,
+  }) async {
+    const path = '/api/quality/suppliers';
+    final query = <String, String>{
+      if (includeInactive) 'includeInactive': 'true',
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+    };
+    final uri = Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final supplier in body['suppliers'] as List<dynamic>)
+          Supplier.fromJson(supplier as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Defines a Supplier (`POST /api/quality/suppliers`, administrator only).
+  /// A code already taken is refused (409) with the service's own sentence.
+  Future<Supplier> createSupplier(
+    String accessToken, {
+    required String code,
+    required String name,
+    String? contactEmail,
+  }) async {
+    const path = '/api/quality/suppliers';
+    final body = <String, Object?>{'code': code, 'name': name};
+    if (contactEmail != null && contactEmail.trim().isNotEmpty) {
+      body['contactEmail'] = contactEmail.trim();
+    }
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Supplier.fromJson(answer['supplier'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Corrects a Supplier (`PATCH /api/quality/suppliers/:id`, administrator
+  /// only): only the keys in [changes], which is `updateSupplier`'s own
+  /// `hasOwnProperty` contract at the other end. A code is refused (400).
+  Future<Supplier> updateSupplier(
+    String accessToken,
+    String id,
+    Map<String, Object?> changes,
+  ) async {
+    final path = '/api/quality/suppliers/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Supplier.fromJson(answer['supplier'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// A Site's supplier NCRs (`GET /api/quality/sites/:siteId/supplier-ncrs`),
+  /// newest first, narrowed by the Supplier, the status and the Org Unit the
+  /// register's filters carry. Visible to anyone who can see the Site, the same
+  /// rule the Non-conformance and complaint registers follow.
+  Future<SupplierNcrRegister> fetchSupplierNcrs(
+    String accessToken,
+    String siteId, {
+    SupplierNcrFilters filters = const SupplierNcrFilters(),
+  }) async {
+    final path = '/api/quality/sites/$siteId/supplier-ncrs';
+    final query = filters.queryParameters;
+    final uri = Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return SupplierNcrRegister(
+        supplierNcrs: [
+          for (final row in body['supplierNcrs'] as List<dynamic>)
+            SupplierNcr.fromJson(row as Map<String, dynamic>),
+        ],
+        truncated: body['truncated'] == true,
+      );
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One supplier NCR with the Supplier, the Product, the Defect code and the
+  /// Non-conformance that controls the received lot
+  /// (`GET /api/quality/supplier-ncrs/:id`) — what the detail Screen reads.
+  Future<SupplierNcr> fetchSupplierNcr(String accessToken, String id) async {
+    final path = '/api/quality/supplier-ncrs/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return SupplierNcr.fromJson(body['supplierNcr'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records a supplier NCR (`POST /api/quality/sites/:siteId/supplier-ncrs`).
+  /// The Supplier, the quantity and its unit are what an NCR cannot be without;
+  /// the Product, the Defect code, the references and the due day are optional,
+  /// and a retired Product or Defect code is refused (409) by the service.
+  Future<SupplierNcr> recordSupplierNcr(
+    String accessToken,
+    String siteId, {
+    required String orgUnitId,
+    required String supplierId,
+    required num quantity,
+    required String uomCode,
+    String? productId,
+    String? defectCodeId,
+    String? incomingLotRef,
+    String? purchaseRef,
+    String? description,
+    String? responseDueDate,
+  }) async {
+    final path = '/api/quality/sites/$siteId/supplier-ncrs';
+    final body = <String, Object?>{
+      'orgUnitId': orgUnitId,
+      'supplierId': supplierId,
+      'quantity': quantity,
+      'uomCode': uomCode,
+    };
+    if (productId != null && productId.isNotEmpty) body['productId'] = productId;
+    if (defectCodeId != null && defectCodeId.isNotEmpty) body['defectCodeId'] = defectCodeId;
+    if (incomingLotRef != null && incomingLotRef.trim().isNotEmpty) {
+      body['incomingLotRef'] = incomingLotRef.trim();
+    }
+    if (purchaseRef != null && purchaseRef.trim().isNotEmpty) {
+      body['purchaseRef'] = purchaseRef.trim();
+    }
+    if (description != null && description.trim().isNotEmpty) {
+      body['description'] = description.trim();
+    }
+    if (responseDueDate != null && responseDueDate.trim().isNotEmpty) {
+      body['responseDueDate'] = responseDueDate.trim();
+    }
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return SupplierNcr.fromJson(answer['supplierNcr'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records the Supplier's disposition and what was recovered
+  /// (`POST /api/quality/supplier-ncrs/:id/disposition`). The disposition is
+  /// required and comes from the baseline's own five, and a negative recovery
+  /// is refused (400).
+  Future<SupplierNcr> recordSupplierNcrDisposition(
+    String accessToken,
+    String id, {
+    required String disposition,
+    num? costRecovered,
+    String? currency,
+  }) async {
+    final path = '/api/quality/supplier-ncrs/$id/disposition';
+    final body = <String, Object?>{'disposition': disposition};
+    if (costRecovered != null) body['costRecovered'] = costRecovered;
+    if (currency != null && currency.trim().isNotEmpty) body['currency'] = currency.trim();
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return SupplierNcr.fromJson(answer['supplierNcr'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Closes a supplier NCR (`POST /api/quality/supplier-ncrs/:id/close`) — the
+  /// one transition this slice has. A second close is refused (409).
+  Future<SupplierNcr> closeSupplierNcr(String accessToken, String id) async {
+    final path = '/api/quality/supplier-ncrs/$id/close';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(<String, Object?>{}),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return SupplierNcr.fromJson(answer['supplierNcr'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records the Non-conformance that controls the received lot
+  /// (`POST /api/quality/supplier-ncrs/:id/nonconformance`) — `detection_point =
+  /// incoming`, the NCR's Product and Defect code where it carries them, and the
+  /// ones named in [productId] and [defectCodeId] where it does not.
+  ///
+  /// Answers with both records: the caller is looking at the NCR and reading the
+  /// record it just created at the same time.
+  Future<(Nonconformance, SupplierNcr)> recordSupplierNcrNonconformance(
+    String accessToken,
+    String id, {
+    String? productId,
+    num? quantity,
+    String? defectCodeId,
+    String? immediateContainment,
+  }) async {
+    final path = '/api/quality/supplier-ncrs/$id/nonconformance';
+    final body = <String, Object?>{};
+    if (productId != null && productId.isNotEmpty) body['productId'] = productId;
+    if (quantity != null) body['quantity'] = quantity;
+    if (defectCodeId != null && defectCodeId.isNotEmpty) body['defectCodeId'] = defectCodeId;
+    if (immediateContainment != null && immediateContainment.trim().isNotEmpty) {
+      body['immediateContainment'] = immediateContainment.trim();
+    }
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return (
+        Nonconformance.fromJson(answer['nonconformance'] as Map<String, dynamic>),
+        SupplierNcr.fromJson(answer['supplierNcr'] as Map<String, dynamic>),
+      );
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Links a Non-conformance that already exists to the NCR
+  /// (`POST /api/quality/supplier-ncrs/:id/link`). The API refuses an NCR that
+  /// already names one (409), a Non-conformance that is not there (404) and one
+  /// about another Product (409) — which is why the picker is filtered to this
+  /// NCR's Product, and left unfiltered when it names none.
+  Future<SupplierNcr> linkSupplierNcrNonconformance(
+    String accessToken,
+    String id, {
+    required String nonconformanceId,
+  }) async {
+    final path = '/api/quality/supplier-ncrs/$id/link';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(<String, Object?>{'nonconformanceId': nonconformanceId}),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return SupplierNcr.fromJson(answer['supplierNcr'] as Map<String, dynamic>);
     } catch (error) {
       throw QualityApiException('The API answered with something this app could not read: $error');
     }

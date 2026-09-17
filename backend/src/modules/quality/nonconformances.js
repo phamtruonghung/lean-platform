@@ -358,6 +358,59 @@ function toCustomerComplaint(row) {
   };
 }
 
+// The supplier NCRs that name this Non-conformance (issue #215), as this
+// Module's own detail read returns them — the same list-from-the-other-end
+// shape the customer complaints above have, for the same reason:
+// `supplier_ncrs.quality_issue_id` holds one value, so two NCRs about one bad
+// lot control the material through one Non-conformance and a record that could
+// name only one of them would hide the other. The received product is not
+// repeated — it is this record's product, by the rule the NCR's own link
+// enforces when the NCR carries a Product (see supplier-ncrs.js).
+const SUPPLIER_NCR_COLUMNS = `
+  sn.id, sn.ncr_no, sn.status, sn.disposition, sn.quantity_affected, sn.uom_code,
+  sn.incoming_lot_ref, sn.cost_recovered, sn.currency,
+  to_char(sn.response_due_at AT TIME ZONE s.timezone, 'YYYY-MM-DD') AS response_due_date,
+  sn.detected_at, sn.closed_at,
+  (sn.response_due_at IS NOT NULL
+     AND sn.response_due_at < now()
+     AND sn.status NOT IN ('closed', 'rejected')) AS is_overdue,
+  sup.id AS supplier_id, sup.code AS supplier_code, sup.name AS supplier_name`;
+
+// The Org Unit and Site joins are INNER and mirror the complaint link's own:
+// this slice's routes require an Org Unit on an NCR, and the due date is read
+// in the Site's calendar.
+const SUPPLIER_NCR_JOINS = `
+  FROM supplier_ncrs sn
+  JOIN suppliers sup ON sup.id = sn.supplier_id
+  JOIN org_units ou ON ou.id = sn.org_unit_id
+  JOIN sites s ON s.id = ou.site_id`;
+
+function toSupplierNcr(row) {
+  return {
+    id: row.id,
+    ncrNo: row.ncr_no,
+    status: row.status,
+    supplierId: row.supplier_id,
+    supplierCode: row.supplier_code,
+    supplierName: row.supplier_name,
+    // The plant's own answer for the material, and what was clawed back from
+    // the Supplier for it — the two facts a reader of the Non-conformance needs
+    // to know whether this lot was a cost or only an inconvenience.
+    disposition: row.disposition,
+    quantityAffected: toQuantity(row.quantity_affected),
+    uomCode: row.uom_code,
+    incomingLotRef: row.incoming_lot_ref ?? null,
+    costRecovered: toQuantity(row.cost_recovered),
+    currency: row.currency,
+    // The day the Supplier was given to answer, in the Site's own calendar —
+    // what tells a reader of the Non-conformance whether anybody is waiting.
+    responseDueDate: row.response_due_date ?? null,
+    detectedAt: row.detected_at,
+    isOverdue: row.is_overdue === true,
+    closedAt: row.closed_at ?? null
+  };
+}
+
 function toConcern(row) {
   return {
     id: row.id,
@@ -447,7 +500,8 @@ function toNonconformance(
     dispositions = [],
     corrections = [],
     concerns = [],
-    customerComplaints = []
+    customerComplaints = [],
+    supplierNcrs = []
   } = {}
 ) {
   return {
@@ -509,7 +563,10 @@ function toNonconformance(
     // The Customer complaints that name this record (issue #214) — the other
     // end of `customer_complaints.quality_issue_id`. Empty for a Non-conformance
     // no customer has complained about, which is most of them.
-    customerComplaints
+    customerComplaints,
+    // And the supplier NCRs that name it (issue #215) — the other end of
+    // `supplier_ncrs.quality_issue_id`, and empty for the same reason.
+    supplierNcrs
   };
 }
 
@@ -688,7 +745,11 @@ async function getNonconformanceDetail(id) {
     // the product a customer is waiting on an answer about, so the record's
     // own read says whose complaint it is controlling. The other end of the
     // same link — see customer-complaints.js, where a complaint names one.
-    customerComplaints: await listCustomerComplaints(rows[0].id)
+    customerComplaints: await listCustomerComplaints(rows[0].id),
+    // And which incoming lots it is controlling (issue #215). Same link read
+    // from the other end: `supplier_ncrs.quality_issue_id` holds one value, so
+    // several NCRs may name this record and all of them appear here.
+    supplierNcrs: await listSupplierNcrs(rows[0].id)
   });
 }
 
@@ -730,6 +791,21 @@ async function listCustomerComplaints(qualityIssueId, client = null) {
     [qualityIssueId]
   );
   return rows.map(toCustomerComplaint);
+}
+
+// The supplier NCRs that name this Non-conformance (issue #215), oldest first —
+// the third instance of the same read, and a plain query for the same reason:
+// the row that holds the link is this Module's own table.
+async function listSupplierNcrs(qualityIssueId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${SUPPLIER_NCR_COLUMNS}
+     ${SUPPLIER_NCR_JOINS}
+     WHERE sn.quality_issue_id = $1
+     ORDER BY sn.detected_at, sn.id`,
+    [qualityIssueId]
+  );
+  return rows.map(toSupplierNcr);
 }
 
 async function listQuantityChanges(qualityIssueId, client = null) {
@@ -1479,6 +1555,7 @@ module.exports = {
   listCorrections,
   listConcerns,
   listCustomerComplaints,
+  listSupplierNcrs,
   // The two "is this Product / Defect code in use" resolvers, exported because
   // the Customer complaint slice (issue #214) records its own Product and Defect
   // code and asks exactly these questions — one definition of "active" in the

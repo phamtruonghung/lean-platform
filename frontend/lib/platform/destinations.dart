@@ -439,6 +439,32 @@ const List<Destination> platformDestinations = [
     path: Routes.complaints,
     group: DestinationGroupNames.quality,
   ),
+  // The Supplier list and the supplier NCRs (issue #215) — the same surface
+  // turned outward, filed beside the Customer pair for the same reasons: a
+  // supplier NCR is a quality record (the baseline's own table is in the
+  // Quality pillar and its comment says a Supplier exists "so an incoming
+  // non-conformance has someone to charge"), and its addresses are this
+  // Module's.
+  //
+  // Offered to every approved Account, the same shape the seven Quality
+  // Destinations above them use: the Supplier list is shared reference data
+  // (ADR-0005) and the register is a Site-wide read, both of which the server
+  // decides, so a role here would gate doors the routes themselves open for an
+  // operator. The write affordances inside each Screen are what is gated, and
+  // the server is the real gate on both: the administrator role for a Supplier,
+  // an edit Grant reaching the Org Unit for a supplier NCR.
+  Destination(
+    label: 'Suppliers',
+    icon: Icons.local_shipping_outlined,
+    path: Routes.suppliers,
+    group: DestinationGroupNames.quality,
+  ),
+  Destination(
+    label: 'Supplier NCRs',
+    icon: Icons.report_gmailerrorred_outlined,
+    path: Routes.supplierNcrs,
+    group: DestinationGroupNames.quality,
+  ),
   // Approvals and Accounts administer the Platform itself — who may sign in,
   // and what they may reach — rather than the plant's workforce, so they sit
   // under Administration rather than People (#100, ADR-0020).

@@ -89,6 +89,15 @@ test('router is a mountable Express router', () => {
 // linking one that already exists. Note what is absent: no
 // `/complaints/:id/reopen` and no delete, because a complaint that was answered
 // is a record of what was said rather than a state to move back out of.
+//
+// Issue #215's ten are the same surface turned outward, in the same
+// vocabulary: the Supplier catalogue's two writes and its read, the register
+// per Site, one NCR's own read, and the four writes a reader makes from it —
+// the disposition and the cost recovered, the close, recording the
+// Non-conformance at `incoming`, and linking one that exists. Two acts rather
+// than the complaint's one closure because a supplier NCR has two questions
+// behind it that a complaint does not: what happens to the material, and what
+// the Supplier owes for it.
 function declaredRoutes(router) {
   const declared = [];
   for (const layer of router.stack) {
@@ -103,7 +112,7 @@ function declaredRoutes(router) {
   return declared;
 }
 
-test('the router carries the Product, Defect code, Non-conformance, Customer, complaint and floor paths, and nothing else', () => {
+test('the router carries the Product, Defect code, Non-conformance, Customer, complaint, Supplier, supplier NCR and floor paths, and nothing else', () => {
   assert.deepStrictEqual(declaredRoutes(quality.router).sort(), [
     'GET /complaints/:id',
     'GET /customers',
@@ -114,10 +123,14 @@ test('the router carries the Product, Defect code, Non-conformance, Customer, co
     'GET /products',
     'GET /sites/:siteId/complaints',
     'GET /sites/:siteId/nonconformances',
+    'GET /sites/:siteId/supplier-ncrs',
+    'GET /supplier-ncrs/:id',
+    'GET /suppliers',
     'PATCH /customers/:id',
     'PATCH /defect-codes/:id',
     'PATCH /nonconformances/:id',
     'PATCH /products/:id',
+    'PATCH /suppliers/:id',
     'POST /complaints/:id/link',
     'POST /complaints/:id/nonconformance',
     'POST /complaints/:id/respond',
@@ -132,6 +145,12 @@ test('the router carries the Product, Defect code, Non-conformance, Customer, co
     'POST /nonconformances/:id/reopen',
     'POST /products',
     'POST /sites/:siteId/complaints',
-    'POST /sites/:siteId/nonconformances'
+    'POST /sites/:siteId/nonconformances',
+    'POST /sites/:siteId/supplier-ncrs',
+    'POST /supplier-ncrs/:id/close',
+    'POST /supplier-ncrs/:id/disposition',
+    'POST /supplier-ncrs/:id/link',
+    'POST /supplier-ncrs/:id/nonconformance',
+    'POST /suppliers'
   ]);
 });

@@ -695,6 +695,121 @@ Map<String, dynamic> complaintNonconformanceJson(
       'detectedOn': detectedOn,
     };
 
+/// One Supplier as `GET /api/quality/suppliers` sends it (issue #215) — mirrors
+/// `toSupplier` (suppliers.js) key for key.
+Map<String, dynamic> supplierJson(
+  String id,
+  String code,
+  String name, {
+  String? contactEmail,
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'contactEmail': contactEmail,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One supplier NCR as `GET /api/quality/supplier-ncrs/:id` and the register
+/// send it (issue #215) — mirrors `toSupplierNcr` (supplier-ncrs.js) key for
+/// key, the nested `nonconformance` summary included: the API answers every NCR
+/// with the record that controls the received lot, so a fixture that omitted it
+/// would let a test assert a shape the server cannot send.
+Map<String, dynamic> supplierNcrJson(
+  String id,
+  String ncrNo, {
+  String status = 'open',
+  String supplierId = '50',
+  String supplierCode = 'SUP-1',
+  String supplierName = 'Northwind Fasteners',
+  String? productId = '40',
+  String? productCode = 'PRD-1',
+  String? productName = 'Gearbox',
+  String? defectCodeId = '41',
+  String? defectCodeCode = 'DIM-OOT',
+  String? defectCodeName = 'Out of tolerance',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String siteCode = 'HCM',
+  String siteName = 'Ho Chi Minh',
+  String? incomingLotRef,
+  String? purchaseRef,
+  num quantityAffected = 250,
+  String uomCode = 'EA',
+  String disposition = 'return_to_supplier',
+  String? detectedAt,
+  String? responseDueDate,
+  String? responseDueAt,
+  bool isOverdue = false,
+  int? daysOverdue,
+  num? costRecovered,
+  String currency = 'USD',
+  String? description,
+  String? closedAt,
+  Map<String, dynamic>? nonconformance,
+}) =>
+    {
+      'id': id,
+      'ncrNo': ncrNo,
+      'status': status,
+      'supplierId': supplierId,
+      'supplierCode': supplierCode,
+      'supplierName': supplierName,
+      'productId': productId,
+      'productCode': productCode,
+      'productName': productName,
+      'defectCodeId': defectCodeId,
+      'defectCodeCode': defectCodeCode,
+      'defectCodeName': defectCodeName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'siteCode': siteCode,
+      'siteName': siteName,
+      'incomingLotRef': incomingLotRef,
+      'purchaseRef': purchaseRef,
+      'quantityAffected': quantityAffected,
+      'uomCode': uomCode,
+      'disposition': disposition,
+      'detectedAt': detectedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'responseDueDate': responseDueDate,
+      'responseDueAt': responseDueAt,
+      'isOverdue': isOverdue,
+      'daysOverdue': daysOverdue,
+      'costRecovered': costRecovered,
+      'currency': currency,
+      'description': description,
+      'closedAt': closedAt,
+      'nonconformance': nonconformance,
+    };
+
+/// The Non-conformance a supplier NCR names, as the nested summary on the NCR's
+/// own read sends it (issue #215) — mirrors the projection supplier-ncrs.js
+/// builds from the linked `quality_issues` row.
+Map<String, dynamic> supplierNcrNonconformanceJson(
+  String id,
+  String issueNo, {
+  String status = 'open',
+  String detectionPoint = 'incoming',
+  String severity = 'major',
+  num? quantityAffected = 250,
+  String? detectedOn,
+}) =>
+    {
+      'id': id,
+      'issueNo': issueNo,
+      'status': status,
+      'detectionPoint': detectionPoint,
+      'severity': severity,
+      'quantityAffected': quantityAffected,
+      'detectedOn': detectedOn,
+    };
+
 /// One Non-conformance as `GET /api/quality/nonconformances/:id` and the
 /// register send it (issue #205) — mirrors `toNonconformance`
 /// (nonconformances.js) key for key, `quantityChanges` included: the API
@@ -1640,6 +1755,26 @@ class FakeWire {
     this.complaintNonconformanceMessage = 'that Non-conformance is about another Product',
     this.linkComplaintStatus = 200,
     this.linkComplaintMessage = 'this Customer complaint already names a Non-conformance',
+    List<Map<String, dynamic>>? suppliers,
+    this.suppliersStatus = 200,
+    this.createSupplierStatus = 201,
+    this.createSupplierMessage = 'a Supplier with this code already exists',
+    this.updateSupplierStatus = 200,
+    this.updateSupplierMessage = 'That Supplier could not be changed.',
+    Map<String, List<Map<String, dynamic>>>? supplierNcrs,
+    this.supplierNcrsStatus = 200,
+    this.supplierNcrsTruncated = false,
+    this.createSupplierNcrStatus = 201,
+    this.createSupplierNcrMessage = 'supplierId must be a valid Supplier id',
+    this.supplierNcrDispositionStatus = 200,
+    this.supplierNcrDispositionMessage = 'disposition must be one of: return_to_supplier, scrap',
+    this.supplierNcrCloseStatus = 200,
+    this.supplierNcrCloseMessage = 'that supplier NCR is closed and cannot be changed',
+    this.supplierNcrNonconformanceStatus = 201,
+    this.supplierNcrNonconformanceMessage =
+        'productId is required: this supplier NCR carries no Product to record the Non-conformance about',
+    this.linkSupplierNcrStatus = 200,
+    this.linkSupplierNcrMessage = 'this supplier NCR already names a Non-conformance',
     Map<String, List<Map<String, dynamic>>>? nonconformances,
     this.nonconformancesStatus = 200,
     this.nonconformancesTruncated = false,
@@ -1734,6 +1869,8 @@ class FakeWire {
         defectCodes = defectCodes ?? [],
         customers = customers ?? [],
         complaints = complaints ?? {},
+        suppliers = suppliers ?? [],
+        supplierNcrs = supplierNcrs ?? {},
         nonconformances = nonconformances ?? {},
         capas = capas ?? {};
 
@@ -1854,6 +1991,80 @@ class FakeWire {
 
   /// Every complaint detail read's path, in order.
   final List<String> complaintReads = [];
+
+  /// `GET /api/quality/suppliers` (issue #215) — the Supplier list.
+  List<Map<String, dynamic>> suppliers;
+  int suppliersStatus;
+
+  /// `POST /api/quality/suppliers` (administrator only).
+  int createSupplierStatus;
+  String createSupplierMessage;
+
+  /// `PATCH /api/quality/suppliers/:id` (administrator only).
+  int updateSupplierStatus;
+  String updateSupplierMessage;
+
+  /// Every Supplier create body that reached the wire, decoded.
+  final List<Map<String, dynamic>> supplierPosts = [];
+
+  /// Every Supplier correction body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> supplierPatches = [];
+
+  /// Every Supplier list request's query parameters.
+  final List<Map<String, String>> supplierListRequests = [];
+
+  /// `GET /api/quality/sites/:siteId/supplier-ncrs` (issue #215) — the register,
+  /// keyed by Site id. The wire applies the three filters the address takes:
+  /// `status`, `supplierId`, and `orgUnitId` with everything beneath it (by
+  /// walking the same `orgUnits` fixture the Non-conformance register uses).
+  Map<String, List<Map<String, dynamic>>> supplierNcrs;
+  int supplierNcrsStatus;
+  bool supplierNcrsTruncated;
+
+  /// `POST /api/quality/sites/:siteId/supplier-ncrs` — recording one.
+  int createSupplierNcrStatus;
+  String createSupplierNcrMessage;
+
+  /// `POST /api/quality/supplier-ncrs/:id/disposition` — the Supplier's
+  /// disposition and what was recovered.
+  int supplierNcrDispositionStatus;
+  String supplierNcrDispositionMessage;
+
+  /// `POST /api/quality/supplier-ncrs/:id/close` — the one transition.
+  int supplierNcrCloseStatus;
+  String supplierNcrCloseMessage;
+
+  /// `POST /api/quality/supplier-ncrs/:id/nonconformance` — recording the record
+  /// that controls the received lot.
+  int supplierNcrNonconformanceStatus;
+  String supplierNcrNonconformanceMessage;
+
+  /// `POST /api/quality/supplier-ncrs/:id/link` — linking an existing one.
+  int linkSupplierNcrStatus;
+  String linkSupplierNcrMessage;
+
+  /// Every supplier NCR record body that reached the wire, decoded.
+  final List<Map<String, dynamic>> supplierNcrPosts = [];
+
+  /// Every disposition body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> supplierNcrDispositions = [];
+
+  /// Every close, as the id it named.
+  final List<String> supplierNcrCloses = [];
+
+  /// Every record-from-NCR body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> supplierNcrNonconformancePosts = [];
+
+  /// Every link body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> supplierNcrLinks = [];
+
+  /// Every supplier NCR list request's query parameters, in the order they
+  /// reached the wire — so a test proves what the Screen asked for rather than
+  /// what this Fake Wire happened to apply.
+  final List<Map<String, String>> supplierNcrListRequests = [];
+
+  /// Every supplier NCR detail read's path, in order.
+  final List<String> supplierNcrReads = [];
 
   /// `GET /api/quality/sites/:siteId/nonconformances` (issue #205) — the
   /// register, keyed by Site id.
@@ -3102,6 +3313,32 @@ class FakeWire {
     };
   }
 
+  int _nextSupplierId = 500;
+  int _nextSupplierNcrId = 800;
+
+  /// One supplier NCR wherever it sits, by id — what every write in this fake
+  /// re-reads after changing it, since the real routes answer the whole record
+  /// rather than a patch.
+  Map<String, dynamic>? supplierNcrById(String id) {
+    for (final rows in supplierNcrs.values) {
+      for (final row in rows) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
+  /// Replaces one supplier NCR row wherever it sits, keeping the list's order.
+  void _replaceSupplierNcr(String id, Map<String, dynamic> updated) {
+    supplierNcrs = {
+      for (final entry in supplierNcrs.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) updated else row,
+        ],
+    };
+  }
+
   /// Replaces one Non-conformance row wherever it sits, keeping the list's
   /// order — what every write in this fake answers with, since the real
   /// routes answer the whole record rather than a patch.
@@ -3490,6 +3727,387 @@ class FakeWire {
             }),
             200,
           );
+        }
+        // The Supplier list and the supplier NCRs (issue #215). Mirrors
+        // supplier-routes.js and supplier-ncr-routes.js: the list applies
+        // `includeInactive` and `search`, the register applies the Supplier, the
+        // status and the Org Unit with everything beneath it, and every write
+        // answers the whole record the way the real routes do.
+        if (request.method == 'POST' && path == '/api/quality/suppliers') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          supplierPosts.add(sent);
+          if (createSupplierStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createSupplierMessage}),
+              createSupplierStatus,
+            );
+          }
+          final id = (_nextSupplierId++).toString();
+          final created = supplierJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            contactEmail: sent['contactEmail'] as String?,
+          );
+          suppliers = [...suppliers, created];
+          return http.Response(jsonEncode({'supplier': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/quality/suppliers/')) {
+          final id = path.substring('/api/quality/suppliers/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          supplierPatches.add((id, body));
+          if (updateSupplierStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateSupplierMessage}),
+              updateSupplierStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          suppliers = [
+            for (final row in suppliers)
+              if (row['id'] == id) (updated = {...row, ...body}) else row,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Supplier not found'}), 404);
+          }
+          return http.Response(jsonEncode({'supplier': updated}), 200);
+        }
+        if (path == '/api/quality/suppliers') {
+          supplierListRequests.add(request.url.queryParameters);
+          if (suppliersStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Supplier list is unavailable.'}),
+              suppliersStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final includeInactive = query['includeInactive'] == 'true';
+          final term = (query['search'] ?? '').trim().toLowerCase();
+          final sent = [
+            for (final row in suppliers)
+              if (includeInactive || row['isActive'] != false)
+                if (term.isEmpty ||
+                    (row['code'] as String).toLowerCase().contains(term) ||
+                    (row['name'] as String).toLowerCase().contains(term))
+                  row,
+          ];
+          return http.Response(jsonEncode({'suppliers': sent}), 200);
+        }
+        if (path.startsWith('/api/quality/sites/') && path.endsWith('/supplier-ncrs')) {
+          final siteId = path.split('/')[4];
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            supplierNcrPosts.add(sent);
+            if (createSupplierNcrStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': createSupplierNcrMessage}),
+                createSupplierNcrStatus,
+              );
+            }
+            final supplierId = sent['supplierId'] as String;
+            final orgUnitId = sent['orgUnitId'] as String;
+            Map<String, dynamic>? supplier;
+            for (final row in suppliers) {
+              if (row['id'] == supplierId) supplier = row;
+            }
+            if (supplier == null) {
+              return http.Response(jsonEncode({'message': 'Supplier not found'}), 404);
+            }
+            final productId = sent['productId'] as String?;
+            Map<String, dynamic>? product;
+            for (final row in products) {
+              if (row['id'] == productId) product = row;
+            }
+            final defectCodeId = sent['defectCodeId'] as String?;
+            Map<String, dynamic>? defectCode;
+            for (final code in defectCodes) {
+              if (code['id'] == defectCodeId) defectCode = code;
+            }
+            final quantity = sent['quantity'] as num?;
+            final responseDueDate = sent['responseDueDate'] as String?;
+            final id = (_nextSupplierNcrId++).toString();
+            final created = supplierNcrJson(
+              id,
+              'SN-2026-${id.padLeft(5, '0')}',
+              supplierId: supplierId,
+              supplierCode: supplier['code'] as String? ?? 'SUP-?',
+              supplierName: supplier['name'] as String? ?? 'Supplier',
+              productId: productId,
+              productCode: product?['code'] as String?,
+              productName: product?['name'] as String?,
+              defectCodeId: defectCodeId,
+              defectCodeCode: defectCode?['code'] as String?,
+              defectCodeName: defectCode?['name'] as String?,
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              siteId: siteId,
+              incomingLotRef: sent['incomingLotRef'] as String?,
+              purchaseRef: sent['purchaseRef'] as String?,
+              quantityAffected: quantity ?? 0,
+              uomCode: sent['uomCode'] as String? ??
+                  product?['uomCode'] as String? ??
+                  'EA',
+              disposition: sent['disposition'] as String? ?? 'return_to_supplier',
+              responseDueDate: responseDueDate,
+              responseDueAt: responseDueDate == null
+                  ? null
+                  : '${responseDueDate}T23:59:59.999999+07:00',
+              description: sent['description'] as String?,
+            );
+            supplierNcrs = {
+              ...supplierNcrs,
+              siteId: [created, ...(supplierNcrs[siteId] ?? const [])],
+            };
+            return http.Response(jsonEncode({'supplierNcr': created}), 201);
+          }
+          supplierNcrListRequests.add(request.url.queryParameters);
+          if (supplierNcrsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The supplier NCR register is unavailable.'}),
+              supplierNcrsStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final orgUnitId = query['orgUnitId'];
+          final scope = orgUnitId == null ? null : nonconformanceOrgUnitScope(orgUnitId);
+          final status = query['status'];
+          final supplierId = query['supplierId'];
+          final sent = [
+            for (final row in supplierNcrs[siteId] ?? const <Map<String, dynamic>>[])
+              if (scope == null || scope.contains(row['orgUnitId']))
+                if (status == null || row['status'] == status)
+                  if (supplierId == null || row['supplierId'] == supplierId) row,
+          ];
+          return http.Response(
+            jsonEncode({'supplierNcrs': sent, 'truncated': supplierNcrsTruncated}),
+            200,
+          );
+        }
+        if (path.startsWith('/api/quality/supplier-ncrs/')) {
+          final remainder = path.substring('/api/quality/supplier-ncrs/'.length);
+
+          if (remainder.endsWith('/disposition') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/disposition'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            supplierNcrDispositions.add((id, sent));
+            final row = supplierNcrById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            if (supplierNcrDispositionStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': supplierNcrDispositionMessage}),
+                supplierNcrDispositionStatus,
+              );
+            }
+            final disposition = sent['disposition'] as String?;
+            const allowed = [
+              'return_to_supplier',
+              'scrap',
+              'rework_at_cost',
+              'sort',
+              'use_as_is',
+            ];
+            if (disposition == null || !allowed.contains(disposition)) {
+              return http.Response(
+                jsonEncode({
+                  'message': 'disposition must be one of: ${allowed.join(', ')}',
+                }),
+                400,
+              );
+            }
+            final cost = sent['costRecovered'] as num?;
+            if (cost != null && cost < 0) {
+              return http.Response(
+                jsonEncode({'message': 'costRecovered must be at least 0'}),
+                400,
+              );
+            }
+            final updated = {
+              ...row,
+              'disposition': disposition,
+              'costRecovered': cost,
+              'currency': sent['currency'] as String? ?? row['currency'],
+            };
+            _replaceSupplierNcr(id, updated);
+            return http.Response(jsonEncode({'supplierNcr': updated}), 200);
+          }
+
+          if (remainder.endsWith('/close') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/close'.length);
+            supplierNcrCloses.add(id);
+            final row = supplierNcrById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            if (supplierNcrCloseStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': supplierNcrCloseMessage}),
+                supplierNcrCloseStatus,
+              );
+            }
+            if (row['status'] == 'closed' || row['status'] == 'rejected') {
+              return http.Response(
+                jsonEncode({
+                  'message': 'that supplier NCR is ${row['status']} and cannot be changed',
+                }),
+                409,
+              );
+            }
+            final closed = {
+              ...row,
+              'status': 'closed',
+              'closedAt': DateTime.now().toUtc().toIso8601String(),
+              // A closed NCR is never marked late — the real read's own rule
+              // (supplier-ncrs.js).
+              'isOverdue': false,
+            };
+            _replaceSupplierNcr(id, closed);
+            return http.Response(jsonEncode({'supplierNcr': closed}), 200);
+          }
+
+          if (remainder.endsWith('/nonconformance') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/nonconformance'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            supplierNcrNonconformancePosts.add((id, sent));
+            final row = supplierNcrById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            if (supplierNcrNonconformanceStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': supplierNcrNonconformanceMessage}),
+                supplierNcrNonconformanceStatus,
+              );
+            }
+            final productId = (sent['productId'] as String?) ?? row['productId'] as String?;
+            if (productId == null) {
+              return http.Response(
+                jsonEncode({
+                  'message': 'productId is required: this supplier NCR carries no Product to '
+                      'record the Non-conformance about',
+                }),
+                400,
+              );
+            }
+            final defectCodeId =
+                (sent['defectCodeId'] as String?) ?? row['defectCodeId'] as String?;
+            if (defectCodeId == null) {
+              return http.Response(
+                jsonEncode({
+                  'message': 'defectCodeId is required: this supplier NCR carries no Defect '
+                      'code to record the Non-conformance with',
+                }),
+                400,
+              );
+            }
+            Map<String, dynamic>? product;
+            for (final candidate in products) {
+              if (candidate['id'] == productId) product = candidate;
+            }
+            final siteId = row['siteId'] as String;
+            final ncId = (_nextNonconformanceId++).toString();
+            final recorded = nonconformanceJson(
+              ncId,
+              'NC-HCM-2026-${ncId.padLeft(5, '0')}',
+              detectionPoint: 'incoming',
+              severity: row['severity'] as String? ?? 'major',
+              quantityAffected: (sent['quantity'] as num?) ??
+                  (row['quantityAffected'] as num?) ??
+                  1,
+              lotRef: row['incomingLotRef'] as String?,
+              description: sent['description'] as String? ?? row['description'] as String?,
+              immediateContainment: sent['immediateContainment'] as String?,
+              orgUnitId: row['orgUnitId'] as String,
+              orgUnitName: row['orgUnitName'] as String,
+              siteId: siteId,
+              productId: productId,
+              productCode: product?['code'] as String? ?? 'PRD-?',
+              productName: product?['name'] as String? ?? 'Product',
+              defectCodeId: defectCodeId,
+              defectCodeCode: row['defectCodeCode'] as String? ?? 'CODE-?',
+              defectCodeName: row['defectCodeName'] as String? ?? 'Defect code',
+            );
+            nonconformances = {
+              ...nonconformances,
+              siteId: [recorded, ...(nonconformances[siteId] ?? const [])],
+            };
+            final linked = {
+              ...row,
+              'productId': productId,
+              'productCode': product?['code'] as String? ?? row['productCode'],
+              'productName': product?['name'] as String? ?? row['productName'],
+              'defectCodeId': defectCodeId,
+              'nonconformance': supplierNcrNonconformanceJson(
+                ncId,
+                recorded['issueNo'] as String,
+                detectionPoint: 'incoming',
+                severity: recorded['severity'] as String,
+                quantityAffected: recorded['quantityAffected'] as num?,
+              ),
+            };
+            _replaceSupplierNcr(id, linked);
+            return http.Response(
+              jsonEncode({'nonconformance': recorded, 'supplierNcr': linked}),
+              201,
+            );
+          }
+
+          if (remainder.endsWith('/link') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/link'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            supplierNcrLinks.add((id, sent));
+            final row = supplierNcrById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            if (linkSupplierNcrStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': linkSupplierNcrMessage}),
+                linkSupplierNcrStatus,
+              );
+            }
+            if (row['nonconformance'] != null) {
+              return http.Response(
+                jsonEncode({'message': 'this supplier NCR already names a Non-conformance'}),
+                409,
+              );
+            }
+            final nonconformanceId = sent['nonconformanceId'] as String?;
+            Map<String, dynamic>? candidate;
+            for (final rows in nonconformances.values) {
+              for (final nc in rows) {
+                if (nc['id'] == nonconformanceId) candidate = nc;
+              }
+            }
+            if (candidate == null) {
+              return http.Response(
+                jsonEncode({'message': 'Non-conformance not found'}),
+                404,
+              );
+            }
+            final linked = {
+              ...row,
+              'nonconformance': supplierNcrNonconformanceJson(
+                nonconformanceId!,
+                candidate['issueNo'] as String,
+                detectionPoint: candidate['detectionPoint'] as String? ?? 'incoming',
+                severity: candidate['severity'] as String? ?? 'major',
+                quantityAffected: candidate['quantityAffected'] as num?,
+              ),
+            };
+            _replaceSupplierNcr(id, linked);
+            return http.Response(jsonEncode({'supplierNcr': linked}), 200);
+          }
+
+          if (request.method == 'GET') {
+            supplierNcrReads.add(path);
+            final row = supplierNcrById(remainder);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            return http.Response(jsonEncode({'supplierNcr': row}), 200);
+          }
         }
         // The Customer list and the customer complaints (issue #214). Mirrors
         // customer-routes.js and customer-complaint-routes.js: the list applies

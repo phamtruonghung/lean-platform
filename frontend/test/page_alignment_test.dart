@@ -113,6 +113,12 @@ const _pages = <_Page>[
   _Page('/customers', 'lib/quality/customers_screen.dart', 'Customers', 'Who the plant'),
   _Page('/complaints', 'lib/quality/complaints_screen.dart', 'Customer complaints',
       'What customers have complained about'),
+  // The Supplier list and the supplier NCR register (issue #215) — the same
+  // pair turned outward, and the same shape: a page with a frame, a heading and
+  // rows at the card's own padding, so the default bound holds for each.
+  _Page('/suppliers', 'lib/quality/suppliers_screen.dart', 'Suppliers', 'Who the plant buys'),
+  _Page('/supplier-ncrs', 'lib/quality/supplier_ncrs_screen.dart', 'Supplier NCRs',
+      'What arrived wrong'),
   // The CAPA report (issue #212). Audited rather than excluded, and the
   // audited shape is the point of the ticket: it is a page with a frame, a
   // heading and a column of cards even though it is reached outside the Shell,
@@ -147,6 +153,8 @@ const _excluded = <String, String>{
       "its title is the Non-conformance's own number, not a page heading",
   'lib/quality/complaint_detail_screen.dart':
       "its title is the complaint's own Customer and Product, not a page heading",
+  'lib/quality/supplier_ncr_detail_screen.dart':
+      "its title is the supplier NCR's own Supplier and Product, not a page heading",
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',
@@ -198,6 +206,12 @@ FakeWire _wire() => FakeWire(
       // pages render their rows rather than an empty state and the row
       // assertions actually run.
       customers: [customerJson('60', 'CUST-1', 'Acme Bearings')],
+      // The Supplier list and one Site's supplier NCRs (issue #215), for the
+      // same reason: both pages render their rows rather than an empty state.
+      suppliers: [supplierJson('50', 'SUP-1', 'Northwind Fasteners')],
+      supplierNcrs: {
+        '1': [supplierNcrJson('80', 'SN-2026-00001', responseDueDate: '2099-01-01')],
+      },
       complaints: {
         '1': [
           customerComplaintJson('70', 'CC-2026-00001', responseDueDate: '2099-01-01'),
