@@ -9,12 +9,12 @@
 /// first one's record (issue #183's own bug, and the router keys the provider
 /// on the id for it).
 ///
-/// Lowering the severity is not among the events, and that is deliberate
-/// rather than an omission: the API refuses it (403) in this slice because it
-/// is a Quality-authority decision (ADR-0035) that issue #206 owns. The Screen
-/// therefore offers only severities above the current one, rather than
-/// offering a lower one and reporting a refusal the caller could not have
-/// known about.
+/// Lowering the severity was not among the events in issue #205's slice, and
+/// is one of them now (issue #206): the API refuses a lowering to a holder of
+/// Quality authority without a note (403 and 400), so the Screen offers it
+/// only where the caller holds that authority and the dialog always carries a
+/// note. The same slice adds the Disposition, the Concession, the reopen and
+/// the cancel — five acts, each with an address of its own (ADR-0021).
 library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -58,6 +58,58 @@ class NonconformanceQuantityIncreased extends NonconformanceDetailEvent {
 
   final num quantity;
   final String? note;
+}
+
+/// A Disposition was recorded: some of the product dealt with as scrap, as
+/// rework, or returned to the supplier (issue #206).
+class NonconformanceDispositionRecorded extends NonconformanceDetailEvent {
+  const NonconformanceDispositionRecorded({
+    required this.dispositionType,
+    required this.quantity,
+    this.reworkMinutes,
+    this.note,
+  });
+
+  final String dispositionType;
+  final num quantity;
+  final num? reworkMinutes;
+  final String? note;
+}
+
+/// A Concession was granted: the product accepted as it is, on Quality
+/// authority, under a reference and with a note (issue #206).
+class NonconformanceConcessionGranted extends NonconformanceDetailEvent {
+  const NonconformanceConcessionGranted({
+    required this.quantity,
+    required this.reference,
+    required this.note,
+  });
+
+  final num quantity;
+  final String reference;
+  final String note;
+}
+
+/// The severity was lowered, with the note it was lowered on (issue #206).
+class NonconformanceSeverityLowered extends NonconformanceDetailEvent {
+  const NonconformanceSeverityLowered({required this.severity, required this.note});
+
+  final String severity;
+  final String note;
+}
+
+/// The record was reopened, with the note saying why (issue #206).
+class NonconformanceReopened extends NonconformanceDetailEvent {
+  const NonconformanceReopened({required this.note});
+
+  final String note;
+}
+
+/// The record was cancelled, with the note saying why (issue #206).
+class NonconformanceCancelled extends NonconformanceDetailEvent {
+  const NonconformanceCancelled({required this.note});
+
+  final String note;
 }
 
 sealed class NonconformanceDetailState {
@@ -119,6 +171,11 @@ class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, Nonconfor
     on<NonconformanceSeverityRaised>(_onSeverityRaised);
     on<NonconformanceContainmentRecorded>(_onContainmentRecorded);
     on<NonconformanceQuantityIncreased>(_onQuantityIncreased);
+    on<NonconformanceDispositionRecorded>(_onDispositionRecorded);
+    on<NonconformanceConcessionGranted>(_onConcessionGranted);
+    on<NonconformanceSeverityLowered>(_onSeverityLowered);
+    on<NonconformanceReopened>(_onReopened);
+    on<NonconformanceCancelled>(_onCancelled);
   }
 
   final QualityApi _api;
@@ -220,6 +277,115 @@ class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, Nonconfor
         token,
         current.nonconformance.id,
         quantity: event.quantity,
+        note: event.note,
+      ),
+    );
+  }
+
+  /// A Disposition was recorded (issue #206). The Screen only offers one where
+  /// the record still has undecided quantity, and this guard is the same rule
+  /// said again where it cannot be bypassed.
+  Future<void> _onDispositionRecorded(
+    NonconformanceDispositionRecorded event,
+    Emitter<NonconformanceDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformanceDetailLoaded) return;
+    if (!current.nonconformance.acceptsDisposition) return;
+    if (event.quantity <= 0) return;
+    await _mutate(
+      emit,
+      (token) => _api.recordDisposition(
+        token,
+        current.nonconformance.id,
+        dispositionType: event.dispositionType,
+        quantity: event.quantity,
+        reworkMinutes: event.reworkMinutes,
+        note: event.note,
+      ),
+    );
+  }
+
+  /// A Concession was granted (issue #206). Whether the caller holds Quality
+  /// authority is the server's question, not this Bloc's — the Screen only
+  /// offers the dialog to a holder, and the API is the gate.
+  Future<void> _onConcessionGranted(
+    NonconformanceConcessionGranted event,
+    Emitter<NonconformanceDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformanceDetailLoaded) return;
+    if (!current.nonconformance.acceptsConcession) return;
+    if (event.quantity <= 0) return;
+    if (event.reference.trim().isEmpty || event.note.trim().isEmpty) return;
+    await _mutate(
+      emit,
+      (token) => _api.grantConcession(
+        token,
+        current.nonconformance.id,
+        quantity: event.quantity,
+        reference: event.reference,
+        note: event.note,
+      ),
+    );
+  }
+
+  /// The severity was lowered (issue #206). Only a lowering is sent: a value
+  /// that is not below the one on the record is refused here rather than sent
+  /// to be refused, the mirror of `_onSeverityRaised`'s own guard.
+  Future<void> _onSeverityLowered(
+    NonconformanceSeverityLowered event,
+    Emitter<NonconformanceDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformanceDetailLoaded) return;
+    if (!current.nonconformance.canBeLowered) return;
+    if (severityRank(event.severity) >= severityRank(current.nonconformance.severity)) return;
+    if (event.note.trim().isEmpty) return;
+    await _mutate(
+      emit,
+      (token) => _api.lowerNonconformanceSeverity(
+        token,
+        current.nonconformance.id,
+        severity: event.severity,
+        note: event.note,
+      ),
+    );
+  }
+
+  /// The record was reopened (issue #206). Only a closed one can be.
+  Future<void> _onReopened(
+    NonconformanceReopened event,
+    Emitter<NonconformanceDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformanceDetailLoaded) return;
+    if (!current.nonconformance.canBeReopened) return;
+    if (event.note.trim().isEmpty) return;
+    await _mutate(
+      emit,
+      (token) => _api.reopenNonconformance(
+        token,
+        current.nonconformance.id,
+        note: event.note,
+      ),
+    );
+  }
+
+  /// The record was cancelled (issue #206).
+  Future<void> _onCancelled(
+    NonconformanceCancelled event,
+    Emitter<NonconformanceDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformanceDetailLoaded) return;
+    if (!current.nonconformance.canBeCancelled) return;
+    if (event.note.trim().isEmpty) return;
+    await _mutate(
+      emit,
+      (token) => _api.cancelNonconformance(
+        token,
+        current.nonconformance.id,
         note: event.note,
       ),
     );

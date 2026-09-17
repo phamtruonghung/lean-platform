@@ -142,6 +142,191 @@ class QuantityChange {
   }
 }
 
+/// The kinds of Disposition issue #206 records — the baseline's own
+/// `quality_dispositions_type_check` value set, narrowed to the three a
+/// recorder writes down plus the Concession. `regrade` and `sort` are in the
+/// database's set and not in this one: the API refuses them, so offering them
+/// would be offering a refusal.
+abstract final class DispositionType {
+  static const String scrap = 'scrap';
+  static const String rework = 'rework';
+  static const String returnToSupplier = 'return_to_supplier';
+  static const String useAsIs = 'use_as_is';
+
+  /// What a recorder may choose from — the three that need no authority.
+  static const List<String> choices = [scrap, rework, returnToSupplier];
+
+  static String label(String type) => switch (type) {
+        scrap => 'Scrap',
+        rework => 'Rework',
+        returnToSupplier => 'Return to supplier',
+        useAsIs => 'Use as is',
+        _ => type,
+      };
+}
+
+/// One Disposition: the decision about what happens to some of a
+/// Non-conformance's product, and who decided it (issue #206).
+///
+/// A Concession is a Disposition whose kind is `use_as_is`, so the model says
+/// so once ([isConcession]) rather than making every reader compare strings.
+@immutable
+class Disposition {
+  const Disposition({
+    required this.id,
+    required this.dispositionType,
+    required this.isConcession,
+    required this.quantity,
+    required this.uomCode,
+    required this.reworkMinutes,
+    required this.decidedAt,
+    required this.reference,
+    required this.note,
+    required this.decidedByAccountId,
+    required this.decidedByAccountName,
+    required this.decidedByEmployeeId,
+    required this.decidedByEmployeeName,
+  });
+
+  factory Disposition.fromJson(Map<String, dynamic> json) => Disposition(
+        id: json['id'].toString(),
+        dispositionType: json['dispositionType'] as String? ?? DispositionType.scrap,
+        isConcession: json['isConcession'] == true,
+        quantity: _quantity(json['quantity']),
+        uomCode: json['uomCode'] as String? ?? '',
+        reworkMinutes: _quantity(json['reworkMinutes']),
+        decidedAt: json['decidedAt'] as String?,
+        reference: json['reference'] as String?,
+        note: json['note'] as String?,
+        decidedByAccountId: json['decidedByAccountId']?.toString(),
+        decidedByAccountName: json['decidedByAccountName'] as String?,
+        decidedByEmployeeId: json['decidedByEmployeeId']?.toString(),
+        decidedByEmployeeName: json['decidedByEmployeeName'] as String?,
+      );
+
+  final String id;
+  final String dispositionType;
+
+  /// Whether this Disposition is the Concession — product used as it is, which
+  /// only a holder of Quality authority may grant.
+  final bool isConcession;
+
+  final double quantity;
+  final String uomCode;
+
+  /// How long the rework took. Zero for everything that is not a rework.
+  final double reworkMinutes;
+
+  final String? decidedAt;
+
+  /// The deviation or approval number a Concession is granted under. Null for
+  /// a Disposition that was not.
+  final String? reference;
+
+  final String? note;
+
+  final String? decidedByAccountId;
+  final String? decidedByAccountName;
+  final String? decidedByEmployeeId;
+  final String? decidedByEmployeeName;
+
+  /// The kind in the words a person reads — "Concession" where the product was
+  /// accepted as it is, which is the word the record's own reader is looking
+  /// for.
+  String get label =>
+      isConcession ? 'Concession' : DispositionType.label(dispositionType);
+
+  /// Who decided it. An Employee named at a floor device wins where both are
+  /// somehow present, and an unattributed row (which every route in this
+  /// Module refuses to write) reads as unknown rather than as a blank.
+  String get decidedBy {
+    final employee = decidedByEmployeeName;
+    if (employee != null && employee.isNotEmpty) return employee;
+    final account = decidedByAccountName;
+    if (account != null && account.isNotEmpty) return account;
+    return 'Unknown';
+  }
+}
+
+/// The corrections a holder of Quality authority can make to a
+/// Non-conformance (issue #206) — the baseline's own CHECK set on
+/// `quality_issue_corrections.kind`.
+abstract final class CorrectionKind {
+  static const String severityLowered = 'severity_lowered';
+  static const String reopened = 'reopened';
+  static const String cancelled = 'cancelled';
+
+  static String label(String kind) => switch (kind) {
+        severityLowered => 'Severity lowered',
+        reopened => 'Reopened',
+        cancelled => 'Cancelled',
+        _ => kind,
+      };
+}
+
+/// One correction: what the record was, what it became, why, and who decided
+/// it — the "readable back with who and when" half of issue #206.
+@immutable
+class Correction {
+  const Correction({
+    required this.id,
+    required this.kind,
+    required this.previousSeverity,
+    required this.newSeverity,
+    required this.previousStatus,
+    required this.newStatus,
+    required this.note,
+    required this.correctedAt,
+    required this.correctedByAccountId,
+    required this.correctedByAccountName,
+  });
+
+  factory Correction.fromJson(Map<String, dynamic> json) => Correction(
+        id: json['id'].toString(),
+        kind: json['kind'] as String? ?? CorrectionKind.reopened,
+        previousSeverity: json['previousSeverity'] as String?,
+        newSeverity: json['newSeverity'] as String?,
+        previousStatus: json['previousStatus'] as String?,
+        newStatus: json['newStatus'] as String?,
+        note: json['note'] as String?,
+        correctedAt: json['correctedAt'] as String?,
+        correctedByAccountId: json['correctedByAccountId']?.toString(),
+        correctedByAccountName: json['correctedByAccountName'] as String?,
+      );
+
+  final String id;
+  final String kind;
+  final String? previousSeverity;
+  final String? newSeverity;
+  final String? previousStatus;
+  final String? newStatus;
+  final String? note;
+  final String? correctedAt;
+  final String? correctedByAccountId;
+  final String? correctedByAccountName;
+
+  String get label => CorrectionKind.label(kind);
+
+  /// What changed, in the words a reader wants: a severity lowering names both
+  /// severities, a reopen and a cancel name both states.
+  String get summary => switch (kind) {
+        CorrectionKind.severityLowered =>
+          'Severity lowered from ${DefectSeverity.label(previousSeverity ?? '')} '
+              'to ${DefectSeverity.label(newSeverity ?? '')}',
+        CorrectionKind.reopened =>
+          'Reopened from ${NonconformanceStatus.label(previousStatus ?? '')}',
+        CorrectionKind.cancelled =>
+          'Cancelled from ${NonconformanceStatus.label(previousStatus ?? '')}',
+        _ => label,
+      };
+
+  /// Who decided it, said the way [Disposition.decidedBy] is.
+  String get correctedBy {
+    final name = correctedByAccountName;
+    return name == null || name.isEmpty ? 'Unknown' : name;
+  }
+}
+
 @immutable
 class Nonconformance {
   const Nonconformance({
@@ -177,7 +362,10 @@ class Nonconformance {
     required this.productionDate,
     required this.shiftCode,
     required this.shiftName,
+    required this.closedAt,
     required this.quantityChanges,
+    required this.dispositions,
+    required this.corrections,
   });
 
   factory Nonconformance.fromJson(Map<String, dynamic> json) => Nonconformance(
@@ -214,9 +402,18 @@ class Nonconformance {
         productionDate: json['productionDate'] as String?,
         shiftCode: json['shiftCode'] as String?,
         shiftName: json['shiftName'] as String?,
+        closedAt: json['closedAt'] as String?,
         quantityChanges: [
           for (final change in (json['quantityChanges'] as List<dynamic>? ?? const []))
             QuantityChange.fromJson(change as Map<String, dynamic>),
+        ],
+        dispositions: [
+          for (final disposition in (json['dispositions'] as List<dynamic>? ?? const []))
+            Disposition.fromJson(disposition as Map<String, dynamic>),
+        ],
+        corrections: [
+          for (final correction in (json['corrections'] as List<dynamic>? ?? const []))
+            Correction.fromJson(correction as Map<String, dynamic>),
         ],
       );
 
@@ -280,12 +477,56 @@ class Nonconformance {
   final String? shiftCode;
   final String? shiftName;
 
+  /// When the record finished with itself: set the moment its whole quantity
+  /// had a Disposition, or when a holder of Quality authority cancelled it
+  /// (issue #206). Null while either has still to happen.
+  final String? closedAt;
+
   final List<QuantityChange> quantityChanges;
+
+  /// What has been decided about the product, in the order it was decided
+  /// (issue #206).
+  final List<Disposition> dispositions;
+
+  /// The corrections a holder of Quality authority has made to the record, in
+  /// the order they were made (issue #206).
+  final List<Correction> corrections;
 
   String get statusLabel => NonconformanceStatus.label(status);
   StatusTone get statusTone => NonconformanceStatus.tone(status);
   String get detectionPointLabel => DetectionPoint.label(detectionPoint);
   String get severityLabel => DefectSeverity.label(severity);
+
+  /// Whether the record is finished: closed because its whole quantity has
+  /// been dealt with, or cancelled because it should never have been written
+  /// down.
+  bool get isClosed => status == NonconformanceStatus.closed;
+  bool get isCancelled => status == NonconformanceStatus.cancelled;
+
+  /// How much of the product no Disposition covers yet — what a Disposition
+  /// may still be recorded against, and nothing more (issue #206).
+  double get undispositionedQuantity => quantityAffected - quantityDispositioned;
+
+  /// Whether a Disposition could be recorded against it at all: a cancelled
+  /// record accepts none, and a closed one has none of its quantity left
+  /// undecided.
+  bool get acceptsDisposition => !isCancelled && undispositionedQuantity > 0;
+
+  /// Whether a Concession could be granted against it — the same rule as any
+  /// other Disposition, since a Concession is one.
+  bool get acceptsConcession => acceptsDisposition;
+
+  /// Whether the record could be reopened: only a closed one can (issue #206).
+  bool get canBeReopened => isClosed;
+
+  /// Whether it could be cancelled: not one that was already cancelled, and
+  /// not one that closed itself — a closed record is reopened first, so that
+  /// the closing time its own closure produced is not overwritten.
+  bool get canBeCancelled => !isCancelled && !isClosed;
+
+  /// Whether a severity could be lowered on it at all — a cancelled record
+  /// accepts no corrections.
+  bool get canBeLowered => !isCancelled;
 
   /// Whether the affected quantity has been raised above what was first
   /// counted — what the detail reads at a glance, and what makes the history

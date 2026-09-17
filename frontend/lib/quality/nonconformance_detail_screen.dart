@@ -14,7 +14,13 @@
 /// writes at the Org Unit the record sits at, and a caller without a Grant
 /// reaching it gets a sentence back rather than a hidden button.
 ///
-/// The three affordances are addressed dialogs (ADR-0021): a refresh lands on
+/// The four decisions the Grant's Quality authority gates — the Concession,
+/// the lowered severity, the reopen and the cancel (issue #206, ADR-0035) —
+/// are the exception: they are offered only to a caller who holds that
+/// authority at the record's Org Unit, so nobody is shown a control whose only
+/// answer would be a 403.
+///
+/// The five affordances are addressed dialogs (ADR-0021): a refresh lands on
 /// the record with the control open, and the change a caller was making is not
 /// lost to a stray back-navigation.
 library;
@@ -32,6 +38,7 @@ import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'defect_code.dart';
+import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 
 class NonconformanceDetailScreen extends StatelessWidget {
@@ -53,12 +60,35 @@ class NonconformanceDetailScreen extends StatelessWidget {
   static const ValueKey<String> increaseQuantityKey =
       ValueKey<String>('nonconformance-detail-increase');
   static const ValueKey<String> updateKey = ValueKey<String>('nonconformance-detail-update');
+  static const ValueKey<String> dispositionKey =
+      ValueKey<String>('nonconformance-detail-disposition');
+  static const ValueKey<String> concessionKey =
+      ValueKey<String>('nonconformance-detail-concession');
+  static const ValueKey<String> lowerSeverityKey =
+      ValueKey<String>('nonconformance-detail-lower-severity');
+  static const ValueKey<String> reopenKey = ValueKey<String>('nonconformance-detail-reopen');
+  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-detail-cancel');
+  static const ValueKey<String> dispositionsKey =
+      ValueKey<String>('nonconformance-detail-dispositions');
+  static const ValueKey<String> noDispositionsKey =
+      ValueKey<String>('nonconformance-detail-no-dispositions');
+  static const ValueKey<String> correctionsKey =
+      ValueKey<String>('nonconformance-detail-corrections');
+  static const ValueKey<String> noCorrectionsKey =
+      ValueKey<String>('nonconformance-detail-no-corrections');
+  static const ValueKey<String> closedKey = ValueKey<String>('nonconformance-detail-closed');
   static const ValueKey<String> failureKey = ValueKey<String>('nonconformance-detail-failure');
   static const ValueKey<String> failedKey = ValueKey<String>('nonconformance-detail-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('nonconformance-detail-retry');
   static const ValueKey<String> missingKey = ValueKey<String>('nonconformance-detail-missing');
 
   static ValueKey<String> changeKey(String id) => ValueKey<String>('nonconformance-change-$id');
+
+  static ValueKey<String> dispositionRowKey(String id) =>
+      ValueKey<String>('nonconformance-disposition-$id');
+
+  static ValueKey<String> correctionRowKey(String id) =>
+      ValueKey<String>('nonconformance-correction-$id');
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +130,11 @@ class _Loaded extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final row = state.nonconformance;
+    // Read here, in a build, rather than passed in from the route: a value
+    // computed when the route first built would freeze the Account state as it
+    // was before `/me` answered, and a holder of Quality authority would never
+    // be offered the four decisions that authority gates (ADR-0035).
+    final holdsQuality = holdsQualityAuthority(context, row.orgUnitId);
 
     return Center(
       child: AppPageFrame(
@@ -228,6 +263,12 @@ class _Loaded extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Spacing.lg),
+            // What has been decided about the product, and the corrections a
+            // holder of Quality authority has made to the record (issue #206).
+            _DispositionsCard(row: row),
+            const SizedBox(height: Spacing.lg),
+            _CorrectionsCard(row: row),
+            const SizedBox(height: Spacing.lg),
             Wrap(
               spacing: Spacing.md,
               runSpacing: Spacing.sm,
@@ -249,6 +290,67 @@ class _Loaded extends StatelessWidget {
                   icon: const Icon(Icons.build_outlined),
                   label: const Text('Raise severity or contain it'),
                 ),
+                // A Disposition is offered wherever the record still has
+                // undecided quantity — the server is the gate on the Grant
+                // reaching the Org Unit, exactly as it is for recording.
+                if (row.acceptsDisposition)
+                  FilledButton.icon(
+                    key: NonconformanceDetailScreen.dispositionKey,
+                    onPressed: state.isMutating
+                        ? null
+                        : () => context.go('${Routes.nonConformances}/${row.id}/disposition'),
+                    icon: const Icon(Icons.rule_outlined),
+                    label: const Text('Record a Disposition'),
+                  ),
+                // The four decisions only a holder of Quality authority may
+                // take (ADR-0035). None of them is offered to anyone else, so
+                // no request is ever sent that the server would refuse for a
+                // reason the caller could not see.
+                if (holdsQuality) ...[
+                  if (row.acceptsConcession)
+                    FilledButton.icon(
+                      key: NonconformanceDetailScreen.concessionKey,
+                      onPressed: state.isMutating
+                          ? null
+                          : () => context.go('${Routes.nonConformances}/${row.id}/concession'),
+                      icon: const Icon(Icons.verified_outlined),
+                      label: const Text('Grant a Concession'),
+                    ),
+                  if (row.canBeLowered)
+                    OutlinedButton.icon(
+                      key: NonconformanceDetailScreen.lowerSeverityKey,
+                      onPressed: state.isMutating
+                          ? null
+                          : () =>
+                              context.go('${Routes.nonConformances}/${row.id}/lower-severity'),
+                      icon: const Icon(Icons.arrow_downward),
+                      label: const Text('Lower the severity'),
+                    ),
+                  if (row.canBeReopened)
+                    OutlinedButton.icon(
+                      key: NonconformanceDetailScreen.reopenKey,
+                      onPressed: state.isMutating
+                          ? null
+                          : () => context.go('${Routes.nonConformances}/${row.id}/reopen'),
+                      icon: const Icon(Icons.lock_open_outlined),
+                      label: const Text('Reopen it'),
+                    ),
+                  if (row.canBeCancelled)
+                    OutlinedButton.icon(
+                      key: NonconformanceDetailScreen.cancelKey,
+                      onPressed: state.isMutating
+                          ? null
+                          : () => context.go('${Routes.nonConformances}/${row.id}/cancel'),
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: const Text('Cancel it in error'),
+                    ),
+                ],
+                if (row.closedAt != null)
+                  StatusChip(
+                    key: NonconformanceDetailScreen.closedKey,
+                    label: 'Finished ${row.closedAt}',
+                    tone: StatusTone.neutral,
+                  ),
               ],
             ),
             if (state.mutationFailure != null)
@@ -290,6 +392,152 @@ class _Fact extends StatelessWidget {
           ),
           Text(value, style: theme.textTheme.bodyMedium),
         ],
+      ),
+    );
+  }
+}
+
+/// What has been decided about the product (issue #206): every Disposition in
+/// the order it was decided, with the quantity it covers, who decided it and
+/// when — and, for a Concession, the reference it was granted under.
+///
+/// The card is drawn even when nothing has been dispositioned, because "none of
+/// this has been decided yet" is the state a reader of an open record needs,
+/// said rather than left blank.
+class _DispositionsCard extends StatelessWidget {
+  const _DispositionsCard({required this.row});
+
+  final Nonconformance row;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Dispositions', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              'Product is dealt with in parts. A Non-conformance closes by itself once all of '
+              'its quantity has a Disposition.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.sm),
+            Text(
+              '${_number(row.quantityDispositioned)} of ${_number(row.quantityAffected)} '
+              '${row.uomCode} dispositioned',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.sm),
+            if (row.dispositions.isEmpty)
+              Text(
+                'Nothing has been decided about this product yet.',
+                key: NonconformanceDetailScreen.noDispositionsKey,
+                style: theme.textTheme.bodyMedium,
+              )
+            else
+              Column(
+                key: NonconformanceDetailScreen.dispositionsKey,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final disposition in row.dispositions)
+                    Padding(
+                      key: NonconformanceDetailScreen.dispositionRowKey(disposition.id),
+                      padding: const EdgeInsets.only(bottom: Spacing.xs),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${disposition.label} · ${_number(disposition.quantity)} '
+                            '${disposition.uomCode}'
+                            '${disposition.reworkMinutes > 0 ? ' · ${_number(disposition.reworkMinutes)} minutes of rework' : ''}',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          Text(
+                            '${disposition.decidedBy}'
+                            '${disposition.decidedAt == null ? '' : ' · ${disposition.decidedAt}'}'
+                            '${disposition.reference == null ? '' : ' · ${disposition.reference}'}'
+                            '${disposition.note == null ? '' : ' · ${disposition.note}'}',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The corrections a holder of Quality authority has made to the record
+/// (issue #206): a lowered severity, a reopen, a cancel — each with what
+/// changed, why, and who decided it, which is what "readable back with who and
+/// when" asks a client to show.
+class _CorrectionsCard extends StatelessWidget {
+  const _CorrectionsCard({required this.row});
+
+  final Nonconformance row;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Corrections', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              'What a holder of Quality authority has changed about this record, and why.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.sm),
+            if (row.corrections.isEmpty)
+              Text(
+                'This record has not been corrected.',
+                key: NonconformanceDetailScreen.noCorrectionsKey,
+                style: theme.textTheme.bodyMedium,
+              )
+            else
+              Column(
+                key: NonconformanceDetailScreen.correctionsKey,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final correction in row.corrections)
+                    Padding(
+                      key: NonconformanceDetailScreen.correctionRowKey(correction.id),
+                      padding: const EdgeInsets.only(bottom: Spacing.xs),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(correction.summary, style: theme.textTheme.bodyMedium),
+                          Text(
+                            '${correction.correctedBy}'
+                            '${correction.correctedAt == null ? '' : ' · ${correction.correctedAt}'}'
+                            '${correction.note == null ? '' : ' · ${correction.note}'}',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }

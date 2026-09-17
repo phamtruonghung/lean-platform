@@ -26,6 +26,25 @@
  *     administrator's role. `write: true` is spelled out because it defaults
  *     to FALSE, and a recording route that forgot it would be authorised by
  *     any read Grant with no error anywhere to notice.
+ *   - A Disposition (issue #206) is the same write as recording — a recorder
+ *     dealing with bad product in parts is doing the same work as one writing
+ *     it down.
+ *   - A Concession, a lowered severity, a reopen and a cancel are decisions
+ *     rather than work, and each is gated on `people.canAct({ …,
+ *     quality: true })` — the Quality authority ADR-0035 carries on a Grant
+ *     beside its level, reaching downward like the Grant does. None of the
+ *     four asks for `write: true` as well, because the authority is the
+ *     permission for the decision and ADR-0035 keeps the two flags
+ *     independent.
+ *
+ * Four refusals, and each says which one it is: a 404 when the record or the
+ * Org Unit is not there, a 403 when the Grant question is answered no (with
+ * People's `OUTSIDE_GRANTED_ORG_UNITS` for a scope refusal and this Module's
+ * own sentence for a Quality-authority one — a caller may be well inside their
+ * granted Org Units and simply not hold the authority), a 409 when the record's
+ * own state refuses (a Disposition larger than what is still undecided, a
+ * change to a cancelled record, a reopen of something that is not closed), and
+ * a 400 when a field of the request is wrong.
  *
  * Existence before scope, the order AGENTS.md §6 fixes: the Site, then the Org
  * Unit, then whether that Org Unit belongs to this Site (a cross-Site Org Unit
@@ -119,6 +138,39 @@ async function requireNonconformanceWriteScope(req, res, next) {
     });
     if (!allowed) {
       return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    return next();
+  });
+}
+
+// Quality authority (issue #206, ADR-0035): the standing to decide about
+// nonconforming product, carried on a Grant independently of its level and
+// reaching downward like the Grant does. Four acts need it — granting a
+// Concession, lowering a severity, reopening a closed record and cancelling one
+// recorded in error — and each of them is a judgement about the product or the
+// record rather than a piece of work on it, which is why none of them asks
+// for `write: true` as well: ADR-0035's own sentence is that Quality authority
+// does not imply write and write does not imply Quality authority, and the
+// authority IS this decision's permission. An administrator holds it
+// everywhere, which `canAct` answers for.
+//
+// Existence and visibility come first for the same reason as everywhere else,
+// and the refusal is a sentence of this Module's own rather than People's
+// `OUTSIDE_GRANTED_ORG_UNITS`: the caller may well be inside their granted Org
+// Units and simply not hold this authority, and telling them the wrong thing
+// sends them to the wrong person to ask.
+const QUALITY_AUTHORITY_REQUIRED =
+  "that decision needs Quality authority at this Non-conformance's Org Unit";
+
+async function requireNonconformanceQualityAuthority(req, res, next) {
+  return requireNonconformanceVisible(req, res, async () => {
+    const allowed = await people.canAct({
+      account: req.account,
+      orgUnitId: req.nonconformance.orgUnitId,
+      quality: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: QUALITY_AUTHORITY_REQUIRED });
     }
     return next();
   });
@@ -300,6 +352,127 @@ router.post(
   async (req, res, next) => {
     try {
       const nonconformance = await nonconformances.increaseQuantity(
+        req.nonconformance.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.json({ nonconformance });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// A Disposition: scrap, rework with its minutes, or return to the supplier
+// (issue #206). Bad product is dealt with in parts as it is sorted, and this
+// is where a part of it is dealt with. The access is the same as recording —
+// a write Grant reaching the Org Unit the record sits at — because a recorder
+// dealing with product is the same act as a recorder writing it down; only a
+// Concession, below, is a decision rather than a piece of work.
+router.post(
+  '/nonconformances/:id/dispositions',
+  people.authenticate,
+  people.requireActive,
+  requireNonconformanceWriteScope,
+  async (req, res, next) => {
+    try {
+      const nonconformance = await nonconformances.recordDisposition(
+        req.nonconformance.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.status(201).json({ nonconformance });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// The Concession (issue #206): a Disposition to use the product as it is,
+// which accepts it rather than dealing with it. It is the first act in this
+// Module that needs Quality authority, and the Account that granted it stays
+// on the record — `grantConcession` writes it into the Disposition's own
+// deciding-Account column, which is read back as `decidedByAccountName`.
+//
+// A third address rather than a kind on the one above, because the two have
+// different permissions, a different required body (a reference and a note)
+// and a different meaning: this is the decision ADR-0035 exists for, and it
+// should be impossible to reach it through a route that only checked a write
+// Grant.
+router.post(
+  '/nonconformances/:id/concession',
+  people.authenticate,
+  people.requireActive,
+  requireNonconformanceQualityAuthority,
+  async (req, res, next) => {
+    try {
+      const nonconformance = await nonconformances.grantConcession(
+        req.nonconformance.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.status(201).json({ nonconformance });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Lowering the severity (issue #206) — the correction issue #205 refused a
+// recorder, now allowed to a holder of Quality authority with a note. Its own
+// address rather than a lowering through PATCH, because the two are gated
+// differently: a raising needs a write Grant and a lowering needs the
+// authority, and one route cannot ask both questions honestly. The change is
+// kept with who made it, when, and the note, and the whole record comes back.
+router.post(
+  '/nonconformances/:id/lower-severity',
+  people.authenticate,
+  people.requireActive,
+  requireNonconformanceQualityAuthority,
+  async (req, res, next) => {
+    try {
+      const nonconformance = await nonconformances.lowerSeverity(
+        req.nonconformance.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.json({ nonconformance });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Reopening a closed Non-conformance (issue #206). Quality authority and a
+// note, like the other two corrections.
+router.post(
+  '/nonconformances/:id/reopen',
+  people.authenticate,
+  people.requireActive,
+  requireNonconformanceQualityAuthority,
+  async (req, res, next) => {
+    try {
+      const nonconformance = await nonconformances.reopenNonconformance(
+        req.nonconformance.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.json({ nonconformance });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Cancelling a Non-conformance recorded in error (issue #206).
+router.post(
+  '/nonconformances/:id/cancel',
+  people.authenticate,
+  people.requireActive,
+  requireNonconformanceQualityAuthority,
+  async (req, res, next) => {
+    try {
+      const nonconformance = await nonconformances.cancelNonconformance(
         req.nonconformance.id,
         req.body ?? {},
         req.account.id

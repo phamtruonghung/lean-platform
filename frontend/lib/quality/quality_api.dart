@@ -413,6 +413,116 @@ class QualityApi {
     }
   }
 
+  /// Records a Disposition of a Non-conformance's product (issue #206) —
+  /// scrap, rework with the minutes it took, or return to the supplier
+  /// (`POST /api/quality/nonconformances/:id/dispositions`). It needs the same
+  /// access as recording (a write Grant reaching the record's Org Unit); the
+  /// API refuses anything else (403), refuses more than what is still
+  /// undecided (409), and refuses minutes on anything that is not a rework
+  /// (400) — this call is not the guard against any of them.
+  Future<Nonconformance> recordDisposition(
+    String accessToken,
+    String id, {
+    required String dispositionType,
+    required num quantity,
+    num? reworkMinutes,
+    String? note,
+  }) {
+    final body = <String, Object?>{
+      'dispositionType': dispositionType,
+      'quantity': quantity,
+    };
+    if (reworkMinutes != null) body['reworkMinutes'] = reworkMinutes;
+    if (note != null && note.trim().isNotEmpty) body['note'] = note.trim();
+    return _postNonconformance(accessToken, '/api/quality/nonconformances/$id/dispositions', body);
+  }
+
+  /// Grants a Concession (issue #206) — a Disposition to use the product as it
+  /// is, which accepts it rather than dealing with it
+  /// (`POST /api/quality/nonconformances/:id/concession`). It needs Quality
+  /// authority at the record's Org Unit and the API refuses it with a 403
+  /// otherwise; the reference it was granted under and the note saying why are
+  /// both required (400 without either), and the granting Account comes back
+  /// on the record as `decidedByAccountName`.
+  Future<Nonconformance> grantConcession(
+    String accessToken,
+    String id, {
+    required num quantity,
+    required String reference,
+    required String note,
+  }) =>
+      _postNonconformance(accessToken, '/api/quality/nonconformances/$id/concession', {
+        'quantity': quantity,
+        'reference': reference.trim(),
+        'note': note.trim(),
+      });
+
+  /// Lowers a Non-conformance's severity (issue #206)
+  /// (`POST /api/quality/nonconformances/:id/lower-severity`). Quality
+  /// authority at the record's Org Unit and a note are both required — the API
+  /// refuses without either (403 and 400) — and the change comes back on the
+  /// record as a correction carrying who made it, when, and the note.
+  Future<Nonconformance> lowerNonconformanceSeverity(
+    String accessToken,
+    String id, {
+    required String severity,
+    required String note,
+  }) =>
+      _postNonconformance(accessToken, '/api/quality/nonconformances/$id/lower-severity', {
+        'severity': severity,
+        'note': note.trim(),
+      });
+
+  /// Reopens a closed Non-conformance (issue #206)
+  /// (`POST /api/quality/nonconformances/:id/reopen`). Quality authority and a
+  /// note are both required, and only a closed record can be reopened — the
+  /// API refuses anything else with a 409.
+  Future<Nonconformance> reopenNonconformance(
+    String accessToken,
+    String id, {
+    required String note,
+  }) =>
+      _postNonconformance(accessToken, '/api/quality/nonconformances/$id/reopen', {
+        'note': note.trim(),
+      });
+
+  /// Cancels a Non-conformance recorded in error (issue #206)
+  /// (`POST /api/quality/nonconformances/:id/cancel`). Quality authority and a
+  /// note are both required, and a cancelled record accepts no further
+  /// Dispositions or quantity changes (409).
+  Future<Nonconformance> cancelNonconformance(
+    String accessToken,
+    String id, {
+    required String note,
+  }) =>
+      _postNonconformance(accessToken, '/api/quality/nonconformances/$id/cancel', {
+        'note': note.trim(),
+      });
+
+  // The five writes above answer with the whole record — its dispositions, its
+  // corrections and its quantity history included — the way every other write
+  // in this Module does, so a caller never has to patch its own copy.
+  Future<Nonconformance> _postNonconformance(
+    String accessToken,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Nonconformance.fromJson(answer['nonconformance'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// The units of measure the plant uses, read from Maintenance's own address
   /// — see this file's own header for why it is not republished under
   /// `/api/quality`.

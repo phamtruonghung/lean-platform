@@ -59,6 +59,16 @@ test('router is a mountable Express router', () => {
 // by its own address, and the affected quantity has an address of its own
 // because appending to a record's history is a different act from correcting a
 // field on it.
+//
+// Issue #206's five addresses are here for the same reason, and they are five
+// rather than one because each is refused differently: `/dispositions` needs
+// the write Grant recording needs, `/concession`, `/lower-severity`, `/reopen`
+// and `/cancel` each need Quality authority at the record's Org Unit
+// (ADR-0035), and the state each refuses on is its own (a Concession more than
+// what is undecided, a reopen of something not closed, a change to a cancelled
+// record). Folding any of them into the PATCH above would produce one route
+// asking two different permission questions, which is the shape ADR-0019 and
+// ADR-0035 both argue against.
 function declaredRoutes(router) {
   const declared = [];
   for (const layer of router.stack) {
@@ -83,7 +93,12 @@ test('the router carries the Product, Defect code and Non-conformance paths, and
     'PATCH /nonconformances/:id',
     'PATCH /products/:id',
     'POST /defect-codes',
+    'POST /nonconformances/:id/cancel',
+    'POST /nonconformances/:id/concession',
+    'POST /nonconformances/:id/dispositions',
+    'POST /nonconformances/:id/lower-severity',
     'POST /nonconformances/:id/quantity',
+    'POST /nonconformances/:id/reopen',
     'POST /products',
     'POST /sites/:siteId/nonconformances'
   ]);

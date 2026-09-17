@@ -74,10 +74,15 @@ import '../people/skills_screen.dart';
 import '../people_api.dart';
 import '../quality/defect_codes_bloc.dart';
 import '../quality/defect_codes_screen.dart';
+import '../quality/nonconformance_cancel_dialog.dart';
+import '../quality/nonconformance_concession_dialog.dart';
 import '../quality/nonconformance_detail_bloc.dart';
 import '../quality/nonconformance_detail_screen.dart';
+import '../quality/nonconformance_disposition_dialog.dart';
 import '../quality/nonconformance_form_dialog.dart';
+import '../quality/nonconformance_lower_severity_dialog.dart';
 import '../quality/nonconformance_quantity_dialog.dart';
+import '../quality/nonconformance_reopen_dialog.dart';
 import '../quality/nonconformance_update_dialog.dart';
 import '../quality/nonconformances_bloc.dart';
 import '../quality/nonconformances_screen.dart';
@@ -145,6 +150,25 @@ abstract final class Routes {
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
   static const String fromParameter = 'from';
+}
+
+/// Whether the signed-in Account holds Quality authority at an Org Unit
+/// (ADR-0035) — the client's half of the server's own
+/// `canAct({ quality: true })`, read off the same `/me` scope every other
+/// per-record permission is (ADR-0027).
+///
+/// A top-level function rather than a local, because the Screen and each of
+/// the four dialogs a holder of the authority may open all ask it, and they
+/// are separate widgets. It is read **inside a build** and never hoisted into
+/// a route's builder: a value computed once when a route first builds captures
+/// the Account state as it was before `/me` answered, which is a Screen that
+/// never offers the decision it should. Reading where it is used means the
+/// element that shows the control is the element that rebuilds when the answer
+/// changes.
+bool holdsQualityAuthority(BuildContext context, String orgUnitId) {
+  final account = context.watch<AccountBloc>().state;
+  return account is AccountApproved &&
+      account.account.orgUnitScope.canHoldQualityAt(orgUnitId);
 }
 
 GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}) {
@@ -567,6 +591,138 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                                 );
                               }
                               return NonconformanceUpdateDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/disposition` — dealing with
+                      // some of the product (issue #206): scrap, rework with
+                      // its minutes, or back to the supplier.
+                      GoRoute(
+                        path: 'disposition',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceDispositionDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceDispositionDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/concession` — accepting the
+                      // product as it is, which needs Quality authority.
+                      GoRoute(
+                        path: 'concession',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceConcessionDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              // The dialog is reachable by address, so it says
+                              // why rather than rendering a control the caller
+                              // may not use — the server refuses it either way
+                              // (ADR-0021's three outcomes). The authority
+                              // itself is read inside the dialog, where it is
+                              // also read in a build rather than frozen here.
+                              return NonconformanceConcessionDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/lower-severity` — the
+                      // correction issue #205 refused a recorder.
+                      GoRoute(
+                        path: 'lower-severity',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceLowerSeverityDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceLowerSeverityDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/reopen` — putting a closed
+                      // record back on the log, with a note.
+                      GoRoute(
+                        path: 'reopen',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceReopenDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceReopenDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/cancel` — cancelling a record
+                      // made in error, with a note.
+                      GoRoute(
+                        path: 'cancel',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceCancelDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceCancelDialog(
                                 nonconformance: detail.nonconformance,
                               );
                             },

@@ -600,7 +600,10 @@ Map<String, dynamic> nonconformanceJson(
   String? productionDate,
   String? shiftCode,
   String? shiftName,
+  String? closedAt,
   List<Map<String, dynamic>>? quantityChanges,
+  List<Map<String, dynamic>>? dispositions,
+  List<Map<String, dynamic>>? corrections,
 }) =>
     {
       'id': id,
@@ -638,6 +641,9 @@ Map<String, dynamic> nonconformanceJson(
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
       'quantityChanges': quantityChanges ?? const <Map<String, dynamic>>[],
+      'closedAt': closedAt,
+      'dispositions': dispositions ?? const <Map<String, dynamic>>[],
+      'corrections': corrections ?? const <Map<String, dynamic>>[],
     };
 
 /// One row of a Non-conformance's quantity history, as the API sends it —
@@ -663,6 +669,67 @@ Map<String, dynamic> quantityChangeJson(
       'changedByAccountName': changedByAccountName,
       'changedByEmployeeId': changedByEmployeeId,
       'changedByEmployeeName': changedByEmployeeName,
+    };
+
+/// One Disposition as the API sends it (issue #206) — mirrors
+/// `toDisposition` (nonconformances.js) key for key, so a fixture cannot let a
+/// test assert a shape the server does not send.
+Map<String, dynamic> dispositionJson(
+  String id, {
+  String dispositionType = 'scrap',
+  bool? isConcession,
+  num quantity = 1,
+  String uomCode = 'EA',
+  num reworkMinutes = 0,
+  String? decidedAt,
+  String? reference,
+  String? note,
+  String? decidedByAccountId = '1',
+  String? decidedByAccountName = 'Ann Operator',
+  String? decidedByEmployeeId,
+  String? decidedByEmployeeName,
+}) =>
+    {
+      'id': id,
+      'dispositionType': dispositionType,
+      'isConcession': isConcession ?? dispositionType == 'use_as_is',
+      'quantity': quantity,
+      'uomCode': uomCode,
+      'reworkMinutes': reworkMinutes,
+      'decidedAt': decidedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'reference': reference,
+      'note': note,
+      'decidedByAccountId': decidedByAccountId,
+      'decidedByAccountName': decidedByAccountName,
+      'decidedByEmployeeId': decidedByEmployeeId,
+      'decidedByEmployeeName': decidedByEmployeeName,
+    };
+
+/// One correction as the API sends it (issue #206) — mirrors `toCorrection`
+/// (nonconformances.js) key for key.
+Map<String, dynamic> correctionJson(
+  String id, {
+  String kind = 'severity_lowered',
+  String? previousSeverity = 'major',
+  String? newSeverity = 'minor',
+  String? previousStatus,
+  String? newStatus,
+  String note = 'Only the label was misprinted.',
+  String? correctedAt,
+  String? correctedByAccountId = '1',
+  String? correctedByAccountName = 'Ann Operator',
+}) =>
+    {
+      'id': id,
+      'kind': kind,
+      'previousSeverity': previousSeverity,
+      'newSeverity': newSeverity,
+      'previousStatus': previousStatus,
+      'newStatus': newStatus,
+      'note': note,
+      'correctedAt': correctedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'correctedByAccountId': correctedByAccountId,
+      'correctedByAccountName': correctedByAccountName,
     };
 
 /// One Work order task as `GET /api/maintenance/work-orders/:id` sends it
@@ -1355,6 +1422,9 @@ class FakeWire {
     this.changeNonconformanceMessage = 'severity cannot be lowered; only a holder of Quality authority may do that',
     this.increaseNonconformanceQuantityStatus = 200,
     this.increaseNonconformanceQuantityMessage = 'the affected quantity can only be increased',
+    this.recordNonconformanceActStatus = 201,
+    this.recordNonconformanceActMessage =
+        'that is more than the quantity still undecided on this Non-conformance',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -1488,6 +1558,14 @@ class FakeWire {
   int increaseNonconformanceQuantityStatus;
   String increaseNonconformanceQuantityMessage;
 
+  /// The five writes issue #206 adds — the Disposition, the Concession, the
+  /// lowered severity, the reopen and the cancel. One refusal pair for all
+  /// five: a test scripts the answer the API would give (a 409 for a
+  /// Disposition larger than what is undecided, a 403 for a caller without
+  /// Quality authority) and points it at whichever address it is about.
+  int recordNonconformanceActStatus;
+  String recordNonconformanceActMessage;
+
   /// Every Non-conformance list request's query parameters, in the order they
   /// reached the wire — so a test proves what the Screen asked for (which
   /// filters, and only the filters that are set) rather than what this Fake
@@ -1508,6 +1586,22 @@ class FakeWire {
 
   /// Every quantity body that reached the wire, as `(id, body)`.
   final List<(String, Map<String, dynamic>)> nonconformanceQuantityPosts = [];
+
+  /// Every Disposition body that reached the wire, as `(id, body)` (issue
+  /// #206) — a record against an id, never the register.
+  final List<(String, Map<String, dynamic>)> nonconformanceDispositionPosts = [];
+
+  /// Every Concession body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceConcessionPosts = [];
+
+  /// Every lowered-severity body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceLowerSeverityPosts = [];
+
+  /// Every reopen body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceReopenPosts = [];
+
+  /// Every cancel body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceCancelPosts = [];
 
   /// Looks a Non-conformance up by id across every Site's list, which is what
   /// the detail route does — a record read by address, not by Site.
@@ -2338,6 +2432,28 @@ class FakeWire {
     };
   }
 
+  /// Recomputes a row's cached disposition total and the status that follows
+  /// from it, the way `settleDispositionStatus` (nonconformances.js) does for a
+  /// real record (issue #206): the whole quantity having a Disposition closes
+  /// it, part of it makes it `dispositioned`. A cancelled row is left alone,
+  /// since a cancelled Non-conformance accepts nothing further.
+  Map<String, dynamic> _settleDispositions(Map<String, dynamic> row) {
+    if (row['status'] == 'cancelled') return row;
+    final dispositions = (row['dispositions'] as List<dynamic>? ?? const []);
+    var total = 0.0;
+    for (final disposition in dispositions) {
+      total += (disposition as Map<String, dynamic>)['quantity'] as num;
+    }
+    final affected = (row['quantityAffected'] as num).toDouble();
+    final closed = total >= affected;
+    return {
+      ...row,
+      'quantityDispositioned': total,
+      'status': closed ? 'closed' : 'dispositioned',
+      'closedAt': closed ? DateTime.now().toUtc().toIso8601String() : null,
+    };
+  }
+
   /// The production day a row is filed against — the row's own
   /// `productionDate` where it has one, and the detected date otherwise, which
   /// is the same fallback the real register's date range applies (ADR-0017's
@@ -2955,6 +3071,136 @@ class FakeWire {
             final updated = {...row, 'quantityAffected': quantity, 'quantityChanges': changes};
             _replaceNonconformance(id, updated);
             return http.Response(jsonEncode({'nonconformance': updated}), 200);
+          }
+          // The five writes issue #206 adds, each its own address: the
+          // Disposition, the Concession, the lowered severity, the reopen and
+          // the cancel. Each answers the whole record, as the real routes do.
+          const actAddresses = <String>[
+            '/dispositions',
+            '/concession',
+            '/lower-severity',
+            '/reopen',
+            '/cancel',
+          ];
+          String? act;
+          if (request.method == 'POST') {
+            for (final suffix in actAddresses) {
+              if (remainder.endsWith(suffix)) act = suffix;
+            }
+          }
+          if (act != null) {
+            final id = remainder.substring(0, remainder.length - act.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            final row = nonconformanceById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+            }
+            switch (act) {
+              case '/dispositions':
+                nonconformanceDispositionPosts.add((id, sent));
+              case '/concession':
+                nonconformanceConcessionPosts.add((id, sent));
+              case '/lower-severity':
+                nonconformanceLowerSeverityPosts.add((id, sent));
+              case '/reopen':
+                nonconformanceReopenPosts.add((id, sent));
+              case '/cancel':
+                nonconformanceCancelPosts.add((id, sent));
+            }
+            if (recordNonconformanceActStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': recordNonconformanceActMessage}),
+                recordNonconformanceActStatus,
+              );
+            }
+            final corrections = [
+              ...(row['corrections'] as List<dynamic>? ?? const []),
+            ];
+            Map<String, dynamic> updated = {...row};
+            switch (act) {
+              case '/dispositions':
+              case '/concession':
+                final concession = act == '/concession';
+                final disposition = dispositionJson(
+                  '$id-d${(row['dispositions'] as List<dynamic>? ?? const []).length + 1}',
+                  dispositionType:
+                      concession ? 'use_as_is' : sent['dispositionType'] as String,
+                  isConcession: concession,
+                  quantity: sent['quantity'] as num,
+                  uomCode: row['uomCode'] as String,
+                  reworkMinutes: (sent['reworkMinutes'] as num?) ?? 0,
+                  reference: sent['reference'] as String?,
+                  note: sent['note'] as String?,
+                  decidedByAccountName: 'Ann Operator',
+                );
+                updated = {
+                  ...row,
+                  'dispositions': [
+                    ...(row['dispositions'] as List<dynamic>? ?? const []),
+                    disposition,
+                  ],
+                };
+                updated = _settleDispositions(updated);
+              case '/lower-severity':
+                corrections.add(
+                  correctionJson(
+                    '$id-c${corrections.length + 1}',
+                    kind: 'severity_lowered',
+                    previousSeverity: row['severity'] as String?,
+                    newSeverity: sent['severity'] as String?,
+                    note: sent['note'] as String,
+                    correctedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {
+                  ...row,
+                  'severity': sent['severity'],
+                  'corrections': corrections,
+                };
+              case '/reopen':
+                corrections.add(
+                  correctionJson(
+                    '$id-c${corrections.length + 1}',
+                    kind: 'reopened',
+                    previousSeverity: null,
+                    newSeverity: null,
+                    previousStatus: row['status'] as String?,
+                    newStatus: 'dispositioned',
+                    note: sent['note'] as String,
+                    correctedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {
+                  ...row,
+                  'status': 'dispositioned',
+                  'closedAt': null,
+                  'corrections': corrections,
+                };
+              case '/cancel':
+                corrections.add(
+                  correctionJson(
+                    '$id-c${corrections.length + 1}',
+                    kind: 'cancelled',
+                    previousSeverity: null,
+                    newSeverity: null,
+                    previousStatus: row['status'] as String?,
+                    newStatus: 'cancelled',
+                    note: sent['note'] as String,
+                    correctedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {
+                  ...row,
+                  'status': 'cancelled',
+                  'closedAt': DateTime.now().toUtc().toIso8601String(),
+                  'corrections': corrections,
+                };
+            }
+            _replaceNonconformance(id, updated);
+            return http.Response(
+              jsonEncode({'nonconformance': updated}),
+              act == '/dispositions' || act == '/concession' ? 201 : 200,
+            );
           }
           if (request.method == 'PATCH') {
             final sent = jsonDecode(request.body) as Map<String, dynamic>;

@@ -57,8 +57,8 @@
  * Quality question this Module's later slices need
  * (`canAct({ quality: true })`, issue #204, ADR-0035) — that is People's
  * export, reached through People's entry point, not something re-exported
- * here, and #205 deliberately does not consult it: lowering a severity is the
- * decision that authority gates, and that is #206.
+ * here, and issue #206 is the slice that consults it: the Concession, the
+ * lowered severity, the reopen and the cancel are its four gated acts.
  */
 
 const express = require('express');

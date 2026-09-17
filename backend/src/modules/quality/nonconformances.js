@@ -46,12 +46,26 @@
  * JavaScript answer to "which shift was that" would be the second calendar
  * ADR-0017 refuses, and the trigger is "the one place that cannot forget".
  *
- * **The severity rule is a one-way ratchet in this slice.** A Non-conformance
- * starts at its Defect code's `default_severity`; the recorder may name a
- * higher one at recording time or raise it afterwards, and naming a lower one
- * is refused with a 403 here — not because a lower severity is always wrong,
- * but because lowering it is a Quality-authority decision (ADR-0035) that
- * issue #206 owns. `raiseSeverity`'s own comment says where that lands.
+ * **The severity rule is a one-way ratchet for a recorder, and a two-way
+ * decision for a holder of Quality authority.** A Non-conformance starts at
+ * its Defect code's `default_severity`; the recorder may name a higher one at
+ * recording time or raise it afterwards, and naming a lower one is refused
+ * with a 403 — not because a lower severity is always wrong, but because
+ * lowering it is a Quality-authority decision (ADR-0035). Issue #206 is the
+ * slice that takes that decision: `lowerSeverity` is its own act, behind its
+ * own address, and it needs Quality authority at the Org Unit and a note.
+ *
+ * **A Non-conformance is dealt with in parts, and closes by itself.** Issue
+ * #206 adds the Dispositions (scrap, rework with rework minutes, return to
+ * supplier, and the Concession that accepts the product as it is behind
+ * Quality authority), and the rule that the record closes the moment its whole
+ * quantity has a Disposition — `settleDispositionStatus` is where, and it
+ * consults nothing about the cause of the failure, because a Non-conformance
+ * records bad product rather than the problem behind it. A cancelled
+ * Non-conformance accepts no further Dispositions or quantity changes, and the
+ * three corrections a holder of Quality authority can make (a lower severity,
+ * a reopen, a cancel) are kept with who made each one, when, and the note it
+ * was made with.
  *
  * Mirrors products.js/defect-codes.js: no HTTP, no caller awareness. Unlike
  * them, this file's records ARE placed in the Org Unit tree, so its queries
@@ -79,6 +93,25 @@ function requireNonEmptyString(field, value) {
 const DETECTION_POINTS = ['incoming', 'in_process', 'final_inspection', 'audit', 'customer'];
 const SEVERITIES = ['minor', 'major', 'critical'];
 const NONCONFORMANCE_STATUSES = ['open', 'contained', 'dispositioned', 'closed', 'cancelled'];
+
+// The three kinds of Disposition a recorder writes down (issue #206). The
+// baseline's own `quality_dispositions_type_check` permits three more —
+// `use_as_is` (the Concession, which needs Quality authority and therefore has
+// its own act and its own address rather than riding in this set), `regrade`
+// and `sort` — and those are deliberately not accepted here: a set a caller can
+// reach is a set this file names, and a kind with no rule behind it is a kind
+// nobody can be held to.
+const DISPOSITION_TYPES = ['scrap', 'rework', 'return_to_supplier'];
+
+// The baseline's own value for a Disposition that accepts the product as it
+// is, which is what a Concession is (CONTEXT.md's own entry).
+const CONCESSION_DISPOSITION_TYPE = 'use_as_is';
+
+// The three corrections issue #206 gives a holder of Quality authority. The
+// set is the database's too (the CHECK on `quality_issue_corrections.kind`),
+// repeated here so a caller gets a sentence naming the field rather than a raw
+// constraint violation.
+const CORRECTION_KINDS = ['severity_lowered', 'reopened', 'cancelled'];
 
 // The order the three severities sit in, worst last: "may the recorder set
 // this one" is a comparison, not a membership test.
@@ -113,6 +146,43 @@ function requirePositiveQuantity(field, value) {
   return quantity;
 }
 
+// The rework half of a Disposition (issue #206): minutes are a count of time,
+// never negative. Zero is a permitted answer — a rework Disposition whose
+// minutes have not been booked yet — so the test is `>= 0` rather than `> 0`,
+// and the value is required (rather than defaulted) when the kind is `rework`,
+// because "rework carries rework minutes" is the ticket's own criterion and a
+// silent zero is a number nobody decided.
+function requireNonNegativeMinutes(field, value) {
+  const minutes = typeof value === 'string' ? Number(value.trim()) : value;
+  if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes < 0) {
+    throw httpError(400, `${field} must be a number of minutes, or zero`);
+  }
+  return minutes;
+}
+
+// An optional free-text field: trimmed where it carries something, null where
+// it does not. A field sent as whitespace is the same as one not sent at all,
+// which is the rule `recordNonconformance` already follows for `lotRef`.
+function optionalText(value) {
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
+// The note a correction is taken with (issue #206). Required for all three of
+// them: a correction with no reason on it is the row an auditor cannot use,
+// and the database refuses it too (`quality_issue_corrections.note`'s CHECK).
+function requireNote(body) {
+  const note = optionalText(body.note);
+  if (note === null) throw httpError(400, 'note is required: say why the Non-conformance is being corrected');
+  return note;
+}
+
+// Quantities are NUMERIC(18,4) in the database, so the arithmetic this file
+// does on them is done at that scale — a comparison of two floating-point
+// numbers that are equal at the fourth decimal must not read as a difference.
+function roundQuantity(value) {
+  return Math.round(value * 10000) / 10000;
+}
+
 // `quality_issues` is read every time through this one projection, so a row
 // that was just recorded and a row read back from the register can never carry
 // different fields. The joins are all to-one or to-none (the Asset and the
@@ -125,6 +195,7 @@ const NONCONFORMANCE_COLUMNS = `
   qi.quantity_affected, qi.quantity_dispositioned, qi.uom_code,
   qi.lot_ref, qi.detected_at, qi.detected_by, qi.description,
   qi.immediate_containment, qi.recorded_by_account_id,
+  qi.closed_at,
   qi.created_at, qi.updated_at,
   qi.org_unit_id, ou.name AS org_unit_name, ou.path AS org_unit_path,
   ou.site_id, s.code AS site_code, s.name AS site_name,
@@ -167,6 +238,35 @@ const QUANTITY_CHANGE_JOINS = `
   LEFT JOIN app_users au ON au.id = qc.changed_by_account_id
   LEFT JOIN employees e ON e.id = qc.changed_by_employee_id`;
 
+// One Disposition, with whoever decided it named — an Account where the
+// decision was made by a signed-in person, an Employee where it was made at a
+// floor device (issue #207). For a Concession the Account column IS the
+// granting Account, which is why it is read back rather than left to the
+// client to look up: "only a quality engineer may grant one and their name
+// stays on the record" is CONTEXT.md's own sentence about it.
+const DISPOSITION_COLUMNS = `
+  qd.id, qd.disposition_type, qd.quantity, qd.uom_code, qd.rework_minutes,
+  qd.decided_at, qd.approval_ref, qd.notes,
+  qd.decided_by_account_id, dau.display_name AS decided_by_account_name,
+  qd.decided_by, e.display_name AS decided_by_employee_name`;
+
+const DISPOSITION_JOINS = `
+  FROM quality_dispositions qd
+  LEFT JOIN app_users dau ON dau.id = qd.decided_by_account_id
+  LEFT JOIN employees e ON e.id = qd.decided_by`;
+
+// One correction: what the record was, what it became, the note it was taken
+// with, and the Account that decided it (issue #206). `corrected_by_account_id`
+// is NOT NULL in the table, so the join never drops a row.
+const CORRECTION_COLUMNS = `
+  qic.id, qic.kind, qic.previous_severity, qic.new_severity,
+  qic.previous_status, qic.new_status, qic.note, qic.corrected_at,
+  qic.corrected_by_account_id, cau.display_name AS corrected_by_account_name`;
+
+const CORRECTION_JOINS = `
+  FROM quality_issue_corrections qic
+  LEFT JOIN app_users cau ON cau.id = qic.corrected_by_account_id`;
+
 // NUMERIC arrives from Postgres as a string ('12.0000'); a quantity is a
 // number to every caller of this Module (the client prints it, the tests
 // compare it with `12`), so it crosses this boundary as one.
@@ -188,7 +288,46 @@ function toQuantityChange(row) {
   };
 }
 
-function toNonconformance(row, quantityChanges = []) {
+function toDisposition(row) {
+  return {
+    id: row.id,
+    dispositionType: row.disposition_type,
+    // A Concession is a Disposition to use the product as it is, so the kind
+    // is the only thing that distinguishes one — said as a boolean too,
+    // because the Screen labels and tones it differently rather than
+    // translating the baseline's own value in three places.
+    isConcession: row.disposition_type === CONCESSION_DISPOSITION_TYPE,
+    quantity: toQuantity(row.quantity),
+    uomCode: row.uom_code,
+    reworkMinutes: toQuantity(row.rework_minutes),
+    decidedAt: row.decided_at,
+    // The deviation or approval number an auditor asks for. Named `reference`
+    // on the wire, which is the word issue #206 uses for it.
+    reference: row.approval_ref ?? null,
+    note: row.notes ?? null,
+    decidedByAccountId: row.decided_by_account_id ?? null,
+    decidedByAccountName: row.decided_by_account_name ?? null,
+    decidedByEmployeeId: row.decided_by ?? null,
+    decidedByEmployeeName: row.decided_by_employee_name ?? null
+  };
+}
+
+function toCorrection(row) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    previousSeverity: row.previous_severity ?? null,
+    newSeverity: row.new_severity ?? null,
+    previousStatus: row.previous_status ?? null,
+    newStatus: row.new_status ?? null,
+    note: row.note,
+    correctedAt: row.corrected_at,
+    correctedByAccountId: row.corrected_by_account_id,
+    correctedByAccountName: row.corrected_by_account_name ?? null
+  };
+}
+
+function toNonconformance(row, { quantityChanges = [], dispositions = [], corrections = [] } = {}) {
   return {
     id: row.id,
     issueNo: row.issue_no,
@@ -231,9 +370,15 @@ function toNonconformance(row, quantityChanges = []) {
     shiftName: row.shift_name ?? null,
     shiftStartsAt: row.shift_starts_at ?? null,
     shiftEndsAt: row.shift_ends_at ?? null,
+    // When the record finished with itself: set when its whole quantity got a
+    // Disposition, or when a holder of Quality authority cancelled it
+    // (issue #206). The baseline's own CHECK is why both states carry one.
+    closedAt: row.closed_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    quantityChanges
+    quantityChanges,
+    dispositions,
+    corrections
   };
 }
 
@@ -250,6 +395,41 @@ function mapQuantityChangeWriteError(error) {
     return httpError(409, 'the affected quantity can only be increased');
   }
   return error;
+}
+
+// A Disposition write can fail for two reasons this file turns into a clean
+// 4xx rather than a 500. `quality_issues_disposition_fits` is the database's
+// own statement of "no more than was affected can be dispositioned" — issue
+// #206's 409, reached here by a race the service's own check could not see.
+// `quality_dispositions_rework_only` refuses minutes on anything that is not a
+// rework, which the service also checks itself; it maps to a 400 because it is
+// a caller's mistake about a field, not a state conflict. Neither a raw
+// Postgres message nor the column it names is ever echoed to a caller.
+function mapDispositionWriteError(error) {
+  if (error.code === '23514') {
+    if (error.constraint === 'quality_issues_disposition_fits') {
+      return httpError(409, 'that is more than the quantity still undecided on this Non-conformance');
+    }
+    if (error.constraint === 'quality_dispositions_rework_only') {
+      return httpError(400, 'reworkMinutes may only be recorded on a rework Disposition');
+    }
+  }
+  return error;
+}
+
+// A Non-conformance that was cancelled in error accepts nothing further — no
+// Disposition, no quantity change, no correction — and the refusal is a 409
+// rather than a 403 because it is the record's state that refuses, not the
+// caller's entitlement (issue #206's own criterion, and the same distinction
+// `increaseQuantity` already draws between its 409 and the 403 a permission
+// refusal gets).
+function requireNotCancelled(existing) {
+  if (existing.status === 'cancelled') {
+    throw httpError(
+      409,
+      'this Non-conformance was cancelled and accepts no further Dispositions or quantity changes'
+    );
+  }
 }
 
 /**
@@ -348,13 +528,15 @@ async function findNonconformance(id) {
 }
 
 /**
- * One Non-conformance with its quantity history — what the detail Screen
- * reads, and what every write in this file answers with.
+ * One Non-conformance with its quantity history, its Dispositions and its
+ * corrections — what the detail Screen reads, and what every write in this
+ * file answers with.
  *
- * The history is part of the record rather than a second read, because the
- * ticket's own criterion says so: "each change is kept with the previous and
- * new quantity, who and when, and is returned with the Non-conformance".
- * Ordered oldest first, which is the order a person reads a running count in.
+ * All three histories are part of the record rather than separate reads,
+ * because the ticket's own criteria say so: a quantity change "is returned
+ * with the Non-conformance" (issue #205), and issue #206's corrections must be
+ * "readable back with who and when". Ordered oldest first, which is the order
+ * a person reads a record's own story in.
  */
 async function getNonconformanceDetail(id) {
   if (parseId(id) === null) return null;
@@ -363,7 +545,11 @@ async function getNonconformanceDetail(id) {
     [id]
   );
   if (!rows[0]) return null;
-  return toNonconformance(rows[0], await listQuantityChanges(rows[0].id));
+  return toNonconformance(rows[0], {
+    quantityChanges: await listQuantityChanges(rows[0].id),
+    dispositions: await listDispositions(rows[0].id),
+    corrections: await listCorrections(rows[0].id)
+  });
 }
 
 async function listQuantityChanges(qualityIssueId, client = null) {
@@ -376,6 +562,30 @@ async function listQuantityChanges(qualityIssueId, client = null) {
     [qualityIssueId]
   );
   return rows.map(toQuantityChange);
+}
+
+async function listDispositions(qualityIssueId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${DISPOSITION_COLUMNS}
+     ${DISPOSITION_JOINS}
+     WHERE qd.quality_issue_id = $1
+     ORDER BY qd.decided_at, qd.id`,
+    [qualityIssueId]
+  );
+  return rows.map(toDisposition);
+}
+
+async function listCorrections(qualityIssueId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${CORRECTION_COLUMNS}
+     ${CORRECTION_JOINS}
+     WHERE qic.quality_issue_id = $1
+     ORDER BY qic.corrected_at, qic.id`,
+    [qualityIssueId]
+  );
+  return rows.map(toCorrection);
 }
 
 // The Product a Non-conformance is recorded against: it must exist and it must
@@ -603,6 +813,7 @@ async function recordNonconformance(input, accountId) {
 async function updateNonconformance(id, input, accountId) {
   const existing = await findNonconformance(id);
   if (!existing) throw notFound('Non-conformance');
+  requireNotCancelled(existing);
 
   const body = input ?? {};
   const sets = [];
@@ -669,6 +880,7 @@ async function updateNonconformance(id, input, accountId) {
 async function increaseQuantity(id, input, accountId) {
   const existing = await findNonconformance(id);
   if (!existing) throw notFound('Non-conformance');
+  requireNotCancelled(existing);
 
   const body = input ?? {};
   const quantity = requirePositiveQuantity('quantity', body.quantity);
@@ -704,15 +916,376 @@ async function increaseQuantity(id, input, accountId) {
   return getNonconformanceDetail(id);
 }
 
+/**
+ * Settle what a Non-conformance's status is once a Disposition has landed
+ * (issue #206).
+ *
+ * Three things happen in one statement, and they are one statement on purpose:
+ * the cached total is recomputed from the disposition rows the way the
+ * baseline's own trigger recomputes it, the status follows from that total,
+ * and the closing time is set with it. Splitting them would leave a window in
+ * which the record says `closed` with no time, which the baseline's own
+ * `quality_issues_closed_has_time` refuses — and it would leave two places
+ * computing the same sum.
+ *
+ * **The whole quantity having a Disposition is the only thing that closes a
+ * Non-conformance.** No Concern is consulted, and none can be: a
+ * Non-conformance records the bad product rather than the problem behind it,
+ * and the cause may still be being answered while the product itself is dealt
+ * with (CONTEXT.md's own entry, and issue #206's criterion "regardless of any
+ * linked Concern"). Part of the quantity having one makes it `dispositioned`
+ * — the baseline's own word for a record that is partly dealt with, which is
+ * what the register's status filter already offers.
+ *
+ * The recomputation is from `quality_dispositions` rather than an increment,
+ * matching the baseline trigger's own choice: a deleted or corrected
+ * Disposition then self-heals rather than leaving a total nobody can explain.
+ * The baseline's deferred constraint trigger still runs at COMMIT and
+ * recomputes the same number, so the two agree by construction.
+ */
+async function settleDispositionStatus(client, qualityIssueId) {
+  await client.query(
+    `WITH totals AS (
+       SELECT COALESCE(SUM(quantity), 0) AS total
+         FROM quality_dispositions
+        WHERE quality_issue_id = $1
+     )
+     UPDATE quality_issues qi
+        SET quantity_dispositioned = totals.total,
+            status = CASE WHEN totals.total >= qi.quantity_affected
+                          THEN 'closed' ELSE 'dispositioned' END,
+            closed_at = CASE WHEN totals.total >= qi.quantity_affected
+                             THEN now() ELSE NULL END
+       FROM totals
+      WHERE qi.id = $1`,
+    [qualityIssueId]
+  );
+}
+
+/**
+ * Record a Disposition (issue #206): scrap, rework with its minutes, or return
+ * to the supplier — or, with `concession`, the Concession that accepts the
+ * product as it is.
+ *
+ * The kind is decided by the caller of this helper rather than by a field in
+ * the body, because the two acts have different rules and different addresses:
+ * a scrap, rework or return Disposition needs the same access as recording
+ * (`write: true` at the Org Unit, which the route asks about), and a Concession
+ * needs Quality authority at it (ADR-0035, which the route asks about too).
+ *
+ * **What is still undecided is the whole guard.** Product is dealt with in
+ * parts as it is sorted, so a Disposition may cover any part of what is left
+ * and no more: claiming to deal with 30 of the 12 still in the quarantine cage
+ * is a number that cannot be true, and it is refused with a 409 — the same
+ * class of refusal the affected quantity's own decrease gets, and the same
+ * class the database's `quality_issues_disposition_fits` produces if a race
+ * gets past this check.
+ *
+ * The unit is not an input: it is the record's own `uom_code`, read off the
+ * Product when the Non-conformance was recorded, for the reason
+ * `recordNonconformance` gives — a caller free to name a different unit for
+ * the same batch is a caller free to make the containment count wrong.
+ */
+async function recordDisposition(id, input, accountId, { concession = false } = {}) {
+  const existing = await findNonconformance(id);
+  if (!existing) throw notFound('Non-conformance');
+  requireNotCancelled(existing);
+
+  const body = input ?? {};
+  const dispositionType = concession ? CONCESSION_DISPOSITION_TYPE : body.dispositionType;
+
+  if (!concession) {
+    requireMembership('dispositionType', dispositionType, DISPOSITION_TYPES);
+  }
+
+  const quantity = requirePositiveQuantity('quantity', body.quantity);
+
+  // What is still undecided — read off the record's own two numbers rather
+  // than summed here, because the baseline's trigger keeps the cached total
+  // correct whatever else has happened to the record.
+  const undecided = roundQuantity(existing.quantityAffected - existing.quantityDispositioned);
+  if (roundQuantity(quantity) > undecided) {
+    throw httpError(
+      409,
+      `that is more than the ${undecided} ${existing.uomCode} still undecided on this Non-conformance`
+    );
+  }
+
+  // Rework minutes: required where the Disposition is a rework, refused where
+  // it is not (the baseline's `quality_dispositions_rework_only` CHECK says the
+  // same thing, and this produces the sentence a caller can read).
+  let reworkMinutes = 0;
+  if (dispositionType === 'rework') {
+    if (body.reworkMinutes === undefined || body.reworkMinutes === null) {
+      throw httpError(400, 'reworkMinutes is required on a rework Disposition');
+    }
+    reworkMinutes = requireNonNegativeMinutes('reworkMinutes', body.reworkMinutes);
+  } else if (
+    body.reworkMinutes !== undefined &&
+    body.reworkMinutes !== null &&
+    Number(body.reworkMinutes) !== 0
+  ) {
+    throw httpError(400, 'reworkMinutes may only be recorded on a rework Disposition');
+  }
+
+  // A Concession carries both: the reference is the deviation or approval
+  // number an auditor asks for, and the note is why the product was accepted.
+  // The ticket names both as required on a Concession, and only a note is
+  // meaningful on the others.
+  const reference = optionalText(body.reference);
+  const note = optionalText(body.note);
+  if (concession) {
+    if (reference === null) {
+      throw httpError(400, 'reference is required on a Concession: quote the deviation it was granted under');
+    }
+    if (note === null) throw httpError(400, 'note is required on a Concession: say why it was granted');
+  }
+
+  try {
+    await withActor(accountId, async (client) => {
+      await client.query(
+        `INSERT INTO quality_dispositions (
+           quality_issue_id, disposition_type, quantity, uom_code,
+           rework_minutes, decided_by_account_id, approval_ref, notes
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          existing.id,
+          dispositionType,
+          quantity,
+          existing.uomCode,
+          reworkMinutes,
+          accountId ?? null,
+          reference,
+          note
+        ]
+      );
+      await settleDispositionStatus(client, existing.id);
+    });
+  } catch (error) {
+    throw mapDispositionWriteError(error);
+  }
+
+  return getNonconformanceDetail(id);
+}
+
+// The Concession, as its own act. `recordDisposition` does the work; this
+// exists so the route and the reader can see that granting a Concession is a
+// decision with Quality authority behind it rather than one of the three
+// ordinary dispositions, which is the distinction ADR-0035 draws.
+async function grantConcession(id, input, accountId) {
+  return recordDisposition(id, input, accountId, { concession: true });
+}
+
+// One correction row, in the transaction that made the change — so a record
+// that moved with no row saying who moved it is not a state this file can
+// produce. The Account is required by the table itself (NOT NULL), which is
+// deliberate: every correction in this slice is made by a signed-in holder of
+// Quality authority, and an unattributed correction is worse than none.
+async function writeCorrection(client, {
+  qualityIssueId,
+  kind,
+  accountId,
+  note,
+  previousSeverity = null,
+  newSeverity = null,
+  previousStatus = null,
+  newStatus = null
+}) {
+  await client.query(
+    `INSERT INTO quality_issue_corrections (
+       quality_issue_id, kind, previous_severity, new_severity,
+       previous_status, new_status, note, corrected_by_account_id
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      qualityIssueId,
+      kind,
+      previousSeverity,
+      newSeverity,
+      previousStatus,
+      newStatus,
+      note,
+      accountId
+    ]
+  );
+}
+
+/**
+ * Lower a Non-conformance's severity (issue #206).
+ *
+ * The one severity change issue #205 refused a recorder: deciding that
+ * nonconforming product is less bad than the Defect code says is the same
+ * judgement a Concession makes, so a Grant carrying Quality authority at the
+ * record's Org Unit is what it takes (ADR-0035) and the route asks People
+ * before calling here. The note is required — a lowering with no reason on it
+ * is the row an auditor cannot use — and it is kept with the Account that
+ * decided it and the moment it was decided, which is what makes the change
+ * readable back over HTTP.
+ *
+ * There is no floor here beyond "actually lower": the criterion is that a
+ * lowering *below the Defect code's own default* is allowed with the authority
+ * and the note, so a record raised to `critical` may be brought back to the
+ * code's `major`, and further down still if that is the honest reading.
+ */
+async function lowerSeverity(id, input, accountId) {
+  const existing = await findNonconformance(id);
+  if (!existing) throw notFound('Non-conformance');
+  requireNotCancelled(existing);
+
+  const body = input ?? {};
+  requireMembership('severity', body.severity, SEVERITIES);
+  const note = requireNote(body);
+
+  if (severityRank(body.severity) >= severityRank(existing.severity)) {
+    throw httpError(
+      409,
+      `this Non-conformance is ${existing.severity}; a lowering records a difference, and a raising is a different act`
+    );
+  }
+
+  await withActor(accountId, async (client) => {
+    await client.query('UPDATE quality_issues SET severity = $1 WHERE id = $2', [
+      body.severity,
+      id
+    ]);
+    await writeCorrection(client, {
+      qualityIssueId: existing.id,
+      kind: 'severity_lowered',
+      accountId,
+      note,
+      previousSeverity: existing.severity,
+      newSeverity: body.severity
+    });
+  });
+
+  return getNonconformanceDetail(id);
+}
+
+/**
+ * Reopen a closed Non-conformance (issue #206).
+ *
+ * A record that closed itself once its whole quantity had a Disposition can
+ * turn out to have been closed too early — more of the same product found
+ * after the fact, or a disposition that should not have been made. Only a
+ * closed record can be reopened, and it goes back to `dispositioned` rather
+ * than to `open`: its quantity has already been dealt with, so what a reopen
+ * restores is the *record's* availability, not the product's. The way back to
+ * a close is the path that got there the first time — raise the affected
+ * quantity because sorting found more (issue #205, the number still never
+ * shrinks) and dispose of the rest.
+ *
+ * The closing time is cleared with the status, because a record that is open
+ * again carrying the time it closed reads as a contradiction.
+ */
+async function reopenNonconformance(id, input, accountId) {
+  const existing = await findNonconformance(id);
+  if (!existing) throw notFound('Non-conformance');
+
+  const note = requireNote(input ?? {});
+
+  if (existing.status !== 'closed') {
+    throw httpError(
+      409,
+      `only a closed Non-conformance can be reopened; this one is ${existing.status}`
+    );
+  }
+
+  await withActor(accountId, async (client) => {
+    const { rows: [updated] } = await client.query(
+      `UPDATE quality_issues
+          SET status = CASE WHEN quantity_dispositioned >= quantity_affected
+                            THEN 'dispositioned'
+                            WHEN immediate_containment IS NOT NULL THEN 'contained'
+                            ELSE 'open' END,
+              closed_at = NULL
+        WHERE id = $1
+        RETURNING status`,
+      [id]
+    );
+    await writeCorrection(client, {
+      qualityIssueId: existing.id,
+      kind: 'reopened',
+      accountId,
+      note,
+      previousStatus: existing.status,
+      newStatus: updated.status
+    });
+  });
+
+  return getNonconformanceDetail(id);
+}
+
+/**
+ * Cancel a Non-conformance recorded in error (issue #206).
+ *
+ * The mistake this exists for is a record that should never have been written
+ * down at all — the wrong Product, the wrong line, a duplicate of one already
+ * on the log. It takes Quality authority and a note for the same reason the
+ * others do, and an already-cancelled record is a 409 rather than a second
+ * cancellation: the note on the first one is the record of why it went.
+ *
+ * A closed record is refused too, and told to reopen first: cancelling it
+ * would overwrite the closing time its own closure produced, and "this record
+ * was finished" and "this record never happened" are two different statements
+ * about the same row.
+ *
+ * The baseline's `quality_issues_closed_has_time` requires a closing time for
+ * either state, which is why `closed_at` is set here — a cancelled record is
+ * finished with, and the log reads that off one column.
+ */
+async function cancelNonconformance(id, input, accountId) {
+  const existing = await findNonconformance(id);
+  if (!existing) throw notFound('Non-conformance');
+
+  const note = requireNote(input ?? {});
+
+  if (existing.status === 'cancelled') {
+    throw httpError(409, 'this Non-conformance is already cancelled');
+  }
+  if (existing.status === 'closed') {
+    throw httpError(409, 'a closed Non-conformance cannot be cancelled; reopen it first');
+  }
+
+  await withActor(accountId, async (client) => {
+    const { rows: [updated] } = await client.query(
+      `UPDATE quality_issues
+          SET status = 'cancelled', closed_at = now()
+        WHERE id = $1
+        RETURNING status`,
+      [id]
+    );
+    await writeCorrection(client, {
+      qualityIssueId: existing.id,
+      kind: 'cancelled',
+      accountId,
+      note,
+      previousStatus: existing.status,
+      newStatus: updated.status
+    });
+  });
+
+  return getNonconformanceDetail(id);
+}
+
 module.exports = {
   DETECTION_POINTS,
   SEVERITIES,
   NONCONFORMANCE_STATUSES,
+  DISPOSITION_TYPES,
+  CORRECTION_KINDS,
   listNonconformances,
   findNonconformance,
   getNonconformanceDetail,
   listQuantityChanges,
+  listDispositions,
+  listCorrections,
   recordNonconformance,
   updateNonconformance,
-  increaseQuantity
+  increaseQuantity,
+  recordDisposition,
+  grantConcession,
+  lowerSeverity,
+  reopenNonconformance,
+  cancelNonconformance
 };
