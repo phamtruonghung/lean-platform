@@ -17,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/maintenance/org_unit_chooser.dart';
-import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/quality/complaint_detail_screen.dart';
 import 'package:lean_platform/quality/complaint_form_dialog.dart';
 import 'package:lean_platform/quality/complaint_link_dialog.dart';
@@ -103,14 +102,6 @@ Future<void> _pump(
     initialLocation: location,
   );
 }
-
-/// The values the menu that is currently open offers, read off the built
-/// `DropdownMenuItem`s (the Non-conformance surface's own helper).
-Set<String> _openedMenuValues(WidgetTester tester) => tester
-    .widgetList<DropdownMenuItem<String?>>(find.byType(DropdownMenuItem<String?>))
-    .map((item) => item.value)
-    .whereType<String>()
-    .toSet();
 
 /// One dropdown choice, the way a person makes it: open the field, tap the
 /// option. `last` because the closed field can already be showing the word the
