@@ -374,16 +374,15 @@ async function makeGround() {
   assert.strictEqual(recorded.status, 201, `recording failed: ${JSON.stringify(recorded.body)}`);
 
   // The Concern is raised on the line and the occurrence is LINKED to it,
-  // rather than raised from it, and the reason is a platform gap this ticket
-  // found rather than a preference: `action_items_single_source` (the
-  // baseline's CHECK) permits a row to carry `quality_issue_id` *or*
-  // `capa_id`, never both, so a Concern raised from a Non-conformance
-  // (`raiseConcernFromNonconformance`, #208) cannot also be the Concern a CAPA
-  // is opened on (#209) — the open would violate that constraint and answer
-  // 500. Linking is #208's other, first-class road to the same read: the
-  // occurrence is evidence behind the Concern either way, and the report
-  // renders it with the number, the Product, the Defect code, the quantity and
-  // the Dispositions it is there for.
+  // rather than raised from it: linking is #208's other, first-class road to
+  // the same read, and the report renders the occurrence either way, with the
+  // number, the Product, the Defect code, the quantity and the Dispositions it
+  // is there for. (Issue #221 has since narrowed the gap that forced this
+  // choice — `action_items_single_source` no longer counts `capa_id` among an
+  // Action's sources, so a Concern raised from a Non-conformance can also be
+  // the Concern a CAPA is opened on. This ground keeps the linking road, and
+  // `concern-nonconformances.test.js`'s section 5 is where the raised-from road
+  // is tested end to end.)
   const raised = await raiseConcern(engineer.token, site.id, {
     orgUnitId: line.id,
     title: 'The guard keeps working loose'

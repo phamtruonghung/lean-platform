@@ -21,9 +21,17 @@
  * occurrence a Concern was raised from being unlinked (409), and a link that
  * is not there (404).
  *
+ * **Section 5 is issue #221's, and one of its two tests reads Postgres
+ * directly.** The gap that issue found was in the baseline's
+ * `action_items_single_source` CHECK, and a constraint is what makes a rule
+ * true for a writer that does not use the service — so the honest way to prove
+ * the narrowed rule still refuses a genuinely double-sourced Action is to be
+ * that writer for one statement, the same licence `capas.test.js` takes for
+ * the two constraints beside it. The permitted path is tested over HTTP.
+ *
  * Needs a database with every migration applied, including
- * 1800000000000_concern-nonconformances.js. Set DATABASE_URL first — see the
- * README's Tests section.
+ * 1800000000000_concern-nonconformances.js and 1800400000000_capa-is-not-a-source.js.
+ * Set DATABASE_URL first — see the README's Tests section.
  */
 
 const test = require('node:test');
@@ -45,6 +53,8 @@ const insertedOrgUnitIds = [];
 const insertedProductCodes = [];
 const insertedDefectCodeCodes = [];
 const insertedActionIds = [];
+const insertedCapaIds = [];
+const insertedCustomerCodes = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -69,7 +79,9 @@ async function json(response) {
 
 // An Account, optionally holding Grants — the shape
 // `nonconformance-dispositions.test.js` uses. `write` defaults to true, since
-// most of these Accounts record; `quality` is never needed by this slice.
+// most of these Accounts record; `quality` is the independent flag ADR-0035
+// keeps beside it, and section 5 is the one place it is needed: opening a CAPA
+// on a Concern is an act of Quality authority rather than of a write Grant.
 async function insertAccount({ role = 'operator', displayName = null, grants = [] } = {}) {
   const subject = uniqueCode('ccacct');
   const name = displayName ?? `Concern Account ${subject}`;
@@ -180,6 +192,47 @@ async function raiseConcern(token, nonconformanceId, body) {
   return payload;
 }
 
+// `POST /api/actions/:id/capa` — opening an investigation on a Concern, the
+// act of Quality authority issue #209 built and issue #221 made reachable for
+// the Concern this file is about.
+async function openCapa(token, concernId, body = {}) {
+  const response = await fetch(`${base}/api/actions/${concernId}/capa`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const payload = await json(response);
+  if (payload.body && payload.body.capa) insertedCapaIds.push(payload.body.capa.id);
+  return payload;
+}
+
+// The investigation's own read, which is the 8D report issue #212 renders:
+// evidence travels on it as `concern.nonconformances`.
+async function readCapa(token, capaId) {
+  const response = await fetch(`${base}/api/actions/capas/${capaId}`, { headers: token });
+  return json(response);
+}
+
+// A customer complaint standing on its own, which is the second *source* a
+// genuinely double-sourced Action names in section 5. Written directly rather
+// than over HTTP on purpose: the Module's own routes for Customers and
+// complaints belong to issue #214, and all this fixture needs is a foreign key
+// the narrowed CHECK can count.
+async function insertComplaint() {
+  const code = uniqueCode('CNC-');
+  const { rows: [customer] } = await pool.query(
+    `INSERT INTO customers (code, name) VALUES ($1, $2) RETURNING id`,
+    [code, `Customer ${code}`]
+  );
+  insertedCustomerCodes.push(code);
+  const { rows: [complaint] } = await pool.query(
+    `INSERT INTO customer_complaints (customer_id, description)
+     VALUES ($1, 'Short-shipped on the last delivery.') RETURNING id`,
+    [customer.id]
+  );
+  return complaint.id;
+}
+
 async function link(token, concernId, nonconformanceId) {
   const response = await fetch(`${base}/api/actions/${concernId}/nonconformances`, {
     method: 'POST',
@@ -283,7 +336,19 @@ test.before(async () => {
 test.after(async () => {
   // Children before parents. The link rows are `ON DELETE CASCADE` from both
   // ends, so deleting the Actions and then the Non-conformances clears them.
+  // The CAPAs go after the Actions, because `action_items.capa_id` is a plain
+  // foreign key and Postgres checks it on DELETE.
   await pool.query('DELETE FROM action_items WHERE id = ANY($1)', [insertedActionIds]);
+  if (insertedCapaIds.length > 0) {
+    await pool.query('DELETE FROM capa_team_members WHERE capa_id = ANY($1)', [insertedCapaIds]);
+    await pool.query('DELETE FROM capas WHERE id = ANY($1)', [insertedCapaIds]);
+  }
+  await pool.query(
+    `DELETE FROM customer_complaints
+      WHERE customer_id IN (SELECT id FROM customers WHERE code = ANY($1))`,
+    [insertedCustomerCodes]
+  );
+  await pool.query('DELETE FROM customers WHERE code = ANY($1)', [insertedCustomerCodes]);
   await pool.query(
     `DELETE FROM quality_issues
       WHERE org_unit_id IN (SELECT id FROM org_units WHERE site_id = ANY($1))`,
@@ -634,3 +699,101 @@ test('a cancelled Non-conformance can neither have a Concern raised from it nor 
   assert.strictEqual(linked.status, 409, JSON.stringify(linked.body));
   assert.match(linked.body.message, /was cancelled/);
 });
+
+// ---------------------------------------------------------------------------
+// 5. The investigation a Concern can carry (issue #221)
+// ---------------------------------------------------------------------------
+
+test("a Concern raised from a Non-conformance can have a CAPA opened on it, and the investigation's own read returns that Non-conformance as evidence", async () => {
+  const ground = await makeGround();
+
+  // #208's road, and the one the Quality Module exists for: the Concern carries
+  // its provenance in `action_items.quality_issue_id`.
+  const raised = await raiseConcern(ground.recorder.token, ground.id, {
+    title: 'The guard keeps working loose'
+  });
+  assert.strictEqual(raised.status, 201, JSON.stringify(raised.body));
+  assert.strictEqual(String(raised.body.action.sourceNonconformanceId), String(ground.id));
+
+  // The act of Quality authority, by an Account that holds none of this Org
+  // Unit's write Grant — the two flags are independent (ADR-0035).
+  const holder = await insertAccount({
+    displayName: 'Quality Engineer',
+    grants: [{ orgUnitId: ground.unit.id, write: false, quality: true }]
+  });
+
+  // Before issue #221 this was a 500: the insert set `capa_id` beside the
+  // `quality_issue_id` the row already carried, the baseline's single-source
+  // CHECK counted both as *sources*, and Postgres answered 23514 with no
+  // mapping for it in the service.
+  const opened = await openCapa(holder.token, raised.body.action.id, {});
+  assert.strictEqual(opened.status, 201, JSON.stringify(opened.body));
+
+  // A source and a result on one row, from the Action's own read: where the
+  // Concern came from, and what it became.
+  const concern = await readAction(ground.recorder.token, raised.body.action.id);
+  assert.strictEqual(concern.status, 200, JSON.stringify(concern.body));
+  assert.strictEqual(String(concern.body.action.sourceNonconformanceId), String(ground.id));
+  assert.strictEqual(concern.body.action.sourceType, 'quality_issue');
+  assert.strictEqual(concern.body.action.capa.id, opened.body.capa.id);
+
+  // And the report's evidence section (#212's read) carries the occurrence the
+  // Concern was raised from, named as the source rather than as a later one.
+  const read = await readCapa(holder.token, opened.body.capa.id);
+  assert.strictEqual(read.status, 200, JSON.stringify(read.body));
+  const evidence = read.body.capa.concern.nonconformances;
+  assert.strictEqual(evidence.length, 1);
+  assert.strictEqual(String(evidence[0].id), String(ground.id));
+  assert.strictEqual(evidence[0].issueNo, ground.nonconformance.issueNo);
+  assert.strictEqual(evidence[0].isSource, true);
+  assert.strictEqual(String(evidence[0].productId), String(ground.product.id));
+  assert.strictEqual(evidence[0].defectCodeCode, ground.defectCode.code);
+  assert.strictEqual(evidence[0].quantityAffected, 20);
+});
+
+test('the single-source rule still refuses an Action raised from two records at once, and now permits a source beside the investigation it became', async () => {
+  // Read directly (see this file's header): the claim is about a CHECK, and a
+  // constraint is what makes a rule true for a writer that does not go through
+  // the service. The permitted half of the same rule is exercised over HTTP.
+  const ground = await makeGround();
+  const complaintId = await insertComplaint();
+
+  const raised = await raiseConcern(ground.recorder.token, ground.id, {
+    title: 'The same failure, and a customer on the phone about it'
+  });
+  assert.strictEqual(raised.status, 201, JSON.stringify(raised.body));
+
+  // Two genuine sources is exactly what the rule still forbids. The Concern
+  // already carries `quality_issue_id`; naming a customer complaint as well is
+  // refused under the constraint's own name, which is deliberately unchanged —
+  // a later reader greps for it.
+  await assert.rejects(
+    () =>
+      pool.query('UPDATE action_items SET customer_complaint_id = $2 WHERE id = $1', [
+        raised.body.action.id,
+        complaintId
+      ]),
+    (error) => error.code === '23514' && error.constraint === 'action_items_single_source',
+    'an Action was raised from two records at once'
+  );
+
+  // The refused statement wrote nothing, and the provenance the Concern
+  // legitimately carries is untouched.
+  const refused = await readAction(ground.recorder.token, raised.body.action.id);
+  assert.strictEqual(refused.body.action.sourceNonconformanceId, String(ground.id));
+  assert.strictEqual(refused.body.action.sourceType, 'quality_issue');
+
+  // `capa_id` is no longer counted among the sources, so the same row takes an
+  // investigation: what it became is not a second thing it came from.
+  const holder = await insertAccount({
+    displayName: 'Quality Engineer',
+    grants: [{ orgUnitId: ground.unit.id, write: false, quality: true }]
+  });
+  const opened = await openCapa(holder.token, raised.body.action.id, {});
+  assert.strictEqual(opened.status, 201, JSON.stringify(opened.body));
+
+  const concern = await readAction(ground.recorder.token, raised.body.action.id);
+  assert.strictEqual(String(concern.body.action.sourceNonconformanceId), String(ground.id));
+  assert.strictEqual(concern.body.action.capa.id, opened.body.capa.id);
+});
+
