@@ -278,6 +278,161 @@ router.post(
   }
 );
 
+// Raising a Concern from a Non-conformance (issue #208).
+//
+// Three addresses in this file belong to that link, and they are `actions`'
+// own for the reason actions.js's header argues at length: a Concern is this
+// Module's record, its creation rules (number, title, cycle-1 Plan,
+// `raised_by`) are this Module's knowledge, and ADR-0006's clause on entry
+// points means the Quality Module could not be given a write to perform here
+// even if it could reach this Module. So the Quality Module's own routes read
+// the link by SQL join and never write it, and the writes live here.
+//
+// This one is deliberately NOT the register's own raise route with a
+// Non-conformance in the body. The Org Unit is not the caller's choice — the
+// Concern lands at the Non-conformance's own Org Unit, because a problem is
+// solved where it happened — so an address that took an `orgUnitId` would be
+// offering a field whose only correct value is one the server already knows.
+// The scope question is #198's rule for a Concern and not a new one:
+// `people.canSeeSite` about the Non-conformance's Site, since a Concern is a
+// report rather than a decision. Everything else about the request — the
+// title, the optional fields, the Employee named as owner — is the register's
+// own shape, resolved the same way and in the same order.
+router.post(
+  '/nonconformances/:id/concern',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+
+      const nonconformance = await actions.findNonconformanceForConcern(req.params.id);
+      if (!nonconformance) throw notFound('Non-conformance');
+
+      const allowed = await people.canSeeSite({
+        account: req.account,
+        siteId: nonconformance.siteId
+      });
+      if (!allowed) {
+        return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+      }
+
+      let ownerEmployeeId = null;
+      if (body.ownerEmployeeId !== undefined && body.ownerEmployeeId !== null) {
+        ownerEmployeeId = parseId(body.ownerEmployeeId);
+        if (ownerEmployeeId === null) {
+          return res.status(400).json({ message: 'ownerEmployeeId must be a valid Employee id' });
+        }
+        const employee = await people.findEmployee(ownerEmployeeId);
+        if (!employee) throw notFound('Employee');
+        if (!employee.isActive) {
+          throw httpError(409, 'this Employee has departed and cannot be given an Action');
+        }
+      }
+
+      const action = await actions.raiseConcernFromNonconformance(
+        nonconformance.id,
+        {
+          title: body.title,
+          description: body.description ?? null,
+          pillarCode: body.pillarCode ?? null,
+          ownerEmployeeId,
+          dueDate: body.dueDate ?? null,
+          priority: body.priority ?? 3
+        },
+        req.account.id,
+        { raisedBy: req.account.employeeId ?? null }
+      );
+
+      res.status(201).json({ action });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Linking a further Non-conformance to an existing Concern (issue #208).
+//
+// Two permissions, and they are the two the act actually needs. The Concern
+// is being changed, so the caller needs the Action log's own rule for that —
+// a write Grant reaching its Org Unit, which `requireActionWriteScope`
+// already asks and which is the same question completing a phase or calling a
+// Concern off asks. The Non-conformance is only *read*, and read is Site-wide
+// in the Quality Module, so what is asked of it is `people.canSeeSite` about
+// its Site: linking an occurrence nobody may look at would be a link a reader
+// cannot follow. That pair, rather than a write Grant at both Org Units: the
+// Asset move needs a Grant at both ends because both records change, and
+// nothing about the Non-conformance changes here.
+router.post(
+  '/:id/nonconformances',
+  people.authenticate,
+  people.requireActive,
+  requireActionWriteScope,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const nonconformanceId = parseId(body.nonconformanceId);
+      if (nonconformanceId === null) {
+        return res.status(400).json({ message: 'nonconformanceId must be a valid Non-conformance id' });
+      }
+
+      const nonconformance = await actions.findNonconformanceForConcern(nonconformanceId);
+      if (!nonconformance) throw notFound('Non-conformance');
+
+      const visible = await people.canSeeSite({
+        account: req.account,
+        siteId: nonconformance.siteId
+      });
+      if (!visible) {
+        return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+      }
+
+      const action = await actions.linkNonconformance(
+        req.action.id,
+        nonconformance.id,
+        req.account.id
+      );
+      res.status(201).json({ action });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Unlinking a Non-conformance from a Concern (issue #208). Its own address
+// rather than a DELETE, following the shape every other change to an Action
+// takes (`/cancel`, `/escalate`, `/reopen`): what this does is state a
+// decision about the record — "these two are not the same problem after all" —
+// and the caller gets the Concern back, as every other write in this Module
+// answers.
+//
+// The refusals are actions.js's own, over a locked row: the Non-conformance
+// this Concern was raised from cannot be unlinked (409), and one that is not
+// linked at all is a 404 rather than a silent no-op.
+router.post(
+  '/:id/nonconformances/:nonconformanceId/unlink',
+  people.authenticate,
+  people.requireActive,
+  requireActionWriteScope,
+  async (req, res, next) => {
+    try {
+      const nonconformanceId = parseId(req.params.nonconformanceId);
+      if (nonconformanceId === null) {
+        return res.status(400).json({ message: 'nonconformanceId must be a valid Non-conformance id' });
+      }
+
+      const action = await actions.unlinkNonconformance(
+        req.action.id,
+        nonconformanceId,
+        req.account.id
+      );
+      res.json({ action });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 // Raise a measure against the Concern it answers (issue #178).
 //
 // Scope is the MEASURE's own Org Unit — defaulting to the Concern's, which is

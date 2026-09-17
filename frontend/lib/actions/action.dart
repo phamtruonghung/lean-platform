@@ -201,6 +201,115 @@ class EscalationTarget {
   final String name;
 }
 
+/// One Non-conformance a Concern answers (issue #208), as the Concern's own
+/// detail read names it — the shape `actions.js`'s `toLinkedNonconformance`
+/// sends.
+///
+/// It is deliberately not Quality's `Nonconformance` model: that is a whole
+/// record with its histories, and this is the four facts a reader of a Concern
+/// needs to recognise the occurrence — the number it is quoted by, the Product
+/// that was made wrong, the Defect code it failed and how much of it there is —
+/// plus [isSource], which says whether this is the Non-conformance the Concern
+/// was *raised from* rather than one gathered to it later.
+///
+/// No status label or tone here, unlike every other state in this client: that
+/// vocabulary belongs to the Quality Module, whose entry point this Module does
+/// not import (the dependency runs one way — see `actions.dart`), and inventing
+/// a second copy of it here is exactly the duplication the Module seam exists
+/// to prevent. The row names the record and links to its own address, which is
+/// where the status is read.
+@immutable
+class LinkedNonconformance {
+  const LinkedNonconformance({
+    required this.id,
+    required this.issueNo,
+    required this.status,
+    required this.severity,
+    required this.quantityAffected,
+    required this.uomCode,
+    required this.productId,
+    required this.productCode,
+    required this.productName,
+    required this.defectCodeId,
+    required this.defectCodeCode,
+    required this.defectCodeName,
+    required this.isSource,
+    this.detectionPoint,
+    this.lotRef,
+    this.detectedAt,
+    this.orgUnitId,
+    this.orgUnitName,
+    this.linkedAt,
+  });
+
+  factory LinkedNonconformance.fromJson(Map<String, dynamic> json) => LinkedNonconformance(
+        id: json['id'].toString(),
+        issueNo: json['issueNo'] as String,
+        status: json['status'] as String? ?? 'open',
+        severity: json['severity'] as String? ?? 'minor',
+        quantityAffected: _number(json['quantityAffected']),
+        uomCode: json['uomCode'] as String? ?? '',
+        productId: json['productId'].toString(),
+        productCode: json['productCode'] as String? ?? '',
+        productName: json['productName'] as String? ?? '',
+        defectCodeId: json['defectCodeId'].toString(),
+        defectCodeCode: json['defectCodeCode'] as String? ?? '',
+        defectCodeName: json['defectCodeName'] as String? ?? '',
+        isSource: json['isSource'] == true,
+        detectionPoint: json['detectionPoint'] as String?,
+        lotRef: json['lotRef'] as String?,
+        detectedAt: json['detectedAt'] as String?,
+        orgUnitId: json['orgUnitId']?.toString(),
+        orgUnitName: json['orgUnitName'] as String?,
+        linkedAt: json['linkedAt'] == null ? null : DateTime.tryParse(json['linkedAt'] as String),
+      );
+
+  final String id;
+
+  /// The number a person quotes on a tag and in conversation:
+  /// `NC-HCM-2026-00001`.
+  final String issueNo;
+
+  final String status;
+  final String severity;
+
+  /// How much product the occurrence covers, in the Product's own unit.
+  final double quantityAffected;
+  final String uomCode;
+
+  final String productId;
+  final String productCode;
+  final String productName;
+
+  final String defectCodeId;
+  final String defectCodeCode;
+  final String defectCodeName;
+
+  /// Whether this is the Non-conformance the Concern was raised from, rather
+  /// than a further occurrence linked to it. The service refuses to unlink
+  /// this one, and the Screen says which it is.
+  final bool isSource;
+
+  final String? detectionPoint;
+  final String? lotRef;
+  final String? detectedAt;
+  final String? orgUnitId;
+  final String? orgUnitName;
+  final DateTime? linkedAt;
+
+  /// What was made wrong, in one line: the Product's name and code.
+  String get productLabel =>
+      productName.isEmpty ? productCode : '$productName · $productCode';
+
+  /// Why it failed, in one line: the Defect code's name and code.
+  String get defectCodeLabel =>
+      defectCodeName.isEmpty ? defectCodeCode : '$defectCodeName · $defectCodeCode';
+
+  /// How much of it there is, without a trailing `.0`.
+  String get quantityLabel =>
+      '${quantityAffected == quantityAffected.roundToDouble() ? quantityAffected.toStringAsFixed(0) : quantityAffected} $uomCode';
+}
+
 @immutable
 class Action {
   const Action({
@@ -236,6 +345,8 @@ class Action {
     this.parent,
     this.measures = const [],
     this.phases = const [],
+    this.nonconformances = const [],
+    this.sourceNonconformanceId,
   });
 
   final String id;
@@ -335,6 +446,23 @@ class Action {
   /// Whether this Action answers nothing of its own — a measure stands alone
   /// when it was raised without a Concern behind it.
   bool get isMeasure => const {'containment', 'countermeasure', 'preventive'}.contains(actionType);
+
+  /// The Non-conformances this Concern answers (issue #208), on a detail read
+  /// — the one it was raised from first. Empty for every Action that answers
+  /// no Non-conformance, which is every Action but a Concern raised from one
+  /// and one linked to occurrences later.
+  final List<LinkedNonconformance> nonconformances;
+
+  /// The Non-conformance this Action was raised from, if any (issue #208) —
+  /// provenance rather than the link list, which is [nonconformances].
+  final String? sourceNonconformanceId;
+}
+
+/// A quantity as a number, whether the server sent `12` or `"12.0000"`.
+double _number(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0;
+  return 0;
 }
 
 /// One page of the register: the Actions, and whether there are more than the

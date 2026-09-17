@@ -15,10 +15,18 @@
 /// only where the caller holds that authority and the dialog always carries a
 /// note. The same slice adds the Disposition, the Concession, the reopen and
 /// the cancel — five acts, each with an address of its own (ADR-0021).
+///
+/// The cause, answered in the action log (issue #208), is the sixth and
+/// seventh: raising a Concern from this record, and linking this record to a
+/// Concern that already exists. Both are writes to the *Actions* Module — its
+/// own routes, reached through its own client entry point — so this Bloc holds
+/// two API clients rather than one, and each failure keeps its own field so a
+/// dialog can report the one it asked for.
 library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../actions/actions.dart';
 import '../platform/auth_gateway.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
@@ -112,6 +120,29 @@ class NonconformanceCancelled extends NonconformanceDetailEvent {
   final String note;
 }
 
+/// A Concern was raised from this Non-conformance (issue #208), in the action
+/// log. The dialog decides the title and the optional fields; the Bloc only
+/// ever sees a decision already made.
+class NonconformanceConcernRaised extends NonconformanceDetailEvent {
+  const NonconformanceConcernRaised({
+    required this.title,
+    this.description,
+    this.priority,
+  });
+
+  final String title;
+  final String? description;
+  final int? priority;
+}
+
+/// This Non-conformance was linked to a Concern that already exists (issue
+/// #208) — one problem answering several occurrences stays one Concern.
+class NonconformanceConcernLinked extends NonconformanceDetailEvent {
+  const NonconformanceConcernLinked({required this.concernId});
+
+  final String concernId;
+}
+
 sealed class NonconformanceDetailState {
   const NonconformanceDetailState();
 }
@@ -139,6 +170,11 @@ class NonconformanceDetailLoaded extends NonconformanceDetailState {
     required this.nonconformance,
     this.isMutating = false,
     this.mutationFailure,
+    this.isRaisingConcern = false,
+    this.concernRaiseFailure,
+    this.isLinkingConcern = false,
+    this.concernLinkFailure,
+    this.notice,
   });
 
   final Nonconformance nonconformance;
@@ -148,22 +184,52 @@ class NonconformanceDetailLoaded extends NonconformanceDetailState {
   /// which stays where it was so the caller can correct the one value.
   final String? mutationFailure;
 
+  /// A Concern is being raised from this record, and why the last one did not
+  /// land (issue #208). Its own pair rather than `isMutating`'s, because the
+  /// two dialogs watch different fields: a refusal to raise a Concern must not
+  /// look like a refusal to lower a severity.
+  final bool isRaisingConcern;
+  final String? concernRaiseFailure;
+
+  /// This record is being linked to an existing Concern, and why the last link
+  /// did not land (issue #208).
+  final bool isLinkingConcern;
+  final String? concernLinkFailure;
+
+  /// What the last Concern had to say for itself — the one sentence the Screen
+  /// shows once the dialog that asked has closed.
+  final String? notice;
+
   NonconformanceDetailLoaded copyWith({
     Nonconformance? nonconformance,
     bool? isMutating,
     String? mutationFailure,
+    bool? isRaisingConcern,
+    String? concernRaiseFailure,
+    bool? isLinkingConcern,
+    String? concernLinkFailure,
+    String? notice,
   }) =>
       NonconformanceDetailLoaded(
         nonconformance: nonconformance ?? this.nonconformance,
         isMutating: isMutating ?? this.isMutating,
         // Always overwritten, never carried forward.
         mutationFailure: mutationFailure,
+        isRaisingConcern: isRaisingConcern ?? this.isRaisingConcern,
+        concernRaiseFailure: concernRaiseFailure,
+        isLinkingConcern: isLinkingConcern ?? this.isLinkingConcern,
+        concernLinkFailure: concernLinkFailure,
+        notice: notice,
       );
 }
 
 class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, NonconformanceDetailState> {
-  NonconformanceDetailBloc({required QualityApi qualityApi, required AuthGateway authGateway})
-      : _api = qualityApi,
+  NonconformanceDetailBloc({
+    required QualityApi qualityApi,
+    required ActionsApi actionsApi,
+    required AuthGateway authGateway,
+  })  : _api = qualityApi,
+        _actions = actionsApi,
         _auth = authGateway,
         super(const NonconformanceDetailLoading()) {
     on<NonconformanceDetailStarted>(_onStarted);
@@ -176,9 +242,17 @@ class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, Nonconfor
     on<NonconformanceSeverityLowered>(_onSeverityLowered);
     on<NonconformanceReopened>(_onReopened);
     on<NonconformanceCancelled>(_onCancelled);
+    on<NonconformanceConcernRaised>(_onConcernRaised);
+    on<NonconformanceConcernLinked>(_onConcernLinked);
   }
 
   final QualityApi _api;
+
+  /// The Actions Module's client, reached through its own entry point: raising
+  /// a Concern from this record and linking it to one are writes to the action
+  /// log, and the action log's routes are where they live (issue #208).
+  final ActionsApi _actions;
+
   final AuthGateway _auth;
 
   static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
@@ -389,6 +463,107 @@ class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, Nonconfor
         note: event.note,
       ),
     );
+  }
+
+  /// A Concern was raised from this record (issue #208).
+  ///
+  /// The write is the Actions Module's, so it is `ActionsApi` that carries it
+  /// and `ActionsApiException` that can refuse it. What comes back is the
+  /// *Concern*, not this record, so the record is re-read afterwards: the
+  /// Screen that raised it is this Non-conformance's own, and what it has to
+  /// show is the Concern now named among the ones it is linked to — with the
+  /// status the server just gave it rather than a client's guess.
+  Future<void> _onConcernRaised(
+    NonconformanceConcernRaised event,
+    Emitter<NonconformanceDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformanceDetailLoaded || current.isRaisingConcern) return;
+    if (event.title.trim().isEmpty) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(concernRaiseFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isRaisingConcern: true, concernRaiseFailure: null));
+    try {
+      final concern = await _actions.raiseConcernFromNonconformance(
+        token,
+        current.nonconformance.id,
+        title: event.title,
+        description: event.description,
+        priority: event.priority,
+      );
+      final refreshed = await _api.fetchNonconformance(token, current.nonconformance.id);
+      final settled = state;
+      if (settled is! NonconformanceDetailLoaded) return;
+      emit(
+        settled.copyWith(
+          nonconformance: refreshed,
+          isRaisingConcern: false,
+          notice: '${concern.actionNo} was raised from this Non-conformance.',
+        ),
+      );
+    } on ActionsApiException catch (error) {
+      final settled = state;
+      if (settled is! NonconformanceDetailLoaded) return;
+      emit(settled.copyWith(isRaisingConcern: false, concernRaiseFailure: error.message));
+    } on QualityApiException catch (error) {
+      // The re-read is the Quality Module's own read and can fail on its own:
+      // the Concern exists either way, and saying so beats reporting the raise
+      // as failed.
+      final settled = state;
+      if (settled is! NonconformanceDetailLoaded) return;
+      emit(settled.copyWith(isRaisingConcern: false, concernRaiseFailure: error.message));
+    }
+  }
+
+  /// This record was linked to a Concern that already exists (issue #208).
+  ///
+  /// The link answers with the *Concern*, so this record is re-read for the
+  /// same reason the raise above re-reads it: the link is this record's own
+  /// new state, and the Screen shows it among the Concerns it is part of.
+  Future<void> _onConcernLinked(
+    NonconformanceConcernLinked event,
+    Emitter<NonconformanceDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformanceDetailLoaded || current.isLinkingConcern) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(concernLinkFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isLinkingConcern: true, concernLinkFailure: null));
+    try {
+      final concern = await _actions.linkNonconformance(
+        token,
+        event.concernId,
+        nonconformanceId: current.nonconformance.id,
+      );
+      final refreshed = await _api.fetchNonconformance(token, current.nonconformance.id);
+      final settled = state;
+      if (settled is! NonconformanceDetailLoaded) return;
+      emit(
+        settled.copyWith(
+          nonconformance: refreshed,
+          isLinkingConcern: false,
+          notice: 'Linked to ${concern.actionNo} — one problem, several occurrences.',
+        ),
+      );
+    } on ActionsApiException catch (error) {
+      final settled = state;
+      if (settled is! NonconformanceDetailLoaded) return;
+      emit(settled.copyWith(isLinkingConcern: false, concernLinkFailure: error.message));
+    } on QualityApiException catch (error) {
+      final settled = state;
+      if (settled is! NonconformanceDetailLoaded) return;
+      emit(settled.copyWith(isLinkingConcern: false, concernLinkFailure: error.message));
+    }
   }
 
   Future<void> _mutate(

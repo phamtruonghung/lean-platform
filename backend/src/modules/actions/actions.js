@@ -22,6 +22,38 @@
  * not a Grant reaches that Org Unit (CONTEXT.md's Concern entry, issue #198).
  * The route asks `people.canSeeSite` for that kind and `people.canAct` at the
  * Org Unit for every other one, and says so in its own comment.
+ *
+ * ## Raising a Concern from a Non-conformance lives here (issue #208)
+ *
+ * A Non-conformance's cause is answered in the Action log, and the Quality
+ * Module is where the Non-conformance is read — so the obvious home for "raise
+ * a Concern from this record" is `quality`. It is not where it lives, and the
+ * reason is the boundary rather than taste:
+ *
+ *   - `quality` requires only `people`'s entry point (issue #203's own
+ *     acceptance criterion, which `npm run lint`'s boundary checker enforces),
+ *     so it cannot call into `actions` at all;
+ *   - a Module's entry point "may only expose read-only lookups that return a
+ *     value … never a write" (AGENTS.md §4), so even if `quality` could reach
+ *     `actions`, `actions` could not offer it a way to create a Concern; and
+ *   - what a Concern *is* when it is first written — its number from
+ *     `next_document_number`, its title, its `raised_by`, its cycle-1 Plan row
+ *     — is this Module's own knowledge. Re-implementing it in `quality` would
+ *     be the second implementation of the Action log's rules that ADR-0006's
+ *     "a cross-Module write that needs another Module's judgment goes through
+ *     that Module's entry point" exists to prevent.
+ *
+ * So the route, the field validation and the write all stay here, and the
+ * Quality Module reads the result by ordinary SQL join when it answers "which
+ * Concerns is this Non-conformance part of" — which ADR-0006 allows in as many
+ * words, because a Module is a code seam and not a data seam. The link table
+ * (`concern_nonconformances`, migration 1800000000000) is this Module's for
+ * the same reason: it is the Concern's own record of what it answers, sitting
+ * beside the `quality_issue_id` source column that records where the Concern
+ * was raised from. What crosses the boundary in the other direction is a read:
+ * `listLinkedNonconformances` below joins `quality_issues`, `products`,
+ * `defect_codes` and `org_units` the way `assets.js` joins `org_units`, and
+ * never writes a Quality row.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -92,6 +124,12 @@ const ACTION_COLUMNS = `
   CASE WHEN ai.due_date IS NOT NULL AND ai.due_date < CURRENT_DATE
        THEN (CURRENT_DATE - ai.due_date) END AS days_overdue,
   ai.escalated_to_org_unit_id, ai.escalated_at, ai.source_type,
+  -- The Non-conformance this Concern was raised from, if it was raised from
+  -- one (issue #208). Read here rather than derived from the link table, so
+  -- that "where did this Concern come from" is answerable from the Action's
+  -- own row — which is the whole reason the source column exists beside the
+  -- join table.
+  ai.quality_issue_id,
   ai.created_at, ai.updated_at,
   ou.code AS org_unit_code, ou.name AS org_unit_name, ou.site_id,
   e.display_name AS owner_name,
@@ -166,6 +204,12 @@ function toAction(row) {
     escalatedToOrgUnitName: row.escalated_to_org_unit_name,
     escalatedAt: row.escalated_at,
     sourceType: row.source_type,
+    // The Non-conformance this Action was raised from (issue #208) — null for
+    // every Action this Module raises standalone, and for a Concern raised
+    // from anything else. It is provenance rather than the link list: a
+    // Concern linked to four Non-conformances names all four in `nonconformances`
+    // on its detail read, and this names the one it came from.
+    sourceNonconformanceId: row.quality_issue_id ?? null,
     parentId: row.parent_action_item_id,
     measureCount: Number(row.measure_count ?? 0),
     countermeasureCount: Number(row.countermeasure_count ?? 0),
@@ -185,13 +229,14 @@ function toAction(row) {
   };
 }
 
-// The detail read (issue #176, grown by #177). `parent` and `measures` are part
-// of the shape from the start so that no client read has to change when issue
-// #178 fills them: an Action that answers nothing has an empty measures array,
+// The detail read (issue #176, grown by #177 and #208). `parent`, `measures`
+// and `nonconformances` are part of the shape from the start so that no client
+// read has to change when a later issue fills them: an Action that answers
+// nothing has an empty measures array and an empty nonconformances array,
 // which is not the same thing as a missing field. `phases` carries every cycle
 // the Action has been round, oldest first — the record of a Check that failed
 // and sent it round again is the point of keeping them (ADR-0033).
-function toActionDetail(row, phases = [], measures = []) {
+function toActionDetail(row, phases = [], measures = [], nonconformances = []) {
   return {
     ...toAction(row),
     // The Concern this answers, named rather than nested: a caller reading a
@@ -207,8 +252,112 @@ function toActionDetail(row, phases = [], measures = []) {
         }
       : null,
     measures,
-    phases
+    phases,
+    // What this Concern answers (issue #208): the Non-conformance it was raised
+    // from and every occurrence linked to it since, named with the number,
+    // Product, Defect code and quantity a reader needs. Empty for every Action
+    // that answers no Non-conformance, which is every Action but a Concern
+    // raised from one or linked to one.
+    nonconformances
   };
+}
+
+// The Non-conformances a Concern answers (issue #208), in the shape the
+// Concern's own Screen reads: the number a person quotes, what was made wrong
+// (Product), why (Defect code) and how much of it. A cross-Module read done as
+// an ordinary SQL join — `products`, `defect_codes` and `org_units` are
+// Quality's and People's tables, and ADR-0006 makes that a query rather than a
+// boundary violation. Nothing here is written: this Module creates no Quality
+// row, ever.
+const LINKED_NONCONFORMANCE_COLUMNS = `
+  qi.id, qi.issue_no, qi.status, qi.severity, qi.detection_point,
+  qi.quantity_affected, qi.uom_code, qi.lot_ref, qi.detected_at,
+  qi.org_unit_id, ou.name AS org_unit_name,
+  qi.product_id, p.code AS product_code, p.name AS product_name,
+  qi.defect_code_id, dc.code AS defect_code_code, dc.name AS defect_code_name,
+  cn.linked_at,
+  -- Whether this is the Non-conformance the Concern was raised from, which is
+  -- a different fact from "linked": it is the occurrence that started it, it
+  -- is what the source column records, and the service refuses to unlink it.
+  (cn.quality_issue_id = ai.quality_issue_id) AS is_source
+`;
+
+const LINKED_NONCONFORMANCE_JOINS = `
+  FROM concern_nonconformances cn
+  JOIN action_items ai ON ai.id = cn.action_item_id
+  JOIN quality_issues qi ON qi.id = cn.quality_issue_id
+  JOIN org_units ou ON ou.id = qi.org_unit_id
+  JOIN products p ON p.id = qi.product_id
+  JOIN defect_codes dc ON dc.id = qi.defect_code_id
+`;
+
+function toLinkedNonconformance(row) {
+  return {
+    id: row.id,
+    issueNo: row.issue_no,
+    status: row.status,
+    severity: row.severity,
+    detectionPoint: row.detection_point,
+    quantityAffected: Number(row.quantity_affected),
+    uomCode: row.uom_code,
+    lotRef: row.lot_ref ?? null,
+    detectedAt: row.detected_at,
+    orgUnitId: row.org_unit_id,
+    orgUnitName: row.org_unit_name,
+    productId: row.product_id,
+    productCode: row.product_code,
+    productName: row.product_name,
+    defectCodeId: row.defect_code_id,
+    defectCodeCode: row.defect_code_code,
+    defectCodeName: row.defect_code_name,
+    // The one it was raised from reads first, then the occurrences gathered
+    // later, oldest first: a reader wants the origin before the additions.
+    isSource: row.is_source === true,
+    linkedAt: row.linked_at
+  };
+}
+
+/**
+ * The Non-conformances one Concern answers (issue #208), each with the number,
+ * Product, Defect code and quantity a reader needs — and whether it is the one
+ * the Concern was raised from.
+ *
+ * Any Action may be asked, and a measure answers no Non-conformance at all, so
+ * an empty list is a real and common answer rather than a missing field: a
+ * Concern raised standalone has none, and the Screen says so.
+ *
+ * A cross-Module read rather than another Module's lookup, deliberately: what
+ * this needs is a join, not Quality's judgment about a record (ADR-0006's own
+ * distinction), and going through Quality's entry point for a four-table join
+ * would be asking a Module a question it cannot answer about itself.
+ */
+async function listLinkedNonconformances(actionItemId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${LINKED_NONCONFORMANCE_COLUMNS}
+     ${LINKED_NONCONFORMANCE_JOINS}
+      WHERE cn.action_item_id = $1
+      ORDER BY (cn.quality_issue_id = ai.quality_issue_id) DESC, cn.linked_at, cn.id`,
+    [actionItemId]
+  );
+  return rows.map(toLinkedNonconformance);
+}
+
+// The detail read, taken on a connection the caller names — so a write
+// mid-transaction answers with the row it just wrote rather than with what the
+// pool can see (which, for a write inside an uncommitted transaction, is the
+// row before it).
+async function readActionDetail(client, actionItemId) {
+  const { rows } = await client.query(
+    `SELECT ${ACTION_COLUMNS} ${ACTION_JOINS} WHERE ai.id = $1`,
+    [actionItemId]
+  );
+  return toActionDetail(
+    rows[0],
+    await listPhases(actionItemId, client),
+    await listMeasures(actionItemId, client),
+    await listLinkedNonconformances(actionItemId, client)
+  );
 }
 
 // A measure's ordering on a Concern's own Screen: containment first (the thing
@@ -401,7 +550,11 @@ async function getActionDetail(id) {
   return toActionDetail(
     rows[0],
     await listPhases(rows[0].id),
-    await listMeasures(rows[0].id)
+    await listMeasures(rows[0].id),
+    // What this Concern answers (issue #208). Read on every detail read, the
+    // same way its measures are: the Screen that shows a Concern shows the
+    // occurrences behind it.
+    await listLinkedNonconformances(rows[0].id)
   );
 }
 
@@ -481,7 +634,7 @@ async function createAction(
     priority = 3
   },
   accountId,
-  { raisedBy = null } = {}
+  { raisedBy = null, qualityIssueId = null } = {}
 ) {
   requireNonEmptyString('title', title);
   requireMemberOf('actionType', actionType, ACTION_TYPES);
@@ -517,10 +670,10 @@ async function createAction(
          )
          INSERT INTO action_items
            (action_no, org_unit_id, title, description, action_type, pillar_code,
-            owner_employee_id, due_date, priority, raised_by)
+            owner_employee_id, due_date, priority, raised_by, quality_issue_id)
          VALUES
            (next_document_number('AC', (SELECT code FROM site), EXTRACT(YEAR FROM now())::int),
-            $1, $2, $3, $4, $5, $6, $7::date, $8, $9)
+            $1, $2, $3, $4, $5, $6, $7::date, $8, $9, $10)
          RETURNING id`,
         [
           orgUnitId,
@@ -531,9 +684,25 @@ async function createAction(
           ownerEmployeeId,
           due,
           priorityValue,
-          raisedBy
+          raisedBy,
+          qualityIssueId
         ]
       );
+
+      // The Non-conformance it was raised from is also a link, in the same
+      // transaction as the row that names it as its source (issue #208). Two
+      // writes rather than one because they are two facts: the source column
+      // is provenance ("where did this Concern come from") and the link table
+      // is what the Concern answers ("every occurrence of this problem"). A
+      // reader of either record asks one of them, and neither is derived from
+      // the other.
+      if (qualityIssueId !== null) {
+        await client.query(
+          `INSERT INTO concern_nonconformances (action_item_id, quality_issue_id)
+           VALUES ($1, $2)`,
+          [inserted.id, qualityIssueId]
+        );
+      }
 
       // Born with its cycle-1 Plan (issue #177). An Action with no Plan is a
       // wish, and the Plan's own owner and due date are the Action's — copied
@@ -910,6 +1079,220 @@ async function cancelAction(actionItemId, { reason = null } = {}, accountId) {
   });
 }
 
+// A link could be refused by the database for one reason this file turns into
+// a clean 409 rather than a 500: the uniqueness constraint that makes "the
+// same Non-conformance twice on the same Concern" a rule rather than a
+// duplicate row. The service does not check first and insert second — that is
+// the race the constraint exists for — so the constraint is where the refusal
+// is read from.
+function mapConcernLinkWriteError(error) {
+  if (error.code === '23505' && error.constraint === 'concern_nonconformances_once') {
+    return httpError(409, 'this Non-conformance is already linked to this Concern');
+  }
+  if (error.code === '23503') {
+    return httpError(404, 'Non-conformance not found');
+  }
+  return error;
+}
+
+/**
+ * The Non-conformance a Concern is about to be raised from (issue #208) — the
+ * four facts the route needs to ask its scope question and this file needs to
+ * file the Concern: the record's own id and number, the Org Unit it sits at,
+ * and the Site that Org Unit is in.
+ *
+ * Read as an ordinary SQL join rather than through Quality's entry point,
+ * because what is being asked is a fact about a row this Platform shares a
+ * database with rather than Quality's judgment about it (ADR-0006's own
+ * distinction). Total, like findAction: a malformed id resolves to null rather
+ * than reaching Postgres as a BIGINT parameter.
+ */
+async function findNonconformanceForConcern(id) {
+  if (parseId(id) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT qi.id, qi.issue_no, qi.status, qi.org_unit_id, ou.site_id
+       FROM quality_issues qi
+       JOIN org_units ou ON ou.id = qi.org_unit_id
+      WHERE qi.id = $1`,
+    [id]
+  );
+  if (!rows[0]) return null;
+  return {
+    id: rows[0].id,
+    issueNo: rows[0].issue_no,
+    status: rows[0].status,
+    orgUnitId: rows[0].org_unit_id,
+    siteId: rows[0].site_id
+  };
+}
+
+/**
+ * Raises a Concern from a Non-conformance (issue #208).
+ *
+ * The Concern is the Action log's own record and is created by the Action
+ * log's own rules — the same `createAction` a Concern raised from the register
+ * goes through, with the Non-conformance named as its source. Nothing about
+ * raising a Concern changes here: the title is required, the type is
+ * `concern`, the number is the Site's own, and the cycle-1 Plan is its own.
+ * What this adds is the two facts that make it a Concern *from* something: the
+ * `quality_issue_id` source column and the link row, written in one
+ * transaction.
+ *
+ * It lands at the Non-conformance's own Org Unit, and that is the whole of the
+ * address: a caller naming a different Org Unit would be filing the problem
+ * somewhere the problem is not. The route asks `people.canSeeSite` about the
+ * Non-conformance's Site — the rule #198 fixed for raising a Concern, which is
+ * the weakest of People's questions on purpose, because a Concern is a report
+ * rather than a decision.
+ *
+ * A cancelled Non-conformance is refused with a 409: it was recorded in error
+ * and withdrawn, and a problem-solving exercise raised from a row that says
+ * "this never happened" is a record nobody can act on. Nothing refuses a
+ * *second* Concern from the same Non-conformance, deliberately: the source
+ * column records the Non-conformance a Concern came from, not the Concern a
+ * Non-conformance must have — a record that turns out to need two separate
+ * pieces of work is two Concerns, and the link table already says so.
+ */
+async function raiseConcernFromNonconformance(
+  nonconformanceId,
+  input,
+  accountId,
+  { raisedBy = null } = {}
+) {
+  const nonconformance = await findNonconformanceForConcern(nonconformanceId);
+  if (!nonconformance) throw notFound('Non-conformance');
+  if (nonconformance.status === 'cancelled') {
+    throw httpError(
+      409,
+      'this Non-conformance was cancelled, so no Concern can be raised from it'
+    );
+  }
+
+  const body = input ?? {};
+  const action = await createAction(
+    {
+      orgUnitId: nonconformance.orgUnitId,
+      title: body.title,
+      description: body.description ?? null,
+      actionType: 'concern',
+      pillarCode: body.pillarCode ?? null,
+      ownerEmployeeId: body.ownerEmployeeId ?? null,
+      dueDate: body.dueDate ?? null,
+      priority: body.priority ?? 3
+    },
+    accountId,
+    { raisedBy, qualityIssueId: nonconformance.id }
+  );
+
+  // The detail read, so the answer carries the Non-conformance it was just
+  // raised from rather than an empty list the caller would have to re-read.
+  return getActionDetail(action.id);
+}
+
+/**
+ * Links a further Non-conformance to an existing Concern (issue #208) — the
+ * other half of "one problem answering several occurrences stays one
+ * Concern".
+ *
+ * Three refusals, and each says which one it is. The Action must be a Concern
+ * (400): a Containment, a Countermeasure, a Preventive action, an Improvement
+ * or a Routine action answers nothing, and only a Concern carries a
+ * Non-conformance — the same rule `completePhase` states for measures, said
+ * about the other link. A cancelled Non-conformance is refused (409) for the
+ * reason `raiseConcernFromNonconformance` gives. Linking the same one twice is
+ * refused by the table's own uniqueness constraint and answered as a 409,
+ * because checking first and inserting second is the race the constraint
+ * exists to close.
+ *
+ * The Action is locked `FOR UPDATE` for the read that decides all three, so a
+ * Concern cannot change kind or end between the check and the write. Whether
+ * the caller may change this Concern at all is the route's business
+ * (`write: true` at its Org Unit — the Action log's own rule for everything
+ * that changes an Action after it is raised), and whether the Non-conformance
+ * is one the caller can see is the route's too.
+ */
+async function linkNonconformance(actionItemId, nonconformanceId, accountId) {
+  return withActor(accountId, async (client) => {
+    const { rows: [action] } = await client.query(
+      'SELECT id, action_type FROM action_items WHERE id = $1 FOR UPDATE',
+      [actionItemId]
+    );
+    if (!action) throw notFound('Action');
+    if (action.action_type !== 'concern') {
+      throw httpError(400, 'only a Concern answers Non-conformances, and that Action is not one');
+    }
+
+    const { rows: [nonconformance] } = await client.query(
+      'SELECT id, status FROM quality_issues WHERE id = $1',
+      [nonconformanceId]
+    );
+    if (!nonconformance) throw notFound('Non-conformance');
+    if (nonconformance.status === 'cancelled') {
+      throw httpError(
+        409,
+        'this Non-conformance was cancelled, so it cannot be linked to a Concern'
+      );
+    }
+
+    try {
+      await client.query(
+        `INSERT INTO concern_nonconformances (action_item_id, quality_issue_id)
+         VALUES ($1, $2)`,
+        [actionItemId, nonconformanceId]
+      );
+    } catch (error) {
+      throw mapConcernLinkWriteError(error);
+    }
+
+    return readActionDetail(client, actionItemId);
+  });
+}
+
+/**
+ * Unlinks a Non-conformance from a Concern (issue #208).
+ *
+ * The one refusal beyond "there is no such link" (a 404) is the Non-conformance
+ * the Concern was raised from, which is a 409: the source column records where
+ * the Concern came from, and a Concern whose provenance names a Non-conformance
+ * it no longer answers is a contradiction a reader cannot resolve. Unlinking
+ * every *other* occurrence is exactly what the act is for — two occurrences
+ * turn out to be unrelated problems.
+ *
+ * Nothing about the Non-conformance itself changes: it keeps its Dispositions,
+ * its quantity history and its own number, because this removes a link and
+ * never a record.
+ */
+async function unlinkNonconformance(actionItemId, nonconformanceId, accountId) {
+  return withActor(accountId, async (client) => {
+    const { rows: [action] } = await client.query(
+      'SELECT id, action_type, quality_issue_id FROM action_items WHERE id = $1 FOR UPDATE',
+      [actionItemId]
+    );
+    if (!action) throw notFound('Action');
+
+    if (
+      action.quality_issue_id !== null &&
+      String(action.quality_issue_id) === String(nonconformanceId)
+    ) {
+      throw httpError(
+        409,
+        'the Non-conformance this Concern was raised from cannot be unlinked: the Concern records where it came from'
+      );
+    }
+
+    const { rowCount } = await client.query(
+      `DELETE FROM concern_nonconformances
+        WHERE action_item_id = $1 AND quality_issue_id = $2`,
+      [actionItemId, nonconformanceId]
+    );
+    if (rowCount === 0) {
+      throw httpError(404, 'that Non-conformance is not linked to this Concern');
+    }
+
+    return readActionDetail(client, actionItemId);
+  });
+}
+
 /**
  * The Org Units an Action may be handed up to (issue #180): the ancestors of
  * the Org Unit it sits at, nearest first, minus the one it is already at.
@@ -1005,8 +1388,13 @@ module.exports = {
   getActionDetail,
   listPhases,
   listMeasures,
+  listLinkedNonconformances,
+  findNonconformanceForConcern,
   createAction,
   createMeasure,
+  raiseConcernFromNonconformance,
+  linkNonconformance,
+  unlinkNonconformance,
   completePhase,
   cancelAction,
   escalationTargets,

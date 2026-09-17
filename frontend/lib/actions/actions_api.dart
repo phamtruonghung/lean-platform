@@ -249,6 +249,87 @@ class ActionsApi {
     return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
   }
 
+  /// Raises a Concern from a Non-conformance (issue #208).
+  ///
+  /// The Org Unit is deliberately NOT in the body: the Concern lands at the
+  /// Non-conformance's own Org Unit, because a problem is solved where it
+  /// happened, and the server resolves it from the record rather than trusting
+  /// a caller to name it. Every other field is the raise form's own, and each
+  /// optional one is left out rather than sent as a null so the server's own
+  /// defaults are what a caller gets when they choose nothing.
+  Future<Action> raiseConcernFromNonconformance(
+    String accessToken,
+    String nonconformanceId, {
+    required String title,
+    String? description,
+    String? pillarCode,
+    String? ownerEmployeeId,
+    String? dueDate,
+    int? priority,
+  }) async {
+    final path = '/api/actions/nonconformances/$nonconformanceId/concern';
+    final body = <String, dynamic>{
+      'title': title,
+      'description': ?description,
+      'pillarCode': ?pillarCode,
+      'ownerEmployeeId': ?ownerEmployeeId,
+      'dueDate': ?dueDate,
+      'priority': ?priority,
+    };
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
+  }
+
+  /// Links a further Non-conformance to an existing Concern (issue #208).
+  ///
+  /// The act is on the Concern — one problem answering several occurrences
+  /// stays one Concern — so the address is the Concern's and the record to
+  /// gather is the body. The answer is the Concern, with every occurrence it
+  /// now answers.
+  Future<Action> linkNonconformance(
+    String accessToken,
+    String concernId, {
+    required String nonconformanceId,
+  }) async {
+    final path = '/api/actions/$concernId/nonconformances';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'nonconformanceId': nonconformanceId}),
+      ),
+      path,
+    );
+    return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
+  }
+
+  /// Unlinks a Non-conformance from a Concern (issue #208) — its own address
+  /// rather than a DELETE, following every other change to an Action
+  /// (`/cancel`, `/escalate`): the server answers with the Concern as it now
+  /// stands, so nothing about the Screen reading it has to change.
+  Future<Action> unlinkNonconformance(
+    String accessToken,
+    String concernId,
+    String nonconformanceId,
+  ) async {
+    final path = '/api/actions/$concernId/nonconformances/$nonconformanceId/unlink';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+      ),
+      path,
+    );
+    return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
+  }
+
   /// The five Pillars, for the raise form's chooser (ADR-0023: a value with a
   /// known set is chosen, never typed).
   Future<List<Pillar>> fetchPillars(String accessToken) async {
@@ -305,6 +386,7 @@ class ActionsApi {
         escalatedToOrgUnitName: json['escalatedToOrgUnitName'] as String?,
         escalatedAt: json['escalatedAt'] == null ? null : DateTime.parse(json['escalatedAt'] as String),
         sourceType: json['sourceType'] as String?,
+        sourceNonconformanceId: json['sourceNonconformanceId']?.toString(),
         parentId: json['parentId']?.toString(),
         measureCount: (json['measureCount'] as int?) ?? 0,
         countermeasureCount: (json['countermeasureCount'] as int?) ?? 0,
@@ -321,6 +403,14 @@ class ActionsApi {
         measures: [
           for (final measure in (json['measures'] as List<dynamic>? ?? const []))
             _actionFrom(measure as Map<String, dynamic>),
+        ],
+        // What this Concern answers (issue #208) — the Non-conformances, the
+        // one it was raised from first. Always present on a detail read, and
+        // absent from a register row, where an empty list is what the Screen
+        // wants anyway.
+        nonconformances: [
+          for (final nonconformance in (json['nonconformances'] as List<dynamic>? ?? const []))
+            LinkedNonconformance.fromJson(nonconformance as Map<String, dynamic>),
         ],
       );
 

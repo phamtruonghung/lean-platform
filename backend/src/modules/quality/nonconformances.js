@@ -81,6 +81,18 @@
  * read done as an ordinary SQL join, which ADR-0006's "code seams, not data
  * seams" rule allows explicitly). Scope is still not this file's business:
  * nonconformance-routes.js asks People before calling anything here.
+ *
+ * **A Non-conformance's Concerns are read here and written there (issue
+ * #208).** A record whose cause needs solving is answered by a Concern in the
+ * action log, and one problem that shows up several times is one Concern —
+ * which is why `concern_nonconformances` exists beside the baseline's
+ * `action_items.quality_issue_id` source column. This file reads that link as
+ * an ordinary join (`listConcerns`) and never writes it: the concern's own
+ * creation rules are the Actions Module's knowledge, its entry point may not
+ * expose a write (ADR-0006), and this Module requires only `people`'s entry
+ * point — so the write lives in `actions`, and `actions.js`'s own header
+ * records that argument in full. What crosses back the other way is the same
+ * kind of read.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -275,6 +287,56 @@ const CORRECTION_JOINS = `
   FROM quality_issue_corrections qic
   LEFT JOIN app_users cau ON cau.id = qic.corrected_by_account_id`;
 
+// The Concerns one Non-conformance is part of (issue #208), as this Module's
+// own detail read returns them. A cross-Module read done as an ordinary SQL
+// join — `action_items` is the action log's table, and ADR-0006 makes reading
+// it a query rather than a boundary violation (maintenance's `assets.js` joins
+// `org_units` the same way). Nothing here is written: a Concern is created and
+// linked by the Actions Module's own routes, for the reason its `actions.js`
+// header records, and this file only reads what it wrote.
+//
+// `is_source` is the fact a reader of a Non-conformance wants first: whether
+// this Concern was raised *from* this record — the occurrence that started the
+// work — or gathered it later as one of the same problem's other occurrences.
+// Either way the record is evidence behind the Concern, which is what the link
+// means.
+const CONCERN_COLUMNS = `
+  ai.id, ai.action_no, ai.title, ai.action_type, ai.status, ai.priority,
+  to_char(ai.due_date, 'YYYY-MM-DD') AS due_date,
+  (ai.due_date IS NOT NULL AND ai.due_date < CURRENT_DATE) AS is_overdue,
+  ai.raised_at, ai.org_unit_id, ou.name AS org_unit_name,
+  e.display_name AS owner_name,
+  cn.linked_at,
+  (ai.quality_issue_id = cn.quality_issue_id) AS is_source`;
+
+const CONCERN_JOINS = `
+  FROM concern_nonconformances cn
+  JOIN action_items ai ON ai.id = cn.action_item_id
+  JOIN org_units ou ON ou.id = ai.org_unit_id
+  LEFT JOIN employees e ON e.id = ai.owner_employee_id`;
+
+function toConcern(row) {
+  return {
+    id: row.id,
+    actionNo: row.action_no,
+    title: row.title,
+    actionType: row.action_type,
+    // The state a reader asks about: whether the cause is still being
+    // answered. `open`, `in_progress` and `blocked` are live; `done` and
+    // `cancelled` are not.
+    status: row.status,
+    priority: row.priority,
+    ownerName: row.owner_name ?? null,
+    dueDate: row.due_date ?? null,
+    isOverdue: row.is_overdue === true,
+    raisedAt: row.raised_at,
+    orgUnitId: row.org_unit_id,
+    orgUnitName: row.org_unit_name,
+    isSource: row.is_source === true,
+    linkedAt: row.linked_at
+  };
+}
+
 // NUMERIC arrives from Postgres as a string ('12.0000'); a quantity is a
 // number to every caller of this Module (the client prints it, the tests
 // compare it with `12`), so it crosses this boundary as one.
@@ -335,7 +397,10 @@ function toCorrection(row) {
   };
 }
 
-function toNonconformance(row, { quantityChanges = [], dispositions = [], corrections = [] } = {}) {
+function toNonconformance(
+  row,
+  { quantityChanges = [], dispositions = [], corrections = [], concerns = [] } = {}
+) {
   return {
     id: row.id,
     issueNo: row.issue_no,
@@ -386,7 +451,12 @@ function toNonconformance(row, { quantityChanges = [], dispositions = [], correc
     updatedAt: row.updated_at,
     quantityChanges,
     dispositions,
-    corrections
+    corrections,
+    // The Concerns this Non-conformance is evidence behind (issue #208) — the
+    // one raised from it first, then any further occurrence linked to the same
+    // Concern. Empty for a record nothing is being done about, which is a real
+    // and common state rather than a missing field.
+    concerns
   };
 }
 
@@ -556,8 +626,36 @@ async function getNonconformanceDetail(id) {
   return toNonconformance(rows[0], {
     quantityChanges: await listQuantityChanges(rows[0].id),
     dispositions: await listDispositions(rows[0].id),
-    corrections: await listCorrections(rows[0].id)
+    corrections: await listCorrections(rows[0].id),
+    // What is being done about the cause (issue #208), read on every detail
+    // read: the Screen that shows the record shows whether its cause is being
+    // answered, which is the question a quality engineer opens it with.
+    concerns: await listConcerns(rows[0].id)
   });
+}
+
+/**
+ * The Concerns one Non-conformance is linked to (issue #208), the one raised
+ * from it first.
+ *
+ * The join is the whole implementation: `concern_nonconformances` is the
+ * Action log's table (its migration argues why it is that Module's), and a
+ * cross-Module read by ordinary SQL is what ADR-0006 explicitly allows. No
+ * lookup is asked of the Actions Module's entry point because there is none to
+ * ask — its entry point is read-only by ADR-0006's own clause, and the
+ * question here ("which of this Module's rows are linked to this one") is a
+ * query rather than the other Module's judgment.
+ */
+async function listConcerns(qualityIssueId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${CONCERN_COLUMNS}
+     ${CONCERN_JOINS}
+     WHERE cn.quality_issue_id = $1
+     ORDER BY is_source DESC, cn.linked_at, cn.id`,
+    [qualityIssueId]
+  );
+  return rows.map(toConcern);
 }
 
 async function listQuantityChanges(qualityIssueId, client = null) {
@@ -1305,6 +1403,7 @@ module.exports = {
   listQuantityChanges,
   listDispositions,
   listCorrections,
+  listConcerns,
   recordNonconformance,
   updateNonconformance,
   increaseQuantity,

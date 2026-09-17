@@ -18,6 +18,7 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../actions/actions.dart';
 import '../status_tone.dart';
 import 'defect_code.dart';
 
@@ -327,6 +328,89 @@ class Correction {
   }
 }
 
+/// One Concern a Non-conformance is linked to (issue #208), as the record's
+/// own detail read names it — the shape `nonconformances.js`'s `toConcern`
+/// sends.
+///
+/// The status and its tone, and the kind's own label, come from the Actions
+/// Module through its client entry point (`lib/actions/actions.dart`): a
+/// Concern is an Action, its five states are the action log's five words, and
+/// the tone each carries is this client's shared status vocabulary. A second
+/// copy of that map here would be the drift the Module seam exists to prevent —
+/// which is exactly why that entry point exists.
+///
+/// [isSource] is the fact a reader of a Non-conformance wants first: whether
+/// this Concern was raised *from* this record, rather than gathered it later as
+/// one of the same problem's other occurrences.
+@immutable
+class LinkedConcern {
+  const LinkedConcern({
+    required this.id,
+    required this.actionNo,
+    required this.title,
+    required this.actionType,
+    required this.status,
+    required this.priority,
+    required this.isOverdue,
+    required this.isSource,
+    this.ownerName,
+    this.dueDate,
+    this.raisedAt,
+    this.orgUnitId,
+    this.orgUnitName,
+    this.linkedAt,
+  });
+
+  factory LinkedConcern.fromJson(Map<String, dynamic> json) => LinkedConcern(
+        id: json['id'].toString(),
+        actionNo: json['actionNo'] as String,
+        title: json['title'] as String,
+        actionType: json['actionType'] as String? ?? 'concern',
+        status: json['status'] as String? ?? 'open',
+        priority: (json['priority'] as int?) ?? 3,
+        isOverdue: json['isOverdue'] == true,
+        isSource: json['isSource'] == true,
+        ownerName: json['ownerName'] as String?,
+        dueDate: json['dueDate'] as String?,
+        raisedAt: json['raisedAt'] == null ? null : DateTime.tryParse(json['raisedAt'] as String),
+        orgUnitId: json['orgUnitId']?.toString(),
+        orgUnitName: json['orgUnitName'] as String?,
+        linkedAt: json['linkedAt'] == null ? null : DateTime.tryParse(json['linkedAt'] as String),
+      );
+
+  final String id;
+
+  /// The number a person quotes: `AC-HCM-2026-00001`.
+  final String actionNo;
+
+  final String title;
+  final String actionType;
+  final String status;
+  final int priority;
+
+  /// Whether the Concern is past its due date, as the server judges it — the
+  /// register's own rule, not a client's comparison against its own clock.
+  final bool isOverdue;
+
+  final String? ownerName;
+  final String? dueDate;
+  final DateTime? raisedAt;
+  final String? orgUnitId;
+  final String? orgUnitName;
+  final DateTime? linkedAt;
+
+  /// Whether this is the Concern raised from this Non-conformance.
+  final bool isSource;
+
+  String get statusLabel => actionStatusLabel(status);
+  StatusTone get statusTone => actionStatusTone(status);
+  String get typeLabel => actionTypeLabel(actionType);
+
+  /// Whether the cause is still being answered — what a reader of the record
+  /// wants to know, said as a fact rather than left to the status's word.
+  bool get isLive => const {'open', 'in_progress', 'blocked'}.contains(status);
+}
+
 @immutable
 class Nonconformance {
   const Nonconformance({
@@ -366,6 +450,7 @@ class Nonconformance {
     required this.quantityChanges,
     required this.dispositions,
     required this.corrections,
+    required this.concerns,
   });
 
   factory Nonconformance.fromJson(Map<String, dynamic> json) => Nonconformance(
@@ -414,6 +499,10 @@ class Nonconformance {
         corrections: [
           for (final correction in (json['corrections'] as List<dynamic>? ?? const []))
             Correction.fromJson(correction as Map<String, dynamic>),
+        ],
+        concerns: [
+          for (final concern in (json['concerns'] as List<dynamic>? ?? const []))
+            LinkedConcern.fromJson(concern as Map<String, dynamic>),
         ],
       );
 
@@ -491,6 +580,16 @@ class Nonconformance {
   /// The corrections a holder of Quality authority has made to the record, in
   /// the order they were made (issue #206).
   final List<Correction> corrections;
+
+  /// The Concerns this record is evidence behind (issue #208) — the one raised
+  /// from it first, then any further occurrence of the same problem linked to
+  /// that Concern. Empty when nothing is being done about the cause, which is
+  /// a real state and the one the Screen offers to change.
+  final List<LinkedConcern> concerns;
+
+  /// Whether anything is being done about the cause at all — what the Screen's
+  /// empty state and its controls turn on.
+  bool get hasConcerns => concerns.isNotEmpty;
 
   String get statusLabel => NonconformanceStatus.label(status);
   StatusTone get statusTone => NonconformanceStatus.tone(status);

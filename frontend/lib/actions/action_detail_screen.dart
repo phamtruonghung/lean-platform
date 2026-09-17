@@ -46,6 +46,20 @@ class ActionDetailScreen extends StatelessWidget {
 
   static const ValueKey<String> addMeasureKey = ValueKey<String>('action-detail-add-measure');
   static const ValueKey<String> measuresHeadingKey = ValueKey<String>('action-detail-measures');
+
+  /// The Non-conformances this Concern answers (issue #208): the section, its
+  /// empty state, one row per occurrence and the row's own unlink control.
+  static const ValueKey<String> nonconformancesKey =
+      ValueKey<String>('action-detail-nonconformances');
+  static const ValueKey<String> noNonconformancesKey =
+      ValueKey<String>('action-detail-no-nonconformances');
+  static const ValueKey<String> raisedFromKey = ValueKey<String>('action-detail-raised-from');
+
+  static ValueKey<String> nonconformanceKey(String id) =>
+      ValueKey<String>('action-nonconformance-$id');
+
+  static ValueKey<String> unlinkNonconformanceKey(String id) =>
+      ValueKey<String>('action-nonconformance-unlink-$id');
   static ValueKey<String> addMeasureKindKey(String wire) =>
       ValueKey<String>('action-detail-add-measure-$wire');
   static ValueKey<String> measureKey(String id) => ValueKey<String>('action-measure-$id');
@@ -187,6 +201,13 @@ class _ActionDetail extends StatelessWidget {
             _Facts(action: action),
             const SizedBox(height: Spacing.lg),
             _Measures(action: action),
+            const SizedBox(height: Spacing.lg),
+            // The evidence behind the Concern (issue #208), at the foot of the
+            // record on purpose: the cycle and the work answering it are what
+            // was asked for first, and the occurrences are what proves the
+            // problem is real. A Concern raised from the register has none of
+            // them, and the empty state says so rather than leaving a blank.
+            _Nonconformances(action: action),
           ],
         ),
       ),
@@ -505,6 +526,89 @@ class _Measures extends StatelessWidget {
                     'waiting on its ${measure.openPhase!.phaseLabel.toLowerCase()}',
                 ].join(' · '),
               ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// The Non-conformances this Concern answers (issue #208) — the record it was
+/// raised from first, then every occurrence gathered to it since. Each row is
+/// a link to the Non-conformance's own address, which is the half of "each
+/// record shows the other" that lives on this Screen; the source row says so
+/// and offers no unlink, because the service refuses that one.
+///
+/// The row carries the four facts a reader of a Concern needs — the number,
+/// the Product, the Defect code and the quantity — and deliberately no status
+/// chip: that vocabulary is the Quality Module's, this Module does not import
+/// it (the dependency runs the other way, see `actions.dart`), and the row's
+/// own address is where the record's state is read.
+class _Nonconformances extends StatelessWidget {
+  const _Nonconformances({required this.action});
+
+  final Action action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final occurrences = action.nonconformances;
+    final live = !const {'done', 'cancelled'}.contains(action.status);
+
+    return Column(
+      key: ActionDetailScreen.nonconformancesKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          occurrences.isEmpty ? 'Non-conformances' : 'Non-conformances (${occurrences.length})',
+          style: theme.textTheme.titleSmall,
+        ),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          'The occurrences this Concern answers. One problem that shows up several times stays one '
+          'Concern, so a further occurrence is linked here rather than raised as another.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Spacing.sm),
+        if (occurrences.isEmpty)
+          Text(
+            key: ActionDetailScreen.noNonconformancesKey,
+            'No Non-conformance is linked to this Concern.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        for (final occurrence in occurrences)
+          Card(
+            key: ActionDetailScreen.nonconformanceKey(occurrence.id),
+            margin: const EdgeInsets.only(bottom: Spacing.sm),
+            child: ListTile(
+              onTap: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
+              title: Text(occurrence.issueNo),
+              subtitle: Text(
+                [
+                  occurrence.productLabel,
+                  occurrence.defectCodeLabel,
+                  occurrence.quantityLabel,
+                ].join(' · '),
+              ),
+              trailing: occurrence.isSource
+                  ? TextButton(
+                      key: ActionDetailScreen.raisedFromKey,
+                      onPressed: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
+                      child: const Text('Raised from this'),
+                    )
+                  // Offered only while the Concern is still live: a link on a
+                  // closed problem is history, and an ended Action is not
+                  // offered its own transition controls either.
+                  : live
+                      ? TextButton(
+                          key: ActionDetailScreen.unlinkNonconformanceKey(occurrence.id),
+                          onPressed: () => context.go(
+                            '${Routes.actions}/${action.id}/nonconformances/'
+                            '${occurrence.id}/unlink',
+                          ),
+                          child: const Text('Unlink…'),
+                        )
+                      : const Icon(Icons.chevron_right),
             ),
           ),
       ],

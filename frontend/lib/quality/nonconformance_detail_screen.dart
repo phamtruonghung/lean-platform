@@ -90,6 +90,20 @@ class NonconformanceDetailScreen extends StatelessWidget {
   static ValueKey<String> correctionRowKey(String id) =>
       ValueKey<String>('nonconformance-correction-$id');
 
+  /// The Concerns this record is evidence behind (issue #208): the section, its
+  /// empty state, one row per Concern, and the two controls that change it.
+  static const ValueKey<String> concernsKey = ValueKey<String>('nonconformance-detail-concerns');
+  static const ValueKey<String> noConcernsKey =
+      ValueKey<String>('nonconformance-detail-no-concerns');
+  static const ValueKey<String> raiseConcernKey =
+      ValueKey<String>('nonconformance-detail-raise-concern');
+  static const ValueKey<String> linkConcernKey =
+      ValueKey<String>('nonconformance-detail-link-concern');
+  static const ValueKey<String> concernNoticeKey =
+      ValueKey<String>('nonconformance-detail-concern-notice');
+
+  static ValueKey<String> concernRowKey(String id) => ValueKey<String>('nonconformance-concern-$id');
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<NonconformanceDetailBloc>().state;
@@ -268,6 +282,16 @@ class _Loaded extends StatelessWidget {
             _DispositionsCard(row: row),
             const SizedBox(height: Spacing.lg),
             _CorrectionsCard(row: row),
+            const SizedBox(height: Spacing.lg),
+            // What is being done about the cause (issue #208). Below the
+            // record's own story on purpose: the product comes first, the
+            // problem behind it second — which is the order the tickets were
+            // built in and the order a reader works in.
+            _ConcernsCard(
+              row: row,
+              notice: state.notice,
+              busy: state.isRaisingConcern || state.isLinkingConcern,
+            ),
             const SizedBox(height: Spacing.lg),
             Wrap(
               spacing: Spacing.md,
@@ -536,6 +560,132 @@ class _CorrectionsCard extends StatelessWidget {
                     ),
                 ],
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The Concerns this Non-conformance is evidence behind (issue #208) — the one
+/// raised from it first, then any further occurrence of the same problem
+/// gathered to the same Concern. Each row is a link to the Concern's own
+/// address, which is the half of "each record shows the other" that lives on
+/// this Screen.
+///
+/// The card is drawn even when there is nothing, because "nobody is answering
+/// this yet" is the state a reader of a Non-conformance needs to see, and the
+/// two controls that change it sit exactly there: raising a Concern from the
+/// record, and linking it to one that already exists. Both are writes to the
+/// action log, and the server is the gate on either — a caller who cannot see
+/// the Site gets a sentence back rather than a hidden button, which is the same
+/// rule every other control on this Screen follows.
+class _ConcernsCard extends StatelessWidget {
+  const _ConcernsCard({required this.row, required this.busy, this.notice});
+
+  final Nonconformance row;
+
+  /// One of the two writes is in flight: both controls go quiet together, so a
+  /// second one cannot be started against a record mid-change.
+  final bool busy;
+
+  /// What the last raise or link had to say for itself, from the Bloc's own
+  /// state — the dialog that asked has closed by the time it is worth reading.
+  final String? notice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final concerns = row.concerns;
+
+    return Card(
+      key: NonconformanceDetailScreen.concernsKey,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('The cause', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              'Nonconforming product is dealt with here; the problem behind it is solved in the '
+              'action log, as a Concern. One problem that shows up several times stays one '
+              'Concern.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            if (notice != null) ...[
+              const SizedBox(height: Spacing.sm),
+              Text(
+                key: NonconformanceDetailScreen.concernNoticeKey,
+                notice!,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+            const SizedBox(height: Spacing.sm),
+            if (concerns.isEmpty)
+              Text(
+                key: NonconformanceDetailScreen.noConcernsKey,
+                'Nothing is being done about the cause yet.',
+                style: theme.textTheme.bodyMedium,
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final concern in concerns)
+                    // `ListTile` carries the row's own `Key`, so a test finds
+                    // the row by the Concern's id rather than by its text.
+                    Card(
+                      key: NonconformanceDetailScreen.concernRowKey(concern.id),
+                      margin: const EdgeInsets.only(bottom: Spacing.sm),
+                      child: ListTile(
+                        onTap: () => context.go('${Routes.actions}/${concern.id}'),
+                        title: Text(concern.title),
+                        subtitle: Text(
+                          [
+                            concern.actionNo,
+                            concern.typeLabel,
+                            // The one it was raised from, said rather than
+                            // implied: the reader of a Non-conformance wants
+                            // to know which Concern this occurrence started.
+                            if (concern.isSource) 'raised from this record',
+                            if (concern.ownerName != null) concern.ownerName!,
+                            if (concern.isOverdue) 'overdue',
+                          ].join(' · '),
+                        ),
+                        trailing: StatusChip(
+                          label: concern.statusLabel,
+                          tone: concern.statusTone,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            const SizedBox(height: Spacing.sm),
+            Wrap(
+              spacing: Spacing.md,
+              runSpacing: Spacing.sm,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilledButton.icon(
+                  key: NonconformanceDetailScreen.raiseConcernKey,
+                  onPressed: busy
+                      ? null
+                      : () => context.go('${Routes.nonConformances}/${row.id}/raise-concern'),
+                  icon: const Icon(Icons.lightbulb_outline),
+                  label: const Text('Raise a Concern'),
+                ),
+                OutlinedButton.icon(
+                  key: NonconformanceDetailScreen.linkConcernKey,
+                  onPressed: busy
+                      ? null
+                      : () => context.go('${Routes.nonConformances}/${row.id}/link-concern'),
+                  icon: const Icon(Icons.link),
+                  label: const Text('Link it to a Concern'),
+                ),
+              ],
+            ),
           ],
         ),
       ),

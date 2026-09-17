@@ -604,6 +604,7 @@ Map<String, dynamic> nonconformanceJson(
   List<Map<String, dynamic>>? quantityChanges,
   List<Map<String, dynamic>>? dispositions,
   List<Map<String, dynamic>>? corrections,
+  List<Map<String, dynamic>>? concerns,
 }) =>
     {
       'id': id,
@@ -644,6 +645,65 @@ Map<String, dynamic> nonconformanceJson(
       'closedAt': closedAt,
       'dispositions': dispositions ?? const <Map<String, dynamic>>[],
       'corrections': corrections ?? const <Map<String, dynamic>>[],
+      // The Concerns this record is evidence behind (issue #208), always
+      // present — an empty list is "nothing is being done about the cause",
+      // which is a state the Screen renders rather than a missing field.
+      'concerns': concerns ?? const <Map<String, dynamic>>[],
+    };
+
+/// One Concern as the record's own detail read names it: the Action's number,
+/// title, kind and status, plus whether it is the Concern the record was raised
+/// from — mirrors `toConcern` (nonconformances.js) key for key, so a fixture
+/// cannot let a test assert a shape the API does not send.
+Map<String, dynamic> concernJson(
+  Map<String, dynamic> action, {
+  bool isSource = false,
+}) =>
+    {
+      'id': action['id'],
+      'actionNo': action['actionNo'],
+      'title': action['title'],
+      'actionType': action['actionType'],
+      'status': action['status'],
+      'priority': action['priority'],
+      'ownerName': action['ownerName'],
+      'dueDate': action['dueDate'],
+      'isOverdue': action['isOverdue'] ?? false,
+      'raisedAt': action['raisedAt'],
+      'orgUnitId': action['orgUnitId'],
+      'orgUnitName': action['orgUnitName'],
+      'isSource': isSource,
+      'linkedAt': '2026-09-15T03:00:00.000Z',
+    };
+
+/// One Non-conformance among a Concern's own `nonconformances` array (issue
+/// #208) — mirrors `toLinkedNonconformance` (actions.js) key for key. Built
+/// from a `nonconformanceJson` row so the two fixtures cannot drift apart about
+/// what a Non-conformance is called.
+Map<String, dynamic> linkedNonconformanceJson(
+  Map<String, dynamic> nonconformance, {
+  bool isSource = false,
+}) =>
+    {
+      'id': nonconformance['id'],
+      'issueNo': nonconformance['issueNo'],
+      'status': nonconformance['status'],
+      'severity': nonconformance['severity'],
+      'detectionPoint': nonconformance['detectionPoint'],
+      'quantityAffected': nonconformance['quantityAffected'],
+      'uomCode': nonconformance['uomCode'],
+      'lotRef': nonconformance['lotRef'],
+      'detectedAt': nonconformance['detectedAt'],
+      'orgUnitId': nonconformance['orgUnitId'],
+      'orgUnitName': nonconformance['orgUnitName'],
+      'productId': nonconformance['productId'],
+      'productCode': nonconformance['productCode'],
+      'productName': nonconformance['productName'],
+      'defectCodeId': nonconformance['defectCodeId'],
+      'defectCodeCode': nonconformance['defectCodeCode'],
+      'defectCodeName': nonconformance['defectCodeName'],
+      'isSource': isSource,
+      'linkedAt': '2026-09-15T03:00:00.000Z',
     };
 
 /// One row of a Non-conformance's quantity history, as the API sends it —
@@ -1268,6 +1328,13 @@ class FakeWire {
     this.createActionMessage = 'That concern could not be raised.',
     this.completePhaseStatus = 200,
     this.completePhaseMessage = 'this Action is waiting on its plan phase, not its do',
+    this.raiseConcernStatus = 201,
+    this.raiseConcernMessage = 'this Non-conformance was cancelled, so no Concern can be raised from it',
+    this.linkNonconformanceStatus = 201,
+    this.linkNonconformanceMessage = 'this Non-conformance is already linked to this Concern',
+    this.unlinkNonconformanceStatus = 200,
+    this.unlinkNonconformanceMessage =
+        'the Non-conformance this Concern was raised from cannot be unlinked: the Concern records where it came from',
     this.createMeasureStatus = 201,
     this.createMeasureMessage = 'a measure answers a Concern, and that Action is not one',
     this.cancelActionStatus = 200,
@@ -1707,6 +1774,36 @@ class FakeWire {
   final List<(String, String, Map<String, dynamic>)> phaseCompletions = [];
   int completePhaseStatus;
   String completePhaseMessage;
+
+  /// Every Concern raised from a Non-conformance that reached the wire
+  /// (issue #208), as `(nonconformanceId, body)` — `POST
+  /// /api/actions/nonconformances/:id/concern`.
+  final List<(String, Map<String, dynamic>)> concernRaisePosts = [];
+  int raiseConcernStatus;
+  String raiseConcernMessage;
+
+  /// Every link that reached the wire, as `(concernId, body)` — `POST
+  /// /api/actions/:id/nonconformances`.
+  final List<(String, Map<String, dynamic>)> nonconformanceLinkPosts = [];
+  int linkNonconformanceStatus;
+  String linkNonconformanceMessage;
+
+  /// Every unlink that reached the wire, as `(concernId, nonconformanceId)` —
+  /// `POST /api/actions/:id/nonconformances/:nonconformanceId/unlink`.
+  final List<(String, String)> nonconformanceUnlinkPosts = [];
+  int unlinkNonconformanceStatus;
+  String unlinkNonconformanceMessage;
+
+  /// The Concern a raise answers with, when a test wants the row the server
+  /// would have written named differently. Null means the fake builds one from
+  /// the request.
+  Map<String, dynamic>? raisedConcern;
+
+  /// The Non-conformance rows a link answers with, keyed by Concern id — what
+  /// a test scripts the Concern's own read to show after a link. The fake
+  /// appends to a stored detail when it can, and this is the escape hatch for
+  /// a case where the stored detail is not the one under test.
+  Map<String, List<Map<String, dynamic>>> linkedNonconformances = {};
 
   /// `POST /api/maintenance/assets`.
   int createAssetStatus;
@@ -4994,6 +5091,137 @@ class FakeWire {
           ];
           return http.Response(jsonEncode({'actions': sent, 'truncated': false}), 200);
         }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/nonconformances/') &&
+            path.endsWith('/concern')) {
+          // `/api/actions/nonconformances/:id/concern` (issue #208): raising a
+          // Concern from a Non-conformance. The row the server would write is
+          // built from the Non-conformance the address names — the Org Unit is
+          // the record's own, which is the whole point of the address — and
+          // both sides are recorded: the concern in `actionDetails` so its own
+          // Screen reads it, the concern on the Non-conformance's row so the
+          // re-read after the raise shows it.
+          final remainder = path.substring('/api/actions/nonconformances/'.length);
+          final nonconformanceId = remainder.substring(0, remainder.length - '/concern'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          concernRaisePosts.add((nonconformanceId, body));
+          if (raiseConcernStatus != 201) {
+            return http.Response(jsonEncode({'message': raiseConcernMessage}), raiseConcernStatus);
+          }
+          final row = nonconformanceById(nonconformanceId);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+          }
+          final concernId = (raisedConcern?['id'] ?? '901').toString();
+          final occurrence = linkedNonconformanceJson(row, isSource: true);
+          final concern = actionJson(
+            concernId,
+            'AC-TEST-2026-00009',
+            (body['title'] as String?) ?? 'A Concern',
+            description: body['description'] as String?,
+            orgUnitId: row['orgUnitId'] as String,
+            orgUnitName: row['orgUnitName'] as String,
+            siteId: row['siteId'] as String,
+            priority: (body['priority'] as int?) ?? 3,
+            sourceNonconformanceId: nonconformanceId,
+            nonconformances: [occurrence],
+          )..['openPhase'] = phaseJson(1, 'plan');
+          actionDetails[concernId] = concern;
+          _replaceNonconformance(nonconformanceId, {
+            ...row,
+            'concerns': [
+              ...(row['concerns'] as List<dynamic>? ?? const []),
+              concernJson(concern, isSource: true),
+            ],
+          });
+          return http.Response(jsonEncode({'action': concern}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/unlink')) {
+          // `/api/actions/:id/nonconformances/:nonconformanceId/unlink` (issue
+          // #208). The link is removed from both sides, as the real route
+          // leaves them, and the Concern comes back as it now stands.
+          final parts = path.split('/');
+          final concernId = parts[3];
+          final nonconformanceId = parts[5];
+          nonconformanceUnlinkPosts.add((concernId, nonconformanceId));
+          if (unlinkNonconformanceStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': unlinkNonconformanceMessage}),
+              unlinkNonconformanceStatus,
+            );
+          }
+          final concern = actionDetails[concernId];
+          if (concern == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          final updated = {
+            ...concern,
+            'nonconformances': [
+              for (final occurrence in (concern['nonconformances'] as List<dynamic>? ?? const []))
+                if ((occurrence as Map<String, dynamic>)['id'].toString() != nonconformanceId)
+                  occurrence,
+            ],
+          };
+          actionDetails[concernId] = updated;
+          final row = nonconformanceById(nonconformanceId);
+          if (row != null) {
+            _replaceNonconformance(nonconformanceId, {
+              ...row,
+              'concerns': [
+                for (final named in (row['concerns'] as List<dynamic>? ?? const []))
+                  if ((named as Map<String, dynamic>)['id'].toString() != concernId) named,
+              ],
+            });
+          }
+          return http.Response(jsonEncode({'action': updated}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/nonconformances')) {
+          // `/api/actions/:id/nonconformances` (issue #208): linking a further
+          // Non-conformance to a Concern. Both sides record it, exactly as the
+          // real route's transaction does.
+          final concernId = path.split('/')[3];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          nonconformanceLinkPosts.add((concernId, body));
+          if (linkNonconformanceStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': linkNonconformanceMessage}),
+              linkNonconformanceStatus,
+            );
+          }
+          final concern = actionDetails[concernId];
+          if (concern == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          final nonconformanceId = body['nonconformanceId'].toString();
+          final row = nonconformanceById(nonconformanceId);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+          }
+          final occurrence = linkedNonconformanceJson(
+            row,
+            isSource: concern['sourceNonconformanceId']?.toString() == nonconformanceId,
+          );
+          final updated = {
+            ...concern,
+            'nonconformances': [
+              ...(concern['nonconformances'] as List<dynamic>? ?? const []),
+              occurrence,
+            ],
+          };
+          actionDetails[concernId] = updated;
+          _replaceNonconformance(nonconformanceId, {
+            ...row,
+            'concerns': [
+              ...(row['concerns'] as List<dynamic>? ?? const []),
+              concernJson(updated, isSource: occurrence['isSource'] as bool),
+            ],
+          });
+          return http.Response(jsonEncode({'action': updated}), 201);
+        }
         if (request.method == 'GET' && path == '/api/actions/pillars') {
           if (pillarsStatus != 200) {
             return http.Response(
@@ -5187,6 +5415,8 @@ Map<String, dynamic> actionJson(
   List<Map<String, dynamic>> measures = const [],
   List<Map<String, dynamic>> phases = const [],
   Map<String, dynamic>? openPhase,
+  String? sourceNonconformanceId,
+  List<Map<String, dynamic>> nonconformances = const [],
 }) =>
     {
       'id': id,
@@ -5221,6 +5451,10 @@ Map<String, dynamic> actionJson(
       'measures': measures,
       'phases': phases,
       'openPhase': openPhase,
+      // Provenance and the link list (issue #208): the Non-conformance the
+      // Concern was raised from, and every occurrence it answers.
+      'sourceNonconformanceId': sourceNonconformanceId,
+      'nonconformances': nonconformances,
     };
 
 /// One phase as the Action's own `phases` array sends it (issue #177).

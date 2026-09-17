@@ -14,6 +14,7 @@ import '../actions/action_escalate_dialog.dart';
 import '../actions/action_form_dialog.dart';
 import '../actions/action_measure_dialog.dart';
 import '../actions/action_phase_complete_dialog.dart';
+import '../actions/action_unlink_nonconformance_dialog.dart';
 import '../actions/actions_api.dart';
 import '../actions/actions_bloc.dart';
 import '../actions/actions_screen.dart';
@@ -80,8 +81,10 @@ import '../quality/nonconformance_detail_bloc.dart';
 import '../quality/nonconformance_detail_screen.dart';
 import '../quality/nonconformance_disposition_dialog.dart';
 import '../quality/nonconformance_form_dialog.dart';
+import '../quality/nonconformance_link_concern_dialog.dart';
 import '../quality/nonconformance_lower_severity_dialog.dart';
 import '../quality/nonconformance_quantity_dialog.dart';
+import '../quality/nonconformance_raise_concern_dialog.dart';
 import '../quality/nonconformance_reopen_dialog.dart';
 import '../quality/nonconformance_update_dialog.dart';
 import '../quality/nonconformances_bloc.dart';
@@ -526,6 +529,11 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                     key: ValueKey<String>(nonconformanceId),
                     create: (context) => NonconformanceDetailBloc(
                       qualityApi: context.read<QualityApi>(),
+                      // Raising a Concern from this record and linking it to
+                      // one are writes to the action log (issue #208), so this
+                      // Bloc holds the Actions Module's client too — reached
+                      // through its own entry point.
+                      actionsApi: context.read<ActionsApi>(),
                       authGateway: context.read<AuthGateway>(),
                     )..add(NonconformanceDetailStarted(nonconformanceId)),
                     child: child,
@@ -723,6 +731,63 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                                 );
                               }
                               return NonconformanceCancelDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/raise-concern` — raising a
+                      // Concern from this record in the action log (issue
+                      // #208). Addressed for the same reason every other
+                      // transition is (ADR-0021): a refresh lands on the
+                      // record with the form open, and the write itself is the
+                      // Actions Module's route reached through its own client
+                      // entry point.
+                      GoRoute(
+                        path: 'raise-concern',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceRaiseConcernDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceRaiseConcernDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/link-concern` — linking this
+                      // record to a Concern that already exists, so one
+                      // problem answering several occurrences stays one
+                      // Concern (issue #208).
+                      GoRoute(
+                        path: 'link-concern',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceLinkConcernDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceLinkConcernDialog(
                                 nonconformance: detail.nonconformance,
                               );
                             },
@@ -936,6 +1001,20 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                         pageBuilder: (context, state) => DialogPage<void>(
                           key: state.pageKey,
                           builder: (dialogContext) => const ActionCancelDialogHost(),
+                        ),
+                      ),
+                      // `/actions/:id/nonconformances/:nonconformanceId/unlink`
+                      // — taking an occurrence back out of this Concern (issue
+                      // #208). Addressed for the same reason the other three
+                      // dialogs are, and it names *both* ends of the link it
+                      // is about, so the address is the whole request.
+                      GoRoute(
+                        path: 'nonconformances/:nonconformanceId/unlink',
+                        pageBuilder: (context, state) => DialogPage<void>(
+                          key: state.pageKey,
+                          builder: (dialogContext) => ActionUnlinkNonconformanceDialogHost(
+                            nonconformanceId: state.pathParameters['nonconformanceId']!,
+                          ),
                         ),
                       ),
                       GoRoute(

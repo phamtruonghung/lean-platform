@@ -812,6 +812,14 @@ void main() {
 
   testWidgets('raising a containment needs a title, and the kind comes off the address',
       (tester) async {
+    // Pinned taller than the default 800x600: the section issue #208 added at
+    // the foot of this Screen lengthens it, and a `tapIn` on the Add-a-measure
+    // button then scrolls the list far enough to cull the title and the notice
+    // at its top — which is where the notice this test asserts on lands.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(800, 1600);
+    addTearDown(tester.view.reset);
+
     final wire = wireWith(
       actionDetails: {
         '501': actionJson(

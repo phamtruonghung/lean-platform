@@ -442,7 +442,11 @@ void main() {
   testWidgets('the severity can be raised from the detail, and a lowering is never offered',
       (tester) async {
     final wire = _wire();
-    await _pump(tester, wire, location: '/non-conformances/701', size: const Size(800, 1700));
+    // Pinned taller than the 1700 the shorter detail tests use: issue #208
+    // added a section at the foot of this Screen, and a `tapIn` on a control
+    // below the fold scrolls the list far enough to cull the number and the
+    // chips at the top of it — where the severity is read.
+    await _pump(tester, wire, location: '/non-conformances/701', size: const Size(800, 2100));
 
     await tapIn(tester, find.byKey(NonconformanceDetailScreen.updateKey));
     // The record is `major`; `minor` is below it and is a Quality-authority
@@ -464,7 +468,10 @@ void main() {
 
   testWidgets('recording immediate containment makes the record contained', (tester) async {
     final wire = _wire();
-    await _pump(tester, wire, location: '/non-conformances/701', size: const Size(800, 1700));
+    // Pinned taller for the reason the severity test above records: the
+    // section issue #208 added at the foot of this Screen is what the tapped
+    // control's scroll would otherwise cull the header for.
+    await _pump(tester, wire, location: '/non-conformances/701', size: const Size(800, 2100));
 
     expect(_textOf(tester, NonconformanceDetailScreen.statusKey), 'Open');
 
