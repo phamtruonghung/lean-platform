@@ -574,6 +574,127 @@ Map<String, dynamic> defectCodeJson(
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
+/// One Customer as `GET /api/quality/customers` sends it (issue #214) — mirrors
+/// `toCustomer` (customers.js) key for key.
+Map<String, dynamic> customerJson(
+  String id,
+  String code,
+  String name, {
+  String? contactEmail,
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'contactEmail': contactEmail,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One Customer complaint as `GET /api/quality/complaints/:id` and the register
+/// send it (issue #214) — mirrors `toComplaint` (customer-complaints.js) key for
+/// key, the nested `nonconformance` summary included: the API answers every
+/// complaint with the record that controls its product, so a fixture that
+/// omitted it would let a test assert a shape the server cannot send.
+Map<String, dynamic> customerComplaintJson(
+  String id,
+  String complaintNo, {
+  String status = 'open',
+  String customerId = '60',
+  String customerCode = 'CUST-1',
+  String customerName = 'Acme Bearings',
+  String productId = '40',
+  String productCode = 'PRD-1',
+  String productName = 'Gearbox',
+  String? defectCodeId = '41',
+  String? defectCodeCode = 'DIM-OOT',
+  String? defectCodeName = 'Out of tolerance',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String siteCode = 'HCM',
+  String siteName = 'Ho Chi Minh',
+  String complaintType = 'quality',
+  String severity = 'major',
+  num? quantityAffected = 20,
+  String? uomCode = 'EA',
+  String? customerRef,
+  String? lotRef,
+  String description = 'Twenty of the last delivery will not seat on the shaft.',
+  String? receivedAt,
+  String? responseDueDate,
+  String? responseDueAt,
+  bool isOverdue = false,
+  int? daysOverdue,
+  String? firstResponseAt,
+  bool isWarranty = false,
+  String? closedAt,
+  String? responseNote,
+  Map<String, dynamic>? nonconformance,
+}) =>
+    {
+      'id': id,
+      'complaintNo': complaintNo,
+      'status': status,
+      'customerId': customerId,
+      'customerCode': customerCode,
+      'customerName': customerName,
+      'productId': productId,
+      'productCode': productCode,
+      'productName': productName,
+      'defectCodeId': defectCodeId,
+      'defectCodeCode': defectCodeCode,
+      'defectCodeName': defectCodeName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'siteCode': siteCode,
+      'siteName': siteName,
+      'complaintType': complaintType,
+      'severity': severity,
+      'quantityAffected': quantityAffected,
+      'uomCode': uomCode,
+      'customerRef': customerRef,
+      'lotRef': lotRef,
+      'description': description,
+      'receivedAt': receivedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'responseDueDate': responseDueDate,
+      'responseDueAt': responseDueAt,
+      'isOverdue': isOverdue,
+      'daysOverdue': daysOverdue,
+      'firstResponseAt': firstResponseAt,
+      'isWarranty': isWarranty,
+      'claimCost': null,
+      'currency': 'USD',
+      'closedAt': closedAt,
+      'responseNote': responseNote,
+      'nonconformance': nonconformance,
+    };
+
+/// The Non-conformance a complaint names, as the nested summary on the
+/// complaint's own read sends it (issue #214) — mirrors the projection
+/// customer-complaints.js builds from the linked `quality_issues` row.
+Map<String, dynamic> complaintNonconformanceJson(
+  String id,
+  String issueNo, {
+  String status = 'open',
+  String detectionPoint = 'customer',
+  String severity = 'major',
+  num? quantityAffected = 20,
+  String? detectedOn,
+}) =>
+    {
+      'id': id,
+      'issueNo': issueNo,
+      'status': status,
+      'detectionPoint': detectionPoint,
+      'severity': severity,
+      'quantityAffected': quantityAffected,
+      'detectedOn': detectedOn,
+    };
+
 /// One Non-conformance as `GET /api/quality/nonconformances/:id` and the
 /// register send it (issue #205) — mirrors `toNonconformance`
 /// (nonconformances.js) key for key, `quantityChanges` included: the API
@@ -1502,6 +1623,23 @@ class FakeWire {
     this.createDefectCodeMessage = 'a Defect code with this code already exists',
     this.updateDefectCodeStatus = 200,
     this.updateDefectCodeMessage = 'That Defect code could not be changed.',
+    List<Map<String, dynamic>>? customers,
+    this.customersStatus = 200,
+    this.createCustomerStatus = 201,
+    this.createCustomerMessage = 'a Customer with this code already exists',
+    this.updateCustomerStatus = 200,
+    this.updateCustomerMessage = 'That Customer could not be changed.',
+    Map<String, List<Map<String, dynamic>>>? complaints,
+    this.complaintsStatus = 200,
+    this.complaintsTruncated = false,
+    this.createComplaintStatus = 201,
+    this.createComplaintMessage = 'customerId must be a valid Customer id',
+    this.respondToComplaintStatus = 200,
+    this.respondToComplaintMessage = 'responseNote is required to close a complaint',
+    this.complaintNonconformanceStatus = 201,
+    this.complaintNonconformanceMessage = 'that Non-conformance is about another Product',
+    this.linkComplaintStatus = 200,
+    this.linkComplaintMessage = 'this Customer complaint already names a Non-conformance',
     Map<String, List<Map<String, dynamic>>>? nonconformances,
     this.nonconformancesStatus = 200,
     this.nonconformancesTruncated = false,
@@ -1594,6 +1732,8 @@ class FakeWire {
             {'id': '20', 'employeeNo': 'EMP-20', 'displayName': 'Tess Technician'},
         products = products ?? [],
         defectCodes = defectCodes ?? [],
+        customers = customers ?? [],
+        complaints = complaints ?? {},
         nonconformances = nonconformances ?? {},
         capas = capas ?? {};
 
@@ -1647,6 +1787,73 @@ class FakeWire {
 
   /// Every Defect code list request's query parameters.
   final List<Map<String, String>> defectCodeListRequests = [];
+
+  /// `GET /api/quality/customers` (issue #214) — the Customer list.
+  List<Map<String, dynamic>> customers;
+  int customersStatus;
+
+  /// `POST /api/quality/customers` (administrator only).
+  int createCustomerStatus;
+  String createCustomerMessage;
+
+  /// `PATCH /api/quality/customers/:id` (administrator only).
+  int updateCustomerStatus;
+  String updateCustomerMessage;
+
+  /// Every Customer create body that reached the wire, decoded.
+  final List<Map<String, dynamic>> customerPosts = [];
+
+  /// Every Customer correction body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> customerPatches = [];
+
+  /// Every Customer list request's query parameters.
+  final List<Map<String, String>> customerListRequests = [];
+
+  /// `GET /api/quality/sites/:siteId/complaints` (issue #214) — the register,
+  /// keyed by Site id. The wire applies the two filters the address takes:
+  /// `status`, and `orgUnitId` with everything beneath it (by walking the same
+  /// `orgUnits` fixture the Non-conformance register uses).
+  Map<String, List<Map<String, dynamic>>> complaints;
+  int complaintsStatus;
+  bool complaintsTruncated;
+
+  /// `POST /api/quality/sites/:siteId/complaints` — recording one.
+  int createComplaintStatus;
+  String createComplaintMessage;
+
+  /// `POST /api/quality/complaints/:id/respond` — closing it with its
+  /// response.
+  int respondToComplaintStatus;
+  String respondToComplaintMessage;
+
+  /// `POST /api/quality/complaints/:id/nonconformance` — recording the record
+  /// that controls the complained-of product.
+  int complaintNonconformanceStatus;
+  String complaintNonconformanceMessage;
+
+  /// `POST /api/quality/complaints/:id/link` — linking an existing one.
+  int linkComplaintStatus;
+  String linkComplaintMessage;
+
+  /// Every complaint record body that reached the wire, decoded.
+  final List<Map<String, dynamic>> complaintPosts = [];
+
+  /// Every complaint response body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> complaintResponds = [];
+
+  /// Every record-from-complaint body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> complaintNonconformancePosts = [];
+
+  /// Every link body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> complaintLinks = [];
+
+  /// Every complaint list request's query parameters, in the order they reached
+  /// the wire — so a test proves what the Screen asked for rather than what
+  /// this Fake Wire happened to apply.
+  final List<Map<String, String>> complaintListRequests = [];
+
+  /// Every complaint detail read's path, in order.
+  final List<String> complaintReads = [];
 
   /// `GET /api/quality/sites/:siteId/nonconformances` (issue #205) — the
   /// register, keyed by Site id.
@@ -2869,6 +3076,31 @@ class FakeWire {
   int _nextProductId = 700;
   int _nextDefectCodeId = 750;
   int _nextNonconformanceId = 900;
+  int _nextCustomerId = 600;
+  int _nextComplaintId = 700;
+
+  /// One complaint wherever it sits, by id — what every complaint write in this
+  /// fake re-reads after changing it, since the real routes answer the whole
+  /// record rather than a patch.
+  Map<String, dynamic>? complaintById(String id) {
+    for (final rows in complaints.values) {
+      for (final row in rows) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
+  /// Replaces one complaint row wherever it sits, keeping the list's order.
+  void _replaceComplaint(String id, Map<String, dynamic> updated) {
+    complaints = {
+      for (final entry in complaints.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) updated else row,
+        ],
+    };
+  }
 
   /// Replaces one Non-conformance row wherever it sits, keeping the list's
   /// order — what every write in this fake answers with, since the real
@@ -3258,6 +3490,295 @@ class FakeWire {
             }),
             200,
           );
+        }
+        // The Customer list and the customer complaints (issue #214). Mirrors
+        // customer-routes.js and customer-complaint-routes.js: the list applies
+        // `includeInactive` and `search`, the register applies the status and
+        // the Org Unit with everything beneath it, and every complaint write
+        // answers the whole record the way the real routes do.
+        if (request.method == 'POST' && path == '/api/quality/customers') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          customerPosts.add(sent);
+          if (createCustomerStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createCustomerMessage}),
+              createCustomerStatus,
+            );
+          }
+          final id = (_nextCustomerId++).toString();
+          final created = customerJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            contactEmail: sent['contactEmail'] as String?,
+          );
+          customers = [...customers, created];
+          return http.Response(jsonEncode({'customer': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/quality/customers/')) {
+          final id = path.substring('/api/quality/customers/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          customerPatches.add((id, body));
+          if (updateCustomerStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateCustomerMessage}),
+              updateCustomerStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          customers = [
+            for (final row in customers)
+              if (row['id'] == id) (updated = {...row, ...body}) else row,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Customer not found'}), 404);
+          }
+          return http.Response(jsonEncode({'customer': updated}), 200);
+        }
+        if (path == '/api/quality/customers') {
+          customerListRequests.add(request.url.queryParameters);
+          if (customersStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Customer list is unavailable.'}),
+              customersStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final includeInactive = query['includeInactive'] == 'true';
+          final term = (query['search'] ?? '').trim().toLowerCase();
+          final sent = [
+            for (final row in customers)
+              if (includeInactive || row['isActive'] != false)
+                if (term.isEmpty ||
+                    (row['code'] as String).toLowerCase().contains(term) ||
+                    (row['name'] as String).toLowerCase().contains(term))
+                  row,
+          ];
+          return http.Response(jsonEncode({'customers': sent}), 200);
+        }
+        if (path.startsWith('/api/quality/sites/') && path.endsWith('/complaints')) {
+          final siteId = path.split('/')[4];
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            complaintPosts.add(sent);
+            if (createComplaintStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': createComplaintMessage}),
+                createComplaintStatus,
+              );
+            }
+            final customerId = sent['customerId'] as String;
+            final productId = sent['productId'] as String;
+            final orgUnitId = sent['orgUnitId'] as String;
+            Map<String, dynamic>? customer;
+            for (final row in customers) {
+              if (row['id'] == customerId) customer = row;
+            }
+            Map<String, dynamic>? product;
+            for (final row in products) {
+              if (row['id'] == productId) product = row;
+            }
+            final defectCodeId = sent['defectCodeId'] as String?;
+            Map<String, dynamic>? defectCode;
+            for (final code in defectCodes) {
+              if (code['id'] == defectCodeId) defectCode = code;
+            }
+            final quantity = sent['quantity'] as num?;
+            final responseDueDate = sent['responseDueDate'] as String?;
+            final id = (_nextComplaintId++).toString();
+            final created = customerComplaintJson(
+              id,
+              'CC-2026-${id.padLeft(5, '0')}',
+              customerId: customerId,
+              customerCode: customer?['code'] as String? ?? 'CUST-?',
+              customerName: customer?['name'] as String? ?? 'Customer',
+              productId: productId,
+              productCode: product?['code'] as String? ?? 'PRD-?',
+              productName: product?['name'] as String? ?? 'Product',
+              defectCodeId: defectCodeId,
+              defectCodeCode: defectCode?['code'] as String?,
+              defectCodeName: defectCode?['name'] as String?,
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              siteId: siteId,
+              complaintType: sent['complaintType'] as String? ?? 'quality',
+              severity: sent['severity'] as String? ?? 'major',
+              quantityAffected: quantity,
+              uomCode: quantity == null ? null : (product?['uomCode'] as String? ?? 'EA'),
+              customerRef: sent['customerRef'] as String?,
+              lotRef: sent['lotRef'] as String?,
+              description: sent['description'] as String? ?? '',
+              responseDueDate: responseDueDate,
+              responseDueAt:
+                  responseDueDate == null ? null : '${responseDueDate}T23:59:59.999999+07:00',
+              isWarranty: sent['isWarranty'] == true,
+            );
+            complaints = {
+              ...complaints,
+              siteId: [created, ...(complaints[siteId] ?? const [])],
+            };
+            return http.Response(jsonEncode({'complaint': created}), 201);
+          }
+          complaintListRequests.add(request.url.queryParameters);
+          if (complaintsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The complaint register is unavailable.'}),
+              complaintsStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final orgUnitId = query['orgUnitId'];
+          final scope = orgUnitId == null ? null : nonconformanceOrgUnitScope(orgUnitId);
+          final status = query['status'];
+          final sent = [
+            for (final row in complaints[siteId] ?? const <Map<String, dynamic>>[])
+              if (scope == null || scope.contains(row['orgUnitId']))
+                if (status == null || row['status'] == status) row,
+          ];
+          return http.Response(
+            jsonEncode({'complaints': sent, 'truncated': complaintsTruncated}),
+            200,
+          );
+        }
+        if (path.startsWith('/api/quality/complaints/')) {
+          final remainder = path.substring('/api/quality/complaints/'.length);
+
+          if (remainder.endsWith('/respond') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/respond'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            complaintResponds.add((id, sent));
+            final row = complaintById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);
+            }
+            if (respondToComplaintStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': respondToComplaintMessage}),
+                respondToComplaintStatus,
+              );
+            }
+            final note = (sent['responseNote'] as String?)?.trim() ?? '';
+            if (note.isEmpty) {
+              return http.Response(
+                jsonEncode({'message': 'responseNote is required to close a complaint'}),
+                400,
+              );
+            }
+            final closed = {
+              ...row,
+              'status': 'closed',
+              'closedAt': DateTime.now().toUtc().toIso8601String(),
+              'firstResponseAt': row['firstResponseAt'] ??
+                  DateTime.now().toUtc().toIso8601String(),
+              'responseNote': note,
+              // A complaint that is finished with is never marked late — the
+              // real read's own rule (customer-complaints.js).
+              'isOverdue': false,
+            };
+            _replaceComplaint(id, closed);
+            return http.Response(jsonEncode({'complaint': closed}), 200);
+          }
+
+          if (remainder.endsWith('/nonconformance') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/nonconformance'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            complaintNonconformancePosts.add((id, sent));
+            final row = complaintById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);
+            }
+            if (complaintNonconformanceStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': complaintNonconformanceMessage}),
+                complaintNonconformanceStatus,
+              );
+            }
+            final siteId = row['siteId'] as String;
+            final ncId = (_nextNonconformanceId++).toString();
+            final recorded = nonconformanceJson(
+              ncId,
+              'NC-HCM-2026-${ncId.padLeft(5, '0')}',
+              detectionPoint: 'customer',
+              severity: row['severity'] as String? ?? 'major',
+              quantityAffected: (sent['quantity'] as num?) ??
+                  (row['quantityAffected'] as num?) ??
+                  1,
+              lotRef: row['lotRef'] as String?,
+              description: sent['description'] as String? ?? row['description'] as String?,
+              immediateContainment: sent['immediateContainment'] as String?,
+              orgUnitId: row['orgUnitId'] as String,
+              orgUnitName: row['orgUnitName'] as String,
+              siteId: siteId,
+              productId: row['productId'] as String,
+              productCode: row['productCode'] as String,
+              productName: row['productName'] as String,
+              defectCodeId: (sent['defectCodeId'] as String?) ?? row['defectCodeId'] as String,
+              defectCodeCode: row['defectCodeCode'] as String? ?? 'CODE-?',
+              defectCodeName: row['defectCodeName'] as String? ?? 'Defect code',
+            );
+            nonconformances = {
+              ...nonconformances,
+              siteId: [recorded, ...(nonconformances[siteId] ?? const [])],
+            };
+            final linked = {
+              ...row,
+              'nonconformance': complaintNonconformanceJson(
+                ncId,
+                recorded['issueNo'] as String,
+                detectionPoint: 'customer',
+                severity: recorded['severity'] as String,
+                quantityAffected: recorded['quantityAffected'] as num,
+              ),
+            };
+            _replaceComplaint(id, linked);
+            return http.Response(
+              jsonEncode({'nonconformance': recorded, 'complaint': linked}),
+              201,
+            );
+          }
+
+          if (remainder.endsWith('/link') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/link'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            complaintLinks.add((id, sent));
+            final row = complaintById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);
+            }
+            if (linkComplaintStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': linkComplaintMessage}),
+                linkComplaintStatus,
+              );
+            }
+            final candidateId = sent['nonconformanceId'] as String;
+            final candidate = nonconformanceById(candidateId);
+            if (candidate == null) {
+              return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+            }
+            final linked = {
+              ...row,
+              'nonconformance': complaintNonconformanceJson(
+                candidateId,
+                candidate['issueNo'] as String,
+                status: candidate['status'] as String,
+                detectionPoint: candidate['detectionPoint'] as String,
+                severity: candidate['severity'] as String,
+                quantityAffected: candidate['quantityAffected'] as num,
+              ),
+            };
+            _replaceComplaint(id, linked);
+            return http.Response(jsonEncode({'complaint': linked}), 200);
+          }
+
+          if (remainder.isNotEmpty && !remainder.contains('/')) {
+            complaintReads.add(path);
+            final row = complaintById(remainder);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);
+            }
+            return http.Response(jsonEncode({'complaint': row}), 200);
+          }
         }
         // The Quality Module's floor door (issue #207): the two catalogues a
         // device must choose from, and the recording it makes. Mirrors

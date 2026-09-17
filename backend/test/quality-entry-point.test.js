@@ -80,6 +80,15 @@ test('router is a mountable Express router', () => {
 // reopen and no cancel — the four acts that need Quality authority are not
 // reachable from a device at all, which is the criterion the list below is
 // also the assertion for.
+// Issue #214's nine are the Customer list and the customer complaint surface:
+// two catalogue routes over a table the baseline carries, the register per Site
+// (the same shape the Non-conformance register takes, because both are filed at
+// an Org Unit and read by whoever can see the Site), one complaint's own read,
+// and the three writes a reader makes from it — closing it with its response,
+// recording the Non-conformance that controls the complained-of product, and
+// linking one that already exists. Note what is absent: no
+// `/complaints/:id/reopen` and no delete, because a complaint that was answered
+// is a record of what was said rather than a state to move back out of.
 function declaredRoutes(router) {
   const declared = [];
   for (const layer of router.stack) {
@@ -94,17 +103,25 @@ function declaredRoutes(router) {
   return declared;
 }
 
-test('the router carries the Product, Defect code, Non-conformance and floor paths, and nothing else', () => {
+test('the router carries the Product, Defect code, Non-conformance, Customer, complaint and floor paths, and nothing else', () => {
   assert.deepStrictEqual(declaredRoutes(quality.router).sort(), [
+    'GET /complaints/:id',
+    'GET /customers',
     'GET /defect-codes',
     'GET /floor/defect-codes',
     'GET /floor/products',
     'GET /nonconformances/:id',
     'GET /products',
+    'GET /sites/:siteId/complaints',
     'GET /sites/:siteId/nonconformances',
+    'PATCH /customers/:id',
     'PATCH /defect-codes/:id',
     'PATCH /nonconformances/:id',
     'PATCH /products/:id',
+    'POST /complaints/:id/link',
+    'POST /complaints/:id/nonconformance',
+    'POST /complaints/:id/respond',
+    'POST /customers',
     'POST /defect-codes',
     'POST /floor/nonconformances',
     'POST /nonconformances/:id/cancel',
@@ -114,6 +131,7 @@ test('the router carries the Product, Defect code, Non-conformance and floor pat
     'POST /nonconformances/:id/quantity',
     'POST /nonconformances/:id/reopen',
     'POST /products',
+    'POST /sites/:siteId/complaints',
     'POST /sites/:siteId/nonconformances'
   ]);
 });

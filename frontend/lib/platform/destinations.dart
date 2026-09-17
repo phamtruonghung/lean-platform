@@ -415,6 +415,30 @@ const List<Destination> platformDestinations = [
     path: Routes.capas,
     group: DestinationGroupNames.quality,
   ),
+  // The Customer list and the customer complaints (issue #214). Filed here,
+  // under Quality: a complaint is a quality record — the baseline's own table
+  // is in the Quality pillar and its own comment says a Customer exists "so a
+  // complaint has someone to belong to" — and the addresses are this Module's.
+  //
+  // Offered to every approved Account, the same shape the five Quality
+  // Destinations above them use. The Customer list is shared reference data
+  // (ADR-0005) and the complaint register is a Site-wide read, both of which
+  // the server decides, so a role here would gate doors the routes themselves
+  // open for an operator. The write affordances inside each Screen are what is
+  // gated, and the server is the real gate on both: the administrator role for
+  // a Customer, an edit Grant reaching the Org Unit for a complaint.
+  Destination(
+    label: 'Customers',
+    icon: Icons.handshake_outlined,
+    path: Routes.customers,
+    group: DestinationGroupNames.quality,
+  ),
+  Destination(
+    label: 'Customer complaints',
+    icon: Icons.support_agent_outlined,
+    path: Routes.complaints,
+    group: DestinationGroupNames.quality,
+  ),
   // Approvals and Accounts administer the Platform itself — who may sign in,
   // and what they may reach — rather than the plant's workforce, so they sit
   // under Administration rather than People (#100, ADR-0020).

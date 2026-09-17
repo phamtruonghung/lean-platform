@@ -107,6 +107,12 @@ const _pages = <_Page>[
   // padding too, so the default bound holds here as well.
   _Page('/actions/capas', 'lib/actions/capas_screen.dart', 'CAPAs',
       'The investigations opened on a Concern'),
+  // The Customer list and the complaint register (issue #214). Both are pages
+  // with a frame, a heading and rows at the card's own padding, so the default
+  // bound holds for each.
+  _Page('/customers', 'lib/quality/customers_screen.dart', 'Customers', 'Who the plant'),
+  _Page('/complaints', 'lib/quality/complaints_screen.dart', 'Customer complaints',
+      'What customers have complained about'),
   // The CAPA report (issue #212). Audited rather than excluded, and the
   // audited shape is the point of the ticket: it is a page with a frame, a
   // heading and a column of cards even though it is reached outside the Shell,
@@ -139,6 +145,8 @@ const _excluded = <String, String>{
       "its title is the Store's own name, not a page heading",
   'lib/quality/nonconformance_detail_screen.dart':
       "its title is the Non-conformance's own number, not a page heading",
+  'lib/quality/complaint_detail_screen.dart':
+      "its title is the complaint's own Customer and Product, not a page heading",
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',
@@ -186,6 +194,15 @@ FakeWire _wire() => FakeWire(
       // runs.
       products: [productJson('40', 'PRD-1', 'Gearbox')],
       defectCodes: [defectCodeJson('41', 'DIM-OOT', 'Out of tolerance')],
+      // The Customer list and one Site's complaints (issue #214), so both
+      // pages render their rows rather than an empty state and the row
+      // assertions actually run.
+      customers: [customerJson('60', 'CUST-1', 'Acme Bearings')],
+      complaints: {
+        '1': [
+          customerComplaintJson('70', 'CC-2026-00001', responseDueDate: '2099-01-01'),
+        ],
+      },
       // The investigation the CAPA report reads (issue #212). Its own read is a
       // CAPA rather than a collection, so this table's one report page finds it
       // by id and renders its sections rather than a loading placeholder.

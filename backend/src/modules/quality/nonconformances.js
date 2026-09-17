@@ -315,6 +315,49 @@ const CONCERN_JOINS = `
   JOIN org_units ou ON ou.id = ai.org_unit_id
   LEFT JOIN employees e ON e.id = ai.owner_employee_id`;
 
+// The Customer complaints that name this Non-conformance (issue #214), as this
+// Module's own detail read returns them. `customer_complaints.quality_issue_id`
+// is the whole link, and it is a *list* here rather than the single value a
+// complaint carries: two customers complaining about the same bad lot is one
+// Non-conformance controlling the product for both, and a record that could
+// name only one of them would hide the other. The complaint's product is not
+// repeated — it is this record's product, by the rule the complaint's own link
+// enforces (see customer-complaints.js).
+const CUSTOMER_COMPLAINT_COLUMNS = `
+  cc.id, cc.complaint_no, cc.status, cc.severity, cc.complaint_type,
+  cc.is_warranty, cc.quantity_affected, cc.received_at, cc.closed_at,
+  cc.response_note,
+  to_char(cc.response_due_at AT TIME ZONE s.timezone, 'YYYY-MM-DD') AS response_due_date,
+  c.id AS customer_id, c.code AS customer_code, c.name AS customer_name`;
+
+const CUSTOMER_COMPLAINT_JOINS = `
+  FROM customer_complaints cc
+  JOIN customers c ON c.id = cc.customer_id
+  JOIN org_units ou ON ou.id = cc.org_unit_id
+  JOIN sites s ON s.id = ou.site_id`;
+
+function toCustomerComplaint(row) {
+  return {
+    id: row.id,
+    complaintNo: row.complaint_no,
+    status: row.status,
+    customerId: row.customer_id,
+    customerCode: row.customer_code,
+    customerName: row.customer_name,
+    severity: row.severity,
+    complaintType: row.complaint_type,
+    isWarranty: row.is_warranty,
+    quantityAffected: toQuantity(row.quantity_affected),
+    // The day the customer was promised an answer, in the Site's own calendar,
+    // and when the complaint was received — the two dates a reader of the
+    // Non-conformance needs to know who is waiting on it.
+    responseDueDate: row.response_due_date ?? null,
+    receivedAt: row.received_at,
+    closedAt: row.closed_at ?? null,
+    responseNote: row.response_note ?? null
+  };
+}
+
 function toConcern(row) {
   return {
     id: row.id,
@@ -399,7 +442,13 @@ function toCorrection(row) {
 
 function toNonconformance(
   row,
-  { quantityChanges = [], dispositions = [], corrections = [], concerns = [] } = {}
+  {
+    quantityChanges = [],
+    dispositions = [],
+    corrections = [],
+    concerns = [],
+    customerComplaints = []
+  } = {}
 ) {
   return {
     id: row.id,
@@ -456,7 +505,11 @@ function toNonconformance(
     // one raised from it first, then any further occurrence linked to the same
     // Concern. Empty for a record nothing is being done about, which is a real
     // and common state rather than a missing field.
-    concerns
+    concerns,
+    // The Customer complaints that name this record (issue #214) — the other
+    // end of `customer_complaints.quality_issue_id`. Empty for a Non-conformance
+    // no customer has complained about, which is most of them.
+    customerComplaints
   };
 }
 
@@ -630,7 +683,12 @@ async function getNonconformanceDetail(id) {
     // What is being done about the cause (issue #208), read on every detail
     // read: the Screen that shows the record shows whether its cause is being
     // answered, which is the question a quality engineer opens it with.
-    concerns: await listConcerns(rows[0].id)
+    concerns: await listConcerns(rows[0].id),
+    // And who complained about it (issue #214): the record is what controls
+    // the product a customer is waiting on an answer about, so the record's
+    // own read says whose complaint it is controlling. The other end of the
+    // same link — see customer-complaints.js, where a complaint names one.
+    customerComplaints: await listCustomerComplaints(rows[0].id)
   });
 }
 
@@ -656,6 +714,22 @@ async function listConcerns(qualityIssueId, client = null) {
     [qualityIssueId]
   );
   return rows.map(toConcern);
+}
+
+// The Customer complaints that name this Non-conformance (issue #214), oldest
+// first. The mirror of `listConcerns` above and for the same reason: the row
+// that records the link is this Module's own table, so reading it is an
+// ordinary query rather than another Module's judgment.
+async function listCustomerComplaints(qualityIssueId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${CUSTOMER_COMPLAINT_COLUMNS}
+     ${CUSTOMER_COMPLAINT_JOINS}
+     WHERE cc.quality_issue_id = $1
+     ORDER BY cc.received_at, cc.id`,
+    [qualityIssueId]
+  );
+  return rows.map(toCustomerComplaint);
 }
 
 async function listQuantityChanges(qualityIssueId, client = null) {
@@ -1404,6 +1478,13 @@ module.exports = {
   listDispositions,
   listCorrections,
   listConcerns,
+  listCustomerComplaints,
+  // The two "is this Product / Defect code in use" resolvers, exported because
+  // the Customer complaint slice (issue #214) records its own Product and Defect
+  // code and asks exactly these questions — one definition of "active" in the
+  // Module rather than a second copy of the two refusals.
+  resolveActiveProduct,
+  resolveActiveDefectCode,
   recordNonconformance,
   updateNonconformance,
   increaseQuantity,

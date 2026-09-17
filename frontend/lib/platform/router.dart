@@ -83,6 +83,16 @@ import '../people/skill_coverage_screen.dart';
 import '../people/skills_bloc.dart';
 import '../people/skills_screen.dart';
 import '../people_api.dart';
+import '../quality/complaint_detail_bloc.dart';
+import '../quality/complaint_detail_screen.dart';
+import '../quality/complaint_form_dialog.dart';
+import '../quality/complaint_link_dialog.dart';
+import '../quality/complaint_nonconformance_dialog.dart';
+import '../quality/complaint_respond_dialog.dart';
+import '../quality/complaints_bloc.dart';
+import '../quality/complaints_screen.dart';
+import '../quality/customers_bloc.dart';
+import '../quality/customers_screen.dart';
 import '../quality/defect_codes_bloc.dart';
 import '../quality/defect_codes_screen.dart';
 import '../quality/nonconformance_cancel_dialog.dart';
@@ -147,6 +157,19 @@ abstract final class Routes {
   /// addressed, per ADR-0021. `new` cannot collide with the detail route
   /// because it is not an id.
   static const String nonConformances = '/non-conformances';
+
+  /// The Customer list (issue #214), at its own address so it can be linked to
+  /// or bookmarked. Defining and correcting a Customer are dialogs over it
+  /// (`CustomerFormDialog.open`), the same shape the Product catalogue's own
+  /// write surface takes — a Customer carries three fields, and the list behind
+  /// the dialog is the context the correction is made in.
+  static const String customers = '/customers';
+
+  /// The customer complaint register (issue #214), with the record form
+  /// (`/complaints/new`), one complaint's detail (`/complaints/:id`) and the
+  /// three writes a reader makes from it (`/:id/respond`,
+  /// `/:id/nonconformance`, `/:id/link`) — all addressed, per ADR-0021.
+  static const String complaints = '/complaints';
 
   /// The Actions Module's own Destinations (issue #176): the action log, and
   /// one Action's detail read behind `${actions}/:id`. The raise form is
@@ -572,6 +595,203 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 child: DefectCodesScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
+          ),
+          // The Customer list and the customer complaint register (issue #214),
+          // the Module's two remaining Destinations. The list is a catalogue
+          // read like the two above it (any approved Account, only its writes
+          // the administrator's), so it takes the same shape; the complaint
+          // register needs a `ShellRoute` of its own for the reason the
+          // Non-conformance register does — `ComplaintsBloc` is created exactly
+          // once and shared by the register, the record form's own address and
+          // the detail Screen.
+          //
+          // Both guards are the whole Module rather than a role set: the
+          // Customer list is a shared catalogue (ADR-0005) and the register is
+          // a Site-wide read for every admitted Account, while both write
+          // surfaces are gated by the server on the Grant that reaches the
+          // record's own Org Unit (and, for a Customer, on the administrator
+          // role). An operator is offered both Destinations exactly as a
+          // manager is.
+          GoRoute(
+            path: Routes.customers,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<CustomersBloc>(
+                create: (context) => CustomersBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const CustomersStarted()),
+                child: CustomersScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<ComplaintsBloc>(
+                create: (context) => ComplaintsBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const ComplaintsStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.complaints,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const ComplaintsScreen();
+                },
+                routes: [
+                  // `/complaints/new` — the record form, addressed rather than
+                  // popped (ADR-0021), and `new` cannot collide with the detail
+                  // route below because it is not an id.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final register = context.watch<ComplaintsBloc>().state;
+                          final siteId =
+                              register is ComplaintsLoaded ? register.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: ComplaintsScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          // The chooser inside the form browses People's tree
+                          // through the same Bloc the Non-conformance form uses,
+                          // scoped to this dialog and opened on the Site on
+                          // screen.
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: ComplaintFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // `/complaints/:id` and its three addresses — a `ShellRoute` of
+              // its own so `ComplaintDetailBloc` is created exactly once and
+              // shared by the Screen and the three dialogs beside it, and
+              // **keyed on the id in the address**: go_router reuses a route's
+              // page when the *pattern* matches, so moving from one complaint
+              // to another would otherwise leave this Bloc — and the Screen
+              // reading it — holding the record before (issue #183's own bug).
+              ShellRoute(
+                builder: (context, state, child) {
+                  final complaintId = state.pathParameters['id']!;
+                  return BlocProvider<ComplaintDetailBloc>(
+                    key: ValueKey<String>(complaintId),
+                    create: (context) => ComplaintDetailBloc(
+                      qualityApi: context.read<QualityApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(ComplaintDetailStarted(complaintId)),
+                    child: child,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    // Absolute, because this route is a *sibling* of the
+                    // register's rather than a child of it: a relative `:id`
+                    // here resolves against the Module shell and matches
+                    // `/:id`, not `/complaints/:id`.
+                    path: '${Routes.complaints}/:id',
+                    builder: (context, state) => ComplaintDetailScreen(
+                      complaintId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      // `/complaints/:id/respond` — closing it with the
+                      // response the customer was given.
+                      GoRoute(
+                        path: 'respond',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<ComplaintDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! ComplaintDetailLoaded) {
+                                return const AlertDialog(
+                                  key: ComplaintRespondDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return ComplaintRespondDialog(complaint: detail.complaint);
+                            },
+                          );
+                        },
+                      ),
+                      // `/complaints/:id/nonconformance` — recording the
+                      // Non-conformance that controls the complained-of product.
+                      GoRoute(
+                        path: 'nonconformance',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<ComplaintDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! ComplaintDetailLoaded) {
+                                return const AlertDialog(
+                                  key: ComplaintNonconformanceDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return ComplaintNonconformanceDialog(complaint: detail.complaint);
+                            },
+                          );
+                        },
+                      ),
+                      // `/complaints/:id/link` — linking one that exists.
+                      GoRoute(
+                        path: 'link',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<ComplaintDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! ComplaintDetailLoaded) {
+                                return const AlertDialog(
+                                  key: ComplaintLinkDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return ComplaintLinkDialog(complaint: detail.complaint);
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
           // Non-conformances (issue #205) — a `ShellRoute` of its own, for the
           // same reason Work orders and Actions have one: `NonconformancesBloc`

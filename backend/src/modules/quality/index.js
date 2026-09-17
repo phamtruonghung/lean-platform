@@ -6,7 +6,9 @@
  * One export, and it is here because something outside this Module mounts it.
  * `router` is this Module's own routes — the Product catalogue, the Defect
  * code tree, the Non-conformance log and the floor device's own door to
- * recording one, as they stand today — mounted by src/index.js under
+ * recording one, the Customer list and the Customer complaints a customer's
+ * word becomes (issue #214), as they stand today — mounted by src/index.js
+ * under
  * `/api/quality`, a prefix of this Module's own beside
  * `/api/people`, `/api/maintenance` and `/api/actions`. src/index.js lives
  * outside `modules/` and is not a cross-Module caller the boundary checker
@@ -54,7 +56,10 @@
  * the same two plus `findSite`, `findOrgUnit`, `canAct` and `canSeeSite`, the
  * Grant questions issue #205 needs (any Grant on any Org Unit of the Site to
  * read one, a write Grant reaching a Non-conformance's own Org Unit to record
- * or change it). `modules/people/authorization.js` already answers the
+ * or change it). customer-routes.js and customer-complaint-routes.js (issue
+ * #214) ask the same set as those two — the administrator check for the
+ * Customer list's writes, and the Site and Grant questions for a complaint's
+ * register and its own record. `modules/people/authorization.js` already answers the
  * Quality question this Module's later slices need
  * (`canAct({ quality: true })`, issue #204, ADR-0035) — that is People's
  * export, reached through People's entry point, not something re-exported
@@ -71,12 +76,16 @@ const express = require('express');
 const productRoutes = require('./product-routes');
 const defectCodeRoutes = require('./defect-code-routes');
 const nonconformanceRoutes = require('./nonconformance-routes');
+const customerRoutes = require('./customer-routes');
+const customerComplaintRoutes = require('./customer-complaint-routes');
 const floorRoutes = require('./floor-routes');
 
 const router = express.Router();
 router.use(productRoutes);
 router.use(defectCodeRoutes);
 router.use(nonconformanceRoutes);
+router.use(customerRoutes);
+router.use(customerComplaintRoutes);
 router.use(floorRoutes);
 
 module.exports = {

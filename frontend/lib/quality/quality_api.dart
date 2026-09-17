@@ -44,6 +44,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../maintenance/maintenance.dart';
+import 'customer.dart';
+import 'customer_complaint.dart';
 import 'defect_code.dart';
 import 'nonconformance.dart';
 import 'product.dart';
@@ -628,6 +630,306 @@ class QualityApi {
     try {
       final answer = jsonDecode(response.body) as Map<String, dynamic>;
       return Nonconformance.fromJson(answer['nonconformance'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Customers and customer complaints (issue #214)
+  // -------------------------------------------------------------------------
+
+  /// The Customer list (`GET /api/quality/customers`), readable and searchable
+  /// by any approved Account. Active Customers only, unless [includeInactive]
+  /// asks for the retired ones too — which is what the list's own Screen asks
+  /// for, so a deactivated Customer can be reached and reactivated.
+  ///
+  /// [search] narrows by code or name on the server; the Screen's own filter
+  /// box matches the rows it already holds instead, and issues no request
+  /// (issue #187's two controls).
+  Future<List<Customer>> fetchCustomers(
+    String accessToken, {
+    String? search,
+    bool includeInactive = false,
+  }) async {
+    const path = '/api/quality/customers';
+    final query = <String, String>{
+      if (includeInactive) 'includeInactive': 'true',
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+    };
+    final uri = Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final customer in body['customers'] as List<dynamic>)
+          Customer.fromJson(customer as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Defines a Customer (`POST /api/quality/customers`, administrator only).
+  /// A code already taken is refused (409) with the service's own sentence.
+  Future<Customer> createCustomer(
+    String accessToken, {
+    required String code,
+    required String name,
+    String? contactEmail,
+  }) async {
+    const path = '/api/quality/customers';
+    final body = <String, Object?>{'code': code, 'name': name};
+    if (contactEmail != null && contactEmail.trim().isNotEmpty) {
+      body['contactEmail'] = contactEmail.trim();
+    }
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Customer.fromJson(answer['customer'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Corrects a Customer (`PATCH /api/quality/customers/:id`, administrator
+  /// only): only the keys in [changes], which is `updateCustomer`'s own
+  /// `hasOwnProperty` contract at the other end. A code is refused (400).
+  Future<Customer> updateCustomer(
+    String accessToken,
+    String id,
+    Map<String, Object?> changes,
+  ) async {
+    final path = '/api/quality/customers/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Customer.fromJson(answer['customer'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// A Site's complaints (`GET /api/quality/sites/:siteId/complaints`), newest
+  /// first, narrowed by the status and the Org Unit the register's filters
+  /// carry. Visible to anyone who can see the Site, the same rule the
+  /// Non-conformance register follows.
+  Future<ComplaintRegister> fetchComplaints(
+    String accessToken,
+    String siteId, {
+    ComplaintFilters filters = const ComplaintFilters(),
+  }) async {
+    final path = '/api/quality/sites/$siteId/complaints';
+    final query = filters.queryParameters;
+    final uri = Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return ComplaintRegister(
+        complaints: [
+          for (final row in body['complaints'] as List<dynamic>)
+            CustomerComplaint.fromJson(row as Map<String, dynamic>),
+        ],
+        truncated: body['truncated'] == true,
+      );
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One complaint with the Customer, the Product, the Defect code and the
+  /// Non-conformance controlling the complained-of product
+  /// (`GET /api/quality/complaints/:id`) — what the detail Screen reads.
+  Future<CustomerComplaint> fetchComplaint(String accessToken, String id) async {
+    final path = '/api/quality/complaints/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return CustomerComplaint.fromJson(body['complaint'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records a complaint (`POST /api/quality/sites/:siteId/complaints`) at
+  /// [orgUnitId], which needs a Grant reaching it with edit — the API refuses
+  /// anything else (403) and refuses a Customer, Product or Defect code that is
+  /// unknown (404), retired (409) or missing (400).
+  ///
+  /// Only what the caller decided is sent: a null field is absent rather than
+  /// sent as a null the API would have to interpret.
+  Future<CustomerComplaint> recordComplaint(
+    String accessToken,
+    String siteId, {
+    required String orgUnitId,
+    required String customerId,
+    required String productId,
+    required String description,
+    String? defectCodeId,
+    num? quantity,
+    String? uomCode,
+    String? responseDueDate,
+    bool isWarranty = false,
+    String? complaintType,
+    String? severity,
+    String? customerRef,
+    String? lotRef,
+  }) async {
+    final path = '/api/quality/sites/$siteId/complaints';
+    final body = <String, Object?>{
+      'orgUnitId': orgUnitId,
+      'customerId': customerId,
+      'productId': productId,
+      'description': description,
+      'isWarranty': isWarranty,
+    };
+    if (defectCodeId != null) body['defectCodeId'] = defectCodeId;
+    if (quantity != null) body['quantity'] = quantity;
+    if (uomCode != null && uomCode.trim().isNotEmpty) body['uomCode'] = uomCode.trim();
+    if (responseDueDate != null) body['responseDueDate'] = responseDueDate;
+    if (complaintType != null) body['complaintType'] = complaintType;
+    if (severity != null) body['severity'] = severity;
+    if (customerRef != null && customerRef.trim().isNotEmpty) {
+      body['customerRef'] = customerRef.trim();
+    }
+    if (lotRef != null && lotRef.trim().isNotEmpty) body['lotRef'] = lotRef.trim();
+
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return CustomerComplaint.fromJson(answer['complaint'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Closes a complaint with the response the customer was given
+  /// (`POST /api/quality/complaints/:id/respond`). The note is required: the
+  /// API refuses a complaint closed with nothing said back (400), and refuses
+  /// one that is already closed (409).
+  Future<CustomerComplaint> closeComplaint(
+    String accessToken,
+    String id, {
+    required String responseNote,
+  }) async {
+    final path = '/api/quality/complaints/$id/respond';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'responseNote': responseNote}),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return CustomerComplaint.fromJson(answer['complaint'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records the Non-conformance that controls the complained-of product
+  /// (`POST /api/quality/complaints/:id/nonconformance`) — `detection_point =
+  /// customer`, the complaint's Product, and its Defect code, quantity and
+  /// description unless [defectCodeId] or [quantity] name their own (a
+  /// complaint may carry neither).
+  ///
+  /// Answers with both records: the caller is looking at the complaint and
+  /// reading the record it just created at the same time.
+  Future<(Nonconformance, CustomerComplaint)> recordComplaintNonconformance(
+    String accessToken,
+    String id, {
+    num? quantity,
+    String? defectCodeId,
+    String? description,
+    String? immediateContainment,
+    String? lotRef,
+    String? severity,
+  }) async {
+    final path = '/api/quality/complaints/$id/nonconformance';
+    final body = <String, Object?>{};
+    if (quantity != null) body['quantity'] = quantity;
+    if (defectCodeId != null) body['defectCodeId'] = defectCodeId;
+    if (description != null && description.trim().isNotEmpty) {
+      body['description'] = description.trim();
+    }
+    if (immediateContainment != null && immediateContainment.trim().isNotEmpty) {
+      body['immediateContainment'] = immediateContainment.trim();
+    }
+    if (lotRef != null && lotRef.trim().isNotEmpty) body['lotRef'] = lotRef.trim();
+    if (severity != null) body['severity'] = severity;
+
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return (
+        Nonconformance.fromJson(answer['nonconformance'] as Map<String, dynamic>),
+        CustomerComplaint.fromJson(answer['complaint'] as Map<String, dynamic>),
+      );
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Links a Non-conformance that already exists to the complaint
+  /// (`POST /api/quality/complaints/:id/link`). The API refuses a complaint that
+  /// already names one (409) and a Non-conformance about another Product (409),
+  /// which is why the picker offers only this complaint's own Product.
+  Future<CustomerComplaint> linkComplaintNonconformance(
+    String accessToken,
+    String id, {
+    required String nonconformanceId,
+  }) async {
+    final path = '/api/quality/complaints/$id/link';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'nonconformanceId': nonconformanceId}),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return CustomerComplaint.fromJson(answer['complaint'] as Map<String, dynamic>);
     } catch (error) {
       throw QualityApiException('The API answered with something this app could not read: $error');
     }
