@@ -246,6 +246,63 @@ async function requireCapaWhyWrite(req, res, next) {
   });
 }
 
+// Who may record a CAPA's effectiveness check (issue #211, ADR-0034): a holder
+// of **Quality authority at the CAPA's Org Unit**, who is **not the team
+// lead**.
+//
+// The first half needs no new question — ADR-0035's own list of the decisions
+// Quality authority guards names "opening a CAPA" and "verify one held", and
+// this is the second of them, asked through People's entry point exactly as the
+// open route asks the first (`canAct({ …, quality: true })`, deliberately not
+// `write: true`: the two flags are independent, and whoever may record work on
+// a line is not therefore the one who decides the fix held). An administrator
+// passes through `canAct` like every other gate in this Platform.
+//
+// The second half is why this is not simply `requireCapaQualityAuthority`. The
+// team lead is the one person whose judgement about this fix is not evidence:
+// they led the investigation, they decided the countermeasure, and asking them
+// whether it held is the plant marking its own homework — which is the failure
+// ADR-0034's shape exists to avoid, since the whole point of the check is that
+// it is somebody else's. It is a rule about an Account's *Employee link*
+// (`app_users.employee_id`, which an Account need not have at all): the
+// administrator with no Employee is never the team lead, and neither is the
+// engineer who holds the authority and sits on the team as a member. A member
+// is exactly who may record the check.
+//
+// Existence before scope, the order AGENTS.md §6 fixes: an unknown or malformed
+// CAPA is a clean 404 first, and only then are the two authorities asked.
+// Nothing here reads the CAPA's status — that is the service's 409, under its
+// own lock, for the same reason `requireCapaWhyWrite` leaves it there.
+const CAPA_EFFECTIVENESS_AUTHORITY_REQUIRED =
+  "recording a CAPA's effectiveness check needs Quality authority at its Org Unit";
+const CAPA_TEAM_LEAD_CANNOT_VERIFY =
+  'the team lead cannot record the effectiveness check on their own CAPA';
+
+async function requireCapaEffectivenessAuthority(req, res, next) {
+  return requireKnownCapa(req, res, async () => {
+    const allowed = await people.canAct({
+      account: req.account,
+      orgUnitId: req.capa.orgUnitId,
+      quality: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: CAPA_EFFECTIVENESS_AUTHORITY_REQUIRED });
+    }
+
+    const employeeId = req.account.employeeId;
+    if (
+      employeeId !== null &&
+      employeeId !== undefined &&
+      req.capa.teamLeadEmployeeId !== null &&
+      String(employeeId) === req.capa.teamLeadEmployeeId
+    ) {
+      return res.status(403).json({ message: CAPA_TEAM_LEAD_CANNOT_VERIFY });
+    }
+
+    return next();
+  });
+}
+
 // The register: a Site's open Actions, worst first, history on request.
 router.get(
   '/sites/:siteId/actions',
@@ -652,6 +709,50 @@ router.get('/pillars', people.authenticate, people.requireActive, async (req, re
   }
 });
 
+// The CAPA list (issue #211) — every investigation, worst first: the ones whose
+// effectiveness check has fallen due, then the ones due soonest, then the most
+// recently opened.
+//
+// **Declared before `/:id` on purpose, and this one really is load-bearing.**
+// Express matches in declaration order and a path segment at a time, so
+// `/api/actions/capas` is one segment and `GET /:id` below would take it for an
+// Action whose id is `capas` — answering 400 from parseId for a route that
+// should never have been reached. `/pillars` above is declared before `/:id`
+// for exactly this reason; `/capas/:id` needs no such care, because a
+// two-segment path can never be shadowed by a one-segment one.
+//
+// The three filters are read filters over an already-visible list, the same
+// rule the Action register's are: `orgUnitId` narrows by *area* (one Org Unit
+// and everything beneath it, the ltree walk), `status` by the investigation's
+// own state, and `overdue=true` to the checks that have fallen due and not been
+// recorded. Nothing here is a Grant question — reading a CAPA is platform-wide
+// for every approved Account, exactly as reading one by id is (ADR-0009).
+//
+// A value with a known set is checked rather than forwarded (ADR-0023's rule
+// read the way the register reads its own enums): `status=verified` is a
+// mistake the caller can fix, and answering it with an empty list would hide
+// the typo behind what looks like an investigated plant. Only the exact string
+// 'true' counts as overdue, the same convenience-filter rule `includeHistory`
+// on the register and `includeRetired` on Assets follow.
+router.get('/capas', people.authenticate, people.requireActive, async (req, res, next) => {
+  try {
+    const status = requireQueryMemberOf('status', req.query.status, actions.CAPA_STATUSES);
+    const overdue = req.query.overdue === 'true';
+
+    let orgUnitPath = null;
+    if (req.query.orgUnitId !== undefined) {
+      const orgUnit = await people.findOrgUnit(req.query.orgUnitId);
+      if (!orgUnit) throw notFound('Org Unit');
+      orgUnitPath = orgUnit.path;
+    }
+
+    const { capas, truncated } = await actions.listCapas({ orgUnitPath, status, overdue });
+    res.json({ capas, truncated });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
 // One CAPA, by its own id (issue #209) — the read the CAPA's Screen makes, and
 // a Site-wide read for the same reason an Action's is: which Org Unit a record
 // sits at decides where somebody may act on it, not who may read it.
@@ -803,14 +904,68 @@ router.patch(
         }
       }
 
+      // How long after the Concern closes the effectiveness check falls due
+      // (issue #211). A number, so it passes through unvalidated here — the
+      // range and the whole-number rule are facts about the record's own field
+      // and live in actions.js, where `updateCapa` refuses a delay the schema's
+      // own CHECK would only catch as a 500 (AGENTS.md §6's division).
+      if (body.effectivenessCheckDelayDays !== undefined) {
+        input.effectivenessCheckDelayDays = body.effectivenessCheckDelayDays;
+      }
+
       if (Object.keys(input).length === 0) {
         throw httpError(
           400,
-          'send a problem description, a team lead or a team — there is nothing to change otherwise'
+          'send a problem description, a team lead, a team or the effectiveness delay — ' +
+            'there is nothing to change otherwise'
         );
       }
 
       const capa = await actions.updateCapa(req.capa.id, input, req.account.id);
+      res.json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Recording a CAPA's effectiveness check (issue #211, ADR-0034) — the act that
+// closes an investigation, or sends its Concern round again.
+//
+// It is a POST with a name of its own rather than a field on the PATCH above,
+// and the difference is the whole point: everything the PATCH changes is the
+// record being filled in — a team, a description, a number — while this is a
+// decision with a state transition behind it, the shape `/cancel`, `/escalate`
+// and `/phases/:phase/complete` already take. `outcome` is what makes it one:
+// `effective` closes the CAPA, `not_effective` reopens the Concern into its
+// next PDCA cycle (ADR-0033) and leaves the CAPA open, and neither is a field
+// a form is filling in.
+//
+// The body is exactly the two fields the record keeps: the verdict and the
+// note. The verifier and the time are the server's — the Account is the
+// caller's own and the time is `now()`, because a check recorded on somebody
+// else's behalf is not a check — and the due date, the status and the Concern's
+// own reopening are consequences of the verdict rather than fields a caller
+// gets to send.
+//
+// The gate is `requireCapaEffectivenessAuthority` above: Quality authority at
+// the CAPA's Org Unit, held by somebody who is not the team lead's Account.
+// Everything else the act refuses — the CAPA's status, the Concern not being
+// closed, and an `effective` verdict on an investigation whose chains have no
+// confirmed root cause — is an actions.js 409 read under the CAPA's own locks.
+router.post(
+  '/capas/:id/effectiveness',
+  people.authenticate,
+  people.requireActive,
+  requireCapaEffectivenessAuthority,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const capa = await actions.recordEffectivenessCheck(
+        req.capa.id,
+        { outcome: body.outcome, note: body.note },
+        req.account.id
+      );
       res.json({ capa });
     } catch (error) {
       handleError(error, res, next);

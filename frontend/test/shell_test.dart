@@ -66,6 +66,23 @@ const _groupedDestinations = [
   _groupedApprovals,
 ];
 
+/// Two Destinations where one address sits *under* another's (issue #211): the
+/// CAPA list at `/actions/capas` beneath the action log's own `/actions`. Kept
+/// out of `_groupedDestinations` on purpose — the goldens render that fixture's
+/// sidebar, and a sixth nav item would move every pixel of them. The child is
+/// first because `_harness` opens on the first Destination's path.
+const _nestedChild = Destination(
+  label: 'CAPAs',
+  icon: Icons.verified_outlined,
+  path: '/actions/capas',
+);
+const _nestedParent = Destination(
+  label: 'Action log',
+  icon: Icons.assignment_turned_in_outlined,
+  path: '/actions',
+);
+const _nestedDestinations = [_nestedChild, _nestedParent];
+
 const _account = AccountActive(id: '1', email: 'a@b.c', displayName: 'A B', role: Roles.admin);
 
 /// The Shell mounted on a real router over the stand-in destinations — the
@@ -389,6 +406,36 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(mark(), findsNothing);
+    });
+
+    testWidgets('marks the most specific Destination when one address sits under another',
+        (tester) async {
+      _useWideWindow(tester);
+      await tester.pumpWidget(_harness(destinations: _nestedDestinations));
+      await tester.pumpAndSettle();
+
+      // The address is `/actions/capas`, which is beneath `/actions` as well as
+      // being its own Destination: one mark, on the entry the reader is
+      // actually in, and none on the entry whose address merely prefixes it.
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('nav-item-CAPAs')), matching: mark()),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('nav-item-Action log')), matching: mark()),
+        findsNothing,
+      );
+      expect(mark(), findsOneWidget);
+
+      // And on the parent's own address the parent is the one marked, so the
+      // rule is "the deepest match" rather than "the last Destination wins".
+      await tester.tap(find.byKey(const ValueKey('nav-item-Action log')));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('nav-item-Action log')), matching: mark()),
+        findsOneWidget,
+      );
+      expect(mark(), findsOneWidget);
     });
   });
 

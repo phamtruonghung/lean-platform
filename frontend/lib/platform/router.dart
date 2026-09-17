@@ -21,7 +21,10 @@ import '../actions/actions_screen.dart';
 import '../actions/capa.dart';
 import '../actions/capa_detail_bloc.dart';
 import '../actions/capa_detail_screen.dart';
+import '../actions/capa_effectiveness_dialog.dart';
 import '../actions/capa_why_dialog.dart';
+import '../actions/capas_bloc.dart';
+import '../actions/capas_screen.dart';
 import '../actions/open_capa_dialog.dart';
 import '../home_bloc.dart';
 import '../home_screen.dart';
@@ -149,6 +152,17 @@ abstract final class Routes {
   /// detail route because `new` is not an id.
   static const String actions = '/actions';
 
+  /// The CAPA list (issue #211) — every investigation on the Platform, and the
+  /// effectiveness check each one is waiting on. A sibling of the Action log
+  /// rather than a child of it: a CAPA has its own id space (`capas`, the
+  /// baseline's own table) and its own collection. `/actions/capas` is *two*
+  /// segments, which is the same shape as the Action detail route
+  /// `/actions/:id` — so in `buildRouter` this list is declared **before** the
+  /// Action log, or go_router would take it for an Action whose id is `capas`.
+  /// (The CAPA's own detail route needs no such care: `${actions}/capas/:id` is
+  /// three segments.) One CAPA's address is unchanged by this ticket.
+  static const String capas = '/actions/capas';
+
   /// The shared floor device's own Screen (issue #77, ADR-0016). Its own
   /// address, deliberately outside the Shell and never offered as a
   /// Destination: a device is not an Account, and this surface must be
@@ -201,6 +215,40 @@ bool mayEditCapaChains(BuildContext context, Capa capa) {
   if (account.account.orgUnitScope.canWriteAt(capa.orgUnitId)) return true;
   final employeeId = account.account.employeeId;
   return employeeId != null && capa.team.any((member) => member.employeeId == employeeId);
+}
+
+/// Whether this Account **is the team lead's** on the CAPA (issue #211) — the
+/// second half of the rule that decides who may record an effectiveness check.
+///
+/// It reads the Account's own Employee link (`app_users.employee_id`, which an
+/// Account need not have: an administrator is not necessarily an Employee)
+/// against the lead the CAPA carries. An Account with no Employee is never the
+/// team lead; an Account whose Employee is a *member* of the team is not either,
+/// and a member is exactly who may record the check.
+///
+/// A top-level function so the Screen and the address's own refusal ask the
+/// same question once, and read **inside a build** for the reason the two
+/// helpers above are: the answer arrives with `/me`.
+bool isCapaTeamLeadAccount(BuildContext context, Capa capa) {
+  final account = context.watch<AccountBloc>().state;
+  if (account is! AccountApproved) return false;
+  final employeeId = account.account.employeeId;
+  if (employeeId == null) return false;
+  return capa.teamLead?.employeeId == employeeId;
+}
+
+/// Whether this Account may record the CAPA's effectiveness check (issue #211)
+/// — the client's half of the server's own two-part gate: **Quality authority
+/// at the CAPA's Org Unit**, held by somebody who is **not the team lead**.
+///
+/// Both halves are read off the same `/me` scope every other per-record
+/// permission is (ADR-0027): `canHoldQualityAt` is the authority ADR-0035 puts
+/// on a Grant, and the Employee link is what says whose Account this is. An
+/// administrator passes the first half everywhere, through the same reach the
+/// server's `canAct` gives them.
+bool mayRecordCapaEffectiveness(BuildContext context, Capa capa) {
+  if (!holdsQualityAuthority(context, capa.orgUnitId)) return false;
+  return !isCapaTeamLeadAccount(context, capa);
 }
 
 GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}) {
@@ -872,6 +920,47 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               );
             },
           ),
+          // The CAPA list (issue #211) — every investigation on the Platform,
+          // with the effectiveness check each one is waiting on. A `ShellRoute`
+          // of its own so `CapasBloc` is created once and shared by the list and
+          // by the Org Unit filter dialog over it.
+          //
+          // **Declared before the Actions `ShellRoute` below, and that ordering
+          // is load-bearing.** go_router matches in declaration order, and
+          // `/actions/capas` is the same two segments as `/actions/:id` — so a
+          // list declared after the log would be taken for an Action whose id is
+          // `capas` and read `/api/actions/capas` as one Action's detail. The
+          // CAPA's own detail route needs no such care: `/actions/capas/:id` is
+          // three segments, and the Action detail route has no `:id` child that
+          // could match it.
+          //
+          // Offered to every approved Account, like the log it sits beside: a
+          // CAPA list is a platform-wide read (ADR-0009), and the one gate in
+          // this slice that is per-record — who may record an effectiveness
+          // check — is asked on the check's own address, inside the dialog.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<CapasBloc>(
+                create: (context) => CapasBloc(
+                  actionsApi: context.read<ActionsApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const CapasStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.capas,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const CapasScreen();
+                },
+              ),
+            ],
+          ),
           // Actions (issue #176) — a `ShellRoute` of its own, for the same
           // reason Work orders has one: `ActionsBloc` is created exactly once
           // and shared by the register and the raise form's own address below
@@ -1213,6 +1302,26 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                         chain: state.pathParameters['chain']!,
                         whyId: state.pathParameters['whyId']!,
                       ),
+                    ),
+                  ),
+                  // `.../capas/:id/effectiveness` — recording the check that
+                  // closes the investigation or sends its Concern round again
+                  // (issue #211). Nested under the CAPA's own route so it shares
+                  // the `CapaDetailBloc` above, and its answer repaints the
+                  // Screen behind it, exactly as the three chain dialogs do.
+                  //
+                  // No gate in this builder, deliberately: unlike a chain write,
+                  // this act is not a question the *router* can answer from a
+                  // value it already has — the rule is "Quality authority at
+                  // this CAPA's Org Unit, held by somebody who is not its team
+                  // lead", and the answer belongs with the record. The dialog
+                  // asks it against the CAPA it has read, and says which half
+                  // refused.
+                  GoRoute(
+                    path: 'effectiveness',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => const CapaEffectivenessDialog(),
                     ),
                   ),
                 ],

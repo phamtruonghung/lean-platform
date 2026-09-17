@@ -305,7 +305,10 @@ void main() {
     expect(find.byKey(CapaWhyDialog.statementKey), findsNothing);
     expect(find.byKey(CapaDetailScreen.whyKey('900')), findsOneWidget);
     expect(find.text('Why it was not detected (2)'), findsOneWidget);
-    expect(find.byKey(CapaDetailScreen.chainsNoticeKey), findsOneWidget);
+    // The notice is the page's own (issue #211 moved it out of the chains
+    // section, which is no longer the only thing this Screen writes), so it is
+    // found once however long the page is.
+    expect(find.byKey(CapaDetailScreen.noticeKey), findsOneWidget);
     expect(find.text('The Why was added to the chain.'), findsOneWidget);
   });
 

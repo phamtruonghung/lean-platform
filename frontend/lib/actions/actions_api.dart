@@ -389,6 +389,70 @@ class ActionsApi {
     return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
   }
 
+  /// The CAPA list (issue #211) — every investigation, worst first: the ones
+  /// whose effectiveness check has fallen due, then the ones due soonest, then
+  /// the most recently opened.
+  ///
+  /// No Site parameter, deliberately: a CAPA is identified by its own number
+  /// and its own read has no Site in the address either, and the filter that
+  /// names an *area* is the Org Unit one. Nothing here is filtered by Grant —
+  /// the server reads the list platform-wide for any approved Account — so a
+  /// narrowed read is exactly the three filters the caller set.
+  Future<CapaRegister> fetchCapas(
+    String accessToken, {
+    String? orgUnitId,
+    String? status,
+    bool overdue = false,
+  }) async {
+    const path = '/api/actions/capas';
+    final query = <String, String>{
+      'orgUnitId': ?orgUnitId,
+      'status': ?status,
+      if (overdue) 'overdue': 'true',
+    };
+    final uri = Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    final body = _decode(response, path);
+    return CapaRegister(
+      capas: [
+        for (final capa in body['capas'] as List<dynamic>)
+          _capaFrom(capa as Map<String, dynamic>),
+      ],
+      truncated: body['truncated'] == true,
+    );
+  }
+
+  /// Records a CAPA's effectiveness check (issue #211) — the act that closes
+  /// the investigation or sends its Concern round again.
+  ///
+  /// Only the two fields the record keeps are sent: the verdict and the note.
+  /// The verifier is the caller's own Account and the time is the server's,
+  /// because a check recorded on somebody else's behalf is not a check, and
+  /// the due date, the status and the Concern's reopening are consequences of
+  /// the verdict rather than fields a client may choose. The answer is the
+  /// whole CAPA as it now reads, so the Screen behind the dialog repaints from
+  /// the server's own answer rather than by a second read.
+  Future<Capa> recordEffectivenessCheck(
+    String accessToken,
+    String capaId, {
+    required String outcome,
+    required String note,
+  }) async {
+    final path = '/api/actions/capas/$capaId/effectiveness';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'outcome': outcome, 'note': note}),
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
   /// Adds a Why to one of a CAPA's chains (issue #210) — `occurrence` or
   /// `escape`, at the next position of that chain.
   ///
@@ -602,14 +666,30 @@ class ActionsApi {
         openedAt: json['openedAt'] == null ? null : DateTime.parse(json['openedAt'] as String),
         dueDate: json['dueDate'] as String?,
         closedAt: json['closedAt'] == null ? null : DateTime.parse(json['closedAt'] as String),
+        // The effectiveness check (issue #211). The delay is read with the
+        // server's own default behind it, so a row written before the column
+        // existed still reads as the 30 days the schema says.
+        effectivenessCheckDelayDays: (json['effectivenessCheckDelayDays'] as int?) ?? 30,
         effectivenessCheckDueAt: json['effectivenessCheckDueAt'] as String?,
+        effectivenessCheckOverdue: json['effectivenessCheckOverdue'] == true,
         effectivenessVerifiedAt: json['effectivenessVerifiedAt'] == null
             ? null
             : DateTime.parse(json['effectivenessVerifiedAt'] as String),
+        effectivenessVerifiedBy: json['effectivenessVerifiedBy'] == null
+            ? null
+            : _capaVerifierFrom(json['effectivenessVerifiedBy'] as Map<String, dynamic>),
         effectivenessNote: json['effectivenessNote'] as String?,
         concern: json['concern'] == null
             ? null
             : _actionFrom(json['concern'] as Map<String, dynamic>),
+      );
+
+  /// The Account that recorded an effectiveness check (issue #211): the id an
+  /// address would need and the name a person reads, which is what the row
+  /// shows.
+  static CapaVerifier _capaVerifierFrom(Map<String, dynamic> json) => CapaVerifier(
+        accountId: json['accountId'].toString(),
+        name: json['name'] as String? ?? '',
       );
 
   /// One Employee on a CAPA's team: the id an address needs and the name a

@@ -1522,6 +1522,11 @@ class FakeWire {
     this.removeWhyStatus = 200,
     this.removeWhyMessage =
         "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team",
+    this.capaListStatus = 200,
+    this.capaListMessage = 'The CAPA list could not be read.',
+    this.effectivenessStatus = 200,
+    this.effectivenessMessage =
+        "recording a CAPA's effectiveness check needs Quality authority at its Org Unit",
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -1888,6 +1893,26 @@ class FakeWire {
   /// The next id the fake gives a Why it creates, so two adds in one test are
   /// two rows. Ids the fixture already carries are its own.
   int _nextWhyId = 900;
+
+  /// `GET /api/actions/capas` (issue #211) — the CAPA list, and the query
+  /// parameters every request carried, so a test proves what the Screen asked
+  /// for (`orgUnitId`, `status`, `overdue`) rather than what the fake happened
+  /// to apply.
+  final List<Map<String, String>> capaListRequests = [];
+  int capaListStatus;
+  String capaListMessage;
+
+  /// Every effectiveness check recorded through the wire (issue #211), as
+  /// `(capaId, body)` — so a test can assert exactly one request was sent, what
+  /// verdict and note it carried, and that a caller the rule refuses sent
+  /// nothing at all.
+  final List<(String, Map<String, dynamic>)> effectivenessPosts = [];
+
+  /// `POST /api/actions/capas/:id/effectiveness` — the refusal a test scripts
+  /// (403 for a caller without Quality authority or for the team lead, 409 for
+  /// a Concern that has not closed).
+  int effectivenessStatus;
+  String effectivenessMessage;
 
   /// One row of a CAPA's team, resolved off the `employees` fixture — the way
   /// the server's own read joins the directory for a display name.
@@ -5663,6 +5688,67 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'capa': capa}), 200);
         }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/capas/') &&
+            path.endsWith('/effectiveness')) {
+          // `/api/actions/capas/:id/effectiveness` (issue #211) — recording the
+          // effectiveness check. The fake does what the server does with the
+          // verdict, so a test that asserts the Screen behind the dialog
+          // repainted is asserting a state the API would really have produced:
+          // an `effective` check closes the investigation, a `not_effective` one
+          // clears the due date and leaves the CAPA open where its Concern is
+          // being worked again.
+          //
+          // The verifier and the time are the caller's own Account and `now()`,
+          // which is what the server writes — and the one thing a fake keyed on
+          // a single signed-in Account can stand in for.
+          final capaId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          effectivenessPosts.add((capaId, body));
+          if (effectivenessStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': effectivenessMessage}),
+              effectivenessStatus,
+            );
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          final effective = body['outcome'] == 'effective';
+          final now = DateTime.now().toUtc().toIso8601String();
+          capa['status'] = effective ? 'closed' : 'actions';
+          capa['closedAt'] = effective ? now : null;
+          capa['effectivenessVerifiedAt'] = now;
+          capa['effectivenessVerifiedBy'] = {'accountId': selfId, 'name': 'A B'};
+          capa['effectivenessNote'] = body['note'];
+          if (!effective) capa['effectivenessCheckDueAt'] = null;
+          capa['effectivenessCheckOverdue'] = false;
+          return http.Response(jsonEncode({'capa': capa}), 200);
+        }
+        if (request.method == 'GET' && path == '/api/actions/capas') {
+          // The CAPA list (issue #211): every stored CAPA, narrowed the way the
+          // server narrows — by status and by an overdue check exactly, and by
+          // Org Unit exactly. The "and everything beneath it" half is the
+          // backend's own ltree walk (proved in
+          // `backend/test/integration/capa-effectiveness.test.js`); what this
+          // fake is for is the *request* the Screen sends and the rows it
+          // renders, and `capaListRequests` is where the first of those is
+          // asserted.
+          capaListRequests.add({...request.url.queryParameters});
+          if (capaListStatus != 200) {
+            return http.Response(jsonEncode({'message': capaListMessage}), capaListStatus);
+          }
+          final query = request.url.queryParameters;
+          final rows = [
+            for (final capa in capas.values)
+              if ((query['status'] == null || capa['status'] == query['status']) &&
+                  (query['orgUnitId'] == null || capa['orgUnitId'] == query['orgUnitId']) &&
+                  (query['overdue'] != 'true' || capa['effectivenessCheckOverdue'] == true))
+                capa,
+          ];
+          return http.Response(jsonEncode({'capas': rows, 'truncated': false}), 200);
+        }
         if (request.method == 'GET' && path.startsWith('/api/actions/capas/')) {
           // `/api/actions/capas/:id` (issue #209). Declared before the
           // one-segment `/api/actions/:id` read below, which would otherwise
@@ -5787,7 +5873,12 @@ Map<String, dynamic> capaJson(
   List<Map<String, dynamic>> whys = const [],
   String openedAt = '2026-09-16T02:00:00.000Z',
   String? dueDate,
+  int effectivenessCheckDelayDays = 30,
   String? effectivenessCheckDueAt,
+  bool effectivenessCheckOverdue = false,
+  String? effectivenessVerifiedAt,
+  Map<String, dynamic>? effectivenessVerifiedBy,
+  String? effectivenessNote,
   Map<String, dynamic>? concern,
 }) =>
     {
@@ -5809,9 +5900,16 @@ Map<String, dynamic> capaJson(
       'openedAt': openedAt,
       'dueDate': dueDate,
       'closedAt': null,
+      // The effectiveness check (issue #211): the delay, the date the closure
+      // produced, whether that date has passed, and what a check recorded —
+      // `{accountId, name}`, which is what the server writes rather than a bare
+      // id, because an administrator need not be an Employee.
+      'effectivenessCheckDelayDays': effectivenessCheckDelayDays,
       'effectivenessCheckDueAt': effectivenessCheckDueAt,
-      'effectivenessVerifiedAt': null,
-      'effectivenessNote': null,
+      'effectivenessCheckOverdue': effectivenessCheckOverdue,
+      'effectivenessVerifiedAt': effectivenessVerifiedAt,
+      'effectivenessVerifiedBy': effectivenessVerifiedBy,
+      'effectivenessNote': effectivenessNote,
       'concern': concern,
     };
 

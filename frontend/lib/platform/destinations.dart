@@ -75,6 +75,26 @@ class Destination {
       location == path || (path != '/' && location.startsWith('$path/'));
 }
 
+/// The Destination the Shell marks as current for [location] — the one whose own
+/// path is the **most specific** match, or null when nothing matches (sign-in,
+/// awaiting-Approval, the not-found Screen).
+///
+/// Most specific rather than every one that matches, because a Destination may
+/// legitimately sit under another's address: the CAPA list is at
+/// `/actions/capas` (issue #211), beneath the action log's own `/actions`, and a
+/// Screen that marked every prefix would light two entries at once. The longest
+/// matching path is the one the reader is actually in — the same rule the
+/// address itself already follows, since a router matches the deepest route that
+/// fits.
+String? selectedDestinationPath(List<Destination> destinations, String location) {
+  String? best;
+  for (final destination in destinations) {
+    if (!destination.matches(location)) continue;
+    if (best == null || destination.path.length > best.length) best = destination.path;
+  }
+  return best;
+}
+
 /// The fixed order the sidebar's group headings render in (#100, ADR-0020).
 /// Named once so the Shell and [platformDestinations] cannot disagree about
 /// where a new Module's heading belongs.
@@ -376,6 +396,23 @@ const List<Destination> platformDestinations = [
     label: 'Non-conformances',
     icon: Icons.fact_check_outlined,
     path: Routes.nonConformances,
+    group: DestinationGroupNames.quality,
+  ),
+  // The CAPA list (issue #211) — the investigations a Concern has been turned
+  // into, and the effectiveness check each one is waiting on. Filed here, under
+  // Quality, rather than with the Action log whose Module owns the record
+  // (ADR-0034 keeps a CAPA beside its Concern rather than in a screen of its
+  // own): a person scanning the sidebar is looking for quality's work, and the
+  // address is this Module's only because the Concern it hangs off is.
+  //
+  // Offered to every approved Account, the same shape the four Quality
+  // Destinations above it use: the list is a platform-wide read (ADR-0009), and
+  // the one gate in the slice — who may record an effectiveness check — is
+  // per-record and lives on the check's own address.
+  Destination(
+    label: 'CAPAs',
+    icon: Icons.verified_outlined,
+    path: Routes.capas,
     group: DestinationGroupNames.quality,
   ),
   // Approvals and Accounts administer the Platform itself — who may sign in,

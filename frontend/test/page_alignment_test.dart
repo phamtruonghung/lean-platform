@@ -103,6 +103,10 @@ const _pages = <_Page>[
   // the card's own padding, so the default bound holds.
   _Page('/non-conformances', 'lib/quality/nonconformances_screen.dart', 'Non-conformances',
       'What was found not to conform'),
+  // The CAPA list (issue #211). Its rows are cards of text at the card's own
+  // padding too, so the default bound holds here as well.
+  _Page('/actions/capas', 'lib/actions/capas_screen.dart', 'CAPAs',
+      'The investigations opened on a Concern'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this

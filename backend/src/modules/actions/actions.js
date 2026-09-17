@@ -1003,6 +1003,12 @@ async function completePhase(actionItemId, phase, { note, outcome = null }, acco
       [actionItemId, status]
     );
 
+    // The Concern is closed, so the investigation opened on it is waiting on
+    // its effectiveness check (issue #211, ADR-0034).
+    if (status === 'done' && action.action_type === 'concern') {
+      await beginCapaEffectivenessWait(client, actionItemId);
+    }
+
     const { rows } = await client.query(
       `SELECT ${ACTION_COLUMNS} ${ACTION_JOINS} WHERE ai.id = $1`,
       [actionItemId]
@@ -1449,6 +1455,47 @@ const CAPA_METHOD = '8d';
 // (#211) — and only the last two mean nothing may change any more.
 const CLOSED_CAPA_STATUSES = ['closed', 'cancelled'];
 
+// Every value `capas.status` admits, in the baseline's own order (issue #211).
+// The register's `?status=` is validated against this rather than against the
+// open/closed split above: a caller narrowing a list to `verifying` is asking a
+// real question, and `status=verified` is a typo worth a 400 (ADR-0023's rule
+// read the way the action log reads its own enums).
+const CAPA_STATUSES = [
+  'open',
+  'containment',
+  'root_cause',
+  'actions',
+  'verifying',
+  'closed',
+  'cancelled'
+];
+
+// How many investigations one read of the CAPA list answers with. The Action
+// register's own 200, for the same reason: a list that could be unbounded is a
+// list the client cannot promise to have rendered, and one row past the limit
+// is what makes "there is more" a fact rather than a guess.
+const CAPA_LIST_LIMIT = 200;
+
+// The one definition of "this CAPA's effectiveness check is overdue" (issue
+// #211), named once because three places say it: the row's own field, the
+// register's `?overdue=true` filter, and the order the register reads in.
+//
+// A date is set when the Concern closes and cleared when a check is recorded,
+// so the first clause is "the check is due" and the second is "and the day has
+// passed". The third is what keeps a closed investigation out of the overdue
+// list: an effective check leaves the due date where it was, because that is
+// the date the check was judged against, and a closed CAPA is not a worklist.
+const CAPA_CHECK_OVERDUE =
+  "(c.effectiveness_check_due_at IS NOT NULL AND c.effectiveness_check_due_at < CURRENT_DATE " +
+  "AND c.status NOT IN ('closed', 'cancelled'))";
+
+// The delay a CAPA is opened with, in days, and the bounds the schema's own
+// CHECK enforces (migration 1800300000000). Exported for the same reason
+// `CAPA_METHOD` is: the Module's own values are what its callers and its tests
+// name, rather than a literal scattered through both.
+const CAPA_EFFECTIVENESS_DELAY_DAYS = { default: 30, min: 0, max: 365 };
+
+
 // The CAPA's two 5 Why chains (issue #210), in the order a person reasons them:
 // why the problem happened, then why it was not detected. The values mirror the
 // CHECK migration 1800200000000 adds to `capa_root_causes.chain`, and the order
@@ -1471,8 +1518,12 @@ const CAPA_COLUMNS = `
   c.team_lead_employee_id, lead.display_name AS team_lead_name,
   c.opened_at, to_char(c.due_date, 'YYYY-MM-DD') AS due_date,
   c.status, c.closed_at,
+  c.effectiveness_check_delay_days,
   to_char(c.effectiveness_check_due_at, 'YYYY-MM-DD') AS effectiveness_check_due_at,
+  ${CAPA_CHECK_OVERDUE} AS effectiveness_check_overdue,
   c.effectiveness_verified_at, c.effectiveness_note,
+  c.effectiveness_verified_by_account_id,
+  verifier.display_name AS effectiveness_verified_by_name,
   c.created_at, c.updated_at
 `;
 
@@ -1480,6 +1531,7 @@ const CAPA_JOINS = `
   FROM capas c
   JOIN org_units ou ON ou.id = c.org_unit_id
   LEFT JOIN employees lead ON lead.id = c.team_lead_employee_id
+  LEFT JOIN app_users verifier ON verifier.id = c.effectiveness_verified_by_account_id
 `;
 
 function toCapa(row, { teamMembers = [], whys = [], concern = null } = {}) {
@@ -1509,7 +1561,25 @@ function toCapa(row, { teamMembers = [], whys = [], concern = null } = {}) {
     dueDate: row.due_date,
     status: row.status,
     closedAt: row.closed_at,
+    // The effectiveness check (issue #211): how long after the Concern closes
+    // it falls due, the date that rule produced at the last closure, whether
+    // it is overdue, and what was recorded when it was answered. The date is
+    // null while the Concern is open — there is nothing due yet — and is
+    // cleared again by a check that did not hold, because the next one becomes
+    // due when the Concern closes again.
+    effectivenessCheckDelayDays: row.effectiveness_check_delay_days,
     effectivenessCheckDueAt: row.effectiveness_check_due_at,
+    effectivenessCheckOverdue: row.effectiveness_check_overdue === true,
+    // The Account that recorded it, named rather than reduced to an id: the
+    // report a customer or an auditor reads has to say who decided the fix
+    // held, and an administrator need not be an Employee (see the migration's
+    // header for why this is a second column rather than the baseline's own).
+    effectivenessVerifiedBy: row.effectiveness_verified_by_account_id
+      ? {
+          accountId: String(row.effectiveness_verified_by_account_id),
+          name: row.effectiveness_verified_by_name
+        }
+      : null,
     effectivenessVerifiedAt: row.effectiveness_verified_at,
     effectivenessNote: row.effectiveness_note,
     // The Concern this investigation is about, as its own detail read gives
@@ -1689,6 +1759,65 @@ async function getCapaDetail(id) {
 }
 
 /**
+ * The CAPA list: every investigation on the Platform, worst first (issue #211).
+ *
+ * Which is not "every CAPA at a Site", and that is deliberate. A CAPA's own
+ * read is `/api/actions/capas/:id` with no Site in the address — a CAPA is
+ * identified by its own number (`CA-HCM-2026-00001`), an auditor quotes the
+ * number and not the plant — and the collection beside that read keeps the same
+ * scope, so the list and the record it lists cannot be two different sizes.
+ * ADR-0009's asymmetry is what makes it safe: an Org Unit decides where an
+ * Account may *act*, never what it may know about, so this is a platform-wide
+ * read for every approved Account, exactly as the CAPA's own detail read is.
+ *
+ * `orgUnitPath` narrows it by *area* — one Org Unit and everything beneath it,
+ * the ltree walk the Action register and the Non-conformance register both use
+ * — and never by entitlement. `status` is the investigation's own state, and
+ * `overdue` is the question this ticket exists for: which checks have fallen
+ * due and not been recorded. All three are read filters over an already-visible
+ * list, so all three are the server's work rather than the client's: a filter
+ * that narrowed the client's own copy would silently disagree with `truncated`
+ * the moment the list is capped.
+ *
+ * One row past the limit, so "there is more" is a fact rather than a guess —
+ * `listActionsAtSite`'s own shape, and the reason the count matters here is the
+ * same: a capped list must not read as the whole Platform.
+ */
+async function listCapas({ orgUnitPath = null, status = null, overdue = false } = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (orgUnitPath !== null) {
+    params.push(orgUnitPath);
+    conditions.push(`ou.path <@ $${params.length}::ltree`);
+  }
+  if (status !== null) {
+    params.push(status);
+    conditions.push(`c.status = $${params.length}`);
+  }
+  if (overdue) {
+    conditions.push(CAPA_CHECK_OVERDUE);
+  }
+
+  const { rows } = await getPool().query(
+    `SELECT ${CAPA_COLUMNS}
+     ${CAPA_JOINS}
+     ${conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''}
+     ORDER BY ${CAPA_CHECK_OVERDUE} DESC,
+              c.effectiveness_check_due_at ASC NULLS LAST,
+              c.opened_at DESC
+     LIMIT ${CAPA_LIST_LIMIT + 1}`,
+    params
+  );
+
+  const truncated = rows.length > CAPA_LIST_LIMIT;
+  return {
+    capas: rows.slice(0, CAPA_LIST_LIMIT).map((row) => toCapa(row)),
+    truncated
+  };
+}
+
+/**
  * Just enough of a CAPA for a route to ask its two questions (issue #209):
  * does it exist (404), and which Org Unit does it sit at, so Quality authority
  * can be asked there (403).
@@ -1703,6 +1832,12 @@ async function getCapaDetail(id) {
  * than in a query of the route's own. `teamEmployeeIds` is the lead first and
  * then the members, which is the same set `Capa.team` names on the client: the
  * lead is on the team, they are just the one whose name is on the row.
+ *
+ * `teamLeadEmployeeId` is carried apart from that set (issue #211) because the
+ * effectiveness check needs to ask a question the set cannot answer: whether
+ * the Account recording the check *is* the team lead's. "The team lead cannot
+ * verify their own fix" is a rule about one Employee, and a caller who is on
+ * the team as a member is exactly who may record it.
  */
 async function findCapa(id) {
   if (parseId(id) === null) return null;
@@ -1724,6 +1859,10 @@ async function findCapa(id) {
     status: rows[0].status,
     orgUnitId: rows[0].org_unit_id,
     siteId: rows[0].site_id,
+    teamLeadEmployeeId:
+      rows[0].team_lead_employee_id === null
+        ? null
+        : String(rows[0].team_lead_employee_id),
     teamEmployeeIds: [
       ...(rows[0].team_lead_employee_id === null
         ? []
@@ -1910,9 +2049,11 @@ async function lockOpenCapa(client, capaId) {
 
 /**
  * Changes what an open CAPA carries about itself (issue #209): the team lead,
- * the team, and the problem description. Nothing else, and deliberately so —
- * the method, the number and the status are not a caller's to set, and the
- * effectiveness fields belong to the check #211 records.
+ * the team, the problem description, and — since #211 — how long after its
+ * Concern closes the effectiveness check falls due. Nothing else, and
+ * deliberately so: the method, the number and the status are not a caller's to
+ * set, and the effectiveness fields themselves belong to the check
+ * `recordEffectivenessCheck` records.
  *
  * A partial update rather than a replacement document: a field the caller did
  * not send is left alone, `null` on the lead clears it (a CAPA may lose its
@@ -1920,6 +2061,16 @@ async function lockOpenCapa(client, capaId) {
  * *replaces* the team, because that is what a form holding the whole team
  * means when it is saved. The one refusal is the CAPA's own status: an
  * investigation that is closed or cancelled is a record, not a worklist.
+ *
+ * **The delay (issue #211) is the one field whose change is deliberately not
+ * retroactive.** It governs the due date written at the *next* closure; a CAPA
+ * already waiting on its check keeps the date it was given, because that is the
+ * date the check is judged against. The ticket's own wording fixes both halves
+ * — "adjustable on the CAPA", and "the check's due date is *set* when the
+ * Concern closes" — and migration 1800300000000 argues why the stored date wins
+ * over one derived on read. A caller changing it therefore changes a number and
+ * not a fact, which is why this needs no lock beyond the one every write here
+ * already takes.
  *
  * The Employees are the route's business: every id reaching here has already
  * been parsed and resolved against People's directory, so a departed Employee
@@ -1930,12 +2081,25 @@ async function updateCapa(capaId, input, accountId) {
   const setsProblemStatement = body.problemStatement !== undefined;
   const setsTeamLead = body.teamLeadEmployeeId !== undefined;
   const setsTeamMembers = body.teamMemberEmployeeIds !== undefined;
+  const setsDelay = body.effectivenessCheckDelayDays !== undefined;
 
   if (setsProblemStatement && body.problemStatement !== null && typeof body.problemStatement !== 'string') {
     throw httpError(400, 'problemStatement must be text');
   }
   if (setsTeamMembers && !Array.isArray(body.teamMemberEmployeeIds)) {
     throw httpError(400, 'teamMemberEmployeeIds must be a list of Employee ids');
+  }
+  if (
+    setsDelay &&
+    (!Number.isInteger(body.effectivenessCheckDelayDays) ||
+      body.effectivenessCheckDelayDays < CAPA_EFFECTIVENESS_DELAY_DAYS.min ||
+      body.effectivenessCheckDelayDays > CAPA_EFFECTIVENESS_DELAY_DAYS.max)
+  ) {
+    throw httpError(
+      400,
+      'effectivenessCheckDelayDays must be a whole number of days from ' +
+        `${CAPA_EFFECTIVENESS_DELAY_DAYS.min} to ${CAPA_EFFECTIVENESS_DELAY_DAYS.max}`
+    );
   }
 
   return withActor(accountId, async (client) => {
@@ -1947,6 +2111,13 @@ async function updateCapa(capaId, input, accountId) {
         capaId,
         written === '' ? null : written
       ]);
+    }
+
+    if (setsDelay) {
+      await client.query(
+        'UPDATE capas SET effectiveness_check_delay_days = $2 WHERE id = $1',
+        [capaId, body.effectivenessCheckDelayDays]
+      );
     }
 
     if (setsTeamLead) {
@@ -2261,6 +2432,251 @@ async function removeCapaWhy(capaId, whyId, accountId) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// The effectiveness check, and closing a CAPA (issue #211, ADR-0034)
+//
+// "The step every plant skips" — the baseline's own header on
+// `effectiveness_verified_at`, which is "the field that separates a CAPA system
+// from a list of good intentions", and the argument it makes is that skipping
+// it is why the same problem comes back nine months later with a new number on
+// it. ADR-0033 recorded the same rule one level down at the Action (`nothing
+// closes unverified`); this is the CAPA's own, and the two meet here: a CAPA
+// closes only when its investigation is finished *and* the fix has held, and a
+// check that did not hold sends the Concern round again rather than closing
+// anything.
+//
+// The life of the fact, in order, because the order is the whole design:
+//
+//   1. The Concern closes (its Act completes) — `beginCapaEffectivenessWait`
+//      runs in that same transaction, sets the CAPA to `verifying` and writes
+//      the date the check falls due: the day the Concern closed plus the
+//      CAPA's own delay in days. The baseline's `capas_verification_due_idx`
+//      is the index for exactly this read and becomes live here.
+//   2. A holder of Quality authority at the CAPA's Org Unit who is **not the
+//      team lead's Account** records the check, with a note and a verdict
+//      (`recordEffectivenessCheck` below).
+//   3. `effective` closes the CAPA — 8D's D8 — but only when both chains have
+//      a confirmed root cause: the investigation has to have finished before
+//      the fix is judged to have held, or the verdict is a coin toss. The due
+//      date stays where it is, because it is the date the check was judged
+//      against.
+//   4. `not_effective` records the same three facts, reopens the Concern into
+//      its next PDCA cycle (ADR-0033's own circle) and leaves the CAPA open.
+//
+// **Why the due date is cleared on a `not_effective` check.** The check is due
+// *when the Concern is closed*, and a check that did not hold reopens it. There
+// is therefore nothing due any more — the next one becomes due when the Concern
+// closes again, and is set again with a fresh delay. Keeping the old date would
+// leave the CAPA reading as overdue throughout the second round, which is
+// exactly backwards: nobody can verify a fix whose countermeasures are still
+// being rewritten. The verdict itself is not lost — `effectiveness_verified_at`
+// is overwritten by the next check, and `effectiveness_note` with it, because
+// the field says what the *last* check found; the rounds of the Concern's own
+// phases are where "this took three goes" is read.
+//
+// **Why the CAPA's own status moves.** `verifying` is `closed`'s opposite
+// number in the baseline's CHECK — the fix is in, nobody has proved it held,
+// and a person has to decide something — and it is the one value of the seven
+// that means precisely what step 1 produces. `actions` is where a check that
+// did not hold puts it back: the countermeasures are being worked again, and
+// the Concern's new Plan is the evidence. The client already carries both
+// labels and their tones (`capaStatuses`), which is the schema's vocabulary
+// being read rather than a state machine invented for this ticket.
+//
+// **What is deliberately not here.** No `capa_steps` row is written for the
+// verification: ADR-0034 rejected "a CAPA owns its own 8D steps", and D8 is
+// this table's own field. No phase is added to the *CAPA* either — a CAPA has
+// no PDCA of its own, the Concern does — and no second close is possible: an
+// effective check leaves `closed`, which `lockOpenCapa` refuses to touch again.
+// ---------------------------------------------------------------------------
+
+/**
+ * Puts a CAPA whose Concern has just closed into the state where its
+ * effectiveness check is due (issue #211) — step 1 of this section's own
+ * account, and the only place a due date is ever set.
+ *
+ * The date is the day the Concern closed plus the CAPA's own delay, written
+ * **now and not derived on read**, which is the decision the ticket leaves open
+ * and migration 1800300000000 argues in full: "set when the Concern closes"
+ * means an act with a time, and a derived date would move under a caller the
+ * moment somebody revised the delay behind it — the date a check was judged
+ * against has to survive the number that produced it.
+ *
+ * Called from `completePhase` inside the transaction that closes the Concern,
+ * which is the only door that closes one: `action_items.status` cannot become
+ * `done` any other way, because the phase log is what decides it (ADR-0033).
+ * A Concern with no CAPA updates nothing — the subselect resolves `capa_id` to
+ * null and no row matches — so this is a no-op for the overwhelming majority of
+ * the log.
+ *
+ * The `NOT IN ('closed', 'cancelled')` guard is for a CAPA that somebody
+ * closed and whose Concern then somehow closed again: an investigation that is
+ * over must not be dragged back into `verifying` by its own subject moving.
+ */
+async function beginCapaEffectivenessWait(client, concernId) {
+  await client.query(
+    `UPDATE capas c
+        SET status = 'verifying',
+            effectiveness_check_due_at =
+              (SELECT ai.completed_at::date FROM action_items ai WHERE ai.id = $1)
+              + c.effectiveness_check_delay_days
+      WHERE c.id = (SELECT ai.capa_id FROM action_items ai WHERE ai.id = $1)
+        AND c.status NOT IN ('closed', 'cancelled')`,
+    [concernId]
+  );
+}
+
+/**
+ * Reopens a Concern into its next PDCA cycle (issue #211, ADR-0033).
+ *
+ * The circle ADR-0033 records, arriving from the other direction. When an
+ * Action's own Check says `not_effective`, `nextPhase` opens the next cycle's
+ * Plan instead of the Act. Here the Action has already closed — its countermeasure
+ * held as far as the plant could see — and it is the *verification* two weeks
+ * later that found it did not, which is precisely the failure mode the baseline's
+ * CAPA header describes ("why the same problem comes back nine months later with
+ * a new number on it").
+ *
+ * So the same two statements that a `not_effective` Check makes, in the same
+ * order and the same transaction: a Plan at `MAX(cycle) + 1`, carrying the
+ * Concern's own owner and due date (a phase born with neither is a row nothing
+ * can triage), and the Action back to `in_progress`. Nothing is written *on* the
+ * new Plan's note: a phase's note is what the person who completes it says, and
+ * the reason this round exists is already on the CAPA — its `effectiveness_note`
+ * and the time it was recorded.
+ *
+ * `completed_at` is cleared, because the Action is not closed any more, and the
+ * record of when it *was* is not lost: cycle N's Act row carries its own
+ * completion, in the log that is the whole point of ADR-0033's design.
+ */
+async function reopenConcernIntoNextCycle(client, concernId) {
+  const { rows: [next] } = await client.query(
+    `SELECT COALESCE(MAX(cycle), 0) + 1 AS cycle
+       FROM action_phases
+      WHERE action_item_id = $1`,
+    [concernId]
+  );
+
+  await client.query(
+    `INSERT INTO action_phases (action_item_id, cycle, phase, owner_employee_id, due_date)
+     SELECT id, $2, 'plan', owner_employee_id, due_date
+       FROM action_items WHERE id = $1`,
+    [concernId, next.cycle]
+  );
+
+  await client.query(
+    `UPDATE action_items SET status = 'in_progress', completed_at = NULL WHERE id = $1`,
+    [concernId]
+  );
+}
+
+/**
+ * Records the effectiveness check on a CAPA (issue #211) and does what the
+ * verdict implies: closes the investigation, or sends the Concern round again.
+ *
+ * Four refusals, and each is a fact about the rows this is about, read under
+ * locks:
+ *
+ *   - the CAPA must exist (404) and be open (409) — `lockOpenCapa`, the same
+ *     one every other write to a closed investigation takes,
+ *   - its Concern must be **closed** (409). A check on a problem whose fix is
+ *     still being written is not an early check, it is a check of nothing: the
+ *     date the check is due is produced by the closure in the first place,
+ *   - `outcome` must be one of the two verdicts and `note` must say something
+ *     (400) — a verdict with no evidence is the "list of good intentions" this
+ *     step exists to refuse, and the note is the only place the evidence goes,
+ *   - `effective` requires **a confirmed root cause in both chains** (409). The
+ *     investigation finishes before the fix is judged to have held; otherwise
+ *     an `effective` verdict is a guess about a problem nobody has understood
+ *     yet. ADR-0034's own sentence — the CAPA's root causes are what make its
+ *     verification mean anything.
+ *
+ * The verdict is not a Partial update and is not idempotent: recording a check
+ * answers a question that was open, and the answer is `effective` exactly once
+ * for an investigation. A second check on a closed CAPA is the 409 above; a
+ * second check after a `not_effective` is the *next* round's check, and is
+ * refused until that Concern closes again.
+ *
+ * The answer is the whole CAPA as it now reads, like every other write in this
+ * slice — the caller's Screen is showing the investigation, and it wants the
+ * status, the due date and the verifier it just produced.
+ */
+async function recordEffectivenessCheck(capaId, { outcome, note } = {}, accountId) {
+  requireMemberOf('outcome', outcome, CHECK_OUTCOMES);
+  requireNonEmptyString('note', note);
+  const said = note.trim();
+
+  return withActor(accountId, async (client) => {
+    await lockOpenCapa(client, capaId);
+
+    // The Concern, locked: its status decides whether there is anything to
+    // check, and a Concern that closes between this read and the write below
+    // must not be able to change the answer. At most one row, by
+    // `action_items_capa_id_once`; a CAPA that answers no Concern at all
+    // (impossible through this API) takes the same refusal, because there is
+    // nothing whose effectiveness could be checked either way.
+    const { rows: [concern] } = await client.query(
+      `SELECT id, status FROM action_items WHERE capa_id = $1 FOR UPDATE`,
+      [capaId]
+    );
+    if (!concern || concern.status !== 'done') {
+      throw httpError(
+        409,
+        "this CAPA's Concern is not closed, so there is nothing to check yet"
+      );
+    }
+
+    if (outcome === 'effective') {
+      const { rows: roots } = await client.query(
+        `SELECT r.chain
+           FROM capa_root_causes r
+          WHERE r.capa_id = $1 AND r.cause_type = 'why' AND r.is_root`,
+        [capaId]
+      );
+      const missing = CAPA_CHAINS.filter(
+        (chain) => !roots.some((root) => root.chain === chain)
+      );
+      if (missing.length > 0) {
+        throw httpError(
+          409,
+          'a CAPA closes effective only when both chains have a confirmed root cause, and ' +
+            `this one has none for: ${missing.join(', ')}`
+        );
+      }
+
+      // `capas_eightd_needs_verification` is satisfied by the timestamp and
+      // `capas_closed_has_time` by `closed_at`; the account is written beside
+      // them because it is who decided, not because a constraint asks (see the
+      // migration's header). The due date is left alone: it is the date this
+      // check was judged against.
+      await client.query(
+        `UPDATE capas
+            SET status = 'closed',
+                closed_at = now(),
+                effectiveness_verified_at = now(),
+                effectiveness_verified_by_account_id = $2,
+                effectiveness_note = $3
+          WHERE id = $1`,
+        [capaId, accountId, said]
+      );
+    } else {
+      await client.query(
+        `UPDATE capas
+            SET status = 'actions',
+                effectiveness_check_due_at = NULL,
+                effectiveness_verified_at = now(),
+                effectiveness_verified_by_account_id = $2,
+                effectiveness_note = $3
+          WHERE id = $1`,
+        [capaId, accountId, said]
+      );
+      await reopenConcernIntoNextCycle(client, concern.id);
+    }
+
+    return readCapaDetail(client, capaId);
+  });
+}
+
 module.exports = {
   ACTION_TYPES,
   ACTION_STATUSES,
@@ -2288,11 +2704,14 @@ module.exports = {
   escalationTargets,
   escalateAction,
   // The CAPA (issue #209): opening one on a Concern, reading one, changing its
-  // team and its problem description, and the two facts a route needs to ask
-  // its own questions about it.
+  // team, its problem description and its effectiveness delay, and the two
+  // facts a route needs to ask its own questions about it.
   CAPA_METHOD,
+  CAPA_STATUSES,
+  CAPA_EFFECTIVENESS_DELAY_DAYS,
   findCapa,
   getCapaDetail,
+  listCapas,
   openCapa,
   updateCapa,
   // ...and its two 5 Why chains (issue #210): adding a Why to one, revising,
@@ -2303,5 +2722,10 @@ module.exports = {
   CAPA_CHAINS,
   addCapaWhy,
   updateCapaWhy,
-  removeCapaWhy
+  removeCapaWhy,
+  // ...and its effectiveness check (issue #211): recording the verdict that
+  // closes the investigation or sends its Concern round again. Where `#210`'s
+  // chains are the team's own reasoning, this is the one act a CAPA does not
+  // let the team do to itself — see the route's own gate.
+  recordEffectivenessCheck
 };

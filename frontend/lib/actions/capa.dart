@@ -69,6 +69,26 @@ const Map<String, String> capaMethodLabels = {
 
 String capaMethodLabel(String wire) => capaMethodLabels[wire] ?? wire;
 
+/// The two verdicts an effectiveness check records (issue #211), mirroring the
+/// API's own closed set. They are the plant's words rather than a boolean: a
+/// check that did not hold is not "false", it is the sentence that sends a
+/// Concern round again — which is why the tone travels with the label, the rule
+/// every status set in this client follows.
+const Map<String, (String, StatusTone)> capaEffectivenessOutcomes = {
+  'effective': ('The fix held', StatusTone.success),
+  'not_effective': ('The fix did not hold', StatusTone.warning),
+};
+
+/// The order the two verdicts are offered in: the one that closes the
+/// investigation first, because that is what a check is usually for.
+const List<String> capaEffectivenessOutcomeOrder = ['effective', 'not_effective'];
+
+String capaEffectivenessOutcomeLabel(String wire) =>
+    capaEffectivenessOutcomes[wire]?.$1 ?? wire;
+
+StatusTone capaEffectivenessOutcomeTone(String wire) =>
+    capaEffectivenessOutcomes[wire]?.$2 ?? StatusTone.neutral;
+
 /// The two 5 Why chains a CAPA's team reasons with (issue #210), and the words
 /// this client reads them by.
 ///
@@ -144,6 +164,21 @@ class CapaLink {
   StatusTone get statusTone => capaStatusTone(status);
 }
 
+/// The Account that recorded a CAPA's effectiveness check (issue #211), named
+/// rather than nested, the shape [CapaTeamMember] takes: a reader of an
+/// investigation wants who decided the fix held, which is a name, and the id
+/// only matters to an address.
+///
+/// Deliberately not People's `Account`: an administrator need not be an
+/// Employee, so this is a name on a verification and not a directory record.
+@immutable
+class CapaVerifier {
+  const CapaVerifier({required this.accountId, required this.name});
+
+  final String accountId;
+  final String name;
+}
+
 @immutable
 class Capa {
   const Capa({
@@ -163,8 +198,11 @@ class Capa {
     this.openedAt,
     this.dueDate,
     this.closedAt,
+    this.effectivenessCheckDelayDays = 30,
     this.effectivenessCheckDueAt,
+    this.effectivenessCheckOverdue = false,
     this.effectivenessVerifiedAt,
+    this.effectivenessVerifiedBy,
     this.effectivenessNote,
     this.concern,
   });
@@ -210,11 +248,23 @@ class Capa {
   final String? dueDate;
   final DateTime? closedAt;
 
-  /// When the effectiveness check falls due, and how it was answered — null
-  /// until #211 records one. Carried here so the Screen can say "not yet" about
-  /// a fact it will soon have.
+  /// The effectiveness check (issue #211): how many days after the Concern
+  /// closes it falls due (30 unless somebody changed it), the date that rule
+  /// produced at the last closure, and whether that date has passed with
+  /// nothing recorded.
+  ///
+  /// The date is null while the Concern is open — nothing is due yet — and is
+  /// cleared again by a check that did not hold, so an investigation whose fix
+  /// is being rewritten does not read as overdue.
+  final int effectivenessCheckDelayDays;
   final String? effectivenessCheckDueAt;
+  final bool effectivenessCheckOverdue;
+
+  /// When the check was recorded, and by whom, with what note — null until one
+  /// has been. All three are written by both verdicts, because a check that did
+  /// not hold is evidence too.
   final DateTime? effectivenessVerifiedAt;
+  final CapaVerifier? effectivenessVerifiedBy;
   final String? effectivenessNote;
 
   /// The Concern this investigation is about, with its own measures each
@@ -229,6 +279,26 @@ class Capa {
   /// Whether the investigation is over. Nothing about a closed or cancelled
   /// CAPA may be changed, which is the server's own rule.
   bool get isOpen => !const {'closed', 'cancelled'}.contains(status);
+
+  /// Whether the effectiveness check is due to be recorded: the Concern has
+  /// closed, nothing has been verified yet, and the investigation is still
+  /// open. The one condition a Screen reads to offer the check rather than the
+  /// sentence that says why it cannot (the server is the real gate).
+  bool get effectivenessCheckIsDue => isOpen && effectivenessCheckDueAt != null;
+
+  /// The verdict the last recorded check gave, as the record implies it — null
+  /// until one has been recorded.
+  ///
+  /// The API keeps no outcome column for the effectiveness check, and it does
+  /// not need one: an investigation that reaches `closed` is one whose check
+  /// held (it is the only door to that status), and one back in `actions` had a
+  /// check that did not, which is ADR-0033's own re-run recorded as the state
+  /// the work is in. Reading it from the status is therefore the same fact said
+  /// once rather than twice, and the two can never drift apart.
+  String? get effectivenessOutcome {
+    if (effectivenessVerifiedAt == null) return null;
+    return status == 'closed' ? 'effective' : 'not_effective';
+  }
 
   /// Everybody on the investigation, lead first — what a Screen renders when it
   /// wants one line rather than a section.
@@ -249,4 +319,24 @@ class Capa {
     }
     return null;
   }
+
+  /// Whether both chains have concluded: a confirmed root cause for why the
+  /// problem happened *and* for why it was not detected — the first half of
+  /// CONTEXT.md's own sentence about when a CAPA closes, and the one the client
+  /// can answer from the record it already holds. The server refuses the
+  /// effective verdict on the same rule; this is what lets a dialog say so
+  /// before the request rather than after it.
+  bool get bothChainsAnswered =>
+      capaChainOrder.every((chain) => rootCauseOf(chain) != null);
+}
+
+/// One read of the CAPA list (issue #211) — the rows and whether the server had
+/// more than it was willing to send, the shape `ActionRegister` keeps. Rendered,
+/// never swallowed: a capped list must not read as the whole Platform.
+@immutable
+class CapaRegister {
+  const CapaRegister({required this.capas, required this.truncated});
+
+  final List<Capa> capas;
+  final bool truncated;
 }

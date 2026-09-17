@@ -68,11 +68,18 @@ class CapaDetailScreen extends StatelessWidget {
   /// The chains (issue #210): the section, one block per chain, the Why rows
   /// inside it, and the two sentences the Screen says about writing them.
   static const ValueKey<String> chainsKey = ValueKey<String>('capa-detail-chains');
-  static const ValueKey<String> chainsNoticeKey = ValueKey<String>('capa-detail-chains-notice');
-  static const ValueKey<String> chainsFailureKey = ValueKey<String>('capa-detail-chains-failure');
   static const ValueKey<String> chainsReadOnlyKey =
       ValueKey<String>('capa-detail-chains-read-only');
   static const ValueKey<String> chainsClosedKey = ValueKey<String>('capa-detail-chains-closed');
+
+  /// What the last write to this investigation did, and why the last one did
+  /// not land — the page's own, above every section rather than inside the one
+  /// that happened to make the request first. #210 put them under the chains
+  /// because a chain write was the only write this Screen had; #211 adds a
+  /// second kind (recording the effectiveness check), and a notice about the
+  /// investigation closing does not belong under the heading "Root cause".
+  static const ValueKey<String> noticeKey = ValueKey<String>('capa-detail-notice');
+  static const ValueKey<String> failureKey = ValueKey<String>('capa-detail-failure');
 
   static ValueKey<String> chainKey(String chain) => ValueKey<String>('capa-chain-$chain');
 
@@ -101,6 +108,31 @@ class CapaDetailScreen extends StatelessWidget {
 
   static ValueKey<String> measurePhaseKey(String measureId, int cycle, String phase) =>
       ValueKey<String>('capa-measure-$measureId-phase-$cycle-$phase');
+
+  /// The effectiveness check (issue #211): the section, what it is waiting on,
+  /// what it recorded, and the one control the act has.
+  static const ValueKey<String> effectivenessKey =
+      ValueKey<String>('capa-detail-effectiveness');
+  static const ValueKey<String> effectivenessDueKey =
+      ValueKey<String>('capa-detail-effectiveness-due');
+  static const ValueKey<String> effectivenessOverdueKey =
+      ValueKey<String>('capa-detail-effectiveness-overdue');
+  static const ValueKey<String> effectivenessNotYetKey =
+      ValueKey<String>('capa-detail-effectiveness-not-yet');
+  static const ValueKey<String> effectivenessOutcomeKey =
+      ValueKey<String>('capa-detail-effectiveness-outcome');
+  static const ValueKey<String> effectivenessVerifiedByKey =
+      ValueKey<String>('capa-detail-effectiveness-verified-by');
+  static const ValueKey<String> effectivenessNoteKey =
+      ValueKey<String>('capa-detail-effectiveness-note');
+  static const ValueKey<String> effectivenessReopenedKey =
+      ValueKey<String>('capa-detail-effectiveness-reopened');
+  static const ValueKey<String> effectivenessCheckKey =
+      ValueKey<String>('capa-detail-effectiveness-check');
+  static const ValueKey<String> effectivenessNotYoursKey =
+      ValueKey<String>('capa-detail-effectiveness-not-yours');
+  static const ValueKey<String> effectivenessTeamLeadKey =
+      ValueKey<String>('capa-detail-effectiveness-team-lead');
 
   @override
   Widget build(BuildContext context) {
@@ -195,20 +227,181 @@ class _CapaDetail extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Spacing.lg),
+            // What the last write did, and why the last one did not land —
+            // above the sections rather than inside one of them, because there
+            // are now two kinds of write this Screen makes (a chain's, #210,
+            // and the effectiveness check's, #211) and only one notice.
+            if (notice != null)
+              Padding(
+                key: CapaDetailScreen.noticeKey,
+                padding: const EdgeInsets.only(bottom: Spacing.md),
+                child: Text(notice!, style: theme.textTheme.bodyMedium),
+              ),
+            if (failure != null)
+              Padding(
+                key: CapaDetailScreen.failureKey,
+                padding: const EdgeInsets.only(bottom: Spacing.md),
+                child: Text(
+                  failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
             _Team(capa: capa),
             const SizedBox(height: Spacing.lg),
             _Problem(capa: capa),
             const SizedBox(height: Spacing.lg),
-            _Chains(capa: capa, notice: notice, failure: failure),
+            _Chains(capa: capa),
             if (concern != null) ...[
               const SizedBox(height: Spacing.lg),
               _ConcernCard(concern: concern),
               const SizedBox(height: Spacing.lg),
               _ConcernMeasures(concern: concern),
             ],
+            const SizedBox(height: Spacing.lg),
+            // Last, because it is the last thing that happens: the
+            // investigation has finished, the Concern has closed, and somebody
+            // else has verified that the fix held (issue #211).
+            _Effectiveness(capa: capa),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The effectiveness check (issue #211) — D8 of the 8D, and the step CONTEXT.md
+/// says a CAPA closes on: "a root cause is confirmed for both why it happened
+/// and why it was not detected, its Concern is closed, and someone holding
+/// Quality authority other than its team lead has verified, some time later,
+/// that the problem has not come back".
+///
+/// Four states, and each says which it is: nothing is due while the Concern is
+/// open (with the delay that will decide the date), the date once it has closed,
+/// the overdue mark when that date has passed, and the verdict, the verifier and
+/// the note once a check has been recorded. Nothing is hidden on a closed
+/// investigation: what was recorded is exactly what a reader of a closed CAPA
+/// came for, and it is what the report #212 renders.
+///
+/// The one control is the check, offered only to a holder of Quality authority
+/// who is not the team lead (`mayRecordCapaEffectiveness`) — the client's half
+/// of the server's own two-part gate. A team lead gets a sentence of their own
+/// rather than a button whose request would come back 403, and so does a reader
+/// without the authority.
+class _Effectiveness extends StatelessWidget {
+  const _Effectiveness({required this.capa});
+
+  final Capa capa;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final verifiedAt = capa.effectivenessVerifiedAt;
+    final dueAt = capa.effectivenessCheckDueAt;
+
+    return Column(
+      key: CapaDetailScreen.effectivenessKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Effectiveness', style: theme.textTheme.titleSmall),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          'A CAPA closes only when both chains have a confirmed root cause, its Concern is '
+          'closed, and somebody holding Quality authority other than its team lead has '
+          'verified, some time later, that the problem has not come back.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Spacing.sm),
+        if (verifiedAt != null) ...[
+          Wrap(
+            spacing: Spacing.sm,
+            runSpacing: Spacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              StatusChip(
+                key: CapaDetailScreen.effectivenessOutcomeKey,
+                label: capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!),
+                tone: capaEffectivenessOutcomeTone(capa.effectivenessOutcome!),
+              ),
+              Text(
+                key: CapaDetailScreen.effectivenessVerifiedByKey,
+                'recorded by ${capa.effectivenessVerifiedBy?.name ?? 'an Account'} on '
+                '${verifiedAt.toLocal().toIso8601String().substring(0, 10)}',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+          if (capa.effectivenessNote != null)
+            Padding(
+              key: CapaDetailScreen.effectivenessNoteKey,
+              padding: const EdgeInsets.only(top: Spacing.sm),
+              child: Text(capa.effectivenessNote!, style: theme.textTheme.bodyMedium),
+            ),
+          if (capa.status == 'actions')
+            Padding(
+              key: CapaDetailScreen.effectivenessReopenedKey,
+              padding: const EdgeInsets.only(top: Spacing.sm),
+              child: Text(
+                'The check did not hold, so the Concern is open again in its next cycle: the '
+                'work is on its Screen, in the Concern this investigation answers.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+        ] else if (dueAt != null) ...[
+          Wrap(
+            spacing: Spacing.sm,
+            runSpacing: Spacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                key: CapaDetailScreen.effectivenessDueKey,
+                'The Concern has closed, so the effectiveness check is due on $dueAt.',
+                style: theme.textTheme.bodyMedium,
+              ),
+              if (capa.effectivenessCheckOverdue)
+                StatusChip(
+                  key: CapaDetailScreen.effectivenessOverdueKey,
+                  label: 'Overdue',
+                  tone: StatusTone.warning,
+                ),
+            ],
+          ),
+          const SizedBox(height: Spacing.sm),
+          if (mayRecordCapaEffectiveness(context, capa))
+            FilledButton.icon(
+              key: CapaDetailScreen.effectivenessCheckKey,
+              onPressed: () =>
+                  context.go('${Routes.actions}/capas/${capa.id}/effectiveness'),
+              icon: const Icon(Icons.verified_outlined),
+              label: const Text('Record the effectiveness check'),
+            )
+          else if (isCapaTeamLeadAccount(context, capa))
+            Text(
+              key: CapaDetailScreen.effectivenessTeamLeadKey,
+              'You lead this investigation, so somebody else records the check: a holder of '
+              'Quality authority who is not on the team lead\'s Account.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            )
+          else
+            Text(
+              key: CapaDetailScreen.effectivenessNotYoursKey,
+              'Recording the check needs Quality authority at this Org Unit.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+        ] else
+          Text(
+            key: CapaDetailScreen.effectivenessNotYetKey,
+            'The check falls due ${capa.effectivenessCheckDelayDays} days after the Concern '
+            'closes, and the Concern has not closed yet.',
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+      ],
     );
   }
 }
@@ -301,11 +494,9 @@ class _Problem extends StatelessWidget {
 /// it is a record. Reading is Site-wide, the same as reading any Action, so the
 /// chains themselves are never hidden.
 class _Chains extends StatelessWidget {
-  const _Chains({required this.capa, this.notice, this.failure});
+  const _Chains({required this.capa});
 
   final Capa capa;
-  final String? notice;
-  final String? failure;
 
   @override
   Widget build(BuildContext context) {
@@ -340,21 +531,6 @@ class _Chains extends StatelessWidget {
               "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
               'its team.',
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ),
-        if (notice != null)
-          Padding(
-            key: CapaDetailScreen.chainsNoticeKey,
-            padding: const EdgeInsets.only(top: Spacing.sm),
-            child: Text(notice!, style: theme.textTheme.bodyMedium),
-          ),
-        if (failure != null)
-          Padding(
-            key: CapaDetailScreen.chainsFailureKey,
-            padding: const EdgeInsets.only(top: Spacing.sm),
-            child: Text(
-              failure!,
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
             ),
           ),
         const SizedBox(height: Spacing.md),

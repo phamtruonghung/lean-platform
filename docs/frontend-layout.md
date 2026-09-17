@@ -80,7 +80,11 @@ about.** The Actions list (`ACTION_LIST_LIMIT`) and the Org Unit search
 page would answer "no such record" for one that exists further down the server's
 own order. Actions keeps its server-side filters. The Directory and the Org Units
 tree keep their `AppSearchField` (ADR-0023) — a control that reports a pick is not
-a control that narrows a list a reader is working through.
+a control that narrows a list a reader is working through. **The CAPA list
+(#211) joins them for the same reason**: it is bounded by `CAPA_LIST_LIMIT`, and
+its Org Unit filter, its status chooser and its overdue switch are all answered
+by the server, so a term typed over the page it received would report "no such
+investigation" for one the server put further down its own order.
 
 ## The two traps behind all of it
 

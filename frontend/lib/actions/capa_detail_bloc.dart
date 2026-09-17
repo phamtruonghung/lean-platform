@@ -75,6 +75,22 @@ class CapaDetailWhyRemoved extends CapaDetailEvent {
   final String whyId;
 }
 
+/// The effectiveness check was recorded (issue #211) — the verdict, with the
+/// note that is its evidence.
+///
+/// One event for both verdicts rather than two, because they are one act with
+/// two outcomes: the fields the request carries are identical, and what differs
+/// is what the server does with them — close the investigation, or send the
+/// Concern round again. The verifier and the time are not sent at all: they are
+/// the caller's own Account and the server's clock.
+class CapaDetailEffectivenessRecorded extends CapaDetailEvent {
+  const CapaDetailEffectivenessRecorded({required this.outcome, required this.note});
+
+  /// `effective` or `not_effective`, the two values the API's own set has.
+  final String outcome;
+  final String note;
+}
+
 sealed class CapaDetailState {
   const CapaDetailState();
 }
@@ -133,6 +149,7 @@ class CapaDetailBloc extends Bloc<CapaDetailEvent, CapaDetailState> {
     on<CapaDetailWhyAdded>(_onWhyAdded);
     on<CapaDetailWhyChanged>(_onWhyChanged);
     on<CapaDetailWhyRemoved>(_onWhyRemoved);
+    on<CapaDetailEffectivenessRecorded>(_onEffectivenessRecorded);
   }
 
   final ActionsApi _actions;
@@ -201,6 +218,41 @@ class CapaDetailBloc extends Bloc<CapaDetailEvent, CapaDetailState> {
       emit,
       (token) => _actions.removeCapaWhy(token, capaId, event.whyId),
       notice: 'The Why was removed, and the chain renumbered around the gap.',
+    );
+  }
+
+  /// Records the effectiveness check (issue #211) and repaints the Screen from
+  /// the answer — the whole investigation, which now says either that it is
+  /// closed with a verifier and a note, or that its Concern is open again in
+  /// its next cycle.
+  ///
+  /// The two guards the server enforces are said again here because a form must
+  /// not send what it knows will be refused: a note that says nothing is not
+  /// sent (the dialog's own submit gate), and an outcome that is not one of the
+  /// two is not sent either. Everything else — the authority, the team-lead
+  /// rule, whether the Concern has closed, whether both chains concluded — is
+  /// the server's to refuse, and its refusal comes back as `mutationFailure`
+  /// beside the form the caller was filling in.
+  Future<void> _onEffectivenessRecorded(
+    CapaDetailEffectivenessRecorded event,
+    Emitter<CapaDetailState> emit,
+  ) async {
+    final capaId = _capaId;
+    if (capaId == null) return;
+    if (event.note.trim().isEmpty) return;
+    if (!capaEffectivenessOutcomeOrder.contains(event.outcome)) return;
+
+    await _mutate(
+      emit,
+      (token) => _actions.recordEffectivenessCheck(
+        token,
+        capaId,
+        outcome: event.outcome,
+        note: event.note.trim(),
+      ),
+      notice: event.outcome == 'effective'
+          ? 'The investigation is closed, and the fix is recorded as having held.'
+          : 'The check did not hold, so the Concern is open again in its next cycle.',
     );
   }
 
