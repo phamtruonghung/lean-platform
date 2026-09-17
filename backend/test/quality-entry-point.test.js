@@ -9,7 +9,8 @@
  *
  * One export, and the assertion below is what keeps it one. `router` is this
  * Module's routes — the Product catalogue, the Defect code tree and, since
- * issue #205, the Non-conformance log — mounted by src/index.js at
+ * issue #205, the Non-conformance log, plus the shared floor device's own door
+ * to that log (issue #207) — mounted by src/index.js at
  * `/api/quality`, the documented mount-target special case every Module's
  * `router` is (see index.js's own header for the full justification). Issue
  * #203 adds no lookup about a Product or a Defect code for another Module to
@@ -69,6 +70,16 @@ test('router is a mountable Express router', () => {
 // record). Folding any of them into the PATCH above would produce one route
 // asking two different permission questions, which is the shape ADR-0019 and
 // ADR-0035 both argue against.
+//
+// Issue #207's three are the shared floor device's own door, and their
+// `/floor/` segment is what says so: a device presents a credential and an
+// individual identification instead of a bearer token, so the two catalogues
+// it must choose from and the recording it makes are their own addresses
+// rather than a second kind of caller on the Account-facing ones. Note what is
+// absent here: no `/floor/nonconformances/:id/concession`, no lowering, no
+// reopen and no cancel — the four acts that need Quality authority are not
+// reachable from a device at all, which is the criterion the list below is
+// also the assertion for.
 function declaredRoutes(router) {
   const declared = [];
   for (const layer of router.stack) {
@@ -83,9 +94,11 @@ function declaredRoutes(router) {
   return declared;
 }
 
-test('the router carries the Product, Defect code and Non-conformance paths, and nothing else', () => {
+test('the router carries the Product, Defect code, Non-conformance and floor paths, and nothing else', () => {
   assert.deepStrictEqual(declaredRoutes(quality.router).sort(), [
     'GET /defect-codes',
+    'GET /floor/defect-codes',
+    'GET /floor/products',
     'GET /nonconformances/:id',
     'GET /products',
     'GET /sites/:siteId/nonconformances',
@@ -93,6 +106,7 @@ test('the router carries the Product, Defect code and Non-conformance paths, and
     'PATCH /nonconformances/:id',
     'PATCH /products/:id',
     'POST /defect-codes',
+    'POST /floor/nonconformances',
     'POST /nonconformances/:id/cancel',
     'POST /nonconformances/:id/concession',
     'POST /nonconformances/:id/dispositions',

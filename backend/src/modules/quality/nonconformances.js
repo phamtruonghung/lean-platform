@@ -30,11 +30,19 @@
  * `Nonconformance.issueNo` is asserted in the form
  * `/^NC-[A-Z0-9]+-\d{4}-\d{5}$/` by this Module's own test.
  *
- * **Who recorded it is an Account.** Every Non-conformance this slice records
- * is recorded by a signed-in Account, so `recorded_by_account_id` is always
- * set. The floor-device path (ADR-0016, which would name an Employee through
- * `detected_by` instead) is deliberately not built here — see the issue's own
- * out-of-scope list.
+ * **Two doors record, and the baseline's two attribution columns name which
+ * one was used.** A Non-conformance recorded by a signed-in Account carries
+ * `recorded_by_account_id` and nothing in `detected_by`; one recorded at a
+ * shared floor device (ADR-0016, issue #207) carries the identified Employee
+ * in `detected_by` and nothing in `recorded_by_account_id`, because the
+ * Employee who found the product IS who detected it — most of a plant cannot
+ * sign in (CONTEXT.md), so the person at the machine has no Account to record
+ * against. The two are kept apart rather than both filled, and the reason is
+ * auditability: "who the system attributed this to" has to be answerable from
+ * one column without a reader having to decide which one is authoritative.
+ * `recordNonconformance` takes an actor object for exactly this —
+ * `{ accountId }` from the Account door, `{ employeeId }` from the floor's —
+ * the same shape work-orders.js's start and complete already take.
  *
  * **The production day and the shift are the database's answer, not this
  * file's.** `quality_issues` has carried the baseline's
@@ -667,11 +675,25 @@ async function findSiteCodeForOrgUnit(orgUnitId, client = null) {
 }
 
 /**
- * Record a Non-conformance (issue #205).
+ * Record a Non-conformance (issue #205), from either door (issue #207).
  *
- * The route has already resolved the Org Unit, refused a caller whose Grant
- * does not reach it with `write: true`, and parsed the Asset id; everything
- * that is a fact about the record itself is decided here.
+ * `actor` is `{ accountId }` when a signed-in Account is recording and
+ * `{ employeeId }` when the identification at a shared floor device is — the
+ * same two-door shape `maintenance/work-orders.js` gives a start and a
+ * complete, and the same two attribution columns the baseline's
+ * `quality_issues` carries. Exactly one of the two is filled on the row, and
+ * `detected_by` is the Employee on the floor path because the Employee who
+ * found the product is the one who detected it: the identification is the
+ * whole of what the route proved, and inventing an Account for it would be
+ * attributing the record to somebody who was not there.
+ *
+ * The route has already resolved the Org Unit and answered the scope question
+ * for whichever door the write came through — `people.canAct({ …,
+ * write: true })` for an Account, `people.deviceReachesOrgUnit` for a device —
+ * and parsed the Asset id; everything that is a fact about the record itself
+ * is decided here. The field, severity and quantity rules below are the same
+ * on both doors, because they are the same function: a floor device gets no
+ * looser reading of what a Non-conformance is, and no severer one.
  *
  * The `uom_code` is not an input: it is read off the Product, because a
  * quantity of a Product is measured in the unit that Product is defined in
@@ -687,8 +709,10 @@ async function findSiteCodeForOrgUnit(orgUnitId, client = null) {
  * `contained` when immediate containment is recorded in the same breath, which
  * is the one state transition this slice has.
  */
-async function recordNonconformance(input, accountId) {
+async function recordNonconformance(input, actor = {}) {
   const body = input ?? {};
+  const accountId = actor.accountId ?? null;
+  const employeeId = actor.employeeId ?? null;
 
   const orgUnitId = parseId(body.orgUnitId);
   if (orgUnitId === null) throw httpError(400, 'orgUnitId must be a valid Org Unit id');
@@ -757,10 +781,10 @@ async function recordNonconformance(input, accountId) {
            issue_no, org_unit_id, asset_id, product_id, defect_code_id,
            detection_point, severity, quantity_affected, uom_code, lot_ref,
            detected_at, description, immediate_containment, status,
-           recorded_by_account_id
+           recorded_by_account_id, detected_by
          )
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-                 COALESCE($11::timestamptz, now()), $12, $13, $14, $15)
+                 COALESCE($11::timestamptz, now()), $12, $13, $14, $15, $16)
          RETURNING id`,
         [
           numberRow.issue_no,
@@ -777,7 +801,8 @@ async function recordNonconformance(input, accountId) {
           description,
           immediateContainment,
           immediateContainment === null ? 'open' : 'contained',
-          accountId ?? null
+          accountId,
+          employeeId
         ]
       );
       return row.id;

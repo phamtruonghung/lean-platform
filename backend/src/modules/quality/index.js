@@ -5,8 +5,9 @@
  *
  * One export, and it is here because something outside this Module mounts it.
  * `router` is this Module's own routes — the Product catalogue, the Defect
- * code tree and the Non-conformance log as they stand today — mounted by
- * src/index.js under `/api/quality`, a prefix of this Module's own beside
+ * code tree, the Non-conformance log and the floor device's own door to
+ * recording one, as they stand today — mounted by src/index.js under
+ * `/api/quality`, a prefix of this Module's own beside
  * `/api/people`, `/api/maintenance` and `/api/actions`. src/index.js lives
  * outside `modules/` and is not a cross-Module caller the boundary checker
  * looks at, so like every Module's `router` it is a special case of none of
@@ -59,17 +60,24 @@
  * export, reached through People's entry point, not something re-exported
  * here, and issue #206 is the slice that consults it: the Concession, the
  * lowered severity, the reopen and the cancel are its four gated acts.
+ * floor-routes.js (issue #207) asks the same entry point for the three
+ * questions a shared device's own door needs — `findDeviceByCredential`,
+ * `findValidIdentification` and `deviceReachesOrgUnit`, plus `findOrgUnit` for
+ * the Org Unit the record is filed at — exactly as maintenance's floor writes
+ * and its floor read already do.
  */
 
 const express = require('express');
 const productRoutes = require('./product-routes');
 const defectCodeRoutes = require('./defect-code-routes');
 const nonconformanceRoutes = require('./nonconformance-routes');
+const floorRoutes = require('./floor-routes');
 
 const router = express.Router();
 router.use(productRoutes);
 router.use(defectCodeRoutes);
 router.use(nonconformanceRoutes);
+router.use(floorRoutes);
 
 module.exports = {
   router

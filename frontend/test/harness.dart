@@ -1401,6 +1401,9 @@ class FakeWire {
     this.floorIdentifyMessage = 'That Employee number and PIN were not recognised',
     this.floorIdentificationToken = 'identification-1',
     Map<String, dynamic>? floorEmployee,
+    this.floorCataloguesStatus = 200,
+    this.floorNonconformanceStatus = 201,
+    this.floorNonconformanceMessage = "Outside the caller's granted Org Units",
     List<Map<String, dynamic>>? products,
     this.productsStatus = 200,
     this.createProductStatus = 201,
@@ -2408,6 +2411,29 @@ class FakeWire {
   /// Every floor complete that reached the wire, the same shape.
   final List<Map<String, dynamic>> floorWorkOrderCompletions = [];
 
+  /// `GET /api/quality/floor/products` and `.../defect-codes` (issue #207) —
+  /// the shared device's own reads of the two catalogues it must choose from.
+  /// Served off the [products]/[defectCodes] fixtures above, so a test seeds
+  /// one list and both doors answer with it, the way one `products` table
+  /// backs both addresses in the real API.
+  int floorCataloguesStatus;
+
+  /// Every floor catalogue read's device credential, in the order it reached
+  /// the wire.
+  final List<String> floorCatalogueReads = [];
+
+  /// `POST /api/quality/floor/nonconformances` (issue #207) — recording one
+  /// from a device. A refusal is scripted with [floorNonconformanceStatus],
+  /// the shape every other write's `status` field keeps.
+  int floorNonconformanceStatus;
+  String floorNonconformanceMessage;
+
+  /// Every floor recording that reached the wire, as `{device,
+  /// identification, body}` — so a test can assert that the device credential
+  /// and the individual identification each crossed the wire and exactly what
+  /// was recorded.
+  final List<Map<String, dynamic>> floorNonconformancePosts = [];
+
   int _nextEmployeeId = 900;
   int _nextAssignmentId = 500;
   int _nextJobRoleId = 950;
@@ -2807,6 +2833,101 @@ class FakeWire {
             }),
             200,
           );
+        }
+        // The Quality Module's floor door (issue #207): the two catalogues a
+        // device must choose from, and the recording it makes. Mirrors
+        // quality/floor-routes.js — the reads answer the same catalogues the
+        // Account-facing addresses above answer (active rows only, which is
+        // all the floor read offers), and the write answers the row the API
+        // would have written, with the identified Employee as its detected-by
+        // and no Account at all.
+        if (request.method == 'GET' &&
+            (path == '/api/quality/floor/products' ||
+                path == '/api/quality/floor/defect-codes')) {
+          floorCatalogueReads.add(request.headers['x-floor-device'] ?? '');
+          if (floorCataloguesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The floor catalogue is unavailable.'}),
+              floorCataloguesStatus,
+            );
+          }
+          if (path.endsWith('/defect-codes')) {
+            return http.Response(
+              jsonEncode({
+                'defectCodes': [
+                  for (final code in defectCodes)
+                    if (code['isActive'] != false) code,
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response(
+            jsonEncode({
+              'products': [
+                for (final product in products)
+                  if (product['isActive'] != false) product,
+              ],
+            }),
+            200,
+          );
+        }
+        if (request.method == 'POST' && path == '/api/quality/floor/nonconformances') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          floorNonconformancePosts.add({
+            'device': request.headers['x-floor-device'],
+            'identification': request.headers['x-technician-identification'],
+            'body': sent,
+          });
+          if (floorNonconformanceStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': floorNonconformanceMessage}),
+              floorNonconformanceStatus,
+            );
+          }
+          final productId = sent['productId'] as String;
+          final defectCodeId = sent['defectCodeId'] as String;
+          final orgUnitId = sent['orgUnitId'] as String;
+          Map<String, dynamic>? product;
+          for (final row in products) {
+            if (row['id'] == productId) product = row;
+          }
+          Map<String, dynamic>? defectCode;
+          for (final code in defectCodes) {
+            if (code['id'] == defectCodeId) defectCode = code;
+          }
+          final containment = sent['immediateContainment'] as String?;
+          final id = (_nextNonconformanceId++).toString();
+          final created = {
+            ...nonconformanceJson(
+              id,
+              'NC-HCM-2026-${id.padLeft(5, '0')}',
+              status: containment == null ? 'open' : 'contained',
+              detectionPoint: sent['detectionPoint'] as String,
+              severity:
+                  sent['severity'] as String? ?? (defectCode?['defaultSeverity'] as String? ?? 'minor'),
+              quantityAffected: sent['quantity'] as num,
+              uomCode: product?['uomCode'] as String? ?? 'EA',
+              lotRef: sent['lotRef'] as String?,
+              // The floor door names an Employee and no Account — the two are
+              // never both filled (nonconformances.js's own note).
+              recordedByAccountId: null,
+              description: sent['description'] as String?,
+              immediateContainment: containment,
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              productId: productId,
+              productCode: product?['code'] as String? ?? 'PRD-?',
+              productName: product?['name'] as String? ?? 'Product',
+              defectCodeId: defectCodeId,
+              defectCodeCode: defectCode?['code'] as String? ?? 'CODE-?',
+              defectCodeName: defectCode?['name'] as String? ?? 'Defect code',
+              defectCodeDefaultSeverity:
+                  defectCode?['defaultSeverity'] as String? ?? 'minor',
+            ),
+            'detectedBy': floorEmployee['id'],
+          };
+          return http.Response(jsonEncode({'nonconformance': created}), 201);
         }
         // The Quality Module's two catalogues (issue #203). Each pair of
         // handlers mirrors its own route file: the write answers the row the

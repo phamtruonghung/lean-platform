@@ -353,6 +353,116 @@ class QualityApi {
     }
   }
 
+  /// The two catalogues and the recording as the shared floor device sees them
+  /// (issue #207, ADR-0016) — `GET /api/quality/floor/products`,
+  /// `GET /api/quality/floor/defect-codes` and
+  /// `POST /api/quality/floor/nonconformances`.
+  ///
+  /// These are the Module's own `/api/quality/floor/...` addresses, and they
+  /// are the device's door rather than a second credential on the Account
+  /// routes: a device presents its own credential and, to write, an individual
+  /// identification — no bearer token is involved, because a device at a
+  /// machine is not a person and most of a plant cannot sign in (CONTEXT.md).
+  /// The catalogues are read through this door because a Non-conformance names
+  /// a Product and a Defect code, and ADR-0023's rule is that a value with a
+  /// known set is chosen rather than typed.
+  Future<List<Product>> fetchFloorProducts(String deviceCredential) async {
+    const path = '/api/quality/floor/products';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'x-floor-device': deviceCredential}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final product in body['products'] as List<dynamic>)
+          Product.fromJson(product as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The Defect code tree as the device sees it — the same read as
+  /// [fetchProducts] above, over the other catalogue.
+  Future<List<DefectCode>> fetchFloorDefectCodes(String deviceCredential) async {
+    const path = '/api/quality/floor/defect-codes';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'x-floor-device': deviceCredential}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final code in body['defectCodes'] as List<dynamic>)
+          DefectCode.fromJson(code as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records a Non-conformance at the shared floor device
+  /// (`POST /api/quality/floor/nonconformances`, issue #207). The device
+  /// credential says which machine it is, [identification] says which Employee
+  /// is standing at it, and the identified Employee comes back as the record's
+  /// detected-by.
+  ///
+  /// [orgUnitId] is where the record is filed — the device's own Org Unit, or
+  /// anything beneath it; the API refuses one outside that reach with a 403.
+  /// A missing, invalid or expired identification is a 401, and every field,
+  /// severity and quantity rule is the same as the Account door's
+  /// [recordNonconformance], because both call the same service.
+  Future<Nonconformance> recordFloorNonconformance(
+    String deviceCredential,
+    String identification, {
+    required String orgUnitId,
+    required String productId,
+    required String defectCodeId,
+    required String detectionPoint,
+    required num quantity,
+    String? severity,
+    String? lotRef,
+    String? description,
+    String? immediateContainment,
+  }) async {
+    const path = '/api/quality/floor/nonconformances';
+    final body = <String, Object?>{
+      'orgUnitId': orgUnitId,
+      'productId': productId,
+      'defectCodeId': defectCodeId,
+      'detectionPoint': detectionPoint,
+      'quantity': quantity,
+    };
+    if (severity != null) body['severity'] = severity;
+    if (lotRef != null && lotRef.trim().isNotEmpty) body['lotRef'] = lotRef.trim();
+    if (description != null && description.trim().isNotEmpty) {
+      body['description'] = description.trim();
+    }
+    if (immediateContainment != null && immediateContainment.trim().isNotEmpty) {
+      body['immediateContainment'] = immediateContainment.trim();
+    }
+
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {
+          'x-floor-device': deviceCredential,
+          'x-technician-identification': identification,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Nonconformance.fromJson(answer['nonconformance'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// Raises a Non-conformance's severity, records its immediate containment, or
   /// both (`PATCH /api/quality/nonconformances/:id`). Only the keys present are
   /// sent, the same contract `updateProduct` carries. Lowering the severity is

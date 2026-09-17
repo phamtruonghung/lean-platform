@@ -288,7 +288,11 @@ router.post(
 
       const nonconformance = await nonconformances.recordNonconformance(
         { ...body, orgUnitId: orgUnit.id },
-        req.account.id
+        // The Account door's actor (issue #207 made this an actor object so
+        // the floor door could name an Employee instead): a signed-in Account
+        // recording on the desktop is `recorded_by_account_id`, and
+        // `detected_by` stays empty on this path.
+        { accountId: req.account.id }
       );
 
       res.status(201).json({ nonconformance });
