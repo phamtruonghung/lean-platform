@@ -196,6 +196,56 @@ async function requireCapaQualityAuthority(req, res, next) {
   });
 }
 
+// Who may write a CAPA's 5 Why chains (issue #210): somebody with **edit access
+// at the CAPA's Org Unit**, or **a place on the CAPA's team** — and that "or" is
+// the whole rule.
+//
+// It is not the authority above, and deliberately so. Opening or changing an
+// investigation is a Quality authority decision (ADR-0035: "opening a CAPA,
+// verify one held"), but the chain is not a decision about the plant — it is
+// the team's own reasoning, written by the people doing it. The team lead who
+// is not a Grant-holder is exactly who the ticket means: an engineer with a
+// place on the team writes the chain, and one with neither a Grant reaching the
+// Org Unit nor a place on the team gets a 403 rather than a quiet read-only
+// chain.
+//
+// `write: true`, spelled out, because the default is false and a read Grant is
+// not edit access. The team half reads the Employee link on the caller's own
+// Account (`app_users.employee_id`, which an Account need not have — an
+// administrator is not necessarily an Employee) against the team ids
+// `findCapa` already resolved. An administrator passes the first half
+// everywhere, through `canAct`, like every other gate in this Platform.
+//
+// Existence before scope, and scope before status: an unknown CAPA is a 404
+// here, and the CAPA's own status is the service's 409 under its own lock
+// (actions.js's `lockOpenCapa`), so a closed investigation is refused in the
+// same words whether the caller may write it or not — the read a route would
+// do to answer that would be a second read racing the write.
+const CAPA_WHY_WRITE_REQUIRED =
+  "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team";
+
+async function requireCapaWhyWrite(req, res, next) {
+  return requireKnownCapa(req, res, async () => {
+    const allowed = await people.canAct({
+      account: req.account,
+      orgUnitId: req.capa.orgUnitId,
+      write: true
+    });
+    if (allowed) return next();
+
+    const employeeId = req.account.employeeId;
+    if (
+      employeeId !== null &&
+      employeeId !== undefined &&
+      req.capa.teamEmployeeIds.includes(String(employeeId))
+    ) {
+      return next();
+    }
+
+    return res.status(403).json({ message: CAPA_WHY_WRITE_REQUIRED });
+  });
+}
+
 // The register: a Site's open Actions, worst first, history on request.
 router.get(
   '/sites/:siteId/actions',
@@ -761,6 +811,114 @@ router.patch(
       }
 
       const capa = await actions.updateCapa(req.capa.id, input, req.account.id);
+      res.json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// A CAPA's two 5 Why chains (issue #210)
+//
+// Three addresses, one per thing a team does to its reasoning: add a Why to a
+// chain, change one, remove one. Each answers with the whole CAPA, the shape
+// every other write in this slice takes — the caller's Screen is already
+// showing the investigation, and a chain only means anything beside its own
+// team, problem and Concern.
+//
+// **The chain is in the body rather than in the address.** `/capas/:id/whys`
+// is the collection of a CAPA's Whys; *which* chain one is added to is a field
+// of the row being written, exactly as `actionType` is on a measure. An address
+// per chain (`/capas/:id/chains/:chain/whys`) would say the chain is a resource
+// of its own, and it is not one: it is a column, and a Why may not move between
+// chains (see `updateCapaWhy`).
+//
+// **Removing is a DELETE, and it is this Platform's first.** Everything else
+// that changes a record here is a named POST (`/cancel`, `/escalate`,
+// `/phases/:phase/complete`) because each of those is a transition with a state
+// machine behind it. A Why has no state to transition through: it is a line in
+// a chain that turned out to be wrong (#200's own words), and the honest thing
+// to do with it is take it out. It is not soft-deleted, because a withdrawn Why
+// left in place would put every reader of the chain in the position of deciding
+// which rows count — and the audit log records the removal and who made it.
+//
+// The write scope is `requireCapaWhyWrite` above: edit access at the CAPA's Org
+// Unit, or a place on its team. The refusals that belong to the row — the
+// CAPA's status (409) and the Why's own existence (404) — are actions.js's,
+// read under the CAPA's own lock.
+// ---------------------------------------------------------------------------
+
+// Adding a Why to one of the CAPA's chains, at the next position of that chain.
+router.post(
+  '/capas/:id/whys',
+  people.authenticate,
+  people.requireActive,
+  requireCapaWhyWrite,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const capa = await actions.addCapaWhy(
+        req.capa.id,
+        { chain: body.chain, statement: body.statement },
+        req.account.id
+      );
+      res.status(201).json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Changing one Why: what it says, where it sits in its chain, and whether it is
+// the chain's confirmed root cause.
+//
+// A body naming none of the three is a 400 from actions.js rather than a silent
+// no-op, and each of the three has its own refusal there (an empty statement, a
+// position outside the chain, an `isRoot` that is not a boolean). The route
+// copies the three fields and nothing else: a body may not smuggle a `chain` or
+// a `capaId` in, which would be a second way to say what the address and the
+// row already say.
+router.patch(
+  '/capas/:id/whys/:whyId',
+  people.authenticate,
+  people.requireActive,
+  requireCapaWhyWrite,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const input = {};
+
+      if (body.statement !== undefined) input.statement = body.statement;
+      if (body.sequence !== undefined) input.sequence = body.sequence;
+      if (body.isRoot !== undefined) input.isRoot = body.isRoot;
+
+      const capa = await actions.updateCapaWhy(
+        req.capa.id,
+        req.params.whyId,
+        input,
+        req.account.id
+      );
+      res.json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Removing a Why, and closing the gap it leaves in its chain.
+router.delete(
+  '/capas/:id/whys/:whyId',
+  people.authenticate,
+  people.requireActive,
+  requireCapaWhyWrite,
+  async (req, res, next) => {
+    try {
+      const capa = await actions.removeCapaWhy(
+        req.capa.id,
+        req.params.whyId,
+        req.account.id
+      );
       res.json({ capa });
     } catch (error) {
       handleError(error, res, next);

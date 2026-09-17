@@ -1,11 +1,21 @@
 /// One CAPA (issue #209): the investigation opened on a Concern — its number,
-/// its team, what the investigation says the problem is, and the Concern's own
-/// Containments, Countermeasures and Preventive actions with their PDCA phases.
+/// its team, what the investigation says the problem is, the two 5 Why chains
+/// its team reasons with (issue #210), and the Concern's own Containments,
+/// Countermeasures and Preventive actions with their PDCA phases.
 ///
 /// A Screen with its own address rather than a dialog, for the reason the
 /// Action detail Screen gives: this is what somebody sends to a colleague when
 /// they want a second pair of eyes on an investigation, and a dialog's address
 /// is not something you send to anybody.
+///
+/// **The chains are written from here (issue #210).** A writer — edit access at
+/// the CAPA's Org Unit, or a place on its team (`mayEditCapaChains`) — adds a
+/// Why to either chain, revises one, moves one along its chain, marks one as
+/// the chain's confirmed root cause, and removes one; each of those acts that
+/// needs a form has its own address, and the two that do not (marking a root
+/// cause, moving a Why) are the row's own controls. A reader sees both chains
+/// and no controls, which is the honest rendering of what the server would
+/// allow them.
 ///
 /// **What is deliberately not here.** The team and the problem description are
 /// *changed* over HTTP (`PATCH /api/actions/capas/:id`, proved in
@@ -22,6 +32,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
+import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/failure_state.dart';
@@ -54,6 +65,38 @@ class CapaDetailScreen extends StatelessWidget {
   static const ValueKey<String> measuresKey = ValueKey<String>('capa-detail-measures');
   static const ValueKey<String> noMeasuresKey = ValueKey<String>('capa-detail-no-measures');
 
+  /// The chains (issue #210): the section, one block per chain, the Why rows
+  /// inside it, and the two sentences the Screen says about writing them.
+  static const ValueKey<String> chainsKey = ValueKey<String>('capa-detail-chains');
+  static const ValueKey<String> chainsNoticeKey = ValueKey<String>('capa-detail-chains-notice');
+  static const ValueKey<String> chainsFailureKey = ValueKey<String>('capa-detail-chains-failure');
+  static const ValueKey<String> chainsReadOnlyKey =
+      ValueKey<String>('capa-detail-chains-read-only');
+  static const ValueKey<String> chainsClosedKey = ValueKey<String>('capa-detail-chains-closed');
+
+  static ValueKey<String> chainKey(String chain) => ValueKey<String>('capa-chain-$chain');
+
+  static ValueKey<String> chainRootKey(String chain) =>
+      ValueKey<String>('capa-chain-$chain-root');
+
+  static ValueKey<String> noWhysKey(String chain) => ValueKey<String>('capa-chain-$chain-empty');
+
+  static ValueKey<String> addWhyKey(String chain) => ValueKey<String>('capa-chain-$chain-add');
+
+  static ValueKey<String> whyKey(String id) => ValueKey<String>('capa-why-$id');
+
+  static ValueKey<String> whyRootChipKey(String id) => ValueKey<String>('capa-why-$id-root');
+
+  static ValueKey<String> whyMarkRootKey(String id) => ValueKey<String>('capa-why-$id-mark-root');
+
+  static ValueKey<String> whyEditKey(String id) => ValueKey<String>('capa-why-$id-edit');
+
+  static ValueKey<String> whyRemoveKey(String id) => ValueKey<String>('capa-why-$id-remove');
+
+  static ValueKey<String> whyEarlierKey(String id) => ValueKey<String>('capa-why-$id-earlier');
+
+  static ValueKey<String> whyLaterKey(String id) => ValueKey<String>('capa-why-$id-later');
+
   static ValueKey<String> measureKey(String id) => ValueKey<String>('capa-measure-$id');
 
   static ValueKey<String> measurePhaseKey(String measureId, int cycle, String phase) =>
@@ -73,16 +116,26 @@ class CapaDetailScreen extends StatelessWidget {
             retryKey: retryKey,
             onRetry: () => context.read<CapaDetailBloc>().add(CapaDetailStarted(capaId)),
           ),
-        CapaDetailLoaded(capa: final capa) => _CapaDetail(capa: capa),
+        CapaDetailLoaded(capa: final capa) => _CapaDetail(
+            capa: capa,
+            notice: state.notice,
+            failure: state.mutationFailure,
+          ),
       },
     );
   }
 }
 
 class _CapaDetail extends StatelessWidget {
-  const _CapaDetail({required this.capa});
+  const _CapaDetail({required this.capa, this.notice, this.failure});
 
   final Capa capa;
+
+  /// What the last change to the chains did, and why the last one did not land
+  /// — the Screen's own copy of what the dialog over it has already said, so a
+  /// reader who dismissed a refusal can still see it (issue #210).
+  final String? notice;
+  final String? failure;
 
   @override
   Widget build(BuildContext context) {
@@ -145,6 +198,8 @@ class _CapaDetail extends StatelessWidget {
             _Team(capa: capa),
             const SizedBox(height: Spacing.lg),
             _Problem(capa: capa),
+            const SizedBox(height: Spacing.lg),
+            _Chains(capa: capa, notice: notice, failure: failure),
             if (concern != null) ...[
               const SizedBox(height: Spacing.lg),
               _ConcernCard(concern: concern),
@@ -226,6 +281,287 @@ class _Problem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The two 5 Why chains (issue #210) — the root-cause analysis, D4 of the 8D.
+///
+/// Both chains are always shown, in the order they are reasoned: why the
+/// problem happened, then why it was not detected. Each is a list of Whys in
+/// their own order, with the one the chain stopped at marked as its confirmed
+/// root cause; a chain with no root yet says so, because that is the state #211
+/// refuses to close a CAPA on and the reader of an investigation wants to know
+/// which of the two questions is still open.
+///
+/// Who may write is asked once, here, and answered by `mayEditCapaChains` —
+/// the client's half of the server's own rule. A reader who may not write gets
+/// the chains and a sentence saying so rather than buttons whose requests would
+/// come back 403; a closed investigation gets the chains and a sentence saying
+/// it is a record. Reading is Site-wide, the same as reading any Action, so the
+/// chains themselves are never hidden.
+class _Chains extends StatelessWidget {
+  const _Chains({required this.capa, this.notice, this.failure});
+
+  final Capa capa;
+  final String? notice;
+  final String? failure;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mayWrite = capa.isOpen && mayEditCapaChains(context, capa);
+
+    return Column(
+      key: CapaDetailScreen.chainsKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Root cause', style: theme.textTheme.titleSmall),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          'Two chains, each ending at one confirmed root cause: why the problem happened, '
+          'and why it was not detected.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        if (!capa.isOpen)
+          Padding(
+            key: CapaDetailScreen.chainsClosedKey,
+            padding: const EdgeInsets.only(top: Spacing.sm),
+            child: Text(
+              'This investigation is over, so its chains are a record rather than a worklist.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          )
+        else if (!mayWrite)
+          Padding(
+            key: CapaDetailScreen.chainsReadOnlyKey,
+            padding: const EdgeInsets.only(top: Spacing.sm),
+            child: Text(
+              "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
+              'its team.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+        if (notice != null)
+          Padding(
+            key: CapaDetailScreen.chainsNoticeKey,
+            padding: const EdgeInsets.only(top: Spacing.sm),
+            child: Text(notice!, style: theme.textTheme.bodyMedium),
+          ),
+        if (failure != null)
+          Padding(
+            key: CapaDetailScreen.chainsFailureKey,
+            padding: const EdgeInsets.only(top: Spacing.sm),
+            child: Text(
+              failure!,
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+            ),
+          ),
+        const SizedBox(height: Spacing.md),
+        for (final chain in capaChainOrder) ...[
+          _Chain(capa: capa, chain: chain, mayWrite: mayWrite),
+          const SizedBox(height: Spacing.md),
+        ],
+      ],
+    );
+  }
+}
+
+/// One chain: its heading, the one sentence saying what it asks, its Whys in
+/// order, and where it stopped.
+class _Chain extends StatelessWidget {
+  const _Chain({required this.capa, required this.chain, required this.mayWrite});
+
+  final Capa capa;
+  final String chain;
+  final bool mayWrite;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final whys = capa.whysIn(chain);
+    final root = capa.rootCauseOf(chain);
+
+    return Column(
+      key: CapaDetailScreen.chainKey(chain),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // A `Wrap`, not a `Row`: the heading and the add button are wider
+        // together than the body of an 800px window, and a Wrap drops the
+        // button onto its own line rather than overflowing.
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: Spacing.sm,
+          runSpacing: Spacing.sm,
+          children: [
+            Text(
+              whys.isEmpty
+                  ? capaChainLabel(chain)
+                  : '${capaChainLabel(chain)} (${whys.length})',
+              style: theme.textTheme.titleSmall,
+            ),
+            if (mayWrite)
+              TextButton.icon(
+                key: CapaDetailScreen.addWhyKey(chain),
+                onPressed: () =>
+                    context.go('${Routes.actions}/capas/${capa.id}/whys/$chain/new'),
+                icon: const Icon(Icons.add),
+                label: const Text('Add a Why'),
+              ),
+          ],
+        ),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          chain == 'occurrence'
+              ? 'Why the problem happened, one step at a time.'
+              : 'Why it was not detected, one step at a time.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Spacing.sm),
+        if (whys.isEmpty)
+          Text(
+            key: CapaDetailScreen.noWhysKey(chain),
+            'Nobody has started this chain yet.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        for (final why in whys)
+          _WhyRow(
+            capa: capa,
+            chain: chain,
+            why: why,
+            mayWrite: mayWrite,
+            isLast: why.sequence == whys.length,
+          ),
+        Padding(
+          key: CapaDetailScreen.chainRootKey(chain),
+          padding: const EdgeInsets.only(top: Spacing.xs),
+          child: Text(
+            root == null
+                ? 'This chain has no confirmed root cause yet.'
+                : 'Confirmed root cause: ${root.statement}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: root == null
+                  ? theme.colorScheme.onSurfaceVariant
+                  : theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One Why: where it sits, what it says, and the controls a writer has over it.
+///
+/// The controls are a `Wrap` rather than a `Row`, because there are five of
+/// them and the body of the window at the widget tests' own surface is under
+/// 500px: a Row would overflow the moment the labels grew, where a Wrap moves
+/// them onto a second line. Moving a Why is offered as two disabled-at-the-ends
+/// buttons rather than a drag, so the position sent is always a position in the
+/// chain — the server's own 400 for "past the end" is unreachable from here.
+class _WhyRow extends StatelessWidget {
+  const _WhyRow({
+    required this.capa,
+    required this.chain,
+    required this.why,
+    required this.mayWrite,
+    required this.isLast,
+  });
+
+  final Capa capa;
+  final String chain;
+  final CapaWhy why;
+  final bool mayWrite;
+  final bool isLast;
+
+  void _change(BuildContext context, {int? sequence, bool? isRoot}) {
+    context.read<CapaDetailBloc>().add(
+          CapaDetailWhyChanged(whyId: why.id, sequence: sequence, isRoot: isRoot),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      key: CapaDetailScreen.whyKey(why.id),
+      margin: const EdgeInsets.only(bottom: Spacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.md, Spacing.lg, 0),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: Spacing.sm,
+              runSpacing: Spacing.sm,
+              children: [
+                Text('Why ${why.sequence}', style: theme.textTheme.titleSmall),
+                if (why.isRoot)
+                  StatusChip(
+                    key: CapaDetailScreen.whyRootChipKey(why.id),
+                    label: 'Confirmed root cause',
+                    tone: StatusTone.success,
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xs, Spacing.lg, 0),
+            child: Text(why.statement, style: theme.textTheme.bodyMedium),
+          ),
+          if (mayWrite)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Spacing.sm, Spacing.xs, Spacing.sm, Spacing.sm),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xs,
+                children: [
+                  // Marking a second Why replaces the first, so the button never
+                  // has to say "unmark the other one first" — it is the same
+                  // request either way, and the server is what makes them one
+                  // conclusion.
+                  TextButton(
+                    key: CapaDetailScreen.whyMarkRootKey(why.id),
+                    onPressed: () => _change(context, isRoot: !why.isRoot),
+                    child: Text(why.isRoot ? 'Clear the root cause' : 'This is the root cause'),
+                  ),
+                  TextButton(
+                    key: CapaDetailScreen.whyEditKey(why.id),
+                    onPressed: () => context.go(
+                      '${Routes.actions}/capas/${capa.id}/whys/$chain/${why.id}/edit',
+                    ),
+                    child: const Text('Revise'),
+                  ),
+                  TextButton(
+                    key: CapaDetailScreen.whyRemoveKey(why.id),
+                    onPressed: () => context.go(
+                      '${Routes.actions}/capas/${capa.id}/whys/$chain/${why.id}/remove',
+                    ),
+                    child: const Text('Remove'),
+                  ),
+                  IconButton(
+                    key: CapaDetailScreen.whyEarlierKey(why.id),
+                    tooltip: 'Move it earlier in the chain',
+                    onPressed:
+                        why.sequence > 1 ? () => _change(context, sequence: why.sequence - 1) : null,
+                    icon: const Icon(Icons.arrow_upward),
+                  ),
+                  IconButton(
+                    key: CapaDetailScreen.whyLaterKey(why.id),
+                    tooltip: 'Move it later in the chain',
+                    onPressed: isLast ? null : () => _change(context, sequence: why.sequence + 1),
+                    icon: const Icon(Icons.arrow_downward),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

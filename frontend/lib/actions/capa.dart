@@ -69,6 +69,59 @@ const Map<String, String> capaMethodLabels = {
 
 String capaMethodLabel(String wire) => capaMethodLabels[wire] ?? wire;
 
+/// The two 5 Why chains a CAPA's team reasons with (issue #210), and the words
+/// this client reads them by.
+///
+/// The wire values are `occurrence` and `escape` — 8D's own names for "why the
+/// problem happened" and "why it was not detected", which is what ADR-0034
+/// calls them. The labels are the question each chain asks, because that is
+/// what a person writing the chain is answering; a chain this build does not
+/// know renders as its own wire value rather than throwing, the same fallback
+/// [capaStatusLabel] takes.
+const Map<String, String> capaChainLabels = {
+  'occurrence': 'Why it happened',
+  'escape': 'Why it was not detected',
+};
+
+String capaChainLabel(String wire) => capaChainLabels[wire] ?? wire;
+
+/// The order the two chains are read in: why the problem happened before why it
+/// was not detected. The server returns them in this order too (see
+/// `listCapaWhys` in the Actions Module), so a Screen written against this list
+/// and one written against the server's own order agree.
+const List<String> capaChainOrder = ['occurrence', 'escape'];
+
+/// One Why in one of a CAPA's two chains (issue #210).
+///
+/// [sequence] is the Why's position in *its own chain*, counting from 1 — the
+/// server keeps a chain contiguous, so the positions a Screen renders are the
+/// order the team reasoned them in. [isRoot] marks where the chain stopped: at
+/// most one Why per chain is the confirmed root cause, which the server
+/// guarantees and replaces rather than refuses when a second is marked.
+@immutable
+class CapaWhy {
+  const CapaWhy({
+    required this.id,
+    required this.chain,
+    required this.sequence,
+    required this.statement,
+    this.isRoot = false,
+  });
+
+  final String id;
+  final String chain;
+
+  /// The 1-based position in [chain].
+  final int sequence;
+
+  final String statement;
+
+  /// Whether this is the chain's confirmed root cause.
+  final bool isRoot;
+
+  String get chainLabel => capaChainLabel(chain);
+}
+
 /// The CAPA a Concern has been turned into, as the Concern's own read names it
 /// (issue #209) — its id, the number a person quotes, and how the investigation
 /// is going.
@@ -103,6 +156,7 @@ class Capa {
     required this.orgUnitName,
     required this.siteId,
     required this.teamMembers,
+    this.whys = const [],
     this.problemStatement,
     this.orgUnitCode,
     this.teamLead,
@@ -146,6 +200,12 @@ class Capa {
   final CapaTeamMember? teamLead;
   final List<CapaTeamMember> teamMembers;
 
+  /// The two 5 Why chains (issue #210), in the order the server returns them:
+  /// `occurrence` first, then `escape`, each chain in its own order. One list
+  /// rather than two named ones, because a Why already says which chain it is
+  /// in — [whysIn] and [rootCauseOf] are the two questions a Screen asks of it.
+  final List<CapaWhy> whys;
+
   final DateTime? openedAt;
   final String? dueDate;
   final DateTime? closedAt;
@@ -173,4 +233,20 @@ class Capa {
   /// Everybody on the investigation, lead first — what a Screen renders when it
   /// wants one line rather than a section.
   List<CapaTeamMember> get team => [?teamLead, ...teamMembers];
+
+  /// One chain's Whys, in their own order (issue #210). The server's list is
+  /// already ordered by chain; this is the filter a Screen renders one chain
+  /// with, kept here so the Screen is not the second place that knows what a
+  /// chain's order is.
+  List<CapaWhy> whysIn(String chain) =>
+      [for (final why in whys) if (why.chain == chain) why];
+
+  /// Where a chain stopped, or null while it is still being reasoned — which is
+  /// a real state, and the one #211 refuses to close a CAPA on.
+  CapaWhy? rootCauseOf(String chain) {
+    for (final why in whys) {
+      if (why.chain == chain && why.isRoot) return why;
+    }
+    return null;
+  }
 }

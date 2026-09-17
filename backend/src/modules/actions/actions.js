@@ -1449,6 +1449,16 @@ const CAPA_METHOD = '8d';
 // (#211) — and only the last two mean nothing may change any more.
 const CLOSED_CAPA_STATUSES = ['closed', 'cancelled'];
 
+// The CAPA's two 5 Why chains (issue #210), in the order a person reasons them:
+// why the problem happened, then why it was not detected. The values mirror the
+// CHECK migration 1800200000000 adds to `capa_root_causes.chain`, and the order
+// is the order the chains are read in — see CAPA_CHAIN_ORDER below.
+//
+// Deliberately *not* named `problem`/`detection`: ADR-0034's own words are "why
+// it happened" and "why it was not detected", and 8D's names for those two
+// chains are occurrence and escape.
+const CAPA_CHAINS = ['occurrence', 'escape'];
+
 // Every column a CAPA is read by, in the order a person reads it: what it is,
 // what it is about, whose it is, where it sits and how it is going. The Org
 // Unit join is inner (a CAPA is always filed somewhere — the Concern's own)
@@ -1472,7 +1482,7 @@ const CAPA_JOINS = `
   LEFT JOIN employees lead ON lead.id = c.team_lead_employee_id
 `;
 
-function toCapa(row, { teamMembers = [], concern = null } = {}) {
+function toCapa(row, { teamMembers = [], whys = [], concern = null } = {}) {
   return {
     id: String(row.id),
     capaNo: row.capa_no,
@@ -1489,6 +1499,12 @@ function toCapa(row, { teamMembers = [], concern = null } = {}) {
       ? { employeeId: String(row.team_lead_employee_id), name: row.team_lead_name }
       : null,
     teamMembers,
+    // The two 5 Why chains (issue #210), both of them, in the order they are
+    // reasoned and each in its own order. One flat list rather than two named
+    // ones: a Why already says which chain it is in, and a caller that wants
+    // one chain filters on the field it already has. `occurrence` comes first
+    // — you work out what went wrong before you ask why nobody caught it.
+    whys,
     openedAt: row.opened_at,
     dueDate: row.due_date,
     status: row.status,
@@ -1563,6 +1579,55 @@ async function listPhasesForActions(actionItemIds, client = null) {
   return byAction;
 }
 
+// The `why` half of `capa_root_causes` (issue #210) — the fishbone half
+// (`verdict`, `evidence_note`, `category`) is #213's and is not read here.
+const WHY_COLUMNS = `
+  r.id, r.chain, r.sequence, r.statement, r.is_root,
+  r.created_at, r.updated_at
+`;
+
+// Which chain reads first: why the problem happened, then why it was not
+// detected. A CASE rather than `ORDER BY chain`, which would sort `escape`
+// ahead of `occurrence` and read the reasoning backwards.
+const CAPA_CHAIN_ORDER = "CASE r.chain WHEN 'occurrence' THEN 1 ELSE 2 END";
+
+function toWhy(row) {
+  return {
+    id: String(row.id),
+    chain: row.chain,
+    sequence: row.sequence,
+    statement: row.statement,
+    // Where the chain stopped. At most one per chain, which the partial unique
+    // index `capa_root_causes_one_root_per_chain` makes true (migration
+    // 1800200000000) rather than merely intended.
+    isRoot: row.is_root,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
+ * The two 5 Why chains on one CAPA, read in one query and in order (issue
+ * #210) — why the problem happened, then why it was not detected.
+ *
+ * The order is a fact about the investigation rather than a rendering choice,
+ * so it is written once here. Within a chain `sequence` is the whole answer,
+ * with `id` breaking a tie two rows should never have: the service keeps a
+ * chain's positions contiguous from 1, and this is the order that guarantee is
+ * for.
+ */
+async function listCapaWhys(capaId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${WHY_COLUMNS}
+       FROM capa_root_causes r
+      WHERE r.capa_id = $1 AND r.cause_type = 'why'
+      ORDER BY ${CAPA_CHAIN_ORDER}, r.sequence ASC, r.id ASC`,
+    [capaId]
+  );
+  return rows.map(toWhy);
+}
+
 /**
  * The Concern a CAPA was opened on, as its own detail read gives it, with each
  * of its measures carrying its own phases (issue #209).
@@ -1606,6 +1671,7 @@ async function readCapaDetail(client, capaId) {
 
   return toCapa(rows[0], {
     teamMembers: await listCapaTeamMembers(capaId, client),
+    whys: await listCapaWhys(capaId, client),
     concern: linked[0] ? await readCapaConcern(client, linked[0].id) : null
   });
 }
@@ -1630,23 +1696,40 @@ async function getCapaDetail(id) {
  * The Org Unit is the CAPA's own, which follows its Concern's (see
  * escalateAction) — so what a caller needs authority at is where the
  * investigation currently lives, not where it was filed.
+ *
+ * It also carries the team's Employee ids (issue #210), because the write gate
+ * for a CAPA's root causes is "edit access at its Org Unit **or a place on its
+ * team**" — and both halves of that are facts about this row, read once rather
+ * than in a query of the route's own. `teamEmployeeIds` is the lead first and
+ * then the members, which is the same set `Capa.team` names on the client: the
+ * lead is on the team, they are just the one whose name is on the row.
  */
 async function findCapa(id) {
   if (parseId(id) === null) return null;
   const { rows } = await getPool().query(
-    `SELECT c.id, c.capa_no, c.status, c.org_unit_id, ou.site_id
+    `SELECT c.id, c.capa_no, c.status, c.org_unit_id, ou.site_id,
+            c.team_lead_employee_id,
+            ARRAY(SELECT m.employee_id FROM capa_team_members m WHERE m.capa_id = c.id)
+              AS team_member_ids
        FROM capas c
        JOIN org_units ou ON ou.id = c.org_unit_id
       WHERE c.id = $1`,
     [id]
   );
   if (!rows[0]) return null;
+  const memberIds = rows[0].team_member_ids ?? [];
   return {
     id: rows[0].id,
     capaNo: rows[0].capa_no,
     status: rows[0].status,
     orgUnitId: rows[0].org_unit_id,
-    siteId: rows[0].site_id
+    siteId: rows[0].site_id,
+    teamEmployeeIds: [
+      ...(rows[0].team_lead_employee_id === null
+        ? []
+        : [String(rows[0].team_lead_employee_id)]),
+      ...memberIds.map(String)
+    ]
   };
 }
 
@@ -1805,6 +1888,27 @@ async function openCapa(
 }
 
 /**
+ * The one refusal every write to an open CAPA's own record makes, in one place
+ * (issue #210): the CAPA exists, and it is not closed.
+ *
+ * `FOR UPDATE`, because the status this decides on must not change under the
+ * write that follows it — the same lock `updateCapa` takes on this row, and
+ * the reason the 409 is not a route's business: a route that read the status
+ * would be a second read racing this one.
+ */
+async function lockOpenCapa(client, capaId) {
+  const { rows: [capa] } = await client.query(
+    'SELECT id, status FROM capas WHERE id = $1 FOR UPDATE',
+    [capaId]
+  );
+  if (!capa) throw notFound('CAPA');
+  if (CLOSED_CAPA_STATUSES.includes(capa.status)) {
+    throw httpError(409, `this CAPA is ${capa.status}, so nothing about it can be changed`);
+  }
+  return capa;
+}
+
+/**
  * Changes what an open CAPA carries about itself (issue #209): the team lead,
  * the team, and the problem description. Nothing else, and deliberately so —
  * the method, the number and the status are not a caller's to set, and the
@@ -1835,14 +1939,7 @@ async function updateCapa(capaId, input, accountId) {
   }
 
   return withActor(accountId, async (client) => {
-    const { rows: [capa] } = await client.query(
-      'SELECT id, status FROM capas WHERE id = $1 FOR UPDATE',
-      [capaId]
-    );
-    if (!capa) throw notFound('CAPA');
-    if (CLOSED_CAPA_STATUSES.includes(capa.status)) {
-      throw httpError(409, `this CAPA is ${capa.status}, so nothing about it can be changed`);
-    }
+    await lockOpenCapa(client, capaId);
 
     if (setsProblemStatement) {
       const written = body.problemStatement === null ? '' : body.problemStatement.trim();
@@ -1874,6 +1971,291 @@ async function updateCapa(capaId, input, accountId) {
         }
       }
     }
+
+    return readCapaDetail(client, capaId);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The 5 Why chains on a CAPA (issue #210, ADR-0034)
+//
+// A CAPA's team reasons its way to the two root causes it needs with two
+// chains: **occurrence** (why the problem happened) and **escape** (why it was
+// not detected). ADR-0034's sentence is that a CAPA "adds the team, the
+// problem description, the root-cause analysis, the effectiveness
+// verification", and this is the root-cause analysis: one row per Why, in the
+// order the team reasoned them, each chain ending in at most one Why marked as
+// its confirmed root cause — which is the fact #211 refuses to close a CAPA
+// without.
+//
+// Three rules shape every write below:
+//
+//   - **The chain is the sequence's scope.** A Why is added at the next
+//     position of *its* chain, and removing one renumbers its chain so the
+//     positions stay 1..n with no gap. A gap is not merely untidy: "the third
+//     Why" is how a person refers to one, and a chain that reads 1, 2, 4 has
+//     two answers to which Why is third.
+//   - **At most one confirmed root cause per chain**, and marking a second
+//     *replaces* the first rather than refusing (the ticket's own words). The
+//     replacement is two statements in one transaction, and the partial unique
+//     index `capa_root_causes_one_root_per_chain` is the backstop for a writer
+//     that does not come through here (migration 1800200000000).
+//   - **A closed investigation is a record.** Every one of these writes asks
+//     `lockOpenCapa` first, so a closed or cancelled CAPA is a 409 — the same
+//     refusal `updateCapa` makes, in the same words.
+//
+// The fishbone half of `capa_root_causes` (`category`, `verdict`,
+// `evidence_note`) is deliberately not touched: #213 records candidate causes
+// and their verdicts, and its rows are `cause_type = 'fishbone'`, which every
+// query here filters out.
+// ---------------------------------------------------------------------------
+
+/**
+ * A Why's statement, which is the only thing it says (issue #210). Required,
+ * and required to say something: an empty Why is a chain that appears to have a
+ * step and does not, which is worse than a shorter chain. The column is NOT
+ * NULL for the same reason.
+ */
+function requireWhyStatement(value) {
+  if (typeof value !== 'string') {
+    throw httpError(400, 'statement must be text');
+  }
+  const said = value.trim();
+  if (said === '') {
+    throw httpError(400, 'a Why must have a statement');
+  }
+  return said;
+}
+
+/**
+ * A chain's Whys in their own order, locked — the list a move or a removal
+ * renumbers from (issue #210).
+ *
+ * `sequence` is the order and `id` breaks a tie (two rows at one position are
+ * a state this service never writes, and reading one the old image left behind
+ * is better than an arbitrary order). Locked because the write that follows is
+ * computed from this list: two callers moving a Why at once must serialise on
+ * the chain rather than each renumber from the list they read.
+ */
+async function orderedWhyIds(client, capaId, chain) {
+  const { rows } = await client.query(
+    `SELECT r.id
+       FROM capa_root_causes r
+      WHERE r.capa_id = $1 AND r.cause_type = 'why' AND r.chain = $2
+      ORDER BY r.sequence ASC, r.id ASC
+      FOR UPDATE`,
+    [capaId, chain]
+  );
+  return rows.map((row) => String(row.id));
+}
+
+/**
+ * Writes positions 1..n onto the Whys in the order given (issue #210). One
+ * statement, and only the rows whose position actually changed — a chain is
+ * short and this is a single round trip either way, but a statement that
+ * rewrites every row would touch nine rows to move one.
+ *
+ * `unnest` with two arrays is what makes it one statement: the pairs are the
+ * whole input, and there is no window between the rows being numbered and the
+ * numbers landing. Nothing here takes a lock of its own — the caller has
+ * already read the chain `FOR UPDATE`, which is what makes the ids it passes
+ * the chain's own current members.
+ */
+async function renumberWhyChain(client, orderedIds) {
+  if (orderedIds.length === 0) return;
+  await client.query(
+    `UPDATE capa_root_causes r
+        SET sequence = v.sequence
+       FROM unnest($1::bigint[], $2::smallint[]) AS v(id, sequence)
+      WHERE r.id = v.id AND r.sequence <> v.sequence`,
+    [orderedIds, orderedIds.map((_, index) => index + 1)]
+  );
+}
+
+/**
+ * Adds a Why to one of a CAPA's two chains (issue #210), at the next position
+ * of that chain.
+ *
+ * The position is computed inside the transaction rather than accepted from
+ * the caller, and the `FOR UPDATE` on the CAPA above is what makes it safe:
+ * "the next position" is `MAX(sequence) + 1` of this chain, and two Whys added
+ * at once must not both be told they are third.
+ *
+ * The chain is checked here rather than in the route because the set of chains
+ * is this file's knowledge, the same way `actionType` is (ACTION_TYPES): a
+ * `chain` that is neither of the two is a 400 naming them, not a raw check
+ * constraint violation.
+ *
+ * The answer is the whole CAPA as it now reads, like every other write in this
+ * slice: a caller that has just added a Why wants the chain it is in, and the
+ * client's Screen is already showing the investigation the row belongs to.
+ */
+async function addCapaWhy(capaId, { chain, statement } = {}, accountId) {
+  if (!CAPA_CHAINS.includes(chain)) {
+    throw httpError(400, `chain must be one of: ${CAPA_CHAINS.join(', ')}`);
+  }
+  const said = requireWhyStatement(statement);
+
+  return withActor(accountId, async (client) => {
+    await lockOpenCapa(client, capaId);
+
+    await client.query(
+      `INSERT INTO capa_root_causes (capa_id, cause_type, chain, sequence, statement)
+       VALUES ($1, 'why', $2,
+               COALESCE((SELECT MAX(r.sequence) + 1
+                           FROM capa_root_causes r
+                          WHERE r.capa_id = $1 AND r.cause_type = 'why' AND r.chain = $2),
+                        1),
+               $3)`,
+      [capaId, chain, said]
+    );
+
+    return readCapaDetail(client, capaId);
+  });
+}
+
+/**
+ * Changes one Why on an open CAPA (issue #210): what it says, where it sits in
+ * its chain, and whether it is the chain's confirmed root cause.
+ *
+ * A partial update, the shape `updateCapa` takes: a field the caller did not
+ * send is left alone, and a body that names none of the three is a 400 rather
+ * than a silent no-op. Three fields, three rules:
+ *
+ *   - **`statement`** — the Why revised. The row is NOT NULL, so an empty one
+ *     is a 400 rather than a cleared field: a Why nobody can say is a Why
+ *     nobody reasoned, and the chain is the record of the reasoning.
+ *   - **`sequence`** — the Why moved to another position of its own chain,
+ *     with the rest of the chain renumbered around it so the positions stay
+ *     contiguous. A position outside the chain (0, or past its end + 1) is a
+ *     400: unlike adding, there is no next position to infer from a number
+ *     that is not a position. A Why never moves between chains — that would be
+ *     a different finding, and the honest way to say it is to remove the Why
+ *     and add it to the chain it belongs in.
+ *   - **`isRoot`** — the chain's conclusion. `true` marks this Why and, in the
+ *     same transaction, unmarks whatever was marked before it, so "marking a
+ *     second replaces the first" is one fact and not a state with two roots.
+ *     `false` undoes it, and a chain with no root is a chain still being
+ *     reasoned — which is exactly the state #211 refuses to close on.
+ *
+ * The lock order is the CAPA, then the Why, then the chain. Every write here
+ * takes them in that order, so two of them cannot meet each other halfway.
+ */
+async function updateCapaWhy(capaId, whyId, input, accountId) {
+  // Total like findAction: a malformed id is "no such Why" rather than a
+  // BIGINT parameter Postgres would refuse to parse.
+  if (parseId(whyId) === null) throw notFound('Why');
+
+  const body = input ?? {};
+  const setsStatement = body.statement !== undefined;
+  const setsSequence = body.sequence !== undefined;
+  const setsRoot = body.isRoot !== undefined;
+
+  if (!setsStatement && !setsSequence && !setsRoot) {
+    throw httpError(400, 'send a statement, a position or a root-cause mark — there is nothing to change otherwise');
+  }
+  if (setsStatement) {
+    requireWhyStatement(body.statement);
+  }
+  if (setsSequence && (!Number.isInteger(body.sequence) || body.sequence < 1)) {
+    throw httpError(400, 'sequence must be a whole position in the chain, counting from 1');
+  }
+  if (setsRoot && typeof body.isRoot !== 'boolean') {
+    throw httpError(400, 'isRoot must be true or false');
+  }
+
+  // Validated once, above, and carried into the transaction rather than
+  // re-checked inside it: the same value either way, and a reader of the write
+  // below should be reading the statement, not its rules.
+  const said = setsStatement ? body.statement.trim() : null;
+
+  return withActor(accountId, async (client) => {
+    await lockOpenCapa(client, capaId);
+
+    const { rows: [why] } = await client.query(
+      `SELECT r.id, r.chain
+         FROM capa_root_causes r
+        WHERE r.id = $1 AND r.capa_id = $2 AND r.cause_type = 'why'
+        FOR UPDATE`,
+      [whyId, capaId]
+    );
+    if (!why) throw notFound('Why');
+
+    if (setsStatement) {
+      await client.query('UPDATE capa_root_causes SET statement = $2 WHERE id = $1', [
+        why.id,
+        said
+      ]);
+    }
+
+    if (setsSequence) {
+      const ids = await orderedWhyIds(client, capaId, why.chain);
+      const others = ids.filter((id) => id !== String(why.id));
+      if (body.sequence > others.length + 1) {
+        throw httpError(
+          400,
+          `sequence must be a position in this chain: 1 to ${others.length + 1}`
+        );
+      }
+      const moved = [...others];
+      moved.splice(body.sequence - 1, 0, String(why.id));
+      await renumberWhyChain(client, moved);
+    }
+
+    if (setsRoot) {
+      if (body.isRoot) {
+        // Unmarked first: the partial unique index is checked per statement, so
+        // marking before unmarking would collide with the root already there.
+        await client.query(
+          `UPDATE capa_root_causes
+              SET is_root = FALSE
+            WHERE capa_id = $1 AND cause_type = 'why' AND chain = $2
+              AND is_root AND id <> $3`,
+          [capaId, why.chain, why.id]
+        );
+        await client.query('UPDATE capa_root_causes SET is_root = TRUE WHERE id = $1', [
+          why.id
+        ]);
+      } else {
+        await client.query('UPDATE capa_root_causes SET is_root = FALSE WHERE id = $1', [
+          why.id
+        ]);
+      }
+    }
+
+    return readCapaDetail(client, capaId);
+  });
+}
+
+/**
+ * Removes a Why from an open CAPA (issue #210) and closes the gap it leaves.
+ *
+ * The row goes: a Why "that turned out wrong" (#200's own words) is not part
+ * of the reasoning any more, and leaving it in place marked as withdrawn would
+ * make every reader of the chain decide which rows count. The chain's positions
+ * are renumbered from its remaining rows in their own order, so the Whys after
+ * the one removed move up by one and the chain still reads 1..n.
+ *
+ * If the Why removed was the chain's confirmed root cause, the chain now has
+ * none — there is nothing to promote and nothing to guess: which remaining Why
+ * is the root is a decision the team makes again, and marking one is the very
+ * next thing this API offers.
+ */
+async function removeCapaWhy(capaId, whyId, accountId) {
+  if (parseId(whyId) === null) throw notFound('Why');
+
+  return withActor(accountId, async (client) => {
+    await lockOpenCapa(client, capaId);
+
+    const { rows: [removed] } = await client.query(
+      `DELETE FROM capa_root_causes
+        WHERE id = $1 AND capa_id = $2 AND cause_type = 'why'
+        RETURNING chain`,
+      [whyId, capaId]
+    );
+    if (!removed) throw notFound('Why');
+
+    await renumberWhyChain(client, await orderedWhyIds(client, capaId, removed.chain));
 
     return readCapaDetail(client, capaId);
   });
@@ -1912,5 +2294,14 @@ module.exports = {
   findCapa,
   getCapaDetail,
   openCapa,
-  updateCapa
+  updateCapa,
+  // ...and its two 5 Why chains (issue #210): adding a Why to one, revising,
+  // moving, marking or removing one. `CAPA_CHAINS` is this file's vocabulary of
+  // the chains, exported beside `CAPA_METHOD` for the same reason — the
+  // Module's own closed sets are what its callers and its tests name, not
+  // string literals scattered through them.
+  CAPA_CHAINS,
+  addCapaWhy,
+  updateCapaWhy,
+  removeCapaWhy
 };

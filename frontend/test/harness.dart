@@ -74,9 +74,21 @@ Future<void> loadAppFonts() async {
 // all (issue #43, first consumed by the Asset register in #56). Left unset it
 // mirrors the server's own invariant: an administrator reaches everywhere and
 // holds no Grant rows; anyone else holds whatever rows the test gives them.
-Map<String, dynamic> _meBody(String role, String selfId, Map<String, dynamic>? orgUnitScope) => {
+Map<String, dynamic> _meBody(
+  String role,
+  String selfId,
+  String? selfEmployeeId,
+  Map<String, dynamic>? orgUnitScope,
+) =>
+    {
       'status': 'active',
-      'account': {'id': selfId, 'email': 'admin@b.c', 'displayName': 'A B', 'role': role},
+      'account': {
+        'id': selfId,
+        'email': 'admin@b.c',
+        'displayName': 'A B',
+        'role': role,
+        'employeeId': selfEmployeeId,
+      },
       'orgUnitScope':
           orgUnitScope ?? {'everywhere': role == Roles.admin, 'grants': const <dynamic>[]},
     };
@@ -1283,6 +1295,7 @@ class FakeWire {
   FakeWire({
     this.role = Roles.admin,
     this.selfId = '1',
+    this.selfEmployeeId,
     List<Map<String, dynamic>>? queue,
     this.queueStatus = 200,
     this.rejectStatus = 200,
@@ -1500,6 +1513,15 @@ class FakeWire {
     this.capaMessage = 'That CAPA could not be read.',
     this.createCapaStatus = 201,
     this.createCapaMessage = 'this Concern already has a CAPA',
+    this.addWhyStatus = 201,
+    this.addWhyMessage = "writing a CAPA's root causes needs edit access at its Org Unit, "
+        'or a place on its team',
+    this.changeWhyStatus = 200,
+    this.changeWhyMessage =
+        "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team",
+    this.removeWhyStatus = 200,
+    this.removeWhyMessage =
+        "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team",
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -1835,6 +1857,38 @@ class FakeWire {
   /// ones on screen. Null means the fake builds one from the Concern.
   Map<String, dynamic>? openedCapa;
 
+  /// Every Why added through the wire (issue #210), as `(capaId, body)` — so a
+  /// test can assert exactly one request was sent, that it named the chain the
+  /// dialog was opened at, and that a reader who may not write sent nothing.
+  final List<(String, Map<String, dynamic>)> whyPosts = [];
+
+  /// `POST /api/actions/capas/:id/whys` — the refusal a test scripts (403 for
+  /// a caller with neither edit access nor a place on the team, 409 for a
+  /// closed investigation, 400 for a chain that is not one of the two).
+  int addWhyStatus;
+  String addWhyMessage;
+
+  /// Every change to one Why, as `(capaId, whyId, body)` — the body carrying
+  /// only the fields the request named, which is the partial update the API
+  /// takes.
+  final List<(String, String, Map<String, dynamic>)> whyPatches = [];
+
+  /// `PATCH /api/actions/capas/:id/whys/:whyId` — the refusal a test scripts.
+  int changeWhyStatus;
+  String changeWhyMessage;
+
+  /// Every Why removed, as `(capaId, whyId)` — the delete this Platform's
+  /// chain editing is the first to make.
+  final List<(String, String)> whyDeletions = [];
+
+  /// `DELETE /api/actions/capas/:id/whys/:whyId` — the refusal a test scripts.
+  int removeWhyStatus;
+  String removeWhyMessage;
+
+  /// The next id the fake gives a Why it creates, so two adds in one test are
+  /// two rows. Ids the fixture already carries are its own.
+  int _nextWhyId = 900;
+
   /// One row of a CAPA's team, resolved off the `employees` fixture — the way
   /// the server's own read joins the directory for a display name.
   Map<String, dynamic>? _capaTeamRow(Object? employeeId) {
@@ -1846,6 +1900,82 @@ class FakeWire {
       }
     }
     return {'employeeId': id, 'name': ''};
+  }
+
+  /// The stored Why with this id, or null when the CAPA does not hold one.
+  static Map<String, dynamic>? _storedWhy(Map<String, dynamic> capa, String whyId) {
+    for (final why in (capa['whys'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()) {
+      if (why['id'].toString() == whyId) return why;
+    }
+    return null;
+  }
+
+  /// Applies a change to a stored CAPA's Why the way the server would
+  /// (issue #210): the statement replaced when it was sent, the whole chain
+  /// renumbered around a move, and a root-cause mark that replaces whatever the
+  /// chain's root was. Returns whether the CAPA holds the Why at all — a
+  /// request against one it does not is the server's 404.
+  ///
+  /// The rules, not the wording: the backend suite is where they are proved.
+  /// What this buys is that a Screen's own rendering is tested against the
+  /// answer the API really gives, rather than against a body a test wrote for
+  /// it.
+  static bool _changeStoredWhy(
+    Map<String, dynamic> capa,
+    String whyId,
+    Map<String, dynamic> body,
+  ) {
+    final whys = (capa['whys'] as List<dynamic>? ?? <dynamic>[]);
+    final why = _storedWhy(capa, whyId);
+    if (why == null) return false;
+
+    if (body.containsKey('statement')) {
+      why['statement'] = body['statement'];
+    }
+    if (body['isRoot'] == true) {
+      for (final other in whys.whereType<Map<String, dynamic>>()) {
+        if (other['chain'] == why['chain']) {
+          other['isRoot'] = other['id'].toString() == whyId;
+        }
+      }
+    } else if (body['isRoot'] == false) {
+      why['isRoot'] = false;
+    }
+    final sequence = body['sequence'];
+    if (sequence is int) {
+      final siblings = [
+        for (final each in whys.whereType<Map<String, dynamic>>())
+          if (each['chain'] == why['chain'] && each['id'].toString() != whyId) each,
+      ];
+      siblings.insert((sequence - 1).clamp(0, siblings.length), why);
+      for (var index = 0; index < siblings.length; index++) {
+        siblings[index]['sequence'] = index + 1;
+      }
+    }
+    capa['whys'] = whys;
+    return true;
+  }
+
+  /// Removes a stored CAPA's Why and closes the gap the way the server would
+  /// (issue #210): the chain is renumbered from what is left, so it still reads
+  /// 1..n. Returns whether the CAPA held it.
+  static bool _removeStoredWhy(Map<String, dynamic> capa, String whyId) {
+    final whys = (capa['whys'] as List<dynamic>? ?? <dynamic>[]);
+    final why = _storedWhy(capa, whyId);
+    if (why == null) return false;
+
+    final chain = why['chain'];
+    whys.remove(why);
+    var position = 0;
+    for (final each in whys.whereType<Map<String, dynamic>>()) {
+      if (each['chain'] == chain) {
+        position += 1;
+        each['sequence'] = position;
+      }
+    }
+    capa['whys'] = whys;
+    return true;
   }
 
   /// `POST /api/maintenance/assets`.
@@ -2044,6 +2174,14 @@ class FakeWire {
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
   final String selfId;
+
+  /// The Employee the caller's own Account is linked to, as `/me` reports it
+  /// (issue #210) — `app_users.employee_id`, which the server has always
+  /// answered with. Null is the ordinary case for an administrator, who need
+  /// not be an Employee; a test that wants the caller on a CAPA's *team* sets
+  /// this to an Employee the CAPA names, which is the whole second half of the
+  /// write rule for a CAPA's chains.
+  final String? selfEmployeeId;
   List<Map<String, dynamic>> queue;
   int queueStatus;
   int rejectStatus;
@@ -3499,7 +3637,10 @@ class FakeWire {
           return http.Response(jsonEncode({'nonconformance': row}), 200);
         }
         if (path == '/api/people/me') {
-          return http.Response(jsonEncode(_meBody(role, selfId, orgUnitScope)), 200);
+          return http.Response(
+            jsonEncode(_meBody(role, selfId, selfEmployeeId, orgUnitScope)),
+            200,
+          );
         }
         if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/board')) {
           final siteId = path.split('/')[4];
@@ -5460,6 +5601,68 @@ class FakeWire {
           capas[capaId] = capa;
           return http.Response(jsonEncode({'capa': capa}), 201);
         }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/capas/') &&
+            path.endsWith('/whys')) {
+          // `/api/actions/capas/:id/whys` (issue #210): adding a Why to one of
+          // the two chains. The fake does what the server does — the position
+          // is the chain's own next one, computed here rather than sent — so a
+          // test asserting the order on screen is asserting an order the API
+          // would really have produced.
+          final capaId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          whyPosts.add((capaId, body));
+          if (addWhyStatus != 201) {
+            return http.Response(jsonEncode({'message': addWhyMessage}), addWhyStatus);
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          final chain = body['chain'].toString();
+          final whys = (capa['whys'] as List<dynamic>? ?? <dynamic>[]);
+          final sequence = whys
+                  .whereType<Map<String, dynamic>>()
+                  .where((why) => why['chain'] == chain)
+                  .length +
+              1;
+          whys.add(capaWhyJson('${_nextWhyId++}', sequence, body['statement'].toString(),
+              chain: chain));
+          capa['whys'] = whys;
+          return http.Response(jsonEncode({'capa': capa}), 201);
+        }
+        if ((request.method == 'PATCH' || request.method == 'DELETE') &&
+            path.startsWith('/api/actions/capas/') &&
+            path.contains('/whys/')) {
+          // `/api/actions/capas/:id/whys/:whyId` (issue #210) — changing one
+          // Why, or removing it. Both renumber the chain around the change,
+          // which is the rule a Screen renders and the ticket states: a chain
+          // reads 1..n with no gap, whatever was done to it. The authority on
+          // all of it is the backend suite, not this.
+          final parts = path.split('/');
+          final capaId = parts[4];
+          final whyId = parts[6];
+          final capa = capas[capaId];
+          if (request.method == 'PATCH') {
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            whyPatches.add((capaId, whyId, body));
+            if (changeWhyStatus != 200) {
+              return http.Response(jsonEncode({'message': changeWhyMessage}), changeWhyStatus);
+            }
+            if (capa == null || !_changeStoredWhy(capa, whyId, body)) {
+              return http.Response(jsonEncode({'message': 'Why not found'}), 404);
+            }
+            return http.Response(jsonEncode({'capa': capa}), 200);
+          }
+          whyDeletions.add((capaId, whyId));
+          if (removeWhyStatus != 200) {
+            return http.Response(jsonEncode({'message': removeWhyMessage}), removeWhyStatus);
+          }
+          if (capa == null || !_removeStoredWhy(capa, whyId)) {
+            return http.Response(jsonEncode({'message': 'Why not found'}), 404);
+          }
+          return http.Response(jsonEncode({'capa': capa}), 200);
+        }
         if (request.method == 'GET' && path.startsWith('/api/actions/capas/')) {
           // `/api/actions/capas/:id` (issue #209). Declared before the
           // one-segment `/api/actions/:id` read below, which would otherwise
@@ -5581,6 +5784,7 @@ Map<String, dynamic> capaJson(
   String? problemStatement,
   Map<String, dynamic>? teamLead,
   List<Map<String, dynamic>> teamMembers = const [],
+  List<Map<String, dynamic>> whys = const [],
   String openedAt = '2026-09-16T02:00:00.000Z',
   String? dueDate,
   String? effectivenessCheckDueAt,
@@ -5599,6 +5803,9 @@ Map<String, dynamic> capaJson(
       'problemStatement': problemStatement,
       'teamLead': teamLead,
       'teamMembers': teamMembers,
+      // The two 5 Why chains (issue #210), in the order the server sends them:
+      // `occurrence` first, then `escape`, each chain in its own order.
+      'whys': whys,
       'openedAt': openedAt,
       'dueDate': dueDate,
       'closedAt': null,
@@ -5606,6 +5813,26 @@ Map<String, dynamic> capaJson(
       'effectivenessVerifiedAt': null,
       'effectivenessNote': null,
       'concern': concern,
+    };
+
+/// One Why of one of a CAPA's chains, as `GET /api/actions/capas/:id` sends it
+/// (issue #210) — the client-side counterpart of the backend's own `toWhy`,
+/// key for key.
+Map<String, dynamic> capaWhyJson(
+  String id,
+  int sequence,
+  String statement, {
+  String chain = 'occurrence',
+  bool isRoot = false,
+}) =>
+    {
+      'id': id,
+      'chain': chain,
+      'sequence': sequence,
+      'statement': statement,
+      'isRoot': isRoot,
+      'createdAt': '2026-09-16T03:00:00.000Z',
+      'updatedAt': '2026-09-16T03:00:00.000Z',
     };
 
 /// One phase as the Action's own `phases` array sends it (issue #177).

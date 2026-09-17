@@ -37,6 +37,7 @@ class AccountActive extends AccountStatus {
     required super.email,
     required this.displayName,
     required this.role,
+    this.employeeId,
     this.orgUnitScope = const OrgUnitScope.nowhere(),
   });
 
@@ -46,6 +47,18 @@ class AccountActive extends AccountStatus {
   final String id;
   final String displayName;
   final String role;
+
+  /// The Employee this Account is linked to, when it is linked to one
+  /// (issue #210). `app_users.employee_id` has been on the row since the
+  /// baseline and `/me` has always answered with it; the CAPA's chains are the
+  /// first thing on the client to need it, because "may this caller write this
+  /// investigation's root causes" is answered by edit access at its Org Unit
+  /// **or a place on its team** — and a place on a team is an Employee.
+  ///
+  /// Null is the ordinary case for an administrator, who need not be an
+  /// Employee at all (CONTEXT.md's Account entry says so, and the server's own
+  /// `canAct` answers for them by role instead).
+  final String? employeeId;
 
   /// Where this Account may work (issue #43) — "nowhere" by default so a
   /// cached client that predates this field, or a response the API sent with
@@ -153,6 +166,7 @@ class PeopleApi {
       email: email,
       displayName: account['displayName'] as String,
       role: account['role'] as String,
+      employeeId: account['employeeId']?.toString(),
       orgUnitScope: _orgUnitScopeFrom(body['orgUnitScope']),
     );
   }

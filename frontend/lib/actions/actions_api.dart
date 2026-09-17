@@ -389,6 +389,84 @@ class ActionsApi {
     return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
   }
 
+  /// Adds a Why to one of a CAPA's chains (issue #210) — `occurrence` or
+  /// `escape`, at the next position of that chain.
+  ///
+  /// The position is not sent: "the next one" is the chain's own fact, and the
+  /// server computes it inside the transaction that writes the row. The chain
+  /// is a body field rather than an address of its own because a chain is a
+  /// column of the Why, not a record.
+  ///
+  /// The answer is the whole CAPA as it now reads — every write in this slice
+  /// answers that way, so the Screen showing the investigation is refreshed
+  /// from the one response rather than by a second read.
+  Future<Capa> addCapaWhy(
+    String accessToken,
+    String capaId, {
+    required String chain,
+    required String statement,
+  }) async {
+    final path = '/api/actions/capas/$capaId/whys';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'chain': chain, 'statement': statement}),
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
+  /// Revises one Why (issue #210): what it says, where it sits in its chain,
+  /// and whether it is the chain's confirmed root cause.
+  ///
+  /// Each field is sent only when the caller names it, so a form that changed
+  /// one thing cannot quietly rewrite the other two — and a body naming nothing
+  /// is a 400 rather than a silent no-op. Marking a second Why as the root
+  /// cause *replaces* the first rather than being refused, which is what the
+  /// API means by "the chain stopped here".
+  Future<Capa> updateCapaWhy(
+    String accessToken,
+    String capaId,
+    String whyId, {
+    String? statement,
+    int? sequence,
+    bool? isRoot,
+  }) async {
+    final path = '/api/actions/capas/$capaId/whys/$whyId';
+    // Built in two steps rather than with the null-aware element syntax: an
+    // `info`-level lint on that shape fails `flutter analyze` (the same rule
+    // `AppSearchField`'s callers follow).
+    final body = <String, dynamic>{};
+    if (statement != null) body['statement'] = statement;
+    if (sequence != null) body['sequence'] = sequence;
+    if (isRoot != null) body['isRoot'] = isRoot;
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
+  /// Removes one Why from a CAPA's chain (issue #210), leaving the chain's
+  /// order contiguous — the server renumbers what is left.
+  Future<Capa> removeCapaWhy(String accessToken, String capaId, String whyId) async {
+    final path = '/api/actions/capas/$capaId/whys/$whyId';
+    final response = await _send(
+      () => _client.delete(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken'},
+      ),
+      path,
+    );
+    return _capaFrom(_decode(response, path)['capa'] as Map<String, dynamic>);
+  }
+
   /// The five Pillars, for the raise form's chooser (ADR-0023: a value with a
   /// known set is chosen, never typed).
   Future<List<Pillar>> fetchPillars(String accessToken) async {
@@ -517,6 +595,10 @@ class ActionsApi {
           for (final member in (json['teamMembers'] as List<dynamic>? ?? const []))
             _capaTeamMemberFrom(member as Map<String, dynamic>),
         ],
+        whys: [
+          for (final why in (json['whys'] as List<dynamic>? ?? const []))
+            _capaWhyFrom(why as Map<String, dynamic>),
+        ],
         openedAt: json['openedAt'] == null ? null : DateTime.parse(json['openedAt'] as String),
         dueDate: json['dueDate'] as String?,
         closedAt: json['closedAt'] == null ? null : DateTime.parse(json['closedAt'] as String),
@@ -535,6 +617,18 @@ class ActionsApi {
   static CapaTeamMember _capaTeamMemberFrom(Map<String, dynamic> json) => CapaTeamMember(
         employeeId: json['employeeId'].toString(),
         name: json['name'] as String? ?? '',
+      );
+
+  /// One Why of one of a CAPA's chains (issue #210). `sequence` is the chain's
+  /// own 1-based position, which the server sends as a number and keeps
+  /// contiguous — a client that renumbered them would be the second place the
+  /// order is decided, so it is read and rendered as sent.
+  static CapaWhy _capaWhyFrom(Map<String, dynamic> json) => CapaWhy(
+        id: json['id'].toString(),
+        chain: json['chain'] as String,
+        sequence: json['sequence'] as int,
+        statement: json['statement'] as String,
+        isRoot: json['isRoot'] == true,
       );
 
   static ActionPhase _phaseFrom(Map<String, dynamic> json) => ActionPhase(

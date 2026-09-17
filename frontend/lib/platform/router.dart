@@ -18,8 +18,10 @@ import '../actions/action_unlink_nonconformance_dialog.dart';
 import '../actions/actions_api.dart';
 import '../actions/actions_bloc.dart';
 import '../actions/actions_screen.dart';
+import '../actions/capa.dart';
 import '../actions/capa_detail_bloc.dart';
 import '../actions/capa_detail_screen.dart';
+import '../actions/capa_why_dialog.dart';
 import '../actions/open_capa_dialog.dart';
 import '../home_bloc.dart';
 import '../home_screen.dart';
@@ -175,6 +177,30 @@ bool holdsQualityAuthority(BuildContext context, String orgUnitId) {
   final account = context.watch<AccountBloc>().state;
   return account is AccountApproved &&
       account.account.orgUnitScope.canHoldQualityAt(orgUnitId);
+}
+
+/// Whether the signed-in Account may write a CAPA's 5 Why chains (issue #210) —
+/// the client's half of the server's own rule, which is an **or**: edit access
+/// at the CAPA's Org Unit, *or* a place on its team.
+///
+/// The second half is why this reads the Account's own `employeeId`
+/// (`app_users.employee_id`, which an Account need not have — an administrator
+/// is not necessarily an Employee) and compares it against the team the CAPA
+/// carries: the team lead is on the team, and so is every member. An
+/// administrator reaches everywhere through the first half, exactly as
+/// `canAct` answers for them on the server.
+///
+/// A top-level function rather than a local, for the reason
+/// [holdsQualityAuthority] above is one: the Screen and each of the three
+/// dialogs a writer may open ask it, and they are separate widgets — and it is
+/// read **inside a build**, never hoisted into a route's builder, so the
+/// control appears the moment `/me` answers rather than never.
+bool mayEditCapaChains(BuildContext context, Capa capa) {
+  final account = context.watch<AccountBloc>().state;
+  if (account is! AccountApproved) return false;
+  if (account.account.orgUnitScope.canWriteAt(capa.orgUnitId)) return true;
+  final employeeId = account.account.employeeId;
+  return employeeId != null && capa.team.any((member) => member.employeeId == employeeId);
 }
 
 GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}) {
@@ -1121,9 +1147,17 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
           // page when the *pattern* matches, so moving from one CAPA to
           // another would otherwise leave this Bloc — and the Screen
           // reading it — holding the investigation before.
-          GoRoute(
-            path: '${Routes.actions}/capas/:id',
-            builder: (context, state) {
+          //
+          // It is a `ShellRoute` of its own for the reason the Action detail
+          // route is one (issue #210): a child `GoRoute`'s page is a
+          // *sibling* of its parent's, so the three chain dialogs — add a
+          // Why, revise one, remove one — would not see a `BlocProvider`
+          // created inside the detail route's own builder. Providing it here
+          // creates one `CapaDetailBloc` for the Screen and every dialog
+          // over it, which is what makes a write from a dialog repaint the
+          // chains behind it.
+          ShellRoute(
+            builder: (context, state, child) {
               final account = context.watch<AccountBloc>().state;
               if (account is! AccountApproved) return const SizedBox.shrink();
               final capaId = state.pathParameters['id']!;
@@ -1133,9 +1167,57 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   actionsApi: context.read<ActionsApi>(),
                   authGateway: context.read<AuthGateway>(),
                 )..add(CapaDetailStarted(capaId)),
-                child: CapaDetailScreen(capaId: capaId),
+                child: child,
               );
             },
+            routes: [
+              GoRoute(
+                path: '${Routes.actions}/capas/:id',
+                builder: (context, state) =>
+                    CapaDetailScreen(capaId: state.pathParameters['id']!),
+                routes: [
+                  // `${Routes.actions}/capas/:id/whys/:chain/new` — adding a
+                  // Why to one of the two chains (issue #210). Nested under
+                  // the CAPA's own route so it shares the Bloc above and a
+                  // write repaints the chains behind it, exactly as the
+                  // Action's own measure dialog is nested under its Action.
+                  GoRoute(
+                    path: 'whys/:chain/new',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) =>
+                          CapaWhyDialog(chain: state.pathParameters['chain']!),
+                    ),
+                  ),
+                  // `.../whys/:chain/:whyId/edit` — revising one. It names
+                  // both the chain and the Why, so the address is the whole
+                  // request: a Why that is not in that chain is refused
+                  // rather than quietly edited.
+                  GoRoute(
+                    path: 'whys/:chain/:whyId/edit',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaWhyEditDialog(
+                        chain: state.pathParameters['chain']!,
+                        whyId: state.pathParameters['whyId']!,
+                      ),
+                    ),
+                  ),
+                  // `.../whys/:chain/:whyId/remove` — taking one out of the
+                  // chain, with the confirmation that says so.
+                  GoRoute(
+                    path: 'whys/:chain/:whyId/remove',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaWhyRemoveDialog(
+                        chain: state.pathParameters['chain']!,
+                        whyId: state.pathParameters['whyId']!,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: Routes.approvals,
