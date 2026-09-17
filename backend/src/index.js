@@ -45,9 +45,9 @@ const healthRoutes = health.mount(app);
 // number is read out of the Module's own records (the entry shape is in
 // maintenance/kpi-registry.js's header) — and this is the one place they meet.
 // The board's own code knows no KPI by name: it computes whatever this registry
-// names and reports `no_data` for everything else, which is what the whole
-// Safety, Quality and People catalogue does today, its Modules not recording
-// work yet.
+// names and reports `no_data` for everything else, which is still most of the
+// catalogue: Safety and People record no work yet, and the Quality and Delivery
+// KPIs that would need quantity produced have no Production Module to count it.
 //
 // Adding a Module's KPIs is one spread below and nothing else: no file in
 // another Module changes, and no Module requires another (ADR-0006). A KPI
@@ -55,7 +55,12 @@ const healthRoutes = health.mount(app);
 // ever collide, and a collision is a mistake in the contributions rather than
 // something this file can resolve meaningfully.
 const kpiRegistry = {
-  ...maintenance.kpiRegistry
+  ...maintenance.kpiRegistry,
+  // Quality's own (issue #216): open Non-conformances, overdue CAPAs, the
+  // complaints received in the period and the cost of poor quality, each read
+  // from this Module's records — quality/kpi-registry.js argues the entries and
+  // what it deliberately leaves reporting `no_data`.
+  ...quality.kpiRegistry
 };
 
 // ---------------------------------------------------------------------------

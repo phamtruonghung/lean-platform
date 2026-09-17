@@ -3,7 +3,10 @@
  * backend, after People, Maintenance and Actions, and the one issue #203
  * creates.
  *
- * One export, and it is here because something outside this Module mounts it.
+ * Two exports, and neither is a lookup: `router` is here because something
+ * outside this Module mounts it, and `kpiRegistry` because something outside
+ * this Module publishes it.
+ *
  * `router` is this Module's own routes — the Product catalogue, the Defect
  * code tree, the Non-conformance log and the floor device's own door to
  * recording one, the Customer list and the Customer complaints a customer's
@@ -16,6 +19,15 @@
  * looks at, so like every Module's `router` it is a special case of none of
  * ADR-0006's three clauses: it is how the Module becomes reachable over HTTP
  * at all.
+ *
+ * `kpiRegistry` is this Module's contribution to the tier board (issue #216),
+ * read from quality/kpi-registry.js's own header, which argues each entry and
+ * each deliberate absence. It is an export rather than a route because that is
+ * what issue #202's composition needs: src/index.js spreads every Module's
+ * contribution into one registry and hands it to the board's own route, so no
+ * Module has to know about another. ADR-0006 allows it — it is read-only data
+ * about records this Module owns, a value rather than a command, and domain
+ * rather than utility.
  *
  * Nothing else is exported, and each absence is a decision rather than an
  * omission:
@@ -31,18 +43,12 @@
  *     is what ADR-0006's "What a Module's entry point may expose" section
  *     anticipates and what people-entry-point.test.js's own header describes
  *     as cheap on the way in and expensive on the way out.
- *   - No KPI registry contribution yet. The tier board's registry (issue #202)
- *     is composed in src/index.js from whatever each Module offers, and this
- *     Module records no measurement anyone could put on that board yet: it
- *     holds two catalogues and, since #205, the Non-conformance log — and a
- *     Non-conformance is a record of work rather than a published number. The
- *     Quality pillar's own KPIs are computed by the baseline's views from
- *     `quality_issues`, `nonconformances` and the CAPA tables; a view has no
- *     row to report until enough of them exist for a period, so the board
- *     answers `no_data` exactly as it did before this slice, and contributing
- *     a registry entry here would be inventing a number rather than publishing
- *     one. The contribution arrives with the slice that computes it — the
- *     Quality KPIs are their own ticket.
+ *   - No route for the board. The board is Maintenance's address (`GET
+ *     /api/maintenance/sites/:siteId/board`) and stays there: this Module
+ *     contributes numbers into a registry the board reads, never a second
+ *     board of its own. Its own KPIs need no endpoint — they are read through
+ *     the one the Platform already has, with no change to that request or
+ *     response.
  *   - No error plumbing and no SQL helpers. errors.js is this Module's own
  *     copy (ADR-0006's third clause, "domain, not utility" — see its header),
  *     and products.js/defect-codes.js/nonconformances.js each keep their own
@@ -87,6 +93,10 @@ const customerComplaintRoutes = require('./customer-complaint-routes');
 const supplierRoutes = require('./supplier-routes');
 const supplierNcrRoutes = require('./supplier-ncr-routes');
 const floorRoutes = require('./floor-routes');
+// This Module's own contribution to the tier board's registry (issue #216),
+// beside the routers rather than among them: it is data src/index.js spreads
+// into the assembled registry, not a piece of the HTTP surface.
+const kpiRegistry = require('./kpi-registry');
 
 const router = express.Router();
 router.use(productRoutes);
@@ -99,5 +109,6 @@ router.use(supplierNcrRoutes);
 router.use(floorRoutes);
 
 module.exports = {
-  router
+  router,
+  kpiRegistry
 };

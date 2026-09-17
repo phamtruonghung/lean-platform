@@ -7,21 +7,21 @@
  * that an entry point still hands back what its consumers need, and nothing
  * else in this suite consumes `modules/quality`'s exports at all.
  *
- * One export, and the assertion below is what keeps it one. `router` is this
+ * Two exports, and the assertion below is what keeps it two. `router` is this
  * Module's routes — the Product catalogue, the Defect code tree and, since
  * issue #205, the Non-conformance log, plus the shared floor device's own door
  * to that log (issue #207) — mounted by src/index.js at
  * `/api/quality`, the documented mount-target special case every Module's
- * `router` is (see index.js's own header for the full justification). Issue
- * #203 adds no lookup about a Product or a Defect code for another Module to
- * call, because nothing outside Quality asks one yet, and no KPI registry
- * contribution, because a catalogue is not a number; issue #205 adds neither
- * either, for its own reasons index.js's header gives. A future slice that
- * starts publishing Quality numbers adds the KPI contribution; a sibling
- * Module that needs a Quality answer adds the lookup. Both are additions to
- * this list, which is what this test exists to make visible — and dropping
- * `router` would take the Module off the wire entirely, which nothing else
- * here would notice.
+ * `router` is (see index.js's own header for the full justification).
+ * `kpiRegistry` is this Module's contribution to the tier board (issue #216),
+ * spread into the assembled registry at the same composition point, which is
+ * the addition issue #203's header predicted and what the board's own
+ * `QUALITY` KPIs needed. Still absent, and deliberately: no lookup about a
+ * Product or a Defect code for another Module to call, because nothing outside
+ * Quality asks one yet. Both of these are additions to this list, which is what
+ * this test exists to make visible — and dropping `router` would take the
+ * Module off the wire entirely, while dropping `kpiRegistry` would silently
+ * empty the Quality pillar, neither of which anything else here would notice.
  *
  * Needs no database: `getPool()` (platform/db.js) is lazy, so requiring the
  * Module and inspecting its export shape never opens a connection.
@@ -32,18 +32,72 @@ const assert = require('node:assert');
 
 const quality = require('../src/modules/quality');
 
-test('the Quality Module entry point exposes exactly one name', () => {
-  assert.deepStrictEqual(Object.keys(quality).sort(), ['router']);
+test('the Quality Module entry point exposes exactly two names', () => {
+  assert.deepStrictEqual(Object.keys(quality).sort(), ['kpiRegistry', 'router']);
 });
 
 // A router, not a function: src/index.js mounts it with `app.use`, so what
 // this pins down is that it is a mountable Express router rather than
 // something a caller has to invoke first — the same thing
 // maintenance-entry-point.test.js asserts of the two routers there.
+//
+// The registry is asserted at the level that matters to the board: it is an
+// object of entries, each with the four fields board.js reads, and it names
+// exactly the Quality codes this Module claims — including the ones it
+// deliberately leaves out, which is the half of issue #216 a test can pin
+// without a database. What each entry computes is proved over HTTP in
+// quality-kpis.test.js.
 test('router is a mountable Express router', () => {
   assert.strictEqual(typeof quality.router, 'function');
   assert.strictEqual(typeof quality.router.use, 'function');
   assert.strictEqual(typeof quality.router.handle, 'function');
+});
+
+test('kpiRegistry names the Quality KPIs this Module computes, and nothing else', () => {
+  assert.deepStrictEqual(Object.keys(quality.kpiRegistry).sort(), [
+    'COST_COPQ',
+    'COST_SCRAP',
+    'QUA_COMPLAINTS',
+    'QUA_OPEN_NC',
+    'QUA_OVERDUE_CAPA'
+  ]);
+
+  // The four fields board.js reads off an entry, plus the one it reads instead
+  // of `valueColumn` when the definition aggregates a ratio. This Module
+  // contributes no ratio, because every Quality ratio needs a quantity produced
+  // and there is no Production Module — which is exactly why the codes below
+  // are absent.
+  //
+  // `dateColumn` is a string for a period measure and `null` for a state, which
+  // is the difference board.js acts on: a null column means the source is not
+  // narrowed by the period at all, the shape Maintenance's own snapshot KPI
+  // (`MNT_BACKLOG`) has. The two counts here are states; the complaints and
+  // both Cost entries are period measures.
+  for (const [code, entry] of Object.entries(quality.kpiRegistry)) {
+    assert.strictEqual(typeof entry.view, 'string', `${code} names its source`);
+    assert.strictEqual(typeof entry.valueColumn, 'string', `${code} names its value column`);
+    assert.ok(
+      entry.dateColumn === null || typeof entry.dateColumn === 'string',
+      `${code} names its date column, or none when it is a state rather than a period measure`
+    );
+    assert.strictEqual(entry.orgUnitColumn, 'org_unit_id', `${code} is filed at an Org Unit`);
+  }
+
+  // Which of the two readings each of the five is: the counts are states, and
+  // the three period measures carry the day their events happened on.
+  for (const code of ['QUA_OPEN_NC', 'QUA_OVERDUE_CAPA']) {
+    assert.strictEqual(quality.kpiRegistry[code].dateColumn, null, `${code} is a state`);
+  }
+  for (const code of ['QUA_COMPLAINTS', 'COST_COPQ', 'COST_SCRAP']) {
+    assert.strictEqual(typeof quality.kpiRegistry[code].dateColumn, 'string', `${code} is a measure`);
+  }
+
+  // The production-count KPIs stay unclaimed on purpose: a denominator nothing
+  // writes is an invented number, so the board keeps answering `no_data` for
+  // them (issue #216's own criterion).
+  for (const code of ['QUA_FPY', 'QUA_INT_PPM', 'QUA_CUST_PPM', 'DEL_QUALITY_RATE']) {
+    assert.strictEqual(quality.kpiRegistry[code], undefined, `${code} must stay no_data`);
+  }
 });
 
 // The two catalogues and the Non-conformance log are this Module's surface

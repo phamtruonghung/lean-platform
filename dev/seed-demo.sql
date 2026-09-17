@@ -601,10 +601,138 @@ SELECT ou.id, now() - make_interval(days => v.days_ago), v.observation_type, v.c
  );
 
 -- -----------------------------------------------------------------------------
--- KPI targets — so the board judges the eight maintenance KPIs it can read,
--- rather than reporting "no target" for every one. (The registry maps only
--- those eight; the other pillars' definitions have no view mapping and stay
--- no_data regardless of what is seeded.)
+-- Quality on the tier board — the records the Quality and Cost KPIs read.
+--
+-- The two `DEMO-NC-…` Non-conformances above are what `QUA_OPEN_NC` counts, so
+-- this section adds the rest of what the board can now answer: a scrap and a
+-- rework Disposition for the cost of poor quality (with the standard cost and
+-- the labour rate those figures are valued at, because a seed that bypassed
+-- them would leave the numbers unresolved), a supplier NCR whose recovery is
+-- netted off that cost, an overdue CAPA, and two customer complaints received
+-- inside the current month.
+--
+-- Every row is keyed by a fixed demo identifier and guarded by a NOT EXISTS or
+-- an ON CONFLICT on a parent, the same contract the rest of this file keeps: a
+-- re-run leaves every count unchanged and `document_sequences` untouched, which
+-- is why `DEMO-CC-1`, `DEMO-SN-1` and `DEMO-CAPA-1` are written out rather than
+-- taken from their tables' own sequences.
+-- -----------------------------------------------------------------------------
+INSERT INTO product_costs (product_id, standard_cost, effective_from, note)
+SELECT p.id, 8.50, DATE '2025-01-01', 'DEMO standard cost'
+  FROM products p
+ WHERE p.code = 'DEMO-PROD-1'
+   AND NOT EXISTS (
+     SELECT 1 FROM product_costs pc
+      WHERE pc.product_id = p.id AND pc.effective_from = DATE '2025-01-01'
+   );
+
+INSERT INTO cost_rates (scope_type, scope_id, rate_type, amount, effective_from, note)
+SELECT 'org_unit', ou.id, 'labor_per_hour', 32.00, DATE '2025-01-01', 'DEMO labour rate'
+  FROM org_units ou
+ WHERE ou.code = 'A1-L1'
+   AND ou.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+   AND NOT EXISTS (
+     SELECT 1 FROM cost_rates cr
+      WHERE cr.scope_type = 'org_unit' AND cr.scope_id = ou.id
+        AND cr.rate_type = 'labor_per_hour' AND cr.effective_from = DATE '2025-01-01'
+   );
+
+INSERT INTO quality_dispositions
+  (quality_issue_id, disposition_type, quantity, uom_code, rework_minutes,
+   decided_by, decided_at, notes)
+SELECT qi.id, v.disposition_type, v.quantity, 'EA', v.rework_minutes, e.id,
+       now() - make_interval(days => v.days_ago), v.notes
+  FROM (VALUES
+    ('DEMO-NC-1', 'scrap',  8, 0.00, 3,  'DEMO: eight widgets scrapped at standard cost.'),
+    ('DEMO-NC-2', 'rework', 5, 90.00, 2, 'DEMO: five widgets reworked, 90 minutes of labour.')
+  ) AS v(issue_no, disposition_type, quantity, rework_minutes, days_ago, notes)
+  JOIN quality_issues qi ON qi.issue_no = v.issue_no
+  JOIN employees e ON e.employee_no = 'DEMO-004'
+ WHERE NOT EXISTS (
+   SELECT 1 FROM quality_dispositions qd WHERE qd.quality_issue_id = qi.id
+ );
+
+INSERT INTO customers (code, name, contact_email) VALUES
+  ('DEMO-CUST-1', 'Meridian Pumps', 'quality@meridian.example.com'),
+  ('DEMO-CUST-2', 'Apex Drives', NULL)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO customer_complaints
+  (complaint_no, customer_id, product_id, org_unit_id, defect_code_id, complaint_type,
+   severity, quantity_affected, uom_code, customer_ref, lot_ref, description,
+   received_at, response_due_at, status, response_note, closed_at)
+SELECT v.complaint_no, c.id, p.id, ou.id, dc.id, 'quality', v.severity,
+       v.quantity_affected, 'EA', v.customer_ref, v.lot_ref, v.description,
+       now() - make_interval(days => v.received_days_ago),
+       CASE WHEN v.due_in_days IS NULL THEN NULL
+            ELSE now() + make_interval(days => v.due_in_days) END,
+       v.status, v.response_note,
+       CASE WHEN v.status = 'closed'
+            THEN now() - make_interval(days => v.received_days_ago - 1) END
+  FROM (VALUES
+    ('DEMO-CC-1', 'DEMO-CUST-1', 'major', 2, 'PO-88213', 'LOT-4471',
+     'DEMO: two pumps arrived leaking at the shaft seal.', 6, 4, 'open', NULL),
+    ('DEMO-CC-2', 'DEMO-CUST-2', 'minor', 1, NULL, NULL,
+     'DEMO: one drive would not run up to speed.', 21, NULL, 'closed',
+     'Screened the rest of the lot and replaced the unit from stock.')
+  ) AS v(complaint_no, customer_code, severity, quantity_affected, customer_ref, lot_ref,
+         description, received_days_ago, due_in_days, status, response_note)
+  JOIN customers c ON c.code = v.customer_code
+  JOIN products p ON p.code = 'DEMO-PROD-1'
+  JOIN org_units ou ON ou.code = 'A1-L1'
+   AND ou.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+  JOIN defect_codes dc ON dc.code = 'SUR'
+ WHERE NOT EXISTS (
+   SELECT 1 FROM customer_complaints cc WHERE cc.complaint_no = v.complaint_no
+ );
+
+INSERT INTO supplier_ncrs
+  (ncr_no, supplier_id, product_id, org_unit_id, defect_code_id, incoming_lot_ref,
+   purchase_ref, quantity_affected, uom_code, disposition, detected_at,
+   response_due_at, cost_recovered, description, status)
+SELECT 'DEMO-SN-1', s.id, p.id, ou.id, dc.id, 'DEMO-LOT-9001', 'DEMO-PO-8821',
+       20, 'EA', 'return_to_supplier', now() - interval '5 days',
+       now() + interval '9 days', 25.00,
+       'DEMO: undersized thread on the M8 bolts; the lot went back.', 'open'
+  FROM suppliers s, products p, org_units ou, defect_codes dc
+ WHERE s.code = 'DEMO-SUP-1'
+   AND p.code = 'DEMO-PROD-1'
+   AND ou.code = 'A1-L1'
+   AND ou.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+   AND dc.code = 'SUR'
+   AND NOT EXISTS (
+     SELECT 1 FROM supplier_ncrs sn WHERE sn.ncr_no = 'DEMO-SN-1'
+   );
+
+-- One investigation that has run past the day it was due, so the "overdue
+-- CAPAs" number on the board is a real one rather than a zero nobody earned. It
+-- is an 8D and it is open, which is exactly what
+-- `capas_eightd_needs_verification` allows: a verification is owed at closure,
+-- not before it.
+INSERT INTO capas
+  (capa_no, title, problem_statement, method, org_unit_id, quality_issue_id,
+   team_lead_employee_id, opened_at, due_date, status)
+SELECT 'DEMO-CAPA-1',
+       'DEMO: surface marks keep coming back on the widget line',
+       'The same surface marks were found again three weeks after the first fix.',
+       '8d', ou.id, qi.id, e.id,
+       now() - interval '30 days', CURRENT_DATE - 5, 'actions'
+  FROM org_units ou, quality_issues qi, employees e
+ WHERE ou.code = 'A1-L1'
+   AND ou.site_id = (SELECT id FROM sites WHERE code = 'DEMO')
+   AND qi.issue_no = 'DEMO-NC-2'
+   AND e.employee_no = 'DEMO-004'
+   AND NOT EXISTS (
+     SELECT 1 FROM capas c WHERE c.capa_no = 'DEMO-CAPA-1'
+   );
+
+-- -----------------------------------------------------------------------------
+-- KPI targets — so the board judges the KPIs it can read, rather than reporting
+-- "no target" for every one. (The registry maps Maintenance's eight and, since
+-- issue #216, Quality's open Non-conformances, overdue CAPAs and complaints
+-- plus the cost of poor quality; every other definition — the production-count
+-- KPIs above all — has no view mapping and stays no_data regardless of what is
+-- seeded.)
 -- -----------------------------------------------------------------------------
 INSERT INTO kpi_targets
   (kpi_definition_id, org_unit_id, period_type, target_value, lower_threshold, upper_threshold, effective_from)
@@ -617,7 +745,14 @@ SELECT kd.id, ou.id, 'month', v.target_value, v.lower_threshold, v.upper_thresho
     ('MNT_PLANNED_RATIO',       80,   70,   NULL),
     ('MNT_BACKLOG',             40,   NULL, 80),
     ('MNT_COST',                5000, NULL, 10000),
-    ('MNT_PARTS_COST',          2000, NULL, 5000)
+    ('MNT_PARTS_COST',          2000, NULL, 5000),
+    -- Quality's own, judged on the same month so a reviewer sees them toned
+    -- rather than always "no target".
+    ('QUA_OPEN_NC',             3,    NULL, 6),
+    ('QUA_OVERDUE_CAPA',        0,    NULL, 2),
+    ('QUA_COMPLAINTS',          2,    NULL, 4),
+    ('COST_COPQ',               150,  NULL, 400),
+    ('COST_SCRAP',              100,  NULL, 250)
   ) AS v(kpi_code, target_value, lower_threshold, upper_threshold)
   JOIN kpi_definitions kd ON kd.code = v.kpi_code
   JOIN org_units ou ON ou.code IN ('A1', 'PKG')
