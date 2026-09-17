@@ -366,6 +366,18 @@ const List<Destination> platformDestinations = [
     path: Routes.defectCodes,
     group: DestinationGroupNames.quality,
   ),
+  // The Module's first record of real work (issue #205): what has been found
+  // not to conform. Offered to every approved Account like the two catalogues
+  // above it, because the register is a Site-wide read (`canSeeSite`) and
+  // recording needs only a write Grant reaching the Org Unit it is recorded
+  // at — both of which the server decides, so a role on this Destination would
+  // gate a door the route itself opens for an operator who works on the line.
+  Destination(
+    label: 'Non-conformances',
+    icon: Icons.fact_check_outlined,
+    path: Routes.nonConformances,
+    group: DestinationGroupNames.quality,
+  ),
   // Approvals and Accounts administer the Platform itself — who may sign in,
   // and what they may reach — rather than the plant's workforce, so they sit
   // under Administration rather than People (#100, ADR-0020).

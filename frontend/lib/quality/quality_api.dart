@@ -10,10 +10,21 @@
 /// `MaintenanceApiException` is its own: a caller can tell which Module's
 /// address failed without reading the message.
 ///
-/// Today it carries the Module's first slice (issue #203): the Product
+/// Today it carries the Module's first slice (issue #203) — the Product
 /// catalogue and the Defect code tree, each read by every approved Account and
 /// written by an administrator, plus the unit of measure a Product is measured
-/// in.
+/// in — and its first behaviour beyond those catalogues (issue #205): the
+/// Non-conformance register, one Non-conformance with its quantity history,
+/// recording one, raising its severity or recording its containment, and
+/// increasing the affected quantity.
+///
+/// **The Non-conformance register is read per Site**, off
+/// `GET /api/quality/sites/:siteId/nonconformances` — the address
+/// nonconformance-routes.js publishes, the same shape the action log uses. The
+/// Site is the only scope question the address asks (anyone who can see the
+/// Site reads its Non-conformances), and every filter — Org Unit and
+/// everything beneath it, status, Defect code, Product, severity, a production-
+/// day range — is a read filter over an already-visible register.
 ///
 /// **The unit of measure comes from Maintenance's address, deliberately.**
 /// `GET /api/maintenance/units-of-measure` is the baseline's own reference
@@ -34,6 +45,7 @@ import 'package:http/http.dart' as http;
 
 import '../maintenance/maintenance.dart';
 import 'defect_code.dart';
+import 'nonconformance.dart';
 import 'product.dart';
 
 /// The request could not be answered at all. Deliberately its own type rather
@@ -231,6 +243,171 @@ class QualityApi {
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       return DefectCode.fromJson(body['defectCode'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// A Site's Non-conformances (`GET /api/quality/sites/:siteId/nonconformances`),
+  /// newest first, narrowed by whatever [filters] carries. Anyone who can see
+  /// the Site may read it: the register is Site-wide with no Grant filter, and
+  /// the Org Unit filter narrows by area rather than by entitlement.
+  Future<NonconformanceRegister> fetchNonconformances(
+    String accessToken,
+    String siteId, {
+    NonconformanceFilters filters = const NonconformanceFilters(),
+  }) async {
+    final path = '/api/quality/sites/$siteId/nonconformances';
+    final query = filters.queryParameters;
+    final uri = Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return NonconformanceRegister(
+        nonconformances: [
+          for (final row in body['nonconformances'] as List<dynamic>)
+            Nonconformance.fromJson(row as Map<String, dynamic>),
+        ],
+        truncated: body['truncated'] == true,
+      );
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One Non-conformance with its quantity history
+  /// (`GET /api/quality/nonconformances/:id`) — what the detail Screen reads.
+  Future<Nonconformance> fetchNonconformance(String accessToken, String id) async {
+    final path = '/api/quality/nonconformances/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return Nonconformance.fromJson(body['nonconformance'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records a Non-conformance (`POST /api/quality/sites/:siteId/nonconformances`).
+  /// It is recorded at [orgUnitId] and needs a Grant that reaches it with
+  /// edit; the API refuses anything else (403), and refuses a Product or a
+  /// Defect code that is unknown (404), retired (409) or missing (400).
+  ///
+  /// Only the keys a caller actually decided are sent: the severity is omitted
+  /// when the Defect code's own default is the answer, and the optional Asset,
+  /// lot reference, detail and containment are omitted when they are empty,
+  /// rather than sent as nulls the API would have to interpret.
+  Future<Nonconformance> recordNonconformance(
+    String accessToken,
+    String siteId, {
+    required String orgUnitId,
+    required String productId,
+    required String defectCodeId,
+    required String detectionPoint,
+    required num quantity,
+    String? severity,
+    String? assetId,
+    String? lotRef,
+    String? description,
+    String? immediateContainment,
+    String? detectedAt,
+  }) async {
+    final path = '/api/quality/sites/$siteId/nonconformances';
+    final body = <String, Object?>{
+      'orgUnitId': orgUnitId,
+      'productId': productId,
+      'defectCodeId': defectCodeId,
+      'detectionPoint': detectionPoint,
+      'quantity': quantity,
+    };
+    if (severity != null) body['severity'] = severity;
+    if (assetId != null) body['assetId'] = assetId;
+    if (lotRef != null && lotRef.trim().isNotEmpty) body['lotRef'] = lotRef.trim();
+    if (description != null && description.trim().isNotEmpty) {
+      body['description'] = description.trim();
+    }
+    if (immediateContainment != null && immediateContainment.trim().isNotEmpty) {
+      body['immediateContainment'] = immediateContainment.trim();
+    }
+    if (detectedAt != null) body['detectedAt'] = detectedAt;
+
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Nonconformance.fromJson(answer['nonconformance'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Raises a Non-conformance's severity, records its immediate containment, or
+  /// both (`PATCH /api/quality/nonconformances/:id`). Only the keys present are
+  /// sent, the same contract `updateProduct` carries. Lowering the severity is
+  /// refused by the API (403) — that decision belongs to a holder of Quality
+  /// authority and arrives with a later slice.
+  Future<Nonconformance> updateNonconformance(
+    String accessToken,
+    String id, {
+    String? severity,
+    String? immediateContainment,
+  }) async {
+    final path = '/api/quality/nonconformances/$id';
+    final body = <String, Object?>{};
+    if (severity != null) body['severity'] = severity;
+    if (immediateContainment != null) body['immediateContainment'] = immediateContainment.trim();
+
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Nonconformance.fromJson(answer['nonconformance'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Increases the affected quantity (`POST /api/quality/nonconformances/:id/quantity`),
+  /// keeping what it was before. The API refuses a decrease — and a change that
+  /// changes nothing — with 409; this call is not the guard against either.
+  Future<Nonconformance> increaseNonconformanceQuantity(
+    String accessToken,
+    String id, {
+    required num quantity,
+    String? note,
+  }) async {
+    final path = '/api/quality/nonconformances/$id/quantity';
+    final body = <String, Object?>{'quantity': quantity};
+    if (note != null && note.trim().isNotEmpty) body['note'] = note.trim();
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return Nonconformance.fromJson(answer['nonconformance'] as Map<String, dynamic>);
     } catch (error) {
       throw QualityApiException('The API answered with something this app could not read: $error');
     }

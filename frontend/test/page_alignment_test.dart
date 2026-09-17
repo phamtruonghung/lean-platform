@@ -99,6 +99,10 @@ const _pages = <_Page>[
   _Page('/products', 'lib/quality/products_screen.dart', 'Products', 'What the plant makes'),
   _Page('/defect-codes', 'lib/quality/defect_codes_screen.dart', 'Defect codes',
       'The kinds of thing found wrong'),
+  // The Non-conformance register (issue #205). Its rows are cards of text at
+  // the card's own padding, so the default bound holds.
+  _Page('/non-conformances', 'lib/quality/nonconformances_screen.dart', 'Non-conformances',
+      'What was found not to conform'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this
@@ -115,6 +119,8 @@ const _excluded = <String, String>{
       "its title is the Work order's own number, not a page heading",
   'lib/maintenance/store_stock_screen.dart':
       "its title is the Store's own name, not a page heading",
+  'lib/quality/nonconformance_detail_screen.dart':
+      "its title is the Non-conformance's own number, not a page heading",
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',

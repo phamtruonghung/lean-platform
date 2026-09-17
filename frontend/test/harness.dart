@@ -562,6 +562,109 @@ Map<String, dynamic> defectCodeJson(
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
+/// One Non-conformance as `GET /api/quality/nonconformances/:id` and the
+/// register send it (issue #205) — mirrors `toNonconformance`
+/// (nonconformances.js) key for key, `quantityChanges` included: the API
+/// answers every non-conformance with its own history, so a fixture that
+/// omitted it would let a test assert a shape the server cannot send.
+Map<String, dynamic> nonconformanceJson(
+  String id,
+  String issueNo, {
+  String status = 'open',
+  String detectionPoint = 'in_process',
+  String severity = 'minor',
+  num quantityAffected = 1,
+  num quantityDispositioned = 0,
+  String uomCode = 'EA',
+  String? lotRef,
+  String? detectedAt,
+  String? recordedByAccountId = '1',
+  String? description,
+  String? immediateContainment,
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String siteCode = 'HCM',
+  String siteName = 'Ho Chi Minh',
+  String productId = '40',
+  String productCode = 'PRD-1',
+  String productName = 'Gearbox',
+  String defectCodeId = '41',
+  String defectCodeCode = 'DIM-OOT',
+  String defectCodeName = 'Out of tolerance',
+  String defectCodeDefaultSeverity = 'minor',
+  String? assetId,
+  String? assetCode,
+  String? assetName,
+  String? shiftInstanceId,
+  String? productionDate,
+  String? shiftCode,
+  String? shiftName,
+  List<Map<String, dynamic>>? quantityChanges,
+}) =>
+    {
+      'id': id,
+      'issueNo': issueNo,
+      'status': status,
+      'detectionPoint': detectionPoint,
+      'severity': severity,
+      'quantityAffected': quantityAffected,
+      'quantityDispositioned': quantityDispositioned,
+      'uomCode': uomCode,
+      'lotRef': lotRef,
+      'detectedAt': detectedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'recordedByAccountId': recordedByAccountId,
+      'description': description,
+      'immediateContainment': immediateContainment,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'siteCode': siteCode,
+      'siteName': siteName,
+      'productId': productId,
+      'productCode': productCode,
+      'productName': productName,
+      'defectCodeId': defectCodeId,
+      'defectCodeCode': defectCodeCode,
+      'defectCodeName': defectCodeName,
+      'defectCodeDefaultSeverity': defectCodeDefaultSeverity,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'shiftInstanceId': shiftInstanceId,
+      'productionDate': productionDate,
+      'shiftCode': shiftCode,
+      'shiftName': shiftName,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      'quantityChanges': quantityChanges ?? const <Map<String, dynamic>>[],
+    };
+
+/// One row of a Non-conformance's quantity history, as the API sends it —
+/// mirrors `toQuantityChange` (nonconformances.js) key for key.
+Map<String, dynamic> quantityChangeJson(
+  String id,
+  num previousQuantity,
+  num newQuantity, {
+  String? note,
+  String? changedAt,
+  String? changedByAccountId = '1',
+  String? changedByAccountName = 'Ann Operator',
+  String? changedByEmployeeId,
+  String? changedByEmployeeName,
+}) =>
+    {
+      'id': id,
+      'previousQuantity': previousQuantity,
+      'newQuantity': newQuantity,
+      'changedAt': changedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'note': note,
+      'changedByAccountId': changedByAccountId,
+      'changedByAccountName': changedByAccountName,
+      'changedByEmployeeId': changedByEmployeeId,
+      'changedByEmployeeName': changedByEmployeeName,
+    };
+
 /// One Work order task as `GET /api/maintenance/work-orders/:id` sends it
 /// (issue #74) — mirrors `toWorkOrderTask` (work-orders.js) key for key.
 Map<String, dynamic> workOrderTaskJson(
@@ -1243,6 +1346,15 @@ class FakeWire {
     this.createDefectCodeMessage = 'a Defect code with this code already exists',
     this.updateDefectCodeStatus = 200,
     this.updateDefectCodeMessage = 'That Defect code could not be changed.',
+    Map<String, List<Map<String, dynamic>>>? nonconformances,
+    this.nonconformancesStatus = 200,
+    this.nonconformancesTruncated = false,
+    this.createNonconformanceStatus = 201,
+    this.createNonconformanceMessage = 'productId must be a valid Product id',
+    this.changeNonconformanceStatus = 200,
+    this.changeNonconformanceMessage = 'severity cannot be lowered; only a holder of Quality authority may do that',
+    this.increaseNonconformanceQuantityStatus = 200,
+    this.increaseNonconformanceQuantityMessage = 'the affected quantity can only be increased',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -1293,7 +1405,8 @@ class FakeWire {
         floorEmployee = floorEmployee ??
             {'id': '20', 'employeeNo': 'EMP-20', 'displayName': 'Tess Technician'},
         products = products ?? [],
-        defectCodes = defectCodes ?? [];
+        defectCodes = defectCodes ?? [],
+        nonconformances = nonconformances ?? {};
 
   /// `GET /api/quality/products` (issue #203) — the Product catalogue.
   List<Map<String, dynamic>> products;
@@ -1345,6 +1458,87 @@ class FakeWire {
 
   /// Every Defect code list request's query parameters.
   final List<Map<String, String>> defectCodeListRequests = [];
+
+  /// `GET /api/quality/sites/:siteId/nonconformances` (issue #205) — the
+  /// register, keyed by Site id.
+  ///
+  /// The wire applies the filters it has enough on a row to honour honestly:
+  /// `orgUnitId` (the row's own Org Unit or any descendant of it, by walking
+  /// the `orgUnits` fixture), `status`, `defectCodeId`, `productId`,
+  /// `severity` and the production-day range. `serve` is a client-side read
+  /// filter, and what the *Screen* asked for is asserted from
+  /// [nonconformanceListRequests] rather than from this.
+  Map<String, List<Map<String, dynamic>>> nonconformances;
+  int nonconformancesStatus;
+  bool nonconformancesTruncated;
+
+  /// `POST /api/quality/sites/:siteId/nonconformances` — recording one. A
+  /// refusal is scripted with [createNonconformanceStatus], the shape every
+  /// other write's `status` field keeps.
+  int createNonconformanceStatus;
+  String createNonconformanceMessage;
+
+  /// `PATCH /api/quality/nonconformances/:id` — raising the severity and
+  /// recording containment.
+  int changeNonconformanceStatus;
+  String changeNonconformanceMessage;
+
+  /// `POST /api/quality/nonconformances/:id/quantity` — increasing the
+  /// affected quantity.
+  int increaseNonconformanceQuantityStatus;
+  String increaseNonconformanceQuantityMessage;
+
+  /// Every Non-conformance list request's query parameters, in the order they
+  /// reached the wire — so a test proves what the Screen asked for (which
+  /// filters, and only the filters that are set) rather than what this Fake
+  /// Wire happened to apply.
+  final List<Map<String, String>> nonconformanceListRequests = [];
+
+  /// Every Non-conformance detail read's path, in order — `GET
+  /// /api/quality/nonconformances/:id`, so a test can prove which record the
+  /// Screen went and read.
+  final List<String> nonconformanceReads = [];
+
+  /// Every recording body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> nonconformancePosts = [];
+
+  /// Every change body that reached the wire, as `(id, body)` — a severity
+  /// raising or a containment, never both in one request.
+  final List<(String, Map<String, dynamic>)> nonconformancePatches = [];
+
+  /// Every quantity body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceQuantityPosts = [];
+
+  /// Looks a Non-conformance up by id across every Site's list, which is what
+  /// the detail route does — a record read by address, not by Site.
+  Map<String, dynamic>? nonconformanceById(String id) {
+    for (final rows in nonconformances.values) {
+      for (final row in rows) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
+  /// [orgUnitId] and every Org Unit beneath it, read off the `orgUnits`
+  /// fixture (keyed by parent id) — what `?orgUnitId=` means on the real
+  /// register, where the narrowing is the baseline's own ltree walk
+  /// (`ou.path <@ $path`).
+  Set<String> nonconformanceOrgUnitScope(String orgUnitId) {
+    final found = <String>{orgUnitId};
+    var grew = true;
+    while (grew) {
+      grew = false;
+      for (final entry in orgUnits.entries) {
+        final parent = entry.key;
+        if (parent == null || !found.contains(parent)) continue;
+        for (final child in entry.value) {
+          if (found.add(child['id'] as String)) grew = true;
+        }
+      }
+    }
+    return found;
+  }
 
   final String role;
 
@@ -2129,6 +2323,32 @@ class FakeWire {
   int _nextOrgUnitId = 990;
   int _nextProductId = 700;
   int _nextDefectCodeId = 750;
+  int _nextNonconformanceId = 900;
+
+  /// Replaces one Non-conformance row wherever it sits, keeping the list's
+  /// order — what every write in this fake answers with, since the real
+  /// routes answer the whole record rather than a patch.
+  void _replaceNonconformance(String id, Map<String, dynamic> updated) {
+    nonconformances = {
+      for (final entry in nonconformances.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) updated else row,
+        ],
+    };
+  }
+
+  /// The production day a row is filed against — the row's own
+  /// `productionDate` where it has one, and the detected date otherwise, which
+  /// is the same fallback the real register's date range applies (ADR-0017's
+  /// documented case of a Site with no shift calendar covering the moment).
+  String _nonconformanceDayOf(Map<String, dynamic> row) {
+    final productionDate = row['productionDate'] as String?;
+    if (productionDate != null && productionDate.isNotEmpty) return productionDate;
+    final detectedAt = row['detectedAt'] as String?;
+    if (detectedAt == null || detectedAt.length < 10) return '';
+    return detectedAt.substring(0, 10);
+  }
 
   /// The Org Unit row for [orgUnitId], resolved off whatever tree rows this
   /// Fake Wire was given (any `parentId` key) — there is no Org Unit lookup
@@ -2595,6 +2815,181 @@ class FakeWire {
               ? defectCodes
               : [for (final code in defectCodes) if (code['isActive'] != false) code];
           return http.Response(jsonEncode({'defectCodes': sent}), 200);
+        }
+        // The Non-conformance register, and one record with its own quantity
+        // history (issue #205). Mirrors nonconformance-routes.js: the list
+        // applies the filters the address takes — Org Unit and everything
+        // beneath it, status, Defect code, Product, severity, a production-day
+        // range — the record answers the row the API would have written, and
+        // every write answers the whole record the way the real routes do.
+        if (path.startsWith('/api/quality/sites/') && path.endsWith('/nonconformances')) {
+          final siteId = path.split('/')[4];
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            nonconformancePosts.add(sent);
+            if (createNonconformanceStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': createNonconformanceMessage}),
+                createNonconformanceStatus,
+              );
+            }
+            final productId = sent['productId'] as String;
+            final defectCodeId = sent['defectCodeId'] as String;
+            final orgUnitId = sent['orgUnitId'] as String;
+            Map<String, dynamic>? product;
+            for (final row in products) {
+              if (row['id'] == productId) product = row;
+            }
+            Map<String, dynamic>? defectCode;
+            for (final code in defectCodes) {
+              if (code['id'] == defectCodeId) defectCode = code;
+            }
+            final severity =
+                sent['severity'] as String? ?? (defectCode?['defaultSeverity'] as String? ?? 'minor');
+            final containment = sent['immediateContainment'] as String?;
+            final id = (_nextNonconformanceId++).toString();
+            final created = nonconformanceJson(
+              id,
+              'NC-HCM-2026-${id.padLeft(5, '0')}',
+              status: containment == null ? 'open' : 'contained',
+              detectionPoint: sent['detectionPoint'] as String,
+              severity: severity,
+              quantityAffected: sent['quantity'] as num,
+              uomCode: product?['uomCode'] as String? ?? 'EA',
+              lotRef: sent['lotRef'] as String?,
+              recordedByAccountId: '1',
+              description: sent['description'] as String?,
+              immediateContainment: containment,
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              siteId: siteId,
+              productId: productId,
+              productCode: product?['code'] as String? ?? 'PRD-?',
+              productName: product?['name'] as String? ?? 'Product',
+              defectCodeId: defectCodeId,
+              defectCodeCode: defectCode?['code'] as String? ?? 'CODE-?',
+              defectCodeName: defectCode?['name'] as String? ?? 'Defect code',
+              defectCodeDefaultSeverity:
+                  defectCode?['defaultSeverity'] as String? ?? 'minor',
+              assetId: sent['assetId'] as String?,
+              detectedAt: sent['detectedAt'] as String?,
+            );
+            nonconformances = {
+              ...nonconformances,
+              siteId: [created, ...(nonconformances[siteId] ?? const [])],
+            };
+            return http.Response(jsonEncode({'nonconformance': created}), 201);
+          }
+          nonconformanceListRequests.add(request.url.queryParameters);
+          if (nonconformancesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The register is unavailable.'}),
+              nonconformancesStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final orgUnitId = query['orgUnitId'];
+          final scope = orgUnitId == null ? null : nonconformanceOrgUnitScope(orgUnitId);
+          final status = query['status'];
+          final defectCodeId = query['defectCodeId'];
+          final productId = query['productId'];
+          final severity = query['severity'];
+          final from = query['from'];
+          final to = query['to'];
+          final sent = [
+            for (final row in nonconformances[siteId] ?? const <Map<String, dynamic>>[])
+              if (scope == null || scope.contains(row['orgUnitId']))
+                if (status == null || row['status'] == status)
+                  if (defectCodeId == null || row['defectCodeId'] == defectCodeId)
+                    if (productId == null || row['productId'] == productId)
+                      if (severity == null || row['severity'] == severity)
+                        if (from == null || _nonconformanceDayOf(row).compareTo(from) >= 0)
+                          if (to == null || _nonconformanceDayOf(row).compareTo(to) <= 0) row,
+          ];
+          return http.Response(
+            jsonEncode({'nonconformances': sent, 'truncated': nonconformancesTruncated}),
+            200,
+          );
+        }
+        if (path.startsWith('/api/quality/nonconformances/')) {
+          final remainder = path.substring('/api/quality/nonconformances/'.length);
+          if (remainder.endsWith('/quantity') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/quantity'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            nonconformanceQuantityPosts.add((id, sent));
+            final row = nonconformanceById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+            }
+            final quantity = sent['quantity'] as num;
+            final current = row['quantityAffected'] as num;
+            if (increaseNonconformanceQuantityStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': increaseNonconformanceQuantityMessage}),
+                increaseNonconformanceQuantityStatus,
+              );
+            }
+            // Mirrors the real route's own refusal, so a widget test that
+            // sends a decrease sees what a client sees rather than a fake
+            // that quietly accepts it.
+            if (quantity <= current) {
+              return http.Response(
+                jsonEncode({
+                  'message': quantity == current
+                      ? 'the affected quantity is already that; a change records a difference'
+                      : 'the affected quantity can only be increased'
+                }),
+                409,
+              );
+            }
+            final changes = [
+              ...(row['quantityChanges'] as List<dynamic>? ?? const []),
+              quantityChangeJson(
+                '$id-${(row['quantityChanges'] as List<dynamic>? ?? const []).length + 1}',
+                current,
+                quantity,
+                note: sent['note'] as String?,
+                changedByAccountName: 'Ann Operator',
+              ),
+            ];
+            final updated = {...row, 'quantityAffected': quantity, 'quantityChanges': changes};
+            _replaceNonconformance(id, updated);
+            return http.Response(jsonEncode({'nonconformance': updated}), 200);
+          }
+          if (request.method == 'PATCH') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            nonconformancePatches.add((remainder, sent));
+            final row = nonconformanceById(remainder);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+            }
+            if (changeNonconformanceStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': changeNonconformanceMessage}),
+                changeNonconformanceStatus,
+              );
+            }
+            final updated = {...row};
+            if (sent['severity'] != null) updated['severity'] = sent['severity'];
+            if (sent['immediateContainment'] != null) {
+              updated['immediateContainment'] = sent['immediateContainment'];
+              if (updated['status'] == 'open') updated['status'] = 'contained';
+            }
+            _replaceNonconformance(remainder, updated);
+            return http.Response(jsonEncode({'nonconformance': updated}), 200);
+          }
+          nonconformanceReads.add(path);
+          if (nonconformancesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The register is unavailable.'}),
+              nonconformancesStatus,
+            );
+          }
+          final row = nonconformanceById(remainder);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+          }
+          return http.Response(jsonEncode({'nonconformance': row}), 200);
         }
         if (path == '/api/people/me') {
           return http.Response(jsonEncode(_meBody(role, selfId, orgUnitScope)), 200);

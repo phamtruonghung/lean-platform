@@ -74,6 +74,13 @@ import '../people/skills_screen.dart';
 import '../people_api.dart';
 import '../quality/defect_codes_bloc.dart';
 import '../quality/defect_codes_screen.dart';
+import '../quality/nonconformance_detail_bloc.dart';
+import '../quality/nonconformance_detail_screen.dart';
+import '../quality/nonconformance_form_dialog.dart';
+import '../quality/nonconformance_quantity_dialog.dart';
+import '../quality/nonconformance_update_dialog.dart';
+import '../quality/nonconformances_bloc.dart';
+import '../quality/nonconformances_screen.dart';
 import '../quality/products_bloc.dart';
 import '../quality/products_screen.dart';
 import '../quality/quality_api.dart';
@@ -116,6 +123,12 @@ abstract final class Routes {
   /// [actions].
   static const String products = '/products';
   static const String defectCodes = '/defect-codes';
+  /// The Non-conformance register, its record form (`/non-conformances/new`),
+  /// one record's detail (`/non-conformances/:id`) and the two controls that
+  /// change it after it is recorded (`/:id/quantity`, `/:id/update`) — all
+  /// addressed, per ADR-0021. `new` cannot collide with the detail route
+  /// because it is not an id.
+  static const String nonConformances = '/non-conformances';
 
   /// The Actions Module's own Destinations (issue #176): the action log, and
   /// one Action's detail read behind `${actions}/:id`. The raise form is
@@ -397,6 +410,174 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 child: DefectCodesScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
+          ),
+          // Non-conformances (issue #205) — a `ShellRoute` of its own, for the
+          // same reason Work orders and Actions have one: `NonconformancesBloc`
+          // is created exactly once and shared by the register and the record
+          // form's own address below (a child `GoRoute`'s page is a *sibling*
+          // of its parent's, so a Bloc provided inside the register's builder
+          // would not be visible to the form).
+          //
+          // The guard is the whole Module rather than a role set: the register
+          // is a Site-wide read for every admitted Account — "anyone who can
+          // see the Site can find and read it" is the ticket's own sentence —
+          // and recording needs only a write Grant reaching the Org Unit the
+          // product was found at. The server is the real gate on both. An
+          // operator is offered this Destination exactly as a manager is.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<NonconformancesBloc>(
+                create: (context) => NonconformancesBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const NonconformancesStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.nonConformances,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const NonconformancesScreen();
+                },
+                routes: [
+                  // `/non-conformances/new` — the record form, addressed
+                  // rather than popped (ADR-0021): a refresh lands on the
+                  // register with the form open, and `new` cannot collide with
+                  // the detail route below because it is not an id.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final register = context.watch<NonconformancesBloc>().state;
+                          final siteId =
+                              register is NonconformancesLoaded ? register.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: NonconformancesScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          // The chooser inside the form browses People's tree
+                          // through the same Bloc the Asset form uses, scoped
+                          // to this dialog and opened on the Site on screen.
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: NonconformanceFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // `/non-conformances/:id` and its own two addresses — a
+              // `ShellRoute` of its own so `NonconformanceDetailBloc` is created
+              // exactly once and shared by the Screen and the two dialogs
+              // beside it, and **keyed on the id in the address**: go_router
+              // reuses a route's page when the *pattern* matches, so moving
+              // from one Non-conformance to another would otherwise leave this
+              // Bloc — and the Screen reading it — holding the record before
+              // (issue #183's own bug, fixed the same way for Actions).
+              ShellRoute(
+                builder: (context, state, child) {
+                  final nonconformanceId = state.pathParameters['id']!;
+                  return BlocProvider<NonconformanceDetailBloc>(
+                    key: ValueKey<String>(nonconformanceId),
+                    create: (context) => NonconformanceDetailBloc(
+                      qualityApi: context.read<QualityApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(NonconformanceDetailStarted(nonconformanceId)),
+                    child: child,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    // Absolute, because this route is a *sibling* of the
+                    // register's rather than a child of it: a relative `:id`
+                    // here resolves against the Module shell and matches
+                    // `/:id`, not `/non-conformances/:id`.
+                    path: '${Routes.nonConformances}/:id',
+                    builder: (context, state) => NonconformanceDetailScreen(
+                      nonconformanceId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      // `/non-conformances/:id/quantity` — increasing the
+                      // affected quantity. Nested under the record's own route
+                      // rather than sitting beside it, the same choice the
+                      // Action phase dialog makes: a sibling address would pop
+                      // the caller back to the register with the record they
+                      // were reading gone.
+                      GoRoute(
+                        path: 'quantity',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceQuantityDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceQuantityDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/update` — raising the severity
+                      // and recording the immediate containment that makes the
+                      // record contained.
+                      GoRoute(
+                        path: 'update',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceUpdateDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceUpdateDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
           // A Site's skill coverage (issue #89, AC6) — administrator only,
           // and deliberately a per-Screen access check here rather than only
