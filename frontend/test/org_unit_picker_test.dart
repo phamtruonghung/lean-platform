@@ -206,8 +206,8 @@ void main() {
     expect(wire.approvals.length, 1);
     expect(wire.approvals.single['role'], Roles.supervisor);
     expect(wire.approvals.single['grants'], [
-      {'orgUnitId': '11', 'canWrite': false},
-      {'orgUnitId': '12', 'canWrite': true},
+      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': false},
+      {'orgUnitId': '12', 'canWrite': true, 'qualityAuthority': false},
     ]);
     expect(find.text('first@b.c'), findsNothing);
     expect(find.textContaining('with 2 Org Unit Grants'), findsOneWidget);
@@ -223,6 +223,61 @@ void main() {
 
     expect(wire.approvals.single['grants'], isEmpty);
     expect(find.textContaining('with no Org Unit Grants'), findsOneWidget);
+  });
+
+  // Issue #204, ADR-0035: Quality authority is a separate act from the level
+  // a Grant is added at, so the picker gives it through its own control on the
+  // Granted row and the request carries it per Grant — one carrying it at
+  // View and one not carrying it at View and edit, which is the independence
+  // the ticket's own criterion asks for.
+  testWidgets('Quality authority is given per Grant, independently of its level, and rides the request',
+      (tester) async {
+    final wire = _plant();
+    await openDecision(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.expandKey('10')));
+    await grant(tester, '11', GrantLevel.view);
+    await grant(tester, '12', GrantLevel.viewAndEdit);
+
+    // Neither Grant carries it yet, and the box is there to give it.
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.qualityKey('11'))).value, false);
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.qualityKey('11')));
+
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.qualityKey('11'))).value, true);
+    // The tree row says so too, without a second control on the row itself.
+    expect(find.text('Granted · View · Quality'), findsOneWidget);
+
+    await chooseRole(tester, Roles.supervisor);
+    await tapIn(tester, find.byKey(AdmissionDialog.submitKey));
+
+    expect(wire.approvals.single['grants'], [
+      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': true},
+      {'orgUnitId': '12', 'canWrite': true, 'qualityAuthority': false},
+    ]);
+  });
+
+  // The other direction, on the same control: ticking and unticking it is how
+  // an administrator both gives and takes the flag away, and taking it away
+  // changes the request rather than leaving the earlier tick behind.
+  testWidgets('Quality authority can be given and then taken back before submitting', (tester) async {
+    final wire = _plant();
+    await openDecision(tester, wire);
+
+    await grant(tester, '10', GrantLevel.viewAndEdit);
+    await tapIn(tester, find.byKey(OrgUnitPicker.qualityKey('10')));
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.qualityKey('10'))).value, true);
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.qualityKey('10')));
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.qualityKey('10'))).value, false);
+    expect(find.text('Granted · View and edit'), findsOneWidget);
+
+    await chooseRole(tester, Roles.supervisor);
+    await tapIn(tester, find.byKey(AdmissionDialog.submitKey));
+
+    expect(wire.approvals.single['grants'], [
+      {'orgUnitId': '10', 'canWrite': true, 'qualityAuthority': false},
+    ]);
   });
 
   testWidgets('the administrator role is admitted with no picker and no Grants', (tester) async {

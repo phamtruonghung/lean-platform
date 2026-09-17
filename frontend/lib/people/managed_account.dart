@@ -17,7 +17,8 @@ abstract final class ApprovalStatuses {
 }
 
 /// One Grant an Account currently holds, as `GET /api/people/accounts` sends
-/// it: the Org Unit itself, the Site it sits in, and the level.
+/// it: the Org Unit itself, the Site it sits in, the level, and whether it
+/// carries Quality authority.
 @immutable
 class AccountGrant {
   const AccountGrant({
@@ -29,6 +30,7 @@ class AccountGrant {
     required this.siteId,
     required this.siteName,
     required this.canWrite,
+    this.qualityAuthority = false,
   });
 
   final String orgUnitId;
@@ -40,6 +42,13 @@ class AccountGrant {
   final String siteName;
   final bool canWrite;
 
+  /// Whether this Grant carries Quality authority (issue #204, ADR-0035) — a
+  /// flag independent of [canWrite], so the Accounts Screen renders it beside
+  /// the level rather than deriving it from it. Defaulted false so a fixture
+  /// or an older server that never sent the key reads as "no authority",
+  /// which is the only truthful default for a permission.
+  final bool qualityAuthority;
+
   GrantLevel get level => canWrite ? GrantLevel.viewAndEdit : GrantLevel.view;
 
   /// This Grant as the picker holds one, so an existing Grant set can be the
@@ -49,6 +58,10 @@ class AccountGrant {
   /// are only ever known by walking the tree (see `org_unit.dart`), and a
   /// pre-filled Grant was never walked to. That is exactly what an entry
   /// point's breadcrumb already is today.
+  ///
+  /// The whole flag travels with it (issue #204): a correction that opens the
+  /// picker on an Account already holding Quality authority has to show the
+  /// box ticked, or saving the form would silently take it away.
   GrantedOrgUnit toGranted() => GrantedOrgUnit(
         orgUnit: OrgUnitNode(
           id: orgUnitId,
@@ -59,6 +72,7 @@ class AccountGrant {
         ),
         level: level,
         where: siteName,
+        quality: qualityAuthority,
       );
 }
 

@@ -80,7 +80,11 @@ about.** The Actions list (`ACTION_LIST_LIMIT`) and the Org Unit search
 page would answer "no such record" for one that exists further down the server's
 own order. Actions keeps its server-side filters. The Directory and the Org Units
 tree keep their `AppSearchField` (ADR-0023) — a control that reports a pick is not
-a control that narrows a list a reader is working through.
+a control that narrows a list a reader is working through. **The CAPA list
+(#211) joins them for the same reason**: it is bounded by `CAPA_LIST_LIMIT`, and
+its Org Unit filter, its status chooser and its overdue switch are all answered
+by the server, so a term typed over the page it received would report "no such
+investigation" for one the server put further down its own order.
 
 ## The two traps behind all of it
 
@@ -123,7 +127,11 @@ is only visible in a rendered tree (AGENTS.md §5's frontend seam).
   Nothing has broken because of that; #193 records it as an exclusion.
 - **Page widths.** The Work orders table, the maintenance registers, the Action log
   and the tier board are wider than `AppLayout.pageWidth` on purpose, and the two
-  detail Screens are narrower. Each names its own number.
+  detail Screens are narrower. Each names its own number. **The CAPA report
+  (#212) joins the wider list at 1100** — it is a document with two Why chains,
+  three kinds of measure and a table of evidence on it, so it spends the
+  registers' own width rather than the catalogues' 900, and its Screen says so
+  where the number is chosen.
 - **Goldens for every Screen.** `test/GOLDENS.md` scopes them to the Shell and the
   Work orders Screen: a golden per Screen fails on every ordinary content change and
   gets deleted. Geometry assertions catch this class without that cost.

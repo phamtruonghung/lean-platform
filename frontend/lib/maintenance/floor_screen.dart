@@ -17,6 +17,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../platform/floor_device_gateway.dart';
+import '../quality/floor_nonconformance_bloc.dart';
+import '../quality/floor_nonconformance_dialog.dart';
+import '../quality/quality_api.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
@@ -24,6 +28,7 @@ import '../widgets/failure_state.dart';
 import '../widgets/status_chip.dart';
 import 'floor_bloc.dart';
 import 'floor_technician_dialog.dart';
+import 'maintenance_api.dart';
 import 'work_order.dart';
 
 class FloorScreen extends StatelessWidget {
@@ -43,6 +48,12 @@ class FloorScreen extends StatelessWidget {
 
   /// The refresh action in the header.
   static const ValueKey<String> refreshKey = ValueKey<String>('floor-refresh');
+
+  /// The Record-a-Non-conformance action (issue #207) — the floor surface's
+  /// own door into Quality's record, offered from the header so it is there
+  /// whether or not there is open work on the line.
+  static const ValueKey<String> recordNonconformanceKey =
+      ValueKey<String>('floor-record-nonconformance');
 
   /// The floor list's own loading placeholders, so a test can tell a slow read
   /// from an empty or failed one.
@@ -71,6 +82,36 @@ class FloorScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Records a Non-conformance from this device (issue #207).
+  ///
+  /// The Bloc is built here, from the repositories this Screen's own context
+  /// reaches, and handed to the dialog the same way [FloorBloc] is handed to
+  /// the technician prompt — a dialog pushed by `showDialog` is a route of its
+  /// own and does not sit under this Screen's providers. It carries the Org
+  /// Unit the device is registered at, which is what the record is filed
+  /// against, and it is created fresh per action so nothing an operator typed
+  /// outlives the record they typed it for.
+  ///
+  /// What lands comes back as the Non-conformance's own number, which is shown
+  /// on this Screen rather than in the dialog: the operator is looking at the
+  /// line, and "NC-HCM-2026-00042 is on the log" is the sentence they need.
+  Future<void> _recordNonconformance(BuildContext context, String orgUnitId) async {
+    final recorded = await showDialog<String>(
+      context: context,
+      builder: (_) => BlocProvider<FloorNonconformanceBloc>(
+        create: (context) => FloorNonconformanceBloc(
+          qualityApi: context.read<QualityApi>(),
+          maintenanceApi: context.read<MaintenanceApi>(),
+          floorDeviceGateway: context.read<FloorDeviceGateway>(),
+          orgUnitId: orgUnitId,
+        )..add(const FloorNonconformanceStarted()),
+        child: const FloorNonconformanceDialog(),
+      ),
+    );
+    if (recorded == null || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(recorded)));
   }
 
   @override
@@ -104,6 +145,13 @@ class FloorScreen extends StatelessWidget {
                 onRefresh: isActing
                     ? null
                     : () => context.read<FloorBloc>().add(const FloorStarted()),
+                // Offered whatever the list holds — an empty line is exactly
+                // when somebody has found something and needs somewhere to say
+                // so — and disabled only while a transition is in flight, the
+                // same rule the row actions follow.
+                onRecordNonconformance: isActing
+                    ? null
+                    : () => _recordNonconformance(context, info.orgUnitId),
                 notice: notice,
                 child: workOrders.isEmpty
                     ? PlatformEmptyState.noneExist(
@@ -141,12 +189,14 @@ class _FloorFrame extends StatelessWidget {
     required this.child,
     this.orgUnitName,
     this.onRefresh,
+    this.onRecordNonconformance,
     this.notice,
   });
 
   final Widget child;
   final String? orgUnitName;
   final VoidCallback? onRefresh;
+  final VoidCallback? onRecordNonconformance;
   final String? notice;
 
   @override
@@ -180,6 +230,25 @@ class _FloorFrame extends StatelessWidget {
                   ],
                 ),
               ),
+              // Recording a Non-conformance is the one Quality action the floor
+              // surface offers (issue #207), and it is not work on a row — it
+              // is offered here, beside Refresh, so it is reachable whether or
+              // not the line has anything open.
+              if (onRecordNonconformance != null)
+                FilledButton.icon(
+                  key: FloorScreen.recordNonconformanceKey,
+                  onPressed: onRecordNonconformance,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    // A 48px-tall target, but not `Size.fromHeight` — that is
+                    // an infinite WIDTH, which a button inside a Row cannot
+                    // take (only a stretched one can).
+                    minimumSize: const Size(0, 48),
+                  ),
+                  icon: const Icon(Icons.report_outlined),
+                  label: const Text('Non-conformance'),
+                ),
               if (onRefresh != null)
                 IconButton(
                   key: FloorScreen.refreshKey,

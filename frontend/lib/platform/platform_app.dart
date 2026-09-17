@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../maintenance/maintenance_api.dart';
 import '../actions/actions_api.dart';
 import '../people_api.dart';
+import '../quality/quality_api.dart';
 import '../theme.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
@@ -19,6 +20,7 @@ class PlatformApp extends StatefulWidget {
     required this.peopleApi,
     required this.maintenanceApi,
     required this.actionsApi,
+    required this.qualityApi,
     this.floorDeviceGateway = const ConfiguredFloorDeviceGateway(),
     this.initialLocation,
   });
@@ -27,6 +29,11 @@ class PlatformApp extends StatefulWidget {
   final PeopleApi peopleApi;
   final MaintenanceApi maintenanceApi;
   final ActionsApi actionsApi;
+
+  /// The Quality Module's own client (issue #203) — a Module of its own rather
+  /// than a corner of one of the three above, the same seam ADR-0012 draws on
+  /// the server (ADR-0006).
+  final QualityApi qualityApi;
 
   /// The shared floor device's own credential, if this build was provisioned
   /// with one (issue #77). A build with none still serves the surface; it shows
@@ -70,6 +77,7 @@ class _PlatformAppState extends State<PlatformApp> {
         RepositoryProvider<PeopleApi>.value(value: widget.peopleApi),
         RepositoryProvider<MaintenanceApi>.value(value: widget.maintenanceApi),
         RepositoryProvider<ActionsApi>.value(value: widget.actionsApi),
+        RepositoryProvider<QualityApi>.value(value: widget.qualityApi),
         RepositoryProvider<FloorDeviceGateway>.value(value: widget.floorDeviceGateway),
       ],
       child: BlocProvider<AccountBloc>.value(

@@ -406,13 +406,90 @@ void main() {
     expect(wire.approvals.single, {
       'role': Roles.engineer,
       'grants': [
-        {'orgUnitId': '11', 'canWrite': false},
+        {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': false},
       ],
       'expectedApprovalStatus': 'approved',
     });
     expect(find.byType(AccountCorrectionDialog), findsNothing);
     expect(find.text('Engineer'), findsOneWidget);
     expect(find.byKey(AccountsScreen.noticeKey), findsOneWidget);
+  });
+
+  // Issue #204, ADR-0035: Quality authority is shown per Grant, beside the
+  // level rather than folded into it, and the correction dialog opens holding
+  // the flag an Account already has — otherwise saving the form would silently
+  // take it away.
+  testWidgets('a Grant carrying Quality authority is named as such, and the correction dialog opens '
+      'with the box ticked', (tester) async {
+    // The Grants cell asserted below (`_GrantsCell`) is the wide-table-only
+    // shape, so this test needs the wide window; the narrow card's own chips
+    // are asserted in the second half.
+    goWide(tester);
+    final wire = _plant(accounts: [
+      accountJson('7', 'auditor@b.c', role: Roles.supervisor, grants: [
+        grantJson('10', name: 'Assembly', canWrite: true, qualityAuthority: true),
+        grantJson('11', name: 'Line 1'),
+      ]),
+    ]);
+    await openAccounts(tester, wire);
+
+    // The wide table's tooltip names it on the Grant that holds it, and says
+    // nothing extra on the one that does not.
+    final tooltip = tester.widget<Tooltip>(find.byKey(AccountsScreen.grantsKey('7')));
+    final lines = (tooltip.message as String).split('\n');
+    expect(lines, contains('Ho Chi Minh › Assembly · View and edit · Quality authority'));
+    expect(lines, contains('Ho Chi Minh › Line 1 · View'));
+
+    // And the correction dialog opens holding it: the Grant set it starts
+    // from carries the flag, which is what stops a re-submission from
+    // dropping an authority nobody meant to change.
+    await openCorrection(tester, '7');
+    expect(
+      tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.qualityKey('10'))).value,
+      true,
+    );
+    expect(
+      tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.qualityKey('11'))).value,
+      false,
+    );
+  });
+
+  testWidgets('the narrow card names Quality authority in the Grant chip too', (tester) async {
+    goNarrow(tester);
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('7', 'auditor@b.c', role: Roles.supervisor, grants: [
+          grantJson('10', name: 'Assembly', qualityAuthority: true),
+        ]),
+      ]),
+    );
+
+    expect(find.text('Ho Chi Minh › Assembly · View · Quality authority'), findsOneWidget);
+  });
+
+  testWidgets('a correction gives Quality authority to a Grant, and takes it from another, in one act',
+      (tester) async {
+    goWide(tester);
+    final wire = _plant(accounts: [
+      accountJson('7', 'auditor@b.c', role: Roles.supervisor, grants: [
+        grantJson('10', canWrite: true, qualityAuthority: true),
+        grantJson('11', name: 'Line 1'),
+      ]),
+    ]);
+    await openAccounts(tester, wire);
+    await openCorrection(tester, '7');
+
+    // Taken from the one holding it, given to the one that does not — the
+    // whole set is what Approval replaces, so the request carries both.
+    await tapIn(tester, find.byKey(OrgUnitPicker.qualityKey('10')));
+    await tapIn(tester, find.byKey(OrgUnitPicker.qualityKey('11')));
+    await tapIn(tester, find.byKey(AccountCorrectionDialog.submitKey));
+
+    expect(wire.approvals.single['grants'], [
+      {'orgUnitId': '10', 'canWrite': true, 'qualityAuthority': false},
+      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': true},
+    ]);
   });
 
   testWidgets('deactivating asks first, and reactivating does not', (tester) async {

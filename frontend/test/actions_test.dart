@@ -812,6 +812,14 @@ void main() {
 
   testWidgets('raising a containment needs a title, and the kind comes off the address',
       (tester) async {
+    // Pinned taller than the default 800x600: the section issue #208 added at
+    // the foot of this Screen lengthens it, and a `tapIn` on the Add-a-measure
+    // button then scrolls the list far enough to cull the title and the notice
+    // at its top — which is where the notice this test asserts on lands.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(800, 1600);
+    addTearDown(tester.view.reset);
+
     final wire = wireWith(
       actionDetails: {
         '501': actionJson(
@@ -864,6 +872,15 @@ void main() {
 
   testWidgets('a measure a caller may not raise is refused inside the dialog that asked',
       (tester) async {
+    // A taller window than the default 800x600: the Concern's detail read is a
+    // lazily-built ListView, and the measure control now sits below the cycle,
+    // the facts and the CAPA section (issue #209) — at the default surface the
+    // key is not in the tree at all, so `ensureVisible` finds nothing to scroll
+    // to.
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     final wire = wireWith(
       createMeasureStatus: 403,
       createMeasureMessage: "Outside the caller's granted Org Units",

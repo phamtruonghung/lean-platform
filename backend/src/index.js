@@ -21,6 +21,7 @@ const lifecycle = require('./platform/lifecycle');
 const people = require('./modules/people');
 const maintenance = require('./modules/maintenance');
 const actions = require('./modules/actions');
+const quality = require('./modules/quality');
 
 const app = express();
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
@@ -36,6 +37,33 @@ app.use(express.json({ limit: '100kb' }));
 const healthRoutes = health.mount(app);
 
 // ---------------------------------------------------------------------------
+// The tier board's KPI registry (issue #202)
+// ---------------------------------------------------------------------------
+// Assembled here, where the application composes its Modules, so that no
+// Module has to know about another to put a number on the board. Each Module's
+// entry point contributes its own entries — a KPI code mapped to how that
+// number is read out of the Module's own records (the entry shape is in
+// maintenance/kpi-registry.js's header) — and this is the one place they meet.
+// The board's own code knows no KPI by name: it computes whatever this registry
+// names and reports `no_data` for everything else, which is still most of the
+// catalogue: Safety and People record no work yet, and the Quality and Delivery
+// KPIs that would need quantity produced have no Production Module to count it.
+//
+// Adding a Module's KPIs is one spread below and nothing else: no file in
+// another Module changes, and no Module requires another (ADR-0006). A KPI
+// code belongs to exactly one Module; the spread order is the tie-break if two
+// ever collide, and a collision is a mistake in the contributions rather than
+// something this file can resolve meaningfully.
+const kpiRegistry = {
+  ...maintenance.kpiRegistry,
+  // Quality's own (issue #216): open Non-conformances, overdue CAPAs, the
+  // complaints received in the period and the cost of poor quality, each read
+  // from this Module's records — quality/kpi-registry.js argues the entries and
+  // what it deliberately leaves reporting `no_data`.
+  ...quality.kpiRegistry
+};
+
+// ---------------------------------------------------------------------------
 // API
 // ---------------------------------------------------------------------------
 // The frontend and the API are served from one hostname by the reverse proxy,
@@ -44,8 +72,31 @@ const healthRoutes = health.mount(app);
 // an omission (ADR-0002).
 app.use('/api', healthRoutes);
 app.use('/api/people', people.router);
+// The shared floor device's own addresses — register it, set an Employee's
+// floor PIN, exchange them for an identification — are People's routes since
+// issue #201, but they stay mounted under `/api/maintenance`, which is where a
+// deployed device has always called them and where the frontend still calls
+// them. The prefix is an address kept, not a claim about which Module owns the
+// route: people/floor-routes.js's own header says so, and folding the router
+// into `people.router` instead would have moved every device's URL for no gain
+// a device can see. This file is where the application composes its Modules,
+// so the mount is written here rather than hidden inside maintenance's router.
+app.use('/api/maintenance', people.floorRouter);
 app.use('/api/maintenance', maintenance.router);
+// Mounted beside the Module's other routes, but created with the assembled
+// registry above: the board route is the one thing that has to be handed it,
+// which is why it is a factory rather than a file inside `maintenance.router`
+// (see maintenance/index.js and board-routes.js). Its address is unchanged.
+app.use('/api/maintenance', maintenance.createBoardRouter(kpiRegistry));
 app.use('/api/actions', actions.router);
+// The Quality Module's own prefix (issue #203): the Product catalogue and the
+// Defect code tree today, and whatever else this Module owns as its slices
+// land. A prefix of its own rather than a corner of another Module's — the two
+// catalogues are shared by every Site (ADR-0005) and belong to no Org Unit, so
+// neither `/api/people` nor `/api/maintenance` is their address. Its router is
+// mounted here, where the application composes its Modules, and it carries its
+// own copy of the administrator check (quality/index.js's own header).
+app.use('/api/quality', quality.router);
 
 // An unknown path under /api answers in JSON. Express's default 404 is an HTML
 // page, which a client that asked for JSON cannot parse — so a typo in a URL

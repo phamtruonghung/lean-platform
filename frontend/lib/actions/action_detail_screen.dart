@@ -44,8 +44,30 @@ class ActionDetailScreen extends StatelessWidget {
   static const ValueKey<String> cancelKey = ValueKey<String>('action-detail-cancel');
   static const ValueKey<String> escalateKey = ValueKey<String>('action-detail-escalate');
 
+  /// The CAPA opened on this Concern, or the way to open one (issue #209):
+  /// whether the problem is under investigation is a fact about this record, so
+  /// it reads here rather than on a Screen of its own.
+  static const ValueKey<String> capaKey = ValueKey<String>('action-detail-capa');
+  static const ValueKey<String> openCapaKey = ValueKey<String>('action-detail-open-capa');
+  static const ValueKey<String> capaLinkKey = ValueKey<String>('action-detail-capa-link');
+  static const ValueKey<String> noCapaKey = ValueKey<String>('action-detail-no-capa');
+
   static const ValueKey<String> addMeasureKey = ValueKey<String>('action-detail-add-measure');
   static const ValueKey<String> measuresHeadingKey = ValueKey<String>('action-detail-measures');
+
+  /// The Non-conformances this Concern answers (issue #208): the section, its
+  /// empty state, one row per occurrence and the row's own unlink control.
+  static const ValueKey<String> nonconformancesKey =
+      ValueKey<String>('action-detail-nonconformances');
+  static const ValueKey<String> noNonconformancesKey =
+      ValueKey<String>('action-detail-no-nonconformances');
+  static const ValueKey<String> raisedFromKey = ValueKey<String>('action-detail-raised-from');
+
+  static ValueKey<String> nonconformanceKey(String id) =>
+      ValueKey<String>('action-nonconformance-$id');
+
+  static ValueKey<String> unlinkNonconformanceKey(String id) =>
+      ValueKey<String>('action-nonconformance-unlink-$id');
   static ValueKey<String> addMeasureKindKey(String wire) =>
       ValueKey<String>('action-detail-add-measure-$wire');
   static ValueKey<String> measureKey(String id) => ValueKey<String>('action-measure-$id');
@@ -185,8 +207,22 @@ class _ActionDetail extends StatelessWidget {
             _Cycle(action: action),
             const SizedBox(height: Spacing.lg),
             _Facts(action: action),
+            // The investigation this Concern has been turned into, if any
+            // (issue #209) — only a Concern can be under one, because that is
+            // what a CAPA is opened on.
+            if (action.actionType == 'concern') ...[
+              const SizedBox(height: Spacing.lg),
+              _Capa(action: action),
+            ],
             const SizedBox(height: Spacing.lg),
             _Measures(action: action),
+            const SizedBox(height: Spacing.lg),
+            // The evidence behind the Concern (issue #208), at the foot of the
+            // record on purpose: the cycle and the work answering it are what
+            // was asked for first, and the occurrences are what proves the
+            // problem is real. A Concern raised from the register has none of
+            // them, and the empty state says so rather than leaving a blank.
+            _Nonconformances(action: action),
           ],
         ),
       ),
@@ -381,6 +417,71 @@ class _Parent extends StatelessWidget {
   }
 }
 
+/// The CAPA opened on this Concern (issue #209, ADR-0034), or the way to open
+/// one — and nothing at all when the caller holds no Quality authority, which
+/// is the rule ADR-0035 and issue #48 set: a CAPA is opened by judgement, not
+/// by anybody.
+///
+/// A Concern that already has one shows it rather than the button, because a
+/// second is refused (409) and offering a control the server will refuse is a
+/// worse interface than naming the investigation that exists.
+class _Capa extends StatelessWidget {
+  const _Capa({required this.action});
+
+  final Action action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final capa = action.capa;
+    // Read here, in a build, rather than passed in from the route: a value
+    // computed when the route first built would freeze the Account state as it
+    // was before `/me` answered, and a holder of Quality authority would never
+    // be offered the act that authority gates (ADR-0035).
+    final canOpen = holdsQualityAuthority(context, action.orgUnitId);
+
+    return Column(
+      key: ActionDetailScreen.capaKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('CAPA', style: theme.textTheme.titleSmall),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          'A formal 8D investigation opened on this Concern: its team, its problem description '
+          'and — as those slices land — its root causes and its effectiveness check. Its actions '
+          'are the ones below, recorded once in the action log and read there.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Spacing.sm),
+        if (capa != null)
+          Card(
+            key: ActionDetailScreen.capaLinkKey,
+            child: ListTile(
+              onTap: () => context.go('${Routes.actions}/capas/${capa.id}'),
+              title: Text('Under investigation: ${capa.capaNo}'),
+              subtitle: Text(action.title),
+              trailing: StatusChip(label: capa.statusLabel, tone: capa.statusTone),
+            ),
+          )
+        else if (canOpen)
+          FilledButton.tonal(
+            key: ActionDetailScreen.openCapaKey,
+            onPressed: () => context.go('${Routes.actions}/${action.id}/capa'),
+            child: const Text('Open a CAPA…'),
+          )
+        else
+          Text(
+            key: ActionDetailScreen.noCapaKey,
+            "Nobody has opened a CAPA on this Concern. Opening one needs Quality authority at "
+            "this Concern's Org Unit.",
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+      ],
+    );
+  }
+}
+
 /// The measures answering this Action (issue #178): each one an Action of its
 /// own, with its own cycle, listed containment first because that is what stops
 /// the bleeding. The empty state is the honest one rather than a placeholder —
@@ -505,6 +606,89 @@ class _Measures extends StatelessWidget {
                     'waiting on its ${measure.openPhase!.phaseLabel.toLowerCase()}',
                 ].join(' · '),
               ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// The Non-conformances this Concern answers (issue #208) — the record it was
+/// raised from first, then every occurrence gathered to it since. Each row is
+/// a link to the Non-conformance's own address, which is the half of "each
+/// record shows the other" that lives on this Screen; the source row says so
+/// and offers no unlink, because the service refuses that one.
+///
+/// The row carries the four facts a reader of a Concern needs — the number,
+/// the Product, the Defect code and the quantity — and deliberately no status
+/// chip: that vocabulary is the Quality Module's, this Module does not import
+/// it (the dependency runs the other way, see `actions.dart`), and the row's
+/// own address is where the record's state is read.
+class _Nonconformances extends StatelessWidget {
+  const _Nonconformances({required this.action});
+
+  final Action action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final occurrences = action.nonconformances;
+    final live = !const {'done', 'cancelled'}.contains(action.status);
+
+    return Column(
+      key: ActionDetailScreen.nonconformancesKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          occurrences.isEmpty ? 'Non-conformances' : 'Non-conformances (${occurrences.length})',
+          style: theme.textTheme.titleSmall,
+        ),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          'The occurrences this Concern answers. One problem that shows up several times stays one '
+          'Concern, so a further occurrence is linked here rather than raised as another.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Spacing.sm),
+        if (occurrences.isEmpty)
+          Text(
+            key: ActionDetailScreen.noNonconformancesKey,
+            'No Non-conformance is linked to this Concern.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        for (final occurrence in occurrences)
+          Card(
+            key: ActionDetailScreen.nonconformanceKey(occurrence.id),
+            margin: const EdgeInsets.only(bottom: Spacing.sm),
+            child: ListTile(
+              onTap: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
+              title: Text(occurrence.issueNo),
+              subtitle: Text(
+                [
+                  occurrence.productLabel,
+                  occurrence.defectCodeLabel,
+                  occurrence.quantityLabel,
+                ].join(' · '),
+              ),
+              trailing: occurrence.isSource
+                  ? TextButton(
+                      key: ActionDetailScreen.raisedFromKey,
+                      onPressed: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
+                      child: const Text('Raised from this'),
+                    )
+                  // Offered only while the Concern is still live: a link on a
+                  // closed problem is history, and an ended Action is not
+                  // offered its own transition controls either.
+                  : live
+                      ? TextButton(
+                          key: ActionDetailScreen.unlinkNonconformanceKey(occurrence.id),
+                          onPressed: () => context.go(
+                            '${Routes.actions}/${action.id}/nonconformances/'
+                            '${occurrence.id}/unlink',
+                          ),
+                          child: const Text('Unlink…'),
+                        )
+                      : const Icon(Icons.chevron_right),
             ),
           ),
       ],

@@ -88,6 +88,37 @@ class ActionPhaseCompletionRequested extends ActionDetailEvent {
   final String? outcome;
 }
 
+/// An occurrence is unlinked from this Concern (issue #208). The dialog
+/// decides — the record is named in its own address and the Bloc only ever
+/// sees a decision already made.
+class ActionNonconformanceUnlinked extends ActionDetailEvent {
+  const ActionNonconformanceUnlinked({
+    required this.actionId,
+    required this.nonconformanceId,
+  });
+
+  final String actionId;
+  final String nonconformanceId;
+}
+
+/// Open a CAPA on this Concern (issue #209, ADR-0034). The dialog decides the
+/// team and the problem description; the Bloc only ever sees a decision already
+/// made, and the answer is the investigation the server opened — not the
+/// Concern, which the CAPA's own payload carries anyway.
+class ActionCapaRequested extends ActionDetailEvent {
+  const ActionCapaRequested({
+    required this.concernId,
+    this.teamLeadEmployeeId,
+    this.teamMemberEmployeeIds = const [],
+    this.problemStatement,
+  });
+
+  final String concernId;
+  final String? teamLeadEmployeeId;
+  final List<String> teamMemberEmployeeIds;
+  final String? problemStatement;
+}
+
 sealed class ActionDetailState {
   const ActionDetailState();
 }
@@ -109,6 +140,11 @@ class ActionDetailLoaded extends ActionDetailState {
     this.escalationFailure,
     this.isCancelling = false,
     this.cancellationFailure,
+    this.isUnlinking = false,
+    this.unlinkFailure,
+    this.isOpeningCapa = false,
+    this.capaFailure,
+    this.openedCapaId,
     this.notice,
   });
 
@@ -148,6 +184,25 @@ class ActionDetailLoaded extends ActionDetailState {
   /// before deciding what to do next.
   final String? cancellationFailure;
 
+  /// An occurrence is being unlinked from this Concern, and why the last
+  /// unlink did not land (issue #208). Its own pair because the one refusal
+  /// this act has — the Non-conformance the Concern was raised from cannot be
+  /// unlinked — is a sentence worth reading beside the button that asked.
+  final bool isUnlinking;
+  final String? unlinkFailure;
+
+  /// A CAPA is being opened on this Concern (issue #209), and why the last
+  /// attempt did not land. Its own pair because the refusals this act has — no
+  /// Quality authority (403), a second CAPA (409), an Employee who has departed
+  /// (409) — are sentences worth reading beside the form that asked.
+  final bool isOpeningCapa;
+  final String? capaFailure;
+
+  /// The CAPA the last attempt opened, once the server has answered. The dialog
+  /// that asked follows it to its own address; the Screen underneath has
+  /// already been handed the Concern the same answer carried.
+  final String? openedCapaId;
+
   /// What the last completion had to say for itself.
   final String? notice;
 
@@ -167,6 +222,13 @@ class ActionDetailLoaded extends ActionDetailState {
     bool? isCancelling,
     String? cancellationFailure,
     bool clearCancellationFailure = false,
+    bool? isUnlinking,
+    String? unlinkFailure,
+    bool clearUnlinkFailure = false,
+    bool? isOpeningCapa,
+    String? capaFailure,
+    bool clearCapaFailure = false,
+    String? openedCapaId,
     String? notice,
     bool clearNotice = false,
   }) =>
@@ -184,6 +246,11 @@ class ActionDetailLoaded extends ActionDetailState {
         isCancelling: isCancelling ?? this.isCancelling,
         cancellationFailure:
             clearCancellationFailure ? null : (cancellationFailure ?? this.cancellationFailure),
+        isUnlinking: isUnlinking ?? this.isUnlinking,
+        unlinkFailure: clearUnlinkFailure ? null : (unlinkFailure ?? this.unlinkFailure),
+        isOpeningCapa: isOpeningCapa ?? this.isOpeningCapa,
+        capaFailure: clearCapaFailure ? null : (capaFailure ?? this.capaFailure),
+        openedCapaId: openedCapaId ?? this.openedCapaId,
         // Explicit clear flags rather than a null default: every emit would
         // otherwise wipe the reason a dialog is showing, and a caller reading
         // the Screen would never see it.
@@ -209,6 +276,8 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
     on<ActionCancellationRequested>(_onCancellationRequested);
     on<ActionEscalationTargetsRequested>(_onEscalationTargetsRequested);
     on<ActionEscalationRequested>(_onEscalationRequested);
+    on<ActionNonconformanceUnlinked>(_onNonconformanceUnlinked);
+    on<ActionCapaRequested>(_onCapaRequested);
   }
 
   final ActionsApi _actions;
@@ -388,6 +457,103 @@ class ActionDetailBloc extends Bloc<ActionDetailEvent, ActionDetailState> {
       final settled = state;
       if (settled is! ActionDetailLoaded) return;
       emit(settled.copyWith(isAddingMeasure: false, measureFailure: error.message));
+    }
+  }
+
+  /// Unlinks one occurrence from this Concern (issue #208) and keeps what the
+  /// server sends back, which is the Concern with every occurrence it still
+  /// answers — so the Screen reads the list the server just wrote rather than
+  /// removing a row itself.
+  ///
+  /// A refusal is the server's own: the Non-conformance the Concern was raised
+  /// from cannot be unlinked, and that sentence is what the dialog shows.
+  Future<void> _onNonconformanceUnlinked(
+    ActionNonconformanceUnlinked event,
+    Emitter<ActionDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! ActionDetailLoaded || current.isUnlinking) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(unlinkFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isUnlinking: true, clearUnlinkFailure: true));
+    try {
+      final action = await _actions.unlinkNonconformance(
+        token,
+        event.actionId,
+        event.nonconformanceId,
+      );
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(
+        settled.copyWith(
+          action: action,
+          isUnlinking: false,
+          clearUnlinkFailure: true,
+          notice: 'That occurrence is no longer linked to ${action.actionNo}.',
+        ),
+      );
+    } on ActionsApiException catch (error) {
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(settled.copyWith(isUnlinking: false, unlinkFailure: error.message));
+    }
+  }
+
+  /// Opens a CAPA on this Concern (issue #209) and keeps what the server
+  /// answers with.
+  ///
+  /// The response is the *CAPA*, and its `concern` is the Concern's own detail
+  /// read — so the Screen behind the dialog is handed the record the server
+  /// just wrote (its `capa` link included) without a second request, and the
+  /// dialog is told the new investigation's id so it can go and read it. Two
+  /// facts, one round trip, and neither the Screen nor the dialog guesses at
+  /// what the write did.
+  ///
+  /// A refusal is the server's own sentence and is reported in the state, which
+  /// the dialog that asked is watching for: it stays open with the reason in it
+  /// rather than closing over a write that did not happen.
+  Future<void> _onCapaRequested(
+    ActionCapaRequested event,
+    Emitter<ActionDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! ActionDetailLoaded || current.isOpeningCapa) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(capaFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isOpeningCapa: true, clearCapaFailure: true));
+    try {
+      final capa = await _actions.openCapa(
+        token,
+        event.concernId,
+        teamLeadEmployeeId: event.teamLeadEmployeeId,
+        teamMemberEmployeeIds: event.teamMemberEmployeeIds,
+        problemStatement: event.problemStatement,
+      );
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(
+        settled.copyWith(
+          action: capa.concern ?? settled.action,
+          isOpeningCapa: false,
+          clearCapaFailure: true,
+          openedCapaId: capa.id,
+          notice: '${capa.capaNo} was opened on this Concern.',
+        ),
+      );
+    } on ActionsApiException catch (error) {
+      final settled = state;
+      if (settled is! ActionDetailLoaded) return;
+      emit(settled.copyWith(isOpeningCapa: false, capaFailure: error.message));
     }
   }
 

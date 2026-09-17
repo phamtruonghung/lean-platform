@@ -15,7 +15,12 @@
  *     granted.path` is true exactly when `target` is `granted`'s own row or
  *     any descendant of it, which is what "a grant on a Site's root Org
  *     Unit reaches every unit beneath it" means as a single indexed (GiST)
- *     lookup rather than a recursive walk up or down the tree.
+ *     lookup rather than a recursive walk up or down the tree. Issue #204
+ *     adds a third question to the same lookup — "does a grant carrying
+ *     Quality authority reach this Org Unit?" (`quality: true`, ADR-0035) —
+ *     which is the same containment test restricted to
+ *     `app_user_org_units.quality_authority`, deliberately separate from
+ *     `write` because neither implies the other.
  *   - "Where does this Account's own scope begin in a given Site's tree?" —
  *     a structurally different question from the two above: not "may the
  *     caller act on this one Org Unit" but "which Org Units, in this Site,
@@ -91,7 +96,18 @@ function isAdmin(account) {
 // `can_write = TRUE` grants only; a read is satisfied by any grant at all,
 // since read and write are grantable separately (issue #8's own criterion)
 // and a write grant implies read rather than needing its own separate row.
-async function canAct({ account, orgUnitId, write = false }) {
+//
+// `quality: true` (issue #204, ADR-0035) is the same grant-reaching-downward
+// test, restricted instead to grants carrying Quality authority
+// (`quality_authority = TRUE`, migration 1799800000000) — the flag a later
+// slice requires to grant a Concession, reopen a Non-conformance, open a CAPA
+// and verify one held. It is deliberately a separate option from `write` and
+// not folded into it: Quality authority does not imply write and write does
+// not imply Quality authority, so a view-only grant may carry it and an edit
+// grant need not (ADR-0035's own worked examples). The two are additive when
+// both are asked for together — the same `AND` the `write` clause already
+// contributes — and no caller in this Module asks for both today.
+async function canAct({ account, orgUnitId, write = false, quality = false }) {
   if (isAdmin(account)) return true;
   if (orgUnitId === null || orgUnitId === undefined) return false;
 
@@ -103,6 +119,7 @@ async function canAct({ account, orgUnitId, write = false }) {
       WHERE target.id = $2
         AND target.path <@ granted.path
         ${write ? 'AND auo.can_write = TRUE' : ''}
+        ${quality ? 'AND auo.quality_authority = TRUE' : ''}
       LIMIT 1`,
     [account.id, orgUnitId]
   );
@@ -225,11 +242,23 @@ async function grantedEntryPointIds({ account, siteId }) {
 // rather than an `ltree` it would have to parse. The granted unit is included
 // in the list, so `reaches` and `canWriteAt` need one lookup and no special
 // case for the row's own id.
+//
+// Each Grant also carries `qualityAuthority` (issue #204, ADR-0035), the flag
+// migration 1799800000000 adds and Approval sets alongside the level. It is
+// here for the same reason `canWrite` is and by the same ADR-0027 mechanism:
+// whether a person may accept bad product on a line is a per-record question
+// ("may I grant a Concession on *this* Non-conformance's Org Unit"), a Grant
+// reaches downward, and the client must be able to answer it from the same
+// scope it already reads for `canWriteAt` rather than by asking the server
+// once per row. Reporting it beside each Grant's own reach is also what makes
+// "the flag reaches downward like the Grant" a fact a caller can check over
+// HTTP (`/me` is the only read that names a Grant's whole subtree), which is
+// the reach `canAct({ quality: true })` answers with on the server.
 async function orgUnitScopeFor({ account }) {
   if (isAdmin(account)) return { everywhere: true, grants: [] };
 
   const { rows } = await getPool().query(
-    `SELECT auo.org_unit_id, ou.site_id, auo.can_write,
+    `SELECT auo.org_unit_id, ou.site_id, auo.can_write, auo.quality_authority,
             ARRAY(
               SELECT descendant.id::text
                 FROM org_units descendant
@@ -249,6 +278,7 @@ async function orgUnitScopeFor({ account }) {
       orgUnitId: row.org_unit_id,
       siteId: row.site_id,
       canWrite: row.can_write,
+      qualityAuthority: row.quality_authority,
       orgUnitIds: row.org_unit_ids
     }))
   };

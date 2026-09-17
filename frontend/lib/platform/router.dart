@@ -14,9 +14,20 @@ import '../actions/action_escalate_dialog.dart';
 import '../actions/action_form_dialog.dart';
 import '../actions/action_measure_dialog.dart';
 import '../actions/action_phase_complete_dialog.dart';
+import '../actions/action_unlink_nonconformance_dialog.dart';
 import '../actions/actions_api.dart';
 import '../actions/actions_bloc.dart';
 import '../actions/actions_screen.dart';
+import '../actions/capa.dart';
+import '../actions/capa_cause_dialog.dart';
+import '../actions/capa_detail_bloc.dart';
+import '../actions/capa_detail_screen.dart';
+import '../actions/capa_effectiveness_dialog.dart';
+import '../actions/capa_report_screen.dart';
+import '../actions/capa_why_dialog.dart';
+import '../actions/capas_bloc.dart';
+import '../actions/capas_screen.dart';
+import '../actions/open_capa_dialog.dart';
 import '../home_bloc.dart';
 import '../home_screen.dart';
 import '../maintenance/assets_bloc.dart';
@@ -72,6 +83,45 @@ import '../people/skill_coverage_screen.dart';
 import '../people/skills_bloc.dart';
 import '../people/skills_screen.dart';
 import '../people_api.dart';
+import '../quality/complaint_detail_bloc.dart';
+import '../quality/complaint_detail_screen.dart';
+import '../quality/complaint_form_dialog.dart';
+import '../quality/complaint_link_dialog.dart';
+import '../quality/complaint_nonconformance_dialog.dart';
+import '../quality/complaint_respond_dialog.dart';
+import '../quality/complaints_bloc.dart';
+import '../quality/complaints_screen.dart';
+import '../quality/customers_bloc.dart';
+import '../quality/customers_screen.dart';
+import '../quality/supplier_ncr_detail_bloc.dart';
+import '../quality/supplier_ncr_detail_screen.dart';
+import '../quality/supplier_ncr_disposition_dialog.dart';
+import '../quality/supplier_ncr_form_dialog.dart';
+import '../quality/supplier_ncr_link_dialog.dart';
+import '../quality/supplier_ncr_nonconformance_dialog.dart';
+import '../quality/supplier_ncrs_bloc.dart';
+import '../quality/supplier_ncrs_screen.dart';
+import '../quality/suppliers_bloc.dart';
+import '../quality/suppliers_screen.dart';
+import '../quality/defect_codes_bloc.dart';
+import '../quality/defect_codes_screen.dart';
+import '../quality/nonconformance_cancel_dialog.dart';
+import '../quality/nonconformance_concession_dialog.dart';
+import '../quality/nonconformance_detail_bloc.dart';
+import '../quality/nonconformance_detail_screen.dart';
+import '../quality/nonconformance_disposition_dialog.dart';
+import '../quality/nonconformance_form_dialog.dart';
+import '../quality/nonconformance_link_concern_dialog.dart';
+import '../quality/nonconformance_lower_severity_dialog.dart';
+import '../quality/nonconformance_quantity_dialog.dart';
+import '../quality/nonconformance_raise_concern_dialog.dart';
+import '../quality/nonconformance_reopen_dialog.dart';
+import '../quality/nonconformance_update_dialog.dart';
+import '../quality/nonconformances_bloc.dart';
+import '../quality/nonconformances_screen.dart';
+import '../quality/products_bloc.dart';
+import '../quality/products_screen.dart';
+import '../quality/quality_api.dart';
 import 'access_denied_screen.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
@@ -104,11 +154,70 @@ abstract final class Routes {
   static const String skillCoverage = '/skill-coverage';
   static const String tierBoard = '/tier-board';
 
+  /// The Quality Module's own Destinations (issue #203): the Product catalogue
+  /// and the Defect code tree, at their own addresses so each can be linked to
+  /// or bookmarked. The Module's later slices — Non-conformances, CAPAs —
+  /// arrive as siblings of these, the way `${actions}/:id` sits beside
+  /// [actions].
+  static const String products = '/products';
+  static const String defectCodes = '/defect-codes';
+  /// The Non-conformance register, its record form (`/non-conformances/new`),
+  /// one record's detail (`/non-conformances/:id`) and the two controls that
+  /// change it after it is recorded (`/:id/quantity`, `/:id/update`) — all
+  /// addressed, per ADR-0021. `new` cannot collide with the detail route
+  /// because it is not an id.
+  static const String nonConformances = '/non-conformances';
+
+  /// The Customer list (issue #214), at its own address so it can be linked to
+  /// or bookmarked. Defining and correcting a Customer are dialogs over it
+  /// (`CustomerFormDialog.open`), the same shape the Product catalogue's own
+  /// write surface takes — a Customer carries three fields, and the list behind
+  /// the dialog is the context the correction is made in.
+  static const String customers = '/customers';
+
+  /// The customer complaint register (issue #214), with the record form
+  /// (`/complaints/new`), one complaint's detail (`/complaints/:id`) and the
+  /// three writes a reader makes from it (`/:id/respond`,
+  /// `/:id/nonconformance`, `/:id/link`) — all addressed, per ADR-0021.
+  static const String complaints = '/complaints';
+
+  /// The Supplier list (issue #215), at its own address so it can be linked to
+  /// or bookmarked. Defining and correcting a Supplier are dialogs over it
+  /// (`SupplierFormDialog.open`), the same shape the Customer list's write
+  /// surface takes — a Supplier carries the same three fields.
+  static const String suppliers = '/suppliers';
+
+  /// The supplier NCR register (issue #215), with the record form
+  /// (`/supplier-ncrs/new`), one NCR's detail (`/supplier-ncrs/:id`) and the
+  /// writes a reader opens from it (`/:id/disposition`, `/:id/nonconformance`,
+  /// `/:id/link`) — all addressed, per ADR-0021. Closing an NCR has no address
+  /// of its own: there is nothing to fill in, so the detail Screen's own button
+  /// dispatches it.
+  static const String supplierNcrs = '/supplier-ncrs';
+
   /// The Actions Module's own Destinations (issue #176): the action log, and
   /// one Action's detail read behind `${actions}/:id`. The raise form is
   /// addressed at `${actions}/new` (ADR-0021), which cannot collide with the
   /// detail route because `new` is not an id.
   static const String actions = '/actions';
+
+  /// The CAPA list (issue #211) — every investigation on the Platform, and the
+  /// effectiveness check each one is waiting on. A sibling of the Action log
+  /// rather than a child of it: a CAPA has its own id space (`capas`, the
+  /// baseline's own table) and its own collection. `/actions/capas` is *two*
+  /// segments, which is the same shape as the Action detail route
+  /// `/actions/:id` — so in `buildRouter` this list is declared **before** the
+  /// Action log, or go_router would take it for an Action whose id is `capas`.
+  /// (The CAPA's own detail route needs no such care: `${actions}/capas/:id` is
+  /// three segments.) One CAPA's address is unchanged by this ticket.
+  static const String capas = '/actions/capas';
+
+  /// One CAPA's report (issue #212) — the whole investigation laid out as an
+  /// 8D, printable from the browser. A child address of the CAPA's own
+  /// (`/actions/capas/:id/report`) rather than a second collection, and routed
+  /// **outside the Shell** so that printing it prints the report rather than
+  /// the navigation around it — see `buildRouter`.
+  static String capaReport(String capaId) => '$capas/$capaId/report';
 
   /// The shared floor device's own Screen (issue #77, ADR-0016). Its own
   /// address, deliberately outside the Shell and never offered as a
@@ -119,6 +228,83 @@ abstract final class Routes {
   /// The query parameter on [signIn] carrying the address the caller
   /// originally asked for.
   static const String fromParameter = 'from';
+}
+
+/// Whether the signed-in Account holds Quality authority at an Org Unit
+/// (ADR-0035) — the client's half of the server's own
+/// `canAct({ quality: true })`, read off the same `/me` scope every other
+/// per-record permission is (ADR-0027).
+///
+/// A top-level function rather than a local, because the Screen and each of
+/// the four dialogs a holder of the authority may open all ask it, and they
+/// are separate widgets. It is read **inside a build** and never hoisted into
+/// a route's builder: a value computed once when a route first builds captures
+/// the Account state as it was before `/me` answered, which is a Screen that
+/// never offers the decision it should. Reading where it is used means the
+/// element that shows the control is the element that rebuilds when the answer
+/// changes.
+bool holdsQualityAuthority(BuildContext context, String orgUnitId) {
+  final account = context.watch<AccountBloc>().state;
+  return account is AccountApproved &&
+      account.account.orgUnitScope.canHoldQualityAt(orgUnitId);
+}
+
+/// Whether the signed-in Account may write a CAPA's 5 Why chains (issue #210) —
+/// the client's half of the server's own rule, which is an **or**: edit access
+/// at the CAPA's Org Unit, *or* a place on its team.
+///
+/// The second half is why this reads the Account's own `employeeId`
+/// (`app_users.employee_id`, which an Account need not have — an administrator
+/// is not necessarily an Employee) and compares it against the team the CAPA
+/// carries: the team lead is on the team, and so is every member. An
+/// administrator reaches everywhere through the first half, exactly as
+/// `canAct` answers for them on the server.
+///
+/// A top-level function rather than a local, for the reason
+/// [holdsQualityAuthority] above is one: the Screen and each of the three
+/// dialogs a writer may open ask it, and they are separate widgets — and it is
+/// read **inside a build**, never hoisted into a route's builder, so the
+/// control appears the moment `/me` answers rather than never.
+bool mayEditCapaChains(BuildContext context, Capa capa) {
+  final account = context.watch<AccountBloc>().state;
+  if (account is! AccountApproved) return false;
+  if (account.account.orgUnitScope.canWriteAt(capa.orgUnitId)) return true;
+  final employeeId = account.account.employeeId;
+  return employeeId != null && capa.team.any((member) => member.employeeId == employeeId);
+}
+
+/// Whether this Account **is the team lead's** on the CAPA (issue #211) — the
+/// second half of the rule that decides who may record an effectiveness check.
+///
+/// It reads the Account's own Employee link (`app_users.employee_id`, which an
+/// Account need not have: an administrator is not necessarily an Employee)
+/// against the lead the CAPA carries. An Account with no Employee is never the
+/// team lead; an Account whose Employee is a *member* of the team is not either,
+/// and a member is exactly who may record the check.
+///
+/// A top-level function so the Screen and the address's own refusal ask the
+/// same question once, and read **inside a build** for the reason the two
+/// helpers above are: the answer arrives with `/me`.
+bool isCapaTeamLeadAccount(BuildContext context, Capa capa) {
+  final account = context.watch<AccountBloc>().state;
+  if (account is! AccountApproved) return false;
+  final employeeId = account.account.employeeId;
+  if (employeeId == null) return false;
+  return capa.teamLead?.employeeId == employeeId;
+}
+
+/// Whether this Account may record the CAPA's effectiveness check (issue #211)
+/// — the client's half of the server's own two-part gate: **Quality authority
+/// at the CAPA's Org Unit**, held by somebody who is **not the team lead**.
+///
+/// Both halves are read off the same `/me` scope every other per-record
+/// permission is (ADR-0027): `canHoldQualityAt` is the authority ADR-0035 puts
+/// on a Grant, and the Employee link is what says whose Account this is. An
+/// administrator passes the first half everywhere, through the same reach the
+/// server's `canAct` gives them.
+bool mayRecordCapaEffectiveness(BuildContext context, Capa capa) {
+  if (!holdsQualityAuthority(context, capa.orgUnitId)) return false;
+  return !isCapaTeamLeadAccount(context, capa);
 }
 
 GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}) {
@@ -159,6 +345,55 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
           )..add(const FloorStarted()),
           child: const FloorScreen(),
         ),
+      ),
+      // The CAPA report (issue #212) — the whole investigation laid out as an
+      // 8D at its own address, printable from the browser.
+      //
+      // **Outside the Shell, deliberately, and it is the ticket's own point.**
+      // A `ShellRoute` wraps every child in `PlatformShell`, so a report
+      // declared inside the CAPA's own `ShellRoute` below would carry the
+      // sidebar, the brand header and the account footer onto every printed
+      // page. Sign-in and awaiting-Approval are siblings of the Shell for the
+      // same reason, and so is the floor surface; `accountRedirect` is what
+      // decides who reaches the address, not the Shell's chrome.
+      //
+      // A sibling `GoRoute` rather than a child of the CAPA's own detail route,
+      // and it could not have been matched by one: `/actions/capas/:id/report`
+      // is four segments, and the routes inside the Shell declare no `:id`
+      // child that could take it (unlike `/actions/capas`, which the Action
+      // detail route *would* take for an Action whose id is `capas` — see the
+      // CAPA list's own note below). It is declared here, before the Shell,
+      // because that is where the addresses reached without chrome live.
+      //
+      // No gate of its own either: reading a CAPA is a platform-wide read for
+      // every active Account (ADR-0009, and `/api/actions/capas/:id` asks
+      // nothing more), so a report that refused a reader would be a second,
+      // stricter rule for one record's own Screen.
+      GoRoute(
+        path: '${Routes.actions}/capas/:id/report',
+        builder: (context, state) {
+          final account = context.watch<AccountBloc>().state;
+          // Sealed-state type narrowing, not a per-Screen access check — the
+          // same line the Shell's own builder takes: `accountRedirect` has
+          // already decided that nobody but an admitted Account reaches an
+          // address like this, and a caller on their way to sign-in must not
+          // see a refusal flash first.
+          if (account is! AccountApproved) return const SizedBox.shrink();
+          final capaId = state.pathParameters['id']!;
+          return BlocProvider<CapaDetailBloc>(
+            // Keyed on the CAPA this report is of, for the reason the CAPA's
+            // own Screen keys its Bloc: go_router reuses a route's page when
+            // the route *pattern* matches, so moving from one report to another
+            // without a new key would repaint the first investigation's report
+            // under the second one's address.
+            key: ValueKey<String>('capa-report-$capaId'),
+            create: (context) => CapaDetailBloc(
+              actionsApi: context.read<ActionsApi>(),
+              authGateway: context.read<AuthGateway>(),
+            )..add(CapaDetailStarted(capaId)),
+            child: CapaReportScreen(capaId: capaId),
+          );
+        },
       ),
       // Everything an admitted Account can reach sits inside the Shell.
       // Sign-in and awaiting-Approval are siblings of it, not children, so
@@ -349,6 +584,796 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               );
             },
           ),
+          // The Quality Module's two catalogues (issue #203): the Products the
+          // plant makes and the Defect codes a Non-conformance is recorded
+          // against, both shared by every Site (ADR-0005). Offered to every
+          // approved Account, the same openness `Routes.jobRoles` and
+          // `Routes.skills` above already have and for the same reason: neither
+          // read carries an admin or scope check of its own
+          // (product-routes.js/defect-code-routes.js). Only the write
+          // affordances inside each Screen are gated to `isAdmin`.
+          GoRoute(
+            path: Routes.products,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<ProductsBloc>(
+                create: (context) => ProductsBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const ProductsStarted()),
+                child: ProductsScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.defectCodes,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<DefectCodesBloc>(
+                create: (context) => DefectCodesBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const DefectCodesStarted()),
+                child: DefectCodesScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          // The Customer list and the customer complaint register (issue #214),
+          // the Module's two remaining Destinations. The list is a catalogue
+          // read like the two above it (any approved Account, only its writes
+          // the administrator's), so it takes the same shape; the complaint
+          // register needs a `ShellRoute` of its own for the reason the
+          // Non-conformance register does — `ComplaintsBloc` is created exactly
+          // once and shared by the register, the record form's own address and
+          // the detail Screen.
+          //
+          // Both guards are the whole Module rather than a role set: the
+          // Customer list is a shared catalogue (ADR-0005) and the register is
+          // a Site-wide read for every admitted Account, while both write
+          // surfaces are gated by the server on the Grant that reaches the
+          // record's own Org Unit (and, for a Customer, on the administrator
+          // role). An operator is offered both Destinations exactly as a
+          // manager is.
+          GoRoute(
+            path: Routes.customers,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<CustomersBloc>(
+                create: (context) => CustomersBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const CustomersStarted()),
+                child: CustomersScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<ComplaintsBloc>(
+                create: (context) => ComplaintsBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const ComplaintsStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.complaints,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const ComplaintsScreen();
+                },
+                routes: [
+                  // `/complaints/new` — the record form, addressed rather than
+                  // popped (ADR-0021), and `new` cannot collide with the detail
+                  // route below because it is not an id.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final register = context.watch<ComplaintsBloc>().state;
+                          final siteId =
+                              register is ComplaintsLoaded ? register.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: ComplaintsScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          // The chooser inside the form browses People's tree
+                          // through the same Bloc the Non-conformance form uses,
+                          // scoped to this dialog and opened on the Site on
+                          // screen.
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: ComplaintFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // `/complaints/:id` and its three addresses — a `ShellRoute` of
+              // its own so `ComplaintDetailBloc` is created exactly once and
+              // shared by the Screen and the three dialogs beside it, and
+              // **keyed on the id in the address**: go_router reuses a route's
+              // page when the *pattern* matches, so moving from one complaint
+              // to another would otherwise leave this Bloc — and the Screen
+              // reading it — holding the record before (issue #183's own bug).
+              ShellRoute(
+                builder: (context, state, child) {
+                  final complaintId = state.pathParameters['id']!;
+                  return BlocProvider<ComplaintDetailBloc>(
+                    key: ValueKey<String>(complaintId),
+                    create: (context) => ComplaintDetailBloc(
+                      qualityApi: context.read<QualityApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(ComplaintDetailStarted(complaintId)),
+                    child: child,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    // Absolute, because this route is a *sibling* of the
+                    // register's rather than a child of it: a relative `:id`
+                    // here resolves against the Module shell and matches
+                    // `/:id`, not `/complaints/:id`.
+                    path: '${Routes.complaints}/:id',
+                    builder: (context, state) => ComplaintDetailScreen(
+                      complaintId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      // `/complaints/:id/respond` — closing it with the
+                      // response the customer was given.
+                      GoRoute(
+                        path: 'respond',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<ComplaintDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! ComplaintDetailLoaded) {
+                                return const AlertDialog(
+                                  key: ComplaintRespondDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return ComplaintRespondDialog(complaint: detail.complaint);
+                            },
+                          );
+                        },
+                      ),
+                      // `/complaints/:id/nonconformance` — recording the
+                      // Non-conformance that controls the complained-of product.
+                      GoRoute(
+                        path: 'nonconformance',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<ComplaintDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! ComplaintDetailLoaded) {
+                                return const AlertDialog(
+                                  key: ComplaintNonconformanceDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return ComplaintNonconformanceDialog(complaint: detail.complaint);
+                            },
+                          );
+                        },
+                      ),
+                      // `/complaints/:id/link` — linking one that exists.
+                      GoRoute(
+                        path: 'link',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<ComplaintDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! ComplaintDetailLoaded) {
+                                return const AlertDialog(
+                                  key: ComplaintLinkDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return ComplaintLinkDialog(complaint: detail.complaint);
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // The Supplier list and the supplier NCR register (issue #215), the
+          // Module's two remaining Destinations and the same pair the Customer
+          // slice above files. The list is a catalogue read like the two above
+          // it (any approved Account, only its writes the administrator's), so
+          // it takes the same shape; the NCR register needs a `ShellRoute` of
+          // its own for the reason the complaint register does —
+          // `SupplierNcrsBloc` is created exactly once and shared by the
+          // register, the record form's own address and the detail Screen.
+          GoRoute(
+            path: Routes.suppliers,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<SuppliersBloc>(
+                create: (context) => SuppliersBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SuppliersStarted()),
+                child: SuppliersScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<SupplierNcrsBloc>(
+                create: (context) => SupplierNcrsBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SupplierNcrsStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.supplierNcrs,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const SupplierNcrsScreen();
+                },
+                routes: [
+                  // `/supplier-ncrs/new` — the record form, addressed rather
+                  // than popped (ADR-0021), and `new` cannot collide with the
+                  // detail route below because it is not an id.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final register = context.watch<SupplierNcrsBloc>().state;
+                          final siteId =
+                              register is SupplierNcrsLoaded ? register.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: SupplierNcrsScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          // The chooser inside the form browses People's tree
+                          // through the same Bloc the complaint form uses,
+                          // scoped to this dialog and opened on the Site on
+                          // screen.
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: SupplierNcrFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // `/supplier-ncrs/:id` and its four addresses — a `ShellRoute` of
+              // its own so `SupplierNcrDetailBloc` is created exactly once and
+              // shared by the Screen and the four dialogs beside it, and
+              // **keyed on the id in the address**: go_router reuses a route's
+              // page when the *pattern* matches, so moving from one NCR to
+              // another would otherwise leave this Bloc — and the Screen
+              // reading it — holding the record before (issue #183's own bug).
+              ShellRoute(
+                builder: (context, state, child) {
+                  final supplierNcrId = state.pathParameters['id']!;
+                  return BlocProvider<SupplierNcrDetailBloc>(
+                    key: ValueKey<String>(supplierNcrId),
+                    create: (context) => SupplierNcrDetailBloc(
+                      qualityApi: context.read<QualityApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(SupplierNcrDetailStarted(supplierNcrId)),
+                    child: child,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    // Absolute, because this route is a *sibling* of the
+                    // register's rather than a child of it: a relative `:id`
+                    // here resolves against the Module shell and matches
+                    // `/:id`, not `/supplier-ncrs/:id`.
+                    path: '${Routes.supplierNcrs}/:id',
+                    builder: (context, state) => SupplierNcrDetailScreen(
+                      supplierNcrId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      // `/supplier-ncrs/:id/disposition` — the Supplier's
+                      // disposition and what was recovered.
+                      GoRoute(
+                        path: 'disposition',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SupplierNcrDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SupplierNcrDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SupplierNcrDispositionDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SupplierNcrDispositionDialog(
+                                supplierNcr: detail.supplierNcr,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/supplier-ncrs/:id/nonconformance` — recording the
+                      // Non-conformance that controls the received lot.
+                      GoRoute(
+                        path: 'nonconformance',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SupplierNcrDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SupplierNcrDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SupplierNcrNonconformanceDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SupplierNcrNonconformanceDialog(
+                                supplierNcr: detail.supplierNcr,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/supplier-ncrs/:id/link` — linking one that exists.
+                      GoRoute(
+                        path: 'link',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SupplierNcrDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SupplierNcrDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SupplierNcrLinkDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SupplierNcrLinkDialog(
+                                supplierNcr: detail.supplierNcr,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Non-conformances (issue #205) — a `ShellRoute` of its own, for the
+          // same reason Work orders and Actions have one: `NonconformancesBloc`
+          // is created exactly once and shared by the register and the record
+          // form's own address below (a child `GoRoute`'s page is a *sibling*
+          // of its parent's, so a Bloc provided inside the register's builder
+          // would not be visible to the form).
+          //
+          // The guard is the whole Module rather than a role set: the register
+          // is a Site-wide read for every admitted Account — "anyone who can
+          // see the Site can find and read it" is the ticket's own sentence —
+          // and recording needs only a write Grant reaching the Org Unit the
+          // product was found at. The server is the real gate on both. An
+          // operator is offered this Destination exactly as a manager is.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<NonconformancesBloc>(
+                create: (context) => NonconformancesBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const NonconformancesStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.nonConformances,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const NonconformancesScreen();
+                },
+                routes: [
+                  // `/non-conformances/new` — the record form, addressed
+                  // rather than popped (ADR-0021): a refresh lands on the
+                  // register with the form open, and `new` cannot collide with
+                  // the detail route below because it is not an id.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final register = context.watch<NonconformancesBloc>().state;
+                          final siteId =
+                              register is NonconformancesLoaded ? register.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: NonconformancesScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          // The chooser inside the form browses People's tree
+                          // through the same Bloc the Asset form uses, scoped
+                          // to this dialog and opened on the Site on screen.
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: NonconformanceFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // `/non-conformances/:id` and its own two addresses — a
+              // `ShellRoute` of its own so `NonconformanceDetailBloc` is created
+              // exactly once and shared by the Screen and the two dialogs
+              // beside it, and **keyed on the id in the address**: go_router
+              // reuses a route's page when the *pattern* matches, so moving
+              // from one Non-conformance to another would otherwise leave this
+              // Bloc — and the Screen reading it — holding the record before
+              // (issue #183's own bug, fixed the same way for Actions).
+              ShellRoute(
+                builder: (context, state, child) {
+                  final nonconformanceId = state.pathParameters['id']!;
+                  return BlocProvider<NonconformanceDetailBloc>(
+                    key: ValueKey<String>(nonconformanceId),
+                    create: (context) => NonconformanceDetailBloc(
+                      qualityApi: context.read<QualityApi>(),
+                      // Raising a Concern from this record and linking it to
+                      // one are writes to the action log (issue #208), so this
+                      // Bloc holds the Actions Module's client too — reached
+                      // through its own entry point.
+                      actionsApi: context.read<ActionsApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(NonconformanceDetailStarted(nonconformanceId)),
+                    child: child,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    // Absolute, because this route is a *sibling* of the
+                    // register's rather than a child of it: a relative `:id`
+                    // here resolves against the Module shell and matches
+                    // `/:id`, not `/non-conformances/:id`.
+                    path: '${Routes.nonConformances}/:id',
+                    builder: (context, state) => NonconformanceDetailScreen(
+                      nonconformanceId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      // `/non-conformances/:id/quantity` — increasing the
+                      // affected quantity. Nested under the record's own route
+                      // rather than sitting beside it, the same choice the
+                      // Action phase dialog makes: a sibling address would pop
+                      // the caller back to the register with the record they
+                      // were reading gone.
+                      GoRoute(
+                        path: 'quantity',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceQuantityDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceQuantityDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/update` — raising the severity
+                      // and recording the immediate containment that makes the
+                      // record contained.
+                      GoRoute(
+                        path: 'update',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceUpdateDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceUpdateDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/disposition` — dealing with
+                      // some of the product (issue #206): scrap, rework with
+                      // its minutes, or back to the supplier.
+                      GoRoute(
+                        path: 'disposition',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceDispositionDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceDispositionDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/concession` — accepting the
+                      // product as it is, which needs Quality authority.
+                      GoRoute(
+                        path: 'concession',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceConcessionDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              // The dialog is reachable by address, so it says
+                              // why rather than rendering a control the caller
+                              // may not use — the server refuses it either way
+                              // (ADR-0021's three outcomes). The authority
+                              // itself is read inside the dialog, where it is
+                              // also read in a build rather than frozen here.
+                              return NonconformanceConcessionDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/lower-severity` — the
+                      // correction issue #205 refused a recorder.
+                      GoRoute(
+                        path: 'lower-severity',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceLowerSeverityDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceLowerSeverityDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/reopen` — putting a closed
+                      // record back on the log, with a note.
+                      GoRoute(
+                        path: 'reopen',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceReopenDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceReopenDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/cancel` — cancelling a record
+                      // made in error, with a note.
+                      GoRoute(
+                        path: 'cancel',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceCancelDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceCancelDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/raise-concern` — raising a
+                      // Concern from this record in the action log (issue
+                      // #208). Addressed for the same reason every other
+                      // transition is (ADR-0021): a refresh lands on the
+                      // record with the form open, and the write itself is the
+                      // Actions Module's route reached through its own client
+                      // entry point.
+                      GoRoute(
+                        path: 'raise-concern',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceRaiseConcernDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceRaiseConcernDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      // `/non-conformances/:id/link-concern` — linking this
+                      // record to a Concern that already exists, so one
+                      // problem answering several occurrences stays one
+                      // Concern (issue #208).
+                      GoRoute(
+                        path: 'link-concern',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<NonconformanceDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! NonconformanceDetailLoaded) {
+                                return const AlertDialog(
+                                  key: NonconformanceLinkConcernDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return NonconformanceLinkConcernDialog(
+                                nonconformance: detail.nonconformance,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
           // A Site's skill coverage (issue #89, AC6) — administrator only,
           // and deliberately a per-Screen access check here rather than only
           // an omission from the sidebar: `GET .../skill-coverage` is
@@ -391,6 +1416,47 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 child: const TierBoardScreen(),
               );
             },
+          ),
+          // The CAPA list (issue #211) — every investigation on the Platform,
+          // with the effectiveness check each one is waiting on. A `ShellRoute`
+          // of its own so `CapasBloc` is created once and shared by the list and
+          // by the Org Unit filter dialog over it.
+          //
+          // **Declared before the Actions `ShellRoute` below, and that ordering
+          // is load-bearing.** go_router matches in declaration order, and
+          // `/actions/capas` is the same two segments as `/actions/:id` — so a
+          // list declared after the log would be taken for an Action whose id is
+          // `capas` and read `/api/actions/capas` as one Action's detail. The
+          // CAPA's own detail route needs no such care: `/actions/capas/:id` is
+          // three segments, and the Action detail route has no `:id` child that
+          // could match it.
+          //
+          // Offered to every approved Account, like the log it sits beside: a
+          // CAPA list is a platform-wide read (ADR-0009), and the one gate in
+          // this slice that is per-record — who may record an effectiveness
+          // check — is asked on the check's own address, inside the dialog.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<CapasBloc>(
+                create: (context) => CapasBloc(
+                  actionsApi: context.read<ActionsApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const CapasStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.capas,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const CapasScreen();
+                },
+              ),
+            ],
           ),
           // Actions (issue #176) — a `ShellRoute` of its own, for the same
           // reason Work orders has one: `ActionsBloc` is created exactly once
@@ -541,6 +1607,34 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                           builder: (dialogContext) => const ActionEscalateDialogHost(),
                         ),
                       ),
+                      // `/actions/:id/capa` — opening a CAPA on this Concern
+                      // (issue #209, ADR-0034). Nested under the Action's own
+                      // route for the same reason its cancel and phase dialogs
+                      // are: this belongs to one Concern's detail read, and a
+                      // sibling address would pop the caller back to the
+                      // register with the Concern they were reading gone. The
+                      // dialog reads the Concern off the Bloc and collects the
+                      // team and the problem description; the authority the act
+                      // needs is read inside it, in a build.
+                      GoRoute(
+                        path: 'capa',
+                        pageBuilder: (context, state) => DialogPage<void>(
+                          key: state.pageKey,
+                          builder: (dialogContext) {
+                            final current = context.watch<ActionDetailBloc>().state;
+                            if (current is! ActionDetailLoaded) {
+                              return const AlertDialog(
+                                key: OpenCapaDialog.loadingKey,
+                                content: SizedBox(
+                                  height: 80,
+                                  child: Center(child: CircularProgressIndicator()),
+                                ),
+                              );
+                            }
+                            return OpenCapaDialog(concern: current.action);
+                          },
+                        ),
+                      ),
                       // `/actions/:id/cancel` — calling it off (issue
                       // #179), addressed rather than popped and nested
                       // under the Action for the same reason the phase
@@ -550,6 +1644,20 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                         pageBuilder: (context, state) => DialogPage<void>(
                           key: state.pageKey,
                           builder: (dialogContext) => const ActionCancelDialogHost(),
+                        ),
+                      ),
+                      // `/actions/:id/nonconformances/:nonconformanceId/unlink`
+                      // — taking an occurrence back out of this Concern (issue
+                      // #208). Addressed for the same reason the other three
+                      // dialogs are, and it names *both* ends of the link it
+                      // is about, so the address is the whole request.
+                      GoRoute(
+                        path: 'nonconformances/:nonconformanceId/unlink',
+                        pageBuilder: (context, state) => DialogPage<void>(
+                          key: state.pageKey,
+                          builder: (dialogContext) => ActionUnlinkNonconformanceDialogHost(
+                            nonconformanceId: state.pathParameters['nonconformanceId']!,
+                          ),
                         ),
                       ),
                       GoRoute(
@@ -605,6 +1713,175 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                         },
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // `/actions/capas/:id` — one CAPA's own Screen (issue #209). A
+          // *sibling* of the Action detail route rather than a child of
+          // it: a CAPA has its own id space (`capas`, the baseline's own
+          // table) and its own Screen, and nesting it under the Concern
+          // would leave the Concern's page mounted underneath it. The
+          // address cannot be swallowed by `/actions/:id`: Express and
+          // go_router both match a path a segment at a time, so a
+          // three-segment path is never a two-segment one, and `capas` is
+          // not an id.
+          //
+          // Keyed on the CAPA in the address, for the reason every other
+          // detail route here is (issue #183): go_router reuses a route's
+          // page when the *pattern* matches, so moving from one CAPA to
+          // another would otherwise leave this Bloc — and the Screen
+          // reading it — holding the investigation before.
+          //
+          // It is a `ShellRoute` of its own for the reason the Action detail
+          // route is one (issue #210): a child `GoRoute`'s page is a
+          // *sibling* of its parent's, so the three chain dialogs — add a
+          // Why, revise one, remove one — would not see a `BlocProvider`
+          // created inside the detail route's own builder. Providing it here
+          // creates one `CapaDetailBloc` for the Screen and every dialog
+          // over it, which is what makes a write from a dialog repaint the
+          // chains behind it.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              final capaId = state.pathParameters['id']!;
+              return BlocProvider<CapaDetailBloc>(
+                key: ValueKey<String>('capa-$capaId'),
+                create: (context) => CapaDetailBloc(
+                  actionsApi: context.read<ActionsApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(CapaDetailStarted(capaId)),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: '${Routes.actions}/capas/:id',
+                builder: (context, state) =>
+                    CapaDetailScreen(capaId: state.pathParameters['id']!),
+                routes: [
+                  // `${Routes.actions}/capas/:id/whys/:chain/new` — adding a
+                  // Why to one of the two chains (issue #210). Nested under
+                  // the CAPA's own route so it shares the Bloc above and a
+                  // write repaints the chains behind it, exactly as the
+                  // Action's own measure dialog is nested under its Action.
+                  GoRoute(
+                    path: 'whys/:chain/new',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) =>
+                          CapaWhyDialog(chain: state.pathParameters['chain']!),
+                    ),
+                  ),
+                  // `.../whys/:chain/:whyId/edit` — revising one. It names
+                  // both the chain and the Why, so the address is the whole
+                  // request: a Why that is not in that chain is refused
+                  // rather than quietly edited.
+                  GoRoute(
+                    path: 'whys/:chain/:whyId/edit',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaWhyEditDialog(
+                        chain: state.pathParameters['chain']!,
+                        whyId: state.pathParameters['whyId']!,
+                      ),
+                    ),
+                  ),
+                  // `.../whys/:chain/:whyId/remove` — taking one out of the
+                  // chain, with the confirmation that says so.
+                  GoRoute(
+                    path: 'whys/:chain/:whyId/remove',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaWhyRemoveDialog(
+                        chain: state.pathParameters['chain']!,
+                        whyId: state.pathParameters['whyId']!,
+                      ),
+                    ),
+                  ),
+                  // The fishbone (issue #213): five addresses, one per thing a
+                  // team does to the candidate causes — record one under a 6M
+                  // category, revise it, decide it with the evidence, remove
+                  // it, and start a chain from one the evidence confirmed.
+                  // Nested under the CAPA's own route for the reason the three
+                  // chain dialogs above are: they share the `CapaDetailBloc`,
+                  // so a write repaints the fishbone behind the form.
+                  //
+                  // The category is in the address, because which of the six a
+                  // cause hangs from is the decision the caller made by opening
+                  // it — the same argument `/whys/:chain/new` makes for the
+                  // chain. `causes` is a literal segment where the three chain
+                  // addresses have `whys`, so no route here can be swallowed by
+                  // another.
+                  GoRoute(
+                    path: 'causes/:category/new',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) =>
+                          CapaCauseDialog(category: state.pathParameters['category']!),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'causes/:category/:causeId/edit',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaCauseEditDialog(
+                        category: state.pathParameters['category']!,
+                        causeId: state.pathParameters['causeId']!,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'causes/:category/:causeId/verdict',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaCauseVerdictDialog(
+                        category: state.pathParameters['category']!,
+                        causeId: state.pathParameters['causeId']!,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'causes/:category/:causeId/remove',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaCauseRemoveDialog(
+                        category: state.pathParameters['category']!,
+                        causeId: state.pathParameters['causeId']!,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'causes/:category/:causeId/why',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => CapaWhyFromCauseDialog(
+                        category: state.pathParameters['category']!,
+                        causeId: state.pathParameters['causeId']!,
+                      ),
+                    ),
+                  ),
+                  // `.../capas/:id/effectiveness` — recording the check that
+                  // closes the investigation or sends its Concern round again
+                  // (issue #211). Nested under the CAPA's own route so it shares
+                  // the `CapaDetailBloc` above, and its answer repaints the
+                  // Screen behind it, exactly as the three chain dialogs do.
+                  //
+                  // No gate in this builder, deliberately: unlike a chain write,
+                  // this act is not a question the *router* can answer from a
+                  // value it already has — the rule is "Quality authority at
+                  // this CAPA's Org Unit, held by somebody who is not its team
+                  // lead", and the answer belongs with the record. The dialog
+                  // asks it against the CAPA it has read, and says which half
+                  // refused.
+                  GoRoute(
+                    path: 'effectiveness',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => const CapaEffectivenessDialog(),
+                    ),
                   ),
                 ],
               ),

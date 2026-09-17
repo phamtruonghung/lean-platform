@@ -1,16 +1,17 @@
 /*
  * The shared floor device and the individual identification a technician
- * presents on it (issue #77, ADR-0016). This file owns the SQL and the row
- * shapes; `floor-routes.js` owns the HTTP surface and the request-shape
- * validation, the same split `work-orders.js`/`work-order-routes.js` follow
- * (AGENTS.md §6).
+ * presents on it (issue #77, ADR-0016), owned by the people Module since
+ * issue #201: registering a device against an Org Unit, setting an Employee's
+ * floor PIN and issuing the short-lived identification token are all about who
+ * an Employee is, not about maintenance. `floor-routes.js` owns the HTTP
+ * surface and the request-shape validation, the same split
+ * `plant.js`/`plant-routes.js` follow (AGENTS.md §6).
  *
- * It never requires `../people` and never resolves a People record through
- * that Module's entry point: `floor-devices.js` is unaware of who is calling.
- * It joins `employees` and `org_units` directly for the ordinary cross-Module
- * reads this Module already makes (ADR-0006 makes a Module a code seam, not a
- * data seam; `work-orders.js` joins both too), and the route resolves
- * existence through People before this file is ever asked to write.
+ * This file is People's own service and requires no other Module — nothing
+ * under `modules/` does (ADR-0006). `floor_devices`,
+ * `employee_floor_credentials` and `technician_identifications` are records
+ * this Module owns; it joins `employees` for the Employee a credential belongs
+ * to, the ordinary cross-table read within one Module.
  *
  * ## Secrets
  *
@@ -103,6 +104,11 @@ function toFloorDevice(row) {
 // Resolves a presented device credential to its device, or null. The device
 // is returned even when inactive so the route can tell "not a device" from
 // "a device switched off" if it ever needs to; today it refuses both.
+//
+// Reached from another Module through this Module's entry point (issue #201):
+// it is the question "is this a device, and is it switched on" that
+// maintenance's floor writes and its floor read both ask before anything is
+// written, and it answers with a value rather than a throw (ADR-0006).
 async function findDeviceByCredential(credential) {
   if (typeof credential !== 'string' || credential === '') return null;
   const { rows } = await getPool().query(
@@ -198,6 +204,11 @@ async function createIdentification({ deviceId, employeeId }) {
 // but only for the device it was issued on and only while it is still inside
 // its window. A token presented after expiry, or against a different device,
 // resolves to null and the write is refused.
+//
+// Like findDeviceByCredential above, this is reached from another Module
+// through this Module's entry point (issue #201): it is the question "who does
+// this device say is standing at it", asked by maintenance's floor writes
+// before they attribute anything to anybody.
 async function findValidIdentification(token, deviceId) {
   if (typeof token !== 'string' || token === '') return null;
   const { rows } = await getPool().query(
@@ -219,6 +230,11 @@ async function findValidIdentification(token, deviceId) {
 // Org Unit — its own, or anything beneath it. `path <@ device.path` is the
 // same ltree containment every subtree query in this codebase uses. A device
 // whose Org Unit no longer resolves (it cannot, the FK holds) is refused.
+//
+// The third question another Module reaches through the entry point (issue
+// #201): `org_units` is People's own tree, so the reach of a device placed in
+// it is People's to answer, not one for Maintenance to re-derive from the path
+// it was handed.
 async function deviceReachesOrgUnit(deviceOrgUnitId, targetOrgUnitId) {
   if (parseId(deviceOrgUnitId) === null || parseId(targetOrgUnitId) === null) return false;
   const { rows: [row] } = await getPool().query(

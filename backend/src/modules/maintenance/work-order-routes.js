@@ -6,9 +6,13 @@
  * Like asset-routes.js, this is the one file in this pairing that talks to
  * People, and only through `modules/people`'s entry point (ADR-0006):
  * `authenticate`, `requireActive`, `findSite`, `findOrgUnit`, `findEmployee`,
- * `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
- * about a work order's own fields, including whether a transition is legal
- * from its current status, is work-orders.js's business.
+ * `canAct`, the shared `OUTSIDE_GRANTED_ORG_UNITS` wording, and — since issue
+ * #201 moved the shared floor device into People — `findDeviceByCredential`,
+ * `findValidIdentification` and `deviceReachesOrgUnit`, which are what the
+ * floor door below resolves its device, its technician and that technician's
+ * Org Unit reach with. Everything about a work order's own fields, including
+ * whether a transition is legal from its current status, is work-orders.js's
+ * business.
  *
  * Same two scope rules as Assets (#55), applied to work orders:
  *
@@ -32,7 +36,10 @@
  *     assignee acting on their own job without a Grant. Issue #77's floor
  *     device door is not that exception either: a device is allowed a
  *     transition only within its own Org Unit's subtree, and only with an
- *     individual technician identification attached, never on its own.
+ *     individual technician identification attached, never on its own. Both
+ *     the device and the identification are People's records (issue #201), so
+ *     this file asks for them through that Module's entry point rather than
+ *     reading them itself.
  *
  * PUT /work-orders/:id/assignee never reads a qualification, and never will
  * from this file: see ADR-0018. What a candidate holds is shown by People's
@@ -56,7 +63,6 @@ const assets = require('./assets');
 const meters = require('./meters');
 const workOrders = require('./work-orders');
 const workOrderCost = require('./work-order-cost');
-const floorDevices = require('./floor-devices');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
@@ -152,7 +158,7 @@ async function authenticateWorkOrderActor(req, res, next) {
   }
 
   try {
-    const device = await floorDevices.findDeviceByCredential(deviceCredential);
+    const device = await people.findDeviceByCredential(deviceCredential);
     if (!device || !device.isActive) {
       return res.status(401).json({ message: 'Invalid or inactive floor device' });
     }
@@ -161,7 +167,7 @@ async function authenticateWorkOrderActor(req, res, next) {
     if (typeof identificationToken !== 'string' || identificationToken === '') {
       return res.status(401).json({ message: 'An individual identification is required to write here' });
     }
-    const technician = await floorDevices.findValidIdentification(identificationToken, device.id);
+    const technician = await people.findValidIdentification(identificationToken, device.id);
     if (!technician) {
       return res.status(401).json({ message: 'This identification is invalid or has expired' });
     }
@@ -207,7 +213,7 @@ async function requireWorkOrderWriteScope(req, res, next) {
     if (!workOrder) throw notFound('Work order');
 
     const allowed = req.floorDevice
-      ? await floorDevices.deviceReachesOrgUnit(req.floorDevice.orgUnitId, workOrder.orgUnitId)
+      ? await people.deviceReachesOrgUnit(req.floorDevice.orgUnitId, workOrder.orgUnitId)
       : await people.canAct({ account: req.account, orgUnitId: workOrder.orgUnitId, write: true });
     if (!allowed) {
       return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });

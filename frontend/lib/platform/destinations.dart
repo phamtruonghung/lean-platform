@@ -75,12 +75,33 @@ class Destination {
       location == path || (path != '/' && location.startsWith('$path/'));
 }
 
+/// The Destination the Shell marks as current for [location] — the one whose own
+/// path is the **most specific** match, or null when nothing matches (sign-in,
+/// awaiting-Approval, the not-found Screen).
+///
+/// Most specific rather than every one that matches, because a Destination may
+/// legitimately sit under another's address: the CAPA list is at
+/// `/actions/capas` (issue #211), beneath the action log's own `/actions`, and a
+/// Screen that marked every prefix would light two entries at once. The longest
+/// matching path is the one the reader is actually in — the same rule the
+/// address itself already follows, since a router matches the deepest route that
+/// fits.
+String? selectedDestinationPath(List<Destination> destinations, String location) {
+  String? best;
+  for (final destination in destinations) {
+    if (!destination.matches(location)) continue;
+    if (best == null || destination.path.length > best.length) best = destination.path;
+  }
+  return best;
+}
+
 /// The fixed order the sidebar's group headings render in (#100, ADR-0020).
 /// Named once so the Shell and [platformDestinations] cannot disagree about
 /// where a new Module's heading belongs.
 abstract final class DestinationGroupNames {
   static const String people = 'People';
   static const String maintenance = 'Maintenance';
+  static const String quality = 'Quality';
   static const String actions = 'Actions';
   static const String insights = 'Insights';
   static const String administration = 'Administration';
@@ -89,6 +110,7 @@ abstract final class DestinationGroupNames {
     people,
     maintenance,
     actions,
+    quality,
     insights,
     administration,
   ];
@@ -333,6 +355,115 @@ const List<Destination> platformDestinations = [
     icon: Icons.assignment_turned_in_outlined,
     path: Routes.actions,
     group: DestinationGroupNames.actions,
+  ),
+  // The Quality Module's two catalogues (issue #203) — the first Destinations
+  // behind a fourth Module of its own after People, Maintenance and Actions
+  // (ADR-0032's precedent for a Module earning its own heading). Offered to
+  // every approved Account, no `roles` set, the same shape Directory, Job
+  // roles, Skills and My requests use: both reads carry no admin and no Org
+  // Unit scope of their own (product-routes.js's and defect-code-routes.js's
+  // own headers — reference data everyone needs as a set of choices, ADR-0023),
+  // so hiding the doors behind a role would gate addresses the routes never
+  // refuse. Only the write affordances inside each Screen are gated to
+  // `isAdmin`.
+  //
+  // Filed under Quality's own heading between Actions and Insights. ADR-0032
+  // put Actions at the boundary between the groups where work is done and the
+  // groups where the plant is read about, and that position is pinned by
+  // actions_test.dart; Quality is filed beside it rather than in front of it,
+  // so a new Module does not displace a decision another ADR already recorded.
+  // The two catalogues are what this Module owns today; its Non-conformances
+  // and CAPAs arrive as their own slices and file here.
+  Destination(
+    label: 'Products',
+    icon: Icons.category_outlined,
+    path: Routes.products,
+    group: DestinationGroupNames.quality,
+  ),
+  Destination(
+    label: 'Defect codes',
+    icon: Icons.rule_outlined,
+    path: Routes.defectCodes,
+    group: DestinationGroupNames.quality,
+  ),
+  // The Module's first record of real work (issue #205): what has been found
+  // not to conform. Offered to every approved Account like the two catalogues
+  // above it, because the register is a Site-wide read (`canSeeSite`) and
+  // recording needs only a write Grant reaching the Org Unit it is recorded
+  // at — both of which the server decides, so a role on this Destination would
+  // gate a door the route itself opens for an operator who works on the line.
+  Destination(
+    label: 'Non-conformances',
+    icon: Icons.fact_check_outlined,
+    path: Routes.nonConformances,
+    group: DestinationGroupNames.quality,
+  ),
+  // The CAPA list (issue #211) — the investigations a Concern has been turned
+  // into, and the effectiveness check each one is waiting on. Filed here, under
+  // Quality, rather than with the Action log whose Module owns the record
+  // (ADR-0034 keeps a CAPA beside its Concern rather than in a screen of its
+  // own): a person scanning the sidebar is looking for quality's work, and the
+  // address is this Module's only because the Concern it hangs off is.
+  //
+  // Offered to every approved Account, the same shape the four Quality
+  // Destinations above it use: the list is a platform-wide read (ADR-0009), and
+  // the one gate in the slice — who may record an effectiveness check — is
+  // per-record and lives on the check's own address.
+  Destination(
+    label: 'CAPAs',
+    icon: Icons.verified_outlined,
+    path: Routes.capas,
+    group: DestinationGroupNames.quality,
+  ),
+  // The Customer list and the customer complaints (issue #214). Filed here,
+  // under Quality: a complaint is a quality record — the baseline's own table
+  // is in the Quality pillar and its own comment says a Customer exists "so a
+  // complaint has someone to belong to" — and the addresses are this Module's.
+  //
+  // Offered to every approved Account, the same shape the five Quality
+  // Destinations above them use. The Customer list is shared reference data
+  // (ADR-0005) and the complaint register is a Site-wide read, both of which
+  // the server decides, so a role here would gate doors the routes themselves
+  // open for an operator. The write affordances inside each Screen are what is
+  // gated, and the server is the real gate on both: the administrator role for
+  // a Customer, an edit Grant reaching the Org Unit for a complaint.
+  Destination(
+    label: 'Customers',
+    icon: Icons.handshake_outlined,
+    path: Routes.customers,
+    group: DestinationGroupNames.quality,
+  ),
+  Destination(
+    label: 'Customer complaints',
+    icon: Icons.support_agent_outlined,
+    path: Routes.complaints,
+    group: DestinationGroupNames.quality,
+  ),
+  // The Supplier list and the supplier NCRs (issue #215) — the same surface
+  // turned outward, filed beside the Customer pair for the same reasons: a
+  // supplier NCR is a quality record (the baseline's own table is in the
+  // Quality pillar and its comment says a Supplier exists "so an incoming
+  // non-conformance has someone to charge"), and its addresses are this
+  // Module's.
+  //
+  // Offered to every approved Account, the same shape the seven Quality
+  // Destinations above them use: the Supplier list is shared reference data
+  // (ADR-0005) and the register is a Site-wide read, both of which the server
+  // decides, so a role here would gate doors the routes themselves open for an
+  // operator. The write affordances inside each Screen are what is gated, and
+  // the server is the real gate on both: the administrator role for a Supplier,
+  // an edit Grant reaching the Org Unit for a supplier NCR.
+  Destination(
+    label: 'Suppliers',
+    icon: Icons.local_shipping_outlined,
+    path: Routes.suppliers,
+    group: DestinationGroupNames.quality,
+  ),
+  Destination(
+    label: 'Supplier NCRs',
+    icon: Icons.report_gmailerrorred_outlined,
+    path: Routes.supplierNcrs,
+    group: DestinationGroupNames.quality,
   ),
   // Approvals and Accounts administer the Platform itself — who may sign in,
   // and what they may reach — rather than the plant's workforce, so they sit

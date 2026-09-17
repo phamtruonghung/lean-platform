@@ -82,6 +82,20 @@ class OrgUnitPickerGrantAdded extends OrgUnitPickerEvent {
   final GrantLevel level;
 }
 
+/// Flip one granted Org Unit's Quality authority (issue #204, ADR-0035) —
+/// deliberately its own act, separate from the level it was added at, because
+/// the two are independent: a view-only Grant may carry Quality authority and
+/// an edit Grant need not. A Grant is added without it and given it here,
+/// which is also how an administrator takes it away again (the same event with
+/// `quality: false`); there is no third state to model, and nothing on the
+/// wire distinguishes "never given" from "taken back" — both send
+/// `qualityAuthority: false`, and Approval replaces the whole set either way.
+class OrgUnitPickerGrantQualitySet extends OrgUnitPickerEvent {
+  const OrgUnitPickerGrantQualitySet({required this.orgUnitId, required this.quality});
+  final String orgUnitId;
+  final bool quality;
+}
+
 class OrgUnitPickerGrantRemoved extends OrgUnitPickerEvent {
   const OrgUnitPickerGrantRemoved(this.orgUnitId);
   final String orgUnitId;
@@ -194,6 +208,16 @@ class OrgUnitPickerState {
       if (entry.orgUnit.id == orgUnitId) return entry.level;
     }
     return null;
+  }
+
+  /// Whether the Grant on [orgUnitId] carries Quality authority (issue #204,
+  /// ADR-0035) — false for an Org Unit that is not granted at all, which is
+  /// also the reading a Grant that has never been flagged gets.
+  bool qualityOf(String orgUnitId) {
+    for (final entry in granted) {
+      if (entry.orgUnit.id == orgUnitId) return entry.quality;
+    }
+    return false;
   }
 
   /// A search hit's own breadcrumb, root-first (issue #130): the ancestor
@@ -309,6 +333,7 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
     on<OrgUnitPickerCollapsed>(_onCollapsed);
     on<OrgUnitPickerRefreshed>(_onRefreshed);
     on<OrgUnitPickerGrantAdded>(_onGrantAdded);
+    on<OrgUnitPickerGrantQualitySet>(_onGrantQualitySet);
     on<OrgUnitPickerGrantRemoved>(_onGrantRemoved);
     on<OrgUnitPickerRevealed>(_onRevealed);
   }
@@ -502,6 +527,31 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
         granted: [
           ...state.granted,
           GrantedOrgUnit(orgUnit: node, level: event.level, where: where),
+        ],
+      ),
+    );
+  }
+
+  /// One Grant's Quality authority, flipped or cleared (issue #204, ADR-0035)
+  /// — the Granted entry replaced in place, preserving the Org Unit, the level
+  /// and the breadcrumb it was added with. A no-op for an id that is not
+  /// granted: the act is about a Grant already in the set, and the tree row's
+  /// own add menu is the only way one enters it.
+  void _onGrantQualitySet(OrgUnitPickerGrantQualitySet event, Emitter<OrgUnitPickerState> emit) {
+    if (!state.isGranted(event.orgUnitId)) return;
+    emit(
+      state.copyWith(
+        granted: [
+          for (final entry in state.granted)
+            if (entry.orgUnit.id == event.orgUnitId)
+              GrantedOrgUnit(
+                orgUnit: entry.orgUnit,
+                level: entry.level,
+                where: entry.where,
+                quality: event.quality,
+              )
+            else
+              entry,
         ],
       ),
     );

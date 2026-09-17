@@ -25,6 +25,7 @@ import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
+import 'package:lean_platform/quality/quality_api.dart';
 
 /// Loads the Platform's own bundled Roboto (`assets/fonts/README.md`,
 /// committed there for Flutter Web's CanvasKit renderer, not for this) into
@@ -73,9 +74,21 @@ Future<void> loadAppFonts() async {
 // all (issue #43, first consumed by the Asset register in #56). Left unset it
 // mirrors the server's own invariant: an administrator reaches everywhere and
 // holds no Grant rows; anyone else holds whatever rows the test gives them.
-Map<String, dynamic> _meBody(String role, String selfId, Map<String, dynamic>? orgUnitScope) => {
+Map<String, dynamic> _meBody(
+  String role,
+  String selfId,
+  String? selfEmployeeId,
+  Map<String, dynamic>? orgUnitScope,
+) =>
+    {
       'status': 'active',
-      'account': {'id': selfId, 'email': 'admin@b.c', 'displayName': 'A B', 'role': role},
+      'account': {
+        'id': selfId,
+        'email': 'admin@b.c',
+        'displayName': 'A B',
+        'role': role,
+        'employeeId': selfEmployeeId,
+      },
       'orgUnitScope':
           orgUnitScope ?? {'everywhere': role == Roles.admin, 'grants': const <dynamic>[]},
     };
@@ -83,17 +96,21 @@ Map<String, dynamic> _meBody(String role, String selfId, Map<String, dynamic>? o
 /// One Grant as `/me` reports it — `canWrite` is what decides whether a Screen
 /// offers a write affordance. `orgUnitIds` is the Grant's whole reach, the
 /// granted unit plus every descendant (issue #110); left unset, the wire keeps
-/// the older "reaches only its own Org Unit" shape.
+/// the older "reaches only its own Org Unit" shape. `qualityAuthority` is the
+/// flag independent of `canWrite` (issue #204, ADR-0035), and defaults false
+/// exactly as the server's own column does.
 Map<String, dynamic> scopeGrantJson(
   String orgUnitId, {
   String siteId = '1',
   bool canWrite = false,
+  bool qualityAuthority = false,
   List<String>? orgUnitIds,
 }) =>
     {
       'orgUnitId': orgUnitId,
       'siteId': siteId,
       'canWrite': canWrite,
+      'qualityAuthority': qualityAuthority,
       'orgUnitIds': ?orgUnitIds,
     };
 
@@ -502,12 +519,531 @@ Map<String, dynamic> meterJson(
     };
 
 /// One unit of measure as `GET /api/maintenance/units-of-measure` sends it
-/// (issue #79, reused by #80) — the baseline catalogue the meter form and the
-/// Part form both choose from.
+/// (issue #79, reused by #80) — the baseline catalogue the meter form, the
+/// Part form and the Quality Module's Product form (#203) all choose from.
 Map<String, dynamic> unitOfMeasureJson(String code, String name, {String dimension = 'time'}) => {
       'code': code,
       'name': name,
       'dimension': dimension,
+    };
+
+/// One Product as `GET /api/quality/products` sends it (issue #203) — mirrors
+/// `toProduct` (products.js) key for key, `uomName` included: the API joins the
+/// unit's own name onto the row, so a fixture that omitted it would let a test
+/// assert a catalogue the server cannot answer.
+Map<String, dynamic> productJson(
+  String id,
+  String code,
+  String name, {
+  String uomCode = 'EA',
+  String uomName = 'Each',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'uomCode': uomCode,
+      'uomName': uomName,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One Defect code as `GET /api/quality/defect-codes` sends it (issue #203) —
+/// mirrors `toDefectCode` (defect-codes.js) key for key: the tree is flat, each
+/// row naming its own parent rather than carrying children.
+Map<String, dynamic> defectCodeJson(
+  String id,
+  String code,
+  String name, {
+  String? parentId,
+  String category = 'product',
+  String defaultSeverity = 'minor',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'parentId': parentId,
+      'code': code,
+      'name': name,
+      'category': category,
+      'defaultSeverity': defaultSeverity,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One Customer as `GET /api/quality/customers` sends it (issue #214) — mirrors
+/// `toCustomer` (customers.js) key for key.
+Map<String, dynamic> customerJson(
+  String id,
+  String code,
+  String name, {
+  String? contactEmail,
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'contactEmail': contactEmail,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One Customer complaint as `GET /api/quality/complaints/:id` and the register
+/// send it (issue #214) — mirrors `toComplaint` (customer-complaints.js) key for
+/// key, the nested `nonconformance` summary included: the API answers every
+/// complaint with the record that controls its product, so a fixture that
+/// omitted it would let a test assert a shape the server cannot send.
+Map<String, dynamic> customerComplaintJson(
+  String id,
+  String complaintNo, {
+  String status = 'open',
+  String customerId = '60',
+  String customerCode = 'CUST-1',
+  String customerName = 'Acme Bearings',
+  String productId = '40',
+  String productCode = 'PRD-1',
+  String productName = 'Gearbox',
+  String? defectCodeId = '41',
+  String? defectCodeCode = 'DIM-OOT',
+  String? defectCodeName = 'Out of tolerance',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String siteCode = 'HCM',
+  String siteName = 'Ho Chi Minh',
+  String complaintType = 'quality',
+  String severity = 'major',
+  num? quantityAffected = 20,
+  String? uomCode = 'EA',
+  String? customerRef,
+  String? lotRef,
+  String description = 'Twenty of the last delivery will not seat on the shaft.',
+  String? receivedAt,
+  String? responseDueDate,
+  String? responseDueAt,
+  bool isOverdue = false,
+  int? daysOverdue,
+  String? firstResponseAt,
+  bool isWarranty = false,
+  String? closedAt,
+  String? responseNote,
+  Map<String, dynamic>? nonconformance,
+}) =>
+    {
+      'id': id,
+      'complaintNo': complaintNo,
+      'status': status,
+      'customerId': customerId,
+      'customerCode': customerCode,
+      'customerName': customerName,
+      'productId': productId,
+      'productCode': productCode,
+      'productName': productName,
+      'defectCodeId': defectCodeId,
+      'defectCodeCode': defectCodeCode,
+      'defectCodeName': defectCodeName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'siteCode': siteCode,
+      'siteName': siteName,
+      'complaintType': complaintType,
+      'severity': severity,
+      'quantityAffected': quantityAffected,
+      'uomCode': uomCode,
+      'customerRef': customerRef,
+      'lotRef': lotRef,
+      'description': description,
+      'receivedAt': receivedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'responseDueDate': responseDueDate,
+      'responseDueAt': responseDueAt,
+      'isOverdue': isOverdue,
+      'daysOverdue': daysOverdue,
+      'firstResponseAt': firstResponseAt,
+      'isWarranty': isWarranty,
+      'claimCost': null,
+      'currency': 'USD',
+      'closedAt': closedAt,
+      'responseNote': responseNote,
+      'nonconformance': nonconformance,
+    };
+
+/// The Non-conformance a complaint names, as the nested summary on the
+/// complaint's own read sends it (issue #214) — mirrors the projection
+/// customer-complaints.js builds from the linked `quality_issues` row.
+Map<String, dynamic> complaintNonconformanceJson(
+  String id,
+  String issueNo, {
+  String status = 'open',
+  String detectionPoint = 'customer',
+  String severity = 'major',
+  num? quantityAffected = 20,
+  String? detectedOn,
+}) =>
+    {
+      'id': id,
+      'issueNo': issueNo,
+      'status': status,
+      'detectionPoint': detectionPoint,
+      'severity': severity,
+      'quantityAffected': quantityAffected,
+      'detectedOn': detectedOn,
+    };
+
+/// One Supplier as `GET /api/quality/suppliers` sends it (issue #215) — mirrors
+/// `toSupplier` (suppliers.js) key for key.
+Map<String, dynamic> supplierJson(
+  String id,
+  String code,
+  String name, {
+  String? contactEmail,
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'contactEmail': contactEmail,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One supplier NCR as `GET /api/quality/supplier-ncrs/:id` and the register
+/// send it (issue #215) — mirrors `toSupplierNcr` (supplier-ncrs.js) key for
+/// key, the nested `nonconformance` summary included: the API answers every NCR
+/// with the record that controls the received lot, so a fixture that omitted it
+/// would let a test assert a shape the server cannot send.
+Map<String, dynamic> supplierNcrJson(
+  String id,
+  String ncrNo, {
+  String status = 'open',
+  String supplierId = '50',
+  String supplierCode = 'SUP-1',
+  String supplierName = 'Northwind Fasteners',
+  String? productId = '40',
+  String? productCode = 'PRD-1',
+  String? productName = 'Gearbox',
+  String? defectCodeId = '41',
+  String? defectCodeCode = 'DIM-OOT',
+  String? defectCodeName = 'Out of tolerance',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String siteCode = 'HCM',
+  String siteName = 'Ho Chi Minh',
+  String? incomingLotRef,
+  String? purchaseRef,
+  num quantityAffected = 250,
+  String uomCode = 'EA',
+  String disposition = 'return_to_supplier',
+  String? detectedAt,
+  String? responseDueDate,
+  String? responseDueAt,
+  bool isOverdue = false,
+  int? daysOverdue,
+  num? costRecovered,
+  String currency = 'USD',
+  String? description,
+  String? closedAt,
+  Map<String, dynamic>? nonconformance,
+}) =>
+    {
+      'id': id,
+      'ncrNo': ncrNo,
+      'status': status,
+      'supplierId': supplierId,
+      'supplierCode': supplierCode,
+      'supplierName': supplierName,
+      'productId': productId,
+      'productCode': productCode,
+      'productName': productName,
+      'defectCodeId': defectCodeId,
+      'defectCodeCode': defectCodeCode,
+      'defectCodeName': defectCodeName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'siteCode': siteCode,
+      'siteName': siteName,
+      'incomingLotRef': incomingLotRef,
+      'purchaseRef': purchaseRef,
+      'quantityAffected': quantityAffected,
+      'uomCode': uomCode,
+      'disposition': disposition,
+      'detectedAt': detectedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'responseDueDate': responseDueDate,
+      'responseDueAt': responseDueAt,
+      'isOverdue': isOverdue,
+      'daysOverdue': daysOverdue,
+      'costRecovered': costRecovered,
+      'currency': currency,
+      'description': description,
+      'closedAt': closedAt,
+      'nonconformance': nonconformance,
+    };
+
+/// The Non-conformance a supplier NCR names, as the nested summary on the NCR's
+/// own read sends it (issue #215) — mirrors the projection supplier-ncrs.js
+/// builds from the linked `quality_issues` row.
+Map<String, dynamic> supplierNcrNonconformanceJson(
+  String id,
+  String issueNo, {
+  String status = 'open',
+  String detectionPoint = 'incoming',
+  String severity = 'major',
+  num? quantityAffected = 250,
+  String? detectedOn,
+}) =>
+    {
+      'id': id,
+      'issueNo': issueNo,
+      'status': status,
+      'detectionPoint': detectionPoint,
+      'severity': severity,
+      'quantityAffected': quantityAffected,
+      'detectedOn': detectedOn,
+    };
+
+/// One Non-conformance as `GET /api/quality/nonconformances/:id` and the
+/// register send it (issue #205) — mirrors `toNonconformance`
+/// (nonconformances.js) key for key, `quantityChanges` included: the API
+/// answers every non-conformance with its own history, so a fixture that
+/// omitted it would let a test assert a shape the server cannot send.
+Map<String, dynamic> nonconformanceJson(
+  String id,
+  String issueNo, {
+  String status = 'open',
+  String detectionPoint = 'in_process',
+  String severity = 'minor',
+  num quantityAffected = 1,
+  num quantityDispositioned = 0,
+  String uomCode = 'EA',
+  String? lotRef,
+  String? detectedAt,
+  String? recordedByAccountId = '1',
+  String? description,
+  String? immediateContainment,
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String siteCode = 'HCM',
+  String siteName = 'Ho Chi Minh',
+  String productId = '40',
+  String productCode = 'PRD-1',
+  String productName = 'Gearbox',
+  String defectCodeId = '41',
+  String defectCodeCode = 'DIM-OOT',
+  String defectCodeName = 'Out of tolerance',
+  String defectCodeDefaultSeverity = 'minor',
+  String? assetId,
+  String? assetCode,
+  String? assetName,
+  String? shiftInstanceId,
+  String? productionDate,
+  String? shiftCode,
+  String? shiftName,
+  String? closedAt,
+  List<Map<String, dynamic>>? quantityChanges,
+  List<Map<String, dynamic>>? dispositions,
+  List<Map<String, dynamic>>? corrections,
+  List<Map<String, dynamic>>? concerns,
+}) =>
+    {
+      'id': id,
+      'issueNo': issueNo,
+      'status': status,
+      'detectionPoint': detectionPoint,
+      'severity': severity,
+      'quantityAffected': quantityAffected,
+      'quantityDispositioned': quantityDispositioned,
+      'uomCode': uomCode,
+      'lotRef': lotRef,
+      'detectedAt': detectedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'recordedByAccountId': recordedByAccountId,
+      'description': description,
+      'immediateContainment': immediateContainment,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'siteCode': siteCode,
+      'siteName': siteName,
+      'productId': productId,
+      'productCode': productCode,
+      'productName': productName,
+      'defectCodeId': defectCodeId,
+      'defectCodeCode': defectCodeCode,
+      'defectCodeName': defectCodeName,
+      'defectCodeDefaultSeverity': defectCodeDefaultSeverity,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'shiftInstanceId': shiftInstanceId,
+      'productionDate': productionDate,
+      'shiftCode': shiftCode,
+      'shiftName': shiftName,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      'quantityChanges': quantityChanges ?? const <Map<String, dynamic>>[],
+      'closedAt': closedAt,
+      'dispositions': dispositions ?? const <Map<String, dynamic>>[],
+      'corrections': corrections ?? const <Map<String, dynamic>>[],
+      // The Concerns this record is evidence behind (issue #208), always
+      // present — an empty list is "nothing is being done about the cause",
+      // which is a state the Screen renders rather than a missing field.
+      'concerns': concerns ?? const <Map<String, dynamic>>[],
+    };
+
+/// One Concern as the record's own detail read names it: the Action's number,
+/// title, kind and status, plus whether it is the Concern the record was raised
+/// from — mirrors `toConcern` (nonconformances.js) key for key, so a fixture
+/// cannot let a test assert a shape the API does not send.
+Map<String, dynamic> concernJson(
+  Map<String, dynamic> action, {
+  bool isSource = false,
+}) =>
+    {
+      'id': action['id'],
+      'actionNo': action['actionNo'],
+      'title': action['title'],
+      'actionType': action['actionType'],
+      'status': action['status'],
+      'priority': action['priority'],
+      'ownerName': action['ownerName'],
+      'dueDate': action['dueDate'],
+      'isOverdue': action['isOverdue'] ?? false,
+      'raisedAt': action['raisedAt'],
+      'orgUnitId': action['orgUnitId'],
+      'orgUnitName': action['orgUnitName'],
+      'isSource': isSource,
+      'linkedAt': '2026-09-15T03:00:00.000Z',
+    };
+
+/// One Non-conformance among a Concern's own `nonconformances` array (issue
+/// #208) — mirrors `toLinkedNonconformance` (actions.js) key for key. Built
+/// from a `nonconformanceJson` row so the two fixtures cannot drift apart about
+/// what a Non-conformance is called.
+///
+/// The `dispositions` it carries (issue #212) are the row's own, passed through
+/// unchanged: the server's read sends Quality's `toDisposition` shape there, so
+/// a fixture built with `dispositionJson` rows is what the API would answer,
+/// and the CAPA report's own section reads exactly those keys.
+Map<String, dynamic> linkedNonconformanceJson(
+  Map<String, dynamic> nonconformance, {
+  bool isSource = false,
+}) =>
+    {
+      'id': nonconformance['id'],
+      'issueNo': nonconformance['issueNo'],
+      'status': nonconformance['status'],
+      'severity': nonconformance['severity'],
+      'detectionPoint': nonconformance['detectionPoint'],
+      'quantityAffected': nonconformance['quantityAffected'],
+      'uomCode': nonconformance['uomCode'],
+      'lotRef': nonconformance['lotRef'],
+      'detectedAt': nonconformance['detectedAt'],
+      'orgUnitId': nonconformance['orgUnitId'],
+      'orgUnitName': nonconformance['orgUnitName'],
+      'productId': nonconformance['productId'],
+      'productCode': nonconformance['productCode'],
+      'productName': nonconformance['productName'],
+      'defectCodeId': nonconformance['defectCodeId'],
+      'defectCodeCode': nonconformance['defectCodeCode'],
+      'defectCodeName': nonconformance['defectCodeName'],
+      'dispositions': nonconformance['dispositions'] ?? const <Map<String, dynamic>>[],
+      'isSource': isSource,
+      'linkedAt': '2026-09-15T03:00:00.000Z',
+    };
+
+/// One row of a Non-conformance's quantity history, as the API sends it —
+/// mirrors `toQuantityChange` (nonconformances.js) key for key.
+Map<String, dynamic> quantityChangeJson(
+  String id,
+  num previousQuantity,
+  num newQuantity, {
+  String? note,
+  String? changedAt,
+  String? changedByAccountId = '1',
+  String? changedByAccountName = 'Ann Operator',
+  String? changedByEmployeeId,
+  String? changedByEmployeeName,
+}) =>
+    {
+      'id': id,
+      'previousQuantity': previousQuantity,
+      'newQuantity': newQuantity,
+      'changedAt': changedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'note': note,
+      'changedByAccountId': changedByAccountId,
+      'changedByAccountName': changedByAccountName,
+      'changedByEmployeeId': changedByEmployeeId,
+      'changedByEmployeeName': changedByEmployeeName,
+    };
+
+/// One Disposition as the API sends it (issue #206) — mirrors
+/// `toDisposition` (nonconformances.js) key for key, so a fixture cannot let a
+/// test assert a shape the server does not send.
+Map<String, dynamic> dispositionJson(
+  String id, {
+  String dispositionType = 'scrap',
+  bool? isConcession,
+  num quantity = 1,
+  String uomCode = 'EA',
+  num reworkMinutes = 0,
+  String? decidedAt,
+  String? reference,
+  String? note,
+  String? decidedByAccountId = '1',
+  String? decidedByAccountName = 'Ann Operator',
+  String? decidedByEmployeeId,
+  String? decidedByEmployeeName,
+}) =>
+    {
+      'id': id,
+      'dispositionType': dispositionType,
+      'isConcession': isConcession ?? dispositionType == 'use_as_is',
+      'quantity': quantity,
+      'uomCode': uomCode,
+      'reworkMinutes': reworkMinutes,
+      'decidedAt': decidedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'reference': reference,
+      'note': note,
+      'decidedByAccountId': decidedByAccountId,
+      'decidedByAccountName': decidedByAccountName,
+      'decidedByEmployeeId': decidedByEmployeeId,
+      'decidedByEmployeeName': decidedByEmployeeName,
+    };
+
+/// One correction as the API sends it (issue #206) — mirrors `toCorrection`
+/// (nonconformances.js) key for key.
+Map<String, dynamic> correctionJson(
+  String id, {
+  String kind = 'severity_lowered',
+  String? previousSeverity = 'major',
+  String? newSeverity = 'minor',
+  String? previousStatus,
+  String? newStatus,
+  String note = 'Only the label was misprinted.',
+  String? correctedAt,
+  String? correctedByAccountId = '1',
+  String? correctedByAccountName = 'Ann Operator',
+}) =>
+    {
+      'id': id,
+      'kind': kind,
+      'previousSeverity': previousSeverity,
+      'newSeverity': newSeverity,
+      'previousStatus': previousStatus,
+      'newStatus': newStatus,
+      'note': note,
+      'correctedAt': correctedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'correctedByAccountId': correctedByAccountId,
+      'correctedByAccountName': correctedByAccountName,
     };
 
 /// One Work order task as `GET /api/maintenance/work-orders/:id` sends it
@@ -929,11 +1465,15 @@ Map<String, dynamic> accountJson(
     };
 
 /// One Grant on an Account row, as the accounts listing sends it.
+/// `qualityAuthority` is the flag independent of the level (issue #204,
+/// ADR-0035) — false unless a test gives it, the same default the server's own
+/// column has.
 Map<String, dynamic> grantJson(
   String orgUnitId, {
   String name = 'Assembly',
   String siteName = 'Ho Chi Minh',
   bool canWrite = false,
+  bool qualityAuthority = false,
 }) =>
     {
       'orgUnitId': orgUnitId,
@@ -944,6 +1484,7 @@ Map<String, dynamic> grantJson(
       'siteId': '1',
       'siteName': siteName,
       'canWrite': canWrite,
+      'qualityAuthority': qualityAuthority,
     };
 
 /// One KPI as `GET /api/maintenance/sites/:siteId/board` sends it (issue #76).
@@ -996,6 +1537,7 @@ class FakeWire {
   FakeWire({
     this.role = Roles.admin,
     this.selfId = '1',
+    this.selfEmployeeId,
     List<Map<String, dynamic>>? queue,
     this.queueStatus = 200,
     this.rejectStatus = 200,
@@ -1041,6 +1583,13 @@ class FakeWire {
     this.createActionMessage = 'That concern could not be raised.',
     this.completePhaseStatus = 200,
     this.completePhaseMessage = 'this Action is waiting on its plan phase, not its do',
+    this.raiseConcernStatus = 201,
+    this.raiseConcernMessage = 'this Non-conformance was cancelled, so no Concern can be raised from it',
+    this.linkNonconformanceStatus = 201,
+    this.linkNonconformanceMessage = 'this Non-conformance is already linked to this Concern',
+    this.unlinkNonconformanceStatus = 200,
+    this.unlinkNonconformanceMessage =
+        'the Non-conformance this Concern was raised from cannot be unlinked: the Concern records where it came from',
     this.createMeasureStatus = 201,
     this.createMeasureMessage = 'a measure answers a Concern, and that Action is not one',
     this.cancelActionStatus = 200,
@@ -1174,6 +1723,99 @@ class FakeWire {
     this.floorIdentifyMessage = 'That Employee number and PIN were not recognised',
     this.floorIdentificationToken = 'identification-1',
     Map<String, dynamic>? floorEmployee,
+    this.floorCataloguesStatus = 200,
+    this.floorNonconformanceStatus = 201,
+    this.floorNonconformanceMessage = "Outside the caller's granted Org Units",
+    List<Map<String, dynamic>>? products,
+    this.productsStatus = 200,
+    this.createProductStatus = 201,
+    this.createProductMessage = 'a Product with this code already exists',
+    this.updateProductStatus = 200,
+    this.updateProductMessage = 'That Product could not be changed.',
+    List<Map<String, dynamic>>? defectCodes,
+    this.defectCodesStatus = 200,
+    this.createDefectCodeStatus = 201,
+    this.createDefectCodeMessage = 'a Defect code with this code already exists',
+    this.updateDefectCodeStatus = 200,
+    this.updateDefectCodeMessage = 'That Defect code could not be changed.',
+    List<Map<String, dynamic>>? customers,
+    this.customersStatus = 200,
+    this.createCustomerStatus = 201,
+    this.createCustomerMessage = 'a Customer with this code already exists',
+    this.updateCustomerStatus = 200,
+    this.updateCustomerMessage = 'That Customer could not be changed.',
+    Map<String, List<Map<String, dynamic>>>? complaints,
+    this.complaintsStatus = 200,
+    this.complaintsTruncated = false,
+    this.createComplaintStatus = 201,
+    this.createComplaintMessage = 'customerId must be a valid Customer id',
+    this.respondToComplaintStatus = 200,
+    this.respondToComplaintMessage = 'responseNote is required to close a complaint',
+    this.complaintNonconformanceStatus = 201,
+    this.complaintNonconformanceMessage = 'that Non-conformance is about another Product',
+    this.linkComplaintStatus = 200,
+    this.linkComplaintMessage = 'this Customer complaint already names a Non-conformance',
+    List<Map<String, dynamic>>? suppliers,
+    this.suppliersStatus = 200,
+    this.createSupplierStatus = 201,
+    this.createSupplierMessage = 'a Supplier with this code already exists',
+    this.updateSupplierStatus = 200,
+    this.updateSupplierMessage = 'That Supplier could not be changed.',
+    Map<String, List<Map<String, dynamic>>>? supplierNcrs,
+    this.supplierNcrsStatus = 200,
+    this.supplierNcrsTruncated = false,
+    this.createSupplierNcrStatus = 201,
+    this.createSupplierNcrMessage = 'supplierId must be a valid Supplier id',
+    this.supplierNcrDispositionStatus = 200,
+    this.supplierNcrDispositionMessage = 'disposition must be one of: return_to_supplier, scrap',
+    this.supplierNcrCloseStatus = 200,
+    this.supplierNcrCloseMessage = 'that supplier NCR is closed and cannot be changed',
+    this.supplierNcrNonconformanceStatus = 201,
+    this.supplierNcrNonconformanceMessage =
+        'productId is required: this supplier NCR carries no Product to record the Non-conformance about',
+    this.linkSupplierNcrStatus = 200,
+    this.linkSupplierNcrMessage = 'this supplier NCR already names a Non-conformance',
+    Map<String, List<Map<String, dynamic>>>? nonconformances,
+    this.nonconformancesStatus = 200,
+    this.nonconformancesTruncated = false,
+    this.createNonconformanceStatus = 201,
+    this.createNonconformanceMessage = 'productId must be a valid Product id',
+    this.changeNonconformanceStatus = 200,
+    this.changeNonconformanceMessage = 'severity cannot be lowered; only a holder of Quality authority may do that',
+    this.increaseNonconformanceQuantityStatus = 200,
+    this.increaseNonconformanceQuantityMessage = 'the affected quantity can only be increased',
+    this.recordNonconformanceActStatus = 201,
+    this.recordNonconformanceActMessage =
+        'that is more than the quantity still undecided on this Non-conformance',
+    Map<String, Map<String, dynamic>>? capas,
+    this.capasStatus = 200,
+    this.capaMessage = 'That CAPA could not be read.',
+    this.createCapaStatus = 201,
+    this.createCapaMessage = 'this Concern already has a CAPA',
+    this.addWhyStatus = 201,
+    this.addWhyMessage = "writing a CAPA's root causes needs edit access at its Org Unit, "
+        'or a place on its team',
+    this.changeWhyStatus = 200,
+    this.changeWhyMessage =
+        "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team",
+    this.removeWhyStatus = 200,
+    this.removeWhyMessage =
+        "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team",
+    this.addCauseStatus = 201,
+    this.addCauseMessage =
+        "writing a CAPA's root causes needs edit access at its Org Unit, or a place on its team",
+    this.changeCauseStatus = 200,
+    this.changeCauseMessage = 'That cause could not be changed.',
+    this.removeCauseStatus = 200,
+    this.removeCauseMessage = 'That cause could not be removed.',
+    this.startWhyFromCauseStatus = 201,
+    this.startWhyFromCauseMessage =
+        'only a confirmed cause can start a chain, and this one is candidate',
+    this.capaListStatus = 200,
+    this.capaListMessage = 'The CAPA list could not be read.',
+    this.effectivenessStatus = 200,
+    this.effectivenessMessage =
+        "recording a CAPA's effectiveness check needs Quality authority at its Org Unit",
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -1222,7 +1864,312 @@ class FakeWire {
         floor = floor ?? {'orgUnitId': '10', 'orgUnitName': 'Line 1', 'siteId': '1'},
         floorWorkOrders = floorWorkOrders ?? [],
         floorEmployee = floorEmployee ??
-            {'id': '20', 'employeeNo': 'EMP-20', 'displayName': 'Tess Technician'};
+            {'id': '20', 'employeeNo': 'EMP-20', 'displayName': 'Tess Technician'},
+        products = products ?? [],
+        defectCodes = defectCodes ?? [],
+        customers = customers ?? [],
+        complaints = complaints ?? {},
+        suppliers = suppliers ?? [],
+        supplierNcrs = supplierNcrs ?? {},
+        nonconformances = nonconformances ?? {},
+        capas = capas ?? {};
+
+  /// `GET /api/quality/products` (issue #203) — the Product catalogue.
+  List<Map<String, dynamic>> products;
+
+  int productsStatus;
+
+  /// `POST /api/quality/products` (administrator only).
+  int createProductStatus;
+  String createProductMessage;
+
+  /// `PATCH /api/quality/products/:id` (administrator only).
+  int updateProductStatus;
+  String updateProductMessage;
+
+  /// Every Product create body that actually reached the wire, decoded — so a
+  /// test can assert exactly one request was sent and what it carried.
+  final List<Map<String, dynamic>> productPosts = [];
+
+  /// Every Product correction body that actually reached the wire, as
+  /// `(id, body)` — so a test can assert that a correction sent only the field
+  /// that changed, and that a non-administrator's Screen sent nothing at all.
+  final List<(String, Map<String, dynamic>)> productPatches = [];
+
+  /// Every Product list request's query parameters, in the order they reached
+  /// the wire — `includeInactive` and `search` carried through exactly as sent,
+  /// so a test proves what the Screen asked for rather than what the Fake Wire
+  /// happened to apply.
+  final List<Map<String, String>> productListRequests = [];
+
+  /// `GET /api/quality/defect-codes`.
+  List<Map<String, dynamic>> defectCodes;
+
+  int defectCodesStatus;
+
+  /// `POST /api/quality/defect-codes` (administrator only).
+  int createDefectCodeStatus;
+  String createDefectCodeMessage;
+
+  /// `PATCH /api/quality/defect-codes/:id` (administrator only).
+  int updateDefectCodeStatus;
+  String updateDefectCodeMessage;
+
+  /// Every Defect code create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> defectCodePosts = [];
+
+  /// Every Defect code correction body that actually reached the wire, as
+  /// `(id, body)`.
+  final List<(String, Map<String, dynamic>)> defectCodePatches = [];
+
+  /// Every Defect code list request's query parameters.
+  final List<Map<String, String>> defectCodeListRequests = [];
+
+  /// `GET /api/quality/customers` (issue #214) — the Customer list.
+  List<Map<String, dynamic>> customers;
+  int customersStatus;
+
+  /// `POST /api/quality/customers` (administrator only).
+  int createCustomerStatus;
+  String createCustomerMessage;
+
+  /// `PATCH /api/quality/customers/:id` (administrator only).
+  int updateCustomerStatus;
+  String updateCustomerMessage;
+
+  /// Every Customer create body that reached the wire, decoded.
+  final List<Map<String, dynamic>> customerPosts = [];
+
+  /// Every Customer correction body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> customerPatches = [];
+
+  /// Every Customer list request's query parameters.
+  final List<Map<String, String>> customerListRequests = [];
+
+  /// `GET /api/quality/sites/:siteId/complaints` (issue #214) — the register,
+  /// keyed by Site id. The wire applies the two filters the address takes:
+  /// `status`, and `orgUnitId` with everything beneath it (by walking the same
+  /// `orgUnits` fixture the Non-conformance register uses).
+  Map<String, List<Map<String, dynamic>>> complaints;
+  int complaintsStatus;
+  bool complaintsTruncated;
+
+  /// `POST /api/quality/sites/:siteId/complaints` — recording one.
+  int createComplaintStatus;
+  String createComplaintMessage;
+
+  /// `POST /api/quality/complaints/:id/respond` — closing it with its
+  /// response.
+  int respondToComplaintStatus;
+  String respondToComplaintMessage;
+
+  /// `POST /api/quality/complaints/:id/nonconformance` — recording the record
+  /// that controls the complained-of product.
+  int complaintNonconformanceStatus;
+  String complaintNonconformanceMessage;
+
+  /// `POST /api/quality/complaints/:id/link` — linking an existing one.
+  int linkComplaintStatus;
+  String linkComplaintMessage;
+
+  /// Every complaint record body that reached the wire, decoded.
+  final List<Map<String, dynamic>> complaintPosts = [];
+
+  /// Every complaint response body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> complaintResponds = [];
+
+  /// Every record-from-complaint body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> complaintNonconformancePosts = [];
+
+  /// Every link body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> complaintLinks = [];
+
+  /// Every complaint list request's query parameters, in the order they reached
+  /// the wire — so a test proves what the Screen asked for rather than what
+  /// this Fake Wire happened to apply.
+  final List<Map<String, String>> complaintListRequests = [];
+
+  /// Every complaint detail read's path, in order.
+  final List<String> complaintReads = [];
+
+  /// `GET /api/quality/suppliers` (issue #215) — the Supplier list.
+  List<Map<String, dynamic>> suppliers;
+  int suppliersStatus;
+
+  /// `POST /api/quality/suppliers` (administrator only).
+  int createSupplierStatus;
+  String createSupplierMessage;
+
+  /// `PATCH /api/quality/suppliers/:id` (administrator only).
+  int updateSupplierStatus;
+  String updateSupplierMessage;
+
+  /// Every Supplier create body that reached the wire, decoded.
+  final List<Map<String, dynamic>> supplierPosts = [];
+
+  /// Every Supplier correction body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> supplierPatches = [];
+
+  /// Every Supplier list request's query parameters.
+  final List<Map<String, String>> supplierListRequests = [];
+
+  /// `GET /api/quality/sites/:siteId/supplier-ncrs` (issue #215) — the register,
+  /// keyed by Site id. The wire applies the three filters the address takes:
+  /// `status`, `supplierId`, and `orgUnitId` with everything beneath it (by
+  /// walking the same `orgUnits` fixture the Non-conformance register uses).
+  Map<String, List<Map<String, dynamic>>> supplierNcrs;
+  int supplierNcrsStatus;
+  bool supplierNcrsTruncated;
+
+  /// `POST /api/quality/sites/:siteId/supplier-ncrs` — recording one.
+  int createSupplierNcrStatus;
+  String createSupplierNcrMessage;
+
+  /// `POST /api/quality/supplier-ncrs/:id/disposition` — the Supplier's
+  /// disposition and what was recovered.
+  int supplierNcrDispositionStatus;
+  String supplierNcrDispositionMessage;
+
+  /// `POST /api/quality/supplier-ncrs/:id/close` — the one transition.
+  int supplierNcrCloseStatus;
+  String supplierNcrCloseMessage;
+
+  /// `POST /api/quality/supplier-ncrs/:id/nonconformance` — recording the record
+  /// that controls the received lot.
+  int supplierNcrNonconformanceStatus;
+  String supplierNcrNonconformanceMessage;
+
+  /// `POST /api/quality/supplier-ncrs/:id/link` — linking an existing one.
+  int linkSupplierNcrStatus;
+  String linkSupplierNcrMessage;
+
+  /// Every supplier NCR record body that reached the wire, decoded.
+  final List<Map<String, dynamic>> supplierNcrPosts = [];
+
+  /// Every disposition body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> supplierNcrDispositions = [];
+
+  /// Every close, as the id it named.
+  final List<String> supplierNcrCloses = [];
+
+  /// Every record-from-NCR body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> supplierNcrNonconformancePosts = [];
+
+  /// Every link body, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> supplierNcrLinks = [];
+
+  /// Every supplier NCR list request's query parameters, in the order they
+  /// reached the wire — so a test proves what the Screen asked for rather than
+  /// what this Fake Wire happened to apply.
+  final List<Map<String, String>> supplierNcrListRequests = [];
+
+  /// Every supplier NCR detail read's path, in order.
+  final List<String> supplierNcrReads = [];
+
+  /// `GET /api/quality/sites/:siteId/nonconformances` (issue #205) — the
+  /// register, keyed by Site id.
+  ///
+  /// The wire applies the filters it has enough on a row to honour honestly:
+  /// `orgUnitId` (the row's own Org Unit or any descendant of it, by walking
+  /// the `orgUnits` fixture), `status`, `defectCodeId`, `productId`,
+  /// `severity` and the production-day range. `serve` is a client-side read
+  /// filter, and what the *Screen* asked for is asserted from
+  /// [nonconformanceListRequests] rather than from this.
+  Map<String, List<Map<String, dynamic>>> nonconformances;
+  int nonconformancesStatus;
+  bool nonconformancesTruncated;
+
+  /// `POST /api/quality/sites/:siteId/nonconformances` — recording one. A
+  /// refusal is scripted with [createNonconformanceStatus], the shape every
+  /// other write's `status` field keeps.
+  int createNonconformanceStatus;
+  String createNonconformanceMessage;
+
+  /// `PATCH /api/quality/nonconformances/:id` — raising the severity and
+  /// recording containment.
+  int changeNonconformanceStatus;
+  String changeNonconformanceMessage;
+
+  /// `POST /api/quality/nonconformances/:id/quantity` — increasing the
+  /// affected quantity.
+  int increaseNonconformanceQuantityStatus;
+  String increaseNonconformanceQuantityMessage;
+
+  /// The five writes issue #206 adds — the Disposition, the Concession, the
+  /// lowered severity, the reopen and the cancel. One refusal pair for all
+  /// five: a test scripts the answer the API would give (a 409 for a
+  /// Disposition larger than what is undecided, a 403 for a caller without
+  /// Quality authority) and points it at whichever address it is about.
+  int recordNonconformanceActStatus;
+  String recordNonconformanceActMessage;
+
+  /// Every Non-conformance list request's query parameters, in the order they
+  /// reached the wire — so a test proves what the Screen asked for (which
+  /// filters, and only the filters that are set) rather than what this Fake
+  /// Wire happened to apply.
+  final List<Map<String, String>> nonconformanceListRequests = [];
+
+  /// Every Non-conformance detail read's path, in order — `GET
+  /// /api/quality/nonconformances/:id`, so a test can prove which record the
+  /// Screen went and read.
+  final List<String> nonconformanceReads = [];
+
+  /// Every recording body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> nonconformancePosts = [];
+
+  /// Every change body that reached the wire, as `(id, body)` — a severity
+  /// raising or a containment, never both in one request.
+  final List<(String, Map<String, dynamic>)> nonconformancePatches = [];
+
+  /// Every quantity body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceQuantityPosts = [];
+
+  /// Every Disposition body that reached the wire, as `(id, body)` (issue
+  /// #206) — a record against an id, never the register.
+  final List<(String, Map<String, dynamic>)> nonconformanceDispositionPosts = [];
+
+  /// Every Concession body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceConcessionPosts = [];
+
+  /// Every lowered-severity body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceLowerSeverityPosts = [];
+
+  /// Every reopen body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceReopenPosts = [];
+
+  /// Every cancel body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> nonconformanceCancelPosts = [];
+
+  /// Looks a Non-conformance up by id across every Site's list, which is what
+  /// the detail route does — a record read by address, not by Site.
+  Map<String, dynamic>? nonconformanceById(String id) {
+    for (final rows in nonconformances.values) {
+      for (final row in rows) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
+  /// [orgUnitId] and every Org Unit beneath it, read off the `orgUnits`
+  /// fixture (keyed by parent id) — what `?orgUnitId=` means on the real
+  /// register, where the narrowing is the baseline's own ltree walk
+  /// (`ou.path <@ $path`).
+  Set<String> nonconformanceOrgUnitScope(String orgUnitId) {
+    final found = <String>{orgUnitId};
+    var grew = true;
+    while (grew) {
+      grew = false;
+      for (final entry in orgUnits.entries) {
+        final parent = entry.key;
+        if (parent == null || !found.contains(parent)) continue;
+        for (final child in entry.value) {
+          if (found.add(child['id'] as String)) grew = true;
+        }
+      }
+    }
+    return found;
+  }
 
   final String role;
 
@@ -1294,6 +2241,307 @@ class FakeWire {
   final List<(String, String, Map<String, dynamic>)> phaseCompletions = [];
   int completePhaseStatus;
   String completePhaseMessage;
+
+  /// Every Concern raised from a Non-conformance that reached the wire
+  /// (issue #208), as `(nonconformanceId, body)` — `POST
+  /// /api/actions/nonconformances/:id/concern`.
+  final List<(String, Map<String, dynamic>)> concernRaisePosts = [];
+  int raiseConcernStatus;
+  String raiseConcernMessage;
+
+  /// Every link that reached the wire, as `(concernId, body)` — `POST
+  /// /api/actions/:id/nonconformances`.
+  final List<(String, Map<String, dynamic>)> nonconformanceLinkPosts = [];
+  int linkNonconformanceStatus;
+  String linkNonconformanceMessage;
+
+  /// Every unlink that reached the wire, as `(concernId, nonconformanceId)` —
+  /// `POST /api/actions/:id/nonconformances/:nonconformanceId/unlink`.
+  final List<(String, String)> nonconformanceUnlinkPosts = [];
+  int unlinkNonconformanceStatus;
+  String unlinkNonconformanceMessage;
+
+  /// The Concern a raise answers with, when a test wants the row the server
+  /// would have written named differently. Null means the fake builds one from
+  /// the request.
+  Map<String, dynamic>? raisedConcern;
+
+  /// The Non-conformance rows a link answers with, keyed by Concern id — what
+  /// a test scripts the Concern's own read to show after a link. The fake
+  /// appends to a stored detail when it can, and this is the escape hatch for
+  /// a case where the stored detail is not the one under test.
+  Map<String, List<Map<String, dynamic>>> linkedNonconformances = {};
+
+  /// `GET /api/actions/capas/:id` (issue #209) — one CAPA by id, keyed by its
+  /// own id (a CAPA's id space is `capas`', not the action log's).
+  ///
+  /// `POST /api/actions/:id/capa` writes into it, so a Screen that follows a
+  /// raise to the CAPA's own address reads the row that write produced rather
+  /// than a fixture a test had to keep in step with it.
+  Map<String, Map<String, dynamic>> capas;
+  int capasStatus;
+  String capaMessage;
+
+  /// Every CAPA read (issues #209, #212) — the id each `GET
+  /// /api/actions/capas/:id` asked for, in the order the requests reached the
+  /// wire. A report Screen makes exactly one of them, and that is a fact a test
+  /// has to be able to read rather than assume.
+  final List<String> capaReads = [];
+
+  /// Every CAPA open that reached the wire, as `(concernId, body)` — so a test
+  /// can assert that exactly one request was sent, what it carried, and that a
+  /// caller without Quality authority sent nothing at all.
+  final List<(String, Map<String, dynamic>)> capaPosts = [];
+
+  /// `POST /api/actions/:id/capa` — the refusal a test scripts (409 for a
+  /// second CAPA, 403 for a caller without Quality authority).
+  int createCapaStatus;
+  String createCapaMessage;
+
+  /// The CAPA a raise answers with, when a test wants its own ids to be the
+  /// ones on screen. Null means the fake builds one from the Concern.
+  Map<String, dynamic>? openedCapa;
+
+  /// Every Why added through the wire (issue #210), as `(capaId, body)` — so a
+  /// test can assert exactly one request was sent, that it named the chain the
+  /// dialog was opened at, and that a reader who may not write sent nothing.
+  final List<(String, Map<String, dynamic>)> whyPosts = [];
+
+  /// `POST /api/actions/capas/:id/whys` — the refusal a test scripts (403 for
+  /// a caller with neither edit access nor a place on the team, 409 for a
+  /// closed investigation, 400 for a chain that is not one of the two).
+  int addWhyStatus;
+  String addWhyMessage;
+
+  /// Every change to one Why, as `(capaId, whyId, body)` — the body carrying
+  /// only the fields the request named, which is the partial update the API
+  /// takes.
+  final List<(String, String, Map<String, dynamic>)> whyPatches = [];
+
+  /// `PATCH /api/actions/capas/:id/whys/:whyId` — the refusal a test scripts.
+  int changeWhyStatus;
+  String changeWhyMessage;
+
+  /// Every Why removed, as `(capaId, whyId)` — the delete this Platform's
+  /// chain editing is the first to make.
+  final List<(String, String)> whyDeletions = [];
+
+  /// `DELETE /api/actions/capas/:id/whys/:whyId` — the refusal a test scripts.
+  int removeWhyStatus;
+  String removeWhyMessage;
+
+  /// The next id the fake gives a Why it creates, so two adds in one test are
+  /// two rows. Ids the fixture already carries are its own.
+  int _nextWhyId = 900;
+
+  /// Every candidate cause recorded through the wire (issue #213), as
+  /// `(capaId, body)` — so a test can assert exactly one request was sent, that
+  /// it named the 6M category the form was opened at, and that a reader who may
+  /// not write sent nothing.
+  final List<(String, Map<String, dynamic>)> causePosts = [];
+
+  /// `POST /api/actions/capas/:id/causes` — the refusal a test scripts (403 for
+  /// a caller with neither edit access nor a place on the team, 409 for a
+  /// closed investigation, 400 for a category that is not one of the six).
+  int addCauseStatus;
+  String addCauseMessage;
+
+  /// Every change to one candidate cause, as `(capaId, causeId, body)` — the
+  /// body carrying only the fields the request named, which is the partial
+  /// update the API takes.
+  final List<(String, String, Map<String, dynamic>)> causePatches = [];
+
+  /// `PATCH /api/actions/capas/:id/causes/:causeId` — the refusal a test
+  /// scripts (400 for a verdict without its evidence).
+  int changeCauseStatus;
+  String changeCauseMessage;
+
+  /// Every candidate cause removed, as `(capaId, causeId)`.
+  final List<(String, String)> causeDeletions = [];
+
+  /// `DELETE /api/actions/capas/:id/causes/:causeId` — the refusal a test
+  /// scripts.
+  int removeCauseStatus;
+  String removeCauseMessage;
+
+  /// Every chain started from a cause (issue #213), as
+  /// `(capaId, causeId, body)` — so a test can assert the chain the form
+  /// offered was the one sent, and that a candidate's row sent no offer at all.
+  final List<(String, String, Map<String, dynamic>)> causeWhyPosts = [];
+
+  /// `POST /api/actions/capas/:id/causes/:causeId/whys` — the refusal a test
+  /// scripts (409 for a cause that is not confirmed, 409 for a chain that has
+  /// already started).
+  int startWhyFromCauseStatus;
+  String startWhyFromCauseMessage;
+
+  /// The next id the fake gives a candidate cause it creates.
+  int _nextCauseId = 950;
+
+  /// `GET /api/actions/capas` (issue #211) — the CAPA list, and the query
+  /// parameters every request carried, so a test proves what the Screen asked
+  /// for (`orgUnitId`, `status`, `overdue`) rather than what the fake happened
+  /// to apply.
+  final List<Map<String, String>> capaListRequests = [];
+  int capaListStatus;
+  String capaListMessage;
+
+  /// Every effectiveness check recorded through the wire (issue #211), as
+  /// `(capaId, body)` — so a test can assert exactly one request was sent, what
+  /// verdict and note it carried, and that a caller the rule refuses sent
+  /// nothing at all.
+  final List<(String, Map<String, dynamic>)> effectivenessPosts = [];
+
+  /// `POST /api/actions/capas/:id/effectiveness` — the refusal a test scripts
+  /// (403 for a caller without Quality authority or for the team lead, 409 for
+  /// a Concern that has not closed).
+  int effectivenessStatus;
+  String effectivenessMessage;
+
+  /// One row of a CAPA's team, resolved off the `employees` fixture — the way
+  /// the server's own read joins the directory for a display name.
+  Map<String, dynamic>? _capaTeamRow(Object? employeeId) {
+    if (employeeId == null) return null;
+    final id = employeeId.toString();
+    for (final employee in employees) {
+      if (employee['id'] == id) {
+        return {'employeeId': id, 'name': employee['displayName']};
+      }
+    }
+    return {'employeeId': id, 'name': ''};
+  }
+
+  /// The stored Why with this id, or null when the CAPA does not hold one.
+  static Map<String, dynamic>? _storedWhy(Map<String, dynamic> capa, String whyId) {
+    for (final why in (capa['whys'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()) {
+      if (why['id'].toString() == whyId) return why;
+    }
+    return null;
+  }
+
+  /// Applies a change to a stored CAPA's Why the way the server would
+  /// (issue #210): the statement replaced when it was sent, the whole chain
+  /// renumbered around a move, and a root-cause mark that replaces whatever the
+  /// chain's root was. Returns whether the CAPA holds the Why at all — a
+  /// request against one it does not is the server's 404.
+  ///
+  /// The rules, not the wording: the backend suite is where they are proved.
+  /// What this buys is that a Screen's own rendering is tested against the
+  /// answer the API really gives, rather than against a body a test wrote for
+  /// it.
+  static bool _changeStoredWhy(
+    Map<String, dynamic> capa,
+    String whyId,
+    Map<String, dynamic> body,
+  ) {
+    final whys = (capa['whys'] as List<dynamic>? ?? <dynamic>[]);
+    final why = _storedWhy(capa, whyId);
+    if (why == null) return false;
+
+    if (body.containsKey('statement')) {
+      why['statement'] = body['statement'];
+    }
+    if (body['isRoot'] == true) {
+      for (final other in whys.whereType<Map<String, dynamic>>()) {
+        if (other['chain'] == why['chain']) {
+          other['isRoot'] = other['id'].toString() == whyId;
+        }
+      }
+    } else if (body['isRoot'] == false) {
+      why['isRoot'] = false;
+    }
+    final sequence = body['sequence'];
+    if (sequence is int) {
+      final siblings = [
+        for (final each in whys.whereType<Map<String, dynamic>>())
+          if (each['chain'] == why['chain'] && each['id'].toString() != whyId) each,
+      ];
+      siblings.insert((sequence - 1).clamp(0, siblings.length), why);
+      for (var index = 0; index < siblings.length; index++) {
+        siblings[index]['sequence'] = index + 1;
+      }
+    }
+    capa['whys'] = whys;
+    return true;
+  }
+
+  /// Removes a stored CAPA's Why and closes the gap the way the server would
+  /// (issue #210): the chain is renumbered from what is left, so it still reads
+  /// 1..n. Returns whether the CAPA held it.
+  static bool _removeStoredWhy(Map<String, dynamic> capa, String whyId) {
+    final whys = (capa['whys'] as List<dynamic>? ?? <dynamic>[]);
+    final why = _storedWhy(capa, whyId);
+    if (why == null) return false;
+
+    final chain = why['chain'];
+    whys.remove(why);
+    var position = 0;
+    for (final each in whys.whereType<Map<String, dynamic>>()) {
+      if (each['chain'] == chain) {
+        position += 1;
+        each['sequence'] = position;
+      }
+    }
+    capa['whys'] = whys;
+    return true;
+  }
+
+  /// The stored candidate cause with this id, or null when the CAPA's fishbone
+  /// does not hold one.
+  static Map<String, dynamic>? _storedCause(Map<String, dynamic> capa, String causeId) {
+    for (final cause in (capa['causes'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()) {
+      if (cause['id'].toString() == causeId) return cause;
+    }
+    return null;
+  }
+
+  /// Applies a change to a stored CAPA's candidate cause the way the server
+  /// would (issue #213): the sentence and the category when they were sent, and
+  /// the verdict with its evidence together — `candidate` clearing the note it
+  /// no longer has a decision to be the evidence of. Returns whether the CAPA's
+  /// fishbone holds the cause at all; a request against one it does not is the
+  /// server's 404.
+  ///
+  /// The rules, not the wording: the backend suite is where they are proved.
+  /// What this buys is that a Screen's own rendering is tested against the
+  /// answer the API really gives.
+  static bool _changeStoredCause(
+    Map<String, dynamic> capa,
+    String causeId,
+    Map<String, dynamic> body,
+  ) {
+    final cause = _storedCause(capa, causeId);
+    if (cause == null) return false;
+
+    if (body.containsKey('category')) {
+      cause['category'] = body['category'];
+    }
+    if (body.containsKey('statement')) {
+      cause['statement'] = body['statement'];
+    }
+    if (body.containsKey('verdict')) {
+      cause['verdict'] = body['verdict'];
+      cause['evidenceNote'] = body['verdict'] == 'candidate' ? null : body['evidenceNote'];
+    } else if (body.containsKey('evidenceNote')) {
+      cause['evidenceNote'] = body['evidenceNote'];
+    }
+    return true;
+  }
+
+  /// Removes a stored CAPA's candidate cause the way the server does — the row
+  /// goes, and the category's remaining positions are left as they were
+  /// (issue #213). Returns whether the CAPA's fishbone held it.
+  static bool _removeStoredCause(Map<String, dynamic> capa, String causeId) {
+    final causes = (capa['causes'] as List<dynamic>? ?? <dynamic>[]);
+    final cause = _storedCause(capa, causeId);
+    if (cause == null) return false;
+
+    causes.remove(cause);
+    capa['causes'] = causes;
+    return true;
+  }
 
   /// `POST /api/maintenance/assets`.
   int createAssetStatus;
@@ -1491,6 +2739,14 @@ class FakeWire {
   /// The caller's own Account id, as `/me` reports it — what the Accounts
   /// Screen compares each row against (issue #53).
   final String selfId;
+
+  /// The Employee the caller's own Account is linked to, as `/me` reports it
+  /// (issue #210) — `app_users.employee_id`, which the server has always
+  /// answered with. Null is the ordinary case for an administrator, who need
+  /// not be an Employee; a test that wants the caller on a CAPA's *team* sets
+  /// this to an Employee the CAPA names, which is the whole second half of the
+  /// write rule for a CAPA's chains.
+  final String? selfEmployeeId;
   List<Map<String, dynamic>> queue;
   int queueStatus;
   int rejectStatus;
@@ -1998,6 +3254,29 @@ class FakeWire {
   /// Every floor complete that reached the wire, the same shape.
   final List<Map<String, dynamic>> floorWorkOrderCompletions = [];
 
+  /// `GET /api/quality/floor/products` and `.../defect-codes` (issue #207) —
+  /// the shared device's own reads of the two catalogues it must choose from.
+  /// Served off the [products]/[defectCodes] fixtures above, so a test seeds
+  /// one list and both doors answer with it, the way one `products` table
+  /// backs both addresses in the real API.
+  int floorCataloguesStatus;
+
+  /// Every floor catalogue read's device credential, in the order it reached
+  /// the wire.
+  final List<String> floorCatalogueReads = [];
+
+  /// `POST /api/quality/floor/nonconformances` (issue #207) — recording one
+  /// from a device. A refusal is scripted with [floorNonconformanceStatus],
+  /// the shape every other write's `status` field keeps.
+  int floorNonconformanceStatus;
+  String floorNonconformanceMessage;
+
+  /// Every floor recording that reached the wire, as `{device,
+  /// identification, body}` — so a test can assert that the device credential
+  /// and the individual identification each crossed the wire and exactly what
+  /// was recorded.
+  final List<Map<String, dynamic>> floorNonconformancePosts = [];
+
   int _nextEmployeeId = 900;
   int _nextAssignmentId = 500;
   int _nextJobRoleId = 950;
@@ -2005,6 +3284,107 @@ class FakeWire {
   int _nextEmployeeSkillId = 800;
   int _nextSiteId = 90;
   int _nextOrgUnitId = 990;
+  int _nextProductId = 700;
+  int _nextDefectCodeId = 750;
+  int _nextNonconformanceId = 900;
+  int _nextCustomerId = 600;
+  int _nextComplaintId = 700;
+
+  /// One complaint wherever it sits, by id — what every complaint write in this
+  /// fake re-reads after changing it, since the real routes answer the whole
+  /// record rather than a patch.
+  Map<String, dynamic>? complaintById(String id) {
+    for (final rows in complaints.values) {
+      for (final row in rows) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
+  /// Replaces one complaint row wherever it sits, keeping the list's order.
+  void _replaceComplaint(String id, Map<String, dynamic> updated) {
+    complaints = {
+      for (final entry in complaints.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) updated else row,
+        ],
+    };
+  }
+
+  int _nextSupplierId = 500;
+  int _nextSupplierNcrId = 800;
+
+  /// One supplier NCR wherever it sits, by id — what every write in this fake
+  /// re-reads after changing it, since the real routes answer the whole record
+  /// rather than a patch.
+  Map<String, dynamic>? supplierNcrById(String id) {
+    for (final rows in supplierNcrs.values) {
+      for (final row in rows) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
+  /// Replaces one supplier NCR row wherever it sits, keeping the list's order.
+  void _replaceSupplierNcr(String id, Map<String, dynamic> updated) {
+    supplierNcrs = {
+      for (final entry in supplierNcrs.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) updated else row,
+        ],
+    };
+  }
+
+  /// Replaces one Non-conformance row wherever it sits, keeping the list's
+  /// order — what every write in this fake answers with, since the real
+  /// routes answer the whole record rather than a patch.
+  void _replaceNonconformance(String id, Map<String, dynamic> updated) {
+    nonconformances = {
+      for (final entry in nonconformances.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) updated else row,
+        ],
+    };
+  }
+
+  /// Recomputes a row's cached disposition total and the status that follows
+  /// from it, the way `settleDispositionStatus` (nonconformances.js) does for a
+  /// real record (issue #206): the whole quantity having a Disposition closes
+  /// it, part of it makes it `dispositioned`. A cancelled row is left alone,
+  /// since a cancelled Non-conformance accepts nothing further.
+  Map<String, dynamic> _settleDispositions(Map<String, dynamic> row) {
+    if (row['status'] == 'cancelled') return row;
+    final dispositions = (row['dispositions'] as List<dynamic>? ?? const []);
+    var total = 0.0;
+    for (final disposition in dispositions) {
+      total += (disposition as Map<String, dynamic>)['quantity'] as num;
+    }
+    final affected = (row['quantityAffected'] as num).toDouble();
+    final closed = total >= affected;
+    return {
+      ...row,
+      'quantityDispositioned': total,
+      'status': closed ? 'closed' : 'dispositioned',
+      'closedAt': closed ? DateTime.now().toUtc().toIso8601String() : null,
+    };
+  }
+
+  /// The production day a row is filed against — the row's own
+  /// `productionDate` where it has one, and the detected date otherwise, which
+  /// is the same fallback the real register's date range applies (ADR-0017's
+  /// documented case of a Site with no shift calendar covering the moment).
+  String _nonconformanceDayOf(Map<String, dynamic> row) {
+    final productionDate = row['productionDate'] as String?;
+    if (productionDate != null && productionDate.isNotEmpty) return productionDate;
+    final detectedAt = row['detectedAt'] as String?;
+    if (detectedAt == null || detectedAt.length < 10) return '';
+    return detectedAt.substring(0, 10);
+  }
 
   /// The Org Unit row for [orgUnitId], resolved off whatever tree rows this
   /// Fake Wire was given (any `parentId` key) — there is no Org Unit lookup
@@ -2348,8 +3728,1205 @@ class FakeWire {
             200,
           );
         }
+        // The Supplier list and the supplier NCRs (issue #215). Mirrors
+        // supplier-routes.js and supplier-ncr-routes.js: the list applies
+        // `includeInactive` and `search`, the register applies the Supplier, the
+        // status and the Org Unit with everything beneath it, and every write
+        // answers the whole record the way the real routes do.
+        if (request.method == 'POST' && path == '/api/quality/suppliers') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          supplierPosts.add(sent);
+          if (createSupplierStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createSupplierMessage}),
+              createSupplierStatus,
+            );
+          }
+          final id = (_nextSupplierId++).toString();
+          final created = supplierJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            contactEmail: sent['contactEmail'] as String?,
+          );
+          suppliers = [...suppliers, created];
+          return http.Response(jsonEncode({'supplier': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/quality/suppliers/')) {
+          final id = path.substring('/api/quality/suppliers/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          supplierPatches.add((id, body));
+          if (updateSupplierStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateSupplierMessage}),
+              updateSupplierStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          suppliers = [
+            for (final row in suppliers)
+              if (row['id'] == id) (updated = {...row, ...body}) else row,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Supplier not found'}), 404);
+          }
+          return http.Response(jsonEncode({'supplier': updated}), 200);
+        }
+        if (path == '/api/quality/suppliers') {
+          supplierListRequests.add(request.url.queryParameters);
+          if (suppliersStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Supplier list is unavailable.'}),
+              suppliersStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final includeInactive = query['includeInactive'] == 'true';
+          final term = (query['search'] ?? '').trim().toLowerCase();
+          final sent = [
+            for (final row in suppliers)
+              if (includeInactive || row['isActive'] != false)
+                if (term.isEmpty ||
+                    (row['code'] as String).toLowerCase().contains(term) ||
+                    (row['name'] as String).toLowerCase().contains(term))
+                  row,
+          ];
+          return http.Response(jsonEncode({'suppliers': sent}), 200);
+        }
+        if (path.startsWith('/api/quality/sites/') && path.endsWith('/supplier-ncrs')) {
+          final siteId = path.split('/')[4];
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            supplierNcrPosts.add(sent);
+            if (createSupplierNcrStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': createSupplierNcrMessage}),
+                createSupplierNcrStatus,
+              );
+            }
+            final supplierId = sent['supplierId'] as String;
+            final orgUnitId = sent['orgUnitId'] as String;
+            Map<String, dynamic>? supplier;
+            for (final row in suppliers) {
+              if (row['id'] == supplierId) supplier = row;
+            }
+            if (supplier == null) {
+              return http.Response(jsonEncode({'message': 'Supplier not found'}), 404);
+            }
+            final productId = sent['productId'] as String?;
+            Map<String, dynamic>? product;
+            for (final row in products) {
+              if (row['id'] == productId) product = row;
+            }
+            final defectCodeId = sent['defectCodeId'] as String?;
+            Map<String, dynamic>? defectCode;
+            for (final code in defectCodes) {
+              if (code['id'] == defectCodeId) defectCode = code;
+            }
+            final quantity = sent['quantity'] as num?;
+            final responseDueDate = sent['responseDueDate'] as String?;
+            final id = (_nextSupplierNcrId++).toString();
+            final created = supplierNcrJson(
+              id,
+              'SN-2026-${id.padLeft(5, '0')}',
+              supplierId: supplierId,
+              supplierCode: supplier['code'] as String? ?? 'SUP-?',
+              supplierName: supplier['name'] as String? ?? 'Supplier',
+              productId: productId,
+              productCode: product?['code'] as String?,
+              productName: product?['name'] as String?,
+              defectCodeId: defectCodeId,
+              defectCodeCode: defectCode?['code'] as String?,
+              defectCodeName: defectCode?['name'] as String?,
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              siteId: siteId,
+              incomingLotRef: sent['incomingLotRef'] as String?,
+              purchaseRef: sent['purchaseRef'] as String?,
+              quantityAffected: quantity ?? 0,
+              uomCode: sent['uomCode'] as String? ??
+                  product?['uomCode'] as String? ??
+                  'EA',
+              disposition: sent['disposition'] as String? ?? 'return_to_supplier',
+              responseDueDate: responseDueDate,
+              responseDueAt: responseDueDate == null
+                  ? null
+                  : '${responseDueDate}T23:59:59.999999+07:00',
+              description: sent['description'] as String?,
+            );
+            supplierNcrs = {
+              ...supplierNcrs,
+              siteId: [created, ...(supplierNcrs[siteId] ?? const [])],
+            };
+            return http.Response(jsonEncode({'supplierNcr': created}), 201);
+          }
+          supplierNcrListRequests.add(request.url.queryParameters);
+          if (supplierNcrsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The supplier NCR register is unavailable.'}),
+              supplierNcrsStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final orgUnitId = query['orgUnitId'];
+          final scope = orgUnitId == null ? null : nonconformanceOrgUnitScope(orgUnitId);
+          final status = query['status'];
+          final supplierId = query['supplierId'];
+          final sent = [
+            for (final row in supplierNcrs[siteId] ?? const <Map<String, dynamic>>[])
+              if (scope == null || scope.contains(row['orgUnitId']))
+                if (status == null || row['status'] == status)
+                  if (supplierId == null || row['supplierId'] == supplierId) row,
+          ];
+          return http.Response(
+            jsonEncode({'supplierNcrs': sent, 'truncated': supplierNcrsTruncated}),
+            200,
+          );
+        }
+        if (path.startsWith('/api/quality/supplier-ncrs/')) {
+          final remainder = path.substring('/api/quality/supplier-ncrs/'.length);
+
+          if (remainder.endsWith('/disposition') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/disposition'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            supplierNcrDispositions.add((id, sent));
+            final row = supplierNcrById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            if (supplierNcrDispositionStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': supplierNcrDispositionMessage}),
+                supplierNcrDispositionStatus,
+              );
+            }
+            final disposition = sent['disposition'] as String?;
+            const allowed = [
+              'return_to_supplier',
+              'scrap',
+              'rework_at_cost',
+              'sort',
+              'use_as_is',
+            ];
+            if (disposition == null || !allowed.contains(disposition)) {
+              return http.Response(
+                jsonEncode({
+                  'message': 'disposition must be one of: ${allowed.join(', ')}',
+                }),
+                400,
+              );
+            }
+            final cost = sent['costRecovered'] as num?;
+            if (cost != null && cost < 0) {
+              return http.Response(
+                jsonEncode({'message': 'costRecovered must be at least 0'}),
+                400,
+              );
+            }
+            final updated = {
+              ...row,
+              'disposition': disposition,
+              'costRecovered': cost,
+              'currency': sent['currency'] as String? ?? row['currency'],
+            };
+            _replaceSupplierNcr(id, updated);
+            return http.Response(jsonEncode({'supplierNcr': updated}), 200);
+          }
+
+          if (remainder.endsWith('/close') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/close'.length);
+            supplierNcrCloses.add(id);
+            final row = supplierNcrById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            if (supplierNcrCloseStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': supplierNcrCloseMessage}),
+                supplierNcrCloseStatus,
+              );
+            }
+            if (row['status'] == 'closed' || row['status'] == 'rejected') {
+              return http.Response(
+                jsonEncode({
+                  'message': 'that supplier NCR is ${row['status']} and cannot be changed',
+                }),
+                409,
+              );
+            }
+            final closed = {
+              ...row,
+              'status': 'closed',
+              'closedAt': DateTime.now().toUtc().toIso8601String(),
+              // A closed NCR is never marked late — the real read's own rule
+              // (supplier-ncrs.js).
+              'isOverdue': false,
+            };
+            _replaceSupplierNcr(id, closed);
+            return http.Response(jsonEncode({'supplierNcr': closed}), 200);
+          }
+
+          if (remainder.endsWith('/nonconformance') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/nonconformance'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            supplierNcrNonconformancePosts.add((id, sent));
+            final row = supplierNcrById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            if (supplierNcrNonconformanceStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': supplierNcrNonconformanceMessage}),
+                supplierNcrNonconformanceStatus,
+              );
+            }
+            final productId = (sent['productId'] as String?) ?? row['productId'] as String?;
+            if (productId == null) {
+              return http.Response(
+                jsonEncode({
+                  'message': 'productId is required: this supplier NCR carries no Product to '
+                      'record the Non-conformance about',
+                }),
+                400,
+              );
+            }
+            final defectCodeId =
+                (sent['defectCodeId'] as String?) ?? row['defectCodeId'] as String?;
+            if (defectCodeId == null) {
+              return http.Response(
+                jsonEncode({
+                  'message': 'defectCodeId is required: this supplier NCR carries no Defect '
+                      'code to record the Non-conformance with',
+                }),
+                400,
+              );
+            }
+            Map<String, dynamic>? product;
+            for (final candidate in products) {
+              if (candidate['id'] == productId) product = candidate;
+            }
+            final siteId = row['siteId'] as String;
+            final ncId = (_nextNonconformanceId++).toString();
+            final recorded = nonconformanceJson(
+              ncId,
+              'NC-HCM-2026-${ncId.padLeft(5, '0')}',
+              detectionPoint: 'incoming',
+              severity: row['severity'] as String? ?? 'major',
+              quantityAffected: (sent['quantity'] as num?) ??
+                  (row['quantityAffected'] as num?) ??
+                  1,
+              lotRef: row['incomingLotRef'] as String?,
+              description: sent['description'] as String? ?? row['description'] as String?,
+              immediateContainment: sent['immediateContainment'] as String?,
+              orgUnitId: row['orgUnitId'] as String,
+              orgUnitName: row['orgUnitName'] as String,
+              siteId: siteId,
+              productId: productId,
+              productCode: product?['code'] as String? ?? 'PRD-?',
+              productName: product?['name'] as String? ?? 'Product',
+              defectCodeId: defectCodeId,
+              defectCodeCode: row['defectCodeCode'] as String? ?? 'CODE-?',
+              defectCodeName: row['defectCodeName'] as String? ?? 'Defect code',
+            );
+            nonconformances = {
+              ...nonconformances,
+              siteId: [recorded, ...(nonconformances[siteId] ?? const [])],
+            };
+            final linked = {
+              ...row,
+              'productId': productId,
+              'productCode': product?['code'] as String? ?? row['productCode'],
+              'productName': product?['name'] as String? ?? row['productName'],
+              'defectCodeId': defectCodeId,
+              'nonconformance': supplierNcrNonconformanceJson(
+                ncId,
+                recorded['issueNo'] as String,
+                detectionPoint: 'incoming',
+                severity: recorded['severity'] as String,
+                quantityAffected: recorded['quantityAffected'] as num?,
+              ),
+            };
+            _replaceSupplierNcr(id, linked);
+            return http.Response(
+              jsonEncode({'nonconformance': recorded, 'supplierNcr': linked}),
+              201,
+            );
+          }
+
+          if (remainder.endsWith('/link') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/link'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            supplierNcrLinks.add((id, sent));
+            final row = supplierNcrById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            if (linkSupplierNcrStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': linkSupplierNcrMessage}),
+                linkSupplierNcrStatus,
+              );
+            }
+            if (row['nonconformance'] != null) {
+              return http.Response(
+                jsonEncode({'message': 'this supplier NCR already names a Non-conformance'}),
+                409,
+              );
+            }
+            final nonconformanceId = sent['nonconformanceId'] as String?;
+            Map<String, dynamic>? candidate;
+            for (final rows in nonconformances.values) {
+              for (final nc in rows) {
+                if (nc['id'] == nonconformanceId) candidate = nc;
+              }
+            }
+            if (candidate == null) {
+              return http.Response(
+                jsonEncode({'message': 'Non-conformance not found'}),
+                404,
+              );
+            }
+            final linked = {
+              ...row,
+              'nonconformance': supplierNcrNonconformanceJson(
+                nonconformanceId!,
+                candidate['issueNo'] as String,
+                detectionPoint: candidate['detectionPoint'] as String? ?? 'incoming',
+                severity: candidate['severity'] as String? ?? 'major',
+                quantityAffected: candidate['quantityAffected'] as num?,
+              ),
+            };
+            _replaceSupplierNcr(id, linked);
+            return http.Response(jsonEncode({'supplierNcr': linked}), 200);
+          }
+
+          if (request.method == 'GET') {
+            supplierNcrReads.add(path);
+            final row = supplierNcrById(remainder);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
+            }
+            return http.Response(jsonEncode({'supplierNcr': row}), 200);
+          }
+        }
+        // The Customer list and the customer complaints (issue #214). Mirrors
+        // customer-routes.js and customer-complaint-routes.js: the list applies
+        // `includeInactive` and `search`, the register applies the status and
+        // the Org Unit with everything beneath it, and every complaint write
+        // answers the whole record the way the real routes do.
+        if (request.method == 'POST' && path == '/api/quality/customers') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          customerPosts.add(sent);
+          if (createCustomerStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createCustomerMessage}),
+              createCustomerStatus,
+            );
+          }
+          final id = (_nextCustomerId++).toString();
+          final created = customerJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            contactEmail: sent['contactEmail'] as String?,
+          );
+          customers = [...customers, created];
+          return http.Response(jsonEncode({'customer': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/quality/customers/')) {
+          final id = path.substring('/api/quality/customers/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          customerPatches.add((id, body));
+          if (updateCustomerStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateCustomerMessage}),
+              updateCustomerStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          customers = [
+            for (final row in customers)
+              if (row['id'] == id) (updated = {...row, ...body}) else row,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Customer not found'}), 404);
+          }
+          return http.Response(jsonEncode({'customer': updated}), 200);
+        }
+        if (path == '/api/quality/customers') {
+          customerListRequests.add(request.url.queryParameters);
+          if (customersStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Customer list is unavailable.'}),
+              customersStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final includeInactive = query['includeInactive'] == 'true';
+          final term = (query['search'] ?? '').trim().toLowerCase();
+          final sent = [
+            for (final row in customers)
+              if (includeInactive || row['isActive'] != false)
+                if (term.isEmpty ||
+                    (row['code'] as String).toLowerCase().contains(term) ||
+                    (row['name'] as String).toLowerCase().contains(term))
+                  row,
+          ];
+          return http.Response(jsonEncode({'customers': sent}), 200);
+        }
+        if (path.startsWith('/api/quality/sites/') && path.endsWith('/complaints')) {
+          final siteId = path.split('/')[4];
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            complaintPosts.add(sent);
+            if (createComplaintStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': createComplaintMessage}),
+                createComplaintStatus,
+              );
+            }
+            final customerId = sent['customerId'] as String;
+            final productId = sent['productId'] as String;
+            final orgUnitId = sent['orgUnitId'] as String;
+            Map<String, dynamic>? customer;
+            for (final row in customers) {
+              if (row['id'] == customerId) customer = row;
+            }
+            Map<String, dynamic>? product;
+            for (final row in products) {
+              if (row['id'] == productId) product = row;
+            }
+            final defectCodeId = sent['defectCodeId'] as String?;
+            Map<String, dynamic>? defectCode;
+            for (final code in defectCodes) {
+              if (code['id'] == defectCodeId) defectCode = code;
+            }
+            final quantity = sent['quantity'] as num?;
+            final responseDueDate = sent['responseDueDate'] as String?;
+            final id = (_nextComplaintId++).toString();
+            final created = customerComplaintJson(
+              id,
+              'CC-2026-${id.padLeft(5, '0')}',
+              customerId: customerId,
+              customerCode: customer?['code'] as String? ?? 'CUST-?',
+              customerName: customer?['name'] as String? ?? 'Customer',
+              productId: productId,
+              productCode: product?['code'] as String? ?? 'PRD-?',
+              productName: product?['name'] as String? ?? 'Product',
+              defectCodeId: defectCodeId,
+              defectCodeCode: defectCode?['code'] as String?,
+              defectCodeName: defectCode?['name'] as String?,
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              siteId: siteId,
+              complaintType: sent['complaintType'] as String? ?? 'quality',
+              severity: sent['severity'] as String? ?? 'major',
+              quantityAffected: quantity,
+              uomCode: quantity == null ? null : (product?['uomCode'] as String? ?? 'EA'),
+              customerRef: sent['customerRef'] as String?,
+              lotRef: sent['lotRef'] as String?,
+              description: sent['description'] as String? ?? '',
+              responseDueDate: responseDueDate,
+              responseDueAt:
+                  responseDueDate == null ? null : '${responseDueDate}T23:59:59.999999+07:00',
+              isWarranty: sent['isWarranty'] == true,
+            );
+            complaints = {
+              ...complaints,
+              siteId: [created, ...(complaints[siteId] ?? const [])],
+            };
+            return http.Response(jsonEncode({'complaint': created}), 201);
+          }
+          complaintListRequests.add(request.url.queryParameters);
+          if (complaintsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The complaint register is unavailable.'}),
+              complaintsStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final orgUnitId = query['orgUnitId'];
+          final scope = orgUnitId == null ? null : nonconformanceOrgUnitScope(orgUnitId);
+          final status = query['status'];
+          final sent = [
+            for (final row in complaints[siteId] ?? const <Map<String, dynamic>>[])
+              if (scope == null || scope.contains(row['orgUnitId']))
+                if (status == null || row['status'] == status) row,
+          ];
+          return http.Response(
+            jsonEncode({'complaints': sent, 'truncated': complaintsTruncated}),
+            200,
+          );
+        }
+        if (path.startsWith('/api/quality/complaints/')) {
+          final remainder = path.substring('/api/quality/complaints/'.length);
+
+          if (remainder.endsWith('/respond') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/respond'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            complaintResponds.add((id, sent));
+            final row = complaintById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);
+            }
+            if (respondToComplaintStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': respondToComplaintMessage}),
+                respondToComplaintStatus,
+              );
+            }
+            final note = (sent['responseNote'] as String?)?.trim() ?? '';
+            if (note.isEmpty) {
+              return http.Response(
+                jsonEncode({'message': 'responseNote is required to close a complaint'}),
+                400,
+              );
+            }
+            final closed = {
+              ...row,
+              'status': 'closed',
+              'closedAt': DateTime.now().toUtc().toIso8601String(),
+              'firstResponseAt': row['firstResponseAt'] ??
+                  DateTime.now().toUtc().toIso8601String(),
+              'responseNote': note,
+              // A complaint that is finished with is never marked late — the
+              // real read's own rule (customer-complaints.js).
+              'isOverdue': false,
+            };
+            _replaceComplaint(id, closed);
+            return http.Response(jsonEncode({'complaint': closed}), 200);
+          }
+
+          if (remainder.endsWith('/nonconformance') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/nonconformance'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            complaintNonconformancePosts.add((id, sent));
+            final row = complaintById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);
+            }
+            if (complaintNonconformanceStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': complaintNonconformanceMessage}),
+                complaintNonconformanceStatus,
+              );
+            }
+            final siteId = row['siteId'] as String;
+            final ncId = (_nextNonconformanceId++).toString();
+            final recorded = nonconformanceJson(
+              ncId,
+              'NC-HCM-2026-${ncId.padLeft(5, '0')}',
+              detectionPoint: 'customer',
+              severity: row['severity'] as String? ?? 'major',
+              quantityAffected: (sent['quantity'] as num?) ??
+                  (row['quantityAffected'] as num?) ??
+                  1,
+              lotRef: row['lotRef'] as String?,
+              description: sent['description'] as String? ?? row['description'] as String?,
+              immediateContainment: sent['immediateContainment'] as String?,
+              orgUnitId: row['orgUnitId'] as String,
+              orgUnitName: row['orgUnitName'] as String,
+              siteId: siteId,
+              productId: row['productId'] as String,
+              productCode: row['productCode'] as String,
+              productName: row['productName'] as String,
+              defectCodeId: (sent['defectCodeId'] as String?) ?? row['defectCodeId'] as String,
+              defectCodeCode: row['defectCodeCode'] as String? ?? 'CODE-?',
+              defectCodeName: row['defectCodeName'] as String? ?? 'Defect code',
+            );
+            nonconformances = {
+              ...nonconformances,
+              siteId: [recorded, ...(nonconformances[siteId] ?? const [])],
+            };
+            final linked = {
+              ...row,
+              'nonconformance': complaintNonconformanceJson(
+                ncId,
+                recorded['issueNo'] as String,
+                detectionPoint: 'customer',
+                severity: recorded['severity'] as String,
+                quantityAffected: recorded['quantityAffected'] as num,
+              ),
+            };
+            _replaceComplaint(id, linked);
+            return http.Response(
+              jsonEncode({'nonconformance': recorded, 'complaint': linked}),
+              201,
+            );
+          }
+
+          if (remainder.endsWith('/link') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/link'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            complaintLinks.add((id, sent));
+            final row = complaintById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);
+            }
+            if (linkComplaintStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': linkComplaintMessage}),
+                linkComplaintStatus,
+              );
+            }
+            final candidateId = sent['nonconformanceId'] as String;
+            final candidate = nonconformanceById(candidateId);
+            if (candidate == null) {
+              return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+            }
+            final linked = {
+              ...row,
+              'nonconformance': complaintNonconformanceJson(
+                candidateId,
+                candidate['issueNo'] as String,
+                status: candidate['status'] as String,
+                detectionPoint: candidate['detectionPoint'] as String,
+                severity: candidate['severity'] as String,
+                quantityAffected: candidate['quantityAffected'] as num,
+              ),
+            };
+            _replaceComplaint(id, linked);
+            return http.Response(jsonEncode({'complaint': linked}), 200);
+          }
+
+          if (remainder.isNotEmpty && !remainder.contains('/')) {
+            complaintReads.add(path);
+            final row = complaintById(remainder);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);
+            }
+            return http.Response(jsonEncode({'complaint': row}), 200);
+          }
+        }
+        // The Quality Module's floor door (issue #207): the two catalogues a
+        // device must choose from, and the recording it makes. Mirrors
+        // quality/floor-routes.js — the reads answer the same catalogues the
+        // Account-facing addresses above answer (active rows only, which is
+        // all the floor read offers), and the write answers the row the API
+        // would have written, with the identified Employee as its detected-by
+        // and no Account at all.
+        if (request.method == 'GET' &&
+            (path == '/api/quality/floor/products' ||
+                path == '/api/quality/floor/defect-codes')) {
+          floorCatalogueReads.add(request.headers['x-floor-device'] ?? '');
+          if (floorCataloguesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The floor catalogue is unavailable.'}),
+              floorCataloguesStatus,
+            );
+          }
+          if (path.endsWith('/defect-codes')) {
+            return http.Response(
+              jsonEncode({
+                'defectCodes': [
+                  for (final code in defectCodes)
+                    if (code['isActive'] != false) code,
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response(
+            jsonEncode({
+              'products': [
+                for (final product in products)
+                  if (product['isActive'] != false) product,
+              ],
+            }),
+            200,
+          );
+        }
+        if (request.method == 'POST' && path == '/api/quality/floor/nonconformances') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          floorNonconformancePosts.add({
+            'device': request.headers['x-floor-device'],
+            'identification': request.headers['x-technician-identification'],
+            'body': sent,
+          });
+          if (floorNonconformanceStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': floorNonconformanceMessage}),
+              floorNonconformanceStatus,
+            );
+          }
+          final productId = sent['productId'] as String;
+          final defectCodeId = sent['defectCodeId'] as String;
+          final orgUnitId = sent['orgUnitId'] as String;
+          Map<String, dynamic>? product;
+          for (final row in products) {
+            if (row['id'] == productId) product = row;
+          }
+          Map<String, dynamic>? defectCode;
+          for (final code in defectCodes) {
+            if (code['id'] == defectCodeId) defectCode = code;
+          }
+          final containment = sent['immediateContainment'] as String?;
+          final id = (_nextNonconformanceId++).toString();
+          final created = {
+            ...nonconformanceJson(
+              id,
+              'NC-HCM-2026-${id.padLeft(5, '0')}',
+              status: containment == null ? 'open' : 'contained',
+              detectionPoint: sent['detectionPoint'] as String,
+              severity:
+                  sent['severity'] as String? ?? (defectCode?['defaultSeverity'] as String? ?? 'minor'),
+              quantityAffected: sent['quantity'] as num,
+              uomCode: product?['uomCode'] as String? ?? 'EA',
+              lotRef: sent['lotRef'] as String?,
+              // The floor door names an Employee and no Account — the two are
+              // never both filled (nonconformances.js's own note).
+              recordedByAccountId: null,
+              description: sent['description'] as String?,
+              immediateContainment: containment,
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              productId: productId,
+              productCode: product?['code'] as String? ?? 'PRD-?',
+              productName: product?['name'] as String? ?? 'Product',
+              defectCodeId: defectCodeId,
+              defectCodeCode: defectCode?['code'] as String? ?? 'CODE-?',
+              defectCodeName: defectCode?['name'] as String? ?? 'Defect code',
+              defectCodeDefaultSeverity:
+                  defectCode?['defaultSeverity'] as String? ?? 'minor',
+            ),
+            'detectedBy': floorEmployee['id'],
+          };
+          return http.Response(jsonEncode({'nonconformance': created}), 201);
+        }
+        // The Quality Module's two catalogues (issue #203). Each pair of
+        // handlers mirrors its own route file: the write answers the row the
+        // real one answers with, and the read applies `includeInactive` and
+        // `search` the way products.js's listProducts does — after every other
+        // filter, so a test can prove a search the way the registration test
+        // proves a query.
+        if (request.method == 'POST' && path == '/api/quality/products') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          productPosts.add(sent);
+          if (createProductStatus != 201) {
+            return http.Response(jsonEncode({'message': createProductMessage}), createProductStatus);
+          }
+          final id = (_nextProductId++).toString();
+          final uomCode = sent['uomCode'] as String;
+          String? uomName;
+          for (final row in unitsOfMeasure) {
+            if (row['code'] == uomCode) uomName = row['name'] as String?;
+          }
+          final created = productJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            uomCode: uomCode,
+            uomName: uomName ?? uomCode,
+          );
+          products = [...products, created];
+          return http.Response(jsonEncode({'product': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/quality/products/')) {
+          final id = path.substring('/api/quality/products/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          productPatches.add((id, body));
+          if (updateProductStatus != 200) {
+            return http.Response(jsonEncode({'message': updateProductMessage}), updateProductStatus);
+          }
+          Map<String, dynamic>? updated;
+          products = [
+            for (final product in products)
+              if (product['id'] == id) (updated = {...product, ...body}) else product,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Product not found'}), 404);
+          }
+          return http.Response(jsonEncode({'product': updated}), 200);
+        }
+        if (path == '/api/quality/products') {
+          productListRequests.add(request.url.queryParameters);
+          if (productsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Product catalogue is unavailable.'}),
+              productsStatus,
+            );
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final search = request.url.queryParameters['search'];
+          var sent = includeInactive
+              ? products
+              : [for (final product in products) if (product['isActive'] != false) product];
+          if (search != null && search.isNotEmpty) {
+            final needle = search.toLowerCase();
+            sent = [
+              for (final product in sent)
+                if ((product['code'] as String).toLowerCase().contains(needle) ||
+                    (product['name'] as String).toLowerCase().contains(needle))
+                  product,
+            ];
+          }
+          return http.Response(jsonEncode({'products': sent}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/quality/defect-codes') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          defectCodePosts.add(sent);
+          if (createDefectCodeStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createDefectCodeMessage}),
+              createDefectCodeStatus,
+            );
+          }
+          final id = (_nextDefectCodeId++).toString();
+          final created = defectCodeJson(
+            id,
+            sent['code'] as String,
+            sent['name'] as String,
+            parentId: sent['parentId']?.toString(),
+            category: sent['category'] as String? ?? 'product',
+            defaultSeverity: sent['defaultSeverity'] as String? ?? 'minor',
+          );
+          defectCodes = [...defectCodes, created];
+          return http.Response(jsonEncode({'defectCode': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/quality/defect-codes/')) {
+          final id = path.substring('/api/quality/defect-codes/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          defectCodePatches.add((id, body));
+          if (updateDefectCodeStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateDefectCodeMessage}),
+              updateDefectCodeStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          defectCodes = [
+            for (final code in defectCodes)
+              if (code['id'] == id) (updated = {...code, ...body}) else code,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Defect code not found'}), 404);
+          }
+          return http.Response(jsonEncode({'defectCode': updated}), 200);
+        }
+        if (path == '/api/quality/defect-codes') {
+          defectCodeListRequests.add(request.url.queryParameters);
+          if (defectCodesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Defect code catalogue is unavailable.'}),
+              defectCodesStatus,
+            );
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final sent = includeInactive
+              ? defectCodes
+              : [for (final code in defectCodes) if (code['isActive'] != false) code];
+          return http.Response(jsonEncode({'defectCodes': sent}), 200);
+        }
+        // The Non-conformance register, and one record with its own quantity
+        // history (issue #205). Mirrors nonconformance-routes.js: the list
+        // applies the filters the address takes — Org Unit and everything
+        // beneath it, status, Defect code, Product, severity, a production-day
+        // range — the record answers the row the API would have written, and
+        // every write answers the whole record the way the real routes do.
+        if (path.startsWith('/api/quality/sites/') && path.endsWith('/nonconformances')) {
+          final siteId = path.split('/')[4];
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            nonconformancePosts.add(sent);
+            if (createNonconformanceStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': createNonconformanceMessage}),
+                createNonconformanceStatus,
+              );
+            }
+            final productId = sent['productId'] as String;
+            final defectCodeId = sent['defectCodeId'] as String;
+            final orgUnitId = sent['orgUnitId'] as String;
+            Map<String, dynamic>? product;
+            for (final row in products) {
+              if (row['id'] == productId) product = row;
+            }
+            Map<String, dynamic>? defectCode;
+            for (final code in defectCodes) {
+              if (code['id'] == defectCodeId) defectCode = code;
+            }
+            final severity =
+                sent['severity'] as String? ?? (defectCode?['defaultSeverity'] as String? ?? 'minor');
+            final containment = sent['immediateContainment'] as String?;
+            final id = (_nextNonconformanceId++).toString();
+            final created = nonconformanceJson(
+              id,
+              'NC-HCM-2026-${id.padLeft(5, '0')}',
+              status: containment == null ? 'open' : 'contained',
+              detectionPoint: sent['detectionPoint'] as String,
+              severity: severity,
+              quantityAffected: sent['quantity'] as num,
+              uomCode: product?['uomCode'] as String? ?? 'EA',
+              lotRef: sent['lotRef'] as String?,
+              recordedByAccountId: '1',
+              description: sent['description'] as String?,
+              immediateContainment: containment,
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              siteId: siteId,
+              productId: productId,
+              productCode: product?['code'] as String? ?? 'PRD-?',
+              productName: product?['name'] as String? ?? 'Product',
+              defectCodeId: defectCodeId,
+              defectCodeCode: defectCode?['code'] as String? ?? 'CODE-?',
+              defectCodeName: defectCode?['name'] as String? ?? 'Defect code',
+              defectCodeDefaultSeverity:
+                  defectCode?['defaultSeverity'] as String? ?? 'minor',
+              assetId: sent['assetId'] as String?,
+              detectedAt: sent['detectedAt'] as String?,
+            );
+            nonconformances = {
+              ...nonconformances,
+              siteId: [created, ...(nonconformances[siteId] ?? const [])],
+            };
+            return http.Response(jsonEncode({'nonconformance': created}), 201);
+          }
+          nonconformanceListRequests.add(request.url.queryParameters);
+          if (nonconformancesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The register is unavailable.'}),
+              nonconformancesStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final orgUnitId = query['orgUnitId'];
+          final scope = orgUnitId == null ? null : nonconformanceOrgUnitScope(orgUnitId);
+          final status = query['status'];
+          final defectCodeId = query['defectCodeId'];
+          final productId = query['productId'];
+          final severity = query['severity'];
+          final from = query['from'];
+          final to = query['to'];
+          final sent = [
+            for (final row in nonconformances[siteId] ?? const <Map<String, dynamic>>[])
+              if (scope == null || scope.contains(row['orgUnitId']))
+                if (status == null || row['status'] == status)
+                  if (defectCodeId == null || row['defectCodeId'] == defectCodeId)
+                    if (productId == null || row['productId'] == productId)
+                      if (severity == null || row['severity'] == severity)
+                        if (from == null || _nonconformanceDayOf(row).compareTo(from) >= 0)
+                          if (to == null || _nonconformanceDayOf(row).compareTo(to) <= 0) row,
+          ];
+          return http.Response(
+            jsonEncode({'nonconformances': sent, 'truncated': nonconformancesTruncated}),
+            200,
+          );
+        }
+        if (path.startsWith('/api/quality/nonconformances/')) {
+          final remainder = path.substring('/api/quality/nonconformances/'.length);
+          if (remainder.endsWith('/quantity') && request.method == 'POST') {
+            final id = remainder.substring(0, remainder.length - '/quantity'.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            nonconformanceQuantityPosts.add((id, sent));
+            final row = nonconformanceById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+            }
+            final quantity = sent['quantity'] as num;
+            final current = row['quantityAffected'] as num;
+            if (increaseNonconformanceQuantityStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': increaseNonconformanceQuantityMessage}),
+                increaseNonconformanceQuantityStatus,
+              );
+            }
+            // Mirrors the real route's own refusal, so a widget test that
+            // sends a decrease sees what a client sees rather than a fake
+            // that quietly accepts it.
+            if (quantity <= current) {
+              return http.Response(
+                jsonEncode({
+                  'message': quantity == current
+                      ? 'the affected quantity is already that; a change records a difference'
+                      : 'the affected quantity can only be increased'
+                }),
+                409,
+              );
+            }
+            final changes = [
+              ...(row['quantityChanges'] as List<dynamic>? ?? const []),
+              quantityChangeJson(
+                '$id-${(row['quantityChanges'] as List<dynamic>? ?? const []).length + 1}',
+                current,
+                quantity,
+                note: sent['note'] as String?,
+                changedByAccountName: 'Ann Operator',
+              ),
+            ];
+            final updated = {...row, 'quantityAffected': quantity, 'quantityChanges': changes};
+            _replaceNonconformance(id, updated);
+            return http.Response(jsonEncode({'nonconformance': updated}), 200);
+          }
+          // The five writes issue #206 adds, each its own address: the
+          // Disposition, the Concession, the lowered severity, the reopen and
+          // the cancel. Each answers the whole record, as the real routes do.
+          const actAddresses = <String>[
+            '/dispositions',
+            '/concession',
+            '/lower-severity',
+            '/reopen',
+            '/cancel',
+          ];
+          String? act;
+          if (request.method == 'POST') {
+            for (final suffix in actAddresses) {
+              if (remainder.endsWith(suffix)) act = suffix;
+            }
+          }
+          if (act != null) {
+            final id = remainder.substring(0, remainder.length - act.length);
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            final row = nonconformanceById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+            }
+            switch (act) {
+              case '/dispositions':
+                nonconformanceDispositionPosts.add((id, sent));
+              case '/concession':
+                nonconformanceConcessionPosts.add((id, sent));
+              case '/lower-severity':
+                nonconformanceLowerSeverityPosts.add((id, sent));
+              case '/reopen':
+                nonconformanceReopenPosts.add((id, sent));
+              case '/cancel':
+                nonconformanceCancelPosts.add((id, sent));
+            }
+            if (recordNonconformanceActStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': recordNonconformanceActMessage}),
+                recordNonconformanceActStatus,
+              );
+            }
+            final corrections = [
+              ...(row['corrections'] as List<dynamic>? ?? const []),
+            ];
+            Map<String, dynamic> updated = {...row};
+            switch (act) {
+              case '/dispositions':
+              case '/concession':
+                final concession = act == '/concession';
+                final disposition = dispositionJson(
+                  '$id-d${(row['dispositions'] as List<dynamic>? ?? const []).length + 1}',
+                  dispositionType:
+                      concession ? 'use_as_is' : sent['dispositionType'] as String,
+                  isConcession: concession,
+                  quantity: sent['quantity'] as num,
+                  uomCode: row['uomCode'] as String,
+                  reworkMinutes: (sent['reworkMinutes'] as num?) ?? 0,
+                  reference: sent['reference'] as String?,
+                  note: sent['note'] as String?,
+                  decidedByAccountName: 'Ann Operator',
+                );
+                updated = {
+                  ...row,
+                  'dispositions': [
+                    ...(row['dispositions'] as List<dynamic>? ?? const []),
+                    disposition,
+                  ],
+                };
+                updated = _settleDispositions(updated);
+              case '/lower-severity':
+                corrections.add(
+                  correctionJson(
+                    '$id-c${corrections.length + 1}',
+                    kind: 'severity_lowered',
+                    previousSeverity: row['severity'] as String?,
+                    newSeverity: sent['severity'] as String?,
+                    note: sent['note'] as String,
+                    correctedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {
+                  ...row,
+                  'severity': sent['severity'],
+                  'corrections': corrections,
+                };
+              case '/reopen':
+                corrections.add(
+                  correctionJson(
+                    '$id-c${corrections.length + 1}',
+                    kind: 'reopened',
+                    previousSeverity: null,
+                    newSeverity: null,
+                    previousStatus: row['status'] as String?,
+                    newStatus: 'dispositioned',
+                    note: sent['note'] as String,
+                    correctedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {
+                  ...row,
+                  'status': 'dispositioned',
+                  'closedAt': null,
+                  'corrections': corrections,
+                };
+              case '/cancel':
+                corrections.add(
+                  correctionJson(
+                    '$id-c${corrections.length + 1}',
+                    kind: 'cancelled',
+                    previousSeverity: null,
+                    newSeverity: null,
+                    previousStatus: row['status'] as String?,
+                    newStatus: 'cancelled',
+                    note: sent['note'] as String,
+                    correctedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {
+                  ...row,
+                  'status': 'cancelled',
+                  'closedAt': DateTime.now().toUtc().toIso8601String(),
+                  'corrections': corrections,
+                };
+            }
+            _replaceNonconformance(id, updated);
+            return http.Response(
+              jsonEncode({'nonconformance': updated}),
+              act == '/dispositions' || act == '/concession' ? 201 : 200,
+            );
+          }
+          if (request.method == 'PATCH') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            nonconformancePatches.add((remainder, sent));
+            final row = nonconformanceById(remainder);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+            }
+            if (changeNonconformanceStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': changeNonconformanceMessage}),
+                changeNonconformanceStatus,
+              );
+            }
+            final updated = {...row};
+            if (sent['severity'] != null) updated['severity'] = sent['severity'];
+            if (sent['immediateContainment'] != null) {
+              updated['immediateContainment'] = sent['immediateContainment'];
+              if (updated['status'] == 'open') updated['status'] = 'contained';
+            }
+            _replaceNonconformance(remainder, updated);
+            return http.Response(jsonEncode({'nonconformance': updated}), 200);
+          }
+          nonconformanceReads.add(path);
+          if (nonconformancesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The register is unavailable.'}),
+              nonconformancesStatus,
+            );
+          }
+          final row = nonconformanceById(remainder);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+          }
+          return http.Response(jsonEncode({'nonconformance': row}), 200);
+        }
         if (path == '/api/people/me') {
-          return http.Response(jsonEncode(_meBody(role, selfId, orgUnitScope)), 200);
+          return http.Response(
+            jsonEncode(_meBody(role, selfId, selfEmployeeId, orgUnitScope)),
+            200,
+          );
         }
         if (path.startsWith('/api/maintenance/sites/') && path.endsWith('/board')) {
           final siteId = path.split('/')[4];
@@ -3794,6 +6371,11 @@ class FakeWire {
                       grantJson(
                         (g as Map<String, dynamic>)['orgUnitId'] as String,
                         canWrite: g['canWrite'] == true,
+                        // Quality authority (issue #204, ADR-0035) — carried
+                        // through exactly as sent, so a test that ticks the
+                        // picker's box sees it come back on the row rather
+                        // than only on the request.
+                        qualityAuthority: g['qualityAuthority'] == true,
                       ),
                   ],
                 }
@@ -3979,6 +6561,137 @@ class FakeWire {
           ];
           return http.Response(jsonEncode({'actions': sent, 'truncated': false}), 200);
         }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/nonconformances/') &&
+            path.endsWith('/concern')) {
+          // `/api/actions/nonconformances/:id/concern` (issue #208): raising a
+          // Concern from a Non-conformance. The row the server would write is
+          // built from the Non-conformance the address names — the Org Unit is
+          // the record's own, which is the whole point of the address — and
+          // both sides are recorded: the concern in `actionDetails` so its own
+          // Screen reads it, the concern on the Non-conformance's row so the
+          // re-read after the raise shows it.
+          final remainder = path.substring('/api/actions/nonconformances/'.length);
+          final nonconformanceId = remainder.substring(0, remainder.length - '/concern'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          concernRaisePosts.add((nonconformanceId, body));
+          if (raiseConcernStatus != 201) {
+            return http.Response(jsonEncode({'message': raiseConcernMessage}), raiseConcernStatus);
+          }
+          final row = nonconformanceById(nonconformanceId);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+          }
+          final concernId = (raisedConcern?['id'] ?? '901').toString();
+          final occurrence = linkedNonconformanceJson(row, isSource: true);
+          final concern = actionJson(
+            concernId,
+            'AC-TEST-2026-00009',
+            (body['title'] as String?) ?? 'A Concern',
+            description: body['description'] as String?,
+            orgUnitId: row['orgUnitId'] as String,
+            orgUnitName: row['orgUnitName'] as String,
+            siteId: row['siteId'] as String,
+            priority: (body['priority'] as int?) ?? 3,
+            sourceNonconformanceId: nonconformanceId,
+            nonconformances: [occurrence],
+          )..['openPhase'] = phaseJson(1, 'plan');
+          actionDetails[concernId] = concern;
+          _replaceNonconformance(nonconformanceId, {
+            ...row,
+            'concerns': [
+              ...(row['concerns'] as List<dynamic>? ?? const []),
+              concernJson(concern, isSource: true),
+            ],
+          });
+          return http.Response(jsonEncode({'action': concern}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/unlink')) {
+          // `/api/actions/:id/nonconformances/:nonconformanceId/unlink` (issue
+          // #208). The link is removed from both sides, as the real route
+          // leaves them, and the Concern comes back as it now stands.
+          final parts = path.split('/');
+          final concernId = parts[3];
+          final nonconformanceId = parts[5];
+          nonconformanceUnlinkPosts.add((concernId, nonconformanceId));
+          if (unlinkNonconformanceStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': unlinkNonconformanceMessage}),
+              unlinkNonconformanceStatus,
+            );
+          }
+          final concern = actionDetails[concernId];
+          if (concern == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          final updated = {
+            ...concern,
+            'nonconformances': [
+              for (final occurrence in (concern['nonconformances'] as List<dynamic>? ?? const []))
+                if ((occurrence as Map<String, dynamic>)['id'].toString() != nonconformanceId)
+                  occurrence,
+            ],
+          };
+          actionDetails[concernId] = updated;
+          final row = nonconformanceById(nonconformanceId);
+          if (row != null) {
+            _replaceNonconformance(nonconformanceId, {
+              ...row,
+              'concerns': [
+                for (final named in (row['concerns'] as List<dynamic>? ?? const []))
+                  if ((named as Map<String, dynamic>)['id'].toString() != concernId) named,
+              ],
+            });
+          }
+          return http.Response(jsonEncode({'action': updated}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/nonconformances')) {
+          // `/api/actions/:id/nonconformances` (issue #208): linking a further
+          // Non-conformance to a Concern. Both sides record it, exactly as the
+          // real route's transaction does.
+          final concernId = path.split('/')[3];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          nonconformanceLinkPosts.add((concernId, body));
+          if (linkNonconformanceStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': linkNonconformanceMessage}),
+              linkNonconformanceStatus,
+            );
+          }
+          final concern = actionDetails[concernId];
+          if (concern == null) {
+            return http.Response(jsonEncode({'message': 'Action not found'}), 404);
+          }
+          final nonconformanceId = body['nonconformanceId'].toString();
+          final row = nonconformanceById(nonconformanceId);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
+          }
+          final occurrence = linkedNonconformanceJson(
+            row,
+            isSource: concern['sourceNonconformanceId']?.toString() == nonconformanceId,
+          );
+          final updated = {
+            ...concern,
+            'nonconformances': [
+              ...(concern['nonconformances'] as List<dynamic>? ?? const []),
+              occurrence,
+            ],
+          };
+          actionDetails[concernId] = updated;
+          _replaceNonconformance(nonconformanceId, {
+            ...row,
+            'concerns': [
+              ...(row['concerns'] as List<dynamic>? ?? const []),
+              concernJson(updated, isSource: occurrence['isSource'] as bool),
+            ],
+          });
+          return http.Response(jsonEncode({'action': updated}), 201);
+        }
         if (request.method == 'GET' && path == '/api/actions/pillars') {
           if (pillarsStatus != 200) {
             return http.Response(
@@ -4131,6 +6844,303 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'action': updated}), 200);
         }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/capas/') &&
+            path.endsWith('/causes')) {
+          // `/api/actions/capas/:id/causes` (issue #213): recording a candidate
+          // cause under one 6M category. The fake does what the server does —
+          // the position is the category's own next one, computed here rather
+          // than sent, and a new cause is a `candidate` — so a test asserting
+          // the fishbone on screen is asserting rows the API would really have
+          // returned.
+          final capaId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          causePosts.add((capaId, body));
+          if (addCauseStatus != 201) {
+            return http.Response(jsonEncode({'message': addCauseMessage}), addCauseStatus);
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          final category = body['category'].toString();
+          // Copied rather than added to in place: a fixture's own list may be a
+          // `const []` where none was passed, and the fake must be able to grow
+          // the CAPA it stores.
+          final causes = [...(capa['causes'] as List<dynamic>? ?? <dynamic>[])];
+          final sequence = causes
+                  .whereType<Map<String, dynamic>>()
+                  .where((cause) => cause['category'] == category)
+                  .length +
+              1;
+          causes.add(capaCauseJson(
+            '${_nextCauseId++}',
+            category,
+            sequence,
+            body['statement'].toString(),
+          ));
+          capa['causes'] = causes;
+          return http.Response(jsonEncode({'capa': capa}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/capas/') &&
+            path.contains('/causes/') &&
+            path.endsWith('/whys')) {
+          // `/api/actions/capas/:id/causes/:causeId/whys` (issue #213):
+          // starting one of the two chains from a confirmed cause. Declared
+          // **before** #210's own `/whys` handler below, deliberately: that one
+          // matches any POST under `/api/actions/capas/` ending in `/whys`, so
+          // this address would be read as an add-Why against a CAPA whose id is
+          // `causes`. The fake writes the chain's first Why, whose statement is
+          // the caller's or the cause's own — the server's own rule.
+          final parts = path.split('/');
+          final capaId = parts[4];
+          final causeId = parts[6];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          causeWhyPosts.add((capaId, causeId, body));
+          if (startWhyFromCauseStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': startWhyFromCauseMessage}),
+              startWhyFromCauseStatus,
+            );
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          final cause = _storedCause(capa, causeId);
+          if (cause == null) {
+            return http.Response(jsonEncode({'message': 'candidate cause not found'}), 404);
+          }
+          // Copied rather than added to in place, for the same reason the cause
+          // handler above copies: a fixture that passed no whys holds a
+          // `const []`.
+          final whys = [...(capa['whys'] as List<dynamic>? ?? <dynamic>[])];
+          whys.add(capaWhyJson(
+            '${_nextWhyId++}',
+            1,
+            (body['statement'] ?? cause['statement']).toString(),
+            chain: body['chain'].toString(),
+          ));
+          capa['whys'] = whys;
+          return http.Response(jsonEncode({'capa': capa}), 201);
+        }
+        if ((request.method == 'PATCH' || request.method == 'DELETE') &&
+            path.startsWith('/api/actions/capas/') &&
+            path.contains('/causes/')) {
+          // `/api/actions/capas/:id/causes/:causeId` (issue #213) — changing
+          // one candidate cause, or removing it. A change applies what the
+          // server would apply: the sentence and the category when they were
+          // sent, and the verdict with its evidence together — `candidate`
+          // clearing the note, for the same reason the server clears it. The
+          // rules themselves are the backend suite's to prove.
+          final parts = path.split('/');
+          final capaId = parts[4];
+          final causeId = parts[6];
+          final capa = capas[capaId];
+          if (request.method == 'PATCH') {
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            causePatches.add((capaId, causeId, body));
+            if (changeCauseStatus != 200) {
+              return http.Response(jsonEncode({'message': changeCauseMessage}), changeCauseStatus);
+            }
+            if (capa == null || !_changeStoredCause(capa, causeId, body)) {
+              return http.Response(jsonEncode({'message': 'candidate cause not found'}), 404);
+            }
+            return http.Response(jsonEncode({'capa': capa}), 200);
+          }
+          causeDeletions.add((capaId, causeId));
+          if (removeCauseStatus != 200) {
+            return http.Response(jsonEncode({'message': removeCauseMessage}), removeCauseStatus);
+          }
+          if (capa == null || !_removeStoredCause(capa, causeId)) {
+            return http.Response(jsonEncode({'message': 'candidate cause not found'}), 404);
+          }
+          return http.Response(jsonEncode({'capa': capa}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/') &&
+            path.endsWith('/capa')) {
+          // `/api/actions/:id/capa` (issue #209): opening a CAPA on a Concern.
+          // The row the server would write is built from the Concern the
+          // address names — the CAPA's Org Unit and title are the Concern's —
+          // and its own answer carries that Concern back with the `capa` link
+          // set, which is what the Screen behind the dialog reads next.
+          final concernId = path.split('/')[3];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          capaPosts.add((concernId, body));
+          if (createCapaStatus != 201) {
+            return http.Response(jsonEncode({'message': createCapaMessage}), createCapaStatus);
+          }
+          final concern = actionDetails[concernId];
+          if (concern == null) {
+            return http.Response(jsonEncode({'message': 'Concern not found'}), 404);
+          }
+          final capaId = (openedCapa?['id'] ?? '801').toString();
+          final capaNo = (openedCapa?['capaNo'] ?? 'CA-TEST-2026-00001').toString();
+          final linked = <String, dynamic>{
+            ...concern,
+            'capa': {'id': capaId, 'capaNo': capaNo, 'status': 'open'},
+          };
+          actionDetails[concernId] = linked;
+          final capa = capaJson(
+            capaId,
+            capaNo,
+            concern['title'] as String,
+            orgUnitId: concern['orgUnitId'] as String,
+            orgUnitName: concern['orgUnitName'] as String,
+            siteId: concern['siteId'] as String,
+            problemStatement: body['problemStatement'] as String?,
+            teamLead: _capaTeamRow(body['teamLeadEmployeeId']),
+            teamMembers: [
+              for (final member in (body['teamMemberEmployeeIds'] as List<dynamic>? ?? const []))
+                _capaTeamRow(member)!,
+            ],
+            concern: linked,
+          );
+          capas[capaId] = capa;
+          return http.Response(jsonEncode({'capa': capa}), 201);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/capas/') &&
+            path.endsWith('/whys')) {
+          // `/api/actions/capas/:id/whys` (issue #210): adding a Why to one of
+          // the two chains. The fake does what the server does — the position
+          // is the chain's own next one, computed here rather than sent — so a
+          // test asserting the order on screen is asserting an order the API
+          // would really have produced.
+          final capaId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          whyPosts.add((capaId, body));
+          if (addWhyStatus != 201) {
+            return http.Response(jsonEncode({'message': addWhyMessage}), addWhyStatus);
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          final chain = body['chain'].toString();
+          final whys = (capa['whys'] as List<dynamic>? ?? <dynamic>[]);
+          final sequence = whys
+                  .whereType<Map<String, dynamic>>()
+                  .where((why) => why['chain'] == chain)
+                  .length +
+              1;
+          whys.add(capaWhyJson('${_nextWhyId++}', sequence, body['statement'].toString(),
+              chain: chain));
+          capa['whys'] = whys;
+          return http.Response(jsonEncode({'capa': capa}), 201);
+        }
+        if ((request.method == 'PATCH' || request.method == 'DELETE') &&
+            path.startsWith('/api/actions/capas/') &&
+            path.contains('/whys/')) {
+          // `/api/actions/capas/:id/whys/:whyId` (issue #210) — changing one
+          // Why, or removing it. Both renumber the chain around the change,
+          // which is the rule a Screen renders and the ticket states: a chain
+          // reads 1..n with no gap, whatever was done to it. The authority on
+          // all of it is the backend suite, not this.
+          final parts = path.split('/');
+          final capaId = parts[4];
+          final whyId = parts[6];
+          final capa = capas[capaId];
+          if (request.method == 'PATCH') {
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            whyPatches.add((capaId, whyId, body));
+            if (changeWhyStatus != 200) {
+              return http.Response(jsonEncode({'message': changeWhyMessage}), changeWhyStatus);
+            }
+            if (capa == null || !_changeStoredWhy(capa, whyId, body)) {
+              return http.Response(jsonEncode({'message': 'Why not found'}), 404);
+            }
+            return http.Response(jsonEncode({'capa': capa}), 200);
+          }
+          whyDeletions.add((capaId, whyId));
+          if (removeWhyStatus != 200) {
+            return http.Response(jsonEncode({'message': removeWhyMessage}), removeWhyStatus);
+          }
+          if (capa == null || !_removeStoredWhy(capa, whyId)) {
+            return http.Response(jsonEncode({'message': 'Why not found'}), 404);
+          }
+          return http.Response(jsonEncode({'capa': capa}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/actions/capas/') &&
+            path.endsWith('/effectiveness')) {
+          // `/api/actions/capas/:id/effectiveness` (issue #211) — recording the
+          // effectiveness check. The fake does what the server does with the
+          // verdict, so a test that asserts the Screen behind the dialog
+          // repainted is asserting a state the API would really have produced:
+          // an `effective` check closes the investigation, a `not_effective` one
+          // clears the due date and leaves the CAPA open where its Concern is
+          // being worked again.
+          //
+          // The verifier and the time are the caller's own Account and `now()`,
+          // which is what the server writes — and the one thing a fake keyed on
+          // a single signed-in Account can stand in for.
+          final capaId = path.split('/')[4];
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          effectivenessPosts.add((capaId, body));
+          if (effectivenessStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': effectivenessMessage}),
+              effectivenessStatus,
+            );
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          final effective = body['outcome'] == 'effective';
+          final now = DateTime.now().toUtc().toIso8601String();
+          capa['status'] = effective ? 'closed' : 'actions';
+          capa['closedAt'] = effective ? now : null;
+          capa['effectivenessVerifiedAt'] = now;
+          capa['effectivenessVerifiedBy'] = {'accountId': selfId, 'name': 'A B'};
+          capa['effectivenessNote'] = body['note'];
+          if (!effective) capa['effectivenessCheckDueAt'] = null;
+          capa['effectivenessCheckOverdue'] = false;
+          return http.Response(jsonEncode({'capa': capa}), 200);
+        }
+        if (request.method == 'GET' && path == '/api/actions/capas') {
+          // The CAPA list (issue #211): every stored CAPA, narrowed the way the
+          // server narrows — by status and by an overdue check exactly, and by
+          // Org Unit exactly. The "and everything beneath it" half is the
+          // backend's own ltree walk (proved in
+          // `backend/test/integration/capa-effectiveness.test.js`); what this
+          // fake is for is the *request* the Screen sends and the rows it
+          // renders, and `capaListRequests` is where the first of those is
+          // asserted.
+          capaListRequests.add({...request.url.queryParameters});
+          if (capaListStatus != 200) {
+            return http.Response(jsonEncode({'message': capaListMessage}), capaListStatus);
+          }
+          final query = request.url.queryParameters;
+          final rows = [
+            for (final capa in capas.values)
+              if ((query['status'] == null || capa['status'] == query['status']) &&
+                  (query['orgUnitId'] == null || capa['orgUnitId'] == query['orgUnitId']) &&
+                  (query['overdue'] != 'true' || capa['effectivenessCheckOverdue'] == true))
+                capa,
+          ];
+          return http.Response(jsonEncode({'capas': rows, 'truncated': false}), 200);
+        }
+        if (request.method == 'GET' && path.startsWith('/api/actions/capas/')) {
+          // `/api/actions/capas/:id` (issue #209). Declared before the
+          // one-segment `/api/actions/:id` read below, which would otherwise
+          // take `capas/801` for an Action whose id is `801`.
+          final capaId = path.split('/').last;
+          // Recorded before anything can refuse it, so a test can assert which
+          // report asked for which record even when the read fails.
+          capaReads.add(capaId);
+          if (capasStatus != 200) {
+            return http.Response(jsonEncode({'message': capaMessage}), capasStatus);
+          }
+          final capa = capas[capaId];
+          if (capa == null) {
+            return http.Response(jsonEncode({'message': 'CAPA not found'}), 404);
+          }
+          return http.Response(jsonEncode({'capa': capa}), 200);
+        }
         if (request.method == 'GET' && path.startsWith('/api/actions/')) {
           final id = path.split('/').last;
           final action = actionDetails[id];
@@ -4172,6 +7182,9 @@ Map<String, dynamic> actionJson(
   List<Map<String, dynamic>> measures = const [],
   List<Map<String, dynamic>> phases = const [],
   Map<String, dynamic>? openPhase,
+  String? sourceNonconformanceId,
+  List<Map<String, dynamic>> nonconformances = const [],
+  Map<String, dynamic>? capa,
 }) =>
     {
       'id': id,
@@ -4206,6 +7219,125 @@ Map<String, dynamic> actionJson(
       'measures': measures,
       'phases': phases,
       'openPhase': openPhase,
+      // Provenance and the link list (issue #208): the Non-conformance the
+      // Concern was raised from, and every occurrence it answers.
+      'sourceNonconformanceId': sourceNonconformanceId,
+      'nonconformances': nonconformances,
+      // The CAPA opened on this Action, if one has been (issue #209) —
+      // `{id, capaNo, status}` or null, which is the state every Concern is in
+      // until somebody opens one.
+      'capa': capa,
+    };
+
+/// One CAPA as `GET /api/actions/capas/:id` sends it (issue #209) — the
+/// client-side counterpart of the backend's own `toCapa`, key for key.
+///
+/// `concern` is the Concern's own detail read (an [actionJson] row, with its
+/// `capa` link set): the server returns the Concern with its measures and every
+/// phase they have been round, so a fixture that omitted them would let a test
+/// assert a CAPA the API cannot answer.
+Map<String, dynamic> capaJson(
+  String id,
+  String capaNo,
+  String title, {
+  String method = '8d',
+  String status = 'open',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String? orgUnitCode,
+  String siteId = '1',
+  String? problemStatement,
+  Map<String, dynamic>? teamLead,
+  List<Map<String, dynamic>> teamMembers = const [],
+  List<Map<String, dynamic>> whys = const [],
+  List<Map<String, dynamic>> causes = const [],
+  String openedAt = '2026-09-16T02:00:00.000Z',
+  String? dueDate,
+  int effectivenessCheckDelayDays = 30,
+  String? effectivenessCheckDueAt,
+  bool effectivenessCheckOverdue = false,
+  String? effectivenessVerifiedAt,
+  Map<String, dynamic>? effectivenessVerifiedBy,
+  String? effectivenessNote,
+  Map<String, dynamic>? concern,
+}) =>
+    {
+      'id': id,
+      'capaNo': capaNo,
+      'title': title,
+      'method': method,
+      'status': status,
+      'orgUnitId': orgUnitId,
+      'orgUnitCode': orgUnitCode ?? orgUnitName.toUpperCase().replaceAll(' ', '-'),
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'problemStatement': problemStatement,
+      'teamLead': teamLead,
+      'teamMembers': teamMembers,
+      // The two 5 Why chains (issue #210), in the order the server sends them:
+      // `occurrence` first, then `escape`, each chain in its own order.
+      'whys': whys,
+      // The fishbone (issue #213), in the order the server sends it: the 6M's
+      // own order, each category in the order its causes were recorded.
+      'causes': causes,
+      'openedAt': openedAt,
+      'dueDate': dueDate,
+      'closedAt': null,
+      // The effectiveness check (issue #211): the delay, the date the closure
+      // produced, whether that date has passed, and what a check recorded —
+      // `{accountId, name}`, which is what the server writes rather than a bare
+      // id, because an administrator need not be an Employee.
+      'effectivenessCheckDelayDays': effectivenessCheckDelayDays,
+      'effectivenessCheckDueAt': effectivenessCheckDueAt,
+      'effectivenessCheckOverdue': effectivenessCheckOverdue,
+      'effectivenessVerifiedAt': effectivenessVerifiedAt,
+      'effectivenessVerifiedBy': effectivenessVerifiedBy,
+      'effectivenessNote': effectivenessNote,
+      'concern': concern,
+    };
+
+/// One Why of one of a CAPA's chains, as `GET /api/actions/capas/:id` sends it
+/// (issue #210) — the client-side counterpart of the backend's own `toWhy`,
+/// key for key.
+Map<String, dynamic> capaWhyJson(
+  String id,
+  int sequence,
+  String statement, {
+  String chain = 'occurrence',
+  bool isRoot = false,
+}) =>
+    {
+      'id': id,
+      'chain': chain,
+      'sequence': sequence,
+      'statement': statement,
+      'isRoot': isRoot,
+      'createdAt': '2026-09-16T03:00:00.000Z',
+      'updatedAt': '2026-09-16T03:00:00.000Z',
+    };
+
+/// One candidate cause on a CAPA's fishbone, as `GET /api/actions/capas/:id`
+/// sends it (issue #213) — the client-side counterpart of the backend's own
+/// `toCause`, key for key. `verdict` defaults to `candidate` and `evidenceNote`
+/// to null, which is what recording a cause produces; a decided one carries
+/// both.
+Map<String, dynamic> capaCauseJson(
+  String id,
+  String category,
+  int sequence,
+  String statement, {
+  String verdict = 'candidate',
+  String? evidenceNote,
+}) =>
+    {
+      'id': id,
+      'category': category,
+      'sequence': sequence,
+      'statement': statement,
+      'verdict': verdict,
+      'evidenceNote': evidenceNote,
+      'createdAt': '2026-09-16T03:00:00.000Z',
+      'updatedAt': '2026-09-16T03:00:00.000Z',
     };
 
 /// One phase as the Action's own `phases` array sends it (issue #177).
@@ -4310,6 +7442,8 @@ Future<void> pumpApp(
       maintenanceApi: MaintenanceApi(client: client),
       // The Actions Module's own client over the same faked wire.
       actionsApi: ActionsApi(client: client),
+      // The Quality Module's own client over the same faked wire (issue #203).
+      qualityApi: QualityApi(client: client),
       // The floor surface's device credential, faked at the same seam.
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       initialLocation: initialLocation,

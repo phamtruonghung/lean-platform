@@ -200,6 +200,154 @@ void main() {
     );
   });
 
+  testWidgets("the Quality Pillar renders the numbers Quality's own records answer, and still says "
+      'no data for the ones that need production counts', (tester) async {
+    // The board the server answers once Quality contributes its own entries
+    // (issue #216): the three counts and the two cost-of-poor-quality figures
+    // are measured, and the four ratios against quantity produced — with no
+    // Production Module to count it — are not.
+    final wire = boardWire(
+      board: boardBody(
+        pillars: [
+          boardPillarJson('S', 'Safety', sortOrder: 1, kpis: const []),
+          boardPillarJson(
+            'Q',
+            'Quality',
+            sortOrder: 2,
+            kpis: [
+              boardKpiJson(
+                'QUA_OPEN_NC',
+                'Open non-conformances',
+                unit: 'count',
+                direction: 'lower_better',
+                decimalPlaces: 0,
+                value: 3,
+                status: 'green',
+                targetValue: 3,
+              ),
+              boardKpiJson(
+                'QUA_OVERDUE_CAPA',
+                'Overdue CAPAs',
+                unit: 'count',
+                direction: 'lower_better',
+                decimalPlaces: 0,
+                value: 1,
+                status: 'amber',
+                targetValue: 0,
+              ),
+              boardKpiJson(
+                'QUA_COMPLAINTS',
+                'Customer complaints',
+                unit: 'count',
+                direction: 'lower_better',
+                decimalPlaces: 0,
+                value: 2,
+                status: 'no_target',
+              ),
+              boardKpiJson(
+                'QUA_FPY',
+                'First pass yield',
+                unit: '%',
+                decimalPlaces: 1,
+                value: null,
+                status: 'no_data',
+              ),
+            ],
+          ),
+          boardPillarJson(
+            'D',
+            'Delivery',
+            sortOrder: 3,
+            kpis: [
+              boardKpiJson(
+                'MNT_MTBF',
+                'Mean time between failures',
+                unit: 'hours',
+                decimalPlaces: 1,
+                value: 7,
+                status: 'no_target',
+              ),
+            ],
+          ),
+          boardPillarJson(
+            'C',
+            'Cost',
+            sortOrder: 4,
+            kpis: [
+              boardKpiJson(
+                'COST_COPQ',
+                'Cost of poor quality',
+                unit: 'currency',
+                direction: 'lower_better',
+                decimalPlaces: 2,
+                value: 84.5,
+                status: 'no_target',
+              ),
+              boardKpiJson(
+                'COST_SCRAP',
+                'Scrap cost',
+                unit: 'currency',
+                direction: 'lower_better',
+                decimalPlaces: 2,
+                value: 51.0,
+                status: 'no_target',
+              ),
+            ],
+          ),
+          boardPillarJson('P', 'People', sortOrder: 5, kpis: const []),
+        ],
+      ),
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    // The Quality Pillar is a Pillar with data behind it, and each of its
+    // numbers is on its own card, toned by the target the definition carries.
+    final quality = find.byKey(TierBoardScreen.pillarKey('Q'));
+    expect(quality, findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('QUA_OPEN_NC'))).data,
+      '3',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('QUA_OVERDUE_CAPA'))).data,
+      '1',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('QUA_COMPLAINTS'))).data,
+      '2',
+    );
+
+    // The ratio that needs a quantity produced is still not a number: it reads
+    // as no data, exactly as it did before Quality contributed anything.
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('QUA_FPY'))).data,
+      '—',
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(TierBoardScreen.kpiKey('QUA_FPY')),
+        matching: find.text('No data'),
+      ),
+      findsOneWidget,
+    );
+
+    // And the Cost Pillar's cost-of-poor-quality figures are rendered in the
+    // currency the definition declares.
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('COST_COPQ'))).data,
+      '84.50',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('COST_SCRAP'))).data,
+      '51.00',
+    );
+  });
+
   testWidgets('changing the Org Unit sends exactly one board request with the new orgUnitId',
       (tester) async {
     final wire = boardWire(

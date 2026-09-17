@@ -38,10 +38,22 @@ enum MeterType {
 }
 
 /// One unit of measure from the baseline catalogue the meter form chooses
-/// from (ADR-0023: a value with a known set is chosen, never typed).
+/// from (ADR-0023: a value with a known set is chosen, never typed). The Part
+/// form (#80) chooses from the same catalogue, and so does the Quality
+/// Module's Product form (#203) — which is why this model is reached through
+/// `maintenance.dart`'s entry point rather than by importing this file.
 @immutable
 class UnitOfMeasure {
   const UnitOfMeasure({required this.code, required this.name, required this.dimension});
+
+  /// The row `GET /api/maintenance/units-of-measure` sends — the same shape
+  /// this Module's own client parses, defined here so a second reader of that
+  /// address shares one reading of it.
+  factory UnitOfMeasure.fromJson(Map<String, dynamic> unit) => UnitOfMeasure(
+        code: unit['code'] as String,
+        name: unit['name'] as String,
+        dimension: unit['dimension'] as String,
+      );
 
   final String code;
   final String name;

@@ -37,6 +37,7 @@ class AccountActive extends AccountStatus {
     required super.email,
     required this.displayName,
     required this.role,
+    this.employeeId,
     this.orgUnitScope = const OrgUnitScope.nowhere(),
   });
 
@@ -46,6 +47,18 @@ class AccountActive extends AccountStatus {
   final String id;
   final String displayName;
   final String role;
+
+  /// The Employee this Account is linked to, when it is linked to one
+  /// (issue #210). `app_users.employee_id` has been on the row since the
+  /// baseline and `/me` has always answered with it; the CAPA's chains are the
+  /// first thing on the client to need it, because "may this caller write this
+  /// investigation's root causes" is answered by edit access at its Org Unit
+  /// **or a place on its team** — and a place on a team is an Employee.
+  ///
+  /// Null is the ordinary case for an administrator, who need not be an
+  /// Employee at all (CONTEXT.md's Account entry says so, and the server's own
+  /// `canAct` answers for them by role instead).
+  final String? employeeId;
 
   /// Where this Account may work (issue #43) — "nowhere" by default so a
   /// cached client that predates this field, or a response the API sent with
@@ -153,6 +166,7 @@ class PeopleApi {
       email: email,
       displayName: account['displayName'] as String,
       role: account['role'] as String,
+      employeeId: account['employeeId']?.toString(),
       orgUnitScope: _orgUnitScopeFrom(body['orgUnitScope']),
     );
   }
@@ -173,6 +187,10 @@ class PeopleApi {
               orgUnitId: grant['orgUnitId'].toString(),
               siteId: grant['siteId'].toString(),
               canWrite: grant['canWrite'] == true,
+              // Quality authority (issue #204, ADR-0035) — a Grant sent
+              // without the key holds none, the same "the server did not say
+              // so" default `canWrite` already gets.
+              qualityAuthority: grant['qualityAuthority'] == true,
               // The Org Units this Grant reaches, granted unit included
               // (issue #110). Absent means an older server, so it falls back
               // to "this Grant's own unit" rather than an empty reach.
@@ -1360,6 +1378,10 @@ class PeopleApi {
               siteId: grant['siteId'].toString(),
               siteName: grant['siteName'] as String,
               canWrite: grant['canWrite'] == true,
+              // Quality authority (issue #204, ADR-0035): the Accounts Screen
+              // shows it per Grant, and the correction dialog seeds the
+              // picker's checkbox from it.
+              qualityAuthority: grant['qualityAuthority'] == true,
             ),
       ],
     );

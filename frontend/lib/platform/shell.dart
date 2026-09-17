@@ -98,6 +98,11 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Which Destination is current, asked once for the whole sidebar: the most
+    // specific match rather than every path-prefix of the address, because the
+    // CAPA list lives under the action log's own `/actions` (issue #211).
+    final selectedPath = selectedDestinationPath(destinations, currentLocation);
+
     return Container(
       key: PlatformShell.sidebarKey,
       width: collapsed ? PlatformShell.collapsedWidth : PlatformShell.expandedWidth,
@@ -140,7 +145,7 @@ class _Sidebar extends StatelessWidget {
                         for (final destination in group.destinations)
                           _NavItem(
                             destination: destination,
-                            selected: destination.matches(currentLocation),
+                            selected: destination.path == selectedPath,
                             collapsed: collapsed,
                             onTap: () => onDestinationSelected(destination),
                           ),

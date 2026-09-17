@@ -1275,3 +1275,194 @@ test('a second administrator can still deactivate the first — the rule is abou
   const reactivate = await patchAccount(adminAccountId, { isActive: true }, secondAdminToken);
   assert.strictEqual(reactivate.status, 200);
 });
+
+// ---------------------------------------------------------------------------
+// 12. Quality authority on a Grant (issue #204, ADR-0035). A flag on a
+//     Grant, independent of its level, given at Approval and replaced with
+//     the rest of the Grant set. `canAct({ quality: true })`
+//     (authorization.js) is what a later Quality slice asks before releasing
+//     nonconforming product or opening an investigation; these tests cover
+//     the flag's own behaviour — set, replaced, removed, and the downward
+//     reach it is read with — over HTTP, and the two halves of its
+//     independence from `write` (a write Grant's own endpoints still refuse
+//     a quality-only Grant, and an edit Grant reports no Quality authority).
+// ---------------------------------------------------------------------------
+
+// Approving with Quality authority on one Grant and a higher level on
+// another, in the same act, is the whole point of the flag being per Grant
+// rather than a role: the same Account may read one department and release
+// bad product on another. The assertion reads both the stored rows and the
+// Accounts listing, because the listing is what an administrator actually
+// audits (AC: "The Accounts Screen ... show ... Quality authority per
+// Grant").
+test('an Approval sets Quality authority per Grant, independently of that Grant\'s level', async () => {
+  const { root, child } = await createSiteWithTree();
+  const { account } = await approveFreshAccount('supervisor', [
+    // A view-only Grant that carries Quality authority.
+    { orgUnitId: child.id, canWrite: false, qualityAuthority: true },
+    // An edit Grant that deliberately does not.
+    { orgUnitId: root.id, canWrite: true }
+  ]);
+
+  const { rows } = await pool.query(
+    'SELECT org_unit_id, can_write, quality_authority FROM app_user_org_units WHERE app_user_id = $1 ORDER BY org_unit_id',
+    [account.id]
+  );
+  const childRow = rows.find((row) => String(row.org_unit_id) === String(child.id));
+  const rootRow = rows.find((row) => String(row.org_unit_id) === String(root.id));
+  assert.strictEqual(childRow.can_write, false);
+  assert.strictEqual(childRow.quality_authority, true);
+  assert.strictEqual(rootRow.can_write, true);
+  assert.strictEqual(rootRow.quality_authority, false);
+
+  const response = await fetch(`${base}/api/people/accounts`, { headers: adminToken });
+  const { accounts } = await response.json();
+  const listed = accounts.find((a) => a.id === account.id);
+  const listedChild = listed.grants.find((g) => String(g.orgUnitId) === String(child.id));
+  const listedRoot = listed.grants.find((g) => String(g.orgUnitId) === String(root.id));
+  assert.strictEqual(listedChild.qualityAuthority, true);
+  assert.strictEqual(listedChild.canWrite, false);
+  assert.strictEqual(listedRoot.qualityAuthority, false);
+  assert.strictEqual(listedRoot.canWrite, true);
+});
+
+// Approval replaces the whole Grant set rather than merging into it, so
+// omitting the flag is how an administrator takes Quality authority away —
+// the same deliberate act that gives it, and no separate "revoke" verb that
+// could contradict the set an Approval gave.
+test('a later Approval that omits Quality authority removes it, along with the rest of the set', async () => {
+  const { root, child } = await createSiteWithTree();
+  const { account } = await approveFreshAccount('supervisor', [
+    { orgUnitId: child.id, canWrite: true, qualityAuthority: true },
+    { orgUnitId: root.id, canWrite: false, qualityAuthority: true }
+  ]);
+
+  const reapproval = await approve(account.id, {
+    role: 'supervisor',
+    grants: [{ orgUnitId: child.id, canWrite: true }],
+    expectedApprovalStatus: 'approved'
+  });
+  assert.strictEqual(reapproval.status, 200);
+
+  const { rows } = await pool.query(
+    'SELECT org_unit_id, quality_authority FROM app_user_org_units WHERE app_user_id = $1',
+    [account.id]
+  );
+  assert.strictEqual(rows.length, 1, 'the whole set was replaced, not added to');
+  assert.strictEqual(String(rows[0].org_unit_id), String(child.id));
+  assert.strictEqual(rows[0].quality_authority, false);
+
+  const accountsResponse = await fetch(`${base}/api/people/accounts`, { headers: adminToken });
+  const { accounts } = await accountsResponse.json();
+  const listed = accounts.find((a) => a.id === account.id);
+  assert.strictEqual(listed.grants[0].qualityAuthority, false);
+  // The Grant on `root` is gone entirely, which is the same replace-the-set
+  // rule `canWrite` has always followed and not something this flag changed.
+  assert.ok(!listed.grants.some((g) => String(g.orgUnitId) === String(root.id)));
+});
+
+// The downward reach itself, as a caller can observe it: a Grant reaches
+// downward (ADR-0027's `orgUnitIds` is the server's own resolved subtree, the
+// same `path <@` containment `canAct({ quality: true })` answers with), so a
+// Grant carrying Quality authority on a department covers every line beneath
+// it — and covers neither an ancestor above it nor a sibling beside it.
+test('a Grant carrying Quality authority reaches every Org Unit beneath it, and no ancestor or sibling', async () => {
+  const { site, root, child, grandchild } = await createSiteWithTree();
+
+  const siblingResponse = await fetch(`${base}/api/people/sites/${site.id}/org-units`, {
+    method: 'POST',
+    headers: { ...adminToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ code: uniqueCode('QSIB'), name: 'Quality Sibling', unitType: 'department', parentId: root.id })
+  });
+  const { orgUnit: sibling } = await siblingResponse.json();
+
+  const { token } = await approveFreshAccount('engineer', [
+    { orgUnitId: child.id, canWrite: false, qualityAuthority: true }
+  ]);
+
+  const response = await me(token);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  const [grant] = orgUnitScope.grants;
+  assert.strictEqual(grant.qualityAuthority, true);
+  assert.deepStrictEqual(
+    grant.orgUnitIds.map(String).sort(),
+    [String(child.id), String(grandchild.id)].sort()
+  );
+  const reached = grant.orgUnitIds.map(String);
+  assert.ok(reached.includes(String(child.id)), 'the granted unit itself');
+  assert.ok(reached.includes(String(grandchild.id)), 'everything beneath it');
+  assert.ok(!reached.includes(String(sibling.id)), 'never a sibling');
+  assert.ok(!reached.includes(String(root.id)), 'never an ancestor above it');
+});
+
+// Both halves of "Quality authority does not imply write, and write does not
+// imply Quality authority" (ADR-0035), each through the door it is actually
+// decided at: the flag alone does not authorise a write at the Org Unit
+// (requireOrgUnitScope's own `canAct({ write: true })` refuses it, 403), and
+// an edit Grant with no flag reports no Quality authority to the client.
+test('Quality authority on a view-only Grant does not authorise a write, and an edit Grant holds none', async () => {
+  const { child } = await createSiteWithTree();
+  const { token: qualityOnlyToken } = await approveFreshAccount('engineer', [
+    { orgUnitId: child.id, canWrite: false, qualityAuthority: true }
+  ]);
+
+  const writeAttempt = await fetch(`${base}/api/people/org-units/${child.id}`, {
+    method: 'PATCH',
+    headers: { ...qualityOnlyToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ isActive: false })
+  });
+  assert.strictEqual(writeAttempt.status, 403);
+
+  const { token: writeOnlyToken } = await approveFreshAccount('supervisor', [
+    { orgUnitId: child.id, canWrite: true }
+  ]);
+
+  const scopeResponse = await me(writeOnlyToken);
+  const { orgUnitScope } = await scopeResponse.json();
+  assert.strictEqual(orgUnitScope.grants[0].canWrite, true);
+  assert.strictEqual(orgUnitScope.grants[0].qualityAuthority, false);
+
+  // The write that Grant does authorise is unaffected by the flag's absence.
+  const write = await fetch(`${base}/api/people/org-units/${child.id}`, {
+    method: 'PATCH',
+    headers: { ...writeOnlyToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ isActive: false })
+  });
+  assert.strictEqual(write.status, 200);
+});
+
+// An administrator holds Quality authority everywhere by virtue of the role
+// alone — `canAct` short-circuits on it before any Grant is read — so its own
+// scope is the `everywhere` flag and no Grants at all, never a set of rows
+// somebody remembered to flag.
+test('an administrator holds Quality authority everywhere, with no Grants at all', async () => {
+  const { child, grandchild } = await createSiteWithTree();
+
+  const response = await me(adminToken);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  // Not a duplicate of section 11's own "everywhere: true, with no grants":
+  // that test pins the shape for its own sake, and this one pins that an
+  // administrator's answer to *Quality authority* — which `canAct` short-
+  // circuits on before any Grant is read — is the same answer, with no
+  // grant row anywhere carrying the flag on its behalf.
+  assert.strictEqual(orgUnitScope.everywhere, true);
+  assert.deepStrictEqual(orgUnitScope.grants, []);
+
+  const { rows } = await pool.query(
+    'SELECT count(*)::int AS n FROM app_user_org_units WHERE app_user_id = $1 AND quality_authority',
+    [adminAccountId]
+  );
+  assert.strictEqual(rows[0].n, 0);
+
+  // The role still reaches the whole tree it claims to.
+  const read = await fetch(`${base}/api/people/org-units/${grandchild.id}`, { headers: adminToken });
+  assert.strictEqual(read.status, 200);
+  const write = await fetch(`${base}/api/people/org-units/${child.id}`, {
+    method: 'PATCH',
+    headers: { ...adminToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ isActive: false })
+  });
+  assert.strictEqual(write.status, 200);
+});

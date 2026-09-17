@@ -91,6 +91,46 @@ const _pages = <_Page>[
   _Page('/actions', 'lib/actions/actions_screen.dart', 'Actions', ''),
   _Page('/tier-board', 'lib/maintenance/tier_board_screen.dart', 'Tier board', ''),
   _Page('/skill-coverage', 'lib/people/skill_coverage_screen.dart', 'Skill coverage', ''),
+  // The Quality Module's two catalogues (issue #203). Defect codes is a tree,
+  // so its rows indent by depth one level at a time — the first row is a root
+  // at the card's own padding, which is why the default bound holds here where
+  // the Org Units tree (whose first row leads with a disclosure control) needs
+  // its own.
+  _Page('/products', 'lib/quality/products_screen.dart', 'Products', 'What the plant makes'),
+  _Page('/defect-codes', 'lib/quality/defect_codes_screen.dart', 'Defect codes',
+      'The kinds of thing found wrong'),
+  // The Non-conformance register (issue #205). Its rows are cards of text at
+  // the card's own padding, so the default bound holds.
+  _Page('/non-conformances', 'lib/quality/nonconformances_screen.dart', 'Non-conformances',
+      'What was found not to conform'),
+  // The CAPA list (issue #211). Its rows are cards of text at the card's own
+  // padding too, so the default bound holds here as well.
+  _Page('/actions/capas', 'lib/actions/capas_screen.dart', 'CAPAs',
+      'The investigations opened on a Concern'),
+  // The Customer list and the complaint register (issue #214). Both are pages
+  // with a frame, a heading and rows at the card's own padding, so the default
+  // bound holds for each.
+  _Page('/customers', 'lib/quality/customers_screen.dart', 'Customers', 'Who the plant'),
+  _Page('/complaints', 'lib/quality/complaints_screen.dart', 'Customer complaints',
+      'What customers have complained about'),
+  // The Supplier list and the supplier NCR register (issue #215) — the same
+  // pair turned outward, and the same shape: a page with a frame, a heading and
+  // rows at the card's own padding, so the default bound holds for each.
+  _Page('/suppliers', 'lib/quality/suppliers_screen.dart', 'Suppliers', 'Who the plant buys'),
+  _Page('/supplier-ncrs', 'lib/quality/supplier_ncrs_screen.dart', 'Supplier NCRs',
+      'What arrived wrong'),
+  // The CAPA report (issue #212). Audited rather than excluded, and the
+  // audited shape is the point of the ticket: it is a page with a frame, a
+  // heading and a column of cards even though it is reached outside the Shell,
+  // so its title, its description and its first section must all start at the
+  // frame's own left edge like any other page's. It pads by `Spacing.xl` (the
+  // token its own `ListView`-free document layout spends) and its width is its
+  // own 1100 rather than `AppLayout.pageWidth` — a width this test deliberately
+  // does not assert, because page widths are not a rule here.
+  _Page('/actions/capas/801/report', 'lib/actions/capa_report_screen.dart',
+      'The guard keeps working loose',
+      'The 8D record of this investigation',
+      inset: Spacing.xl),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this
@@ -101,12 +141,20 @@ const _pages = <_Page>[
 const _excluded = <String, String>{
   'lib/actions/action_detail_screen.dart':
       "its title is the Action's own title, not a page heading",
+  'lib/actions/capa_detail_screen.dart':
+      "its title is the CAPA's own title, not a page heading",
   'lib/people/employee_detail_screen.dart':
       "its title is the Employee's own name, not a page heading",
   'lib/maintenance/work_order_detail_screen.dart':
       "its title is the Work order's own number, not a page heading",
   'lib/maintenance/store_stock_screen.dart':
       "its title is the Store's own name, not a page heading",
+  'lib/quality/nonconformance_detail_screen.dart':
+      "its title is the Non-conformance's own number, not a page heading",
+  'lib/quality/complaint_detail_screen.dart':
+      "its title is the complaint's own Customer and Product, not a page heading",
+  'lib/quality/supplier_ncr_detail_screen.dart':
+      "its title is the supplier NCR's own Supplier and Product, not a page heading",
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',
@@ -148,6 +196,33 @@ FakeWire _wire() => FakeWire(
       },
       actions: {
         '1': [actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose')],
+      },
+      // The Quality Module's two catalogues (issue #203), so both pages render
+      // their card rather than an empty state and the row assertion actually
+      // runs.
+      products: [productJson('40', 'PRD-1', 'Gearbox')],
+      defectCodes: [defectCodeJson('41', 'DIM-OOT', 'Out of tolerance')],
+      // The Customer list and one Site's complaints (issue #214), so both
+      // pages render their rows rather than an empty state and the row
+      // assertions actually run.
+      customers: [customerJson('60', 'CUST-1', 'Acme Bearings')],
+      // The Supplier list and one Site's supplier NCRs (issue #215), for the
+      // same reason: both pages render their rows rather than an empty state.
+      suppliers: [supplierJson('50', 'SUP-1', 'Northwind Fasteners')],
+      supplierNcrs: {
+        '1': [supplierNcrJson('80', 'SN-2026-00001', responseDueDate: '2099-01-01')],
+      },
+      complaints: {
+        '1': [
+          customerComplaintJson('70', 'CC-2026-00001', responseDueDate: '2099-01-01'),
+        ],
+      },
+      // The investigation the CAPA report reads (issue #212). Its own read is a
+      // CAPA rather than a collection, so this table's one report page finds it
+      // by id and renders its sections rather than a loading placeholder.
+      capas: {
+        '801': capaJson('801', 'CA-HCM-2026-00001', 'The guard keeps working loose',
+            orgUnitId: '10', orgUnitName: 'Assembly'),
       },
     );
 

@@ -18,6 +18,13 @@
 /// `canAssignWorkOrder` read. A Grant sent without an explicit list — an older
 /// server, or a hand-written fixture — reaches only its own Org Unit, which is
 /// the pre-#110 reading and never a wider one.
+///
+/// Each Grant also carries whether it holds Quality authority (issue #204,
+/// ADR-0035): the flag an administrator gives during Approval, independent of
+/// the Grant's level. It is read through [OrgUnitScope.canHoldQualityAt], the
+/// same reach-with-one-flag test [canWriteAt] makes, so a Screen can offer a
+/// quality decision to exactly the callers the server's `canAct({ quality:
+/// true })` would allow it to.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -28,6 +35,7 @@ class OrgUnitGrant {
     required this.orgUnitId,
     required this.siteId,
     required this.canWrite,
+    this.qualityAuthority = false,
     this.orgUnitIds,
   });
 
@@ -37,6 +45,13 @@ class OrgUnitGrant {
 
   final String siteId;
   final bool canWrite;
+
+  /// Whether this Grant carries Quality authority (issue #204, ADR-0035) —
+  /// the flag `/me` reports beside each Grant's level, independent of
+  /// [canWrite]. Defaulted false so a grant sent without the key (an older
+  /// server, a hand-written fixture) reads as holding no authority, which is
+  /// the only truthful default for a permission.
+  final bool qualityAuthority;
 
   /// Every Org Unit id this Grant reaches, granted unit included, as `/me`
   /// reports it (issue #110). Null when the server did not send one.
@@ -88,4 +103,19 @@ class OrgUnitScope {
   bool canWriteAt(String orgUnitId) =>
       everywhere ||
       grants.any((grant) => grant.canWrite && grant.reachedOrgUnitIds.contains(orgUnitId));
+
+  /// Whether any Grant of this Account carrying Quality authority reaches
+  /// [orgUnitId] (issue #204, ADR-0035) — [canWriteAt]'s exact shape, asked
+  /// of a different flag because the two are independent: a view-only Grant
+  /// may carry Quality authority and an edit Grant need not. It answers the
+  /// client's half of the server's own `canAct({ quality: true })`, the check
+  /// a later Quality slice makes before releasing nonconforming product or
+  /// opening an investigation, so a Screen can offer a Concession to exactly
+  /// the callers the server would allow it to. An administrator reaches
+  /// everywhere.
+  bool canHoldQualityAt(String orgUnitId) =>
+      everywhere ||
+      grants.any(
+        (grant) => grant.qualityAuthority && grant.reachedOrgUnitIds.contains(orgUnitId),
+      );
 }
