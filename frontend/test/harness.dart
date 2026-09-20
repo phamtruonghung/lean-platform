@@ -1873,6 +1873,8 @@ class FakeWire {
     this.safetyIncidentsTruncated = false,
     this.createSafetyIncidentStatus = 201,
     this.createSafetyIncidentMessage = 'orgUnitId must be a valid Org Unit id',
+    this.floorSafetyIncidentStatus = 201,
+    this.floorSafetyIncidentMessage = "Outside the caller's granted Org Units",
     Map<String, Map<String, dynamic>>? capas,
     this.capasStatus = 200,
     this.capaMessage = 'That CAPA could not be read.',
@@ -2250,6 +2252,17 @@ class FakeWire {
 
   /// Every recording body that actually reached the wire, decoded.
   final List<Map<String, dynamic>> safetyIncidentPosts = [];
+
+  /// `POST /api/safety/floor/incidents` (issue #227) — reporting a Safety
+  /// incident from the shared floor device. A refusal is scripted with
+  /// [floorSafetyIncidentStatus], the shape every other write's `status`
+  /// field keeps, mirroring [floorNonconformanceStatus].
+  int floorSafetyIncidentStatus;
+  String floorSafetyIncidentMessage;
+
+  /// Every floor safety incident report that reached the wire, as `{device,
+  /// identification, body}` — mirrors [floorNonconformancePosts] exactly.
+  final List<Map<String, dynamic>> floorSafetyIncidentPosts = [];
 
   /// Looks a Safety incident up by id across every Site's list, mirroring
   /// [nonconformanceById].
@@ -5074,6 +5087,50 @@ class FakeWire {
             return http.Response(jsonEncode({'message': 'Non-conformance not found'}), 404);
           }
           return http.Response(jsonEncode({'nonconformance': row}), 200);
+        }
+        // The Safety Module's floor door (issue #227): reporting an incident
+        // from a shared device. Mirrors safety/floor-safety-incident-routes.js
+        // and the Quality floor write above — the identified Employee is the
+        // reporter (`reportedBy`), and there is no recording Account at all
+        // (the opposite of the Account-door fixture just below).
+        if (request.method == 'POST' && path == '/api/safety/floor/incidents') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          floorSafetyIncidentPosts.add({
+            'device': request.headers['x-floor-device'],
+            'identification': request.headers['x-technician-identification'],
+            'body': sent,
+          });
+          if (floorSafetyIncidentStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': floorSafetyIncidentMessage}),
+              floorSafetyIncidentStatus,
+            );
+          }
+          final orgUnitId = sent['orgUnitId'] as String;
+          final id = (_nextSafetyIncidentId++).toString();
+          final created = safetyIncidentJson(
+            id,
+            'SI-HCM-2026-${id.padLeft(5, '0')}',
+            status: 'open',
+            incidentType: sent['incidentType'] as String,
+            severityLevel: sent['severityLevel'] as String,
+            occurredAt: sent['occurredAt'] as String?,
+            description: sent['description'] as String?,
+            immediateAction: sent['immediateAction'] as String?,
+            // The floor door names an Employee as reporter and no Account —
+            // the two are never both filled (safety-incidents.js's own note).
+            recordedByAccountId: null,
+            recordedByAccountName: null,
+            reportedBy: floorEmployee['id'] as String?,
+            reportedByName: floorEmployee['displayName'] as String?,
+            orgUnitId: orgUnitId,
+            orgUnitName: _orgUnitNameFor(orgUnitId),
+          );
+          safetyIncidents = {
+            ...safetyIncidents,
+            '1': [created, ...(safetyIncidents['1'] ?? const [])],
+          };
+          return http.Response(jsonEncode({'incident': created}), 201);
         }
         if (path.startsWith('/api/safety/sites/') && path.endsWith('/incidents')) {
           final siteId = path.split('/')[4];

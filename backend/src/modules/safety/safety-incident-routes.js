@@ -1,6 +1,9 @@
 /*
- * Safety incidents over HTTP (issue #226). Mounted by index.js under
- * `/api/safety`.
+ * Safety incidents over HTTP (issue #226) — the Account door. Mounted by
+ * index.js under `/api/safety`, beside floor-safety-incident-routes.js (issue
+ * #227), the shared floor device's own door to the same
+ * `recordSafetyIncident` service function, mounted under the same prefix at
+ * `/floor/incidents`.
  *
  * This Module talks to People only through `modules/people`'s entry point
  * (ADR-0006): `authenticate`, `requireActive`, `findSite`, `findOrgUnit`,

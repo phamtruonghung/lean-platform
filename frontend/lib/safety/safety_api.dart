@@ -141,6 +141,65 @@ class SafetyApi {
     }
   }
 
+  /// Records a Safety incident at a shared floor device
+  /// (`POST /api/safety/floor/incidents`, issue #227), mirroring
+  /// `QualityApi.recordFloorNonconformance` closely. [deviceCredential]
+  /// selects the door and [identification] says which Employee is standing at
+  /// the machine — the identified Employee becomes the incident's reporter,
+  /// and there is no recording Account on this path at all (ADR-0016).
+  ///
+  /// [orgUnitId] is where the record is filed — the device's own Org Unit, or
+  /// anything beneath it; the API refuses one outside that reach with a 403
+  /// carrying People's own `OUTSIDE_GRANTED_ORG_UNITS` wording. A missing,
+  /// invalid or expired identification is a 401, and every field and
+  /// ladder-consistency rule is the same as the Account door's
+  /// [recordSafetyIncident], because both call the same service.
+  ///
+  /// Only the fields the floor form actually collects are sent — no Asset, no
+  /// Employee involved, no `reportedAt`, no `isAnonymous` (there is no
+  /// anonymous option anywhere in this flow, ADR-0036).
+  Future<SafetyIncident> recordFloorSafetyIncident(
+    String deviceCredential,
+    String identification, {
+    required String orgUnitId,
+    required String incidentType,
+    required String severityLevel,
+    required String description,
+    required String occurredAt,
+    String? immediateAction,
+  }) async {
+    const path = '/api/safety/floor/incidents';
+    final body = <String, Object?>{
+      'orgUnitId': orgUnitId,
+      'incidentType': incidentType,
+      'severityLevel': severityLevel,
+      'description': description,
+      'occurredAt': occurredAt,
+    };
+    if (immediateAction != null && immediateAction.trim().isNotEmpty) {
+      body['immediateAction'] = immediateAction.trim();
+    }
+
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {
+          'x-floor-device': deviceCredential,
+          'x-technician-identification': identification,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return SafetyIncident.fromJson(answer['incident'] as Map<String, dynamic>);
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   // Mirrors QualityApi._send: a transport failure and a non-2xx answer both
   // leave here as the Module's own exception, carrying the API's own message
   // when it sent one (so a 400's sentence reaches the form that caused it
