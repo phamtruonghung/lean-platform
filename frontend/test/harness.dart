@@ -26,6 +26,7 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 import 'package:lean_platform/quality/quality_api.dart';
+import 'package:lean_platform/safety/safety_api.dart';
 
 /// Loads the Platform's own bundled Roboto (`assets/fonts/README.md`,
 /// committed there for Flutter Web's CanvasKit renderer, not for this) into
@@ -900,6 +901,80 @@ Map<String, dynamic> nonconformanceJson(
       // present — an empty list is "nothing is being done about the cause",
       // which is a state the Screen renders rather than a missing field.
       'concerns': concerns ?? const <Map<String, dynamic>>[],
+    };
+
+/// One Safety incident as `GET /api/safety/incidents/:id` and the register
+/// send it (issue #226) — mirrors `toSafetyIncident` (safety-incidents.js)
+/// key for key.
+Map<String, dynamic> safetyIncidentJson(
+  String id,
+  String incidentNo, {
+  String status = 'open',
+  String incidentType = 'injury',
+  String severityLevel = 'first_aid',
+  bool? isRecordable,
+  String? occurredAt,
+  String? reportedAt,
+  String? description,
+  String? immediateAction,
+  int lostTimeDays = 0,
+  int restrictedDays = 0,
+  String? recordedByAccountId = '1',
+  String? recordedByAccountName = 'Ann Operator',
+  String? reportedBy,
+  String? reportedByName,
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String siteCode = 'HCM',
+  String siteName = 'Ho Chi Minh',
+  String? assetId,
+  String? assetCode,
+  String? assetName,
+  String? employeeId,
+  String? employeeName,
+  String? shiftInstanceId,
+  String? productionDate,
+  String? shiftCode,
+  String? shiftName,
+  String? closedAt,
+}) =>
+    {
+      'id': id,
+      'incidentNo': incidentNo,
+      'status': status,
+      'incidentType': incidentType,
+      'severityLevel': severityLevel,
+      'isRecordable': isRecordable ??
+          const ['medical_treatment', 'restricted_work', 'lost_time', 'fatality']
+              .contains(severityLevel),
+      'occurredAt': occurredAt ?? DateTime.now().toUtc().toIso8601String(),
+      'reportedAt': reportedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'description': description,
+      'immediateAction': immediateAction,
+      'lostTimeDays': lostTimeDays,
+      'restrictedDays': restrictedDays,
+      'recordedByAccountId': recordedByAccountId,
+      'recordedByAccountName': recordedByAccountName,
+      'reportedBy': reportedBy,
+      'reportedByName': reportedByName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'siteCode': siteCode,
+      'siteName': siteName,
+      'assetId': assetId,
+      'assetCode': assetCode,
+      'assetName': assetName,
+      'employeeId': employeeId,
+      'employeeName': employeeName,
+      'shiftInstanceId': shiftInstanceId,
+      'productionDate': productionDate,
+      'shiftCode': shiftCode,
+      'shiftName': shiftName,
+      'closedAt': closedAt,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
 /// One Concern as the record's own detail read names it: the Action's number,
@@ -1793,6 +1868,11 @@ class FakeWire {
     this.recordNonconformanceActStatus = 201,
     this.recordNonconformanceActMessage =
         'that is more than the quantity still undecided on this Non-conformance',
+    Map<String, List<Map<String, dynamic>>>? safetyIncidents,
+    this.safetyIncidentsStatus = 200,
+    this.safetyIncidentsTruncated = false,
+    this.createSafetyIncidentStatus = 201,
+    this.createSafetyIncidentMessage = 'orgUnitId must be a valid Org Unit id',
     Map<String, Map<String, dynamic>>? capas,
     this.capasStatus = 200,
     this.capaMessage = 'That CAPA could not be read.',
@@ -1878,6 +1958,7 @@ class FakeWire {
         suppliers = suppliers ?? [],
         supplierNcrs = supplierNcrs ?? {},
         nonconformances = nonconformances ?? {},
+        safetyIncidents = safetyIncidents ?? {},
         capas = capas ?? {};
 
   /// `GET /api/quality/products` (issue #203) — the Product catalogue.
@@ -2145,6 +2226,72 @@ class FakeWire {
 
   /// Every cancel body that reached the wire, as `(id, body)`.
   final List<(String, Map<String, dynamic>)> nonconformanceCancelPosts = [];
+
+  /// `GET /api/safety/sites/:siteId/incidents` (issue #226) — the register,
+  /// keyed by Site id. The wire applies the same class of filters
+  /// [nonconformances]'s own register does: `orgUnitId` (the row's own Org
+  /// Unit or any descendant of it), `status`, `incidentType`,
+  /// `severityLevel`, `isRecordable` and the production-day range.
+  Map<String, List<Map<String, dynamic>>> safetyIncidents;
+  int safetyIncidentsStatus;
+  bool safetyIncidentsTruncated;
+
+  /// `POST /api/safety/sites/:siteId/incidents` — recording one.
+  int createSafetyIncidentStatus;
+  String createSafetyIncidentMessage;
+
+  /// Every Safety incident list request's query parameters, in the order
+  /// they reached the wire.
+  final List<Map<String, String>> safetyIncidentListRequests = [];
+
+  /// Every Safety incident detail read's path, in order — `GET
+  /// /api/safety/incidents/:id`.
+  final List<String> safetyIncidentReads = [];
+
+  /// Every recording body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> safetyIncidentPosts = [];
+
+  /// Looks a Safety incident up by id across every Site's list, mirroring
+  /// [nonconformanceById].
+  Map<String, dynamic>? safetyIncidentById(String id) {
+    for (final rows in safetyIncidents.values) {
+      for (final row in rows) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
+  /// [orgUnitId] and every Org Unit beneath it — mirrors
+  /// [nonconformanceOrgUnitScope] exactly, for the same reason: `?orgUnitId=`
+  /// narrows by area, walking the `orgUnits` fixture (keyed by parent id).
+  Set<String> safetyIncidentOrgUnitScope(String orgUnitId) {
+    final found = <String>{orgUnitId};
+    var grew = true;
+    while (grew) {
+      grew = false;
+      for (final entry in orgUnits.entries) {
+        final parent = entry.key;
+        if (parent == null || !found.contains(parent)) continue;
+        for (final child in entry.value) {
+          if (found.add(child['id'] as String)) grew = true;
+        }
+      }
+    }
+    return found;
+  }
+
+  int _nextSafetyIncidentId = 1000;
+
+  /// The production day a Safety incident row is filed against — mirrors
+  /// [_nonconformanceDayOf] exactly.
+  String _safetyIncidentDayOf(Map<String, dynamic> row) {
+    final productionDate = row['productionDate'] as String?;
+    if (productionDate != null && productionDate.isNotEmpty) return productionDate;
+    final occurredAt = row['occurredAt'] as String?;
+    if (occurredAt == null || occurredAt.length < 10) return '';
+    return occurredAt.substring(0, 10);
+  }
 
   /// Looks a Non-conformance up by id across every Site's list, which is what
   /// the detail route does — a record read by address, not by Site.
@@ -4928,6 +5075,111 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'nonconformance': row}), 200);
         }
+        if (path.startsWith('/api/safety/sites/') && path.endsWith('/incidents')) {
+          final siteId = path.split('/')[4];
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            safetyIncidentPosts.add(sent);
+            if (createSafetyIncidentStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': createSafetyIncidentMessage}),
+                createSafetyIncidentStatus,
+              );
+            }
+            final orgUnitId = sent['orgUnitId'] as String;
+            final assetId = sent['assetId'] as String?;
+            Map<String, dynamic>? asset;
+            if (assetId != null) {
+              for (final rows in assets.values) {
+                for (final row in rows) {
+                  if (row['id'] == assetId) asset = row;
+                }
+              }
+            }
+            final employeeId = sent['employeeId'] as String?;
+            Map<String, dynamic>? employee;
+            if (employeeId != null) {
+              for (final row in employees) {
+                if (row['id'] == employeeId) employee = row;
+              }
+            }
+            final id = (_nextSafetyIncidentId++).toString();
+            final created = safetyIncidentJson(
+              id,
+              'SI-HCM-2026-${id.padLeft(5, '0')}',
+              status: 'open',
+              incidentType: sent['incidentType'] as String,
+              severityLevel: sent['severityLevel'] as String,
+              occurredAt: sent['occurredAt'] as String?,
+              reportedAt: sent['reportedAt'] as String?,
+              description: sent['description'] as String?,
+              immediateAction: sent['immediateAction'] as String?,
+              lostTimeDays: (sent['lostTimeDays'] as num?)?.toInt() ?? 0,
+              restrictedDays: (sent['restrictedDays'] as num?)?.toInt() ?? 0,
+              recordedByAccountId: '1',
+              recordedByAccountName: 'Ann Operator',
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              siteId: siteId,
+              assetId: assetId,
+              assetCode: asset?['code'] as String?,
+              assetName: asset?['name'] as String?,
+              employeeId: employeeId,
+              employeeName: employee?['displayName'] as String?,
+            );
+            safetyIncidents = {
+              ...safetyIncidents,
+              siteId: [created, ...(safetyIncidents[siteId] ?? const [])],
+            };
+            return http.Response(jsonEncode({'incident': created}), 201);
+          }
+          safetyIncidentListRequests.add(request.url.queryParameters);
+          if (safetyIncidentsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The register is unavailable.'}),
+              safetyIncidentsStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final orgUnitId = query['orgUnitId'];
+          final scope = orgUnitId == null ? null : safetyIncidentOrgUnitScope(orgUnitId);
+          final status = query['status'];
+          final incidentType = query['incidentType'];
+          final severityLevel = query['severityLevel'];
+          final isRecordable = query['isRecordable'];
+          final from = query['from'];
+          final to = query['to'];
+          final sent = [
+            for (final row in safetyIncidents[siteId] ?? const <Map<String, dynamic>>[])
+              if (scope == null || scope.contains(row['orgUnitId']))
+                if (status == null || row['status'] == status)
+                  if (incidentType == null || row['incidentType'] == incidentType)
+                    if (severityLevel == null || row['severityLevel'] == severityLevel)
+                      if (isRecordable == null ||
+                          row['isRecordable'].toString() == isRecordable)
+                        if (from == null || _safetyIncidentDayOf(row).compareTo(from) >= 0)
+                          if (to == null || _safetyIncidentDayOf(row).compareTo(to) <= 0) row,
+          ];
+          return http.Response(
+            jsonEncode({'incidents': sent, 'truncated': safetyIncidentsTruncated}),
+            200,
+          );
+        }
+        if (path.startsWith('/api/safety/incidents/')) {
+          final id = path.substring('/api/safety/incidents/'.length);
+          safetyIncidentReads.add(path);
+          if (safetyIncidentsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The register is unavailable.'}),
+              safetyIncidentsStatus,
+            );
+          }
+          final row = safetyIncidentById(id);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Safety incident not found'}), 404);
+          }
+          return http.Response(jsonEncode({'incident': row}), 200);
+        }
         if (path == '/api/people/me') {
           return http.Response(
             jsonEncode(_meBody(role, selfId, selfEmployeeId, orgUnitScope)),
@@ -7454,6 +7706,8 @@ Future<void> pumpApp(
       actionsApi: ActionsApi(client: client),
       // The Quality Module's own client over the same faked wire (issue #203).
       qualityApi: QualityApi(client: client),
+      // The Safety Module's own client over the same faked wire (issue #226).
+      safetyApi: SafetyApi(client: client),
       // The floor surface's device credential, faked at the same seam.
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       initialLocation: initialLocation,

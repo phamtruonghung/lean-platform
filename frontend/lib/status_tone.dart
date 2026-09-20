@@ -4,7 +4,13 @@
 /// This is the vocabulary the whole client shares: a Work order, a Request, a
 /// Downtime event and a Work order's own step each map their own wire statuses
 /// onto these five, so "On hold" means the same thing on every Screen that
-/// shows it (issue #168's own user story 7).
+/// shows it (issue #168's own user story 7). Safety uses it twice over
+/// (issue #226): a Safety incident's own status maps the way a Non-conformance's
+/// does, and its severity ladder is painted by recordability rather than as a
+/// gradient — `danger` reserved for the rungs at or above the recordable
+/// line, `info` for the no-injury rung (deliberately not `neutral`: a
+/// near-miss report is the single most valuable record the Module holds) —
+/// the reasoning behind both lives in `safety/safety_incident.dart`.
 ///
 /// **Why this is its own file rather than living in `theme.dart`.** `theme.dart`
 /// imports `package:flutter/material.dart` — it builds a `ThemeData`. A domain

@@ -103,6 +103,7 @@ abstract final class DestinationGroupNames {
   static const String maintenance = 'Maintenance';
   static const String quality = 'Quality';
   static const String actions = 'Actions';
+  static const String safety = 'Safety';
   static const String insights = 'Insights';
   static const String administration = 'Administration';
 
@@ -111,6 +112,7 @@ abstract final class DestinationGroupNames {
     maintenance,
     actions,
     quality,
+    safety,
     insights,
     administration,
   ];
@@ -464,6 +466,27 @@ const List<Destination> platformDestinations = [
     icon: Icons.report_gmailerrorred_outlined,
     path: Routes.supplierNcrs,
     group: DestinationGroupNames.quality,
+  ),
+  // The Safety Module's first Destination (issue #226) — the one this ticket
+  // builds. The binding design on #223 names a four-entry group (Incidents,
+  // Observations, Injury types, Body parts), of which only the first exists
+  // yet: Observations is issue #230's own address, and the two catalogues
+  // are issue #224's. A group whose Destinations all filter away renders no
+  // heading at all (#100, ADR-0020's own rule), so nothing here waits on
+  // those tickets landing — they are added beside this one as their own
+  // slices ship.
+  //
+  // Offered to every approved Account, the same shape the Quality
+  // Destinations above it use: the register is a Site-wide read
+  // (`canSeeSite`) and recording needs only a write Grant reaching the Org
+  // Unit it occurred at, or the administrator role — both of which the
+  // server decides, so a role here would gate a door the route itself opens
+  // for an operator who works on the line.
+  Destination(
+    label: 'Incidents',
+    icon: Icons.health_and_safety_outlined,
+    path: Routes.safetyIncidents,
+    group: DestinationGroupNames.safety,
   ),
   // Approvals and Accounts administer the Platform itself — who may sign in,
   // and what they may reach — rather than the plant's workforce, so they sit
