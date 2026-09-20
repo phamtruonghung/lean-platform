@@ -191,6 +191,84 @@ abstract final class SafetyIncidentStatus {
         closed => StatusTone.success,
         _ => StatusTone.neutral,
       };
+
+  /// The one legal next step for the ordinary ladder move (issue #228) —
+  /// `open -> investigating -> actions_pending`, mirroring `NEXT_STATUS`
+  /// (safety-incidents.js). Null once an incident is at `actions_pending` (only
+  /// closing reaches `closed`, its own address) or already `closed`.
+  static String? nextStatus(String status) => switch (status) {
+        open => investigating,
+        investigating => actionsPending,
+        _ => null,
+      };
+}
+
+/// One row of a Safety incident's event history (issue #228) — a severity
+/// change, a status move, a days change or a closure, with the previous and
+/// new value, who made it and when. Mirrors `toSafetyIncidentEvent`
+/// (safety-incidents.js) key for key.
+@immutable
+class SafetyIncidentEvent {
+  const SafetyIncidentEvent({
+    required this.id,
+    required this.kind,
+    required this.previousValue,
+    required this.newValue,
+    required this.note,
+    required this.changedByAccountId,
+    required this.changedByAccountName,
+    required this.changedByEmployeeId,
+    required this.changedByEmployeeName,
+    required this.changedAt,
+  });
+
+  factory SafetyIncidentEvent.fromJson(Map<String, dynamic> json) => SafetyIncidentEvent(
+        id: json['id'].toString(),
+        kind: json['kind'] as String,
+        previousValue: json['previousValue'] as String,
+        newValue: json['newValue'] as String,
+        note: json['note'] as String?,
+        changedByAccountId: json['changedByAccountId']?.toString(),
+        changedByAccountName: json['changedByAccountName'] as String?,
+        changedByEmployeeId: json['changedByEmployeeId']?.toString(),
+        changedByEmployeeName: json['changedByEmployeeName'] as String?,
+        changedAt: json['changedAt'] as String?,
+      );
+
+  final String id;
+
+  /// One of `severity`, `status`, `days`, `closure` (migration 1800900000000).
+  final String kind;
+  final String previousValue;
+  final String newValue;
+  final String? note;
+  final String? changedByAccountId;
+  final String? changedByAccountName;
+  final String? changedByEmployeeId;
+  final String? changedByEmployeeName;
+  final String? changedAt;
+
+  /// Who made the change, in the words a reader wants — an Account wins where
+  /// one is present, the only door issue #228's own writes have.
+  String get changedBy {
+    final account = changedByAccountName;
+    if (account != null && account.isNotEmpty) return account;
+    final employee = changedByEmployeeName;
+    if (employee != null && employee.isNotEmpty) return employee;
+    return 'Unknown';
+  }
+
+  /// What changed, in a sentence — the same "what happened" summary
+  /// `Correction.summary` gives a Non-conformance's own history row.
+  String get summary => switch (kind) {
+        'severity' =>
+          'Severity changed from ${SeverityLevel.label(previousValue)} to ${SeverityLevel.label(newValue)}',
+        'status' =>
+          'Status moved from ${SafetyIncidentStatus.label(previousValue)} to ${SafetyIncidentStatus.label(newValue)}',
+        'days' => 'Days recorded: $newValue',
+        'closure' => 'Closed',
+        _ => '$previousValue -> $newValue',
+      };
 }
 
 @immutable
@@ -226,7 +304,9 @@ class SafetyIncident {
     required this.productionDate,
     required this.shiftCode,
     required this.shiftName,
+    required this.investigationDueAt,
     required this.closedAt,
+    this.events = const [],
   });
 
   factory SafetyIncident.fromJson(Map<String, dynamic> json) => SafetyIncident(
@@ -260,7 +340,12 @@ class SafetyIncident {
         productionDate: json['productionDate'] as String?,
         shiftCode: json['shiftCode'] as String?,
         shiftName: json['shiftName'] as String?,
+        investigationDueAt: json['investigationDueAt'] as String?,
         closedAt: json['closedAt'] as String?,
+        events: [
+          for (final row in json['events'] as List<dynamic>? ?? const [])
+            SafetyIncidentEvent.fromJson(row as Map<String, dynamic>),
+        ],
       );
 
   final String id;
@@ -317,8 +402,25 @@ class SafetyIncident {
   final String? shiftCode;
   final String? shiftName;
 
+  /// The investigation's deadline (issue #228). Settable and changeable by
+  /// anyone with an edit Grant reaching the Org Unit, while the incident is
+  /// not yet closed. Null when nobody has set one.
+  final String? investigationDueAt;
+
   /// When the record was closed (issue #228). Null while it is still open.
   final String? closedAt;
+
+  /// The event history: every severity change, status move, days change and
+  /// closure, oldest first — what `getSafetyIncidentDetail` reads back with
+  /// the record (issue #228).
+  final List<SafetyIncidentEvent> events;
+
+  bool get isClosed => status == SafetyIncidentStatus.closed;
+
+  /// The one legal next step for the ordinary status move, or null when there
+  /// is none — either already `actions_pending` (only closing moves it
+  /// further) or already `closed`.
+  String? get nextStatus => SafetyIncidentStatus.nextStatus(status);
 
   String get statusLabel => SafetyIncidentStatus.label(status);
   StatusTone get statusTone => SafetyIncidentStatus.tone(status);

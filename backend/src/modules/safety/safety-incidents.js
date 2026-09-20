@@ -73,6 +73,33 @@
  * existence check rather than another Module's judgment). Scope is not this
  * file's business: safety-incident-routes.js asks People before calling
  * anything here.
+ *
+ * **Issue #228 — making a recorded incident answerable.** Five more things
+ * live here, added by migration 1800900000000 and this ticket: setting or
+ * changing the investigation due date, moving the status ladder, recording
+ * what the injury cost, correcting the severity, and closing. Every one of
+ * the last four writes a row to `safety_incident_events` in the same
+ * transaction as its own UPDATE — `writeIncidentEvent` below, called the same
+ * way `nonconformances.js`'s `writeCorrection` is. `routes.js` asks People
+ * about the edit Grant or the Safety authority each of these five needs
+ * *before* calling in here (AGENTS.md §6); this file assumes the caller
+ * already checked what needed checking and only enforces what is a fact about
+ * the record itself: the ladder, the note, the days.
+ *
+ * **"The days settled" is answered by this table, not a new column.** Closing
+ * an incident above the no-injury rung is refused (409) until the lost-time
+ * and restricted days have been recorded at least once, zero being an
+ * acceptable answer — see migration 1800900000000's own header for why that
+ * is asked of `safety_incident_events` (has a `days` row ever been written
+ * for this incident?) rather than a second column on `safety_incidents` that
+ * cannot tell "recorded as zero" from "never looked at".
+ *
+ * **A severity correction is accepted on a closed incident.** #223 decision 5
+ * is the reason: a January first-aid case upgraded to lost-time in March
+ * restates January's own numbers, and March is routinely after the incident
+ * that made it has long since closed. Every other change below refuses a
+ * closed incident (moving its status, recording its days, closing it again);
+ * changing its severity does not.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -125,6 +152,31 @@ const RECORDABLE_LEVELS = ['medical_treatment', 'restricted_work', 'lost_time', 
 // reason as the sets above.
 const LOST_TIME_LEVELS = ['lost_time', 'fatality'];
 
+// The status ladder, in order (issue #228). `open` is never a move's own
+// target — nothing moves *back* to it — and `closed` is reached only through
+// `closeSafetyIncident`, never through `moveSafetyIncidentStatus`: closing has
+// its own rules (Safety authority, a note, the days settled) that the
+// ordinary ladder move does not ask, so it is not one of the targets that
+// move accepts. `STATUSES` is every value the column's own CHECK allows, used
+// to validate a caller's `?status=` filter; `STATUS_MOVE_TARGETS` is the
+// narrower set `moveSafetyIncidentStatus` accepts as a destination.
+const STATUSES = ['open', 'investigating', 'actions_pending', 'closed'];
+const STATUS_MOVE_TARGETS = ['investigating', 'actions_pending'];
+
+// The one legal next step from each status, for the ordinary ladder move.
+// `actions_pending` and `closed` have no entry: there is nowhere the ordinary
+// move can take an incident already at `actions_pending` (only closing can),
+// and nothing ever moves once it is `closed`.
+const NEXT_STATUS = {
+  open: 'investigating',
+  investigating: 'actions_pending'
+};
+
+// The event kinds `safety_incident_events` accepts (migration 1800900000000)
+// — repeated here for the same reason INCIDENT_TYPES is repeated from the
+// baseline's own CHECK.
+const EVENT_KINDS = ['severity', 'status', 'days', 'closure'];
+
 const SEVERITY_RANK = Object.fromEntries(SEVERITY_LEVELS.map((level, index) => [level, index]));
 
 function severityRank(level) {
@@ -163,6 +215,33 @@ function optionalNonNegativeInteger(field, value) {
     throw httpError(400, `${field} must be a whole number of days, or zero`);
   }
   return number;
+}
+
+// A required count of days (issue #228's own days-recording act): unlike
+// `optionalNonNegativeInteger`, an absent value is a 400 rather than a silent
+// zero. Recording the days is a deliberate act — "zero being an answer" only
+// holds when zero was actually said, not when the field was left out — so
+// this function exists specifically to not default the way the recording
+// form's own field does.
+function requireNonNegativeInteger(field, value) {
+  if (value === undefined || value === null || value === '') {
+    throw httpError(400, `${field} is required`);
+  }
+  const number = typeof value === 'string' ? Number(value.trim()) : value;
+  if (typeof number !== 'number' || !Number.isFinite(number) || !Number.isInteger(number) || number < 0) {
+    throw httpError(400, `${field} must be a whole number of days, or zero`);
+  }
+  return number;
+}
+
+// The note a severity change or a closure is taken with (issue #228). Both
+// require one — a change with no reason on it is the row an auditor cannot
+// use — and `reason` names which act refused it, so the 400 reads as a
+// sentence rather than a field name alone.
+function requireChangeNote(body, reason) {
+  const note = optionalText(body.note);
+  if (note === null) throw httpError(400, `note is required: say why ${reason}`);
+  return note;
 }
 
 // A required timestamp: parsed, and refused with a 400 naming the field
@@ -266,7 +345,7 @@ const SAFETY_INCIDENT_JOINS = `
   LEFT JOIN shift_instances shi ON shi.id = si.shift_instance_id
   LEFT JOIN shift_definitions sd ON sd.id = shi.shift_definition_id`;
 
-function toSafetyIncident(row) {
+function toSafetyIncident(row, { events = [] } = {}) {
   return {
     id: row.id,
     incidentNo: row.incident_no,
@@ -309,7 +388,11 @@ function toSafetyIncident(row) {
     investigationDueAt: row.investigation_due_at ?? null,
     closedAt: row.closed_at ?? null,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    // The event history (issue #228): empty on a list row and on a plain
+    // find, filled in only by getSafetyIncidentDetail — the same shape
+    // toNonconformance gives its own quantityChanges/dispositions/corrections.
+    events
   };
 }
 
@@ -390,6 +473,46 @@ async function listSafetyIncidents(
   };
 }
 
+// The Site's incidents whose investigation is overdue (issue #228): past
+// `investigation_due_at` and not `closed`, for an Org Unit and everything
+// beneath it. Readable by anyone who can see the Site — the same weaker
+// question the register itself asks — because this is a worklist, not a
+// decision surface. `investigation_due_at IS NOT NULL` is deliberate: an
+// incident nobody has ever given a deadline has nothing to be overdue against,
+// and listing it here would bury the incidents that actually missed one.
+// `safety_incidents_open_idx` (the baseline's own partial index on
+// `(org_unit_id, investigation_due_at) WHERE status <> 'closed'`) is exactly
+// this query's own shape.
+async function listOverdueSafetyIncidents(siteId, { orgUnitPath = null, limit = SAFETY_INCIDENT_LIST_LIMIT } = {}) {
+  const conditions = [
+    'ou.site_id = $1',
+    "si.status <> 'closed'",
+    'si.investigation_due_at IS NOT NULL',
+    'si.investigation_due_at < now()'
+  ];
+  const params = [siteId];
+
+  if (orgUnitPath !== null) {
+    params.push(orgUnitPath);
+    conditions.push(`ou.path <@ $${params.length}::ltree`);
+  }
+
+  const { rows } = await getPool().query(
+    `SELECT ${SAFETY_INCIDENT_COLUMNS}
+     ${SAFETY_INCIDENT_JOINS}
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY si.investigation_due_at ASC, si.id ASC
+     LIMIT ${limit + 1}`,
+    params
+  );
+
+  const truncated = rows.length > limit;
+  return {
+    incidents: rows.slice(0, limit).map((row) => toSafetyIncident(row)),
+    truncated
+  };
+}
+
 // The null-returning form, mirroring findNonconformance/findAsset: a
 // malformed id resolves to null rather than reaching Postgres as a BIGINT
 // parameter.
@@ -402,13 +525,105 @@ async function findSafetyIncident(id) {
   return rows[0] ? toSafetyIncident(rows[0]) : null;
 }
 
-// The detail read: today the same projection as the list and
-// findSafetyIncident, and its own function anyway (mirroring
-// getNonconformanceDetail) so a later ticket that adds sub-records —
-// classification, corrections, a linked Concern — has one place to add them
-// without reshaping the register's own row.
+// One row of the event history, with whoever made the change named (issue
+// #228) — an Account or an identified Employee, mirroring the incident's own
+// two-actor shape (`recordedByAccountName`/`reportedByName`). Only an Account
+// has ever written one in this slice (`changedByEmployeeName` is always null
+// today), but the projection reads both, the same way `SAFETY_INCIDENT_COLUMNS`
+// reads both of the incident's own actor columns whether or not the floor door
+// is the one that filled them.
+const SAFETY_INCIDENT_EVENT_COLUMNS = `
+  sie.id, sie.safety_incident_id, sie.kind, sie.previous_value, sie.new_value,
+  sie.note, sie.changed_at,
+  sie.changed_by_account_id, cau.display_name AS changed_by_account_name,
+  sie.changed_by_employee_id, cae.display_name AS changed_by_employee_name`;
+
+const SAFETY_INCIDENT_EVENT_JOINS = `
+  FROM safety_incident_events sie
+  LEFT JOIN app_users cau ON cau.id = sie.changed_by_account_id
+  LEFT JOIN employees cae ON cae.id = sie.changed_by_employee_id`;
+
+function toSafetyIncidentEvent(row) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    previousValue: row.previous_value,
+    newValue: row.new_value,
+    note: row.note ?? null,
+    changedByAccountId: row.changed_by_account_id ?? null,
+    changedByAccountName: row.changed_by_account_name ?? null,
+    changedByEmployeeId: row.changed_by_employee_id ?? null,
+    changedByEmployeeName: row.changed_by_employee_name ?? null,
+    changedAt: row.changed_at
+  };
+}
+
+async function listSafetyIncidentEvents(safetyIncidentId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${SAFETY_INCIDENT_EVENT_COLUMNS}
+     ${SAFETY_INCIDENT_EVENT_JOINS}
+     WHERE sie.safety_incident_id = $1
+     ORDER BY sie.changed_at, sie.id`,
+    [safetyIncidentId]
+  );
+  return rows.map(toSafetyIncidentEvent);
+}
+
+// One row in the history, in the same transaction as the UPDATE that made it
+// true (issue #228) — a change that lands with no row saying who made it and
+// when is the state this table exists to prevent, the same discipline
+// `nonconformances.js`'s own `writeCorrection` keeps. `kind` is one of
+// `EVENT_KINDS`; the caller picks it, this function does not infer it.
+async function writeIncidentEvent(client, {
+  safetyIncidentId,
+  kind,
+  previousValue,
+  newValue,
+  accountId = null,
+  employeeId = null,
+  note = null
+}) {
+  await client.query(
+    `INSERT INTO safety_incident_events (
+       safety_incident_id, kind, previous_value, new_value, note,
+       changed_by_account_id, changed_by_employee_id
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [safetyIncidentId, kind, previousValue, newValue, note, accountId, employeeId]
+  );
+}
+
+// Has this incident's days ever been recorded (issue #228)? Answered by
+// asking the history rather than a column on `safety_incidents` — see
+// migration 1800900000000's own header for why. Used only by
+// `closeSafetyIncident`'s own 409, and only for a severity above the
+// no-injury rung.
+async function hasSettledDays(safetyIncidentId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT 1 FROM safety_incident_events WHERE safety_incident_id = $1 AND kind = 'days' LIMIT 1`,
+    [safetyIncidentId]
+  );
+  return rows.length > 0;
+}
+
+// The detail read: the incident together with its event history (issue
+// #228), oldest first — the order a person reads a record's own story in,
+// the same choice `getNonconformanceDetail` makes for its own three
+// histories. Its own function anyway (mirroring getNonconformanceDetail) so a
+// later ticket that adds another sub-record — a linked Concern (#229) — has
+// one place to add it without reshaping the register's own row.
 async function getSafetyIncidentDetail(id) {
-  return findSafetyIncident(id);
+  if (parseId(id) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT ${SAFETY_INCIDENT_COLUMNS} ${SAFETY_INCIDENT_JOINS} WHERE si.id = $1`,
+    [id]
+  );
+  if (!rows[0]) return null;
+  return toSafetyIncident(rows[0], {
+    events: await listSafetyIncidentEvents(rows[0].id)
+  });
 }
 
 // The Asset, if one is named, must sit at the Org Unit the incident is
@@ -578,12 +793,288 @@ async function recordSafetyIncident(input, actor = {}) {
   return getSafetyIncidentDetail(String(id));
 }
 
+/**
+ * Set or change the investigation due date (issue #228).
+ *
+ * The route has already asked People for an edit Grant reaching the
+ * incident's Org Unit — the same standing recording itself needs, and no
+ * more, because setting a deadline is not the judgement Safety authority
+ * exists for. Accepted on an incident that is not yet `closed`: the deadline
+ * is what keeps an *open* investigation honest, and a closed incident has
+ * nothing left to be overdue against — refused with a 409 naming that rather
+ * than silently accepting a date nothing will ever read. `null` clears it,
+ * which is "changed" too: a due date set in error should be removable, not
+ * only replaceable with another date.
+ *
+ * Not written to `safety_incident_events`: issue #228's own list of what the
+ * history keeps is severity, status, days and closure, and a due date is
+ * none of those.
+ */
+async function setInvestigationDueDate(id, input, accountId) {
+  const existing = await findSafetyIncident(id);
+  if (!existing) throw notFound('Safety incident');
+
+  if (existing.status === 'closed') {
+    throw httpError(409, 'this Safety incident is closed; its investigation due date cannot be changed');
+  }
+
+  const body = input ?? {};
+  const investigationDueAt = optionalTimestamp('investigationDueAt', body.investigationDueAt);
+
+  await withActor(accountId, async (client) => {
+    await client.query('UPDATE safety_incidents SET investigation_due_at = $1 WHERE id = $2', [
+      investigationDueAt === null ? null : investigationDueAt.toISOString(),
+      id
+    ]);
+  });
+
+  return getSafetyIncidentDetail(id);
+}
+
+/**
+ * Move an incident's status one step along the ladder (issue #228):
+ * `open -> investigating -> actions_pending`. `closed` is never a target
+ * here — `closeSafetyIncident` is the only way to reach it, because closing
+ * needs Safety authority, a note and the days settled, none of which this
+ * ordinary move asks for, and offering `closed` as a value here would let a
+ * caller reach it without any of the three.
+ *
+ * The route has asked for an edit Grant reaching the Org Unit, the same
+ * standing recording itself needs — issue #223's own story (31) gives this to
+ * a supervisor, not to a holder of Safety authority specifically.
+ *
+ * A move that is not the ladder's own next step — sideways, backwards, two
+ * steps at once, or attempted from `closed` — is refused with a 409: the
+ * record's own state is what refuses it, not a malformed request, so it is
+ * not a 400.
+ */
+async function moveSafetyIncidentStatus(id, input, accountId) {
+  const existing = await findSafetyIncident(id);
+  if (!existing) throw notFound('Safety incident');
+
+  const body = input ?? {};
+  requireMembership('status', body.status, STATUS_MOVE_TARGETS);
+
+  const next = NEXT_STATUS[existing.status];
+  if (next === undefined || next !== body.status) {
+    throw httpError(
+      409,
+      `this Safety incident is ${existing.status}; the ladder is open -> investigating -> actions_pending -> closed, and closing has its own address`
+    );
+  }
+
+  await withActor(accountId, async (client) => {
+    await client.query('UPDATE safety_incidents SET status = $1 WHERE id = $2', [
+      body.status,
+      id
+    ]);
+    await writeIncidentEvent(client, {
+      safetyIncidentId: existing.id,
+      kind: 'status',
+      previousValue: existing.status,
+      newValue: body.status,
+      accountId
+    });
+  });
+
+  return getSafetyIncidentDetail(id);
+}
+
+/**
+ * Correct an incident's severity level (issue #228).
+ *
+ * The route has asked for Safety authority reaching the Org Unit — 403 before
+ * this function is ever called — and this function requires the note that
+ * goes with it: a correction with no reason on it is the row an auditor
+ * cannot use, the same requirement `nonconformances.js`'s own
+ * `lowerSeverity` makes of its note.
+ *
+ * Deliberately not restricted to a closed or an open incident: #223 decision
+ * 5 is that correcting a severity restates the period the incident occurred
+ * in, and the correction routinely comes *after* the incident that needs it
+ * has long since closed — a January first-aid case upgraded to lost-time in
+ * March. Every other write in this file refuses a closed incident; this one
+ * does not, on purpose.
+ *
+ * Ladder consistency is asked again with the incident's own current days
+ * (`requireLadderConsistency`, the same function `recordSafetyIncident`
+ * calls — issue #228's own instruction to reuse it rather than write a second
+ * copy): a severity correction that would leave the record's own days
+ * inconsistent with its new rung is refused the same 400 a caller recording
+ * the incident from scratch would get.
+ */
+async function changeSafetyIncidentSeverity(id, input, accountId) {
+  const existing = await findSafetyIncident(id);
+  if (!existing) throw notFound('Safety incident');
+
+  const body = input ?? {};
+  requireMembership('severityLevel', body.severityLevel, SEVERITY_LEVELS);
+  const note = requireChangeNote(body, 'the severity level is being changed');
+
+  if (body.severityLevel === existing.severityLevel) {
+    throw httpError(409, `this Safety incident is already ${existing.severityLevel}; a change records a difference`);
+  }
+
+  requireLadderConsistency({
+    severityLevel: body.severityLevel,
+    lostTimeDays: existing.lostTimeDays,
+    restrictedDays: existing.restrictedDays,
+    occurredAt: new Date(existing.occurredAt),
+    reportedAt: new Date(existing.reportedAt)
+  });
+
+  await withActor(accountId, async (client) => {
+    await client.query('UPDATE safety_incidents SET severity_level = $1 WHERE id = $2', [
+      body.severityLevel,
+      id
+    ]);
+    await writeIncidentEvent(client, {
+      safetyIncidentId: existing.id,
+      kind: 'severity',
+      previousValue: existing.severityLevel,
+      newValue: body.severityLevel,
+      note,
+      accountId
+    });
+  });
+
+  return getSafetyIncidentDetail(id);
+}
+
+/**
+ * Record what the injury cost (issue #228): the lost-time and restricted
+ * days. Both are required on every call — `requireNonNegativeInteger`, not
+ * the recording form's own `optionalNonNegativeInteger` — because this is the
+ * act that "settles" the days (see `hasSettledDays` and migration
+ * 1800900000000's own header): a caller who sends only one of the two has not
+ * said what the other one is, and defaulting it to zero silently would be
+ * this function deciding a number the caller never stated.
+ *
+ * The route has asked for Safety authority reaching the Org Unit. Ladder
+ * consistency is asked again with the incident's own current severity —
+ * `requireLadderConsistency`, reused rather than duplicated, issue #228's own
+ * instruction: no days on the no-injury rung, lost-time days only at
+ * `lost_time` or `fatality`.
+ *
+ * Recording the same numbers again is not refused: unlike
+ * `nonconformances.js`'s quantity, which only ever grows, "the days" can
+ * legitimately be re-confirmed at the value they already were — that is what
+ * "zero being an answer" means the second time as much as the first.
+ */
+async function recordSafetyIncidentDays(id, input, accountId) {
+  const existing = await findSafetyIncident(id);
+  if (!existing) throw notFound('Safety incident');
+
+  if (existing.status === 'closed') {
+    throw httpError(409, 'this Safety incident is closed; its days cannot be changed');
+  }
+
+  const body = input ?? {};
+  const lostTimeDays = requireNonNegativeInteger('lostTimeDays', body.lostTimeDays);
+  const restrictedDays = requireNonNegativeInteger('restrictedDays', body.restrictedDays);
+
+  requireLadderConsistency({
+    severityLevel: existing.severityLevel,
+    lostTimeDays,
+    restrictedDays,
+    occurredAt: new Date(existing.occurredAt),
+    reportedAt: new Date(existing.reportedAt)
+  });
+
+  await withActor(accountId, async (client) => {
+    await client.query(
+      'UPDATE safety_incidents SET lost_time_days = $1, restricted_days = $2 WHERE id = $3',
+      [lostTimeDays, restrictedDays, id]
+    );
+    await writeIncidentEvent(client, {
+      safetyIncidentId: existing.id,
+      kind: 'days',
+      previousValue: `lostTimeDays=${existing.lostTimeDays},restrictedDays=${existing.restrictedDays}`,
+      newValue: `lostTimeDays=${lostTimeDays},restrictedDays=${restrictedDays}`,
+      accountId
+    });
+  });
+
+  return getSafetyIncidentDetail(id);
+}
+
+/**
+ * Close an incident (issue #228) — the judgement of someone accountable for
+ * the place, per #223 decision 4.
+ *
+ * The route has asked for Safety authority reaching the Org Unit (403 before
+ * this function runs). Three more things are asked here, in the order #228's
+ * own acceptance criterion states them:
+ *
+ *   - A closure note (400) — the same requirement a severity change makes of
+ *     its own note, and for the same reason.
+ *   - Already-closed is a 409, not a second closure: the closing time the
+ *     first close set would otherwise be silently overwritten.
+ *   - The days settled (409) for any rung above the no-injury one —
+ *     `hasSettledDays`, which asks `safety_incident_events` rather than a
+ *     column, so that LTIFR's numerator is never left blank without a
+ *     `days` event on record to say it was actually looked at.
+ *
+ * **Never refused because a Concern raised from the incident is open.** #223
+ * decision 4 states this in so many words, the same shape #200 settled for a
+ * Non-conformance and its own Concern: this function asks nothing about the
+ * Action log at all, and there is no query here that could refuse for that
+ * reason even by accident.
+ */
+async function closeSafetyIncident(id, input, accountId) {
+  const existing = await findSafetyIncident(id);
+  if (!existing) throw notFound('Safety incident');
+
+  if (existing.status === 'closed') {
+    throw httpError(409, 'this Safety incident is already closed');
+  }
+
+  const body = input ?? {};
+  const note = requireChangeNote(body, 'this Safety incident is being closed');
+
+  if (existing.severityLevel !== 'near_miss') {
+    const settled = await hasSettledDays(existing.id);
+    if (!settled) {
+      throw httpError(
+        409,
+        'the lost-time and restricted days must be recorded before closing a Safety incident above the near_miss rung'
+      );
+    }
+  }
+
+  await withActor(accountId, async (client) => {
+    await client.query(
+      `UPDATE safety_incidents SET status = 'closed', closed_at = now() WHERE id = $1`,
+      [id]
+    );
+    await writeIncidentEvent(client, {
+      safetyIncidentId: existing.id,
+      kind: 'closure',
+      previousValue: existing.status,
+      newValue: 'closed',
+      note,
+      accountId
+    });
+  });
+
+  return getSafetyIncidentDetail(id);
+}
+
 module.exports = {
   INCIDENT_TYPES,
   SEVERITY_LEVELS,
   RECORDABLE_LEVELS,
+  STATUSES,
+  STATUS_MOVE_TARGETS,
+  EVENT_KINDS,
   listSafetyIncidents,
+  listOverdueSafetyIncidents,
   findSafetyIncident,
   getSafetyIncidentDetail,
-  recordSafetyIncident
+  recordSafetyIncident,
+  setInvestigationDueDate,
+  moveSafetyIncidentStatus,
+  changeSafetyIncidentSeverity,
+  recordSafetyIncidentDays,
+  closeSafetyIncident
 };

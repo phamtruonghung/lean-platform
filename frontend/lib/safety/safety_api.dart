@@ -200,6 +200,128 @@ class SafetyApi {
     }
   }
 
+  /// Sets or changes the investigation due date (issue #228,
+  /// `PATCH /api/safety/incidents/:id/investigation-due-date`). Needs an edit
+  /// Grant reaching the incident's Org Unit; the API refuses anyone else with
+  /// a 403, and refuses a closed incident with a 409. `null` clears it.
+  Future<SafetyIncident> setInvestigationDueDate(
+    String accessToken,
+    String id, {
+    String? investigationDueAt,
+  }) async {
+    final path = '/api/safety/incidents/$id/investigation-due-date';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'investigationDueAt': investigationDueAt}),
+      ),
+      path,
+    );
+    return _incidentFrom(response);
+  }
+
+  /// Moves the status one step along the ladder (issue #228,
+  /// `POST /api/safety/incidents/:id/status`): `open -> investigating ->
+  /// actions_pending`. `closed` is never a valid [status] here — closing is
+  /// [closeSafetyIncident]'s own address. Needs an edit Grant reaching the
+  /// incident's Org Unit; a move that is not the ladder's own next step is a
+  /// 409.
+  Future<SafetyIncident> moveSafetyIncidentStatus(
+    String accessToken,
+    String id, {
+    required String status,
+  }) async {
+    final path = '/api/safety/incidents/$id/status';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'status': status}),
+      ),
+      path,
+    );
+    return _incidentFrom(response);
+  }
+
+  /// Corrects the severity level, with a note (issue #228, #223 decision 5,
+  /// `POST /api/safety/incidents/:id/severity`). Needs Safety authority
+  /// reaching the incident's Org Unit (ADR-0039) — the API refuses anyone
+  /// else with a 403, and refuses a missing note with a 400. Accepted even on
+  /// a closed incident: a correction restates the period it occurred in.
+  Future<SafetyIncident> changeSafetyIncidentSeverity(
+    String accessToken,
+    String id, {
+    required String severityLevel,
+    required String note,
+  }) async {
+    final path = '/api/safety/incidents/$id/severity';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'severityLevel': severityLevel, 'note': note}),
+      ),
+      path,
+    );
+    return _incidentFrom(response);
+  }
+
+  /// Records what the injury cost: the lost-time and restricted days (issue
+  /// #228, `POST /api/safety/incidents/:id/days`). Needs Safety authority
+  /// reaching the incident's Org Unit — both counts are required on every
+  /// call, because this is the act that "settles" the days that closing above
+  /// the no-injury rung waits on (zero is an answer, but it has to be said).
+  Future<SafetyIncident> recordSafetyIncidentDays(
+    String accessToken,
+    String id, {
+    required int lostTimeDays,
+    required int restrictedDays,
+  }) async {
+    final path = '/api/safety/incidents/$id/days';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'lostTimeDays': lostTimeDays, 'restrictedDays': restrictedDays}),
+      ),
+      path,
+    );
+    return _incidentFrom(response);
+  }
+
+  /// Closes the incident, with a note (issue #228, #223 decision 4,
+  /// `POST /api/safety/incidents/:id/close`). Needs Safety authority reaching
+  /// the incident's Org Unit — the API refuses anyone else with a 403,
+  /// refuses a missing note with a 400, and refuses one above the no-injury
+  /// rung whose days are not settled with a 409. Never refused for an open
+  /// Concern raised from the incident.
+  Future<SafetyIncident> closeSafetyIncident(
+    String accessToken,
+    String id, {
+    required String note,
+  }) async {
+    final path = '/api/safety/incidents/$id/close';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'note': note}),
+      ),
+      path,
+    );
+    return _incidentFrom(response);
+  }
+
+  SafetyIncident _incidentFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return SafetyIncident.fromJson(body['incident'] as Map<String, dynamic>);
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   // Mirrors QualityApi._send: a transport failure and a non-2xx answer both
   // leave here as the Module's own exception, carrying the API's own message
   // when it sent one (so a 400's sentence reaches the form that caused it

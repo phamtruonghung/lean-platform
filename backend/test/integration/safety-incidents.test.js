@@ -33,6 +33,12 @@ const insertedAssetIds = [];
 const insertedEmployeeIds = [];
 const insertedShiftDefinitionIds = [];
 const insertedShiftInstanceIds = [];
+// Concerns raised through the Action log's own API (issue #228's own "closes
+// despite an open Concern" proof) — `action_items.org_unit_id` has no ON
+// DELETE CASCADE, so these are cleaned up explicitly, the same way every
+// other integration file that raises one does (capas.test.js,
+// concern-nonconformances.test.js, and the rest).
+const insertedActionIds = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -52,9 +58,11 @@ async function json(response) {
   return { status: response.status, body: await response.json() };
 }
 
-// An Account, optionally holding Grants. `grants` are `{ orgUnitId, write }`
-// pairs; `write` defaults to true, since most of this file's Accounts are
-// recording rather than reading.
+// An Account, optionally holding Grants. `grants` are `{ orgUnitId, write,
+// safety }` pairs; `write` defaults to true, since most of this file's
+// Accounts are recording rather than reading. `safety` (issue #228, ADR-0039)
+// defaults to false — most Accounts in this file hold no Safety authority,
+// and the tests that need it say so explicitly.
 async function insertAccount({ role = 'operator', grants = [] } = {}) {
   const subject = uniqueCode('siacct');
   const { rows: [account] } = await pool.query(
@@ -66,9 +74,9 @@ async function insertAccount({ role = 'operator', grants = [] } = {}) {
 
   for (const grant of grants) {
     await pool.query(
-      `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write)
-       VALUES ($1, $2, $3)`,
-      [account.id, grant.orgUnitId, grant.write ?? true]
+      `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write, safety_authority)
+       VALUES ($1, $2, $3, $4)`,
+      [account.id, grant.orgUnitId, grant.write ?? true, grant.safety ?? false]
     );
   }
 
@@ -165,6 +173,74 @@ async function readIncident(token, id) {
   return json(response);
 }
 
+async function overdueIncidents(token, siteId, query = '') {
+  const response = await fetch(`${base}/api/safety/sites/${siteId}/incidents/overdue${query}`, {
+    headers: token
+  });
+  return json(response);
+}
+
+async function setDueDate(token, id, body) {
+  const response = await fetch(`${base}/api/safety/incidents/${id}/investigation-due-date`, {
+    method: 'PATCH',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return json(response);
+}
+
+async function moveStatus(token, id, body) {
+  const response = await fetch(`${base}/api/safety/incidents/${id}/status`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return json(response);
+}
+
+async function changeSeverity(token, id, body) {
+  const response = await fetch(`${base}/api/safety/incidents/${id}/severity`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return json(response);
+}
+
+async function recordDays(token, id, body) {
+  const response = await fetch(`${base}/api/safety/incidents/${id}/days`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return json(response);
+}
+
+async function closeIncident(token, id, body) {
+  const response = await fetch(`${base}/api/safety/incidents/${id}/close`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return json(response);
+}
+
+// Raises an ordinary Concern at an Org Unit through the Action log's own API
+// (issue #229 has not built the safety-incident-specific link yet, so this is
+// the only way to construct "a Concern is open" at all). `token`'s Account
+// need only see the Site — `canSeeSite`, not a write Grant — the same rule
+// `action-routes.js`'s own POST /sites/:siteId/actions applies to a Concern.
+async function raiseConcern(token, siteId, body) {
+  const response = await fetch(`${base}/api/actions/sites/${siteId}/actions`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const result = await json(response);
+  if (result.status === 201) insertedActionIds.push(result.body.action.id);
+  return result;
+}
+
 // The one shape every recording in this file starts from: a Site, an Org
 // Unit with a write Grant for the caller. Returns everything a test needs to
 // vary one thing about it.
@@ -219,6 +295,10 @@ test.after(async () => {
       WHERE org_unit_id IN (SELECT id FROM org_units WHERE site_id = ANY($1))`,
     [insertedSiteIds]
   );
+  // Concerns raised through the Action log (issue #228's open-Concern proof)
+  // — `action_items.org_unit_id` has no ON DELETE CASCADE, so these must go
+  // before the Org Units they were raised at.
+  await pool.query('DELETE FROM action_items WHERE id = ANY($1)', [insertedActionIds]);
   await pool.query('DELETE FROM assets WHERE id = ANY($1)', [insertedAssetIds]);
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM shift_instances WHERE id = ANY($1)', [insertedShiftInstanceIds]);
@@ -840,4 +920,535 @@ test('the register is filtered by Org Unit (including beneath it), status, incid
   const badDate = await listIncidents(recorder.token, site.id, '?from=05-04-2026');
   assert.strictEqual(badDate.status, 400);
   assert.match(badDate.body.message, /from/);
+});
+
+// ---------------------------------------------------------------------------
+// 9. The investigation due date (issue #228)
+// ---------------------------------------------------------------------------
+
+async function recordedIncident(recorder, site, unit, overrides = {}) {
+  const { status, body } = await record(recorder.token, site.id, {
+    orgUnitId: unit.id,
+    occurredAt: '2026-04-10T08:00:00Z',
+    incidentType: 'injury',
+    severityLevel: 'first_aid',
+    description: 'An incident recorded for issue #228.',
+    ...overrides
+  });
+  assert.strictEqual(status, 201, JSON.stringify(body));
+  return body.incident;
+}
+
+test('an edit Grant sets and then changes the investigation due date', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const incident = await recordedIncident(recorder, site, unit);
+
+  const first = await setDueDate(recorder.token, incident.id, {
+    investigationDueAt: '2026-04-20T00:00:00Z'
+  });
+  assert.strictEqual(first.status, 200, JSON.stringify(first.body));
+  assert.strictEqual(
+    first.body.incident.investigationDueAt,
+    new Date('2026-04-20T00:00:00Z').toISOString()
+  );
+
+  const changed = await setDueDate(recorder.token, incident.id, {
+    investigationDueAt: '2026-05-01T00:00:00Z'
+  });
+  assert.strictEqual(changed.status, 200, JSON.stringify(changed.body));
+  assert.strictEqual(
+    changed.body.incident.investigationDueAt,
+    new Date('2026-05-01T00:00:00Z').toISOString()
+  );
+
+  const cleared = await setDueDate(recorder.token, incident.id, { investigationDueAt: null });
+  assert.strictEqual(cleared.status, 200, JSON.stringify(cleared.body));
+  assert.strictEqual(cleared.body.incident.investigationDueAt, null);
+});
+
+test('setting the due date is refused with a 403 for an Account whose Grant does not reach the Org Unit', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const incident = await recordedIncident(recorder, site, unit);
+  const stranger = await insertAccount({});
+
+  const { status, body } = await setDueDate(stranger.token, incident.id, {
+    investigationDueAt: '2026-04-20T00:00:00Z'
+  });
+  assert.strictEqual(status, 403, JSON.stringify(body));
+});
+
+test('the due date can still be set while investigating, but not once the incident is closed', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit);
+
+  const moved = await moveStatus(recorder.token, incident.id, { status: 'investigating' });
+  assert.strictEqual(moved.status, 200, JSON.stringify(moved.body));
+
+  const whileInvestigating = await setDueDate(recorder.token, incident.id, {
+    investigationDueAt: '2026-04-25T00:00:00Z'
+  });
+  assert.strictEqual(whileInvestigating.status, 200, JSON.stringify(whileInvestigating.body));
+
+  // Above the no-injury rung, so the days have to be settled before it can
+  // close at all — zero is the answer here, and saying it is what settles it.
+  const settled = await recordDays(safetyHolder.token, incident.id, {
+    lostTimeDays: 0,
+    restrictedDays: 0
+  });
+  assert.strictEqual(settled.status, 200, JSON.stringify(settled.body));
+
+  const closed = await closeIncident(safetyHolder.token, incident.id, { note: 'Dealt with.' });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+
+  const afterClose = await setDueDate(recorder.token, incident.id, {
+    investigationDueAt: '2026-05-01T00:00:00Z'
+  });
+  assert.strictEqual(afterClose.status, 409, JSON.stringify(afterClose.body));
+});
+
+// ---------------------------------------------------------------------------
+// 10. The status ladder (issue #228)
+// ---------------------------------------------------------------------------
+
+test('an incident moves open -> investigating -> actions_pending with an edit Grant', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const incident = await recordedIncident(recorder, site, unit);
+
+  const toInvestigating = await moveStatus(recorder.token, incident.id, {
+    status: 'investigating'
+  });
+  assert.strictEqual(toInvestigating.status, 200, JSON.stringify(toInvestigating.body));
+  assert.strictEqual(toInvestigating.body.incident.status, 'investigating');
+
+  const toActionsPending = await moveStatus(recorder.token, incident.id, {
+    status: 'actions_pending'
+  });
+  assert.strictEqual(toActionsPending.status, 200, JSON.stringify(toActionsPending.body));
+  assert.strictEqual(toActionsPending.body.incident.status, 'actions_pending');
+});
+
+test('a move that is not on the ladder is refused with a 409', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const skipAhead = await recordedIncident(recorder, site, unit);
+
+  // open -> actions_pending skips investigating, which is not on the ladder.
+  const skipped = await moveStatus(recorder.token, skipAhead.id, { status: 'actions_pending' });
+  assert.strictEqual(skipped.status, 409, JSON.stringify(skipped.body));
+
+  // investigating -> investigating (sideways) and actions_pending ->
+  // investigating (backwards) are both refused too.
+  const investigating = await recordedIncident(recorder, site, unit);
+  const first = await moveStatus(recorder.token, investigating.id, { status: 'investigating' });
+  assert.strictEqual(first.status, 200, JSON.stringify(first.body));
+
+  const sideways = await moveStatus(recorder.token, investigating.id, {
+    status: 'investigating'
+  });
+  assert.strictEqual(sideways.status, 409, JSON.stringify(sideways.body));
+
+  const second = await moveStatus(recorder.token, investigating.id, {
+    status: 'actions_pending'
+  });
+  assert.strictEqual(second.status, 200, JSON.stringify(second.body));
+
+  const backwards = await moveStatus(recorder.token, investigating.id, {
+    status: 'investigating'
+  });
+  assert.strictEqual(backwards.status, 409, JSON.stringify(backwards.body));
+
+  // `closed` is never a valid target for the ordinary move — only the
+  // dedicated close address reaches it.
+  const viaMove = await moveStatus(recorder.token, second.body.incident.id, {
+    status: 'closed'
+  });
+  assert.strictEqual(viaMove.status, 400, JSON.stringify(viaMove.body));
+});
+
+test('closing does not require having passed through investigating', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit, {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss',
+    description: 'A no-injury event that needed no investigation.'
+  });
+
+  assert.strictEqual(incident.status, 'open');
+
+  const closed = await closeIncident(safetyHolder.token, incident.id, {
+    note: 'Nothing to investigate; closing directly from open.'
+  });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+  assert.strictEqual(closed.body.incident.status, 'closed');
+});
+
+test('moving status is refused with a 403 for an Account whose Grant does not reach the Org Unit', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const incident = await recordedIncident(recorder, site, unit);
+  const stranger = await insertAccount({});
+
+  const { status, body } = await moveStatus(stranger.token, incident.id, {
+    status: 'investigating'
+  });
+  assert.strictEqual(status, 403, JSON.stringify(body));
+});
+
+// ---------------------------------------------------------------------------
+// 11. Recording the days the injury cost (issue #228)
+// ---------------------------------------------------------------------------
+
+test('recording lost-time and restricted days requires Safety authority', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const incident = await recordedIncident(recorder, site, unit, { severityLevel: 'lost_time' });
+
+  const refused = await recordDays(recorder.token, incident.id, {
+    lostTimeDays: 3,
+    restrictedDays: 0
+  });
+  assert.strictEqual(refused.status, 403, JSON.stringify(refused.body));
+
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const allowed = await recordDays(safetyHolder.token, incident.id, {
+    lostTimeDays: 3,
+    restrictedDays: 0
+  });
+  assert.strictEqual(allowed.status, 200, JSON.stringify(allowed.body));
+  assert.strictEqual(allowed.body.incident.lostTimeDays, 3);
+  assert.strictEqual(allowed.body.incident.restrictedDays, 0);
+});
+
+test('ladder consistency still holds when recording days: none on the no-injury rung, lost-time only at lost_time or fatality', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+
+  const nearMiss = await recordedIncident(recorder, site, unit, {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss'
+  });
+  const onNearMiss = await recordDays(safetyHolder.token, nearMiss.id, {
+    lostTimeDays: 1,
+    restrictedDays: 0
+  });
+  assert.strictEqual(onNearMiss.status, 400, JSON.stringify(onNearMiss.body));
+  assert.match(onNearMiss.body.message, /lostTimeDays/);
+
+  const firstAid = await recordedIncident(recorder, site, unit, { severityLevel: 'first_aid' });
+  const belowLostTime = await recordDays(safetyHolder.token, firstAid.id, {
+    lostTimeDays: 2,
+    restrictedDays: 0
+  });
+  assert.strictEqual(belowLostTime.status, 400, JSON.stringify(belowLostTime.body));
+  assert.match(belowLostTime.body.message, /lostTimeDays/);
+
+  const missingFields = await recordDays(safetyHolder.token, firstAid.id, {});
+  assert.strictEqual(missingFields.status, 400, JSON.stringify(missingFields.body));
+});
+
+// ---------------------------------------------------------------------------
+// 12. Correcting the severity level (issue #228, #223 decision 5)
+// ---------------------------------------------------------------------------
+
+test('changing the severity level requires Safety authority and a note', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit, { severityLevel: 'first_aid' });
+
+  const withoutAuthority = await changeSeverity(recorder.token, incident.id, {
+    severityLevel: 'lost_time',
+    note: 'Turned out to be worse.'
+  });
+  assert.strictEqual(withoutAuthority.status, 403, JSON.stringify(withoutAuthority.body));
+
+  const withoutNote = await changeSeverity(safetyHolder.token, incident.id, {
+    severityLevel: 'lost_time'
+  });
+  assert.strictEqual(withoutNote.status, 400, JSON.stringify(withoutNote.body));
+
+  const corrected = await changeSeverity(safetyHolder.token, incident.id, {
+    severityLevel: 'lost_time',
+    note: 'Follow-up with occupational health confirmed lost time.'
+  });
+  assert.strictEqual(corrected.status, 200, JSON.stringify(corrected.body));
+  assert.strictEqual(corrected.body.incident.severityLevel, 'lost_time');
+});
+
+test('a severity correction is accepted even on a closed incident, because it restates the period it occurred in', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit, {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss'
+  });
+
+  const closed = await closeIncident(safetyHolder.token, incident.id, {
+    note: 'Closed as a near miss.'
+  });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+
+  const corrected = await changeSeverity(safetyHolder.token, incident.id, {
+    severityLevel: 'first_aid',
+    note: 'A scrape was found after the fact; not a true near miss.'
+  });
+  assert.strictEqual(corrected.status, 200, JSON.stringify(corrected.body));
+  assert.strictEqual(corrected.body.incident.severityLevel, 'first_aid');
+  assert.strictEqual(corrected.body.incident.status, 'closed');
+});
+
+// ---------------------------------------------------------------------------
+// 13. Closing (issue #228, #223 decision 4)
+// ---------------------------------------------------------------------------
+
+test('closing requires Safety authority, a note, and (above the no-injury rung) the days settled', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit, { severityLevel: 'medical_treatment' });
+
+  const withoutAuthority = await closeIncident(recorder.token, incident.id, {
+    note: 'Dealt with.'
+  });
+  assert.strictEqual(withoutAuthority.status, 403, JSON.stringify(withoutAuthority.body));
+
+  const withoutNote = await closeIncident(safetyHolder.token, incident.id, {});
+  assert.strictEqual(withoutNote.status, 400, JSON.stringify(withoutNote.body));
+
+  const daysNotSettled = await closeIncident(safetyHolder.token, incident.id, {
+    note: 'Ready to close.'
+  });
+  assert.strictEqual(daysNotSettled.status, 409, JSON.stringify(daysNotSettled.body));
+
+  const settled = await recordDays(safetyHolder.token, incident.id, {
+    lostTimeDays: 0,
+    restrictedDays: 0
+  });
+  assert.strictEqual(settled.status, 200, JSON.stringify(settled.body));
+
+  const closed = await closeIncident(safetyHolder.token, incident.id, {
+    note: 'Days settled at zero; closing.'
+  });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+  assert.strictEqual(closed.body.incident.status, 'closed');
+  assert.ok(closed.body.incident.closedAt, 'closing should set the closed time');
+});
+
+test('a no-injury incident closes without the days ever being recorded', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit, {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss'
+  });
+
+  const closed = await closeIncident(safetyHolder.token, incident.id, {
+    note: 'Nobody was hurt; closing.'
+  });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+  assert.strictEqual(closed.body.incident.status, 'closed');
+});
+
+test('an already-closed incident cannot be closed again', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit, {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss'
+  });
+
+  const closed = await closeIncident(safetyHolder.token, incident.id, { note: 'Closing.' });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+
+  const closedAgain = await closeIncident(safetyHolder.token, incident.id, {
+    note: 'Closing again.'
+  });
+  assert.strictEqual(closedAgain.status, 409, JSON.stringify(closedAgain.body));
+});
+
+// This is the test #228 explicitly asks for: closing an incident is never
+// refused because a Concern raised from it is open (#223 decision 4, the
+// same shape #200 settled for a Non-conformance and its own Concern). #229 is
+// what will actually link a Concern to a Safety incident; until then, an
+// ordinary Concern raised at the incident's own Org Unit through the Action
+// log's existing API is the only way to construct "a Concern is open" to
+// prove closing does not wait on it.
+test('closing a Safety incident succeeds even while an ordinary Concern raised at its Org Unit is still open', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit, { severityLevel: 'first_aid' });
+
+  const concern = await raiseConcern(recorder.token, site.id, {
+    orgUnitId: unit.id,
+    title: 'Investigate the cause of this Safety incident',
+    description: 'Raised while the incident itself is still open.'
+  });
+  assert.strictEqual(concern.status, 201, JSON.stringify(concern.body));
+  assert.notStrictEqual(concern.body.action.status, 'closed');
+
+  const settled = await recordDays(safetyHolder.token, incident.id, {
+    lostTimeDays: 0,
+    restrictedDays: 0
+  });
+  assert.strictEqual(settled.status, 200, JSON.stringify(settled.body));
+
+  const closed = await closeIncident(safetyHolder.token, incident.id, {
+    note: 'The incident itself is dealt with; the Concern keeps working the cause.'
+  });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+  assert.strictEqual(closed.body.incident.status, 'closed');
+
+  // The Concern is still open — closing the incident touched nothing about it.
+  const stillOpenConcern = await (async () => {
+    const response = await fetch(`${base}/api/actions/${concern.body.action.id}`, {
+      headers: safetyHolder.token
+    });
+    return json(response);
+  })();
+  assert.strictEqual(stillOpenConcern.status, 200, JSON.stringify(stillOpenConcern.body));
+  assert.notStrictEqual(stillOpenConcern.body.action.status, 'closed');
+});
+
+// ---------------------------------------------------------------------------
+// 14. The event history: kept with who and when, read back with the incident
+// ---------------------------------------------------------------------------
+
+test('every severity change, status move, days change and closure is kept in the history, and reads back over HTTP with the incident', async () => {
+  const { site, unit, recorder } = await makeGround({});
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const incident = await recordedIncident(recorder, site, unit, { severityLevel: 'first_aid' });
+
+  // A freshly recorded incident carries no events yet.
+  const fresh = await readIncident(recorder.token, incident.id);
+  assert.strictEqual(fresh.status, 200, JSON.stringify(fresh.body));
+  assert.deepStrictEqual(fresh.body.incident.events, []);
+
+  const moved = await moveStatus(recorder.token, incident.id, { status: 'investigating' });
+  assert.strictEqual(moved.status, 200, JSON.stringify(moved.body));
+
+  const corrected = await changeSeverity(safetyHolder.token, incident.id, {
+    severityLevel: 'medical_treatment',
+    note: 'Required medical treatment after all.'
+  });
+  assert.strictEqual(corrected.status, 200, JSON.stringify(corrected.body));
+
+  const days = await recordDays(safetyHolder.token, incident.id, {
+    lostTimeDays: 0,
+    restrictedDays: 2
+  });
+  assert.strictEqual(days.status, 200, JSON.stringify(days.body));
+
+  const closed = await closeIncident(safetyHolder.token, incident.id, {
+    note: 'Restricted duty completed; closing.'
+  });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+
+  const detail = await readIncident(recorder.token, incident.id);
+  assert.strictEqual(detail.status, 200, JSON.stringify(detail.body));
+
+  const events = detail.body.incident.events;
+  assert.strictEqual(events.length, 4);
+  const kinds = events.map((event) => event.kind);
+  assert.deepStrictEqual(kinds, ['status', 'severity', 'days', 'closure']);
+
+  const statusEvent = events.find((event) => event.kind === 'status');
+  assert.strictEqual(statusEvent.previousValue, 'open');
+  assert.strictEqual(statusEvent.newValue, 'investigating');
+  assert.strictEqual(statusEvent.changedByAccountId, String(recorder.id));
+  assert.ok(statusEvent.changedAt);
+
+  const severityEvent = events.find((event) => event.kind === 'severity');
+  assert.strictEqual(severityEvent.previousValue, 'first_aid');
+  assert.strictEqual(severityEvent.newValue, 'medical_treatment');
+  assert.strictEqual(severityEvent.note, 'Required medical treatment after all.');
+  assert.strictEqual(severityEvent.changedByAccountId, String(safetyHolder.id));
+
+  const daysEvent = events.find((event) => event.kind === 'days');
+  assert.match(daysEvent.newValue, /restrictedDays=2/);
+  assert.strictEqual(daysEvent.changedByAccountId, String(safetyHolder.id));
+
+  const closureEvent = events.find((event) => event.kind === 'closure');
+  assert.strictEqual(closureEvent.newValue, 'closed');
+  assert.strictEqual(closureEvent.note, 'Restricted duty completed; closing.');
+  assert.strictEqual(closureEvent.changedByAccountId, String(safetyHolder.id));
+});
+
+// ---------------------------------------------------------------------------
+// 15. The overdue listing (issue #228)
+// ---------------------------------------------------------------------------
+
+test('any Account that can see the Site lists incidents whose investigation is overdue, for an Org Unit and everything beneath it', async () => {
+  const site = await insertSite();
+  const parent = await insertOrgUnit(site.id, { name: 'Overdue parent' });
+  const child = await insertOrgUnit(site.id, { parentId: parent.id, name: 'Overdue child' });
+  const sibling = await insertOrgUnit(site.id, { name: 'Overdue sibling' });
+  const recorder = await insertAccount({
+    grants: [{ orgUnitId: parent.id }, { orgUnitId: sibling.id }]
+  });
+
+  const overdueAtParent = await recordedIncident(recorder, site, parent, {
+    description: 'Overdue at the parent.'
+  });
+  const overdueAtChild = await recordedIncident(recorder, site, child, {
+    description: 'Overdue beneath the parent.'
+  });
+  const notOverdueYet = await recordedIncident(recorder, site, parent, {
+    description: 'Due date is in the future.'
+  });
+  const overdueButClosed = await recordedIncident(recorder, site, parent, {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss',
+    description: 'Overdue, but already closed.'
+  });
+  const overdueAtSibling = await recordedIncident(recorder, site, sibling, {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss',
+    description: 'Overdue at a sibling Org Unit.'
+  });
+  const neverGivenADeadline = await recordedIncident(recorder, site, parent, {
+    description: 'No due date was ever set.'
+  });
+
+  const past = '2020-01-01T00:00:00Z';
+  const future = '2099-01-01T00:00:00Z';
+
+  for (const incident of [overdueAtParent, overdueAtChild, overdueButClosed, overdueAtSibling]) {
+    const set = await setDueDate(recorder.token, incident.id, { investigationDueAt: past });
+    assert.strictEqual(set.status, 200, JSON.stringify(set.body));
+  }
+  const setFuture = await setDueDate(recorder.token, notOverdueYet.id, {
+    investigationDueAt: future
+  });
+  assert.strictEqual(setFuture.status, 200, JSON.stringify(setFuture.body));
+
+  const safetyHolder = await insertAccount({ grants: [{ orgUnitId: parent.id, safety: true }] });
+  const closed = await closeIncident(safetyHolder.token, overdueButClosed.id, {
+    note: 'Closed before the overdue listing is read.'
+  });
+  assert.strictEqual(closed.status, 200, JSON.stringify(closed.body));
+
+  const atParent = await overdueIncidents(recorder.token, site.id, `?orgUnitId=${parent.id}`);
+  assert.strictEqual(atParent.status, 200, JSON.stringify(atParent.body));
+  assert.deepStrictEqual(
+    atParent.body.incidents.map((row) => row.id).sort(),
+    [overdueAtParent.id, overdueAtChild.id].sort()
+  );
+
+  // No `orgUnitId` narrows to nothing — a Site-wide read includes the sibling
+  // Org Unit's own overdue incident too.
+  const siteWide = await overdueIncidents(recorder.token, site.id);
+  assert.strictEqual(siteWide.status, 200, JSON.stringify(siteWide.body));
+  assert.deepStrictEqual(
+    siteWide.body.incidents.map((row) => row.id).sort(),
+    [overdueAtParent.id, overdueAtChild.id, overdueAtSibling.id].sort()
+  );
+
+  // A stranger who cannot see the Site is refused, the same rule the
+  // register itself follows.
+  const stranger = await insertAccount({});
+  const strangerRead = await overdueIncidents(stranger.token, site.id);
+  assert.strictEqual(strangerRead.status, 403, JSON.stringify(strangerRead.body));
+
+  // Neither `notOverdueYet` (due date in the future) nor `neverGivenADeadline`
+  // (no due date at all) ever appears.
+  const ids = siteWide.body.incidents.map((row) => row.id);
+  assert.ok(!ids.includes(notOverdueYet.id));
+  assert.ok(!ids.includes(neverGivenADeadline.id));
 });
