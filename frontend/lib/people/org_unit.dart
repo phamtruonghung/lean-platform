@@ -161,6 +161,7 @@ class GrantedOrgUnit {
     required this.level,
     required this.where,
     this.quality = false,
+    this.safety = false,
   });
 
   final OrgUnitNode orgUnit;
@@ -177,13 +178,21 @@ class GrantedOrgUnit {
   /// wire as `qualityAuthority`.
   final bool quality;
 
+  /// Whether this Grant carries Safety authority (issue #225, ADR-0035
+  /// applied a second time) — the same shape as [quality], independent of it
+  /// and of [level]: a Grant may carry either, both or neither. Flips through
+  /// `OrgUnitPickerGrantSafetySet` (org_unit_picker_bloc.dart) and rides the
+  /// wire as `safetyAuthority`.
+  final bool safety;
+
   /// The wire shape `approveAccount` validates
   /// (`backend/src/modules/people/service.js`): the Org Unit, the Grant's own
-  /// level, and its Quality authority — three independent facts about one
-  /// Grant, never two of them folded into one value.
+  /// level, and its Quality and Safety authority — four independent facts
+  /// about one Grant, never any two of them folded into one value.
   Map<String, Object?> toJson() => {
         'orgUnitId': orgUnit.id,
         'canWrite': level.canWrite,
         'qualityAuthority': quality,
+        'safetyAuthority': safety,
       };
 }

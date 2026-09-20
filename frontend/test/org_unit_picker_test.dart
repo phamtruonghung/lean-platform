@@ -206,8 +206,8 @@ void main() {
     expect(wire.approvals.length, 1);
     expect(wire.approvals.single['role'], Roles.supervisor);
     expect(wire.approvals.single['grants'], [
-      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': false},
-      {'orgUnitId': '12', 'canWrite': true, 'qualityAuthority': false},
+      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': false, 'safetyAuthority': false},
+      {'orgUnitId': '12', 'canWrite': true, 'qualityAuthority': false, 'safetyAuthority': false},
     ]);
     expect(find.text('first@b.c'), findsNothing);
     expect(find.textContaining('with 2 Org Unit Grants'), findsOneWidget);
@@ -252,8 +252,8 @@ void main() {
     await tapIn(tester, find.byKey(AdmissionDialog.submitKey));
 
     expect(wire.approvals.single['grants'], [
-      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': true},
-      {'orgUnitId': '12', 'canWrite': true, 'qualityAuthority': false},
+      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': true, 'safetyAuthority': false},
+      {'orgUnitId': '12', 'canWrite': true, 'qualityAuthority': false, 'safetyAuthority': false},
     ]);
   });
 
@@ -276,7 +276,89 @@ void main() {
     await tapIn(tester, find.byKey(AdmissionDialog.submitKey));
 
     expect(wire.approvals.single['grants'], [
-      {'orgUnitId': '10', 'canWrite': true, 'qualityAuthority': false},
+      {'orgUnitId': '10', 'canWrite': true, 'qualityAuthority': false, 'safetyAuthority': false},
+    ]);
+  });
+
+  // Issue #225, ADR-0035 applied a second time: Safety authority is
+  // [OrgUnitPicker.qualityKey]'s own shape, given through its own control and
+  // independent of the level and of Quality authority.
+  testWidgets('Safety authority is given per Grant, independently of its level, and rides the request',
+      (tester) async {
+    final wire = _plant();
+    await openDecision(tester, wire);
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.expandKey('10')));
+    await grant(tester, '11', GrantLevel.view);
+    await grant(tester, '12', GrantLevel.viewAndEdit);
+
+    // Neither Grant carries it yet, and the box is there to give it.
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('11'))).value, false);
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.safetyKey('11')));
+
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('11'))).value, true);
+    // The tree row says so too, without a second control on the row itself.
+    expect(find.text('Granted · View · Safety'), findsOneWidget);
+
+    await chooseRole(tester, Roles.supervisor);
+    await tapIn(tester, find.byKey(AdmissionDialog.submitKey));
+
+    expect(wire.approvals.single['grants'], [
+      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': false, 'safetyAuthority': true},
+      {'orgUnitId': '12', 'canWrite': true, 'qualityAuthority': false, 'safetyAuthority': false},
+    ]);
+  });
+
+  // The other direction, on the same control: ticking and unticking it is how
+  // an administrator both gives and takes the flag away.
+  testWidgets('Safety authority can be given and then taken back before submitting', (tester) async {
+    final wire = _plant();
+    await openDecision(tester, wire);
+
+    await grant(tester, '10', GrantLevel.viewAndEdit);
+    await tapIn(tester, find.byKey(OrgUnitPicker.safetyKey('10')));
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('10'))).value, true);
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.safetyKey('10')));
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('10'))).value, false);
+    expect(find.text('Granted · View and edit'), findsOneWidget);
+
+    await chooseRole(tester, Roles.supervisor);
+    await tapIn(tester, find.byKey(AdmissionDialog.submitKey));
+
+    expect(wire.approvals.single['grants'], [
+      {'orgUnitId': '10', 'canWrite': true, 'qualityAuthority': false, 'safetyAuthority': false},
+    ]);
+  });
+
+  // Independence between the two authorities themselves (AC: "A Grant may
+  // carry Safety authority, Quality authority, both or neither"): giving one
+  // must not give or take the other, on the same Grant.
+  testWidgets('Quality authority and Safety authority are given independently on the same Grant',
+      (tester) async {
+    final wire = _plant();
+    await openDecision(tester, wire);
+
+    await grant(tester, '10', GrantLevel.view);
+    await tapIn(tester, find.byKey(OrgUnitPicker.qualityKey('10')));
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('10'))).value, false);
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.safetyKey('10')));
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.qualityKey('10'))).value, true);
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('10'))).value, true);
+    expect(find.text('Granted · View · Quality · Safety'), findsOneWidget);
+
+    // Taking Quality authority back leaves Safety authority untouched.
+    await tapIn(tester, find.byKey(OrgUnitPicker.qualityKey('10')));
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.qualityKey('10'))).value, false);
+    expect(tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('10'))).value, true);
+
+    await chooseRole(tester, Roles.supervisor);
+    await tapIn(tester, find.byKey(AdmissionDialog.submitKey));
+
+    expect(wire.approvals.single['grants'], [
+      {'orgUnitId': '10', 'canWrite': false, 'qualityAuthority': false, 'safetyAuthority': true},
     ]);
   });
 

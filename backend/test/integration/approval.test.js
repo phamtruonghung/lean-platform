@@ -1466,3 +1466,217 @@ test('an administrator holds Quality authority everywhere, with no Grants at all
   });
   assert.strictEqual(write.status, 200);
 });
+
+// ---------------------------------------------------------------------------
+// 13. Safety authority on a Grant (issue #225, ADR-0035 applied a second
+//     time). Exactly section 12's own shape, mirrored for the second flag:
+//     `canAct({ safety: true })` (authorization.js) is what the Safety
+//     Module (#223, out of scope here) will ask before classifying an
+//     injury, setting or correcting an incident's severity, recording the
+//     days it cost and closing it. These tests cover the flag's own
+//     behaviour — set, replaced, removed, and the downward reach it is read
+//     with — over HTTP, its independence from `write`, and its independence
+//     from Quality authority in every combination.
+// ---------------------------------------------------------------------------
+
+test('an Approval sets Safety authority per Grant, independently of that Grant\'s level', async () => {
+  const { root, child } = await createSiteWithTree();
+  const { account } = await approveFreshAccount('supervisor', [
+    // A view-only Grant that carries Safety authority.
+    { orgUnitId: child.id, canWrite: false, safetyAuthority: true },
+    // An edit Grant that deliberately does not.
+    { orgUnitId: root.id, canWrite: true }
+  ]);
+
+  const { rows } = await pool.query(
+    'SELECT org_unit_id, can_write, safety_authority FROM app_user_org_units WHERE app_user_id = $1 ORDER BY org_unit_id',
+    [account.id]
+  );
+  const childRow = rows.find((row) => String(row.org_unit_id) === String(child.id));
+  const rootRow = rows.find((row) => String(row.org_unit_id) === String(root.id));
+  assert.strictEqual(childRow.can_write, false);
+  assert.strictEqual(childRow.safety_authority, true);
+  assert.strictEqual(rootRow.can_write, true);
+  assert.strictEqual(rootRow.safety_authority, false);
+
+  const response = await fetch(`${base}/api/people/accounts`, { headers: adminToken });
+  const { accounts } = await response.json();
+  const listed = accounts.find((a) => a.id === account.id);
+  const listedChild = listed.grants.find((g) => String(g.orgUnitId) === String(child.id));
+  const listedRoot = listed.grants.find((g) => String(g.orgUnitId) === String(root.id));
+  assert.strictEqual(listedChild.safetyAuthority, true);
+  assert.strictEqual(listedChild.canWrite, false);
+  assert.strictEqual(listedRoot.safetyAuthority, false);
+  assert.strictEqual(listedRoot.canWrite, true);
+});
+
+test('a later Approval that omits Safety authority removes it, along with the rest of the set', async () => {
+  const { root, child } = await createSiteWithTree();
+  const { account } = await approveFreshAccount('supervisor', [
+    { orgUnitId: child.id, canWrite: true, safetyAuthority: true },
+    { orgUnitId: root.id, canWrite: false, safetyAuthority: true }
+  ]);
+
+  const reapproval = await approve(account.id, {
+    role: 'supervisor',
+    grants: [{ orgUnitId: child.id, canWrite: true }],
+    expectedApprovalStatus: 'approved'
+  });
+  assert.strictEqual(reapproval.status, 200);
+
+  const { rows } = await pool.query(
+    'SELECT org_unit_id, safety_authority FROM app_user_org_units WHERE app_user_id = $1',
+    [account.id]
+  );
+  assert.strictEqual(rows.length, 1, 'the whole set was replaced, not added to');
+  assert.strictEqual(String(rows[0].org_unit_id), String(child.id));
+  assert.strictEqual(rows[0].safety_authority, false);
+
+  const accountsResponse = await fetch(`${base}/api/people/accounts`, { headers: adminToken });
+  const { accounts } = await accountsResponse.json();
+  const listed = accounts.find((a) => a.id === account.id);
+  assert.strictEqual(listed.grants[0].safetyAuthority, false);
+  // The Grant on `root` is gone entirely, which is the same replace-the-set
+  // rule `canWrite` and Quality authority have always followed.
+  assert.ok(!listed.grants.some((g) => String(g.orgUnitId) === String(root.id)));
+});
+
+test('a Grant carrying Safety authority reaches every Org Unit beneath it, and no ancestor or sibling', async () => {
+  const { site, root, child, grandchild } = await createSiteWithTree();
+
+  const siblingResponse = await fetch(`${base}/api/people/sites/${site.id}/org-units`, {
+    method: 'POST',
+    headers: { ...adminToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ code: uniqueCode('SSIB'), name: 'Safety Sibling', unitType: 'department', parentId: root.id })
+  });
+  const { orgUnit: sibling } = await siblingResponse.json();
+
+  const { token } = await approveFreshAccount('engineer', [
+    { orgUnitId: child.id, canWrite: false, safetyAuthority: true }
+  ]);
+
+  const response = await me(token);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  const [grant] = orgUnitScope.grants;
+  assert.strictEqual(grant.safetyAuthority, true);
+  assert.deepStrictEqual(
+    grant.orgUnitIds.map(String).sort(),
+    [String(child.id), String(grandchild.id)].sort()
+  );
+  const reached = grant.orgUnitIds.map(String);
+  assert.ok(reached.includes(String(child.id)), 'the granted unit itself');
+  assert.ok(reached.includes(String(grandchild.id)), 'everything beneath it');
+  assert.ok(!reached.includes(String(sibling.id)), 'never a sibling');
+  assert.ok(!reached.includes(String(root.id)), 'never an ancestor above it');
+});
+
+test('Safety authority on a view-only Grant does not authorise a write, and an edit Grant holds none', async () => {
+  const { child } = await createSiteWithTree();
+  const { token: safetyOnlyToken } = await approveFreshAccount('engineer', [
+    { orgUnitId: child.id, canWrite: false, safetyAuthority: true }
+  ]);
+
+  const writeAttempt = await fetch(`${base}/api/people/org-units/${child.id}`, {
+    method: 'PATCH',
+    headers: { ...safetyOnlyToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ isActive: false })
+  });
+  assert.strictEqual(writeAttempt.status, 403);
+
+  const { token: writeOnlyToken } = await approveFreshAccount('supervisor', [
+    { orgUnitId: child.id, canWrite: true }
+  ]);
+
+  const scopeResponse = await me(writeOnlyToken);
+  const { orgUnitScope } = await scopeResponse.json();
+  assert.strictEqual(orgUnitScope.grants[0].canWrite, true);
+  assert.strictEqual(orgUnitScope.grants[0].safetyAuthority, false);
+
+  // The write that Grant does authorise is unaffected by the flag's absence.
+  const write = await fetch(`${base}/api/people/org-units/${child.id}`, {
+    method: 'PATCH',
+    headers: { ...writeOnlyToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ isActive: false })
+  });
+  assert.strictEqual(write.status, 200);
+});
+
+// The other half of independence — from Quality authority, not from `write`
+// — in every one of the four combinations a single Grant can hold, each on
+// its own Org Unit so `/me` reports them apart: neither flag, Safety alone,
+// Quality alone, and both together. Neither flag implies or excludes the
+// other in either direction.
+test('a Grant may carry Safety authority, Quality authority, both or neither, independently of each other', async () => {
+  const { site, root } = await createSiteWithTree();
+
+  async function child(name) {
+    const response = await fetch(`${base}/api/people/sites/${site.id}/org-units`, {
+      method: 'POST',
+      headers: { ...adminToken, 'content-type': 'application/json' },
+      body: JSON.stringify({ code: uniqueCode(name), name, unitType: 'department', parentId: root.id })
+    });
+    const { orgUnit } = await response.json();
+    return orgUnit;
+  }
+
+  const neither = await child('NEITHER');
+  const safetyOnly = await child('SAFETYONLY');
+  const qualityOnly = await child('QUALITYONLY');
+  const both = await child('BOTH');
+
+  const { token } = await approveFreshAccount('engineer', [
+    { orgUnitId: neither.id, canWrite: false },
+    { orgUnitId: safetyOnly.id, canWrite: false, safetyAuthority: true },
+    { orgUnitId: qualityOnly.id, canWrite: false, qualityAuthority: true },
+    { orgUnitId: both.id, canWrite: false, safetyAuthority: true, qualityAuthority: true }
+  ]);
+
+  const response = await me(token);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  const grantOn = (orgUnitId) =>
+    orgUnitScope.grants.find((g) => String(g.orgUnitId) === String(orgUnitId));
+
+  assert.strictEqual(grantOn(neither.id).safetyAuthority, false);
+  assert.strictEqual(grantOn(neither.id).qualityAuthority, false);
+
+  assert.strictEqual(grantOn(safetyOnly.id).safetyAuthority, true);
+  assert.strictEqual(grantOn(safetyOnly.id).qualityAuthority, false);
+
+  assert.strictEqual(grantOn(qualityOnly.id).safetyAuthority, false);
+  assert.strictEqual(grantOn(qualityOnly.id).qualityAuthority, true);
+
+  assert.strictEqual(grantOn(both.id).safetyAuthority, true);
+  assert.strictEqual(grantOn(both.id).qualityAuthority, true);
+});
+
+test('an administrator holds Safety authority everywhere, with no Grants at all', async () => {
+  const { child, grandchild } = await createSiteWithTree();
+
+  const response = await me(adminToken);
+  assert.strictEqual(response.status, 200);
+  const { orgUnitScope } = await response.json();
+  // Not a duplicate of section 11's or section 12's own "everywhere: true,
+  // with no grants": each pins that an administrator's answer to its own
+  // flag — which `canAct` short-circuits on before any Grant is read — is the
+  // same answer, with no grant row anywhere carrying it on its behalf.
+  assert.strictEqual(orgUnitScope.everywhere, true);
+  assert.deepStrictEqual(orgUnitScope.grants, []);
+
+  const { rows } = await pool.query(
+    'SELECT count(*)::int AS n FROM app_user_org_units WHERE app_user_id = $1 AND safety_authority',
+    [adminAccountId]
+  );
+  assert.strictEqual(rows[0].n, 0);
+
+  // The role still reaches the whole tree it claims to.
+  const read = await fetch(`${base}/api/people/org-units/${grandchild.id}`, { headers: adminToken });
+  assert.strictEqual(read.status, 200);
+  const write = await fetch(`${base}/api/people/org-units/${child.id}`, {
+    method: 'PATCH',
+    headers: { ...adminToken, 'content-type': 'application/json' },
+    body: JSON.stringify({ isActive: false })
+  });
+  assert.strictEqual(write.status, 200);
+});

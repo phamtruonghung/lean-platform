@@ -690,12 +690,14 @@ class _RowActions extends StatelessWidget {
 }
 
 /// One Grant, as a person reads it: where it sits, at what level, and whether
-/// it carries Quality authority (issue #204, ADR-0035) — a phrase shared by
+/// it carries Quality authority (issue #204, ADR-0035) or Safety authority
+/// (issue #225, ADR-0035 applied a second time) — a phrase shared by
 /// [_GrantsCell]'s tooltip and [_Grants]' chips so the two layouts cannot say
 /// different things about the same Grant.
 String _grantLabel(AccountGrant grant) =>
     '${grant.siteName} › ${grant.name} · ${grant.level.label}'
-    '${grant.qualityAuthority ? ' · Quality authority' : ''}';
+    '${grant.qualityAuthority ? ' · Quality authority' : ''}'
+    '${grant.safetyAuthority ? ' · Safety authority' : ''}';
 
 /// The Grants cell in the wide table (issue #112, Decision D): a count, not
 /// a wall of chips — "Everywhere" for an admin, "None" for an Account with
@@ -760,10 +762,11 @@ class _Grants extends StatelessWidget {
         for (final grant in account.grants)
           Chip(
             visualDensity: VisualDensity.compact,
-            // A Grant holding Quality authority is named as such in the chip
-            // itself (issue #204, ADR-0035), not only in the wide table's
-            // tooltip: an administrator auditing "who may accept bad product"
-            // on a narrow window must be able to read it without hovering.
+            // A Grant holding Quality or Safety authority is named as such in
+            // the chip itself (issue #204, issue #225, ADR-0035), not only in
+            // the wide table's tooltip: an administrator auditing "who may
+            // accept bad product" or "who may close an incident" on a narrow
+            // window must be able to read it without hovering.
             label: Text(_grantLabel(grant)),
             labelStyle: theme.textTheme.labelMedium,
           ),

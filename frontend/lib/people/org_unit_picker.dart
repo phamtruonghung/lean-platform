@@ -36,6 +36,10 @@ class OrgUnitPicker extends StatelessWidget {
   /// reads to prove an existing Grant set opened holding it.
   static ValueKey<String> qualityKey(String id) => ValueKey<String>('org-unit-picker-quality-$id');
 
+  /// The Safety authority checkbox on one granted Org Unit (issue #225,
+  /// ADR-0035 applied a second time) — [qualityKey]'s own shape.
+  static ValueKey<String> safetyKey(String id) => ValueKey<String>('org-unit-picker-safety-$id');
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -57,9 +61,10 @@ class OrgUnitPicker extends StatelessWidget {
         // per Grant: it explains what the checkbox below means once, instead
         // of repeating it on every row of the Granted pane.
         Text(
-          'Quality authority is separate from the level — a view-only Grant '
-          'may carry it, and an edit Grant need not — and it reaches '
-          'everything beneath the Org Unit it is given on.',
+          'Quality authority and Safety authority are each separate from the '
+          'level and from each other — a view-only Grant may carry either, '
+          'and an edit Grant need not — and each reaches everything beneath '
+          'the Org Unit it is given on.',
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: Spacing.sm),
@@ -262,14 +267,18 @@ class _TreeRow extends StatelessWidget {
                         key: OrgUnitPicker.grantedBadgeKey(row.node.id),
                         padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
                         child: Text(
-                          // Quality authority rides on the badge rather than on
-                          // a second control here (issue #204): what the tree
-                          // row has to say is that a Grant exists and what it
-                          // carries, and the flipping lives on the Granted row
-                          // where the whole set is being assembled.
-                          state.qualityOf(row.node.id)
-                              ? 'Granted · ${level!.label} · Quality'
-                              : 'Granted · ${level!.label}',
+                          // Quality and Safety authority ride on the badge
+                          // rather than on a second control here (issue #204,
+                          // issue #225): what the tree row has to say is that
+                          // a Grant exists and what it carries, and the
+                          // flipping lives on the Granted row where the whole
+                          // set is being assembled.
+                          [
+                            'Granted',
+                            level!.label,
+                            if (state.qualityOf(row.node.id)) 'Quality',
+                            if (state.safetyOf(row.node.id)) 'Safety',
+                          ].join(' · '),
                           style: theme.textTheme.labelMedium
                               ?.copyWith(color: theme.colorScheme.primary),
                         ),
@@ -392,6 +401,30 @@ class _GrantedPane extends StatelessWidget {
                                         OrgUnitPickerGrantQualitySet(
                                           orgUnitId: entry.orgUnit.id,
                                           quality: value ?? false,
+                                        ),
+                                      )
+                                  : null,
+                            ),
+                            // Safety authority, per Grant (issue #225,
+                            // ADR-0035 applied a second time) — the same
+                            // shape as the Quality authority checkbox above
+                            // and independent of it.
+                            CheckboxListTile(
+                              key: OrgUnitPicker.safetyKey(entry.orgUnit.id),
+                              value: entry.safety,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text(
+                                'Safety authority',
+                                style: theme.textTheme.labelMedium,
+                              ),
+                              onChanged: enabled
+                                  ? (value) => bloc.add(
+                                        OrgUnitPickerGrantSafetySet(
+                                          orgUnitId: entry.orgUnit.id,
+                                          safety: value ?? false,
                                         ),
                                       )
                                   : null,

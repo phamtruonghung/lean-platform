@@ -194,13 +194,13 @@ async function createAccountForSubject({ subject, email, name }) {
          SELECT $1, ou.id, TRUE FROM org_units ou WHERE ou.parent_id IS NULL`,
         [inserted.id]
       );
-      // `quality_authority` is deliberately left at the column's own FALSE
-      // default (issue #204, ADR-0035): Quality authority is given at
-      // Approval, and this Account has never been through one. It loses
-      // nothing by the omission — an administrator answers `canAct` true for
-      // every option before any grant is even read — and writing TRUE here
-      // would make the bootstrap look like the one Approval that hands out an
-      // authority nobody chose.
+      // `quality_authority` and `safety_authority` (issue #225, ADR-0035
+      // applied a second time) are deliberately left at their columns' own
+      // FALSE default: both authorities are given at Approval, and this
+      // Account has never been through one. It loses nothing by the omission
+      // — an administrator answers `canAct` true for every option before any
+      // grant is even read — and writing TRUE here would make the bootstrap
+      // look like the one Approval that hands out an authority nobody chose.
     }
 
     return toAccount(inserted);
@@ -235,6 +235,7 @@ async function listGrantsByAccount() {
             auo.org_unit_id,
             auo.can_write,
             auo.quality_authority,
+            auo.safety_authority,
             ou.parent_id,
             ou.code,
             ou.name,
@@ -264,7 +265,10 @@ async function listGrantsByAccount() {
       // here is to tell an administrator which Grants hold it and which do
       // not, at whatever level (AC: "The Accounts Screen ... show ... Quality
       // authority per Grant").
-      qualityAuthority: row.quality_authority
+      qualityAuthority: row.quality_authority,
+      // Safety authority (issue #225, ADR-0035 applied a second time) —
+      // carried the same way, for the same reason, beside Quality authority.
+      safetyAuthority: row.safety_authority
     });
     byAccount.set(row.app_user_id, grants);
   }
@@ -446,6 +450,11 @@ function parseOptionalEmployeeId(employeeId) {
 // into it — no second code path, and no "clear the flag" verb that would be
 // the one write in this Module able to contradict the set an Approval gave.
 //
+// Safety authority (issue #225, ADR-0035 applied a second time) rides in as
+// `safetyAuthority`, validated and written exactly the same way and entirely
+// independently of `qualityAuthority`: a Grant may carry either, both or
+// neither, in any combination with its level.
+//
 // Approving a rejected Account, and rejecting an already-approved one
 // (rejectAccount, below), are both allowed rather than refused as invalid
 // transitions. `approval_status` records an administrator's most recent
@@ -488,7 +497,11 @@ async function approveAccount(id, { role, grants, employeeId }, actingAccountId,
       // Grant need not, which is the independence the ticket's own criterion
       // asks for. Omitting the key removes it, because Approval replaces the
       // whole set: see this function's own header.
-      qualityAuthority: grant.qualityAuthority === true
+      qualityAuthority: grant.qualityAuthority === true,
+      // Safety authority (issue #225, ADR-0035 applied a second time),
+      // validated and read the same way, and not cross-checked against
+      // `qualityAuthority` in either direction — the two are independent.
+      safetyAuthority: grant.safetyAuthority === true
     };
   });
 
@@ -541,9 +554,9 @@ async function approveAccount(id, { role, grants, employeeId }, actingAccountId,
         // pg client does not support concurrent queries on a single client.
         // eslint-disable-next-line no-await-in-loop
         await client.query(
-          `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write, quality_authority)
-           VALUES ($1, $2, $3, $4)`,
-          [id, grant.orgUnitId, grant.canWrite, grant.qualityAuthority]
+          `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write, quality_authority, safety_authority)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [id, grant.orgUnitId, grant.canWrite, grant.qualityAuthority, grant.safetyAuthority]
         );
       }
 

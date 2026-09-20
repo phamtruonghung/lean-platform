@@ -20,7 +20,10 @@
  *     Quality authority reach this Org Unit?" (`quality: true`, ADR-0035) —
  *     which is the same containment test restricted to
  *     `app_user_org_units.quality_authority`, deliberately separate from
- *     `write` because neither implies the other.
+ *     `write` because neither implies the other. Issue #225 adds a fourth,
+ *     `safety: true` (ADR-0035 applied a second time) — restricted instead to
+ *     `app_user_org_units.safety_authority`, independent of both `write` and
+ *     `quality` the same way those two are independent of each other.
  *   - "Where does this Account's own scope begin in a given Site's tree?" —
  *     a structurally different question from the two above: not "may the
  *     caller act on this one Org Unit" but "which Org Units, in this Site,
@@ -104,10 +107,20 @@ function isAdmin(account) {
 // and verify one held. It is deliberately a separate option from `write` and
 // not folded into it: Quality authority does not imply write and write does
 // not imply Quality authority, so a view-only grant may carry it and an edit
-// grant need not (ADR-0035's own worked examples). The two are additive when
-// both are asked for together — the same `AND` the `write` clause already
-// contributes — and no caller in this Module asks for both today.
-async function canAct({ account, orgUnitId, write = false, quality = false }) {
+// grant need not (ADR-0035's own worked examples).
+//
+// `safety: true` (issue #225, ADR-0035 applied a second time) is the same
+// test again, restricted to grants carrying Safety authority
+// (`safety_authority = TRUE`, migration 1800700000000) — the flag the Safety
+// Module (#223) requires to classify an injury, set or correct an incident's
+// severity, record the days it cost and close it. Independent of both
+// `write` and `quality` for the same reason those two are independent of
+// each other: a Grant may carry any combination of the three.
+//
+// All three options are additive when asked for together — each contributes
+// its own `AND` clause to the same query — though no caller in this Module
+// asks for more than one at once today.
+async function canAct({ account, orgUnitId, write = false, quality = false, safety = false }) {
   if (isAdmin(account)) return true;
   if (orgUnitId === null || orgUnitId === undefined) return false;
 
@@ -120,6 +133,7 @@ async function canAct({ account, orgUnitId, write = false, quality = false }) {
         AND target.path <@ granted.path
         ${write ? 'AND auo.can_write = TRUE' : ''}
         ${quality ? 'AND auo.quality_authority = TRUE' : ''}
+        ${safety ? 'AND auo.safety_authority = TRUE' : ''}
       LIMIT 1`,
     [account.id, orgUnitId]
   );
@@ -254,11 +268,16 @@ async function grantedEntryPointIds({ account, siteId }) {
 // "the flag reaches downward like the Grant" a fact a caller can check over
 // HTTP (`/me` is the only read that names a Grant's whole subtree), which is
 // the reach `canAct({ quality: true })` answers with on the server.
+//
+// Each Grant also carries `safetyAuthority` (issue #225, ADR-0035 applied a
+// second time), migration 1800700000000's flag, reported for the same reason
+// and by the same mechanism as `qualityAuthority` above.
 async function orgUnitScopeFor({ account }) {
   if (isAdmin(account)) return { everywhere: true, grants: [] };
 
   const { rows } = await getPool().query(
     `SELECT auo.org_unit_id, ou.site_id, auo.can_write, auo.quality_authority,
+            auo.safety_authority,
             ARRAY(
               SELECT descendant.id::text
                 FROM org_units descendant
@@ -279,6 +298,7 @@ async function orgUnitScopeFor({ account }) {
       siteId: row.site_id,
       canWrite: row.can_write,
       qualityAuthority: row.quality_authority,
+      safetyAuthority: row.safety_authority,
       orgUnitIds: row.org_unit_ids
     }))
   };
