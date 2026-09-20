@@ -122,9 +122,14 @@ import '../quality/nonconformances_screen.dart';
 import '../quality/products_bloc.dart';
 import '../quality/products_screen.dart';
 import '../quality/quality_api.dart';
+import '../safety/incident_close_dialog.dart';
+import '../safety/incident_days_dialog.dart';
 import '../safety/incident_detail_bloc.dart';
 import '../safety/incident_detail_screen.dart';
+import '../safety/incident_due_date_dialog.dart';
 import '../safety/incident_form_dialog.dart';
+import '../safety/incident_severity_dialog.dart';
+import '../safety/incident_status_dialog.dart';
 import '../safety/incidents_screen.dart';
 import '../safety/safety_api.dart';
 import '../safety/safety_incidents_bloc.dart';
@@ -260,6 +265,19 @@ bool holdsQualityAuthority(BuildContext context, String orgUnitId) {
   final account = context.watch<AccountBloc>().state;
   return account is AccountApproved &&
       account.account.orgUnitScope.canHoldQualityAt(orgUnitId);
+}
+
+/// Whether the signed-in Account holds Safety authority at an Org Unit
+/// (issue #225, ADR-0039) — [holdsQualityAuthority]'s exact shape, asked of
+/// the independent flag, the client's half of the server's own
+/// `canAct({ safety: true })`. Issue #228's severity-change, days and close
+/// dialogs each ask this before offering themselves, the same way the four
+/// Quality-authority dialogs ask [holdsQualityAuthority] — read **inside a
+/// build**, never hoisted into a route's builder, for the same reason.
+bool holdsSafetyAuthority(BuildContext context, String orgUnitId) {
+  final account = context.watch<AccountBloc>().state;
+  return account is AccountApproved &&
+      account.account.orgUnitScope.canHoldSafetyAt(orgUnitId);
 }
 
 /// Whether the signed-in Account may write a CAPA's 5 Why chains (issue #210) —
@@ -1493,6 +1511,129 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                     builder: (context, state) => SafetyIncidentDetailScreen(
                       incidentId: state.pathParameters['id']!,
                     ),
+                    routes: [
+                      // `/safety/incidents/:id/due-date` — setting or
+                      // changing the investigation due date (issue #228).
+                      // Needs only an edit Grant, so it is always offered.
+                      GoRoute(
+                        path: 'due-date',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SafetyIncidentDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SafetyIncidentDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SafetyIncidentDueDateDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SafetyIncidentDueDateDialog(incident: detail.incident);
+                            },
+                          );
+                        },
+                      ),
+                      // `/safety/incidents/:id/status` — the ordinary ladder
+                      // move: open -> investigating -> actions_pending (issue
+                      // #228). Closing is its own address below.
+                      GoRoute(
+                        path: 'status',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SafetyIncidentDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SafetyIncidentDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SafetyIncidentStatusDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SafetyIncidentStatusDialog(incident: detail.incident);
+                            },
+                          );
+                        },
+                      ),
+                      // `/safety/incidents/:id/severity` — correcting the
+                      // severity level (issue #228, #223 decision 5). Needs
+                      // Safety authority, asked inside the dialog where it is
+                      // also read in a build rather than frozen here.
+                      GoRoute(
+                        path: 'severity',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SafetyIncidentDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SafetyIncidentDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SafetyIncidentSeverityDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SafetyIncidentSeverityDialog(incident: detail.incident);
+                            },
+                          );
+                        },
+                      ),
+                      // `/safety/incidents/:id/days` — recording the days the
+                      // injury cost (issue #228). Needs Safety authority.
+                      GoRoute(
+                        path: 'days',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SafetyIncidentDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SafetyIncidentDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SafetyIncidentDaysDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SafetyIncidentDaysDialog(incident: detail.incident);
+                            },
+                          );
+                        },
+                      ),
+                      // `/safety/incidents/:id/close` — closing (issue #228,
+                      // #223 decision 4). Needs Safety authority, a note, and
+                      // the days settled above the no-injury rung; never
+                      // refused for an open Concern.
+                      GoRoute(
+                        path: 'close',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SafetyIncidentDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SafetyIncidentDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SafetyIncidentCloseDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SafetyIncidentCloseDialog(incident: detail.incident);
+                            },
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -37,6 +37,29 @@
  * what looks like a quiet Site. A date range is checked the same way, and is
  * interpreted as *production days* — see safety-incidents.js's own note on
  * `listSafetyIncidents`.
+ *
+ * **Issue #228 — making a recorded incident answerable.** Six more addresses
+ * live here, gated on one of two standings, the same asymmetry
+ * `nonconformance-routes.js` draws between a write Grant and Quality
+ * authority (ADR-0035):
+ *
+ *   - The investigation due date and an ordinary status move need only a
+ *     write Grant reaching the incident's Org Unit — the same standing
+ *     recording itself needs, because neither is the judgement Safety
+ *     authority exists for.
+ *   - Correcting the severity, recording the days and closing each need
+ *     Safety authority reaching the incident's Org Unit
+ *     (`people.canAct({ …, safety: true })`, ADR-0039) — a decision about the
+ *     record rather than a piece of work on it, gated with this Module's own
+ *     sentence rather than People's `OUTSIDE_GRANTED_ORG_UNITS`: a caller may
+ *     be well inside their granted Org Units and simply not hold the
+ *     authority, and telling them the wrong thing sends them to the wrong
+ *     person to ask.
+ *
+ * Every one of the six resolves existence and visibility first
+ * (`requireKnownSafetyIncident` → `requireSafetyIncidentVisible`) and only
+ * then asks the standing it needs, the same order the register's own detail
+ * route follows and AGENTS.md §6 fixes.
  */
 
 const express = require('express');
@@ -96,6 +119,48 @@ async function requireSafetyIncidentVisible(req, res, next) {
     });
     if (!allowed) {
       return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    return next();
+  });
+}
+
+// The write-scope half (issue #228): a write Grant reaching the Org Unit the
+// incident sits at, never a read one — the same standing recording itself
+// needs. Existence and visibility first, so `canAct` is never asked about a
+// null id.
+async function requireSafetyIncidentWriteScope(req, res, next) {
+  return requireSafetyIncidentVisible(req, res, async () => {
+    const allowed = await people.canAct({
+      account: req.account,
+      orgUnitId: req.safetyIncident.orgUnitId,
+      write: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    return next();
+  });
+}
+
+// Safety authority (issue #228, ADR-0039): the standing to classify, correct
+// and close, carried on a Grant independently of its level and reaching
+// downward like the Grant does. Existence and visibility come first for the
+// same reason as everywhere else, and the refusal is a sentence of this
+// Module's own rather than People's `OUTSIDE_GRANTED_ORG_UNITS`: the caller
+// may well be inside their granted Org Units and simply not hold this
+// authority.
+const SAFETY_AUTHORITY_REQUIRED =
+  "that decision needs Safety authority at this Safety incident's Org Unit";
+
+async function requireSafetyIncidentSafetyAuthority(req, res, next) {
+  return requireSafetyIncidentVisible(req, res, async () => {
+    const allowed = await people.canAct({
+      account: req.account,
+      orgUnitId: req.safetyIncident.orgUnitId,
+      safety: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: SAFETY_AUTHORITY_REQUIRED });
     }
     return next();
   });
@@ -192,6 +257,42 @@ router.get(
   }
 );
 
+// The overdue listing (issue #228): incidents past `investigation_due_at`
+// and not `closed`, for an Org Unit and everything beneath it. A distinct
+// address rather than a `?overdue=true` filter on the register above, because
+// it answers a different question — a worklist of what has stalled, not a
+// narrowed read of everything — and `/sites/:siteId/incidents/overdue` is a
+// literal path segment Express matches before it ever tries the register's
+// own handler, so the two never compete. Visibility is the same weaker
+// question the register itself asks: anyone who can see the Site.
+router.get(
+  '/sites/:siteId/incidents/overdue',
+  people.authenticate,
+  people.requireActive,
+  requireKnownSite,
+  requireSiteVisible,
+  async (req, res, next) => {
+    try {
+      let orgUnitPath = null;
+      if (req.query.orgUnitId !== undefined) {
+        const orgUnit = await people.findOrgUnit(req.query.orgUnitId);
+        if (!orgUnit) throw notFound('Org Unit');
+        if (orgUnit.siteId !== req.site.id) throw notFound('Org Unit');
+        orgUnitPath = orgUnit.path;
+      }
+
+      const { incidents, truncated } = await safetyIncidents.listOverdueSafetyIncidents(
+        req.site.id,
+        { orgUnitPath }
+      );
+
+      res.json({ incidents, truncated });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 // Recording a Safety incident (issue #226).
 //
 // The Org Unit is resolved here rather than in the service because it is
@@ -247,6 +348,116 @@ router.get(
     try {
       const incident = await safetyIncidents.getSafetyIncidentDetail(req.params.id);
       if (!incident) throw notFound('Safety incident');
+      res.json({ incident });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// The investigation due date, set or changed (issue #228). A write Grant
+// reaching the Org Unit — the same standing recording itself needs — because
+// setting a deadline is not the judgement Safety authority exists for.
+router.patch(
+  '/incidents/:id/investigation-due-date',
+  people.authenticate,
+  people.requireActive,
+  requireSafetyIncidentWriteScope,
+  async (req, res, next) => {
+    try {
+      const incident = await safetyIncidents.setInvestigationDueDate(
+        req.safetyIncident.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.json({ incident });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// An ordinary status move (issue #228): open -> investigating ->
+// actions_pending. Closing is its own address below, gated on Safety
+// authority rather than a write Grant, because closing is a decision this
+// one is not.
+router.post(
+  '/incidents/:id/status',
+  people.authenticate,
+  people.requireActive,
+  requireSafetyIncidentWriteScope,
+  async (req, res, next) => {
+    try {
+      const incident = await safetyIncidents.moveSafetyIncidentStatus(
+        req.safetyIncident.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.json({ incident });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Correcting the severity level (issue #228, #223 decision 5). Safety
+// authority and a note.
+router.post(
+  '/incidents/:id/severity',
+  people.authenticate,
+  people.requireActive,
+  requireSafetyIncidentSafetyAuthority,
+  async (req, res, next) => {
+    try {
+      const incident = await safetyIncidents.changeSafetyIncidentSeverity(
+        req.safetyIncident.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.json({ incident });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Recording what the injury cost (issue #228): the lost-time and restricted
+// days. Safety authority — the same standing that classifies an injury and
+// closes the record.
+router.post(
+  '/incidents/:id/days',
+  people.authenticate,
+  people.requireActive,
+  requireSafetyIncidentSafetyAuthority,
+  async (req, res, next) => {
+    try {
+      const incident = await safetyIncidents.recordSafetyIncidentDays(
+        req.safetyIncident.id,
+        req.body ?? {},
+        req.account.id
+      );
+      res.json({ incident });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Closing (issue #228, #223 decision 4) — the judgement of someone
+// accountable for the place. Safety authority, a note, and the days settled
+// for any rung above the no-injury one; never refused for an open Concern.
+router.post(
+  '/incidents/:id/close',
+  people.authenticate,
+  people.requireActive,
+  requireSafetyIncidentSafetyAuthority,
+  async (req, res, next) => {
+    try {
+      const incident = await safetyIncidents.closeSafetyIncident(
+        req.safetyIncident.id,
+        req.body ?? {},
+        req.account.id
+      );
       res.json({ incident });
     } catch (error) {
       handleError(error, res, next);

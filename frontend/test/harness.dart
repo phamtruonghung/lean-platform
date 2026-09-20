@@ -937,7 +937,9 @@ Map<String, dynamic> safetyIncidentJson(
   String? productionDate,
   String? shiftCode,
   String? shiftName,
+  String? investigationDueAt,
   String? closedAt,
+  List<Map<String, dynamic>>? events,
 }) =>
     {
       'id': id,
@@ -972,9 +974,41 @@ Map<String, dynamic> safetyIncidentJson(
       'productionDate': productionDate,
       'shiftCode': shiftCode,
       'shiftName': shiftName,
+      // Issue #228's own five fields: the deadline, the event history, and
+      // when it closed.
+      'investigationDueAt': investigationDueAt,
       'closedAt': closedAt,
+      'events': events ?? const <Map<String, dynamic>>[],
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One row of a Safety incident's event history (issue #228) as `GET
+/// /api/safety/incidents/:id` sends it — mirrors `toSafetyIncidentEvent`
+/// (safety-incidents.js) key for key.
+Map<String, dynamic> safetyIncidentEventJson(
+  String id, {
+  required String kind,
+  required String previousValue,
+  required String newValue,
+  String? note,
+  String? changedByAccountId = '1',
+  String? changedByAccountName = 'Ann Operator',
+  String? changedByEmployeeId,
+  String? changedByEmployeeName,
+  String? changedAt,
+}) =>
+    {
+      'id': id,
+      'kind': kind,
+      'previousValue': previousValue,
+      'newValue': newValue,
+      'note': note,
+      'changedByAccountId': changedByAccountId,
+      'changedByAccountName': changedByAccountName,
+      'changedByEmployeeId': changedByEmployeeId,
+      'changedByEmployeeName': changedByEmployeeName,
+      'changedAt': changedAt ?? DateTime.now().toUtc().toIso8601String(),
     };
 
 /// One Concern as the record's own detail read names it: the Action's number,
@@ -2264,6 +2298,22 @@ class FakeWire {
   /// identification, body}` — mirrors [floorNonconformancePosts] exactly.
   final List<Map<String, dynamic>> floorSafetyIncidentPosts = [];
 
+  // Issue #228's five writes, each its own address — mirrors the shape
+  // [nonconformanceLowerSeverityPosts] and its siblings keep for the four
+  // decisions Quality authority gates.
+  final List<(String, Map<String, dynamic>)> safetyIncidentDueDatePatches = [];
+  final List<(String, Map<String, dynamic>)> safetyIncidentStatusPosts = [];
+  final List<(String, Map<String, dynamic>)> safetyIncidentSeverityPosts = [];
+  final List<(String, Map<String, dynamic>)> safetyIncidentDaysPosts = [];
+  final List<(String, Map<String, dynamic>)> safetyIncidentClosePosts = [];
+
+  /// Scripts a refusal for any of the five issue #228 writes — one status and
+  /// message shared across them, the same shape
+  /// [recordNonconformanceActStatus]/[recordNonconformanceActMessage] give the
+  /// Non-conformance Module's own five.
+  int recordSafetyIncidentActStatus = 200;
+  String recordSafetyIncidentActMessage = "that decision needs Safety authority at this Safety incident's Org Unit";
+
   /// Looks a Safety incident up by id across every Site's list, mirroring
   /// [nonconformanceById].
   Map<String, dynamic>? safetyIncidentById(String id) {
@@ -3511,6 +3561,18 @@ class FakeWire {
   void _replaceNonconformance(String id, Map<String, dynamic> updated) {
     nonconformances = {
       for (final entry in nonconformances.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) updated else row,
+        ],
+    };
+  }
+
+  /// Replaces one Safety incident row wherever it sits, mirroring
+  /// [_replaceNonconformance] exactly (issue #228).
+  void _replaceSafetyIncident(String id, Map<String, dynamic> updated) {
+    safetyIncidents = {
+      for (final entry in safetyIncidents.entries)
         entry.key: [
           for (final row in entry.value)
             if (row['id'] == id) updated else row,
@@ -5221,6 +5283,130 @@ class FakeWire {
             jsonEncode({'incidents': sent, 'truncated': safetyIncidentsTruncated}),
             200,
           );
+        }
+        if (path.startsWith('/api/safety/incidents/') &&
+            path.endsWith('/investigation-due-date') &&
+            request.method == 'PATCH') {
+          final id = path.substring(
+            '/api/safety/incidents/'.length,
+            path.length - '/investigation-due-date'.length,
+          );
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          safetyIncidentDueDatePatches.add((id, sent));
+          final row = safetyIncidentById(id);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Safety incident not found'}), 404);
+          }
+          if (recordSafetyIncidentActStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': recordSafetyIncidentActMessage}),
+              recordSafetyIncidentActStatus,
+            );
+          }
+          final updated = {...row, 'investigationDueAt': sent['investigationDueAt']};
+          _replaceSafetyIncident(id, updated);
+          return http.Response(jsonEncode({'incident': updated}), 200);
+        }
+        // The three writes gated on Safety authority, plus the ordinary
+        // status move — issue #228's four remaining addresses, each its own,
+        // mirroring the Non-conformance Module's own `actAddresses` shape.
+        if (path.startsWith('/api/safety/incidents/') && request.method == 'POST') {
+          const actAddresses = <String>['/status', '/severity', '/days', '/close'];
+          String? act;
+          for (final suffix in actAddresses) {
+            if (path.endsWith(suffix)) act = suffix;
+          }
+          if (act != null) {
+            final id = path.substring(
+              '/api/safety/incidents/'.length,
+              path.length - act.length,
+            );
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            final row = safetyIncidentById(id);
+            if (row == null) {
+              return http.Response(jsonEncode({'message': 'Safety incident not found'}), 404);
+            }
+            switch (act) {
+              case '/status':
+                safetyIncidentStatusPosts.add((id, sent));
+              case '/severity':
+                safetyIncidentSeverityPosts.add((id, sent));
+              case '/days':
+                safetyIncidentDaysPosts.add((id, sent));
+              case '/close':
+                safetyIncidentClosePosts.add((id, sent));
+            }
+            if (recordSafetyIncidentActStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': recordSafetyIncidentActMessage}),
+                recordSafetyIncidentActStatus,
+              );
+            }
+            final events = [...(row['events'] as List<dynamic>? ?? const [])];
+            Map<String, dynamic> updated = {...row};
+            switch (act) {
+              case '/status':
+                events.add(
+                  safetyIncidentEventJson(
+                    '$id-e${events.length + 1}',
+                    kind: 'status',
+                    previousValue: row['status'] as String,
+                    newValue: sent['status'] as String,
+                    changedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {...row, 'status': sent['status'], 'events': events};
+              case '/severity':
+                events.add(
+                  safetyIncidentEventJson(
+                    '$id-e${events.length + 1}',
+                    kind: 'severity',
+                    previousValue: row['severityLevel'] as String,
+                    newValue: sent['severityLevel'] as String,
+                    note: sent['note'] as String?,
+                    changedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {...row, 'severityLevel': sent['severityLevel'], 'events': events};
+              case '/days':
+                events.add(
+                  safetyIncidentEventJson(
+                    '$id-e${events.length + 1}',
+                    kind: 'days',
+                    previousValue:
+                        'lostTimeDays=${row['lostTimeDays']},restrictedDays=${row['restrictedDays']}',
+                    newValue:
+                        'lostTimeDays=${sent['lostTimeDays']},restrictedDays=${sent['restrictedDays']}',
+                    changedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {
+                  ...row,
+                  'lostTimeDays': sent['lostTimeDays'],
+                  'restrictedDays': sent['restrictedDays'],
+                  'events': events,
+                };
+              case '/close':
+                events.add(
+                  safetyIncidentEventJson(
+                    '$id-e${events.length + 1}',
+                    kind: 'closure',
+                    previousValue: row['status'] as String,
+                    newValue: 'closed',
+                    note: sent['note'] as String?,
+                    changedByAccountName: 'Ann Operator',
+                  ),
+                );
+                updated = {
+                  ...row,
+                  'status': 'closed',
+                  'closedAt': DateTime.now().toUtc().toIso8601String(),
+                  'events': events,
+                };
+            }
+            _replaceSafetyIncident(id, updated);
+            return http.Response(jsonEncode({'incident': updated}), 200);
+          }
         }
         if (path.startsWith('/api/safety/incidents/')) {
           final id = path.substring('/api/safety/incidents/'.length);
