@@ -120,8 +120,9 @@ or view and edit. A Grant reaches downward, so one on a department covers every
 line beneath it, and an Account holds exactly the Grants its last Approval gave
 it — Approval sets the whole set at once, replacing what was there before, never
 adding to it. This is the record Account, Approval and Entry point each already
-gesture at. A Grant may also carry Quality authority, which is separate from
-its level and is set and replaced along with the rest of the set.
+gesture at. A Grant may also carry Quality authority or Safety authority — each
+separate from its level and from the other — and both are set and replaced
+along with the rest of the set.
 _Avoid_: Permission, scope (scope is the reach a Grant produces, not the record),
 access
 
@@ -283,6 +284,85 @@ accepts the product rather than dealing with it, so only a quality engineer may
 grant one and their name stays on the record.
 _Avoid_: Deviation (that is permission granted before the product is made),
 waiver, use-as-is approval
+
+### Safety
+
+**Safety incident**:
+Something that went wrong, recorded where it happened — the kind of event,
+its place on the Severity level ladder, who was hurt if anyone, and what was
+done about it right away. Every Safety incident names its reporter: an
+Account, or an Employee identified at the shared floor device by their number
+and PIN (ADR-0016). A record nobody can be traced back to cannot be followed
+up, and the person who reported it cannot be told what was done about it.
+_Avoid_: Near miss (that is one value each of Incident type and Severity
+level, not a word for every incident), accident, safety report, incident
+report
+
+**Incident type**:
+What kind of event a Safety incident was — an injury, a near miss, property
+damage, an environmental release, a fire, an ergonomic event, or a security
+event. It answers a different question from Severity level: the type says
+what happened, the ladder says what it cost a person, so a fire that hurt
+nobody is type `fire` sitting on the ladder's no-injury rung, exactly where a
+near miss also sits. It is the field "near misses reported" counts, which is
+why keeping the two apart matters.
+_Avoid_: Using it interchangeably with Severity level (a `near_miss` incident
+type and the ladder's `near_miss` rung answer different questions), severity,
+category
+
+**Severity level**:
+The worst actual outcome an incident produced, **to a person**, placed on
+the fixed ladder the injury rates are built on. Its bottom rung is spelled
+`near_miss` in the schema and cannot be respelled, but it means **no
+injury** — which is also where a damage-only fire honestly sits, since
+nobody was hurt by either. What kind of event occurred — an injury, a near
+miss, property damage, an environmental release, a fire — is a separate
+field, Incident type, and Incident type is what "near misses reported"
+counts, not this one.
+_Avoid_: Reading the bottom rung as "this was a near miss" (it says nobody
+was hurt, not what kind of event this was), using the ladder to mean how
+serious the event felt (that question belongs to Severity potential, asked
+of an observation, not to this field), severity
+
+**Recordable**:
+Whether an incident counts toward the plant's injury rate. Derived from the
+Severity level — medical treatment and worse — and never ticked by hand,
+because recordability follows a fixed rule and a hand-maintained flag is how
+injury rates end up understated without anyone intending it.
+_Avoid_: Reportable, a recordable incident (Recordable is a derived flag on
+an incident, not a kind of incident)
+
+**Safety observation**:
+What was seen before anything went wrong — a safe act, an unsafe act, or an
+unsafe condition, under one category — recorded at the Org Unit it was seen
+at. The leading indicator, and the only number on the Safety Pillar a team
+can move this week, where an incident count is mostly zero and occasionally
+catastrophic.
+_Avoid_: Safety walk (that is the activity that produces observations, not
+an observation itself), audit, inspection finding
+
+**Severity potential**:
+The worst credible outcome of what was observed, not what actually
+happened. Ranking an observation by potential rather than by outcome is what
+stops a safety walk turning into a tally of trip hazards: an unsafe act with
+fatal potential outranks fifty pieces of loose housekeeping in the queue for
+attention.
+_Avoid_: Severity level (that ladder ranks an incident's actual outcome to a
+person; this ranks a credible one), risk rating, likelihood
+
+**Stop-work**:
+Somebody stopping a job on their own authority. Rare, and the single
+strongest signal that a plant's safety culture is real — which is why it is
+flagged on an observation and counted on its own rather than filed as just
+another unsafe condition.
+_Avoid_: Work stoppage, shutdown, refusal
+
+**Safety authority**:
+The standing to classify an injury, set an incident's severity, record what
+it cost and close it, in an Org Unit. Held on a Grant, so it reaches
+downward and belongs to a place rather than a job title — the same shape
+Quality authority takes, and independent of it.
+_Avoid_: Safety officer (a job, not the authority), safety role, approver
 
 ### The action log
 
