@@ -21,6 +21,9 @@ import '../platform/floor_device_gateway.dart';
 import '../quality/floor_nonconformance_bloc.dart';
 import '../quality/floor_nonconformance_dialog.dart';
 import '../quality/quality_api.dart';
+import '../safety/floor_safety_incident_bloc.dart';
+import '../safety/floor_safety_incident_dialog.dart';
+import '../safety/safety_api.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
@@ -54,6 +57,13 @@ class FloorScreen extends StatelessWidget {
   /// whether or not there is open work on the line.
   static const ValueKey<String> recordNonconformanceKey =
       ValueKey<String>('floor-record-nonconformance');
+
+  /// The Report-a-Safety-incident action (issue #227) — the floor surface's
+  /// own door into Safety's record, offered beside the Non-conformance action
+  /// for the same reason: it is reachable whether or not the line has
+  /// anything open.
+  static const ValueKey<String> reportSafetyIncidentKey =
+      ValueKey<String>('floor-report-safety-incident');
 
   /// The floor list's own loading placeholders, so a test can tell a slow read
   /// from an empty or failed one.
@@ -114,6 +124,36 @@ class FloorScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(recorded)));
   }
 
+  /// Reports a Safety incident from this device (issue #227), mirroring
+  /// [_recordNonconformance] exactly: the Bloc is built here, from the
+  /// repositories this Screen's own context reaches, and handed to the dialog
+  /// fresh per action, carrying the Org Unit the device is registered at.
+  ///
+  /// The identified Employee is recorded as the reporter and there is no
+  /// Account on this path at all (ADR-0016), and there is no anonymous option
+  /// anywhere in the flow (ADR-0036) — identification is required before the
+  /// dialog's submit button is ever enabled.
+  ///
+  /// What lands comes back as the incident's own number, shown on this Screen
+  /// rather than in the dialog, the same "the operator is looking at the
+  /// line" reasoning [_recordNonconformance] gives.
+  Future<void> _reportSafetyIncident(BuildContext context, String orgUnitId) async {
+    final reported = await showDialog<String>(
+      context: context,
+      builder: (_) => BlocProvider<FloorSafetyIncidentBloc>(
+        create: (context) => FloorSafetyIncidentBloc(
+          safetyApi: context.read<SafetyApi>(),
+          maintenanceApi: context.read<MaintenanceApi>(),
+          floorDeviceGateway: context.read<FloorDeviceGateway>(),
+          orgUnitId: orgUnitId,
+        ),
+        child: const FloorSafetyIncidentDialog(),
+      ),
+    );
+    if (reported == null || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(reported)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,6 +192,9 @@ class FloorScreen extends StatelessWidget {
                 onRecordNonconformance: isActing
                     ? null
                     : () => _recordNonconformance(context, info.orgUnitId),
+                onReportSafetyIncident: isActing
+                    ? null
+                    : () => _reportSafetyIncident(context, info.orgUnitId),
                 notice: notice,
                 child: workOrders.isEmpty
                     ? PlatformEmptyState.noneExist(
@@ -190,6 +233,7 @@ class _FloorFrame extends StatelessWidget {
     this.orgUnitName,
     this.onRefresh,
     this.onRecordNonconformance,
+    this.onReportSafetyIncident,
     this.notice,
   });
 
@@ -197,6 +241,7 @@ class _FloorFrame extends StatelessWidget {
   final String? orgUnitName;
   final VoidCallback? onRefresh;
   final VoidCallback? onRecordNonconformance;
+  final VoidCallback? onReportSafetyIncident;
   final String? notice;
 
   @override
@@ -248,6 +293,25 @@ class _FloorFrame extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.report_outlined),
                   label: const Text('Non-conformance'),
+                ),
+              // Reporting a Safety incident is the one Safety action the floor
+              // surface offers (issue #227), beside the Non-conformance action
+              // for the same reason — reachable whether or not the line has
+              // anything open.
+              if (onReportSafetyIncident != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: Spacing.sm),
+                  child: FilledButton.icon(
+                    key: FloorScreen.reportSafetyIncidentKey,
+                    onPressed: onReportSafetyIncident,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      minimumSize: const Size(0, 48),
+                    ),
+                    icon: const Icon(Icons.health_and_safety_outlined),
+                    label: const Text('Safety incident'),
+                  ),
                 ),
               if (onRefresh != null)
                 IconButton(

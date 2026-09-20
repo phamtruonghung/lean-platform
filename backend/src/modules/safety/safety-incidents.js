@@ -26,13 +26,17 @@
  * ADR-0036 decided this the opposite way from the baseline's own comment
  * above `safety_incidents`, and migration 1800800000000 turned the decision
  * into a CHECK (`safety_incidents_not_anonymous`) rather than leaving it
- * advisory. This slice's one door is a signed-in Account —
- * `recordIncident`'s `actor` is `{ accountId }`, the shape
- * `nonconformances.js` gives its own two-door `actor` object, kept here even
- * though the floor device (issue #227, the shared terminal's own Employee
- * identification) is not built yet, so that ticket adds a second actor shape
- * rather than reshaping this one. `is_anonymous` is never set from a caller;
- * the column's own default (`FALSE`) is left to fire.
+ * advisory. Two doors record an incident, and each names a different kind of
+ * reporter: a signed-in Account (`actor.accountId`, `recorded_by_account_id`)
+ * or an Employee identified at a registered floor device (`actor.employeeId`,
+ * `reported_by`, issue #227) — the same `{ accountId }` / `{ employeeId }`
+ * shape `nonconformances.js` gives its own two-door `actor` object. Exactly
+ * one of the two is ever set: `safety-incident-routes.js`'s Account door
+ * passes `{ accountId }`, `floor-safety-incident-routes.js`'s floor door
+ * passes `{ employeeId }`, and neither door can produce a record with
+ * neither set — a request that reaches this function at all has already been
+ * authenticated by one door or the other. `is_anonymous` is never set from a
+ * caller; the column's own default (`FALSE`) is left to fire.
  *
  * **The production day and the shift are the database's answer, not this
  * file's.** `safety_incidents` has carried the baseline's
@@ -455,19 +459,28 @@ async function findSiteCodeForOrgUnit(orgUnitId, client = null) {
 }
 
 /**
- * Record a Safety incident (issue #226).
+ * Record a Safety incident (issue #226, #227).
  *
- * `actor` is `{ accountId }` — the one door this slice has. Kept as an object
- * rather than a bare id so a later door (the floor device, issue #227) can add
- * `{ employeeId }` beside it the way `nonconformances.js`'s own actor already
- * does, without reshaping this function's signature.
+ * `actor` is `{ accountId }` or `{ employeeId }` — the two doors this Module
+ * has, the same shape `nonconformances.js`'s own two-door `actor` already
+ * uses. The Account door (`safety-incident-routes.js`) passes `accountId`; the
+ * floor door (`floor-safety-incident-routes.js`, issue #227) passes the
+ * identified Employee's id as `employeeId` — the *reporter*, written to
+ * `reported_by`. This is a different id from `body.employeeId` (the local
+ * `employeeId` variable below), which is issue #224's field for the Employee
+ * *involved* in the incident and always comes from the request body, never
+ * from the actor. Not validated for existence here: the floor route only ever
+ * reaches this function with `req.technician.id`, already resolved from a real
+ * identification, the same trust `nonconformances.js` places in its own
+ * `actor.employeeId`.
  *
  * The route has already resolved the Org Unit and answered the scope question
- * (`people.canAct({ …, write: true })`) and parsed the Asset id; everything
- * that is a fact about the record itself is decided here. `is_anonymous` is
- * never set — the column's own `FALSE` default is left to fire, and migration
- * 1800800000000's CHECK is the backstop that makes that the only value the row
- * can ever hold.
+ * (`people.canAct({ …, write: true })` on the Account door,
+ * `people.deviceReachesOrgUnit` on the floor door) and parsed the Asset id;
+ * everything that is a fact about the record itself is decided here.
+ * `is_anonymous` is never set — the column's own `FALSE` default is left to
+ * fire, and migration 1800800000000's CHECK is the backstop that makes that
+ * the only value the row can ever hold.
  *
  * The number, the shift instance and the audit columns are all the database's
  * own work — `next_document_number` for the first, `fill_shift_instance` for
@@ -478,6 +491,7 @@ async function findSiteCodeForOrgUnit(orgUnitId, client = null) {
 async function recordSafetyIncident(input, actor = {}) {
   const body = input ?? {};
   const accountId = actor.accountId ?? null;
+  const reporterEmployeeId = actor.employeeId ?? null;
 
   const orgUnitId = parseId(body.orgUnitId);
   if (orgUnitId === null) throw httpError(400, 'orgUnitId must be a valid Org Unit id');
@@ -536,10 +550,10 @@ async function recordSafetyIncident(input, actor = {}) {
          incident_no, org_unit_id, asset_id, occurred_at, reported_at,
          incident_type, severity_level, employee_id, lost_time_days,
          restricted_days, description, immediate_action,
-         recorded_by_account_id
+         recorded_by_account_id, reported_by
        )
        VALUES ($1, $2, $3, $4, COALESCE($5::timestamptz, now()), $6, $7, $8, $9,
-               $10, $11, $12, $13)
+               $10, $11, $12, $13, $14)
        RETURNING id`,
       [
         numberRow.incident_no,
@@ -554,7 +568,8 @@ async function recordSafetyIncident(input, actor = {}) {
         restrictedDays,
         description,
         immediateAction,
-        accountId
+        accountId,
+        reporterEmployeeId
       ]
     );
     return row.id;

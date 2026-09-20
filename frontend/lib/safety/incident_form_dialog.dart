@@ -245,17 +245,7 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                             helperText: 'What kind of event this was.',
                             border: OutlineInputBorder(),
                           ),
-                          items: [
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text('Choose a type'),
-                            ),
-                            for (final type in IncidentType.values)
-                              DropdownMenuItem<String?>(
-                                value: type,
-                                child: Text(IncidentType.label(type)),
-                              ),
-                          ],
+                          items: IncidentType.dropdownItems(),
                           onChanged: _awaiting
                               ? null
                               : (type) => setState(() => _incidentType = type),
@@ -272,24 +262,12 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                             helperText: 'The worst actual outcome to a person. Ladder order.',
                             border: OutlineInputBorder(),
                           ),
-                          items: [
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text('Choose a rung'),
-                            ),
-                            // Ladder order, never alphabetical, and marking
-                            // where the recordable line falls (the binding
-                            // design comment on #223).
-                            for (final level in SeverityLevel.values)
-                              DropdownMenuItem<String?>(
-                                value: level,
-                                child: Text(
-                                  SeverityLevel.isRecordable(level)
-                                      ? '${SeverityLevel.label(level)} · recordable'
-                                      : SeverityLevel.label(level),
-                                ),
-                              ),
-                          ],
+                          // Ladder order, never alphabetical, and marking
+                          // where the recordable line falls (the binding
+                          // design comment on #223) — built once by
+                          // SeverityLevel.dropdownItems and shared with
+                          // FloorSafetyIncidentDialog.
+                          items: SeverityLevel.dropdownItems(),
                           onChanged: _awaiting
                               ? null
                               : (level) => setState(() => _severityLevel = level),

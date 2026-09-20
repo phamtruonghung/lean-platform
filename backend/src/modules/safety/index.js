@@ -25,19 +25,24 @@
  *
  * What this Module requires from outside itself is People's entry point and
  * nothing else (`npm run lint`'s boundary check enforces it): `authenticate`,
- * `requireActive`, `findSite`, `findOrgUnit`, `canAct` and `canSeeSite`, plus
- * the shared `OUTSIDE_GRANTED_ORG_UNITS` wording — the exact set
- * `nonconformance-routes.js` asks People for, and no more. `safety` requires
- * neither `maintenance`, `quality` nor `actions`: the Asset a Safety incident
- * may name and the Employee it may name are both read by ordinary SQL join
- * (ADR-0006's "code seams, not data seams"), the same way
+ * `requireActive`, `findSite`, `findOrgUnit`, `canAct` and `canSeeSite` for
+ * safety-incident-routes.js's Account door, plus `findDeviceByCredential`,
+ * `findValidIdentification` and `deviceReachesOrgUnit` for
+ * floor-safety-incident-routes.js's floor door (issue #227) — exactly as
+ * `quality/floor-routes.js` asks the same three of People for its own floor
+ * door — and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording, used by both.
+ * `safety` requires neither `maintenance`, `quality` nor `actions`: the Asset
+ * a Safety incident may name and the Employee it may name are both read by
+ * ordinary SQL join (ADR-0006's "code seams, not data seams"), the same way
  * `nonconformances.js` reads `assets`.
  */
 
 const express = require('express');
 const safetyIncidentRoutes = require('./safety-incident-routes');
+const floorSafetyIncidentRoutes = require('./floor-safety-incident-routes');
 
 const router = express.Router();
 router.use(safetyIncidentRoutes);
+router.use(floorSafetyIncidentRoutes);
 
 module.exports = { router };

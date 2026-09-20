@@ -13,7 +13,7 @@
 /// rather than deriving one.
 library;
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../status_tone.dart';
 
@@ -55,6 +55,20 @@ abstract final class IncidentType {
         security => 'Security',
         _ => type,
       };
+
+  /// The dropdown's own item list — a leading "choose one" placeholder
+  /// followed by [values] in their declared order — shared by every form that
+  /// picks an incident type (`SafetyIncidentFormDialog` and
+  /// `FloorSafetyIncidentDialog`, issue #227), so the set is built once rather
+  /// than duplicated per form.
+  static List<DropdownMenuItem<String?>> dropdownItems({
+    String placeholder = 'Choose a type',
+  }) =>
+      [
+        DropdownMenuItem<String?>(value: null, child: Text(placeholder)),
+        for (final type in values)
+          DropdownMenuItem<String?>(value: type, child: Text(label(type))),
+      ];
 }
 
 /// The severity ladder, **in ladder order** — no injury through fatality,
@@ -104,6 +118,27 @@ abstract final class SeverityLevel {
         fatality => 'Fatality',
         _ => level,
       };
+
+  /// The dropdown's own item list — a leading "choose one" placeholder
+  /// followed by [values] in **ladder order**, each marked "· recordable"
+  /// where [isRecordable] is true (the binding design comment on #223) —
+  /// shared by every form that picks a severity level
+  /// (`SafetyIncidentFormDialog` and `FloorSafetyIncidentDialog`, issue #227),
+  /// so the ladder-ordering and recordable-marking logic is built once rather
+  /// than duplicated per form.
+  static List<DropdownMenuItem<String?>> dropdownItems({
+    String placeholder = 'Choose a rung',
+  }) =>
+      [
+        DropdownMenuItem<String?>(value: null, child: Text(placeholder)),
+        for (final level in values)
+          DropdownMenuItem<String?>(
+            value: level,
+            child: Text(
+              isRecordable(level) ? '${label(level)} · recordable' : label(level),
+            ),
+          ),
+      ];
 
   /// The tone painted by recordability, not as a gradient (the binding design
   /// comment on #223): three tones, and the one place the colour changes is
