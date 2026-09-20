@@ -127,6 +127,10 @@ const _pages = <_Page>[
   // token its own `ListView`-free document layout spends) and its width is its
   // own 1100 rather than `AppLayout.pageWidth` — a width this test deliberately
   // does not assert, because page widths are not a rule here.
+  // The Safety incident register (issue #226). Its rows are cards of text at
+  // the card's own padding, so the default bound holds.
+  _Page('/safety/incidents', 'lib/safety/incidents_screen.dart', 'Safety incidents',
+      'What went wrong at this Site'),
   _Page('/actions/capas/801/report', 'lib/actions/capa_report_screen.dart',
       'The guard keeps working loose',
       'The 8D record of this investigation',
@@ -155,6 +159,8 @@ const _excluded = <String, String>{
       "its title is the complaint's own Customer and Product, not a page heading",
   'lib/quality/supplier_ncr_detail_screen.dart':
       "its title is the supplier NCR's own Supplier and Product, not a page heading",
+  'lib/safety/incident_detail_screen.dart':
+      "its title is the Safety incident's own number, not a page heading",
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',
@@ -211,6 +217,11 @@ FakeWire _wire() => FakeWire(
       suppliers: [supplierJson('50', 'SUP-1', 'Northwind Fasteners')],
       supplierNcrs: {
         '1': [supplierNcrJson('80', 'SN-2026-00001', responseDueDate: '2099-01-01')],
+      },
+      // The Safety incident register (issue #226), so the page renders its
+      // card rather than an empty state and the row assertion actually runs.
+      safetyIncidents: {
+        '1': [safetyIncidentJson('901', 'SI-HCM-2026-00001')],
       },
       complaints: {
         '1': [

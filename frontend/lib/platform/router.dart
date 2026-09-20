@@ -122,6 +122,12 @@ import '../quality/nonconformances_screen.dart';
 import '../quality/products_bloc.dart';
 import '../quality/products_screen.dart';
 import '../quality/quality_api.dart';
+import '../safety/incident_detail_bloc.dart';
+import '../safety/incident_detail_screen.dart';
+import '../safety/incident_form_dialog.dart';
+import '../safety/incidents_screen.dart';
+import '../safety/safety_api.dart';
+import '../safety/safety_incidents_bloc.dart';
 import 'access_denied_screen.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
@@ -167,6 +173,13 @@ abstract final class Routes {
   /// addressed, per ADR-0021. `new` cannot collide with the detail route
   /// because it is not an id.
   static const String nonConformances = '/non-conformances';
+
+  /// The Safety Module's own Destinations (issue #226): the incident register,
+  /// its record form (`/safety/incidents/record`, the binding design comment
+  /// on #223) and one incident's detail (`/safety/incidents/:id`) — all
+  /// addressed, per ADR-0019/ADR-0021. `record` cannot collide with the
+  /// detail route because it is not an id.
+  static const String safetyIncidents = '/safety/incidents';
 
   /// The Customer list (issue #214), at its own address so it can be linked to
   /// or bookmarked. Defining and correcting a Customer are dialogs over it
@@ -1369,6 +1382,117 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                         },
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Safety incidents (issue #226) — a `ShellRoute` of its own, for the
+          // same reason Non-conformances has one: `SafetyIncidentsBloc` is
+          // created exactly once and shared by the register and the record
+          // form's own address below (a child `GoRoute`'s page is a *sibling*
+          // of its parent's, so a Bloc provided inside the register's builder
+          // would not be visible to the form).
+          //
+          // The guard is the whole Module rather than a role set: the register
+          // is a Site-wide read for every admitted Account, and recording
+          // needs only a write Grant reaching the Org Unit it occurred at, or
+          // the administrator role — both of which the server decides. An
+          // operator is offered this Destination exactly as a manager is.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<SafetyIncidentsBloc>(
+                create: (context) => SafetyIncidentsBloc(
+                  safetyApi: context.read<SafetyApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SafetyIncidentsStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.safetyIncidents,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const SafetyIncidentsScreen();
+                },
+                routes: [
+                  // `/safety/incidents/record` — the record form, addressed
+                  // rather than popped (ADR-0021, the binding design comment
+                  // on #223): a refresh lands on the register with the form
+                  // open, and `record` cannot collide with the detail route
+                  // below because it is not an id.
+                  GoRoute(
+                    path: 'record',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final register = context.watch<SafetyIncidentsBloc>().state;
+                          final siteId =
+                              register is SafetyIncidentsLoaded ? register.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: SafetyIncidentsScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          // The chooser inside the form browses People's tree
+                          // through the same Bloc the Non-conformance form
+                          // uses, scoped to this dialog and opened on the
+                          // Site on screen.
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: SafetyIncidentFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // `/safety/incidents/:id` — a `ShellRoute` of its own so
+              // `SafetyIncidentDetailBloc` is created exactly once, and
+              // **keyed on the id in the address**: go_router reuses a
+              // route's page when the *pattern* matches, so moving from one
+              // incident to another would otherwise leave this Bloc — and the
+              // Screen reading it — holding the record before (issue #183's
+              // own bug, fixed the same way for Non-conformances).
+              ShellRoute(
+                builder: (context, state, child) {
+                  final incidentId = state.pathParameters['id']!;
+                  return BlocProvider<SafetyIncidentDetailBloc>(
+                    key: ValueKey<String>(incidentId),
+                    create: (context) => SafetyIncidentDetailBloc(
+                      safetyApi: context.read<SafetyApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(SafetyIncidentDetailStarted(incidentId)),
+                    child: child,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    // Absolute, because this route is a *sibling* of the
+                    // register's rather than a child of it: a relative `:id`
+                    // here resolves against the Module shell and matches
+                    // `/:id`, not `/safety/incidents/:id`.
+                    path: '${Routes.safetyIncidents}/:id',
+                    builder: (context, state) => SafetyIncidentDetailScreen(
+                      incidentId: state.pathParameters['id']!,
+                    ),
                   ),
                 ],
               ),

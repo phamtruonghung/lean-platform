@@ -14,6 +14,7 @@ import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/not_found_screen.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 import 'package:lean_platform/quality/quality_api.dart';
+import 'package:lean_platform/safety/safety_api.dart';
 
 import 'harness.dart' show FakeAuthGateway, meClient, pumpApp;
 
@@ -115,6 +116,9 @@ void main() {
         // #203) — this test never leaves Home, so nothing here answers a
         // quality address, but `PlatformApp` requires the client all the same.
         qualityApi: QualityApi(client: meClient(() => activeBody)),
+        // The Safety Module's own client (issue #226) — same reasoning as
+        // qualityApi above.
+        safetyApi: SafetyApi(client: meClient(() => activeBody)),
         initialLocation: '/',
       ),
     );

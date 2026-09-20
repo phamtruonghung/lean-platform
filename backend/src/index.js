@@ -22,6 +22,7 @@ const people = require('./modules/people');
 const maintenance = require('./modules/maintenance');
 const actions = require('./modules/actions');
 const quality = require('./modules/quality');
+const safety = require('./modules/safety');
 
 const app = express();
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
@@ -97,6 +98,11 @@ app.use('/api/actions', actions.router);
 // mounted here, where the application composes its Modules, and it carries its
 // own copy of the administrator check (quality/index.js's own header).
 app.use('/api/quality', quality.router);
+// The Safety Module's own prefix (issue #226): the first Safety incidents,
+// today, and whatever else this Module owns as its later slices land — the
+// same reasoning `/api/quality`'s own comment gives, and it is mounted here,
+// where the application composes its Modules, for the same reason.
+app.use('/api/safety', safety.router);
 
 // An unknown path under /api answers in JSON. Express's default 404 is an HTML
 // page, which a client that asked for JSON cannot parse — so a typo in a URL
