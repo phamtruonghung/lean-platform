@@ -25,6 +25,10 @@
 /// same reach-with-one-flag test [canWriteAt] makes, so a Screen can offer a
 /// quality decision to exactly the callers the server's `canAct({ quality:
 /// true })` would allow it to.
+///
+/// Each Grant also carries whether it holds Safety authority (issue #225,
+/// ADR-0035 applied a second time) — the same shape as Quality authority,
+/// independent of it, read through [OrgUnitScope.canHoldSafetyAt].
 library;
 
 import 'package:flutter/foundation.dart';
@@ -36,6 +40,7 @@ class OrgUnitGrant {
     required this.siteId,
     required this.canWrite,
     this.qualityAuthority = false,
+    this.safetyAuthority = false,
     this.orgUnitIds,
   });
 
@@ -52,6 +57,11 @@ class OrgUnitGrant {
   /// server, a hand-written fixture) reads as holding no authority, which is
   /// the only truthful default for a permission.
   final bool qualityAuthority;
+
+  /// Whether this Grant carries Safety authority (issue #225, ADR-0035
+  /// applied a second time) — [qualityAuthority]'s own shape, independent of
+  /// it and of [canWrite]. Defaulted false for the same reason.
+  final bool safetyAuthority;
 
   /// Every Org Unit id this Grant reaches, granted unit included, as `/me`
   /// reports it (issue #110). Null when the server did not send one.
@@ -117,5 +127,15 @@ class OrgUnitScope {
       everywhere ||
       grants.any(
         (grant) => grant.qualityAuthority && grant.reachedOrgUnitIds.contains(orgUnitId),
+      );
+
+  /// Whether any Grant of this Account carrying Safety authority reaches
+  /// [orgUnitId] (issue #225, ADR-0035 applied a second time) —
+  /// [canHoldQualityAt]'s exact shape, independent of it. An administrator
+  /// reaches everywhere.
+  bool canHoldSafetyAt(String orgUnitId) =>
+      everywhere ||
+      grants.any(
+        (grant) => grant.safetyAuthority && grant.reachedOrgUnitIds.contains(orgUnitId),
       );
 }

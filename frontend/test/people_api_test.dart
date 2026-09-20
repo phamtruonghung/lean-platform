@@ -320,6 +320,7 @@ void main() {
         'orgUnitId': '10',
         'canWrite': false,
         'qualityAuthority': true,
+        'safetyAuthority': false,
       });
     });
   });

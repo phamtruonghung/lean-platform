@@ -96,6 +96,16 @@ class OrgUnitPickerGrantQualitySet extends OrgUnitPickerEvent {
   final bool quality;
 }
 
+/// Flip one granted Org Unit's Safety authority (issue #225, ADR-0035 applied
+/// a second time) — the same shape [OrgUnitPickerGrantQualitySet] already is,
+/// independent of it: a Grant is added without either and given each here,
+/// separately.
+class OrgUnitPickerGrantSafetySet extends OrgUnitPickerEvent {
+  const OrgUnitPickerGrantSafetySet({required this.orgUnitId, required this.safety});
+  final String orgUnitId;
+  final bool safety;
+}
+
 class OrgUnitPickerGrantRemoved extends OrgUnitPickerEvent {
   const OrgUnitPickerGrantRemoved(this.orgUnitId);
   final String orgUnitId;
@@ -220,6 +230,16 @@ class OrgUnitPickerState {
     return false;
   }
 
+  /// Whether the Grant on [orgUnitId] carries Safety authority (issue #225,
+  /// ADR-0035 applied a second time) — the same reading [qualityOf] gives,
+  /// independently of it.
+  bool safetyOf(String orgUnitId) {
+    for (final entry in granted) {
+      if (entry.orgUnit.id == orgUnitId) return entry.safety;
+    }
+    return false;
+  }
+
   /// A search hit's own breadcrumb, root-first (issue #130): the ancestor
   /// names the server resolved *on the hit itself* (`OrgUnitNode.ancestorNames`,
   /// issue #145, ADR-0024). Nothing is looked up in [nodesById], so an
@@ -334,6 +354,7 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
     on<OrgUnitPickerRefreshed>(_onRefreshed);
     on<OrgUnitPickerGrantAdded>(_onGrantAdded);
     on<OrgUnitPickerGrantQualitySet>(_onGrantQualitySet);
+    on<OrgUnitPickerGrantSafetySet>(_onGrantSafetySet);
     on<OrgUnitPickerGrantRemoved>(_onGrantRemoved);
     on<OrgUnitPickerRevealed>(_onRevealed);
   }
@@ -533,10 +554,11 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
   }
 
   /// One Grant's Quality authority, flipped or cleared (issue #204, ADR-0035)
-  /// — the Granted entry replaced in place, preserving the Org Unit, the level
-  /// and the breadcrumb it was added with. A no-op for an id that is not
-  /// granted: the act is about a Grant already in the set, and the tree row's
-  /// own add menu is the only way one enters it.
+  /// — the Granted entry replaced in place, preserving the Org Unit, the
+  /// level, the breadcrumb it was added with, and its Safety authority
+  /// (issue #225): flipping one flag must never silently clear the other. A
+  /// no-op for an id that is not granted: the act is about a Grant already in
+  /// the set, and the tree row's own add menu is the only way one enters it.
   void _onGrantQualitySet(OrgUnitPickerGrantQualitySet event, Emitter<OrgUnitPickerState> emit) {
     if (!state.isGranted(event.orgUnitId)) return;
     emit(
@@ -549,6 +571,32 @@ class OrgUnitPickerBloc extends Bloc<OrgUnitPickerEvent, OrgUnitPickerState> {
                 level: entry.level,
                 where: entry.where,
                 quality: event.quality,
+                safety: entry.safety,
+              )
+            else
+              entry,
+        ],
+      ),
+    );
+  }
+
+  /// One Grant's Safety authority, flipped or cleared (issue #225, ADR-0035
+  /// applied a second time) — [_onGrantQualitySet]'s own shape, preserving
+  /// [GrantedOrgUnit.quality] the same way that handler preserves
+  /// [GrantedOrgUnit.safety].
+  void _onGrantSafetySet(OrgUnitPickerGrantSafetySet event, Emitter<OrgUnitPickerState> emit) {
+    if (!state.isGranted(event.orgUnitId)) return;
+    emit(
+      state.copyWith(
+        granted: [
+          for (final entry in state.granted)
+            if (entry.orgUnit.id == event.orgUnitId)
+              GrantedOrgUnit(
+                orgUnit: entry.orgUnit,
+                level: entry.level,
+                where: entry.where,
+                quality: entry.quality,
+                safety: event.safety,
               )
             else
               entry,

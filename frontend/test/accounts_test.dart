@@ -406,7 +406,7 @@ void main() {
     expect(wire.approvals.single, {
       'role': Roles.engineer,
       'grants': [
-        {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': false},
+        {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': false, 'safetyAuthority': false},
       ],
       'expectedApprovalStatus': 'approved',
     });
@@ -487,8 +487,93 @@ void main() {
     await tapIn(tester, find.byKey(AccountCorrectionDialog.submitKey));
 
     expect(wire.approvals.single['grants'], [
-      {'orgUnitId': '10', 'canWrite': true, 'qualityAuthority': false},
-      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': true},
+      {'orgUnitId': '10', 'canWrite': true, 'qualityAuthority': false, 'safetyAuthority': false},
+      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': true, 'safetyAuthority': false},
+    ]);
+  });
+
+  // Issue #225, ADR-0035 applied a second time: Safety authority is shown per
+  // Grant beside Quality authority, and the correction dialog opens holding
+  // the flag an Account already has.
+  testWidgets('a Grant carrying Safety authority is named as such, and the correction dialog opens '
+      'with the box ticked', (tester) async {
+    goWide(tester);
+    final wire = _plant(accounts: [
+      accountJson('7', 'auditor@b.c', role: Roles.supervisor, grants: [
+        grantJson('10', name: 'Assembly', canWrite: true, safetyAuthority: true),
+        grantJson('11', name: 'Line 1'),
+      ]),
+    ]);
+    await openAccounts(tester, wire);
+
+    final tooltip = tester.widget<Tooltip>(find.byKey(AccountsScreen.grantsKey('7')));
+    final lines = (tooltip.message as String).split('\n');
+    expect(lines, contains('Ho Chi Minh › Assembly · View and edit · Safety authority'));
+    expect(lines, contains('Ho Chi Minh › Line 1 · View'));
+
+    await openCorrection(tester, '7');
+    expect(
+      tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('10'))).value,
+      true,
+    );
+    expect(
+      tester.widget<CheckboxListTile>(find.byKey(OrgUnitPicker.safetyKey('11'))).value,
+      false,
+    );
+  });
+
+  testWidgets('the narrow card names Safety authority in the Grant chip too', (tester) async {
+    goNarrow(tester);
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('7', 'auditor@b.c', role: Roles.supervisor, grants: [
+          grantJson('10', name: 'Assembly', safetyAuthority: true),
+        ]),
+      ]),
+    );
+
+    expect(find.text('Ho Chi Minh › Assembly · View · Safety authority'), findsOneWidget);
+  });
+
+  // A Grant may carry both at once — the chip and the tooltip name both, and
+  // neither hides the other.
+  testWidgets('a Grant carrying both Quality and Safety authority names both', (tester) async {
+    goNarrow(tester);
+    await openAccounts(
+      tester,
+      _plant(accounts: [
+        accountJson('7', 'auditor@b.c', role: Roles.supervisor, grants: [
+          grantJson('10', name: 'Assembly', qualityAuthority: true, safetyAuthority: true),
+        ]),
+      ]),
+    );
+
+    expect(
+      find.text('Ho Chi Minh › Assembly · View · Quality authority · Safety authority'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a correction gives Safety authority to a Grant, and takes it from another, in one act',
+      (tester) async {
+    goWide(tester);
+    final wire = _plant(accounts: [
+      accountJson('7', 'auditor@b.c', role: Roles.supervisor, grants: [
+        grantJson('10', canWrite: true, safetyAuthority: true),
+        grantJson('11', name: 'Line 1'),
+      ]),
+    ]);
+    await openAccounts(tester, wire);
+    await openCorrection(tester, '7');
+
+    await tapIn(tester, find.byKey(OrgUnitPicker.safetyKey('10')));
+    await tapIn(tester, find.byKey(OrgUnitPicker.safetyKey('11')));
+    await tapIn(tester, find.byKey(AccountCorrectionDialog.submitKey));
+
+    expect(wire.approvals.single['grants'], [
+      {'orgUnitId': '10', 'canWrite': true, 'qualityAuthority': false, 'safetyAuthority': false},
+      {'orgUnitId': '11', 'canWrite': false, 'qualityAuthority': false, 'safetyAuthority': true},
     ]);
   });
 

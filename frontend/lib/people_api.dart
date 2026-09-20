@@ -191,6 +191,9 @@ class PeopleApi {
               // without the key holds none, the same "the server did not say
               // so" default `canWrite` already gets.
               qualityAuthority: grant['qualityAuthority'] == true,
+              // Safety authority (issue #225, ADR-0035 applied a second
+              // time) — the same default reasoning as qualityAuthority above.
+              safetyAuthority: grant['safetyAuthority'] == true,
               // The Org Units this Grant reaches, granted unit included
               // (issue #110). Absent means an older server, so it falls back
               // to "this Grant's own unit" rather than an empty reach.
@@ -1382,6 +1385,9 @@ class PeopleApi {
               // shows it per Grant, and the correction dialog seeds the
               // picker's checkbox from it.
               qualityAuthority: grant['qualityAuthority'] == true,
+              // Safety authority (issue #225, ADR-0035 applied a second
+              // time) — the same shape as qualityAuthority above.
+              safetyAuthority: grant['safetyAuthority'] == true,
             ),
       ],
     );

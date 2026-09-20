@@ -97,13 +97,15 @@ Map<String, dynamic> _meBody(
 /// offers a write affordance. `orgUnitIds` is the Grant's whole reach, the
 /// granted unit plus every descendant (issue #110); left unset, the wire keeps
 /// the older "reaches only its own Org Unit" shape. `qualityAuthority` is the
-/// flag independent of `canWrite` (issue #204, ADR-0035), and defaults false
-/// exactly as the server's own column does.
+/// flag independent of `canWrite` (issue #204, ADR-0035), and `safetyAuthority`
+/// is the same shape again (issue #225) — both default false exactly as the
+/// server's own columns do.
 Map<String, dynamic> scopeGrantJson(
   String orgUnitId, {
   String siteId = '1',
   bool canWrite = false,
   bool qualityAuthority = false,
+  bool safetyAuthority = false,
   List<String>? orgUnitIds,
 }) =>
     {
@@ -111,6 +113,7 @@ Map<String, dynamic> scopeGrantJson(
       'siteId': siteId,
       'canWrite': canWrite,
       'qualityAuthority': qualityAuthority,
+      'safetyAuthority': safetyAuthority,
       'orgUnitIds': ?orgUnitIds,
     };
 
@@ -1466,14 +1469,16 @@ Map<String, dynamic> accountJson(
 
 /// One Grant on an Account row, as the accounts listing sends it.
 /// `qualityAuthority` is the flag independent of the level (issue #204,
-/// ADR-0035) — false unless a test gives it, the same default the server's own
-/// column has.
+/// ADR-0035), and `safetyAuthority` is the same shape again (issue #225) —
+/// both false unless a test gives them, the same default the server's own
+/// columns have.
 Map<String, dynamic> grantJson(
   String orgUnitId, {
   String name = 'Assembly',
   String siteName = 'Ho Chi Minh',
   bool canWrite = false,
   bool qualityAuthority = false,
+  bool safetyAuthority = false,
 }) =>
     {
       'orgUnitId': orgUnitId,
@@ -1485,6 +1490,7 @@ Map<String, dynamic> grantJson(
       'siteName': siteName,
       'canWrite': canWrite,
       'qualityAuthority': qualityAuthority,
+      'safetyAuthority': safetyAuthority,
     };
 
 /// One KPI as `GET /api/maintenance/sites/:siteId/board` sends it (issue #76).
@@ -6376,6 +6382,10 @@ class FakeWire {
                         // picker's box sees it come back on the row rather
                         // than only on the request.
                         qualityAuthority: g['qualityAuthority'] == true,
+                        // Safety authority (issue #225, ADR-0035 applied a
+                        // second time) — the same round trip as
+                        // qualityAuthority above.
+                        safetyAuthority: g['safetyAuthority'] == true,
                       ),
                   ],
                 }

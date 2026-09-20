@@ -31,6 +31,7 @@ class AccountGrant {
     required this.siteName,
     required this.canWrite,
     this.qualityAuthority = false,
+    this.safetyAuthority = false,
   });
 
   final String orgUnitId;
@@ -49,6 +50,11 @@ class AccountGrant {
   /// which is the only truthful default for a permission.
   final bool qualityAuthority;
 
+  /// Whether this Grant carries Safety authority (issue #225, ADR-0035
+  /// applied a second time) — [qualityAuthority]'s own shape, independent of
+  /// it and of [canWrite].
+  final bool safetyAuthority;
+
   GrantLevel get level => canWrite ? GrantLevel.viewAndEdit : GrantLevel.view;
 
   /// This Grant as the picker holds one, so an existing Grant set can be the
@@ -59,9 +65,10 @@ class AccountGrant {
   /// pre-filled Grant was never walked to. That is exactly what an entry
   /// point's breadcrumb already is today.
   ///
-  /// The whole flag travels with it (issue #204): a correction that opens the
-  /// picker on an Account already holding Quality authority has to show the
-  /// box ticked, or saving the form would silently take it away.
+  /// Both flags travel with it (issue #204, issue #225): a correction that
+  /// opens the picker on an Account already holding Quality or Safety
+  /// authority has to show each box ticked, or saving the form would
+  /// silently take one away.
   GrantedOrgUnit toGranted() => GrantedOrgUnit(
         orgUnit: OrgUnitNode(
           id: orgUnitId,
@@ -73,6 +80,7 @@ class AccountGrant {
         level: level,
         where: siteName,
         quality: qualityAuthority,
+        safety: safetyAuthority,
       );
 }
 
