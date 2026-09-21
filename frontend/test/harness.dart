@@ -993,6 +993,11 @@ Map<String, dynamic> safetyIncidentJson(
   String? investigationDueAt,
   String? closedAt,
   List<Map<String, dynamic>>? events,
+  // The Concern raised from this incident, if one has been (issue #229) —
+  // empty for an incident nothing is being done about, which is a real state
+  // rather than a missing field, the same rule `nonconformanceJson`'s own
+  // `concerns` follows.
+  List<Map<String, dynamic>>? concerns,
 }) =>
     {
       'id': id,
@@ -1041,6 +1046,7 @@ Map<String, dynamic> safetyIncidentJson(
       'investigationDueAt': investigationDueAt,
       'closedAt': closedAt,
       'events': events ?? const <Map<String, dynamic>>[],
+      'concerns': concerns ?? const <Map<String, dynamic>>[],
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
@@ -1096,6 +1102,26 @@ Map<String, dynamic> concernJson(
       'orgUnitName': action['orgUnitName'],
       'isSource': isSource,
       'linkedAt': '2026-09-15T03:00:00.000Z',
+    };
+
+/// One Concern among a Safety incident's own `concerns` array (issue #229) —
+/// mirrors `toConcern` (safety-incidents.js) key for key, the same way
+/// [concernJson] mirrors Quality's. No `isSource`/`linkedAt`: a Safety
+/// incident's Concern is a single source column, not a gathered link, so
+/// there is nothing for either field to distinguish.
+Map<String, dynamic> safetyIncidentConcernJson(Map<String, dynamic> action) => {
+      'id': action['id'],
+      'actionNo': action['actionNo'],
+      'title': action['title'],
+      'actionType': action['actionType'],
+      'status': action['status'],
+      'priority': action['priority'],
+      'ownerName': action['ownerName'],
+      'dueDate': action['dueDate'],
+      'isOverdue': action['isOverdue'] ?? false,
+      'raisedAt': action['raisedAt'],
+      'orgUnitId': action['orgUnitId'],
+      'orgUnitName': action['orgUnitName'],
     };
 
 /// One Non-conformance among a Concern's own `nonconformances` array (issue
@@ -1762,6 +1788,8 @@ class FakeWire {
     this.completePhaseMessage = 'this Action is waiting on its plan phase, not its do',
     this.raiseConcernStatus = 201,
     this.raiseConcernMessage = 'this Non-conformance was cancelled, so no Concern can be raised from it',
+    this.raiseSafetyConcernStatus = 201,
+    this.raiseSafetyConcernMessage = 'Safety incident not found',
     this.linkNonconformanceStatus = 201,
     this.linkNonconformanceMessage = 'this Non-conformance is already linked to this Concern',
     this.unlinkNonconformanceStatus = 200,
@@ -2575,6 +2603,19 @@ class FakeWire {
   final List<(String, Map<String, dynamic>)> concernRaisePosts = [];
   int raiseConcernStatus;
   String raiseConcernMessage;
+
+  /// Every Concern raised from a Safety incident that reached the wire
+  /// (issue #229), as `(safetyIncidentId, body)` — `POST
+  /// /api/actions/safety-incidents/:id/concern`.
+  final List<(String, Map<String, dynamic>)> safetyConcernRaisePosts = [];
+  int raiseSafetyConcernStatus;
+  String raiseSafetyConcernMessage;
+
+  /// The Concern a Safety-incident raise answers with, when a test wants the
+  /// row the server would have written named differently — the mirror of
+  /// [raisedConcern] for this path. Null means the fake builds one from the
+  /// request.
+  Map<String, dynamic>? raisedSafetyConcern;
 
   /// Every link that reached the wire, as `(concernId, body)` — `POST
   /// /api/actions/:id/nonconformances`.
@@ -7376,6 +7417,56 @@ class FakeWire {
           return http.Response(jsonEncode({'action': concern}), 201);
         }
         if (request.method == 'POST' &&
+            path.startsWith('/api/actions/safety-incidents/') &&
+            path.endsWith('/concern')) {
+          // `/api/actions/safety-incidents/:id/concern` (issue #229): raising
+          // a Concern from a Safety incident — the mirror of the
+          // Non-conformance handler immediately above, field for field. Both
+          // sides are recorded: the concern in `actionDetails` so its own
+          // Screen reads it, and the concern on the incident's own row so the
+          // re-read after the raise shows it.
+          final remainder = path.substring('/api/actions/safety-incidents/'.length);
+          final safetyIncidentId = remainder.substring(0, remainder.length - '/concern'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          safetyConcernRaisePosts.add((safetyIncidentId, body));
+          if (raiseSafetyConcernStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': raiseSafetyConcernMessage}),
+              raiseSafetyConcernStatus,
+            );
+          }
+          final row = safetyIncidentById(safetyIncidentId);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Safety incident not found'}), 404);
+          }
+          final concernId = (raisedSafetyConcern?['id'] ?? '901').toString();
+          final concern = actionJson(
+            concernId,
+            'AC-TEST-2026-00009',
+            (body['title'] as String?) ?? 'A Concern',
+            description: body['description'] as String?,
+            orgUnitId: row['orgUnitId'] as String,
+            orgUnitName: row['orgUnitName'] as String,
+            siteId: row['siteId'] as String,
+            priority: (body['priority'] as int?) ?? 3,
+            sourceSafetyIncidentId: safetyIncidentId,
+            safetyIncident: linkedSafetyIncidentJson(
+              safetyIncidentId,
+              row['incidentNo'] as String,
+              severityLevel: row['severityLevel'] as String,
+            ),
+          )..['openPhase'] = phaseJson(1, 'plan');
+          actionDetails[concernId] = concern;
+          _replaceSafetyIncident(safetyIncidentId, {
+            ...row,
+            'concerns': [
+              ...(row['concerns'] as List<dynamic>? ?? const []),
+              safetyIncidentConcernJson(concern),
+            ],
+          });
+          return http.Response(jsonEncode({'action': concern}), 201);
+        }
+        if (request.method == 'POST' &&
             path.startsWith('/api/actions/') &&
             path.endsWith('/unlink')) {
           // `/api/actions/:id/nonconformances/:nonconformanceId/unlink` (issue
@@ -7953,6 +8044,8 @@ Map<String, dynamic> actionJson(
   Map<String, dynamic>? openPhase,
   String? sourceNonconformanceId,
   List<Map<String, dynamic>> nonconformances = const [],
+  String? sourceSafetyIncidentId,
+  Map<String, dynamic>? safetyIncident,
   Map<String, dynamic>? capa,
 }) =>
     {
@@ -7992,10 +8085,31 @@ Map<String, dynamic> actionJson(
       // Concern was raised from, and every occurrence it answers.
       'sourceNonconformanceId': sourceNonconformanceId,
       'nonconformances': nonconformances,
+      // Provenance the other way round (issue #229): the Safety incident the
+      // Concern was raised from, and the number/severity a reader needs to
+      // recognise it — `null` for every Action raised from anything else,
+      // which is every Concern this fixture builds unless a test names one.
+      'sourceSafetyIncidentId': sourceSafetyIncidentId,
+      'safetyIncident': safetyIncident,
       // The CAPA opened on this Action, if one has been (issue #209) —
       // `{id, capaNo, status}` or null, which is the state every Concern is in
       // until somebody opens one.
       'capa': capa,
+    };
+
+/// The Safety incident behind a Concern (issue #229), as an Action's own
+/// nested `safetyIncident` field names it — mirrors the backend's own
+/// `safetyIncident` object key for key: the number and the severity only,
+/// never the injury details.
+Map<String, dynamic> linkedSafetyIncidentJson(
+  String id,
+  String incidentNo, {
+  String severityLevel = 'first_aid',
+}) =>
+    {
+      'id': id,
+      'incidentNo': incidentNo,
+      'severityLevel': severityLevel,
     };
 
 /// One CAPA as `GET /api/actions/capas/:id` sends it (issue #209) — the

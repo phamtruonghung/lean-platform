@@ -609,4 +609,44 @@ void main() {
     // reader's retry asks for again.
     expect(wire.capaReads, ['801']);
   });
+
+  testWidgets(
+      'a CAPA opened on a Concern raised from a Safety incident names the incident where it names a Non-conformance today (issue #229)',
+      (tester) async {
+    final safetySourcedConcern = actionJson(
+      '501',
+      'AC-HCM-2026-00001',
+      _capaTitle,
+      orgUnitId: '11',
+      orgUnitName: 'Line 1',
+      siteId: '1',
+      description: 'The guard interlock does not hold under load.',
+      status: 'done',
+      capa: {'id': '801', 'capaNo': _capaNo, 'status': 'closed'},
+      // No measures and no Non-conformances at all: the single-source rule
+      // means a Concern raised from a Safety incident never carries either
+      // the evidence or the source columns a quality-sourced Concern would.
+      sourceSafetyIncidentId: '901',
+      safetyIncident: linkedSafetyIncidentJson('901', 'SI-HCM-2026-00001', severityLevel: 'lost_time'),
+    );
+    final wire = _wire(capa: _capa(concern: safetySourcedConcern));
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/actions/capas/801/report',
+    );
+
+    expect(find.byKey(CapaReportScreen.loadedKey), findsOneWidget);
+
+    // The safety-incident section replaces the Non-conformances one — the
+    // single-source rule means a Concern is never both.
+    expect(find.byKey(CapaReportScreen.safetyIncidentKey), findsOneWidget);
+    expect(find.byKey(CapaReportScreen.nonconformancesKey), findsNothing);
+    expect(find.byKey(CapaReportScreen.noNonconformancesKey), findsNothing);
+
+    final evidence = _textUnder(tester, CapaReportScreen.safetyIncidentKey);
+    expect(evidence, contains('SI-HCM-2026-00001'));
+    expect(evidence, contains('Lost time'));
+  });
 }

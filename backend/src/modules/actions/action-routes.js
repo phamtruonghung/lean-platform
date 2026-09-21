@@ -532,6 +532,76 @@ router.post(
   }
 );
 
+// Raising a Concern from a Safety incident (issue #229).
+//
+// Mirrors the Non-conformance route immediately above, field for field, for
+// the reason actions.js's own header gives at length: `safety` requires only
+// `people`'s entry point and cannot write the Action log itself, and a
+// Concern's own creation rules (number, title, `raised_by`, cycle-1 Plan) are
+// this Module's knowledge. The one difference is the source column set on the
+// write — `safetyIncidentId` rather than `qualityIssueId` — and there is no
+// link-table half to this act: #229's own acceptance criteria ask for the
+// source column and nothing more, unlike a Non-conformance's Concern, which
+// may gather further occurrences after the first.
+//
+// The Org Unit is not the caller's choice, for the same reason: the Concern
+// lands at the incident's own Org Unit, because a problem is solved where it
+// happened. The scope question is #198's Concern rule, read about the
+// incident's Site rather than a Non-conformance's: `people.canSeeSite`, never
+// a Grant — a concern is a report, not a decision.
+router.post(
+  '/safety-incidents/:id/concern',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+
+      const incident = await actions.findSafetyIncidentForConcern(req.params.id);
+      if (!incident) throw notFound('Safety incident');
+
+      const allowed = await people.canSeeSite({
+        account: req.account,
+        siteId: incident.siteId
+      });
+      if (!allowed) {
+        return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+      }
+
+      let ownerEmployeeId = null;
+      if (body.ownerEmployeeId !== undefined && body.ownerEmployeeId !== null) {
+        ownerEmployeeId = parseId(body.ownerEmployeeId);
+        if (ownerEmployeeId === null) {
+          return res.status(400).json({ message: 'ownerEmployeeId must be a valid Employee id' });
+        }
+        const employee = await people.findEmployee(ownerEmployeeId);
+        if (!employee) throw notFound('Employee');
+        if (!employee.isActive) {
+          throw httpError(409, 'this Employee has departed and cannot be given an Action');
+        }
+      }
+
+      const action = await actions.raiseConcernFromSafetyIncident(
+        incident.id,
+        {
+          title: body.title,
+          description: body.description ?? null,
+          pillarCode: body.pillarCode ?? null,
+          ownerEmployeeId,
+          dueDate: body.dueDate ?? null,
+          priority: body.priority ?? 3
+        },
+        req.account.id,
+        { raisedBy: req.account.employeeId ?? null }
+      );
+
+      res.status(201).json({ action });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 // Linking a further Non-conformance to an existing Concern (issue #208).
 //
 // Two permissions, and they are the two the act actually needs. The Concern

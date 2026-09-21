@@ -68,6 +68,13 @@ class ActionDetailScreen extends StatelessWidget {
 
   static ValueKey<String> unlinkNonconformanceKey(String id) =>
       ValueKey<String>('action-nonconformance-unlink-$id');
+
+  /// The Safety incident this Concern was raised from, if it was raised from
+  /// one (issue #229) — the section a Concern renders instead of
+  /// [nonconformancesKey], never both (the single-source rule).
+  static const ValueKey<String> safetyIncidentKey =
+      ValueKey<String>('action-detail-safety-incident');
+
   static ValueKey<String> addMeasureKindKey(String wire) =>
       ValueKey<String>('action-detail-add-measure-$wire');
   static ValueKey<String> measureKey(String id) => ValueKey<String>('action-measure-$id');
@@ -217,12 +224,17 @@ class _ActionDetail extends StatelessWidget {
             const SizedBox(height: Spacing.lg),
             _Measures(action: action),
             const SizedBox(height: Spacing.lg),
-            // The evidence behind the Concern (issue #208), at the foot of the
-            // record on purpose: the cycle and the work answering it are what
-            // was asked for first, and the occurrences are what proves the
-            // problem is real. A Concern raised from the register has none of
-            // them, and the empty state says so rather than leaving a blank.
-            _Nonconformances(action: action),
+            // The evidence behind the Concern, at the foot of the record on
+            // purpose: the cycle and the work answering it are what was asked
+            // for first, and the source is what proves the problem is real. A
+            // Concern raised from the register has neither, and the empty
+            // state says so rather than leaving a blank. The single-source
+            // rule (`action_items_single_source`) means a Concern is never
+            // both, so exactly one of the two renders (issue #229).
+            if (action.safetyIncident != null)
+              _SafetyIncidentSource(action: action)
+            else
+              _Nonconformances(action: action),
           ],
         ),
       ),
@@ -691,6 +703,62 @@ class _Nonconformances extends StatelessWidget {
                       : const Icon(Icons.chevron_right),
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// The words this Screen prints for a Safety incident's severity level (issue
+/// #229) — a deliberate second copy of the Safety Module's own map, the same
+/// trade `capa_report_screen.dart`'s own `_severityLabels` makes and for the
+/// same reason: the ladder's words belong to `safety`, whose client entry
+/// point this Module does not import (the dependency runs one way — see
+/// `actions.dart`).
+const Map<String, String> _severityLabels = {
+  'near_miss': 'No injury',
+  'first_aid': 'First aid',
+  'medical_treatment': 'Medical treatment',
+  'restricted_work': 'Restricted work',
+  'lost_time': 'Lost time',
+  'fatality': 'Fatality',
+};
+
+/// The Safety incident this Concern was raised from (issue #229) — the mirror
+/// of `_Nonconformances` for the other source a Concern may carry. One row,
+/// linking to the incident's own address, naming its number and severity and
+/// **never its injury details**: this Module's own read selects neither the
+/// identified Employee, the Injury type nor the Body part (`actions.js`'s
+/// header explains why), so there is nothing here that could leak them.
+class _SafetyIncidentSource extends StatelessWidget {
+  const _SafetyIncidentSource({required this.action});
+
+  final Action action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final incident = action.safetyIncident!;
+
+    return Column(
+      key: ActionDetailScreen.safetyIncidentKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Safety incident', style: theme.textTheme.titleSmall),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          'The incident this Concern was raised from — its number and its severity, never who '
+          'was hurt or their diagnosis.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Spacing.sm),
+        Card(
+          child: ListTile(
+            onTap: () => context.go('${Routes.safetyIncidents}/${incident.id}'),
+            title: Text(incident.incidentNo),
+            subtitle: Text(_severityLabels[incident.severityLevel] ?? incident.severityLevel),
+            trailing: const Icon(Icons.chevron_right),
+          ),
+        ),
       ],
     );
   }

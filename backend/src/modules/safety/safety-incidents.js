@@ -389,7 +389,7 @@ const SAFETY_INCIDENT_JOINS = `
   LEFT JOIN shift_instances shi ON shi.id = si.shift_instance_id
   LEFT JOIN shift_definitions sd ON sd.id = shi.shift_definition_id`;
 
-function toSafetyIncident(row, { events = [] } = {}) {
+function toSafetyIncident(row, { events = [], concerns = [] } = {}) {
   return {
     id: row.id,
     incidentNo: row.incident_no,
@@ -452,7 +452,14 @@ function toSafetyIncident(row, { events = [] } = {}) {
     // The event history (issue #228): empty on a list row and on a plain
     // find, filled in only by getSafetyIncidentDetail — the same shape
     // toNonconformance gives its own quantityChanges/dispositions/corrections.
-    events
+    events,
+    // The Concern raised from this incident, if one has been (issue #229) —
+    // read from the Actions Module's own table by ordinary SQL join
+    // (ADR-0006's "code seams, not data seams"), the same way `toNonconformance`
+    // reads its own `concerns`. Empty on a list row and on a plain find, filled
+    // in only by `getSafetyIncidentDetail`; empty is a real state — nothing is
+    // being done about the cause yet — not a missing field.
+    concerns
   };
 }
 
@@ -727,12 +734,58 @@ async function hasSettledDays(safetyIncidentId, client = null) {
   return rows.length > 0;
 }
 
+// The Concern raised from this incident, if one has been (issue #229) — read
+// from the Actions Module's own `action_items` table by ordinary SQL join,
+// the mirror of `quality/nonconformances.js`'s own `CONCERN_COLUMNS` and
+// `listConcerns`. `ai.safety_incident_id` is the whole of the relationship:
+// unlike a Non-conformance's Concern, there is no link table here, because
+// nothing in #229's own acceptance criteria asks for a second incident to be
+// gathered onto an existing Concern.
+const CONCERN_COLUMNS = `
+  ai.id, ai.action_no, ai.title, ai.action_type, ai.status, ai.priority,
+  to_char(ai.due_date, 'YYYY-MM-DD') AS due_date,
+  (ai.due_date IS NOT NULL AND ai.due_date < CURRENT_DATE) AS is_overdue,
+  ai.raised_at, ai.org_unit_id, ou.name AS org_unit_name,
+  e.display_name AS owner_name`;
+
+const CONCERN_JOINS = `
+  FROM action_items ai
+  JOIN org_units ou ON ou.id = ai.org_unit_id
+  LEFT JOIN employees e ON e.id = ai.owner_employee_id`;
+
+function toConcern(row) {
+  return {
+    id: row.id,
+    actionNo: row.action_no,
+    title: row.title,
+    actionType: row.action_type,
+    status: row.status,
+    priority: row.priority,
+    ownerName: row.owner_name ?? null,
+    dueDate: row.due_date ?? null,
+    isOverdue: row.is_overdue === true,
+    raisedAt: row.raised_at,
+    orgUnitId: row.org_unit_id,
+    orgUnitName: row.org_unit_name
+  };
+}
+
+async function listConcernsForIncident(safetyIncidentId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${CONCERN_COLUMNS}
+     ${CONCERN_JOINS}
+     WHERE ai.safety_incident_id = $1
+     ORDER BY ai.raised_at, ai.id`,
+    [safetyIncidentId]
+  );
+  return rows.map(toConcern);
+}
+
 // The detail read: the incident together with its event history (issue
-// #228), oldest first — the order a person reads a record's own story in,
-// the same choice `getNonconformanceDetail` makes for its own three
-// histories. Its own function anyway (mirroring getNonconformanceDetail) so a
-// later ticket that adds another sub-record — a linked Concern (#229) — has
-// one place to add it without reshaping the register's own row.
+// #228) and the Concern raised from it, if one has been (issue #229) — the
+// order a person reads a record's own story in, the same choice
+// `getNonconformanceDetail` makes for its own histories.
 async function getSafetyIncidentDetail(id) {
   if (parseId(id) === null) return null;
   const { rows } = await getPool().query(
@@ -741,7 +794,8 @@ async function getSafetyIncidentDetail(id) {
   );
   if (!rows[0]) return null;
   return toSafetyIncident(rows[0], {
-    events: await listSafetyIncidentEvents(rows[0].id)
+    events: await listSafetyIncidentEvents(rows[0].id),
+    concerns: await listConcernsForIncident(rows[0].id)
   });
 }
 

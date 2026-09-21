@@ -288,6 +288,44 @@ class ActionsApi {
     return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
   }
 
+  /// Raises a Concern from a Safety incident (issue #229) — the mirror of
+  /// [raiseConcernFromNonconformance], field for field, at the Actions
+  /// Module's own `/safety-incidents/:id/concern` address.
+  ///
+  /// The Org Unit is deliberately NOT in the body, for the same reason as the
+  /// Non-conformance path: the Concern lands at the incident's own Org Unit,
+  /// because a problem is solved where it happened, and the server resolves
+  /// it from the record rather than trusting a caller to name it.
+  Future<Action> raiseConcernFromSafetyIncident(
+    String accessToken,
+    String safetyIncidentId, {
+    required String title,
+    String? description,
+    String? pillarCode,
+    String? ownerEmployeeId,
+    String? dueDate,
+    int? priority,
+  }) async {
+    final path = '/api/actions/safety-incidents/$safetyIncidentId/concern';
+    final body = <String, dynamic>{
+      'title': title,
+      'description': ?description,
+      'pillarCode': ?pillarCode,
+      'ownerEmployeeId': ?ownerEmployeeId,
+      'dueDate': ?dueDate,
+      'priority': ?priority,
+    };
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
+  }
+
   /// Links a further Non-conformance to an existing Concern (issue #208).
   ///
   /// The act is on the Concern — one problem answering several occurrences
@@ -700,6 +738,19 @@ class ActionsApi {
         escalatedAt: json['escalatedAt'] == null ? null : DateTime.parse(json['escalatedAt'] as String),
         sourceType: json['sourceType'] as String?,
         sourceNonconformanceId: json['sourceNonconformanceId']?.toString(),
+        sourceSafetyIncidentId: json['sourceSafetyIncidentId']?.toString(),
+        // The Safety incident this Concern was raised from, if one is named
+        // (issue #229) — the number and severity only, never the injury
+        // details (see LinkedSafetyIncident's own doc comment).
+        safetyIncident: json['safetyIncident'] == null
+            ? null
+            : LinkedSafetyIncident(
+                id: (json['safetyIncident'] as Map<String, dynamic>)['id'].toString(),
+                incidentNo:
+                    (json['safetyIncident'] as Map<String, dynamic>)['incidentNo'] as String,
+                severityLevel:
+                    (json['safetyIncident'] as Map<String, dynamic>)['severityLevel'] as String,
+              ),
         // The CAPA opened on this Action, if one has been (issue #209).
         capa: json['capa'] == null
             ? null

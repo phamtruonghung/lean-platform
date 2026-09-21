@@ -54,6 +54,27 @@
  * `listLinkedNonconformances` below joins `quality_issues`, `products`,
  * `defect_codes` and `org_units` the way `assets.js` joins `org_units`, and
  * never writes a Quality row.
+ *
+ * ## Raising a Concern from a Safety incident lives here too (issue #229)
+ *
+ * The same three reasons apply verbatim to `safety`: it requires only
+ * `people`'s entry point, its own entry point could not offer a write even if
+ * `safety` could reach this Module, and what a Concern is when it is first
+ * written is this Module's own knowledge. `raiseConcernFromSafetyIncident`
+ * mirrors `raiseConcernFromNonconformance` field for field, setting
+ * `action_items.safety_incident_id` instead of `quality_issue_id` — the source
+ * column #223's own spec names as already in the schema, already permitted
+ * alongside `capa_id` by #221's narrowed `action_items_single_source`.
+ *
+ * There is no link table on the safety side, unlike `concern_nonconformances`:
+ * a Non-conformance's Concern answers several occurrences over time, which is
+ * what that table is for, but nothing in #229's own acceptance criteria asks
+ * for a second Safety incident to be gathered onto an existing Concern — the
+ * source column is the whole of the relationship, read directly off
+ * `safety_incidents` by `findSafetyIncidentForConcern` and carried on every
+ * Action row as the nested `safetyIncident` field (id, number, severity only
+ * — never the injury details ADR-0037 restricts, which this Module does not
+ * select and therefore cannot leak).
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -130,6 +151,15 @@ const ACTION_COLUMNS = `
   -- own row — which is the whole reason the source column exists beside the
   -- join table.
   ai.quality_issue_id,
+  -- The Safety incident this Concern was raised from, if it was raised from
+  -- one (issue #229) — the mirror of quality_issue_id above, for the Safety
+  -- Module's own path. incident_no and severity_level are read alongside it
+  -- so a reader of the Concern can name the incident and its severity
+  -- without a second request; nothing else about the incident is selected
+  -- here, because the injury details ADR-0037 restricts are not this
+  -- Module's to hand out.
+  ai.safety_incident_id, si.incident_no AS safety_incident_no,
+  si.severity_level AS safety_incident_severity_level,
   ai.created_at, ai.updated_at,
   ou.code AS org_unit_code, ou.name AS org_unit_name, ou.site_id,
   e.display_name AS owner_name,
@@ -172,6 +202,10 @@ const ACTION_JOINS = `
   -- partial unique index action_items_capa_id_once; null for everything that
   -- has not been turned into an investigation, which is most of the log.
   LEFT JOIN capas cp ON cp.id = ai.capa_id
+  -- The Safety incident this Concern was raised from, if any (issue #229) —
+  -- read directly from safety_incidents the way assets.js reads org_units: a
+  -- cross-Module read done as an ordinary SQL join (ADR-0006).
+  LEFT JOIN safety_incidents si ON si.id = ai.safety_incident_id
   -- The Concern this Action answers, if it answers one (issue #178).
   LEFT JOIN action_items par ON par.id = ai.parent_action_item_id
   -- How many measures answer this Action, and how many of them are
@@ -220,6 +254,20 @@ function toAction(row) {
     // Concern linked to four Non-conformances names all four in `nonconformances`
     // on its detail read, and this names the one it came from.
     sourceNonconformanceId: row.quality_issue_id ?? null,
+    // The Safety incident this Action was raised from (issue #229) — null for
+    // every Action this Module raises standalone, and for a Concern raised
+    // from anything else. Named rather than nested-in-full: a reader of the
+    // Concern needs the incident's number and severity to recognise it and go
+    // there, never the injury details ADR-0037 restricts, which this Module
+    // never reads and so cannot leak.
+    sourceSafetyIncidentId: row.safety_incident_id ?? null,
+    safetyIncident: row.safety_incident_id
+      ? {
+          id: String(row.safety_incident_id),
+          incidentNo: row.safety_incident_no,
+          severityLevel: row.safety_incident_severity_level
+        }
+      : null,
     // The CAPA opened on this Action (issue #209) — null for every Action but
     // a Concern somebody has opened an investigation on, which is the rule the
     // check constraint `action_items_capa_is_a_concern` keeps. Named rather
@@ -744,7 +792,7 @@ async function createAction(
     priority = 3
   },
   accountId,
-  { raisedBy = null, qualityIssueId = null } = {}
+  { raisedBy = null, qualityIssueId = null, safetyIncidentId = null } = {}
 ) {
   requireNonEmptyString('title', title);
   requireMemberOf('actionType', actionType, ACTION_TYPES);
@@ -780,10 +828,11 @@ async function createAction(
          )
          INSERT INTO action_items
            (action_no, org_unit_id, title, description, action_type, pillar_code,
-            owner_employee_id, due_date, priority, raised_by, quality_issue_id)
+            owner_employee_id, due_date, priority, raised_by, quality_issue_id,
+            safety_incident_id)
          VALUES
            (next_document_number('AC', (SELECT code FROM site), EXTRACT(YEAR FROM now())::int),
-            $1, $2, $3, $4, $5, $6, $7::date, $8, $9, $10)
+            $1, $2, $3, $4, $5, $6, $7::date, $8, $9, $10, $11)
          RETURNING id`,
         [
           orgUnitId,
@@ -795,7 +844,8 @@ async function createAction(
           due,
           priorityValue,
           raisedBy,
-          qualityIssueId
+          qualityIssueId,
+          safetyIncidentId
         ]
       );
 
@@ -1302,6 +1352,91 @@ async function raiseConcernFromNonconformance(
 
   // The detail read, so the answer carries the Non-conformance it was just
   // raised from rather than an empty list the caller would have to re-read.
+  return getActionDetail(action.id);
+}
+
+/**
+ * The Safety incident a Concern is about to be raised from (issue #229) — the
+ * mirror of `findNonconformanceForConcern` above: the record's own id and
+ * number, its severity, the Org Unit it sits at and the Site that Org Unit is
+ * in. Nothing about who was hurt is read here or anywhere in this file — the
+ * three fields ADR-0037 restricts are not columns this query names.
+ *
+ * Read as an ordinary SQL join rather than through Safety's entry point, for
+ * the same reason `findNonconformanceForConcern` is: this is a fact about a
+ * row this Platform shares a database with, not Safety's judgment about it
+ * (ADR-0006). Total, like `findAction`: a malformed id resolves to null rather
+ * than reaching Postgres as a BIGINT parameter.
+ */
+async function findSafetyIncidentForConcern(id) {
+  if (parseId(id) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT si.id, si.incident_no, si.severity_level, si.org_unit_id, ou.site_id
+       FROM safety_incidents si
+       JOIN org_units ou ON ou.id = si.org_unit_id
+      WHERE si.id = $1`,
+    [id]
+  );
+  if (!rows[0]) return null;
+  return {
+    id: rows[0].id,
+    incidentNo: rows[0].incident_no,
+    severityLevel: rows[0].severity_level,
+    orgUnitId: rows[0].org_unit_id,
+    siteId: rows[0].site_id
+  };
+}
+
+/**
+ * Raises a Concern from a Safety incident (issue #229), the same way one is
+ * raised from a Non-conformance: the Action log's own rules, unchanged — the
+ * title is required, the type is `concern`, the number is the Site's own, and
+ * the cycle-1 Plan is its own. What this adds is the one fact that makes it a
+ * Concern *from* something: the `safety_incident_id` source column, written on
+ * the very row that names it.
+ *
+ * It lands at the incident's own Org Unit, for the reason
+ * `raiseConcernFromNonconformance` gives: a problem is solved where it
+ * happened, and a caller naming a different Org Unit would be filing it
+ * somewhere it is not. The route asks `people.canSeeSite` about the incident's
+ * Site — the Concern rule #198 fixed, and the one #223's own spec names for
+ * this path — never a Grant.
+ *
+ * No status refusal here, unlike the Non-conformance path: `safety_incidents`
+ * has no `cancelled` state for a record filed in error to sit in, so there is
+ * nothing this function needs to check before raising from one. Nothing
+ * refuses a *second* Concern from the same incident either, for the same
+ * reason `raiseConcernFromNonconformance` gives about its own record: the
+ * source column names where a Concern came from, not a limit on how many a
+ * record may have raised against it.
+ */
+async function raiseConcernFromSafetyIncident(
+  safetyIncidentId,
+  input,
+  accountId,
+  { raisedBy = null } = {}
+) {
+  const incident = await findSafetyIncidentForConcern(safetyIncidentId);
+  if (!incident) throw notFound('Safety incident');
+
+  const body = input ?? {};
+  const action = await createAction(
+    {
+      orgUnitId: incident.orgUnitId,
+      title: body.title,
+      description: body.description ?? null,
+      actionType: 'concern',
+      pillarCode: body.pillarCode ?? null,
+      ownerEmployeeId: body.ownerEmployeeId ?? null,
+      dueDate: body.dueDate ?? null,
+      priority: body.priority ?? 3
+    },
+    accountId,
+    { raisedBy, safetyIncidentId: incident.id }
+  );
+
+  // The detail read, so the answer carries the Safety incident it was just
+  // raised from rather than an empty read the caller would have to make twice.
   return getActionDetail(action.id);
 }
 
@@ -3227,9 +3362,11 @@ module.exports = {
   listMeasures,
   listLinkedNonconformances,
   findNonconformanceForConcern,
+  findSafetyIncidentForConcern,
   createAction,
   createMeasure,
   raiseConcernFromNonconformance,
+  raiseConcernFromSafetyIncident,
   linkNonconformance,
   unlinkNonconformance,
   completePhase,
