@@ -61,6 +61,36 @@ decision.
   keeps a later reader from either trusting a gate that is not there or
   building one that defends nothing.
 
+## An administrator may classify an injury without being able to read it
+
+ADR-0039 says an administrator holds Safety authority everywhere, "as with
+every other check", and `canAct({ safety: true })` answers `true` for role
+`admin` before it looks at a Grant at all. This ADR restricts the three
+fields by the **Grant**, not by the role — issue #224 says so in as many
+words, "administrators included, since an administrator need not be in the
+chain". The two are not in tension, and the asymmetry they produce is named
+here rather than left to be discovered:
+
+- **Writing** the classification — `POST /incidents/:id/classify`, and
+  naming any of the three at the moment of recording — is gated on
+  `canAct({ safety: true })`, administrator short-circuit included, exactly
+  as #228's severity, days and close routes already are. An administrator
+  may classify an injury anywhere.
+- **Reading** the classification back is gated on a Grant carrying Safety
+  authority that reaches the Org Unit, or on being the injured person. An
+  administrator holding no such Grant gets the three fields absent — from
+  the register, from the detail, and from the very response to the write
+  they just made.
+
+So an administrator with no Safety Grant reaching that Org Unit may POST a
+classification and receive a 200 whose three fields are not in it. That is
+the honest reading rather than an oversight: this ADR restricts a *read*, and
+the answer to a write is a read. The alternative — "a caller may always read
+back what they just wrote" — would be a second, weaker rule sitting beside
+this one, and it is the rule a later change would copy to the next route. A
+write is audited (`attach_audit('safety_incidents')` records who and the whole
+row); a read is not, which is why the two are gated differently at all.
+
 ## Consequences
 
 A description or an immediate-action note that names the injured person, or

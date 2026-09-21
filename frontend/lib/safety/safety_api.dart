@@ -16,12 +16,20 @@
 /// filter — Org Unit and everything beneath it, status, incident type,
 /// severity level, recordability, a production-day range — is a read filter
 /// over an already-visible register.
+///
+/// Issue #224 adds the Module's two shared catalogues — Injury types and Body
+/// parts (`GET`/`POST`/`PATCH /api/safety/injury-types` and `.../body-parts`)
+/// — and the classify address. The catalogue reads carry no Site and no Org
+/// Unit: both are shared by every Site (ADR-0005), readable by any active
+/// Account, and writable only by an administrator, which the API decides.
 library;
 
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'body_part.dart';
+import 'injury_type.dart';
 import 'safety_incident.dart';
 
 /// The request could not be answered at all. Deliberately its own type
@@ -195,6 +203,206 @@ class SafetyApi {
     try {
       final answer = jsonDecode(response.body) as Map<String, dynamic>;
       return SafetyIncident.fromJson(answer['incident'] as Map<String, dynamic>);
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The Injury type catalogue (`GET /api/safety/injury-types`, issue #224).
+  /// Deactivated rows are excluded unless [includeInactive] is asked for by
+  /// name — a retired entry is not offered as a choice while classifying, and
+  /// the catalogue Screen is the one caller that wants it back so it can be
+  /// reactivated.
+  Future<List<InjuryType>> fetchInjuryTypes(
+    String accessToken, {
+    bool includeInactive = false,
+  }) async {
+    final path = '/api/safety/injury-types';
+    final uri = Uri.parse(path).replace(
+      queryParameters: includeInactive ? {'includeInactive': 'true'} : null,
+    );
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final row in body['injuryTypes'] as List<dynamic>)
+          InjuryType.fromJson(row as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Defines an Injury type (`POST /api/safety/injury-types`). Administrator
+  /// only; the API refuses anyone else with a 403 and a taken code with a 409.
+  Future<InjuryType> createInjuryType(
+    String accessToken, {
+    required String code,
+    required String name,
+  }) async {
+    const path = '/api/safety/injury-types';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'code': code, 'name': name}),
+      ),
+      path,
+    );
+    return _injuryTypeFrom(response);
+  }
+
+  /// Corrects an Injury type (`PATCH /api/safety/injury-types/:id`). Only the
+  /// keys that actually changed are sent — the `hasOwnProperty` contract
+  /// `updateInjuryType` (injury-types.js) keeps at the other end — and its
+  /// code is never among them, because the API refuses one.
+  Future<InjuryType> updateInjuryType(
+    String accessToken,
+    String id,
+    Map<String, Object?> changes,
+  ) async {
+    final path = '/api/safety/injury-types/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+    return _injuryTypeFrom(response);
+  }
+
+  /// The Body part catalogue (`GET /api/safety/body-parts`, issue #224), with
+  /// the same [includeInactive] rule the Injury type catalogue has.
+  Future<List<BodyPart>> fetchBodyParts(
+    String accessToken, {
+    bool includeInactive = false,
+  }) async {
+    final path = '/api/safety/body-parts';
+    final uri = Uri.parse(path).replace(
+      queryParameters: includeInactive ? {'includeInactive': 'true'} : null,
+    );
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final row in body['bodyParts'] as List<dynamic>)
+          BodyPart.fromJson(row as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Defines a Body part (`POST /api/safety/body-parts`). Administrator only.
+  /// [region] is one of [BodyPartRegion.values]; the API refuses anything else
+  /// with a 400 naming the field.
+  Future<BodyPart> createBodyPart(
+    String accessToken, {
+    required String code,
+    required String name,
+    required String region,
+  }) async {
+    const path = '/api/safety/body-parts';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'code': code, 'name': name, 'region': region}),
+      ),
+      path,
+    );
+    return _bodyPartFrom(response);
+  }
+
+  /// Corrects a Body part (`PATCH /api/safety/body-parts/:id`) — its name, its
+  /// region and whether it is still in use. Its code is never sent.
+  Future<BodyPart> updateBodyPart(
+    String accessToken,
+    String id,
+    Map<String, Object?> changes,
+  ) async {
+    final path = '/api/safety/body-parts/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+    return _bodyPartFrom(response);
+  }
+
+  /// Classifies the injury (`POST /api/safety/incidents/:id/classify`, issue
+  /// #224, ADR-0037): the identified Employee, the Injury type and the Body
+  /// part. Needs Safety authority reaching the incident's Org Unit — the API
+  /// refuses anyone else with a 403 — and refuses an injury type or a body
+  /// part on the no-injury rung with a 400 naming the field.
+  ///
+  /// Only the fields the caller actually decided are sent, and each is sent as
+  /// a **three-state** value: absent leaves the field alone, an explicit null
+  /// clears it, an id sets it. That is why each takes a `clear` flag rather
+  /// than relying on null to mean both "unchanged" and "cleared".
+  Future<SafetyIncident> classifySafetyIncident(
+    String accessToken,
+    String id, {
+    String? employeeId,
+    bool clearEmployee = false,
+    String? injuryTypeId,
+    bool clearInjuryType = false,
+    String? bodyPartId,
+    bool clearBodyPart = false,
+  }) async {
+    final path = '/api/safety/incidents/$id/classify';
+    final body = <String, Object?>{};
+    if (clearEmployee) {
+      body['employeeId'] = null;
+    } else if (employeeId != null) {
+      body['employeeId'] = employeeId;
+    }
+    if (clearInjuryType) {
+      body['injuryTypeId'] = null;
+    } else if (injuryTypeId != null) {
+      body['injuryTypeId'] = injuryTypeId;
+    }
+    if (clearBodyPart) {
+      body['bodyPartId'] = null;
+    } else if (bodyPartId != null) {
+      body['bodyPartId'] = bodyPartId;
+    }
+
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _incidentFrom(response);
+  }
+
+  InjuryType _injuryTypeFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return InjuryType.fromJson(body['injuryType'] as Map<String, dynamic>);
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  BodyPart _bodyPartFrom(http.Response response) {
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return BodyPart.fromJson(body['bodyPart'] as Map<String, dynamic>);
     } catch (error) {
       throw SafetyApiException('The API answered with something this app could not read: $error');
     }

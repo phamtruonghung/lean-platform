@@ -2,7 +2,7 @@
  * Role and Org Unit scope enforcement (issue #8, CONTEXT.md's Account,
  * Approval and Org Unit definitions).
  *
- * Four questions this file answers, and nowhere else in the People Module
+ * Five questions this file answers, and nowhere else in the People Module
  * does:
  *
  *   - "Is this Account an administrator?" — role alone, no grant row in
@@ -31,6 +31,11 @@
  *     issue #24, ADR-0008) — grantedEntryPointIds below, which
  *     plant-routes.js calls only for a non-administrator browsing a Site's
  *     tree from its root.
+ *   - "Which Org Units in this Site does a Grant carrying Safety authority
+ *     reach?" — issue #224, ADR-0037: the same containment test canAct makes,
+ *     asked of a whole Site at once and **without** the administrator
+ *     short-circuit, because that ADR restricts a *read* by the Grant rather
+ *     than by the role. safetyAuthorityOrgUnitIds below.
  *   - "Where may this Account work, across the whole Platform?" — issue #43,
  *     the caller's own answer to itself rather than a question about one
  *     Org Unit or one Site: orgUnitScopeFor below, with two callers now — GET
@@ -162,6 +167,46 @@ async function canSeeSite({ account, siteId }) {
     [account.id, siteId]
   );
   return rows.length > 0;
+}
+
+// Issue #224, ADR-0037: every Org Unit in one Site that a Grant carrying
+// **Safety authority** reaches — the granted unit itself and every descendant,
+// the same downward containment canAct tests one Org Unit at a time.
+//
+// **Deliberately no isAdmin short-circuit**, unlike canAct/canSeeSite and
+// exactly like grantedEntryPointIds above. This answers a question about
+// Grants, not about what an Account may do: ADR-0037 restricts reading an
+// injured person's diagnosis to "a holder of Safety authority reaching the
+// incident's Org Unit", and issue #224 states in so many words that an
+// administrator who holds no such Grant is one of the callers the three fields
+// are absent for — "since an administrator need not be in the chain". An
+// administrator short-circuit here would hand every administrator every
+// diagnosis in the plant, which is the one outcome that criterion rules out.
+// This is **not** a second opinion about canAct({ safety: true }): that stays
+// the predicate for the *writes* Safety authority gates (classifying,
+// correcting a severity, recording days, closing), where ADR-0039's "an
+// administrator holds it everywhere" applies unchanged.
+//
+// A whole Site at once rather than one Org Unit per call, because every caller
+// has a Site in hand and one of them is a register of up to 200 rows spanning
+// many Org Units — a per-row question there would be a query per row. Returns
+// a plain array of Org Unit ids as **text**, matching orgUnitScopeFor's own
+// `descendant.id::text`: ids are BIGINT, node-postgres hands those back as
+// strings, and a caller's membership test compares like with like. DISTINCT
+// because overlapping Grants — a line and a cell beneath it, both granted —
+// would otherwise reach the same unit twice.
+async function safetyAuthorityOrgUnitIds({ account, siteId }) {
+  const { rows } = await getPool().query(
+    `SELECT DISTINCT reached.id::text AS id
+       FROM app_user_org_units auo
+       JOIN org_units granted ON granted.id = auo.org_unit_id
+       JOIN org_units reached ON reached.path <@ granted.path
+      WHERE auo.app_user_id = $1
+        AND auo.safety_authority = TRUE
+        AND reached.site_id = $2`,
+    [account.id, siteId]
+  );
+  return rows.map((row) => row.id);
 }
 
 // Issue #24: a grant reaches downward only (canAct's `target.path <@
@@ -407,6 +452,7 @@ module.exports = {
   isAdmin,
   canAct,
   canSeeSite,
+  safetyAuthorityOrgUnitIds,
   grantedEntryPointIds,
   orgUnitScopeFor,
   requireAdmin,

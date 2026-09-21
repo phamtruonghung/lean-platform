@@ -37,7 +37,7 @@ const assert = require('node:assert');
 
 const people = require('../src/modules/people');
 
-test('the People Module entry point exposes exactly fourteen names', () => {
+test('the People Module entry point exposes exactly fifteen names', () => {
   assert.deepStrictEqual(
     Object.keys(people).sort(),
     [
@@ -52,6 +52,7 @@ test('the People Module entry point exposes exactly fourteen names', () => {
       'findOrgUnit',
       'findValidIdentification',
       'findSite',
+      'safetyAuthorityOrgUnitIds',
       'floorRouter',
       'requireActive',
       'router'
@@ -69,6 +70,17 @@ test('canAct, canSeeSite, findOrgUnit, findSite, findEmployee, authenticate, req
   assert.strictEqual(typeof people.findEmployee, 'function');
   assert.strictEqual(typeof people.authenticate, 'function');
   assert.strictEqual(typeof people.requireActive, 'function');
+});
+
+// #224, ADR-0037: the Safety Module asks which Org Units in a Site a Grant
+// carrying Safety authority reaches, so that an injured person's diagnosis is
+// withheld from every other caller — an administrator holding no such Grant
+// included, which is exactly why this is a separate question from
+// `canAct({ safety: true })` rather than another option on it. See
+// authorization.js's own comment above the function.
+test('safetyAuthorityOrgUnitIds is a function, and is not canAct', () => {
+  assert.strictEqual(typeof people.safetyAuthorityOrgUnitIds, 'function');
+  assert.notStrictEqual(people.safetyAuthorityOrgUnitIds, people.canAct);
 });
 
 test('the four floor lookups another Module asks through this entry point are functions', () => {

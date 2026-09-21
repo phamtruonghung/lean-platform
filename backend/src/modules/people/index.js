@@ -55,7 +55,7 @@
  * refuses. The rule stays narrow — a Module may export middleware that
  * establishes the caller's identity, and only that.
  *
- * Exactly fourteen exports, each justified below against the sibling ticket
+ * Exactly fifteen exports, each justified below against the sibling ticket
  * that needs it:
  *
  *   - router — mounted by src/index.js, which lives outside `modules/` and so
@@ -116,6 +116,22 @@
  *     ADR-0006 refuses. Every other kind of Action — and everything that
  *     changes one after it is raised — still goes through `canAct` at its own
  *     Org Unit, unchanged by #198.
+ *   - safetyAuthorityOrgUnitIds — #224, ADR-0037: which Org Units in one Site
+ *     a Grant carrying Safety authority reaches. It crosses this boundary for
+ *     the same reason canAct and canSeeSite do — which Org Units a Grant
+ *     reaches is People's own judgment about People's own rows — and it is a
+ *     question returning a value, so it is clauses 1 and 2 exactly. It is here
+ *     rather than folded into `canAct` because it answers a **different**
+ *     question from either of canAct's existing options, in two ways that both
+ *     matter. It is asked of a whole Site at once, because the Safety
+ *     Module's register serialises up to 200 incidents spanning many Org Units
+ *     and a per-row canAct would be a query per row; and it carries **no
+ *     administrator short-circuit**, because ADR-0037 restricts reading an
+ *     injured person's diagnosis to a holder of the Grant and issue #224
+ *     names an administrator without one as a caller the fields are withheld
+ *     from. canAct({ safety: true }) stays exactly what it is and is still
+ *     what Safety's own *writes* ask — see authorization.js's own comment
+ *     above the function for why the two are not in tension.
  *   - findOrgUnit — #56 only: the client picks `orgUnitId` in the request
  *     body when placing an Asset, so Maintenance must resolve it before it
  *     can even ask canAct about scope (existence before scope — the same
@@ -189,7 +205,7 @@ const jobRoleRoutes = require('./job-role-routes');
 const skillRoutes = require('./skill-routes');
 const floorRoutes = require('./floor-routes');
 const { authenticate, requireActive } = require('./middleware');
-const { canAct, canSeeSite } = require('./authorization');
+const { canAct, canSeeSite, safetyAuthorityOrgUnitIds } = require('./authorization');
 const { findOrgUnit, findSite } = require('./plant');
 const { findEmployee } = require('./directory');
 const {
@@ -216,6 +232,7 @@ module.exports = {
   requireActive,
   canAct,
   canSeeSite,
+  safetyAuthorityOrgUnitIds,
   findOrgUnit,
   findSite,
   findEmployee,

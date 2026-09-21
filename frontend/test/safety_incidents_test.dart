@@ -22,7 +22,17 @@ import 'harness.dart';
 /// line beneath it, and two Safety incidents — one no-injury near miss and
 /// one recordable medical-treatment injury. Each test mutates only what it
 /// is about.
-FakeWire _wire() => FakeWire(
+/// [safety] is what the caller's own Grant carries (`safetyAuthority`,
+/// ADR-0039). It defaults to holding it, because most of this file is about
+/// recording rather than about who may classify — the one test that turns on
+/// the difference says so by passing `safety: false`, which is issue #224's
+/// rule that naming the injured Employee is part of the injury classification
+/// and needs Safety authority reaching the Org Unit.
+FakeWire _wire({bool safety = true}) => FakeWire(
+      orgUnitScope: {
+        'everywhere': false,
+        'grants': [scopeGrantJson('10', canWrite: true, safetyAuthority: safety)],
+      },
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       orgUnits: {
         null: [orgUnitJson('10', 'Assembly')],
@@ -238,6 +248,40 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets(
+      'the injured Employee is not offered without Safety authority, and no classification is sent',
+      (tester) async {
+    // Issue #224, ADR-0037: naming who was hurt is part of the injury
+    // classification, and the API refuses it from a caller holding only a
+    // write Grant with a 403. Nobody is shown a field whose only answer would
+    // be a refusal — and recording an incident without one stays exactly as
+    // open as issue #226 made it.
+    final wire = _wire(safety: false);
+    await _pump(tester, wire);
+
+    await tapIn(tester, find.byKey(SafetyIncidentsScreen.recordKey));
+    await _choose(tester, SafetyIncidentFormDialog.incidentTypeKey, 'Injury');
+    await _choose(tester, SafetyIncidentFormDialog.severityKey, 'First aid');
+    await tester.enterText(
+      find.byKey(SafetyIncidentFormDialog.descriptionKey),
+      'Cut a finger on a burr while deburring a part.',
+    );
+    await tester.pump();
+
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
+    expect(find.byKey(SafetyIncidentFormDialog.chosenOrgUnitKey), findsOneWidget);
+
+    expect(find.byKey(SafetyIncidentFormDialog.employeeFieldKey()), findsNothing);
+
+    await tapIn(tester, find.byKey(SafetyIncidentFormDialog.submitKey));
+
+    final body = wire.safetyIncidentPosts.single;
+    expect(body.containsKey('employeeId'), isFalse);
+    expect(body.containsKey('injuryTypeId'), isFalse);
+    expect(body.containsKey('bodyPartId'), isFalse);
+    expect(body['description'], 'Cut a finger on a burr while deburring a part.');
+  });
+
   testWidgets('the record form chooses every known-set value and sends the whole record',
       (tester) async {
     final wire = _wire();
@@ -262,7 +306,14 @@ void main() {
     );
     expect(searchFieldText(tester, SafetyIncidentFormDialog.assetFieldKey()), 'Press 1 (PRESS-1)');
 
-    // The optional Employee involved.
+    // The Org Unit comes first now (issue #224): naming the injured Employee
+    // is part of the injury classification, so the picker is offered only once
+    // an Org Unit is chosen AND the caller holds Safety authority there — it
+    // cannot exist before there is an Org Unit to ask about.
+    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
+    expect(find.byKey(SafetyIncidentFormDialog.chosenOrgUnitKey), findsOneWidget);
+
+    // The optional injured Employee.
     await pickSuggestion(
       tester,
       fieldKey: SafetyIncidentFormDialog.employeeFieldKey(),
@@ -270,9 +321,6 @@ void main() {
       suggestionKey: SafetyIncidentFormDialog.employeeSuggestionKey('7'),
     );
     expect(searchFieldText(tester, SafetyIncidentFormDialog.employeeFieldKey()), 'Alice Nguyen');
-
-    await tapIn(tester, find.byKey(OrgUnitChooser.chooseKey('10')));
-    expect(find.byKey(SafetyIncidentFormDialog.chosenOrgUnitKey), findsOneWidget);
 
     expect(wire.safetyIncidentPosts, isEmpty);
     await tapIn(tester, find.byKey(SafetyIncidentFormDialog.submitKey));

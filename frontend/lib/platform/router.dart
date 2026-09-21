@@ -122,6 +122,9 @@ import '../quality/nonconformances_screen.dart';
 import '../quality/products_bloc.dart';
 import '../quality/products_screen.dart';
 import '../quality/quality_api.dart';
+import '../safety/body_parts_bloc.dart';
+import '../safety/body_parts_screen.dart';
+import '../safety/incident_classify_dialog.dart';
 import '../safety/incident_close_dialog.dart';
 import '../safety/incident_days_dialog.dart';
 import '../safety/incident_detail_bloc.dart';
@@ -131,6 +134,8 @@ import '../safety/incident_form_dialog.dart';
 import '../safety/incident_severity_dialog.dart';
 import '../safety/incident_status_dialog.dart';
 import '../safety/incidents_screen.dart';
+import '../safety/injury_types_bloc.dart';
+import '../safety/injury_types_screen.dart';
 import '../safety/safety_api.dart';
 import '../safety/safety_incidents_bloc.dart';
 import 'access_denied_screen.dart';
@@ -185,6 +190,15 @@ abstract final class Routes {
   /// addressed, per ADR-0019/ADR-0021. `record` cannot collide with the
   /// detail route because it is not an id.
   static const String safetyIncidents = '/safety/incidents';
+
+  /// The Safety Module's two shared catalogues (issue #224): what an injury
+  /// was, and where on the body. Filed under `/safety/` beside the incident
+  /// register rather than at the Platform root the way `/products` and
+  /// `/defect-codes` are — the binding design comment on #223 names both
+  /// addresses, and a Module that already owns a path prefix should not
+  /// scatter its catalogues outside it.
+  static const String injuryTypes = '/safety/injury-types';
+  static const String bodyParts = '/safety/body-parts';
 
   /// The Customer list (issue #214), at its own address so it can be linked to
   /// or bookmarked. Defining and correcting a Customer are dialogs over it
@@ -1560,6 +1574,32 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                           );
                         },
                       ),
+                      // `/safety/incidents/:id/classify` — the injury
+                      // classification (issue #224, ADR-0037): who was hurt,
+                      // what the injury was, where on the body. Needs Safety
+                      // authority, asked inside the dialog where it is read in
+                      // a build rather than frozen here.
+                      GoRoute(
+                        path: 'classify',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SafetyIncidentDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SafetyIncidentDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SafetyIncidentClassifyDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SafetyIncidentClassifyDialog(incident: detail.incident);
+                            },
+                          );
+                        },
+                      ),
                       // `/safety/incidents/:id/severity` — correcting the
                       // severity level (issue #228, #223 decision 5). Needs
                       // Safety authority, asked inside the dialog where it is
@@ -1638,6 +1678,44 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 ],
               ),
             ],
+          ),
+          // The Safety Module's two catalogues (issue #224): the Injury types
+          // and Body parts an injury classification draws on, both shared by
+          // every Site (ADR-0005). Not role-gated here, the same shape
+          // `Routes.products` and `Routes.defectCodes` take: neither read
+          // carries an admin or scope check of its own
+          // (injury-type-routes.js/body-part-routes.js), so a Screen-level
+          // refusal would close a door the route itself opens. What IS
+          // administrator-only is the **Destination** (the binding design
+          // comment on #223 — "the last two filter away for a
+          // non-administrator"), and the write affordances inside each Screen.
+          GoRoute(
+            path: Routes.injuryTypes,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<InjuryTypesBloc>(
+                create: (context) => InjuryTypesBloc(
+                  safetyApi: context.read<SafetyApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const InjuryTypesStarted()),
+                child: InjuryTypesScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.bodyParts,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<BodyPartsBloc>(
+                create: (context) => BodyPartsBloc(
+                  safetyApi: context.read<SafetyApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const BodyPartsStarted()),
+                child: BodyPartsScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
           ),
           // A Site's skill coverage (issue #89, AC6) — administrator only,
           // and deliberately a per-Screen access check here rather than only

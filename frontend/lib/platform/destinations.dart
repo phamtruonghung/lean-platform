@@ -467,14 +467,13 @@ const List<Destination> platformDestinations = [
     path: Routes.supplierNcrs,
     group: DestinationGroupNames.quality,
   ),
-  // The Safety Module's first Destination (issue #226) — the one this ticket
-  // builds. The binding design on #223 names a four-entry group (Incidents,
-  // Observations, Injury types, Body parts), of which only the first exists
-  // yet: Observations is issue #230's own address, and the two catalogues
-  // are issue #224's. A group whose Destinations all filter away renders no
-  // heading at all (#100, ADR-0020's own rule), so nothing here waits on
-  // those tickets landing — they are added beside this one as their own
-  // slices ship.
+  // The Safety Module's Destinations. The binding design on #223 names a
+  // four-entry group — Incidents, Observations, Injury types, Body parts — of
+  // which three exist as of issue #224; Observations is issue #230's own
+  // address and is added beside these when that slice ships. A group whose
+  // Destinations all filter away renders no heading at all (#100, ADR-0020's
+  // own rule), which is what lets the two administrator-only entries below sit
+  // here without changing what a line supervisor sees.
   //
   // Offered to every approved Account, the same shape the Quality
   // Destinations above it use: the register is a Site-wide read
@@ -486,6 +485,35 @@ const List<Destination> platformDestinations = [
     label: 'Incidents',
     icon: Icons.health_and_safety_outlined,
     path: Routes.safetyIncidents,
+    group: DestinationGroupNames.safety,
+  ),
+  // The Module's two shared catalogues (issue #224): what an injury was, and
+  // where on the body. **Administrator only**, and deliberately unlike the
+  // Quality Module's own two catalogues above, which are offered to everyone.
+  // The binding design comment on #223 settles it: "the last two filter away
+  // for a non-administrator, and a group whose Destinations all filter away
+  // renders no heading — so a line supervisor sees a two-entry Safety group
+  // and an administrator sees four". A line supervisor never maintains these;
+  // the one thing they do with an Injury type is pick it in the classify
+  // dialog, which reads the catalogue for itself.
+  //
+  // The Screens behind these addresses are NOT gated, because the reads are
+  // not (injury-type-routes.js/body-part-routes.js open them to any active
+  // Account): a non-administrator who follows a link sees the catalogue with
+  // no write affordances on it, exactly as they would on `/products`. Only the
+  // sidebar entry is filtered.
+  Destination(
+    label: 'Injury types',
+    icon: Icons.healing_outlined,
+    path: Routes.injuryTypes,
+    roles: {Roles.admin},
+    group: DestinationGroupNames.safety,
+  ),
+  Destination(
+    label: 'Body parts',
+    icon: Icons.accessibility_new_outlined,
+    path: Routes.bodyParts,
+    roles: {Roles.admin},
     group: DestinationGroupNames.safety,
   ),
   // Approvals and Accounts administer the Platform itself — who may sign in,

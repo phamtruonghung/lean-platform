@@ -19,6 +19,15 @@
  * to expose. A sibling Module that needs Safety's own judgment about an
  * incident adds the question here at that point.
  *
+ * Issue #224 adds two catalogue route files under the same mount —
+ * injury-type-routes.js and body-part-routes.js, the Injury type and Body part
+ * catalogues an injury classification draws on. They are the Quality Module's
+ * product-routes.js/defect-code-routes.js shape exactly: an open read for any
+ * active Account, an administrator's write, no Site and no Org Unit. They
+ * arrive with the classification they serve rather than ahead of it (#223's
+ * revised build order), which is why this Module's first two slices needed
+ * neither.
+ *
  * No error plumbing and no SQL helpers. errors.js is this Module's own copy
  * (ADR-0006's third clause, "domain, not utility"), and safety-incidents.js
  * keeps its own private helpers rather than sharing them through this file.
@@ -40,9 +49,13 @@
 const express = require('express');
 const safetyIncidentRoutes = require('./safety-incident-routes');
 const floorSafetyIncidentRoutes = require('./floor-safety-incident-routes');
+const injuryTypeRoutes = require('./injury-type-routes');
+const bodyPartRoutes = require('./body-part-routes');
 
 const router = express.Router();
 router.use(safetyIncidentRoutes);
 router.use(floorSafetyIncidentRoutes);
+router.use(injuryTypeRoutes);
+router.use(bodyPartRoutes);
 
 module.exports = { router };

@@ -8,8 +8,41 @@
 ///
 /// Readable by anyone who can see the Site (the server's own rule — Org Unit
 /// scope decides where an Account may act, not what it may know about), so
-/// this Screen gates nothing about *reading*. Nothing here is classified: no
-/// injury type and no body part — issue #224's own writes.
+/// this Screen gates nothing about *reading* the incident itself.
+///
+/// **Issue #224, ADR-0037 — the injury section, and what it says to whom.**
+/// Three fields are different from the rest of the record: the identified
+/// Employee, the Injury type and the Body part are health information about
+/// one named person, and the API returns them only to a holder of Safety
+/// authority reaching the Org Unit and to the injured person's own Account.
+/// Everyone else receives a record with those keys **absent**, which is what
+/// `SafetyIncident.injuryDetailsVisible` reads off.
+///
+/// The section renders in three ways (the binding design comment on #223):
+///
+///   - **No-injury rung** — no injury section at all, for anybody. The
+///     ladder's own CHECK forbids an injury type and a body part there, so
+///     there is nothing to classify and a section saying so would be noise on
+///     every near miss the plant records.
+///   - **Any rung above it, a reader without authority** — the section renders
+///     with one line saying the details are restricted. Deliberately not
+///     hidden: the severity rung is public and that CHECK makes "does this
+///     incident have injury details" already derivable from it, so hiding the
+///     section protects nothing and costs the reader the difference between
+///     "not classified yet" and "not mine to see".
+///   - **A holder of authority, or the injured person's own Account** — the
+///     values, and the classify dialog beside them.
+///
+/// The **identified Employee moved out of the "What happened" card** and into
+/// that section, where issue #226 had put it beside the Asset. It is one of
+/// the three restricted fields now, so it cannot render where every reader
+/// sees it.
+///
+/// What the restriction does NOT cover is as deliberate as what it does, and
+/// this Screen says nothing implying otherwise: `description` and
+/// `immediateAction` are free text a person writes whatever they like into,
+/// and ADR-0037 names them as outside the restriction rather than pretending
+/// to a protection that is not there. No copy here calls them private.
 ///
 /// **Issue #228 — making the record answerable.** The event history (every
 /// severity change, status move, days change and closure, oldest first) is
@@ -20,7 +53,7 @@
 /// severity, recording the days and closing each need Safety authority
 /// (ADR-0039) and are offered **only** to a caller who holds it at the
 /// incident's Org Unit — nobody is shown a control whose only answer would be
-/// a 403.
+/// a 403. Issue #224's classify dialog is the fourth of those.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,6 +68,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
+import 'body_part.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
 
@@ -65,9 +99,29 @@ class SafetyIncidentDetailScreen extends StatelessWidget {
   static const ValueKey<String> recordDaysKey =
       ValueKey<String>('safety-incident-detail-record-days');
   static const ValueKey<String> closeKey = ValueKey<String>('safety-incident-detail-close');
+  static const ValueKey<String> classifyKey =
+      ValueKey<String>('safety-incident-detail-classify');
   static const ValueKey<String> closedKey = ValueKey<String>('safety-incident-detail-closed');
   static const ValueKey<String> dueDateFactKey =
       ValueKey<String>('safety-incident-detail-due-date-fact');
+
+  // The injury section (issue #224, ADR-0037). `injuryKey` is the section
+  // itself — absent entirely on the no-injury rung; `injuryRestrictedKey` is
+  // the one line a reader without authority sees instead of the values;
+  // `injuryUnclassifiedKey` is what a reader WITH authority sees on an
+  // incident nobody has classified yet. The last two are the two facts the
+  // design comment on #223 insists stay tellable apart.
+  static const ValueKey<String> injuryKey = ValueKey<String>('safety-incident-detail-injury');
+  static const ValueKey<String> injuryRestrictedKey =
+      ValueKey<String>('safety-incident-detail-injury-restricted');
+  static const ValueKey<String> injuryUnclassifiedKey =
+      ValueKey<String>('safety-incident-detail-injury-unclassified');
+  static const ValueKey<String> injuredEmployeeKey =
+      ValueKey<String>('safety-incident-detail-injured-employee');
+  static const ValueKey<String> injuryTypeKey =
+      ValueKey<String>('safety-incident-detail-injury-type');
+  static const ValueKey<String> bodyPartKey =
+      ValueKey<String>('safety-incident-detail-body-part');
 
   // The event history (issue #228).
   static const ValueKey<String> eventsKey = ValueKey<String>('safety-incident-detail-events');
@@ -175,10 +229,6 @@ class _Loaded extends StatelessWidget {
                           row.assetName == null ? 'None named' : '${row.assetName} · ${row.assetCode}',
                     ),
                     _Fact(
-                      label: 'Employee involved',
-                      value: row.employeeName ?? 'None named',
-                    ),
-                    _Fact(
                       label: 'Filed against',
                       key: SafetyIncidentDetailScreen.filedKey,
                       value: row.filedAgainst,
@@ -204,6 +254,10 @@ class _Loaded extends StatelessWidget {
                 ),
               ),
             ),
+            if (row.hasInjurySection) ...[
+              const SizedBox(height: Spacing.lg),
+              _InjuryCard(incident: row),
+            ],
             const SizedBox(height: Spacing.lg),
             _EventHistoryCard(events: row.events),
             const SizedBox(height: Spacing.lg),
@@ -239,6 +293,19 @@ class _Loaded extends StatelessWidget {
                 // ever sent that the server would refuse for a reason the
                 // caller could not see.
                 if (holdsSafetyAuthority(context, row.orgUnitId)) ...[
+                  // Only where there is something to classify: the ladder's
+                  // own CHECK forbids an injury type and a body part on the
+                  // no-injury rung, so offering the dialog there would offer a
+                  // form whose every answer is a 400.
+                  if (row.hasInjurySection)
+                    FilledButton.icon(
+                      key: SafetyIncidentDetailScreen.classifyKey,
+                      onPressed: state.isMutating
+                          ? null
+                          : () => context.go('${Routes.safetyIncidents}/${row.id}/classify'),
+                      icon: const Icon(Icons.medical_information_outlined),
+                      label: const Text('Classify the injury'),
+                    ),
                   FilledButton.icon(
                     key: SafetyIncidentDetailScreen.changeSeverityKey,
                     onPressed: state.isMutating
@@ -283,6 +350,76 @@ class _Loaded extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The injury classification (issue #224, ADR-0037) — rendered on every rung
+/// above the no-injury one, and rendered *differently* depending on whether
+/// this caller may read the three fields.
+///
+/// It is a **stated restriction, not an absence**. A reader without authority
+/// is told in one line that the details are restricted to Safety authority for
+/// this area, and told nothing about who or what. That is deliberate: the
+/// severity rung is public and the schema's own CHECK forbids injury details
+/// below the no-injury rung, so whether details exist is already derivable
+/// from a field everybody reads — hiding the section would protect nothing and
+/// would cost this reader the ability to tell "not classified yet" from "not
+/// mine to see".
+class _InjuryCard extends StatelessWidget {
+  const _InjuryCard({required this.incident});
+
+  final SafetyIncident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      key: SafetyIncidentDetailScreen.injuryKey,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('The injury', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.sm),
+            if (!incident.injuryDetailsVisible)
+              Text(
+                'Restricted — visible to Safety authority for this area.',
+                key: SafetyIncidentDetailScreen.injuryRestrictedKey,
+                style: theme.textTheme.bodyMedium,
+              )
+            else if (!incident.isClassified)
+              Text(
+                'Not classified yet. Who was hurt, what the injury was and where on the '
+                'body have not been recorded.',
+                key: SafetyIncidentDetailScreen.injuryUnclassifiedKey,
+                style: theme.textTheme.bodyMedium,
+              )
+            else ...[
+              _Fact(
+                key: SafetyIncidentDetailScreen.injuredEmployeeKey,
+                label: 'Injured Employee',
+                value: incident.employeeName ?? 'Not recorded',
+              ),
+              _Fact(
+                key: SafetyIncidentDetailScreen.injuryTypeKey,
+                label: 'Injury type',
+                value: incident.injuryTypeName ?? 'Not recorded',
+              ),
+              _Fact(
+                key: SafetyIncidentDetailScreen.bodyPartKey,
+                label: 'Body part',
+                value: incident.bodyPartName == null
+                    ? 'Not recorded'
+                    : '${incident.bodyPartName} · '
+                        '${BodyPartRegion.label(incident.bodyPartRegion ?? BodyPartRegion.other)}',
+              ),
+            ],
           ],
         ),
       ),

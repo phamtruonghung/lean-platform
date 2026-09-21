@@ -300,6 +300,14 @@ class SafetyIncident {
     required this.assetName,
     required this.employeeId,
     required this.employeeName,
+    required this.injuryTypeId,
+    required this.injuryTypeCode,
+    required this.injuryTypeName,
+    required this.bodyPartId,
+    required this.bodyPartCode,
+    required this.bodyPartName,
+    required this.bodyPartRegion,
+    required this.injuryDetailsVisible,
     required this.shiftInstanceId,
     required this.productionDate,
     required this.shiftCode,
@@ -336,6 +344,22 @@ class SafetyIncident {
         assetName: json['assetName'] as String?,
         employeeId: json['employeeId']?.toString(),
         employeeName: json['employeeName'] as String?,
+        injuryTypeId: json['injuryTypeId']?.toString(),
+        injuryTypeCode: json['injuryTypeCode'] as String?,
+        injuryTypeName: json['injuryTypeName'] as String?,
+        bodyPartId: json['bodyPartId']?.toString(),
+        bodyPartCode: json['bodyPartCode'] as String?,
+        bodyPartName: json['bodyPartName'] as String?,
+        bodyPartRegion: json['bodyPartRegion'] as String?,
+        // **Whether the key is there at all**, not whether it holds a value.
+        // ADR-0037's rule is absence: the API deletes the restricted keys for
+        // a caller who may not read them, and returns them present and null
+        // for an authorised caller looking at an incident nobody has
+        // classified yet. `containsKey` is the only test that tells those two
+        // apart, which is the difference between "not classified yet" and
+        // "not mine to see" — two genuinely different facts this Screen has
+        // to be able to say.
+        injuryDetailsVisible: json.containsKey('employeeId'),
         shiftInstanceId: json['shiftInstanceId']?.toString(),
         productionDate: json['productionDate'] as String?,
         shiftCode: json['shiftCode'] as String?,
@@ -389,10 +413,41 @@ class SafetyIncident {
   final String? assetCode;
   final String? assetName;
 
-  /// The Employee involved — who was hurt, if anyone. Optional: a near miss
-  /// or a damage-only event names nobody.
+  /// The injury classification (issue #224) — the identified Employee, the
+  /// Injury type and the Body part, plus the catalogue rows' own names so a
+  /// Screen renders them without a second read.
+  ///
+  /// **These are the three facts ADR-0037 restricts**, and every one of them
+  /// is null on a record whose keys the API withheld — [injuryDetailsVisible]
+  /// is what says which of the two is true. Null with [injuryDetailsVisible]
+  /// true means nobody has classified this incident yet; null with it false
+  /// means this caller is not allowed to know.
   final String? employeeId;
   final String? employeeName;
+  final String? injuryTypeId;
+
+  /// The catalogue row's own code, carried so the classify dialog can show
+  /// what the record already holds **without** finding it in the catalogue —
+  /// which matters exactly when the entry has since been deactivated and is no
+  /// longer in the list of choices.
+  final String? injuryTypeCode;
+  final String? injuryTypeName;
+  final String? bodyPartId;
+  final String? bodyPartCode;
+  final String? bodyPartName;
+  final String? bodyPartRegion;
+
+  /// Whether this caller may read the three restricted fields at all
+  /// (ADR-0037): true for a holder of Safety authority reaching the
+  /// incident's Org Unit and for the Account whose own Employee is the injured
+  /// person, false for everyone else — an administrator without that Grant
+  /// included.
+  ///
+  /// Derived from the answer's own shape rather than from a flag the API
+  /// sends, because the API deliberately sends no flag: a hint saying "there
+  /// is something here you cannot see" is the thing ADR-0037 refuses. What
+  /// arrives is simply a record with those keys missing.
+  final bool injuryDetailsVisible;
 
   /// The shift instance the moment was filed against, and the production day
   /// it belongs to (ADR-0017). Null when the Site's calendar does not cover
@@ -450,6 +505,28 @@ class SafetyIncident {
     }
     return 'Not within a shift of this Site';
   }
+
+  /// Whether an injury section belongs on this record at all (the binding
+  /// design comment on #223).
+  ///
+  /// The no-injury rung carries no classification for **anybody**: the
+  /// baseline's own `safety_incidents_near_miss_no_injury` CHECK forbids an
+  /// injury type and a body part there, so there is nothing to classify and a
+  /// section saying so would be noise on every near miss the plant records.
+  /// Every rung above it renders the section — with the values for a reader
+  /// who may see them, and with one line saying the details are restricted for
+  /// a reader who may not.
+  ///
+  /// Hiding the section from an unauthorised reader instead would protect
+  /// nothing — the severity rung is public, and that CHECK makes "does this
+  /// incident have injury details" derivable from it — and would cost the
+  /// reader the difference between "not classified yet" and "not mine to see".
+  bool get hasInjurySection => severityLevel != SeverityLevel.nearMiss;
+
+  /// Whether anyone has actually classified this incident. Only meaningful
+  /// when [injuryDetailsVisible] is true; a caller who may not read the
+  /// fields cannot tell, and must not be shown a guess.
+  bool get isClassified => employeeId != null || injuryTypeId != null || bodyPartId != null;
 }
 
 /// Every filter the register offers, as one value — so a Screen's state and

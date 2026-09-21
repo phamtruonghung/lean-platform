@@ -5,9 +5,20 @@
  * same shape of record as a Non-conformance (recorded at an Org Unit,
  * Site-scoped number, production-day filing, a filtered register, a detail).
  *
- * This file builds its own Sites, Org Units, Assets and Employees directly
- * against the database, and everything it inserts is deleted again in
- * `test.after()`, in dependency order.
+ * This file builds its own Sites, Org Units, Assets, Employees, Injury types
+ * and Body parts directly against the database, and everything it inserts is
+ * deleted again in `test.after()`, in dependency order.
+ *
+ * **Issue #224's own section is section 9**, and it is the reason this file's
+ * `insertAccount` grew an `employeeId` option: ADR-0037 restricts three fields
+ * on an incident — the identified Employee, the Injury type and the Body part
+ * — to a holder of Safety authority reaching the Org Unit and to the Account
+ * whose own `app_users.employee_id` IS the injured Employee, and asserting the
+ * second half needs an Account genuinely linked to an Employee. Those tests
+ * assert on keys being **absent** from the JSON rather than null, which is the
+ * distinction ADR-0037 turns on, so they use `Object.prototype.hasOwnProperty`
+ * rather than comparing against undefined — a missing key and a key set to
+ * undefined read the same through `===` and do not survive JSON.
  *
  * Needs a database with every migration applied. Set DATABASE_URL first — see
  * the README's Tests section.
@@ -39,6 +50,12 @@ const insertedShiftInstanceIds = [];
 // other integration file that raises one does (capas.test.js,
 // concern-nonconformances.test.js, and the rest).
 const insertedActionIds = [];
+// The two catalogues issue #224 classifies against. Both are shared by every
+// Site (ADR-0005) and arrive seeded from the baseline, so this file creates its
+// own rows with unique codes and removes exactly those — never truncating a
+// table the baseline filled.
+const insertedInjuryTypeIds = [];
+const insertedBodyPartIds = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -63,12 +80,18 @@ async function json(response) {
 // Accounts are recording rather than reading. `safety` (issue #228, ADR-0039)
 // defaults to false — most Accounts in this file hold no Safety authority,
 // and the tests that need it say so explicitly.
-async function insertAccount({ role = 'operator', grants = [] } = {}) {
+//
+// `employeeId` links the Account to an Employee the way Approval does
+// (ADR-0022): `app_users.employee_id` is UNIQUE, which is what makes "the
+// injured person's own Account" a real identity rather than a guess, and what
+// issue #224's read restriction turns on.
+async function insertAccount({ role = 'operator', grants = [], employeeId = null } = {}) {
   const subject = uniqueCode('siacct');
   const { rows: [account] } = await pool.query(
-    `INSERT INTO app_users (email, display_name, role, external_subject, is_active, approval_status)
-     VALUES ($1, 'Safety Test Account', $2, $3, TRUE, 'approved') RETURNING id`,
-    [`${subject}@example.com`, role, subject]
+    `INSERT INTO app_users (email, display_name, role, external_subject, is_active,
+                            approval_status, employee_id)
+     VALUES ($1, 'Safety Test Account', $2, $3, TRUE, 'approved', $4) RETURNING id`,
+    [`${subject}@example.com`, role, subject, employeeId]
   );
   insertedAccountIds.push(account.id);
 
@@ -119,6 +142,26 @@ async function insertEmployee({ isActive = true } = {}) {
     [uniqueCode('SIEMP'), isActive]
   );
   insertedEmployeeIds.push(row.id);
+  return row;
+}
+
+async function insertInjuryType({ name = 'Fracture', isActive = true } = {}) {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO injury_types (code, name, is_active) VALUES ($1, $2, $3)
+     RETURNING id, code, name`,
+    [uniqueCode('SIIT'), name, isActive]
+  );
+  insertedInjuryTypeIds.push(row.id);
+  return row;
+}
+
+async function insertBodyPart({ name = 'Left hand', region = 'upper_limb' } = {}) {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO body_parts (code, name, region) VALUES ($1, $2, $3)
+     RETURNING id, code, name, region`,
+    [uniqueCode('SIBP'), name, region]
+  );
+  insertedBodyPartIds.push(row.id);
   return row;
 }
 
@@ -225,6 +268,15 @@ async function closeIncident(token, id, body) {
   return json(response);
 }
 
+async function classify(token, id, body) {
+  const response = await fetch(`${base}/api/safety/incidents/${id}/classify`, {
+    method: 'POST',
+    headers: { ...token, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return json(response);
+}
+
 // Raises an ordinary Concern at an Org Unit through the Action log's own API
 // (issue #229 has not built the safety-incident-specific link yet, so this is
 // the only way to construct "a Concern is open" at all). `token`'s Account
@@ -300,7 +352,10 @@ test.after(async () => {
   // before the Org Units they were raised at.
   await pool.query('DELETE FROM action_items WHERE id = ANY($1)', [insertedActionIds]);
   await pool.query('DELETE FROM assets WHERE id = ANY($1)', [insertedAssetIds]);
-  await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
+  // After the incidents that reference them: a classified incident holds a
+  // foreign key into each catalogue (issue #224).
+  await pool.query('DELETE FROM injury_types WHERE id = ANY($1)', [insertedInjuryTypeIds]);
+  await pool.query('DELETE FROM body_parts WHERE id = ANY($1)', [insertedBodyPartIds]);
   await pool.query('DELETE FROM shift_instances WHERE id = ANY($1)', [insertedShiftInstanceIds]);
   await pool.query('DELETE FROM shift_definitions WHERE id = ANY($1)', [
     insertedShiftDefinitionIds
@@ -308,7 +363,12 @@ test.after(async () => {
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [
     insertedAccountIds
   ]);
+  // Accounts before Employees, not after: issue #224's own "the injured
+  // person's own Account" tests link one to the other through
+  // `app_users.employee_id`, so an Employee deleted first would be a foreign
+  // key violation rather than a clean teardown.
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
+  await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM org_units WHERE id = ANY($1)', [insertedOrgUnitIds]);
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
@@ -556,8 +616,15 @@ test('an Asset named on the incident must sit at the Org Unit or beneath it', as
   assert.strictEqual(unknownAsset.body.message, 'Asset not found');
 });
 
+// Issue #224 moved this: naming the Employee involved is part of the injury
+// classification, so it now needs Safety authority reaching the Org Unit
+// rather than the write Grant recording itself needs, and it is read back only
+// by a caller ADR-0037 allows. The recorder here therefore holds Safety
+// authority, which is also what lets it read its own answer.
 test('the Employee involved is optional, and must exist when named', async () => {
-  const { site, unit, recorder } = await makeGround({});
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id, { name: 'Press Line' });
+  const recorder = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
   const employee = await insertEmployee();
 
   const base = {
@@ -1451,4 +1518,473 @@ test('any Account that can see the Site lists incidents whose investigation is o
   const ids = siteWide.body.incidents.map((row) => row.id);
   assert.ok(!ids.includes(notOverdueYet.id));
   assert.ok(!ids.includes(neverGivenADeadline.id));
+});
+
+// ---------------------------------------------------------------------------
+// 16. The injury classification, and who may read it (issue #224, ADR-0037)
+//
+// The most security-sensitive section in this file. `employeeId`,
+// `employeeName`, the Injury type and the Body part are returned ONLY to a
+// holder of Safety authority reaching the incident's Org Unit and to the
+// Account whose own `app_users.employee_id` is the injured Employee; every
+// other caller gets them **absent from the JSON**, not nulled.
+//
+// Absence is asserted with `hasOwnProperty`, never `=== undefined`: a key that
+// is missing and a key set to undefined are indistinguishable through `===`,
+// and only one of the two survives `JSON.stringify` — so the weaker assertion
+// would pass against a serialiser that nulled the fields instead, which is
+// exactly the shape ADR-0037 rejects.
+// ---------------------------------------------------------------------------
+
+// The nine keys ADR-0037 withholds together. They carry three facts — who the
+// record names as hurt, what the injury was, and where on the body — and the
+// display halves are in the list because withholding an id while returning the
+// name it belongs to would defend nothing.
+const RESTRICTED_KEYS = [
+  'employeeId',
+  'employeeName',
+  'injuryTypeId',
+  'injuryTypeCode',
+  'injuryTypeName',
+  'bodyPartId',
+  'bodyPartCode',
+  'bodyPartName',
+  'bodyPartRegion'
+];
+
+// Everything the restriction deliberately does NOT narrow. ADR-0037 states
+// that as a limit on what it protects rather than as a caveat on something
+// broader, so it is asserted as positively as the absence is.
+const ALWAYS_READABLE_KEYS = [
+  'incidentNo',
+  'status',
+  'incidentType',
+  'severityLevel',
+  'isRecordable',
+  'description',
+  'immediateAction',
+  'lostTimeDays',
+  'restrictedDays',
+  'orgUnitId',
+  'events'
+];
+
+function assertInjuryDetailsAbsent(incident, who) {
+  for (const key of RESTRICTED_KEYS) {
+    assert.ok(
+      !Object.prototype.hasOwnProperty.call(incident, key),
+      `${who} must not receive ${key} at all — absent, not nulled`
+    );
+  }
+  for (const key of ALWAYS_READABLE_KEYS) {
+    assert.ok(
+      Object.prototype.hasOwnProperty.call(incident, key),
+      `${who} must still read ${key}: the restriction narrows nothing else`
+    );
+  }
+}
+
+function assertInjuryDetailsPresent(incident, { employee, injuryType, bodyPart }, who) {
+  for (const key of RESTRICTED_KEYS) {
+    assert.ok(
+      Object.prototype.hasOwnProperty.call(incident, key),
+      `${who} must receive ${key}`
+    );
+  }
+  assert.strictEqual(incident.employeeId, employee.id, who);
+  assert.strictEqual(incident.employeeName, employee.display_name, who);
+  assert.strictEqual(incident.injuryTypeId, injuryType.id, who);
+  assert.strictEqual(incident.injuryTypeName, injuryType.name, who);
+  assert.strictEqual(incident.bodyPartId, bodyPart.id, who);
+  assert.strictEqual(incident.bodyPartName, bodyPart.name, who);
+  assert.strictEqual(incident.bodyPartRegion, bodyPart.region, who);
+}
+
+// One classified incident, and every kind of caller that will read it below.
+async function classifiedGround() {
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id, { name: 'Press Line' });
+
+  const injured = await insertEmployee();
+  const injuryType = await insertInjuryType({ name: 'Fracture' });
+  const bodyPart = await insertBodyPart({ name: 'Left hand', region: 'upper_limb' });
+
+  // Holds Safety authority at the incident's own Org Unit: the one caller the
+  // ADR lets read by standing rather than by identity.
+  const officer = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+
+  const incident = await recordedIncident(officer, site, unit, {
+    severityLevel: 'medical_treatment',
+    employeeId: injured.id,
+    injuryTypeId: injuryType.id,
+    bodyPartId: bodyPart.id
+  });
+
+  return { site, unit, injured, injuryType, bodyPart, officer, incident };
+}
+
+test('one incident read by four callers: the three injury fields are present for two of them and absent for two', async () => {
+  const { site, unit, injured, injuryType, bodyPart, officer, incident } =
+    await classifiedGround();
+
+  // 1. A Site-wide reader: holds a Grant in the Site, so it sees the incident,
+  //    but carries no Safety authority anywhere.
+  const siteReader = await insertAccount({ grants: [{ orgUnitId: unit.id, write: false }] });
+
+  // 2. The holder of Safety authority — `officer`, who recorded it.
+
+  // 3. The injured person's own Account. It holds a read Grant so it can see
+  //    the Site at all; what lets it read the classification is
+  //    `app_users.employee_id`, not the Grant.
+  const ownAccount = await insertAccount({
+    grants: [{ orgUnitId: unit.id, write: false }],
+    employeeId: injured.id
+  });
+
+  // 4. An administrator holding no Safety authority anywhere. This is the case
+  //    a later "helpful" change is most likely to get wrong: `canAct` answers
+  //    true for an administrator before it looks at a Grant, and ADR-0037
+  //    restricts this read by the Grant rather than by the role.
+  const plainAdmin = await insertAccount({ role: 'admin' });
+
+  const asSiteReader = await readIncident(siteReader.token, incident.id);
+  assert.strictEqual(asSiteReader.status, 200, JSON.stringify(asSiteReader.body));
+  assertInjuryDetailsAbsent(asSiteReader.body.incident, 'a Site-wide reader');
+
+  const asOfficer = await readIncident(officer.token, incident.id);
+  assert.strictEqual(asOfficer.status, 200, JSON.stringify(asOfficer.body));
+  assertInjuryDetailsPresent(
+    asOfficer.body.incident,
+    { employee: injured, injuryType, bodyPart },
+    'a holder of Safety authority'
+  );
+
+  const asInjured = await readIncident(ownAccount.token, incident.id);
+  assert.strictEqual(asInjured.status, 200, JSON.stringify(asInjured.body));
+  assertInjuryDetailsPresent(
+    asInjured.body.incident,
+    { employee: injured, injuryType, bodyPart },
+    "the injured person's own Account"
+  );
+
+  const asAdmin = await readIncident(plainAdmin.token, incident.id);
+  assert.strictEqual(asAdmin.status, 200, JSON.stringify(asAdmin.body));
+  assertInjuryDetailsAbsent(
+    asAdmin.body.incident,
+    'an administrator holding no Safety authority in the chain'
+  );
+
+  // The rest of the record is the same record for all four — the restriction
+  // narrows three facts and nothing else.
+  for (const answer of [asSiteReader, asOfficer, asInjured, asAdmin]) {
+    assert.strictEqual(answer.body.incident.id, incident.id);
+    assert.strictEqual(answer.body.incident.severityLevel, 'medical_treatment');
+    assert.strictEqual(answer.body.incident.isRecordable, true);
+    assert.strictEqual(
+      answer.body.incident.description,
+      'An incident recorded for issue #228.'
+    );
+    assert.strictEqual(answer.body.incident.siteId, site.id);
+  }
+});
+
+test('the register applies the restriction too, row by row, where authority reaches one Org Unit and not another', async () => {
+  const site = await insertSite();
+  const pressLine = await insertOrgUnit(site.id, { name: 'Press Line' });
+  const paintLine = await insertOrgUnit(site.id, { name: 'Paint Line' });
+
+  const injuredOnPress = await insertEmployee();
+  const injuredOnPaint = await insertEmployee();
+  const injuryType = await insertInjuryType({ name: 'Burn' });
+  const bodyPart = await insertBodyPart({ name: 'Right arm', region: 'upper_limb' });
+
+  // Safety authority on the Press Line only. Everything this Account can do on
+  // the Paint Line it can do because it holds an ordinary Grant there.
+  const pressOfficer = await insertAccount({
+    grants: [
+      { orgUnitId: pressLine.id, safety: true },
+      { orgUnitId: paintLine.id, write: true }
+    ]
+  });
+  const paintOfficer = await insertAccount({
+    grants: [{ orgUnitId: paintLine.id, safety: true }]
+  });
+
+  const pressIncident = await recordedIncident(pressOfficer, site, pressLine, {
+    severityLevel: 'medical_treatment',
+    employeeId: injuredOnPress.id,
+    injuryTypeId: injuryType.id,
+    bodyPartId: bodyPart.id
+  });
+  const paintIncident = await recordedIncident(paintOfficer, site, paintLine, {
+    severityLevel: 'medical_treatment',
+    employeeId: injuredOnPaint.id,
+    injuryTypeId: injuryType.id,
+    bodyPartId: bodyPart.id
+  });
+
+  // The whole Site, read by the Press Line's officer: one row classified, one
+  // row redacted, in the same answer. A restriction decided once per request
+  // rather than per row would get exactly this wrong.
+  const register = await listIncidents(pressOfficer.token, site.id);
+  assert.strictEqual(register.status, 200, JSON.stringify(register.body));
+
+  const press = register.body.incidents.find((row) => row.id === pressIncident.id);
+  const paint = register.body.incidents.find((row) => row.id === paintIncident.id);
+  assert.ok(press && paint, 'both incidents are on the Site-wide register');
+
+  assertInjuryDetailsPresent(
+    press,
+    { employee: injuredOnPress, injuryType, bodyPart },
+    'the register row for the Org Unit the authority reaches'
+  );
+  assertInjuryDetailsAbsent(
+    paint,
+    'the register row for an Org Unit the authority does not reach'
+  );
+
+  // And the overdue listing, which is its own address and its own query.
+  await setDueDate(pressOfficer.token, pressIncident.id, {
+    investigationDueAt: '2020-01-01T00:00:00Z'
+  });
+  await setDueDate(paintOfficer.token, paintIncident.id, {
+    investigationDueAt: '2020-01-01T00:00:00Z'
+  });
+
+  const overdue = await overdueIncidents(pressOfficer.token, site.id);
+  assert.strictEqual(overdue.status, 200, JSON.stringify(overdue.body));
+  assertInjuryDetailsPresent(
+    overdue.body.incidents.find((row) => row.id === pressIncident.id),
+    { employee: injuredOnPress, injuryType, bodyPart },
+    'the overdue listing row the authority reaches'
+  );
+  assertInjuryDetailsAbsent(
+    overdue.body.incidents.find((row) => row.id === paintIncident.id),
+    'the overdue listing row the authority does not reach'
+  );
+});
+
+test('classifying needs Safety authority, and the answer to a write is a read', async () => {
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id, { name: 'Press Line' });
+  const injured = await insertEmployee();
+  const injuryType = await insertInjuryType({ name: 'Crush' });
+  const bodyPart = await insertBodyPart({ name: 'Foot', region: 'lower_limb' });
+
+  const recorder = await insertAccount({ grants: [{ orgUnitId: unit.id }] });
+  const incident = await recordedIncident(recorder, site, unit, {
+    severityLevel: 'medical_treatment'
+  });
+
+  // An edit Grant is what recorded it, and it is not enough to classify it.
+  const refused = await classify(recorder.token, incident.id, {
+    employeeId: injured.id,
+    injuryTypeId: injuryType.id,
+    bodyPartId: bodyPart.id
+  });
+  assert.strictEqual(refused.status, 403, JSON.stringify(refused.body));
+  assert.strictEqual(
+    refused.body.message,
+    "that decision needs Safety authority at this Safety incident's Org Unit"
+  );
+
+  const officer = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const classified = await classify(officer.token, incident.id, {
+    employeeId: injured.id,
+    injuryTypeId: injuryType.id,
+    bodyPartId: bodyPart.id
+  });
+  assert.strictEqual(classified.status, 200, JSON.stringify(classified.body));
+  assertInjuryDetailsPresent(
+    classified.body.incident,
+    { employee: injured, injuryType, bodyPart },
+    'the holder of Safety authority who classified it'
+  );
+
+  // An administrator with no Safety Grant anywhere may classify — ADR-0039
+  // gives an administrator every authority, and #228's severity, days and
+  // close routes already ship on that — but reads the result back with the
+  // three fields absent, because ADR-0037 restricts the READ by the Grant. The
+  // answer to a write is a read, and there is no second, weaker rule for it.
+  const plainAdmin = await insertAccount({ role: 'admin' });
+  const byAdmin = await classify(plainAdmin.token, incident.id, { bodyPartId: null });
+  assert.strictEqual(byAdmin.status, 200, JSON.stringify(byAdmin.body));
+  assertInjuryDetailsAbsent(
+    byAdmin.body.incident,
+    'an administrator classifying without a Safety Grant'
+  );
+
+  // It really did land: the officer, who may read it, sees the body part gone
+  // and the other two fields untouched.
+  const afterAdmin = await readIncident(officer.token, incident.id);
+  assert.strictEqual(afterAdmin.body.incident.bodyPartId, null);
+  assert.strictEqual(afterAdmin.body.incident.employeeId, injured.id);
+  assert.strictEqual(afterAdmin.body.incident.injuryTypeId, injuryType.id);
+});
+
+test('recording an incident that names an injury classification needs Safety authority too', async () => {
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id, { name: 'Press Line' });
+  const injured = await insertEmployee();
+  const injuryType = await insertInjuryType({ name: 'Strain' });
+  const recorder = await insertAccount({ grants: [{ orgUnitId: unit.id }] });
+
+  const base = {
+    orgUnitId: unit.id,
+    occurredAt: '2026-04-10T08:00:00Z',
+    incidentType: 'injury',
+    severityLevel: 'first_aid',
+    description: 'A classification named at the moment of recording.'
+  };
+
+  for (const field of [
+    { employeeId: injured.id },
+    { injuryTypeId: injuryType.id }
+  ]) {
+    const refused = await record(recorder.token, site.id, { ...base, ...field });
+    assert.strictEqual(refused.status, 403, JSON.stringify(refused.body));
+    assert.strictEqual(
+      refused.body.message,
+      'naming the injured Employee, the Injury type or the Body part needs Safety authority at that Org Unit'
+    );
+  }
+
+  // An edit Grant still records an unclassified incident exactly as issue #226
+  // made it — the gate is on the classification, not on recording.
+  const plain = await record(recorder.token, site.id, base);
+  assert.strictEqual(plain.status, 201, JSON.stringify(plain.body));
+
+  // And an explicit null is not naming a classification: it says "nobody",
+  // which is what the record already holds.
+  const explicitlyNobody = await record(recorder.token, site.id, {
+    ...base,
+    employeeId: null,
+    injuryTypeId: null,
+    bodyPartId: null
+  });
+  assert.strictEqual(explicitlyNobody.status, 201, JSON.stringify(explicitlyNobody.body));
+});
+
+test('an injury type or a body part on the no-injury rung is a 400 naming the field', async () => {
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id, { name: 'Press Line' });
+  const officer = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const injuryType = await insertInjuryType({ name: 'Laceration' });
+  const bodyPart = await insertBodyPart({ name: 'Thumb', region: 'upper_limb' });
+
+  const base = {
+    orgUnitId: unit.id,
+    occurredAt: '2026-04-10T08:00:00Z',
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss',
+    description: 'Nobody was hurt.'
+  };
+
+  const withType = await record(officer.token, site.id, {
+    ...base,
+    injuryTypeId: injuryType.id
+  });
+  assert.strictEqual(withType.status, 400, JSON.stringify(withType.body));
+  assert.strictEqual(
+    withType.body.message,
+    'injuryTypeId cannot be set on the near_miss rung: nobody was injured'
+  );
+
+  const withPart = await record(officer.token, site.id, { ...base, bodyPartId: bodyPart.id });
+  assert.strictEqual(withPart.status, 400, JSON.stringify(withPart.body));
+  assert.strictEqual(
+    withPart.body.message,
+    'bodyPartId cannot be set on the near_miss rung: nobody was injured'
+  );
+
+  // The same refusal through the classify address, on an already-recorded
+  // near miss — `requireLadderConsistency` is reused rather than copied.
+  const nearMiss = await recordedIncident(officer, site, unit, {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss'
+  });
+  const classified = await classify(officer.token, nearMiss.id, {
+    injuryTypeId: injuryType.id
+  });
+  assert.strictEqual(classified.status, 400, JSON.stringify(classified.body));
+  assert.strictEqual(
+    classified.body.message,
+    'injuryTypeId cannot be set on the near_miss rung: nobody was injured'
+  );
+
+  // Naming who was involved in a near miss is not classifying an injury: the
+  // baseline's own CHECK forbids an injury type and a body part on that rung,
+  // not an Employee, and a report that says who was nearly hurt is worth
+  // keeping.
+  const whoWasThere = await classify(officer.token, nearMiss.id, {
+    employeeId: (await insertEmployee()).id
+  });
+  assert.strictEqual(whoWasThere.status, 200, JSON.stringify(whoWasThere.body));
+});
+
+test('classifying names at least one field, and an absent key leaves its own field alone', async () => {
+  const { injured, injuryType, bodyPart, officer, incident } = await classifiedGround();
+
+  const nothing = await classify(officer.token, incident.id, {});
+  assert.strictEqual(nothing.status, 400, JSON.stringify(nothing.body));
+  assert.match(nothing.body.message, /employeeId/);
+
+  // One field sent, two untouched — the contract that lets a classification be
+  // completed at three different moments.
+  const otherType = await insertInjuryType({ name: 'Amputation' });
+  const one = await classify(officer.token, incident.id, { injuryTypeId: otherType.id });
+  assert.strictEqual(one.status, 200, JSON.stringify(one.body));
+  assert.strictEqual(one.body.incident.injuryTypeId, otherType.id);
+  assert.strictEqual(one.body.incident.employeeId, injured.id);
+  assert.strictEqual(one.body.incident.bodyPartId, bodyPart.id);
+
+  // An explicit null clears, so a mistaken pick is removable rather than only
+  // replaceable.
+  const cleared = await classify(officer.token, incident.id, { employeeId: null });
+  assert.strictEqual(cleared.status, 200, JSON.stringify(cleared.body));
+  assert.strictEqual(cleared.body.incident.employeeId, null);
+  assert.strictEqual(cleared.body.incident.employeeName, null);
+  assert.strictEqual(cleared.body.incident.injuryTypeId, otherType.id);
+
+  // An unknown catalogue entry is a 404 naming it, never a raw foreign key.
+  const unknownType = await classify(officer.token, incident.id, { injuryTypeId: 999999999 });
+  assert.strictEqual(unknownType.status, 404);
+  assert.strictEqual(unknownType.body.message, 'Injury type not found');
+
+  const unknownPart = await classify(officer.token, incident.id, { bodyPartId: 999999999 });
+  assert.strictEqual(unknownPart.status, 404);
+  assert.strictEqual(unknownPart.body.message, 'Body part not found');
+
+  assert.ok(injuryType.id, 'the original type still exists for teardown');
+});
+
+test('a deactivated catalogue entry stays readable on an incident that already carries it', async () => {
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id, { name: 'Press Line' });
+  const officer = await insertAccount({ grants: [{ orgUnitId: unit.id, safety: true }] });
+  const injured = await insertEmployee();
+  const injuryType = await insertInjuryType({ name: 'Electric shock' });
+  const bodyPart = await insertBodyPart({ name: 'Hand', region: 'upper_limb' });
+
+  const incident = await recordedIncident(officer, site, unit, {
+    severityLevel: 'lost_time',
+    employeeId: injured.id,
+    injuryTypeId: injuryType.id,
+    bodyPartId: bodyPart.id
+  });
+
+  await pool.query('UPDATE injury_types SET is_active = FALSE WHERE id = $1', [injuryType.id]);
+  await pool.query('UPDATE body_parts SET is_active = FALSE WHERE id = $1', [bodyPart.id]);
+
+  const read = await readIncident(officer.token, incident.id);
+  assert.strictEqual(read.status, 200, JSON.stringify(read.body));
+  assert.strictEqual(read.body.incident.injuryTypeName, injuryType.name);
+  assert.strictEqual(read.body.incident.bodyPartName, bodyPart.name);
+
+  // And a correction that leaves the retired entry where it is still lands.
+  const stillCorrectable = await classify(officer.token, incident.id, {
+    employeeId: null
+  });
+  assert.strictEqual(stillCorrectable.status, 200, JSON.stringify(stillCorrectable.body));
+  assert.strictEqual(stillCorrectable.body.incident.injuryTypeId, injuryType.id);
 });
