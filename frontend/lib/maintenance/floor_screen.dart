@@ -23,6 +23,8 @@ import '../quality/floor_nonconformance_dialog.dart';
 import '../quality/quality_api.dart';
 import '../safety/floor_safety_incident_bloc.dart';
 import '../safety/floor_safety_incident_dialog.dart';
+import '../safety/floor_safety_observation_bloc.dart';
+import '../safety/floor_safety_observation_dialog.dart';
 import '../safety/safety_api.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
@@ -64,6 +66,13 @@ class FloorScreen extends StatelessWidget {
   /// anything open.
   static const ValueKey<String> reportSafetyIncidentKey =
       ValueKey<String>('floor-report-safety-incident');
+
+  /// The Record-a-Safety-observation action (issue #230) — the floor
+  /// surface's own door into recording the leading indicator, offered beside
+  /// the other two actions for the same reason: reachable whether or not the
+  /// line has anything open.
+  static const ValueKey<String> recordSafetyObservationKey =
+      ValueKey<String>('floor-record-safety-observation');
 
   /// The floor list's own loading placeholders, so a test can tell a slow read
   /// from an empty or failed one.
@@ -154,6 +163,36 @@ class FloorScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(reported)));
   }
 
+  /// Records a Safety observation from this device (issue #230), mirroring
+  /// [_reportSafetyIncident] exactly: the Bloc is built here, from the
+  /// repositories this Screen's own context reaches, and handed to the
+  /// dialog fresh per action, carrying the Org Unit the device is registered
+  /// at.
+  ///
+  /// The identified Employee is recorded as the observer and there is no
+  /// Account on this path at all (ADR-0016).
+  ///
+  /// What lands comes back as a plain confirmation — an observation carries
+  /// no number of its own the way a Safety incident does — shown on this
+  /// Screen rather than in the dialog, the same "the operator is looking at
+  /// the line" reasoning [_reportSafetyIncident] gives.
+  Future<void> _recordSafetyObservation(BuildContext context, String orgUnitId) async {
+    final recorded = await showDialog<String>(
+      context: context,
+      builder: (_) => BlocProvider<FloorSafetyObservationBloc>(
+        create: (context) => FloorSafetyObservationBloc(
+          safetyApi: context.read<SafetyApi>(),
+          maintenanceApi: context.read<MaintenanceApi>(),
+          floorDeviceGateway: context.read<FloorDeviceGateway>(),
+          orgUnitId: orgUnitId,
+        ),
+        child: const FloorSafetyObservationDialog(),
+      ),
+    );
+    if (recorded == null || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(recorded)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -195,6 +234,9 @@ class FloorScreen extends StatelessWidget {
                 onReportSafetyIncident: isActing
                     ? null
                     : () => _reportSafetyIncident(context, info.orgUnitId),
+                onRecordSafetyObservation: isActing
+                    ? null
+                    : () => _recordSafetyObservation(context, info.orgUnitId),
                 notice: notice,
                 child: workOrders.isEmpty
                     ? PlatformEmptyState.noneExist(
@@ -234,6 +276,7 @@ class _FloorFrame extends StatelessWidget {
     this.onRefresh,
     this.onRecordNonconformance,
     this.onReportSafetyIncident,
+    this.onRecordSafetyObservation,
     this.notice,
   });
 
@@ -242,6 +285,7 @@ class _FloorFrame extends StatelessWidget {
   final VoidCallback? onRefresh;
   final VoidCallback? onRecordNonconformance;
   final VoidCallback? onReportSafetyIncident;
+  final VoidCallback? onRecordSafetyObservation;
   final String? notice;
 
   @override
@@ -252,76 +296,118 @@ class _FloorFrame extends StatelessWidget {
         Container(
           color: Theme.of(context).colorScheme.primary,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.md, Spacing.md, Spacing.md),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Floor work',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.w700,
+              // The title and Refresh, on their own row: with three actions
+              // now offered below (issue #230 added the third), a single Row
+              // holding the title, every action and Refresh no longer fits
+              // even at a tablet's own width — this two-tier shape is what
+              // keeps that row from ever overflowing regardless of how many
+              // actions this surface grows to offer.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Floor work',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        if (orgUnitName != null)
+                          Text(
+                            orgUnitName!,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onPrimary,
+                                ),
                           ),
+                      ],
                     ),
-                    if (orgUnitName != null)
-                      Text(
-                        orgUnitName!,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                            ),
+                  ),
+                  if (onRefresh != null)
+                    IconButton(
+                      key: FloorScreen.refreshKey,
+                      onPressed: onRefresh,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      iconSize: 32,
+                      tooltip: 'Refresh',
+                      icon: const Icon(Icons.refresh),
+                    ),
+                ],
+              ),
+              if (onRecordNonconformance != null ||
+                  onReportSafetyIncident != null ||
+                  onRecordSafetyObservation != null) ...[
+                const SizedBox(height: Spacing.sm),
+                // The action strip under the title: a `Wrap`, not a fixed
+                // Row, so a fourth action or a longer label wraps onto a
+                // second line instead of overflowing — the same shape this
+                // repo's own action groups already use (e.g.
+                // work_orders_screen.dart, capa_detail_screen.dart).
+                Wrap(
+                  spacing: Spacing.sm,
+                  runSpacing: Spacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    // Recording a Non-conformance is the one Quality action
+                    // the floor surface offers (issue #207) — it is not work
+                    // on a row, so it is offered here, reachable whether or
+                    // not the line has anything open.
+                    if (onRecordNonconformance != null)
+                      FilledButton.icon(
+                        key: FloorScreen.recordNonconformanceKey,
+                        onPressed: onRecordNonconformance,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          // A 48px-tall target, but not `Size.fromHeight` —
+                          // that is an infinite WIDTH, which a button inside
+                          // a Wrap cannot take (only a stretched one can).
+                          minimumSize: const Size(0, 48),
+                        ),
+                        icon: const Icon(Icons.report_outlined),
+                        label: const Text('Non-conformance'),
+                      ),
+                    // Reporting a Safety incident is the one Safety action
+                    // the floor surface offers (issue #227), beside the
+                    // Non-conformance action for the same reason —
+                    // reachable whether or not the line has anything open.
+                    if (onReportSafetyIncident != null)
+                      FilledButton.icon(
+                        key: FloorScreen.reportSafetyIncidentKey,
+                        onPressed: onReportSafetyIncident,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          minimumSize: const Size(0, 48),
+                        ),
+                        icon: const Icon(Icons.health_and_safety_outlined),
+                        label: const Text('Safety incident'),
+                      ),
+                    // Recording a Safety observation is the third action the
+                    // floor surface offers (issue #230), beside the other
+                    // two for the same reason — reachable whether or not the
+                    // line has anything open.
+                    if (onRecordSafetyObservation != null)
+                      FilledButton.icon(
+                        key: FloorScreen.recordSafetyObservationKey,
+                        onPressed: onRecordSafetyObservation,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          minimumSize: const Size(0, 48),
+                        ),
+                        icon: const Icon(Icons.visibility_outlined),
+                        label: const Text('Observation'),
                       ),
                   ],
                 ),
-              ),
-              // Recording a Non-conformance is the one Quality action the floor
-              // surface offers (issue #207), and it is not work on a row — it
-              // is offered here, beside Refresh, so it is reachable whether or
-              // not the line has anything open.
-              if (onRecordNonconformance != null)
-                FilledButton.icon(
-                  key: FloorScreen.recordNonconformanceKey,
-                  onPressed: onRecordNonconformance,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.onPrimary,
-                    foregroundColor: Theme.of(context).colorScheme.primary,
-                    // A 48px-tall target, but not `Size.fromHeight` — that is
-                    // an infinite WIDTH, which a button inside a Row cannot
-                    // take (only a stretched one can).
-                    minimumSize: const Size(0, 48),
-                  ),
-                  icon: const Icon(Icons.report_outlined),
-                  label: const Text('Non-conformance'),
-                ),
-              // Reporting a Safety incident is the one Safety action the floor
-              // surface offers (issue #227), beside the Non-conformance action
-              // for the same reason — reachable whether or not the line has
-              // anything open.
-              if (onReportSafetyIncident != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: Spacing.sm),
-                  child: FilledButton.icon(
-                    key: FloorScreen.reportSafetyIncidentKey,
-                    onPressed: onReportSafetyIncident,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.onPrimary,
-                      foregroundColor: Theme.of(context).colorScheme.primary,
-                      minimumSize: const Size(0, 48),
-                    ),
-                    icon: const Icon(Icons.health_and_safety_outlined),
-                    label: const Text('Safety incident'),
-                  ),
-                ),
-              if (onRefresh != null)
-                IconButton(
-                  key: FloorScreen.refreshKey,
-                  onPressed: onRefresh,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  iconSize: 32,
-                  tooltip: 'Refresh',
-                  icon: const Icon(Icons.refresh),
-                ),
+              ],
             ],
           ),
         ),

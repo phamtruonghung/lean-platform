@@ -137,8 +137,13 @@ import '../safety/incident_status_dialog.dart';
 import '../safety/incidents_screen.dart';
 import '../safety/injury_types_bloc.dart';
 import '../safety/injury_types_screen.dart';
+import '../safety/observation_detail_bloc.dart';
+import '../safety/observation_detail_screen.dart';
+import '../safety/observation_form_dialog.dart';
+import '../safety/observations_screen.dart';
 import '../safety/safety_api.dart';
 import '../safety/safety_incidents_bloc.dart';
+import '../safety/safety_observations_bloc.dart';
 import 'access_denied_screen.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
@@ -200,6 +205,13 @@ abstract final class Routes {
   /// scatter its catalogues outside it.
   static const String injuryTypes = '/safety/injury-types';
   static const String bodyParts = '/safety/body-parts';
+
+  /// The Safety observation register (issue #230): the leading indicator,
+  /// worst-first by severity potential. Its record form
+  /// (`/safety/observations/record`) and one observation's detail
+  /// (`/safety/observations/:id`) — all addressed, per ADR-0019/ADR-0021,
+  /// mirroring [safetyIncidents] exactly.
+  static const String safetyObservations = '/safety/observations';
 
   /// The Customer list (issue #214), at its own address so it can be linked to
   /// or bookmarked. Defining and correcting a Customer are dialogs over it
@@ -1710,6 +1722,106 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                         },
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Safety observations (issue #230) — a `ShellRoute` of its own, the
+          // same reason the incident register above has one:
+          // `SafetyObservationsBloc` is created exactly once and shared by
+          // the register and the record form's own address below.
+          //
+          // The guard is the whole Module rather than a role set, the same
+          // reasoning the incident register's own comment gives: the register
+          // is a Site-wide read for every admitted Account, and recording
+          // needs only a write Grant reaching the Org Unit it was observed
+          // at, or the administrator role — both of which the server
+          // decides.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              return BlocProvider<SafetyObservationsBloc>(
+                create: (context) => SafetyObservationsBloc(
+                  safetyApi: context.read<SafetyApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SafetyObservationsStarted()),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.safetyObservations,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return const SafetyObservationsScreen();
+                },
+                routes: [
+                  // `/safety/observations/record` — the record form,
+                  // addressed rather than popped (ADR-0021), mirroring
+                  // `/safety/incidents/record` exactly.
+                  GoRoute(
+                    path: 'record',
+                    pageBuilder: (context, state) {
+                      final account = context.watch<AccountBloc>().state;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) {
+                          if (account is! AccountApproved) return const SizedBox.shrink();
+                          final register = context.watch<SafetyObservationsBloc>().state;
+                          final siteId =
+                              register is SafetyObservationsLoaded ? register.siteId : null;
+                          if (siteId == null) {
+                            return const AlertDialog(
+                              key: SafetyObservationsScreen.formLoadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          return BlocProvider<OrgUnitPickerBloc>(
+                            create: (context) => OrgUnitPickerBloc(
+                              peopleApi: context.read<PeopleApi>(),
+                              authGateway: context.read<AuthGateway>(),
+                              initialSiteId: siteId,
+                            )..add(const OrgUnitPickerStarted()),
+                            child: SafetyObservationFormDialog(siteId: siteId),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // `/safety/observations/:id` — a `ShellRoute` of its own so
+              // `SafetyObservationDetailBloc` is created exactly once and
+              // **keyed on the id in the address**, the same fix issue #183
+              // gave the incident detail route above.
+              ShellRoute(
+                builder: (context, state, child) {
+                  final observationId = state.pathParameters['id']!;
+                  return BlocProvider<SafetyObservationDetailBloc>(
+                    key: ValueKey<String>(observationId),
+                    create: (context) => SafetyObservationDetailBloc(
+                      safetyApi: context.read<SafetyApi>(),
+                      authGateway: context.read<AuthGateway>(),
+                    )..add(SafetyObservationDetailStarted(observationId)),
+                    child: child,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    // Absolute, because this route is a *sibling* of the
+                    // register's rather than a child of it — the same
+                    // reasoning the incident detail route above gives.
+                    path: '${Routes.safetyObservations}/:id',
+                    builder: (context, state) => SafetyObservationDetailScreen(
+                      observationId: state.pathParameters['id']!,
+                    ),
                   ),
                 ],
               ),

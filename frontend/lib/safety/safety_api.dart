@@ -31,6 +31,7 @@ import 'package:http/http.dart' as http;
 import 'body_part.dart';
 import 'injury_type.dart';
 import 'safety_incident.dart';
+import 'safety_observation.dart';
 
 /// The request could not be answered at all. Deliberately its own type
 /// rather than another Module's, mirroring `QualityApiException`.
@@ -203,6 +204,155 @@ class SafetyApi {
     try {
       final answer = jsonDecode(response.body) as Map<String, dynamic>;
       return SafetyIncident.fromJson(answer['incident'] as Map<String, dynamic>);
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The Site's Safety observations, worst-first by severity potential
+  /// (`GET /api/safety/sites/:siteId/observations`, issue #230), narrowed by
+  /// [filters].
+  Future<SafetyObservationRegister> fetchSafetyObservations(
+    String accessToken,
+    String siteId, {
+    SafetyObservationFilters filters = const SafetyObservationFilters(),
+  }) async {
+    final path = '/api/safety/sites/$siteId/observations';
+    final query = filters.queryParameters;
+    final uri = Uri.parse(path).replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return SafetyObservationRegister(
+        observations: [
+          for (final row in body['observations'] as List<dynamic>)
+            SafetyObservation.fromJson(row as Map<String, dynamic>),
+        ],
+        truncated: body['truncated'] == true,
+      );
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One Safety observation (`GET /api/safety/observations/:id`) — what the
+  /// detail Screen reads.
+  Future<SafetyObservation> fetchSafetyObservation(String accessToken, String id) async {
+    final path = '/api/safety/observations/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return SafetyObservation.fromJson(body['observation'] as Map<String, dynamic>);
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records a Safety observation
+  /// (`POST /api/safety/sites/:siteId/observations`, issue #230). It is
+  /// recorded at [orgUnitId] and needs a Grant that reaches it with edit, or
+  /// the administrator role; the API refuses anything else (403).
+  ///
+  /// Only the keys a caller actually decided are sent: [actionTaken] and
+  /// [observedAt] are omitted when they are empty rather than sent as nulls
+  /// the API would have to interpret.
+  Future<SafetyObservation> recordSafetyObservation(
+    String accessToken,
+    String siteId, {
+    required String orgUnitId,
+    required String observationType,
+    required String category,
+    required String severityPotential,
+    required String description,
+    bool isStopWork = false,
+    String? actionTaken,
+    String? observedAt,
+  }) async {
+    final path = '/api/safety/sites/$siteId/observations';
+    final body = <String, Object?>{
+      'orgUnitId': orgUnitId,
+      'observationType': observationType,
+      'category': category,
+      'severityPotential': severityPotential,
+      'description': description,
+      'isStopWork': isStopWork,
+    };
+    if (actionTaken != null && actionTaken.trim().isNotEmpty) {
+      body['actionTaken'] = actionTaken.trim();
+    }
+    if (observedAt != null) body['observedAt'] = observedAt;
+
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return SafetyObservation.fromJson(answer['observation'] as Map<String, dynamic>);
+    } catch (error) {
+      throw SafetyApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Records a Safety observation at a shared floor device
+  /// (`POST /api/safety/floor/observations`, issue #230), mirroring
+  /// [recordFloorSafetyIncident] closely. [deviceCredential] selects the door
+  /// and [identification] says which Employee is standing at the machine —
+  /// the identified Employee becomes the observation's observer, and there is
+  /// no recording Account on this path at all (ADR-0016).
+  ///
+  /// [orgUnitId] is where the record is filed — the device's own Org Unit, or
+  /// anything beneath it; the API refuses one outside that reach with a 403
+  /// carrying People's own `OUTSIDE_GRANTED_ORG_UNITS` wording.
+  Future<SafetyObservation> recordFloorSafetyObservation(
+    String deviceCredential,
+    String identification, {
+    required String orgUnitId,
+    required String observationType,
+    required String category,
+    required String severityPotential,
+    required String description,
+    bool isStopWork = false,
+    String? actionTaken,
+  }) async {
+    const path = '/api/safety/floor/observations';
+    final body = <String, Object?>{
+      'orgUnitId': orgUnitId,
+      'observationType': observationType,
+      'category': category,
+      'severityPotential': severityPotential,
+      'description': description,
+      'isStopWork': isStopWork,
+    };
+    if (actionTaken != null && actionTaken.trim().isNotEmpty) {
+      body['actionTaken'] = actionTaken.trim();
+    }
+
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {
+          'x-floor-device': deviceCredential,
+          'x-technician-identification': identification,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final answer = jsonDecode(response.body) as Map<String, dynamic>;
+      return SafetyObservation.fromJson(answer['observation'] as Map<String, dynamic>);
     } catch (error) {
       throw SafetyApiException('The API answered with something this app could not read: $error');
     }

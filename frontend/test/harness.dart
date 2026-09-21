@@ -1051,6 +1051,61 @@ Map<String, dynamic> safetyIncidentJson(
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
+/// One Safety observation as `GET /api/safety/observations/:id` and the
+/// register send it (issue #230) — mirrors `toSafetyObservation`
+/// (safety-observations.js) key for key. Unlike a Safety incident this record
+/// carries no status, no event history and no restricted fields: an
+/// observation is a fact (#223 decision 9), so this fixture has none of
+/// `safetyIncidentJson`'s `injuryDetailsRestricted`/`events`/`concerns` shape.
+Map<String, dynamic> safetyObservationJson(
+  String id, {
+  String observationType = 'unsafe_act',
+  String category = 'ppe',
+  String severityPotential = 'medium',
+  String? description,
+  String? actionTaken,
+  bool isStopWork = false,
+  String? recordedByAccountId = '1',
+  String? recordedByAccountName = 'Ann Operator',
+  String? observerEmployeeId,
+  String? observerEmployeeName,
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String siteId = '1',
+  String siteCode = 'HCM',
+  String siteName = 'Ho Chi Minh',
+  String? observedAt,
+  String? shiftInstanceId,
+  String? productionDate,
+  String? shiftCode,
+  String? shiftName,
+}) =>
+    {
+      'id': id,
+      'observedAt': observedAt ?? DateTime.now().toUtc().toIso8601String(),
+      'observationType': observationType,
+      'category': category,
+      'severityPotential': severityPotential,
+      'description': description,
+      'actionTaken': actionTaken,
+      'isStopWork': isStopWork,
+      'recordedByAccountId': recordedByAccountId,
+      'recordedByAccountName': recordedByAccountName,
+      'observerEmployeeId': observerEmployeeId,
+      'observerEmployeeName': observerEmployeeName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'siteId': siteId,
+      'siteCode': siteCode,
+      'siteName': siteName,
+      'shiftInstanceId': shiftInstanceId,
+      'productionDate': productionDate,
+      'shiftCode': shiftCode,
+      'shiftName': shiftName,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
 /// One row of a Safety incident's event history (issue #228) as `GET
 /// /api/safety/incidents/:id` sends it — mirrors `toSafetyIncidentEvent`
 /// (safety-incidents.js) key for key.
@@ -2011,6 +2066,13 @@ class FakeWire {
     this.createSafetyIncidentMessage = 'orgUnitId must be a valid Org Unit id',
     this.floorSafetyIncidentStatus = 201,
     this.floorSafetyIncidentMessage = "Outside the caller's granted Org Units",
+    Map<String, List<Map<String, dynamic>>>? safetyObservations,
+    this.safetyObservationsStatus = 200,
+    this.safetyObservationsTruncated = false,
+    this.createSafetyObservationStatus = 201,
+    this.createSafetyObservationMessage = 'orgUnitId must be a valid Org Unit id',
+    this.floorSafetyObservationStatus = 201,
+    this.floorSafetyObservationMessage = "Outside the caller's granted Org Units",
     Map<String, Map<String, dynamic>>? capas,
     this.capasStatus = 200,
     this.capaMessage = 'That CAPA could not be read.',
@@ -2099,6 +2161,7 @@ class FakeWire {
         injuryTypes = injuryTypes ?? [],
         bodyParts = bodyParts ?? [],
         safetyIncidents = safetyIncidents ?? {},
+        safetyObservations = safetyObservations ?? {},
         capas = capas ?? {};
 
   /// `GET /api/quality/products` (issue #203) — the Product catalogue.
@@ -2452,6 +2515,73 @@ class FakeWire {
   /// Non-conformance Module's own five.
   int recordSafetyIncidentActStatus = 200;
   String recordSafetyIncidentActMessage = "that decision needs Safety authority at this Safety incident's Org Unit";
+
+  /// `GET /api/safety/sites/:siteId/observations` (issue #230) — the register,
+  /// keyed by Site id, worst-first by severity potential. The wire applies the
+  /// same class of filters [safetyIncidents]' own register does: `orgUnitId`
+  /// (the row's own Org Unit or any descendant of it), `observationType`,
+  /// `category`, `severityPotential`, `isStopWork` and the production-day
+  /// range.
+  Map<String, List<Map<String, dynamic>>> safetyObservations;
+  int safetyObservationsStatus;
+  bool safetyObservationsTruncated;
+
+  /// `POST /api/safety/sites/:siteId/observations` — recording one.
+  int createSafetyObservationStatus;
+  String createSafetyObservationMessage;
+
+  /// Every Safety observation list request's query parameters, in the order
+  /// they reached the wire.
+  final List<Map<String, String>> safetyObservationListRequests = [];
+
+  /// Every Safety observation detail read's path, in order — `GET
+  /// /api/safety/observations/:id`.
+  final List<String> safetyObservationReads = [];
+
+  /// Every recording body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> safetyObservationPosts = [];
+
+  /// `POST /api/safety/floor/observations` (issue #230) — recording a Safety
+  /// observation from the shared floor device. A refusal is scripted with
+  /// [floorSafetyObservationStatus], the same shape
+  /// [floorSafetyIncidentStatus] keeps.
+  int floorSafetyObservationStatus;
+  String floorSafetyObservationMessage;
+
+  /// Every floor safety observation report that reached the wire, as
+  /// `{device, identification, body}` — mirrors [floorSafetyIncidentPosts]
+  /// exactly.
+  final List<Map<String, dynamic>> floorSafetyObservationPosts = [];
+
+  /// Looks a Safety observation up by id across every Site's list, mirroring
+  /// [safetyIncidentById].
+  Map<String, dynamic>? safetyObservationById(String id) {
+    for (final rows in safetyObservations.values) {
+      for (final row in rows) {
+        if (row['id'] == id) return row;
+      }
+    }
+    return null;
+  }
+
+  int _nextSafetyObservationId = 2000;
+
+  /// The production day a Safety observation row is filed against — mirrors
+  /// [_safetyIncidentDayOf] exactly.
+  String _safetyObservationDayOf(Map<String, dynamic> row) {
+    final productionDate = row['productionDate'] as String?;
+    if (productionDate != null && productionDate.isNotEmpty) return productionDate;
+    final observedAt = row['observedAt'] as String?;
+    if (observedAt == null || observedAt.length < 10) return '';
+    return observedAt.substring(0, 10);
+  }
+
+  /// Worst-first by severity potential, mirroring the server's own
+  /// `array_position` ordering in `listSafetyObservations`.
+  static const List<String> _severityPotentialOrder = ['low', 'medium', 'high', 'fatal'];
+
+  int _severityPotentialRank(Map<String, dynamic> row) =>
+      _severityPotentialOrder.indexOf(row['severityPotential'] as String? ?? 'low');
 
   /// Looks a Safety incident up by id across every Site's list, mirroring
   /// [nonconformanceById].
@@ -5346,6 +5476,51 @@ class FakeWire {
           };
           return http.Response(jsonEncode({'incident': created}), 201);
         }
+        // The Safety Module's floor door for an observation (issue #230):
+        // mirrors the incident floor door immediately above — the identified
+        // Employee is the observer (`observerEmployeeId`), and there is no
+        // recording Account at all (the opposite of the Account-door fixture
+        // below).
+        if (request.method == 'POST' && path == '/api/safety/floor/observations') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          floorSafetyObservationPosts.add({
+            'device': request.headers['x-floor-device'],
+            'identification': request.headers['x-technician-identification'],
+            'body': sent,
+          });
+          if (floorSafetyObservationStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': floorSafetyObservationMessage}),
+              floorSafetyObservationStatus,
+            );
+          }
+          final orgUnitId = sent['orgUnitId'] as String;
+          final id = (_nextSafetyObservationId++).toString();
+          final created = safetyObservationJson(
+            id,
+            observationType: sent['observationType'] as String,
+            category: sent['category'] as String,
+            severityPotential: sent['severityPotential'] as String,
+            description: sent['description'] as String?,
+            actionTaken: sent['actionTaken'] as String?,
+            isStopWork: sent['isStopWork'] == true,
+            observedAt: sent['observedAt'] as String?,
+            // The floor door names an Employee as observer and no Account —
+            // the two are never both filled (safety-observations.js's own
+            // note).
+            recordedByAccountId: null,
+            recordedByAccountName: null,
+            observerEmployeeId: floorEmployee['id'] as String?,
+            observerEmployeeName: floorEmployee['displayName'] as String?,
+            orgUnitId: orgUnitId,
+            orgUnitName: _orgUnitNameFor(orgUnitId),
+          );
+          safetyObservations = {
+            ...safetyObservations,
+            '1': [created, ...(safetyObservations['1'] ?? const [])],
+          };
+          return http.Response(jsonEncode({'observation': created}), 201);
+        }
         // The Safety Module's two shared catalogues (issue #224). Both are
         // readable by any active Account and writable only by an
         // administrator — the API decides that, and this wire answers either
@@ -5543,6 +5718,91 @@ class FakeWire {
             jsonEncode({'incidents': sent, 'truncated': safetyIncidentsTruncated}),
             200,
           );
+        }
+        // The Account door for a Safety observation's register and its
+        // recording (issue #230) — mirrors the incident register immediately
+        // above, minus the injury-restriction shape an observation has none
+        // of.
+        if (path.startsWith('/api/safety/sites/') && path.endsWith('/observations')) {
+          final siteId = path.split('/')[4];
+          if (request.method == 'POST') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            safetyObservationPosts.add(sent);
+            if (createSafetyObservationStatus != 201) {
+              return http.Response(
+                jsonEncode({'message': createSafetyObservationMessage}),
+                createSafetyObservationStatus,
+              );
+            }
+            final orgUnitId = sent['orgUnitId'] as String;
+            final id = (_nextSafetyObservationId++).toString();
+            final created = safetyObservationJson(
+              id,
+              observationType: sent['observationType'] as String,
+              category: sent['category'] as String,
+              severityPotential: sent['severityPotential'] as String,
+              description: sent['description'] as String?,
+              actionTaken: sent['actionTaken'] as String?,
+              isStopWork: sent['isStopWork'] == true,
+              observedAt: sent['observedAt'] as String?,
+              recordedByAccountId: '1',
+              recordedByAccountName: 'Ann Operator',
+              orgUnitId: orgUnitId,
+              orgUnitName: _orgUnitNameFor(orgUnitId),
+              siteId: siteId,
+            );
+            safetyObservations = {
+              ...safetyObservations,
+              siteId: [created, ...(safetyObservations[siteId] ?? const [])],
+            };
+            return http.Response(jsonEncode({'observation': created}), 201);
+          }
+          safetyObservationListRequests.add(request.url.queryParameters);
+          if (safetyObservationsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The register is unavailable.'}),
+              safetyObservationsStatus,
+            );
+          }
+          final query = request.url.queryParameters;
+          final orgUnitId = query['orgUnitId'];
+          final scope = orgUnitId == null ? null : safetyIncidentOrgUnitScope(orgUnitId);
+          final observationType = query['observationType'];
+          final category = query['category'];
+          final severityPotential = query['severityPotential'];
+          final isStopWork = query['isStopWork'];
+          final from = query['from'];
+          final to = query['to'];
+          final sent = [
+            for (final row in safetyObservations[siteId] ?? const <Map<String, dynamic>>[])
+              if (scope == null || scope.contains(row['orgUnitId']))
+                if (observationType == null || row['observationType'] == observationType)
+                  if (category == null || row['category'] == category)
+                    if (severityPotential == null ||
+                        row['severityPotential'] == severityPotential)
+                      if (isStopWork == null || row['isStopWork'].toString() == isStopWork)
+                        if (from == null || _safetyObservationDayOf(row).compareTo(from) >= 0)
+                          if (to == null || _safetyObservationDayOf(row).compareTo(to) <= 0) row,
+          ]..sort((a, b) => _severityPotentialRank(b).compareTo(_severityPotentialRank(a)));
+          return http.Response(
+            jsonEncode({'observations': sent, 'truncated': safetyObservationsTruncated}),
+            200,
+          );
+        }
+        if (path.startsWith('/api/safety/observations/')) {
+          final id = path.substring('/api/safety/observations/'.length);
+          safetyObservationReads.add(path);
+          if (safetyObservationsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The register is unavailable.'}),
+              safetyObservationsStatus,
+            );
+          }
+          final row = safetyObservationById(id);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Safety observation not found'}), 404);
+          }
+          return http.Response(jsonEncode({'observation': row}), 200);
         }
         if (path.startsWith('/api/safety/incidents/') &&
             path.endsWith('/investigation-due-date') &&

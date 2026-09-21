@@ -131,6 +131,11 @@ const _pages = <_Page>[
   // the card's own padding, so the default bound holds.
   _Page('/safety/incidents', 'lib/safety/incidents_screen.dart', 'Safety incidents',
       'What went wrong at this Site'),
+  // The Safety observation register (issue #230). Its rows are cards of text
+  // at the card's own padding, the same shape the incident register above
+  // keeps, so the default bound holds.
+  _Page('/safety/observations', 'lib/safety/observations_screen.dart', 'Safety observations',
+      'What was seen before anything went wrong'),
   // The Safety Module's two catalogues (issue #224). Flat lists of rows at the
   // card's own padding, like the Product catalogue, so the default bound holds
   // for each. Audited rather than excluded even though their Destinations are
@@ -171,6 +176,8 @@ const _excluded = <String, String>{
       "its title is the supplier NCR's own Supplier and Product, not a page heading",
   'lib/safety/incident_detail_screen.dart':
       "its title is the Safety incident's own number, not a page heading",
+  'lib/safety/observation_detail_screen.dart':
+      "its title is the observation's own type, not a page heading",
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',
@@ -232,6 +239,10 @@ FakeWire _wire() => FakeWire(
       // card rather than an empty state and the row assertion actually runs.
       safetyIncidents: {
         '1': [safetyIncidentJson('901', 'SI-HCM-2026-00001')],
+      },
+      // The Safety observation register (issue #230), for the same reason.
+      safetyObservations: {
+        '1': [safetyObservationJson('701')],
       },
       // The Safety Module's two catalogues (issue #224), for the same reason:
       // each page renders its card rather than an empty state.
