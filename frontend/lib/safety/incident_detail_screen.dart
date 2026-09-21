@@ -45,8 +45,9 @@
 /// to a protection that is not there. No copy here calls them private.
 ///
 /// **Issue #228 — making the record answerable.** The event history (every
-/// severity change, status move, days change and closure, oldest first) is
-/// shown on every read. Five acts are offered, each its own address
+/// severity change, status move, days change, closure and classification
+/// change, oldest first) is shown on every read. Five acts are offered, each
+/// its own address
 /// (ADR-0021): the investigation due date and the ordinary status move need
 /// only an edit Grant reaching the Org Unit, so they are always offered and
 /// the server is the gate, exactly like recording itself. Correcting the
@@ -428,8 +429,8 @@ class _InjuryCard extends StatelessWidget {
 }
 
 /// The event history (issue #228): every severity change, status move, days
-/// change and closure, oldest first, with who made it and when — mirrors
-/// Quality's own `_CorrectionsCard` shape.
+/// change, closure and classification change (issue #224), oldest first, with
+/// who made it and when — mirrors Quality's own `_CorrectionsCard` shape.
 class _EventHistoryCard extends StatelessWidget {
   const _EventHistoryCard({required this.events});
 
@@ -448,8 +449,8 @@ class _EventHistoryCard extends StatelessWidget {
             Text('Event history', style: theme.textTheme.titleMedium),
             const SizedBox(height: Spacing.xs),
             Text(
-              'Every severity change, status move, days change and closure, kept with who and '
-              'when.',
+              'Every severity change, status move, days change, closure and classification '
+              'change, kept with who and when.',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),

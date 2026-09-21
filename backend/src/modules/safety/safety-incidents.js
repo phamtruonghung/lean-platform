@@ -186,10 +186,11 @@ const NEXT_STATUS = {
   investigating: 'actions_pending'
 };
 
-// The event kinds `safety_incident_events` accepts (migration 1800900000000)
-// — repeated here for the same reason INCIDENT_TYPES is repeated from the
-// baseline's own CHECK.
-const EVENT_KINDS = ['severity', 'status', 'days', 'closure'];
+// The event kinds `safety_incident_events` accepts (migration 1800900000000,
+// widened by 1801000000000 to add `classification` for issue #224's history
+// criterion) — repeated here for the same reason INCIDENT_TYPES is repeated
+// from the baseline's own CHECK.
+const EVENT_KINDS = ['severity', 'status', 'days', 'closure', 'classification'];
 
 const SEVERITY_RANK = Object.fromEntries(SEVERITY_LEVELS.map((level, index) => [level, index]));
 
@@ -499,14 +500,11 @@ const RESTRICTED_INJURY_KEYS = [
  * which is why it is safe to call it unconditionally, as the floor door does.
  *
  * The event history is filtered too. `safety_incident_events` carries its
- * values as generic TEXT, so an event row recording a classification change
- * would hand a Site-wide reader the very values the keys above were just
+ * values as generic TEXT, so a `classification` row (migration 1801000000000
+ * widened the table's `kind` CHECK for it; `classifySafetyIncident` writes
+ * one) would hand a Site-wide reader the very values the keys above were just
  * removed for. The whole row is dropped rather than its two value fields
- * blanked, for the same reason the keys are deleted rather than nulled. No
- * such row can exist today — the table's own CHECK allows four kinds and
- * `classification` is not among them (migration 1800900000000) — and this
- * filter is deliberately written before the kind exists rather than after: the
- * ticket that widens that CHECK must not also have to remember this.
+ * blanked, for the same reason the keys are deleted rather than nulled.
  */
 function withoutInjuryDetails(incident) {
   const stripped = { ...incident };
@@ -790,8 +788,11 @@ async function resolveEmployee(employeeId) {
 // a retired Injury type must stay correctable in its other fields, and
 // re-stating the value it already holds must not become a 400. The catalogue's
 // own list is where "still offered" is decided; this is only "does it exist".
+// `code` is read alongside `id` (not just an existence check) so
+// `classifySafetyIncident` can encode a `classification` event's new value
+// without a second query — see that function's own doc comment.
 async function resolveInjuryType(injuryTypeId) {
-  const { rows } = await getPool().query('SELECT id FROM injury_types WHERE id = $1', [
+  const { rows } = await getPool().query('SELECT id, code FROM injury_types WHERE id = $1', [
     injuryTypeId
   ]);
   if (!rows[0]) throw notFound('Injury type');
@@ -799,7 +800,9 @@ async function resolveInjuryType(injuryTypeId) {
 }
 
 async function resolveBodyPart(bodyPartId) {
-  const { rows } = await getPool().query('SELECT id FROM body_parts WHERE id = $1', [bodyPartId]);
+  const { rows } = await getPool().query('SELECT id, code FROM body_parts WHERE id = $1', [
+    bodyPartId
+  ]);
   if (!rows[0]) throw notFound('Body part');
   return rows[0];
 }
@@ -875,7 +878,11 @@ async function recordSafetyIncident(input, actor = {}) {
   // route has already asked People for Safety authority reaching this Org Unit
   // when any of the three is present — see safety-incident-routes.js — so what
   // is left here is the shape of the ids and the ladder they have to agree
-  // with.
+  // with. No `classification` event is written for naming it at record time,
+  // the same choice `changeSafetyIncidentSeverity` makes for the severity
+  // named on the very same INSERT — an event records a *change* to an
+  // already-recorded incident, and there is nothing to compare a brand-new
+  // row's classification against.
   const injuryTypeId = body.injuryTypeId === undefined || body.injuryTypeId === null
     ? null
     : parseId(body.injuryTypeId);
@@ -1205,18 +1212,31 @@ async function recordSafetyIncidentDays(id, input, accountId) {
  * belongs to has been closed. Refusing it would leave a plant's own medical
  * record permanently wrong to protect a status.
  *
- * **Not yet written to `safety_incident_events`, and that is a gap, not a
- * decision.** Issue #224 asks for classification changes to be kept in the
- * event history with who and when. That table's `kind` CHECK allows exactly
- * four values — `severity`, `status`, `days`, `closure` (migration
- * 1800900000000) — so a fifth needs a migration widening it, which this ticket
- * says it does not carry. Reusing one of the four would be worse than the gap:
- * `hasSettledDays` derives "the days were settled" from the presence of a
- * `days` row, so a misfiled kind would quietly change when an incident may be
- * closed. Until that CHECK is widened, who classified an incident and when is
- * kept where every other write to this table is kept — `audit_log`, through
- * the baseline's own `attach_audit('safety_incidents')`, with `changed_by` set
- * from `app.user_id` by the `withActor` below.
+ * **Written to `safety_incident_events` as its own `classification` kind**
+ * (migration 1801000000000, which widened the table's `kind` CHECK for
+ * exactly this — issue #224's own history criterion). A dedicated fifth kind
+ * rather than reusing one of the original four: `hasSettledDays` derives "the
+ * days were settled" from the presence of a `days` row, so a misfiled kind
+ * would quietly change when an incident may be closed, and `severity`/
+ * `status`/`closure` are each statements about a different fact than who was
+ * hurt and what the injury was.
+ *
+ * **The encoding**, following the same one-generic-TEXT-pair-per-row choice
+ * migration 1800900000000 made for the `days` kind
+ * (`lostTimeDays=<n>,restrictedDays=<n>`): a `classification` row's
+ * `previous_value`/`new_value` is
+ * `employeeId=<id|none>,injuryType=<code|none>,bodyPart=<code|none>` — the
+ * Employee by id (it carries no code of its own), the Injury type and Body
+ * part by their catalogue `code` rather than their id, since a code is what a
+ * reader of this history actually recognises, the same way `severity`/
+ * `status` rows hold the enum word itself rather than a rank number. `none`
+ * marks a field that is unset, not absent from the string, so a reader is
+ * never left wondering whether a comma-separated value was cut short.
+ *
+ * An event is written only when the encoded value actually changed — a
+ * classify call that only names fields already holding those exact values
+ * (including the 400 case above, which never reaches this far) writes
+ * nothing, so the history stays a record of changes and not of every touch.
  */
 async function classifySafetyIncident(id, input, accountId) {
   const existing = await findSafetyIncident(id);
@@ -1259,12 +1279,28 @@ async function classifySafetyIncident(id, input, accountId) {
   // Existence before the write, in the same order every other route in this
   // Platform resolves it, and only for the fields that actually changed — a
   // correction that leaves a field alone must not start failing because the
-  // catalogue entry it has always held was deleted out from under it.
+  // catalogue entry it has always held was deleted out from under it. The
+  // Injury type's and Body part's `code`, captured here rather than
+  // re-queried below, is what the `classification` event's new value encodes.
+  let injuryTypeCode = existing.injuryTypeCode;
+  let bodyPartCode = existing.bodyPartCode;
   if (employeeId !== null && employeeId !== existing.employeeId) await resolveEmployee(employeeId);
-  if (injuryTypeId !== null && injuryTypeId !== existing.injuryTypeId) {
-    await resolveInjuryType(injuryTypeId);
+  if (injuryTypeId !== existing.injuryTypeId) {
+    injuryTypeCode = injuryTypeId === null ? null : (await resolveInjuryType(injuryTypeId)).code;
   }
-  if (bodyPartId !== null && bodyPartId !== existing.bodyPartId) await resolveBodyPart(bodyPartId);
+  if (bodyPartId !== existing.bodyPartId) {
+    bodyPartCode = bodyPartId === null ? null : (await resolveBodyPart(bodyPartId)).code;
+  }
+
+  const encodeClassification = (employee, injuryType, bodyPart) =>
+    `employeeId=${employee ?? 'none'},injuryType=${injuryType ?? 'none'},bodyPart=${bodyPart ?? 'none'}`;
+  const previousValue = encodeClassification(
+    existing.employeeId,
+    existing.injuryTypeCode,
+    existing.bodyPartCode
+  );
+  const newValue = encodeClassification(employeeId, injuryTypeCode, bodyPartCode);
+  const changed = previousValue !== newValue;
 
   await withActor(accountId, async (client) => {
     await client.query(
@@ -1273,6 +1309,15 @@ async function classifySafetyIncident(id, input, accountId) {
         WHERE id = $4`,
       [employeeId, injuryTypeId, bodyPartId, id]
     );
+    if (changed) {
+      await writeIncidentEvent(client, {
+        safetyIncidentId: existing.id,
+        kind: 'classification',
+        previousValue,
+        newValue,
+        accountId
+      });
+    }
   });
 
   return getSafetyIncidentDetail(id);

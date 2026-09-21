@@ -1988,3 +1988,102 @@ test('a deactivated catalogue entry stays readable on an incident that already c
   assert.strictEqual(stillCorrectable.status, 200, JSON.stringify(stillCorrectable.body));
   assert.strictEqual(stillCorrectable.body.incident.injuryTypeId, injuryType.id);
 });
+
+// ---------------------------------------------------------------------------
+// 17. A classification change is kept in the event history, and who may read
+// it (issue #224's own history criterion, migration 1801000000000)
+// ---------------------------------------------------------------------------
+
+test('a classification change writes a classification event, readable by the holder of Safety authority and by the injured person', async () => {
+  const { unit, injured, injuryType, bodyPart, officer, incident } = await classifiedGround();
+
+  const ownAccount = await insertAccount({
+    grants: [{ orgUnitId: unit.id, write: false }],
+    employeeId: injured.id
+  });
+
+  const otherType = await insertInjuryType({ name: 'Sprain' });
+  const classified = await classify(officer.token, incident.id, {
+    injuryTypeId: otherType.id
+  });
+  assert.strictEqual(classified.status, 200, JSON.stringify(classified.body));
+
+  const asOfficer = await readIncident(officer.token, incident.id);
+  assert.strictEqual(asOfficer.status, 200, JSON.stringify(asOfficer.body));
+  const officerEvents = asOfficer.body.incident.events;
+  const classificationEvent = officerEvents.find((event) => event.kind === 'classification');
+  assert.ok(classificationEvent, 'the holder of Safety authority sees the classification event');
+  assert.strictEqual(
+    classificationEvent.previousValue,
+    `employeeId=${injured.id},injuryType=${injuryType.code},bodyPart=${bodyPart.code}`
+  );
+  assert.strictEqual(
+    classificationEvent.newValue,
+    `employeeId=${injured.id},injuryType=${otherType.code},bodyPart=${bodyPart.code}`
+  );
+  assert.strictEqual(classificationEvent.changedByAccountId, String(officer.id));
+  assert.ok(classificationEvent.changedAt);
+
+  const asInjured = await readIncident(ownAccount.token, incident.id);
+  assert.strictEqual(asInjured.status, 200, JSON.stringify(asInjured.body));
+  assert.ok(
+    asInjured.body.incident.events.some((event) => event.kind === 'classification'),
+    "the injured person's own Account sees the classification event too"
+  );
+});
+
+test('a Site-wide reader and a plain administrator never see a classification event, even though the classification happened', async () => {
+  const { unit, officer, incident } = await classifiedGround();
+
+  const siteReader = await insertAccount({ grants: [{ orgUnitId: unit.id, write: false }] });
+  const plainAdmin = await insertAccount({ role: 'admin' });
+
+  const otherType = await insertInjuryType({ name: 'Contusion' });
+  const classified = await classify(officer.token, incident.id, {
+    injuryTypeId: otherType.id
+  });
+  assert.strictEqual(classified.status, 200, JSON.stringify(classified.body));
+
+  const asSiteReader = await readIncident(siteReader.token, incident.id);
+  assert.strictEqual(asSiteReader.status, 200, JSON.stringify(asSiteReader.body));
+  assert.ok(Array.isArray(asSiteReader.body.incident.events), 'events is still present, just filtered');
+  assert.ok(
+    !asSiteReader.body.incident.events.some((event) => event.kind === 'classification'),
+    'a Site-wide reader must not see a classification event'
+  );
+
+  const asAdmin = await readIncident(plainAdmin.token, incident.id);
+  assert.strictEqual(asAdmin.status, 200, JSON.stringify(asAdmin.body));
+  assert.ok(
+    !asAdmin.body.incident.events.some((event) => event.kind === 'classification'),
+    'an administrator holding no Safety Grant must not see a classification event either'
+  );
+
+  // The officer, who may read it, confirms the event really is there — the
+  // two callers above are filtered, not simply missing it for some other
+  // reason.
+  const asOfficer = await readIncident(officer.token, incident.id);
+  assert.ok(asOfficer.body.incident.events.some((event) => event.kind === 'classification'));
+});
+
+test('a no-op classify call — re-sending the values already on the record — writes no event', async () => {
+  const { injured, injuryType, bodyPart, officer, incident } = await classifiedGround();
+
+  const before = await readIncident(officer.token, incident.id);
+  const eventsBefore = before.body.incident.events.length;
+
+  const noop = await classify(officer.token, incident.id, {
+    employeeId: injured.id,
+    injuryTypeId: injuryType.id,
+    bodyPartId: bodyPart.id
+  });
+  assert.strictEqual(noop.status, 200, JSON.stringify(noop.body));
+
+  const after = await readIncident(officer.token, incident.id);
+  assert.strictEqual(
+    after.body.incident.events.length,
+    eventsBefore,
+    're-sending the values already on the record must not add an event'
+  );
+  assert.ok(!after.body.incident.events.some((event) => event.kind === 'classification'));
+});

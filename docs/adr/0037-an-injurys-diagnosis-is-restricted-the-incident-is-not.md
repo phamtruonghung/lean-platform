@@ -89,7 +89,13 @@ the answer to a write is a read. The alternative — "a caller may always read
 back what they just wrote" — would be a second, weaker rule sitting beside
 this one, and it is the rule a later change would copy to the next route. A
 write is audited (`attach_audit('safety_incidents')` records who and the whole
-row); a read is not, which is why the two are gated differently at all.
+row, and, since migration 1801000000000, a `classification` row in
+`safety_incident_events` records who and when a classification changed); a
+read is not, which is why the two are gated differently at all. The event row
+is subject to the same restriction as the fields it describes —
+`withoutInjuryDetails` drops any `classification` row from `events` for the
+same reader the three fields are absent for — so recording the change does not
+itself become a second door onto it.
 
 ## Consequences
 

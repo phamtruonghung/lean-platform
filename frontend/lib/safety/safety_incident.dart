@@ -237,7 +237,8 @@ class SafetyIncidentEvent {
 
   final String id;
 
-  /// One of `severity`, `status`, `days`, `closure` (migration 1800900000000).
+  /// One of `severity`, `status`, `days`, `closure`, `classification`
+  /// (migrations 1800900000000, 1801000000000).
   final String kind;
   final String previousValue;
   final String newValue;
@@ -267,6 +268,7 @@ class SafetyIncidentEvent {
           'Status moved from ${SafetyIncidentStatus.label(previousValue)} to ${SafetyIncidentStatus.label(newValue)}',
         'days' => 'Days recorded: $newValue',
         'closure' => 'Closed',
+        'classification' => 'Classified',
         _ => '$previousValue -> $newValue',
       };
 }
@@ -465,9 +467,9 @@ class SafetyIncident {
   /// When the record was closed (issue #228). Null while it is still open.
   final String? closedAt;
 
-  /// The event history: every severity change, status move, days change and
-  /// closure, oldest first — what `getSafetyIncidentDetail` reads back with
-  /// the record (issue #228).
+  /// The event history: every severity change, status move, days change,
+  /// closure and classification change, oldest first — what
+  /// `getSafetyIncidentDetail` reads back with the record (issue #228).
   final List<SafetyIncidentEvent> events;
 
   bool get isClosed => status == SafetyIncidentStatus.closed;
