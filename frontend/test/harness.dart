@@ -554,6 +554,44 @@ Map<String, dynamic> productJson(
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
+/// One Injury type as `GET /api/safety/injury-types` sends it (issue #224) —
+/// mirrors `toInjuryType` (injury-types.js) key for key. Shared by every Site
+/// (ADR-0005), so it carries no Site and no Org Unit.
+Map<String, dynamic> injuryTypeJson(
+  String id,
+  String code,
+  String name, {
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One Body part as `GET /api/safety/body-parts` sends it (issue #224) —
+/// mirrors `toBodyPart` (body-parts.js) key for key, `region` included: it is
+/// what the catalogue groups by and what a row shows.
+Map<String, dynamic> bodyPartJson(
+  String id,
+  String code,
+  String name, {
+  String region = 'upper_limb',
+  bool isActive = true,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name,
+      'region': region,
+      'isActive': isActive,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
 /// One Defect code as `GET /api/quality/defect-codes` sends it (issue #203) —
 /// mirrors `toDefectCode` (defect-codes.js) key for key: the tree is flat, each
 /// row naming its own parent rather than carrying children.
@@ -933,6 +971,21 @@ Map<String, dynamic> safetyIncidentJson(
   String? assetName,
   String? employeeId,
   String? employeeName,
+  String? injuryTypeId,
+  String? injuryTypeCode,
+  String? injuryTypeName,
+  String? bodyPartId,
+  String? bodyPartCode,
+  String? bodyPartName,
+  String? bodyPartRegion,
+  // Issue #224, ADR-0037: the nine keys the API **deletes** for a caller who
+  // may not read the injury classification — a holder of no Safety authority
+  // at the Org Unit who is also not the injured person, an administrator
+  // included. Deleted, not nulled, so a fixture that models the restriction
+  // has to remove them rather than set them to null; a null would be the
+  // "hint" the ADR refuses, and a test written against one would pass on a
+  // server that leaked exactly that hint.
+  bool injuryDetailsRestricted = false,
   String? shiftInstanceId,
   String? productionDate,
   String? shiftCode,
@@ -968,8 +1021,17 @@ Map<String, dynamic> safetyIncidentJson(
       'assetId': assetId,
       'assetCode': assetCode,
       'assetName': assetName,
-      'employeeId': employeeId,
-      'employeeName': employeeName,
+      if (!injuryDetailsRestricted) ...{
+        'employeeId': employeeId,
+        'employeeName': employeeName,
+        'injuryTypeId': injuryTypeId,
+        'injuryTypeCode': injuryTypeCode,
+        'injuryTypeName': injuryTypeName,
+        'bodyPartId': bodyPartId,
+        'bodyPartCode': bodyPartCode,
+        'bodyPartName': bodyPartName,
+        'bodyPartRegion': bodyPartRegion,
+      },
       'shiftInstanceId': shiftInstanceId,
       'productionDate': productionDate,
       'shiftCode': shiftCode,
@@ -1902,6 +1964,18 @@ class FakeWire {
     this.recordNonconformanceActStatus = 201,
     this.recordNonconformanceActMessage =
         'that is more than the quantity still undecided on this Non-conformance',
+    List<Map<String, dynamic>>? injuryTypes,
+    this.injuryTypesStatus = 200,
+    this.createInjuryTypeStatus = 201,
+    this.createInjuryTypeMessage = 'an Injury type with this code already exists',
+    this.updateInjuryTypeStatus = 200,
+    this.updateInjuryTypeMessage = 'That Injury type could not be changed.',
+    List<Map<String, dynamic>>? bodyParts,
+    this.bodyPartsStatus = 200,
+    this.createBodyPartStatus = 201,
+    this.createBodyPartMessage = 'a Body part with this code already exists',
+    this.updateBodyPartStatus = 200,
+    this.updateBodyPartMessage = 'That Body part could not be changed.',
     Map<String, List<Map<String, dynamic>>>? safetyIncidents,
     this.safetyIncidentsStatus = 200,
     this.safetyIncidentsTruncated = false,
@@ -1994,6 +2068,8 @@ class FakeWire {
         suppliers = suppliers ?? [],
         supplierNcrs = supplierNcrs ?? {},
         nonconformances = nonconformances ?? {},
+        injuryTypes = injuryTypes ?? [],
+        bodyParts = bodyParts ?? [],
         safetyIncidents = safetyIncidents ?? {},
         capas = capas ?? {};
 
@@ -2276,6 +2352,36 @@ class FakeWire {
   int createSafetyIncidentStatus;
   String createSafetyIncidentMessage;
 
+  /// `GET /api/safety/injury-types` (issue #224) — the Injury type catalogue,
+  /// shared by every Site (ADR-0005). Writes are an administrator's, and the
+  /// Screen decides whether to offer them; this wire answers either way, the
+  /// same shape [products] keeps.
+  List<Map<String, dynamic>> injuryTypes;
+  int injuryTypesStatus;
+  int createInjuryTypeStatus;
+  String createInjuryTypeMessage;
+  int updateInjuryTypeStatus;
+  String updateInjuryTypeMessage;
+
+  /// Every `GET /api/safety/injury-types` request's query parameters, so a
+  /// test can prove the classify dialog reads **active rows only** while the
+  /// catalogue Screen asks for the retired ones too.
+  final List<Map<String, String>> injuryTypeReads = [];
+  final List<Map<String, dynamic>> injuryTypePosts = [];
+  final List<(String, Map<String, dynamic>)> injuryTypePatches = [];
+
+  /// `GET /api/safety/body-parts` (issue #224) — the Body part catalogue.
+  List<Map<String, dynamic>> bodyParts;
+  int bodyPartsStatus;
+  int createBodyPartStatus;
+  String createBodyPartMessage;
+  int updateBodyPartStatus;
+  String updateBodyPartMessage;
+
+  final List<Map<String, String>> bodyPartReads = [];
+  final List<Map<String, dynamic>> bodyPartPosts = [];
+  final List<(String, Map<String, dynamic>)> bodyPartPatches = [];
+
   /// Every Safety incident list request's query parameters, in the order
   /// they reached the wire.
   final List<Map<String, String>> safetyIncidentListRequests = [];
@@ -2306,6 +2412,11 @@ class FakeWire {
   final List<(String, Map<String, dynamic>)> safetyIncidentSeverityPosts = [];
   final List<(String, Map<String, dynamic>)> safetyIncidentDaysPosts = [];
   final List<(String, Map<String, dynamic>)> safetyIncidentClosePosts = [];
+
+  /// Issue #224's own write: `POST /api/safety/incidents/:id/classify`. Its
+  /// recorded bodies are what a test asserts the three-state contract with —
+  /// an absent key leaves a field alone, an explicit null clears it.
+  final List<(String, Map<String, dynamic>)> safetyIncidentClassifyPosts = [];
 
   /// Scripts a refusal for any of the five issue #228 writes — one status and
   /// message shared across them, the same shape
@@ -5194,6 +5305,114 @@ class FakeWire {
           };
           return http.Response(jsonEncode({'incident': created}), 201);
         }
+        // The Safety Module's two shared catalogues (issue #224). Both are
+        // readable by any active Account and writable only by an
+        // administrator — the API decides that, and this wire answers either
+        // way so a test can prove the Screen offers the write affordances to
+        // one role and not the other.
+        if (request.method == 'POST' && path == '/api/safety/injury-types') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          injuryTypePosts.add(sent);
+          if (createInjuryTypeStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createInjuryTypeMessage}),
+              createInjuryTypeStatus,
+            );
+          }
+          final created = injuryTypeJson(
+            (injuryTypes.length + 900).toString(),
+            sent['code'] as String,
+            sent['name'] as String,
+          );
+          injuryTypes = [...injuryTypes, created];
+          return http.Response(jsonEncode({'injuryType': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/safety/injury-types/')) {
+          final id = path.substring('/api/safety/injury-types/'.length);
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          injuryTypePatches.add((id, sent));
+          if (updateInjuryTypeStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateInjuryTypeMessage}),
+              updateInjuryTypeStatus,
+            );
+          }
+          injuryTypes = [
+            for (final row in injuryTypes)
+              if (row['id'] == id) {...row, ...sent} else row,
+          ];
+          final updated = injuryTypes.firstWhere((row) => row['id'] == id);
+          return http.Response(jsonEncode({'injuryType': updated}), 200);
+        }
+        if (path == '/api/safety/injury-types') {
+          injuryTypeReads.add(request.url.queryParameters);
+          if (injuryTypesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Injury type catalogue is unavailable.'}),
+              injuryTypesStatus,
+            );
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final sent = includeInactive
+              ? injuryTypes
+              : [for (final row in injuryTypes) if (row['isActive'] != false) row];
+          return http.Response(jsonEncode({'injuryTypes': sent}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/safety/body-parts') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          bodyPartPosts.add(sent);
+          if (createBodyPartStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createBodyPartMessage}),
+              createBodyPartStatus,
+            );
+          }
+          final created = bodyPartJson(
+            (bodyParts.length + 950).toString(),
+            sent['code'] as String,
+            sent['name'] as String,
+            region: sent['region'] as String? ?? 'other',
+          );
+          bodyParts = [...bodyParts, created];
+          return http.Response(jsonEncode({'bodyPart': created}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/safety/body-parts/')) {
+          final id = path.substring('/api/safety/body-parts/'.length);
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          bodyPartPatches.add((id, sent));
+          if (updateBodyPartStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateBodyPartMessage}),
+              updateBodyPartStatus,
+            );
+          }
+          bodyParts = [
+            for (final row in bodyParts)
+              if (row['id'] == id) {...row, ...sent} else row,
+          ];
+          final updated = bodyParts.firstWhere((row) => row['id'] == id);
+          return http.Response(jsonEncode({'bodyPart': updated}), 200);
+        }
+        if (path == '/api/safety/body-parts') {
+          bodyPartReads.add(request.url.queryParameters);
+          if (bodyPartsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Body part catalogue is unavailable.'}),
+              bodyPartsStatus,
+            );
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final sent = includeInactive
+              ? bodyParts
+              : [for (final row in bodyParts) if (row['isActive'] != false) row];
+          return http.Response(
+            jsonEncode({
+              'bodyParts': sent,
+              'regions': const ['head', 'trunk', 'upper_limb', 'lower_limb', 'multiple', 'other'],
+            }),
+            200,
+          );
+        }
         if (path.startsWith('/api/safety/sites/') && path.endsWith('/incidents')) {
           final siteId = path.split('/')[4];
           if (request.method == 'POST') {
@@ -5311,7 +5530,13 @@ class FakeWire {
         // status move — issue #228's four remaining addresses, each its own,
         // mirroring the Non-conformance Module's own `actAddresses` shape.
         if (path.startsWith('/api/safety/incidents/') && request.method == 'POST') {
-          const actAddresses = <String>['/status', '/severity', '/days', '/close'];
+          const actAddresses = <String>[
+            '/status',
+            '/severity',
+            '/days',
+            '/close',
+            '/classify',
+          ];
           String? act;
           for (final suffix in actAddresses) {
             if (path.endsWith(suffix)) act = suffix;
@@ -5335,6 +5560,8 @@ class FakeWire {
                 safetyIncidentDaysPosts.add((id, sent));
               case '/close':
                 safetyIncidentClosePosts.add((id, sent));
+              case '/classify':
+                safetyIncidentClassifyPosts.add((id, sent));
             }
             if (recordSafetyIncidentActStatus != 200) {
               return http.Response(
@@ -5403,6 +5630,43 @@ class FakeWire {
                   'closedAt': DateTime.now().toUtc().toIso8601String(),
                   'events': events,
                 };
+              case '/classify':
+                // Issue #224's three-state contract, modelled exactly as
+                // `classifySafetyIncident` (safety-incidents.js) keeps it: an
+                // absent key never touches its field, an explicit null clears
+                // it. `containsKey` is what tells the two apart, here as on
+                // the server.
+                updated = {...row};
+                if (sent.containsKey('employeeId')) {
+                  final employeeId = sent['employeeId'] as String?;
+                  Map<String, dynamic>? employee;
+                  for (final candidate in employees) {
+                    if (candidate['id'] == employeeId) employee = candidate;
+                  }
+                  updated['employeeId'] = employeeId;
+                  updated['employeeName'] = employee?['displayName'] as String?;
+                }
+                if (sent.containsKey('injuryTypeId')) {
+                  final injuryTypeId = sent['injuryTypeId'] as String?;
+                  Map<String, dynamic>? type;
+                  for (final candidate in injuryTypes) {
+                    if (candidate['id'] == injuryTypeId) type = candidate;
+                  }
+                  updated['injuryTypeId'] = injuryTypeId;
+                  updated['injuryTypeCode'] = type?['code'] as String?;
+                  updated['injuryTypeName'] = type?['name'] as String?;
+                }
+                if (sent.containsKey('bodyPartId')) {
+                  final bodyPartId = sent['bodyPartId'] as String?;
+                  Map<String, dynamic>? part;
+                  for (final candidate in bodyParts) {
+                    if (candidate['id'] == bodyPartId) part = candidate;
+                  }
+                  updated['bodyPartId'] = bodyPartId;
+                  updated['bodyPartCode'] = part?['code'] as String?;
+                  updated['bodyPartName'] = part?['name'] as String?;
+                  updated['bodyPartRegion'] = part?['region'] as String?;
+                }
             }
             _replaceSafetyIncident(id, updated);
             return http.Response(jsonEncode({'incident': updated}), 200);

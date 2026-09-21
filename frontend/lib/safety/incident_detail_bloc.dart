@@ -6,6 +6,12 @@
 /// would otherwise paint the first one's record (issue #183's own bug), and
 /// the router keys the provider on the id for it.
 ///
+/// Issue #224 adds a sixth write — classifying the injury — and the record it
+/// re-emits may carry **fewer keys** than the one before it, because ADR-0037
+/// withholds the three classified fields from a caller who may not read them.
+/// That is the API's own answer, and this Bloc does not second-guess it: the
+/// Screen renders what arrived (`SafetyIncident.injuryDetailsVisible`).
+///
 /// Issue #228 adds five writes: setting or changing the investigation due
 /// date, moving the status ladder, correcting the severity, recording the
 /// days the injury cost, and closing. Four of them (every one but the due
@@ -55,6 +61,41 @@ class SafetyIncidentSeverityChanged extends SafetyIncidentDetailEvent {
 
   final String severityLevel;
   final String note;
+}
+
+/// The injury was classified (issue #224, ADR-0037): the identified Employee,
+/// the Injury type and the Body part.
+///
+/// Every field is **three-state** — absent leaves it alone, `clear*` empties
+/// it, an id sets it — because a classification is three independent facts
+/// arrived at at different moments, and a dialog that sends one of them must
+/// not blank the other two.
+class SafetyIncidentClassified extends SafetyIncidentDetailEvent {
+  const SafetyIncidentClassified({
+    this.employeeId,
+    this.clearEmployee = false,
+    this.injuryTypeId,
+    this.clearInjuryType = false,
+    this.bodyPartId,
+    this.clearBodyPart = false,
+  });
+
+  final String? employeeId;
+  final bool clearEmployee;
+  final String? injuryTypeId;
+  final bool clearInjuryType;
+  final String? bodyPartId;
+  final bool clearBodyPart;
+
+  /// Whether this event asks for anything at all. The API refuses an empty
+  /// classification with a 400, so the Bloc never sends one.
+  bool get isEmpty =>
+      employeeId == null &&
+      injuryTypeId == null &&
+      bodyPartId == null &&
+      !clearEmployee &&
+      !clearInjuryType &&
+      !clearBodyPart;
 }
 
 /// The lost-time and restricted days were recorded.
@@ -135,6 +176,7 @@ class SafetyIncidentDetailBloc
     on<SafetyIncidentDueDateSet>(_onDueDateSet);
     on<SafetyIncidentStatusMoved>(_onStatusMoved);
     on<SafetyIncidentSeverityChanged>(_onSeverityChanged);
+    on<SafetyIncidentClassified>(_onClassified);
     on<SafetyIncidentDaysRecorded>(_onDaysRecorded);
     on<SafetyIncidentClosed>(_onClosed);
   }
@@ -233,6 +275,39 @@ class SafetyIncidentDetailBloc
         current.incident.id,
         severityLevel: event.severityLevel,
         note: event.note,
+      ),
+    );
+  }
+
+  /// The injury was classified (issue #224). Refused for the no-injury rung
+  /// before the request is sent when it would set an injury type or a body
+  /// part: the ladder's own CHECK forbids either there, and the Screen does not
+  /// offer the dialog on that rung at all — this guard is the same rule said
+  /// again where it cannot be bypassed.
+  ///
+  /// Accepted on a closed incident, like a severity correction and unlike the
+  /// days: what the clinic finally called the injury routinely arrives after
+  /// the record has been closed.
+  Future<void> _onClassified(
+    SafetyIncidentClassified event,
+    Emitter<SafetyIncidentDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! SafetyIncidentDetailLoaded) return;
+    if (event.isEmpty) return;
+    final setsAnInjury = event.injuryTypeId != null || event.bodyPartId != null;
+    if (setsAnInjury && !current.incident.hasInjurySection) return;
+    await _mutate(
+      emit,
+      (token) => _api.classifySafetyIncident(
+        token,
+        current.incident.id,
+        employeeId: event.employeeId,
+        clearEmployee: event.clearEmployee,
+        injuryTypeId: event.injuryTypeId,
+        clearInjuryType: event.clearInjuryType,
+        bodyPartId: event.bodyPartId,
+        clearBodyPart: event.clearBodyPart,
       ),
     );
   }

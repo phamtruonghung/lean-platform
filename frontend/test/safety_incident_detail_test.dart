@@ -178,6 +178,43 @@ void main() {
     expect(find.byKey(SafetyIncidentDetailScreen.closedKey), findsOneWidget);
   });
 
+  testWidgets('a classification change shows in the history, with who and when (issue #224)',
+      (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {null: [orgUnitJson('11', 'Line 1')]},
+      orgUnitScope: {
+        'everywhere': false,
+        'grants': [scopeGrantJson('11', canWrite: true, safetyAuthority: true)],
+      },
+      safetyIncidents: {
+        '1': [
+          safetyIncidentJson(
+            '804',
+            'SI-HCM-2026-00004',
+            severityLevel: 'first_aid',
+            orgUnitId: '11',
+            orgUnitName: 'Line 1',
+            events: [
+              safetyIncidentEventJson(
+                '804-e1',
+                kind: 'classification',
+                previousValue: 'employeeId=none,injuryType=none,bodyPart=none',
+                newValue: 'employeeId=42,injuryType=FRACTURE,bodyPart=LEFT_HAND',
+                changedByAccountName: 'Sam Safety',
+              ),
+            ],
+          ),
+        ],
+      },
+    );
+    await _pump(tester, wire, location: '/safety/incidents/804');
+
+    final classification = _rowText(tester, SafetyIncidentDetailScreen.eventRowKey('804-e1'));
+    expect(classification, contains('Classified'));
+    expect(classification, contains('Sam Safety'));
+  });
+
   // -------------------------------------------------------------------------
   // The investigation due date and the ordinary status move — an edit Grant
   // is enough, and the Screen offers both without asking about authority.

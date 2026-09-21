@@ -36,6 +36,9 @@ const insertedSiteIds = [];
 const insertedOrgUnitIds = [];
 const insertedEmployeeIds = [];
 const insertedDeviceIds = [];
+// Issue #224's own catalogue row, created so a crafted floor request has a
+// real Injury type id to try with. Removed in test.after().
+const insertedInjuryTypeIds = [];
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -253,6 +256,7 @@ test.after(async () => {
     insertedEmployeeIds
   ]);
   await pool.query('DELETE FROM floor_devices WHERE id = ANY($1)', [insertedDeviceIds]);
+  await pool.query('DELETE FROM injury_types WHERE id = ANY($1)', [insertedInjuryTypeIds]);
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [
     insertedAccountIds
@@ -574,4 +578,60 @@ test('isAnonymous sent from the floor is ignored: the row is never anonymous', a
     [body.incident.id]
   );
   assert.strictEqual(row.is_anonymous, false);
+});
+
+// ---------------------------------------------------------------------------
+// No injury classification here either (issue #224, ADR-0037)
+// ---------------------------------------------------------------------------
+
+test('an injury classification sent from the floor is stripped, never written and never returned', async () => {
+  const identification = await identifyTechnician();
+  const injured = await insertEmployee({ displayName: 'Hurt Person' });
+  const { rows: [injuryType] } = await pool.query(
+    `INSERT INTO injury_types (code, name) VALUES ($1, 'Inhalation') RETURNING id`,
+    [uniqueCode('FSIIT')]
+  );
+  insertedInjuryTypeIds.push(injuryType.id);
+
+  // A crafted body. A floor form never collects these three, and a floor
+  // identification is not an Account and can hold no Grant — so the door has
+  // to remove them rather than merely never ask for them, or this address
+  // would do what the Account door refuses.
+  const { status, body } = await recordFromFloor(device.credential, identification, {
+    orgUnitId: String(deviceLine.id),
+    occurredAt: '2026-04-10T08:00:00Z',
+    incidentType: 'injury',
+    severityLevel: 'first_aid',
+    description: 'A classification nobody may set at a device.',
+    employeeId: String(injured.id),
+    injuryTypeId: String(injuryType.id)
+  });
+
+  assert.strictEqual(status, 201, JSON.stringify(body));
+
+  // Absent from the answer — ADR-0037's rule is absence, not a null, so this
+  // asks whether the key is there at all rather than what it holds.
+  for (const key of ['employeeId', 'employeeName', 'injuryTypeId', 'injuryTypeName',
+                     'bodyPartId', 'bodyPartName', 'bodyPartRegion']) {
+    assert.ok(
+      !Object.prototype.hasOwnProperty.call(body.incident, key),
+      `the floor door must not return ${key} at all`
+    );
+  }
+
+  // And never written. Read off the row directly, the same way this file
+  // already proves `is_anonymous` is never set from a floor body.
+  const { rows: [row] } = await pool.query(
+    'SELECT employee_id, injury_type_id, body_part_id FROM safety_incidents WHERE id = $1',
+    [body.incident.id]
+  );
+  assert.strictEqual(row.employee_id, null);
+  assert.strictEqual(row.injury_type_id, null);
+  assert.strictEqual(row.body_part_id, null);
+
+  // Everything the restriction does not cover is still on the answer, so the
+  // floor door reports exactly what it always reported.
+  assert.strictEqual(body.incident.severityLevel, 'first_aid');
+  assert.strictEqual(body.incident.description, 'A classification nobody may set at a device.');
+  assert.strictEqual(String(body.incident.reportedBy), String(technician.id));
 });

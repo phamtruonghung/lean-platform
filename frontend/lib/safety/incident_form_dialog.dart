@@ -21,9 +21,18 @@
 /// own owner picker does, since the directory is a set nobody can scan
 /// (`docs/frontend-layout.md`'s trigger).
 ///
-/// No injury type, no body part and no anonymous option anywhere in this
-/// form — issue #224 is the ticket that classifies an injury, and ADR-0036
-/// is the decision that there is no anonymous path.
+/// **The Employee involved is offered only to a holder of Safety authority at
+/// the chosen Org Unit** (issue #224, ADR-0037). Naming who was hurt is part
+/// of the injury classification, and the API refuses it from anyone else with
+/// a 403 — so it is not rendered for a caller who could not send it, the same
+/// rule the detail Screen's four authority dialogs follow. It appears once an
+/// Org Unit is chosen and the caller holds the authority there, and disappears
+/// again if they choose one they do not.
+///
+/// No injury type and no body part in this form even then: those two are the
+/// classify dialog's, which has its own address and reads the two catalogues
+/// the record form has no other use for. And no anonymous option anywhere —
+/// ADR-0036 is the decision that there is no anonymous path.
 library;
 
 import 'package:flutter/material.dart';
@@ -34,6 +43,7 @@ import '../maintenance/maintenance_api.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
 import '../widgets/app_search_field.dart';
@@ -209,7 +219,14 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
   }
 
   void _onOrgUnitSiteChanged() {
-    setState(() => _orgUnit = null);
+    setState(() {
+      _orgUnit = null;
+      // The picker is gone once no Org Unit is chosen, so a person already
+      // picked must go with it — otherwise the form would keep sending a
+      // classification through a field nobody can see, and the API would
+      // refuse the whole recording with a 403 the caller cannot explain.
+      _employee = null;
+    });
   }
 
   @override
@@ -312,11 +329,19 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                     onRetry: _loadAssets,
                     onChanged: (id) => setState(() => _assetId = id),
                   ),
+                  // Part of the injury classification, so it is offered only
+                  // where the caller could actually send it: Safety authority
+                  // reaching the Org Unit they have chosen. Read inside the
+                  // build, never hoisted, for the reason
+                  // `holdsSafetyAuthority`'s own doc comment gives.
+                  if (_orgUnit != null &&
+                      holdsSafetyAuthority(context, _orgUnit!.id)) ...[
                   const SizedBox(height: Spacing.md),
                   AppSearchField<Employee>(
                     name: SafetyIncidentFormDialog.employeeFieldName,
-                    label: 'Employee involved (optional)',
-                    helperText: 'Who was hurt, if anyone.',
+                    label: 'Injured Employee (optional)',
+                    helperText: 'Who was hurt, if anyone. Read only by Safety authority for '
+                        "this area and by the injured person's own Account.",
                     value: _employee,
                     enabled: !_awaiting,
                     onChanged: (employee) => setState(() => _employee = employee),
@@ -336,6 +361,7 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                     idOf: (employee) => employee.id,
                     displayStringFor: (employee) => employee.displayName,
                   ),
+                  ],
                   const SizedBox(height: Spacing.md),
                   AppDateTimeField(
                     key: SafetyIncidentFormDialog.occurredAtKey,
@@ -366,7 +392,16 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                     title: 'Where it happened',
                     description: 'Choose the Org Unit the incident occurred at. This is what '
                         'decides who may act on it.',
-                    onSelected: (node) => setState(() => _orgUnit = node),
+                    // Choosing a different Org Unit drops any Employee
+                    // already picked: the picker only appears where this
+                    // caller holds Safety authority, so carrying a pick across
+                    // a move would send a classification through a field that
+                    // is no longer on screen — and the API would refuse the
+                    // whole recording with a 403 nobody could explain.
+                    onSelected: (node) => setState(() {
+                      if (node.id != _orgUnit?.id) _employee = null;
+                      _orgUnit = node;
+                    }),
                   ),
                   if (_orgUnit != null)
                     Padding(

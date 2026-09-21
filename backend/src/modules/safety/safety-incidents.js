@@ -57,11 +57,25 @@
  * INSERT, with the database's CHECKs left in place as the backstop for a race
  * this file's own check cannot see.
  *
- * No injury type and no body part are accepted here — issue #224 is the
- * ticket that adds that classification, and its own read restriction. This
- * file's near-miss rung (`near_miss`, spelled that way in the schema, meaning
- * **no injury** — CONTEXT.md's own Severity level entry) is validated only
- * against the two day counts it can see: `lostTimeDays` and `restrictedDays`.
+ * **Issue #224 — the injury classification, and what this file does and does
+ * not know about who may read it.** Three more fields are written here now:
+ * the identified Employee (`employee_id`, which this file already accepted),
+ * the Injury type and the Body part (`injury_type_id`, `body_part_id`, both
+ * baseline columns with no migration in this ticket at all). They are set at
+ * recording and corrected afterwards through `classifySafetyIncident` below,
+ * and the near-miss rung is validated against all three of them as well as
+ * against the two day counts — the baseline's own
+ * `safety_incidents_near_miss_no_injury` CHECK said as a sentence naming the
+ * field, exactly as the day counts already were.
+ *
+ * ADR-0037 restricts who may READ those fields back, and this file holds only
+ * the *row shape* half of that: `withoutInjuryDetails` below takes an already
+ * serialised incident and returns it with the restricted keys deleted —
+ * **deleted, not nulled**, because a null would tell a reader there is
+ * something here they cannot see about a specific field, and the ADR's rule is
+ * absence. It takes no Account and asks no question; who may read a given
+ * incident is safety-incident-routes.js's, the same division AGENTS.md §6 fixes
+ * for every other caller-aware decision in this Module.
  *
  * Mirrors nonconformances.js: no HTTP, no caller awareness. Unlike products.js
  * and defect-codes.js, this file's records ARE placed in the Org Unit tree, so
@@ -172,10 +186,11 @@ const NEXT_STATUS = {
   investigating: 'actions_pending'
 };
 
-// The event kinds `safety_incident_events` accepts (migration 1800900000000)
-// — repeated here for the same reason INCIDENT_TYPES is repeated from the
-// baseline's own CHECK.
-const EVENT_KINDS = ['severity', 'status', 'days', 'closure'];
+// The event kinds `safety_incident_events` accepts (migration 1800900000000,
+// widened by 1801000000000 to add `classification` for issue #224's history
+// criterion) — repeated here for the same reason INCIDENT_TYPES is repeated
+// from the baseline's own CHECK.
+const EVENT_KINDS = ['severity', 'status', 'days', 'closure', 'classification'];
 
 const SEVERITY_RANK = Object.fromEntries(SEVERITY_LEVELS.map((level, index) => [level, index]));
 
@@ -269,11 +284,15 @@ function optionalTimestamp(field, value) {
  * criterion): a caller gets a 400 naming the field, not a constraint
  * violation.
  *
- *   - No lost-time days and no restricted days on the no-injury rung
- *     (`near_miss`) — nobody was hurt, so nothing was lost. No injury type and
- *     no body part either, but those two are never accepted as input in this
- *     slice (issue #224's own scope), so there is nothing to check for them
- *     here: they are always null on the row this file writes.
+ *   - No lost-time days, no restricted days, no injury type and no body part
+ *     on the no-injury rung (`near_miss`) — nobody was hurt, so there was
+ *     nothing to classify and nothing was lost. All four halves of the
+ *     baseline's own `safety_incidents_near_miss_no_injury` CHECK, each said
+ *     as a sentence naming its own field (issue #224's own criterion: "an
+ *     injury type or body part on the no-injury rung is a 400 naming the
+ *     field"). The identified Employee is deliberately NOT one of them: that
+ *     CHECK does not forbid naming who was involved in a near miss, and a
+ *     report that says who was nearly hurt is a report worth keeping.
  *   - Lost-time days only at `lost_time` or `fatality` — the baseline's own
  *     `safety_incidents_lost_time_consistent` CHECK, said as a sentence a
  *     caller can act on.
@@ -285,13 +304,27 @@ function optionalTimestamp(field, value) {
  * hurt nobody is type `fire` on the ladder's `near_miss` rung, exactly where a
  * genuine near miss also sits), so no rule here ties them.
  */
-function requireLadderConsistency({ severityLevel, lostTimeDays, restrictedDays, occurredAt, reportedAt }) {
+function requireLadderConsistency({
+  severityLevel,
+  lostTimeDays,
+  restrictedDays,
+  occurredAt,
+  reportedAt,
+  injuryTypeId = null,
+  bodyPartId = null
+}) {
   if (severityLevel === 'near_miss') {
     if (lostTimeDays > 0) {
       throw httpError(400, 'lostTimeDays must be 0 on the near_miss rung: nobody was hurt');
     }
     if (restrictedDays > 0) {
       throw httpError(400, 'restrictedDays must be 0 on the near_miss rung: nobody was hurt');
+    }
+    if (injuryTypeId !== null) {
+      throw httpError(400, 'injuryTypeId cannot be set on the near_miss rung: nobody was injured');
+    }
+    if (bodyPartId !== null) {
+      throw httpError(400, 'bodyPartId cannot be set on the near_miss rung: nobody was injured');
     }
   }
 
@@ -323,7 +356,16 @@ const SAFETY_INCIDENT_COLUMNS = `
   si.org_unit_id, ou.name AS org_unit_name, ou.path AS org_unit_path,
   ou.site_id, s.code AS site_code, s.name AS site_name,
   si.asset_id, a.code AS asset_code, a.name AS asset_name,
+  -- The three fields ADR-0037 restricts, each read with the catalogue row it
+  -- names so a reader who may see them needs no second request. They are
+  -- SELECTed on every read path without exception: the restriction is applied
+  -- to the serialised object by withoutInjuryDetails, never by building a
+  -- second, narrower query -- two projections of one table is how a field ends
+  -- up restricted on the detail and not on the register.
   si.employee_id, e.display_name AS employee_name,
+  si.injury_type_id, it.code AS injury_type_code, it.name AS injury_type_name,
+  si.body_part_id, bp.code AS body_part_code, bp.name AS body_part_name,
+  bp.region AS body_part_region,
   si.shift_instance_id,
   -- A DATE read as a to_char string, never as a JS Date: a production day is
   -- a day in the Site's own calendar (ADR-0017), and a Date object would be
@@ -341,6 +383,8 @@ const SAFETY_INCIDENT_JOINS = `
   LEFT JOIN assets a ON a.id = si.asset_id
   LEFT JOIN employees e ON e.id = si.employee_id
   LEFT JOIN employees rep ON rep.id = si.reported_by
+  LEFT JOIN injury_types it ON it.id = si.injury_type_id
+  LEFT JOIN body_parts bp ON bp.id = si.body_part_id
   LEFT JOIN app_users au ON au.id = si.recorded_by_account_id
   LEFT JOIN shift_instances shi ON shi.id = si.shift_instance_id
   LEFT JOIN shift_definitions sd ON sd.id = shi.shift_definition_id`;
@@ -374,8 +418,24 @@ function toSafetyIncident(row, { events = [] } = {}) {
     assetId: row.asset_id,
     assetCode: row.asset_code ?? null,
     assetName: row.asset_name ?? null,
+    // The injury classification (issue #224) — the identified Employee, the
+    // Injury type and the Body part, each with the catalogue row's own code
+    // and name so a reader needs no second request. A deactivated catalogue
+    // entry still joins here: it is excluded from the choices a classifier is
+    // offered, never from an incident that already names it.
+    //
+    // Every one of these keys is deleted again by `withoutInjuryDetails` for a
+    // caller ADR-0037 withholds them from. They are built here unconditionally
+    // because this function knows nothing about who is asking (AGENTS.md §6).
     employeeId: row.employee_id,
     employeeName: row.employee_name ?? null,
+    injuryTypeId: row.injury_type_id ?? null,
+    injuryTypeCode: row.injury_type_code ?? null,
+    injuryTypeName: row.injury_type_name ?? null,
+    bodyPartId: row.body_part_id ?? null,
+    bodyPartCode: row.body_part_code ?? null,
+    bodyPartName: row.body_part_name ?? null,
+    bodyPartRegion: row.body_part_region ?? null,
     // The production day and the shift, as the baseline's own trigger filed
     // them (ADR-0017). Both are null for a Site with no shift calendar
     // covering that moment.
@@ -394,6 +454,65 @@ function toSafetyIncident(row, { events = [] } = {}) {
     // toNonconformance gives its own quantityChanges/dispositions/corrections.
     events
   };
+}
+
+// The keys ADR-0037 restricts, named once. They carry three facts — who the
+// record names as hurt, what the injury was, and where on the body — and the
+// display halves (`employeeName`, the two catalogue codes and names, the body
+// part's region) are in the list for the obvious reason: withholding an
+// injured person's id while returning their display name would defend nothing,
+// and neither would withholding an Injury type's id while naming it.
+//
+// Everything else stays: severity level, incident type, description, immediate
+// action, lost-time and restricted days, status, the event history, who
+// recorded it and when. ADR-0037 states that as a limit on what the
+// restriction protects rather than as a caveat attached to something broader —
+// `description` and `immediate_action` are free text a person writes whatever
+// they write into, and no gate is placed on them here or anywhere.
+const RESTRICTED_INJURY_KEYS = [
+  'employeeId',
+  'employeeName',
+  'injuryTypeId',
+  'injuryTypeCode',
+  'injuryTypeName',
+  'bodyPartId',
+  'bodyPartCode',
+  'bodyPartName',
+  'bodyPartRegion'
+];
+
+/**
+ * One already-serialised incident with the restricted keys **deleted** (issue
+ * #224, ADR-0037).
+ *
+ * Deleted, not nulled, and the difference is the whole decision: a null tells
+ * a reader "there is something here about this particular field that you may
+ * not see", which is a smaller disclosure than the value but a disclosure all
+ * the same, and it makes "not classified yet" and "not mine to see"
+ * indistinguishable for the reader who IS allowed to see. Absence is the rule
+ * the ADR states; an authorised reader looking at an unclassified incident
+ * gets these keys present and null, and that is exactly how the two cases stay
+ * apart.
+ *
+ * Takes no Account, asks no question and runs no query — who may read a given
+ * incident is safety-incident-routes.js's decision (AGENTS.md §6: this file is
+ * unaware of who is calling). This is the row-shape half and nothing else,
+ * which is why it is safe to call it unconditionally, as the floor door does.
+ *
+ * The event history is filtered too. `safety_incident_events` carries its
+ * values as generic TEXT, so a `classification` row (migration 1801000000000
+ * widened the table's `kind` CHECK for it; `classifySafetyIncident` writes
+ * one) would hand a Site-wide reader the very values the keys above were just
+ * removed for. The whole row is dropped rather than its two value fields
+ * blanked, for the same reason the keys are deleted rather than nulled.
+ */
+function withoutInjuryDetails(incident) {
+  const stripped = { ...incident };
+  for (const key of RESTRICTED_INJURY_KEYS) delete stripped[key];
+  if (Array.isArray(stripped.events)) {
+    stripped.events = stripped.events.filter((event) => event.kind !== 'classification');
+  }
+  return stripped;
 }
 
 /**
@@ -658,6 +777,36 @@ async function resolveEmployee(employeeId) {
   return rows[0];
 }
 
+// The Injury type and the Body part named on a classification, if either is.
+// Existence checks only — both catalogues are shared by every Site (ADR-0005)
+// and carry no Org Unit, so there is no scope question to ask about them, the
+// same shape `resolveEmployee` above has.
+//
+// A DEACTIVATED entry is accepted here on purpose. Deactivation removes an
+// entry from the choices a classifier is offered (the catalogue read the
+// dialog makes excludes it), not from the record: an incident already carrying
+// a retired Injury type must stay correctable in its other fields, and
+// re-stating the value it already holds must not become a 400. The catalogue's
+// own list is where "still offered" is decided; this is only "does it exist".
+// `code` is read alongside `id` (not just an existence check) so
+// `classifySafetyIncident` can encode a `classification` event's new value
+// without a second query — see that function's own doc comment.
+async function resolveInjuryType(injuryTypeId) {
+  const { rows } = await getPool().query('SELECT id, code FROM injury_types WHERE id = $1', [
+    injuryTypeId
+  ]);
+  if (!rows[0]) throw notFound('Injury type');
+  return rows[0];
+}
+
+async function resolveBodyPart(bodyPartId) {
+  const { rows } = await getPool().query('SELECT id, code FROM body_parts WHERE id = $1', [
+    bodyPartId
+  ]);
+  if (!rows[0]) throw notFound('Body part');
+  return rows[0];
+}
+
 // The Site's short code, which the document number quotes. Read off the Org
 // Unit's own Site rather than taken from a caller, so a number can never be
 // issued against a Site the record does not sit in.
@@ -725,6 +874,29 @@ async function recordSafetyIncident(input, actor = {}) {
     throw httpError(400, 'employeeId must be a valid Employee id');
   }
 
+  // The injury classification at the moment of recording (issue #224). The
+  // route has already asked People for Safety authority reaching this Org Unit
+  // when any of the three is present — see safety-incident-routes.js — so what
+  // is left here is the shape of the ids and the ladder they have to agree
+  // with. No `classification` event is written for naming it at record time,
+  // the same choice `changeSafetyIncidentSeverity` makes for the severity
+  // named on the very same INSERT — an event records a *change* to an
+  // already-recorded incident, and there is nothing to compare a brand-new
+  // row's classification against.
+  const injuryTypeId = body.injuryTypeId === undefined || body.injuryTypeId === null
+    ? null
+    : parseId(body.injuryTypeId);
+  if (body.injuryTypeId !== undefined && body.injuryTypeId !== null && injuryTypeId === null) {
+    throw httpError(400, 'injuryTypeId must be a valid Injury type id');
+  }
+
+  const bodyPartId = body.bodyPartId === undefined || body.bodyPartId === null
+    ? null
+    : parseId(body.bodyPartId);
+  if (body.bodyPartId !== undefined && body.bodyPartId !== null && bodyPartId === null) {
+    throw httpError(400, 'bodyPartId must be a valid Body part id');
+  }
+
   requireMembership('incidentType', body.incidentType, INCIDENT_TYPES);
   requireMembership('severityLevel', body.severityLevel, SEVERITY_LEVELS);
   const description = requireNonEmptyString('description', body.description);
@@ -739,7 +911,9 @@ async function recordSafetyIncident(input, actor = {}) {
     lostTimeDays,
     restrictedDays,
     occurredAt,
-    reportedAt
+    reportedAt,
+    injuryTypeId,
+    bodyPartId
   });
 
   const { rows: [orgUnit] } = await getPool().query(
@@ -750,6 +924,8 @@ async function recordSafetyIncident(input, actor = {}) {
 
   if (assetId !== null) await resolveAssetAtOrgUnit(assetId, orgUnit.path);
   if (employeeId !== null) await resolveEmployee(employeeId);
+  if (injuryTypeId !== null) await resolveInjuryType(injuryTypeId);
+  if (bodyPartId !== null) await resolveBodyPart(bodyPartId);
 
   const id = await withActor(accountId, async (client) => {
     const siteCode = await findSiteCodeForOrgUnit(orgUnitId, client);
@@ -763,12 +939,13 @@ async function recordSafetyIncident(input, actor = {}) {
     const { rows: [row] } = await client.query(
       `INSERT INTO safety_incidents (
          incident_no, org_unit_id, asset_id, occurred_at, reported_at,
-         incident_type, severity_level, employee_id, lost_time_days,
+         incident_type, severity_level, employee_id, injury_type_id,
+         body_part_id, lost_time_days,
          restricted_days, description, immediate_action,
          recorded_by_account_id, reported_by
        )
        VALUES ($1, $2, $3, $4, COALESCE($5::timestamptz, now()), $6, $7, $8, $9,
-               $10, $11, $12, $13, $14)
+               $10, $11, $12, $13, $14, $15, $16)
        RETURNING id`,
       [
         numberRow.incident_no,
@@ -779,6 +956,8 @@ async function recordSafetyIncident(input, actor = {}) {
         body.incidentType,
         body.severityLevel,
         employeeId,
+        injuryTypeId,
+        bodyPartId,
         lostTimeDays,
         restrictedDays,
         description,
@@ -999,6 +1178,152 @@ async function recordSafetyIncidentDays(id, input, accountId) {
 }
 
 /**
+ * Classify the injury (issue #224): the identified Employee, the Injury type
+ * and the Body part — the three structured fields ADR-0037 restricts.
+ *
+ * The route has asked People for **Safety authority** reaching the incident's
+ * Org Unit (`canAct({ …, safety: true })`, ADR-0039) before this function is
+ * ever called, so a 403 never reaches here. Naming who was hurt and what the
+ * injury was is a judgement about a person, not a piece of work on the record,
+ * which is why it takes the same standing as correcting a severity rather than
+ * the edit Grant recording itself needs.
+ *
+ * **An absent key never touches its column; an explicit `null` clears it.**
+ * The same `hasOwnProperty` contract `updateProduct` and `updateDefectCode`
+ * keep, and here it is load-bearing rather than tidy: a classification is
+ * three independent facts, arrived at at different moments — who was hurt is
+ * known immediately, what the injury was often only after a clinic visit — so
+ * a form that sends one of them must not blank the other two, and a mistaken
+ * body part must be removable rather than only replaceable.
+ *
+ * Ladder consistency is asked again with the incident's own current severity —
+ * `requireLadderConsistency`, the same function `recordSafetyIncident` calls,
+ * reused rather than copied (issue #224's own instruction, the same one #228
+ * gave): an injury type or a body part on the no-injury rung is a 400 naming
+ * the field, never the baseline's own `safety_incidents_near_miss_no_injury`
+ * CHECK surfacing as a raw constraint error. The days are passed through
+ * unchanged so a classification cannot be refused for a day count it is not
+ * touching.
+ *
+ * **Accepted on a closed incident**, unlike moving its status or recording its
+ * days, and for the reason `changeSafetyIncidentSeverity` is: a classification
+ * is a statement about what happened, not a step in an investigation, and what
+ * the clinic finally called the injury routinely arrives after the record it
+ * belongs to has been closed. Refusing it would leave a plant's own medical
+ * record permanently wrong to protect a status.
+ *
+ * **Written to `safety_incident_events` as its own `classification` kind**
+ * (migration 1801000000000, which widened the table's `kind` CHECK for
+ * exactly this — issue #224's own history criterion). A dedicated fifth kind
+ * rather than reusing one of the original four: `hasSettledDays` derives "the
+ * days were settled" from the presence of a `days` row, so a misfiled kind
+ * would quietly change when an incident may be closed, and `severity`/
+ * `status`/`closure` are each statements about a different fact than who was
+ * hurt and what the injury was.
+ *
+ * **The encoding**, following the same one-generic-TEXT-pair-per-row choice
+ * migration 1800900000000 made for the `days` kind
+ * (`lostTimeDays=<n>,restrictedDays=<n>`): a `classification` row's
+ * `previous_value`/`new_value` is
+ * `employeeId=<id|none>,injuryType=<code|none>,bodyPart=<code|none>` — the
+ * Employee by id (it carries no code of its own), the Injury type and Body
+ * part by their catalogue `code` rather than their id, since a code is what a
+ * reader of this history actually recognises, the same way `severity`/
+ * `status` rows hold the enum word itself rather than a rank number. `none`
+ * marks a field that is unset, not absent from the string, so a reader is
+ * never left wondering whether a comma-separated value was cut short.
+ *
+ * An event is written only when the encoded value actually changed — a
+ * classify call that only names fields already holding those exact values
+ * (including the 400 case above, which never reaches this far) writes
+ * nothing, so the history stays a record of changes and not of every touch.
+ */
+async function classifySafetyIncident(id, input, accountId) {
+  const existing = await findSafetyIncident(id);
+  if (!existing) throw notFound('Safety incident');
+
+  const body = input ?? {};
+  const touches = (key) => Object.prototype.hasOwnProperty.call(body, key);
+
+  if (!touches('employeeId') && !touches('injuryTypeId') && !touches('bodyPartId')) {
+    throw httpError(
+      400,
+      'name at least one of employeeId, injuryTypeId or bodyPartId, or null to clear it'
+    );
+  }
+
+  // Each field's proposed value: what the body says where it says anything,
+  // and what the record already holds where it does not.
+  function proposed(key, current, what) {
+    if (!touches(key)) return current;
+    if (body[key] === null || body[key] === '') return null;
+    const parsed = parseId(body[key]);
+    if (parsed === null) throw httpError(400, `${key} must be a valid ${what} id, or null to clear it`);
+    return parsed;
+  }
+
+  const employeeId = proposed('employeeId', existing.employeeId, 'Employee');
+  const injuryTypeId = proposed('injuryTypeId', existing.injuryTypeId, 'Injury type');
+  const bodyPartId = proposed('bodyPartId', existing.bodyPartId, 'Body part');
+
+  requireLadderConsistency({
+    severityLevel: existing.severityLevel,
+    lostTimeDays: existing.lostTimeDays,
+    restrictedDays: existing.restrictedDays,
+    occurredAt: new Date(existing.occurredAt),
+    reportedAt: new Date(existing.reportedAt),
+    injuryTypeId,
+    bodyPartId
+  });
+
+  // Existence before the write, in the same order every other route in this
+  // Platform resolves it, and only for the fields that actually changed — a
+  // correction that leaves a field alone must not start failing because the
+  // catalogue entry it has always held was deleted out from under it. The
+  // Injury type's and Body part's `code`, captured here rather than
+  // re-queried below, is what the `classification` event's new value encodes.
+  let injuryTypeCode = existing.injuryTypeCode;
+  let bodyPartCode = existing.bodyPartCode;
+  if (employeeId !== null && employeeId !== existing.employeeId) await resolveEmployee(employeeId);
+  if (injuryTypeId !== existing.injuryTypeId) {
+    injuryTypeCode = injuryTypeId === null ? null : (await resolveInjuryType(injuryTypeId)).code;
+  }
+  if (bodyPartId !== existing.bodyPartId) {
+    bodyPartCode = bodyPartId === null ? null : (await resolveBodyPart(bodyPartId)).code;
+  }
+
+  const encodeClassification = (employee, injuryType, bodyPart) =>
+    `employeeId=${employee ?? 'none'},injuryType=${injuryType ?? 'none'},bodyPart=${bodyPart ?? 'none'}`;
+  const previousValue = encodeClassification(
+    existing.employeeId,
+    existing.injuryTypeCode,
+    existing.bodyPartCode
+  );
+  const newValue = encodeClassification(employeeId, injuryTypeCode, bodyPartCode);
+  const changed = previousValue !== newValue;
+
+  await withActor(accountId, async (client) => {
+    await client.query(
+      `UPDATE safety_incidents
+          SET employee_id = $1, injury_type_id = $2, body_part_id = $3
+        WHERE id = $4`,
+      [employeeId, injuryTypeId, bodyPartId, id]
+    );
+    if (changed) {
+      await writeIncidentEvent(client, {
+        safetyIncidentId: existing.id,
+        kind: 'classification',
+        previousValue,
+        newValue,
+        accountId
+      });
+    }
+  });
+
+  return getSafetyIncidentDetail(id);
+}
+
+/**
  * Close an incident (issue #228) — the judgement of someone accountable for
  * the place, per #223 decision 4.
  *
@@ -1067,6 +1392,8 @@ module.exports = {
   STATUSES,
   STATUS_MOVE_TARGETS,
   EVENT_KINDS,
+  RESTRICTED_INJURY_KEYS,
+  withoutInjuryDetails,
   listSafetyIncidents,
   listOverdueSafetyIncidents,
   findSafetyIncident,
@@ -1075,6 +1402,7 @@ module.exports = {
   setInvestigationDueDate,
   moveSafetyIncidentStatus,
   changeSafetyIncidentSeverity,
+  classifySafetyIncident,
   recordSafetyIncidentDays,
   closeSafetyIncident
 };

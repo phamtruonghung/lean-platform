@@ -131,6 +131,16 @@ const _pages = <_Page>[
   // the card's own padding, so the default bound holds.
   _Page('/safety/incidents', 'lib/safety/incidents_screen.dart', 'Safety incidents',
       'What went wrong at this Site'),
+  // The Safety Module's two catalogues (issue #224). Flat lists of rows at the
+  // card's own padding, like the Product catalogue, so the default bound holds
+  // for each. Audited rather than excluded even though their Destinations are
+  // an administrator's: the addresses themselves are open to any active
+  // Account (injury-type-routes.js/body-part-routes.js), and a page a reader
+  // can reach is a page whose alignment is asserted.
+  _Page('/safety/injury-types', 'lib/safety/injury_types_screen.dart', 'Injury types',
+      'What an injury was'),
+  _Page('/safety/body-parts', 'lib/safety/body_parts_screen.dart', 'Body parts',
+      'Where on the body an injury was'),
   _Page('/actions/capas/801/report', 'lib/actions/capa_report_screen.dart',
       'The guard keeps working loose',
       'The 8D record of this investigation',
@@ -223,6 +233,10 @@ FakeWire _wire() => FakeWire(
       safetyIncidents: {
         '1': [safetyIncidentJson('901', 'SI-HCM-2026-00001')],
       },
+      // The Safety Module's two catalogues (issue #224), for the same reason:
+      // each page renders its card rather than an empty state.
+      injuryTypes: [injuryTypeJson('61', 'FRA', 'Fracture')],
+      bodyParts: [bodyPartJson('71', 'HAND', 'Hand')],
       complaints: {
         '1': [
           customerComplaintJson('70', 'CC-2026-00001', responseDueDate: '2099-01-01'),

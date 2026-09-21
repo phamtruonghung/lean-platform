@@ -26,12 +26,22 @@
  * `people.deviceReachesOrgUnit` (People's own tree, reached through its entry
  * point like every other cross-Module question) is what answers that.
  *
- * No injury classification, no Asset and no Employee-involved picker are
- * accepted from this door — issue #223's own binding comment on the floor
- * form's fields, and none of those need Safety authority a floor
- * identification never carries anyway; `recordSafetyIncident` accepts them
- * from any caller, and this route simply never asks a floor form to collect
- * them.
+ * No injury classification is accepted from this door — issue #223's own
+ * binding comment on the floor form's fields. As of issue #224 that is
+ * **enforced rather than assumed**: `employeeId`, `injuryTypeId` and
+ * `bodyPartId` are stripped from the body below before it reaches
+ * `recordSafetyIncident`, which accepts all three from any caller. Classifying
+ * an injury needs Safety authority reaching the Org Unit (ADR-0039), a floor
+ * identification is not an Account and can hold no Grant at all, so there is
+ * no standing here that could ever satisfy that gate — a crafted request to
+ * this address must not be able to do what the Account door refuses.
+ *
+ * For the same reason the answer this door sends is passed through
+ * `withoutInjuryDetails` unconditionally. There is nothing to withhold today —
+ * the three fields are always null on a record written here — so this costs
+ * nothing and is not a judgement about the technician standing at the device;
+ * it is the door staying shut by default, so that widening the floor form one
+ * day cannot quietly open it.
  *
  * And there is no anonymous option, ever — ADR-0036, unconditionally. The
  * floor door identifies an Employee before it accepts a write at all: the
@@ -135,8 +145,14 @@ router.post(
         return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
       }
 
+      // The injury classification, removed rather than refused. A floor form
+      // never collects these, so a body carrying one is not a technician's
+      // mistake to explain — and a 400 would be this door telling whoever
+      // crafted it which fields exist. See this file's header.
+      const { employeeId, injuryTypeId, bodyPartId, ...reportable } = body;
+
       const incident = await safetyIncidents.recordSafetyIncident(
-        { ...body, orgUnitId: orgUnit.id },
+        { ...reportable, orgUnitId: orgUnit.id },
         // The floor door's actor: the identified Employee IS the reporter, and
         // there is no Account on this path at all (ADR-0016), so
         // `recorded_by_account_id` stays null and `reported_by` is set instead
@@ -144,7 +160,7 @@ router.post(
         { employeeId: req.technician.id }
       );
 
-      res.status(201).json({ incident });
+      res.status(201).json({ incident: safetyIncidents.withoutInjuryDetails(incident) });
     } catch (error) {
       handleError(error, res, next);
     }

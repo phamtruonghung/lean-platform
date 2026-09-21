@@ -60,6 +60,48 @@
  * (`requireKnownSafetyIncident` → `requireSafetyIncidentVisible`) and only
  * then asks the standing it needs, the same order the register's own detail
  * route follows and AGENTS.md §6 fixes.
+ *
+ * **Issue #224 — the injury classification, and who may read it back.** One
+ * more address, `POST /incidents/:id/classify`, gated on Safety authority like
+ * the three above; and one rule that applies to **every** answer this file
+ * sends, which is the more important half.
+ *
+ * ADR-0037: an incident's severity, type, description, immediate action and
+ * the days it cost are readable by anyone who can see the Site — those are the
+ * numbers the plant acts on — but the identified Employee, the Injury type and
+ * the Body part are health information about one named person, and they are
+ * returned only to a holder of Safety authority reaching the incident's Org
+ * Unit and to the Account whose own `app_users.employee_id` IS the injured
+ * Employee. Every other caller gets them **absent from the JSON**, not nulled.
+ *
+ * Three things about how that is enforced here:
+ *
+ *   - **`res.json({ incident })` and `res.json({ incidents })` appear nowhere
+ *     in this file.** Every answer goes through `respondWithIncident` or
+ *     `respondWithIncidents` below, including the ones a *write* returns. With
+ *     ten addresses that serialise an incident, "did whoever added the
+ *     eleventh remember" is the real failure mode, and a rule that is greppable
+ *     is a rule that survives. A read path that does not call one of those two
+ *     is a bug you can find with `grep`.
+ *   - **The reader's reach is asked of People, once per request, per Site**
+ *     (`people.safetyAuthorityOrgUnitIds`). It is deliberately NOT
+ *     `canAct({ safety: true })`: that returns true for role `admin` before it
+ *     looks at a Grant, and issue #224 names an administrator holding no
+ *     Safety authority in the chain as one of the callers these fields are
+ *     withheld from. The register spans many Org Units, and a reader may hold
+ *     the authority at one of them and not at another, so the question is
+ *     asked per row against the reach — never once per request as a single
+ *     boolean.
+ *   - **The write gate is still `canAct({ safety: true })`**, administrator
+ *     short-circuit included, because ADR-0039 says an administrator holds
+ *     that authority everywhere and #228's severity, days and close routes
+ *     already ship on it. The visible consequence, which is intended rather
+ *     than an oversight: an administrator with no Safety Grant reaching the
+ *     Org Unit may classify an incident and gets back a 200 whose three fields
+ *     are absent. ADR-0037 restricts a *read*, and the answer to a write is a
+ *     read; "you may always read back what you just wrote" would be a second,
+ *     weaker rule sitting beside the ADR's one rule, and it is the one a later
+ *     change would copy to the eleventh route.
  */
 
 const express = require('express');
@@ -152,6 +194,11 @@ async function requireSafetyIncidentWriteScope(req, res, next) {
 const SAFETY_AUTHORITY_REQUIRED =
   "that decision needs Safety authority at this Safety incident's Org Unit";
 
+// The same refusal, said for the recording route — which has no incident to
+// name yet, so it names the Org Unit the caller chose instead (issue #224).
+const CLASSIFY_AUTHORITY_REQUIRED =
+  'naming the injured Employee, the Injury type or the Body part needs Safety authority at that Org Unit';
+
 async function requireSafetyIncidentSafetyAuthority(req, res, next) {
   return requireSafetyIncidentVisible(req, res, async () => {
     const allowed = await people.canAct({
@@ -164,6 +211,66 @@ async function requireSafetyIncidentSafetyAuthority(req, res, next) {
     }
     return next();
   });
+}
+
+// ADR-0037's read rule, built once per request and then asked of each row.
+//
+// Two ways a caller may read an incident's injury classification, and no
+// third: a Grant carrying **Safety authority** that reaches the incident's own
+// Org Unit, or being the injured person. The second half needs no query at
+// all — `app_users.employee_id` is UNIQUE and set at Approval (ADR-0022), so
+// "their own" is a real identity rather than a guess, and `req.account`
+// already carries it.
+//
+// Returns a predicate rather than a boolean, because the register's rows span
+// many Org Units and a reader may hold the authority at one and not at
+// another. A single boolean for the whole request is exactly the bug this
+// shape exists to rule out.
+async function injuryReadPredicateFor(req, siteId) {
+  const reach = new Set(
+    await people.safetyAuthorityOrgUnitIds({ account: req.account, siteId })
+  );
+  const ownEmployeeId = req.account.employeeId ?? null;
+
+  return function mayReadInjuryDetails(incident) {
+    if (reach.has(String(incident.orgUnitId))) return true;
+    if (ownEmployeeId === null) return false;
+    const injured = incident.employeeId ?? null;
+    return injured !== null && String(injured) === String(ownEmployeeId);
+  };
+}
+
+// The only two ways this file answers with an incident. See the header: no
+// route below calls `res.json` with one itself.
+async function respondWithIncident(req, res, incident, { status = 200 } = {}) {
+  const mayRead = await injuryReadPredicateFor(req, incident.siteId);
+  res
+    .status(status)
+    .json({ incident: mayRead(incident) ? incident : safetyIncidents.withoutInjuryDetails(incident) });
+}
+
+async function respondWithIncidents(req, res, siteId, { incidents, truncated }) {
+  const mayRead = await injuryReadPredicateFor(req, siteId);
+  res.json({
+    incidents: incidents.map((incident) =>
+      mayRead(incident) ? incident : safetyIncidents.withoutInjuryDetails(incident)
+    ),
+    truncated
+  });
+}
+
+// Does this request body name any part of an injury classification? Used by
+// the recording route to decide whether Safety authority is needed on top of
+// the write Grant recording itself needs (issue #224: "Recording or changing
+// an incident's identified Employee, injury type or body part requires Safety
+// authority reaching the Org Unit"). An explicit null is not naming one — it
+// says "nobody", which is what an unclassified incident already holds.
+const CLASSIFICATION_FIELDS = ['employeeId', 'injuryTypeId', 'bodyPartId'];
+
+function namesAClassification(body) {
+  return CLASSIFICATION_FIELDS.some(
+    (field) => body[field] !== undefined && body[field] !== null && body[field] !== ''
+  );
 }
 
 function requireQueryMemberOf(field, value, allowed) {
@@ -240,7 +347,7 @@ router.get(
         orgUnitPath = orgUnit.path;
       }
 
-      const { incidents, truncated } = await safetyIncidents.listSafetyIncidents(req.site.id, {
+      const register = await safetyIncidents.listSafetyIncidents(req.site.id, {
         orgUnitPath,
         status,
         incidentType,
@@ -250,7 +357,7 @@ router.get(
         to
       });
 
-      res.json({ incidents, truncated });
+      await respondWithIncidents(req, res, req.site.id, register);
     } catch (error) {
       handleError(error, res, next);
     }
@@ -281,12 +388,11 @@ router.get(
         orgUnitPath = orgUnit.path;
       }
 
-      const { incidents, truncated } = await safetyIncidents.listOverdueSafetyIncidents(
-        req.site.id,
-        { orgUnitPath }
-      );
+      const overdue = await safetyIncidents.listOverdueSafetyIncidents(req.site.id, {
+        orgUnitPath
+      });
 
-      res.json({ incidents, truncated });
+      await respondWithIncidents(req, res, req.site.id, overdue);
     } catch (error) {
       handleError(error, res, next);
     }
@@ -325,12 +431,30 @@ router.post(
         return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
       }
 
+      // Naming who was hurt, what the injury was or where on the body is a
+      // classification, and issue #224 puts every one of the three behind
+      // Safety authority whether it arrives at recording or afterwards — the
+      // write Grant above is what lets this Account record an incident here at
+      // all, and it is not the same standing. Asked only when the body
+      // actually names one, so recording an ordinary near miss stays exactly
+      // as open as #226 made it.
+      if (namesAClassification(body)) {
+        const mayClassify = await people.canAct({
+          account: req.account,
+          orgUnitId: orgUnit.id,
+          safety: true
+        });
+        if (!mayClassify) {
+          return res.status(403).json({ message: CLASSIFY_AUTHORITY_REQUIRED });
+        }
+      }
+
       const incident = await safetyIncidents.recordSafetyIncident(
         { ...body, orgUnitId: orgUnit.id },
         { accountId: req.account.id }
       );
 
-      res.status(201).json({ incident });
+      await respondWithIncident(req, res, incident, { status: 201 });
     } catch (error) {
       handleError(error, res, next);
     }
@@ -348,7 +472,7 @@ router.get(
     try {
       const incident = await safetyIncidents.getSafetyIncidentDetail(req.params.id);
       if (!incident) throw notFound('Safety incident');
-      res.json({ incident });
+      await respondWithIncident(req, res, incident);
     } catch (error) {
       handleError(error, res, next);
     }
@@ -370,7 +494,7 @@ router.patch(
         req.body ?? {},
         req.account.id
       );
-      res.json({ incident });
+      await respondWithIncident(req, res, incident);
     } catch (error) {
       handleError(error, res, next);
     }
@@ -393,7 +517,7 @@ router.post(
         req.body ?? {},
         req.account.id
       );
-      res.json({ incident });
+      await respondWithIncident(req, res, incident);
     } catch (error) {
       handleError(error, res, next);
     }
@@ -414,7 +538,40 @@ router.post(
         req.body ?? {},
         req.account.id
       );
-      res.json({ incident });
+      await respondWithIncident(req, res, incident);
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Classifying the injury (issue #224, ADR-0037): the identified Employee, the
+// Injury type and the Body part. Safety authority reaching the incident's Org
+// Unit — naming who was hurt and what the injury was is a judgement about a
+// person, not a piece of work on the record, so it takes the same standing a
+// severity correction does rather than the edit Grant recording itself needs.
+//
+// Its own address (`/safety/incidents/:id/classify`, the binding design
+// comment on #223) rather than a field on some broader correction, because it
+// is the one write in this Module whose result most callers are not allowed to
+// read back — and the answer here is redacted for an unauthorised writer
+// exactly as every other read is. See this file's header.
+//
+// An absent key leaves its field alone and an explicit null clears it;
+// safety-incidents.js owns that contract and the 400s around it.
+router.post(
+  '/incidents/:id/classify',
+  people.authenticate,
+  people.requireActive,
+  requireSafetyIncidentSafetyAuthority,
+  async (req, res, next) => {
+    try {
+      const incident = await safetyIncidents.classifySafetyIncident(
+        req.safetyIncident.id,
+        req.body ?? {},
+        req.account.id
+      );
+      await respondWithIncident(req, res, incident);
     } catch (error) {
       handleError(error, res, next);
     }
@@ -436,7 +593,7 @@ router.post(
         req.body ?? {},
         req.account.id
       );
-      res.json({ incident });
+      await respondWithIncident(req, res, incident);
     } catch (error) {
       handleError(error, res, next);
     }
@@ -458,7 +615,7 @@ router.post(
         req.body ?? {},
         req.account.id
       );
-      res.json({ incident });
+      await respondWithIncident(req, res, incident);
     } catch (error) {
       handleError(error, res, next);
     }
