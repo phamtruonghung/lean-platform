@@ -468,12 +468,11 @@ const List<Destination> platformDestinations = [
     group: DestinationGroupNames.quality,
   ),
   // The Safety Module's Destinations. The binding design on #223 names a
-  // four-entry group — Incidents, Observations, Injury types, Body parts — of
-  // which three exist as of issue #224; Observations is issue #230's own
-  // address and is added beside these when that slice ships. A group whose
-  // Destinations all filter away renders no heading at all (#100, ADR-0020's
-  // own rule), which is what lets the two administrator-only entries below sit
-  // here without changing what a line supervisor sees.
+  // four-entry group — Incidents, Observations, Injury types, Body parts —
+  // and all four exist as of issue #230. A group whose Destinations all
+  // filter away renders no heading at all (#100, ADR-0020's own rule), which
+  // is what lets the two administrator-only entries below sit here without
+  // changing what a line supervisor sees.
   //
   // Offered to every approved Account, the same shape the Quality
   // Destinations above it use: the register is a Site-wide read
@@ -485,6 +484,16 @@ const List<Destination> platformDestinations = [
     label: 'Incidents',
     icon: Icons.health_and_safety_outlined,
     path: Routes.safetyIncidents,
+    group: DestinationGroupNames.safety,
+  ),
+  // The leading indicator (issue #230): what was seen before anything went
+  // wrong. Offered to every approved Account, the same reasoning as
+  // Incidents above — the register is Site-wide and recording needs only a
+  // write Grant or the administrator role, both server-decided.
+  Destination(
+    label: 'Observations',
+    icon: Icons.visibility_outlined,
+    path: Routes.safetyObservations,
     group: DestinationGroupNames.safety,
   ),
   // The Module's two shared catalogues (issue #224): what an injury was, and

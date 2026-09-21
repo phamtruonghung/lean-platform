@@ -28,33 +28,48 @@
  * revised build order), which is why this Module's first two slices needed
  * neither.
  *
+ * Issue #230 adds the leading indicator's own two doors —
+ * safety-observation-routes.js (the Account door) and
+ * floor-safety-observation-routes.js (the floor door) — the same shape
+ * #226/#227 already gave the lagging one, mounted under this same prefix.
+ * Neither needs a new capability from People: recording an observation asks
+ * only for a write Grant or a device's reach, and reading one asks only
+ * `canSeeSite`, so this Module's requirement list below is unchanged by their
+ * arrival.
+ *
  * No error plumbing and no SQL helpers. errors.js is this Module's own copy
- * (ADR-0006's third clause, "domain, not utility"), and safety-incidents.js
- * keeps its own private helpers rather than sharing them through this file.
+ * (ADR-0006's third clause, "domain, not utility"), and safety-incidents.js /
+ * safety-observations.js each keep their own private helpers rather than
+ * sharing them through this file.
  *
  * What this Module requires from outside itself is People's entry point and
  * nothing else (`npm run lint`'s boundary check enforces it): `authenticate`,
  * `requireActive`, `findSite`, `findOrgUnit`, `canAct` and `canSeeSite` for
- * safety-incident-routes.js's Account door, plus `findDeviceByCredential`,
- * `findValidIdentification` and `deviceReachesOrgUnit` for
- * floor-safety-incident-routes.js's floor door (issue #227) — exactly as
- * `quality/floor-routes.js` asks the same three of People for its own floor
- * door — and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording, used by both.
- * `safety` requires neither `maintenance`, `quality` nor `actions`: the Asset
- * a Safety incident may name and the Employee it may name are both read by
- * ordinary SQL join (ADR-0006's "code seams, not data seams"), the same way
- * `nonconformances.js` reads `assets`.
+ * safety-incident-routes.js's and safety-observation-routes.js's Account
+ * doors, plus `findDeviceByCredential`, `findValidIdentification` and
+ * `deviceReachesOrgUnit` for floor-safety-incident-routes.js's and
+ * floor-safety-observation-routes.js's floor doors (issues #227, #230) —
+ * exactly as `quality/floor-routes.js` asks the same three of People for its
+ * own floor door — and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording, used by
+ * all four. `safety` requires neither `maintenance`, `quality` nor `actions`:
+ * the Asset a Safety incident may name and the Employee either record may name
+ * are both read by ordinary SQL join (ADR-0006's "code seams, not data
+ * seams"), the same way `nonconformances.js` reads `assets`.
  */
 
 const express = require('express');
 const safetyIncidentRoutes = require('./safety-incident-routes');
 const floorSafetyIncidentRoutes = require('./floor-safety-incident-routes');
+const safetyObservationRoutes = require('./safety-observation-routes');
+const floorSafetyObservationRoutes = require('./floor-safety-observation-routes');
 const injuryTypeRoutes = require('./injury-type-routes');
 const bodyPartRoutes = require('./body-part-routes');
 
 const router = express.Router();
 router.use(safetyIncidentRoutes);
 router.use(floorSafetyIncidentRoutes);
+router.use(safetyObservationRoutes);
+router.use(floorSafetyObservationRoutes);
 router.use(injuryTypeRoutes);
 router.use(bodyPartRoutes);
 
