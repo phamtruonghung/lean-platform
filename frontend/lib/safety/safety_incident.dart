@@ -15,6 +15,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../actions/actions.dart';
 import '../status_tone.dart';
 
 /// What kind of event a Safety incident was — the baseline's own
@@ -273,6 +274,74 @@ class SafetyIncidentEvent {
       };
 }
 
+/// The Concern raised from a Safety incident (issue #229), as the incident's
+/// own detail read names it — the mirror of Quality's `LinkedConcern`, minus
+/// the link-table facts (`isSource`, `linkedAt`) that record has and this one
+/// does not: a Safety incident's Concern is a single source column, not a
+/// gathered link, so there is nothing for either field to distinguish.
+///
+/// The vocabulary — `actionStatusLabel`/`actionStatusTone` — is imported
+/// from the Actions Module's own entry point rather than duplicated here, for
+/// the same reason `LinkedConcern`'s own comment gives: a Concern's status is
+/// the action log's five words, and a second copy of that map in this Module
+/// is exactly the drift the seam exists to prevent.
+@immutable
+class SafetyIncidentConcern {
+  const SafetyIncidentConcern({
+    required this.id,
+    required this.actionNo,
+    required this.title,
+    required this.actionType,
+    required this.status,
+    required this.priority,
+    required this.isOverdue,
+    this.ownerName,
+    this.dueDate,
+    this.raisedAt,
+    this.orgUnitId,
+    this.orgUnitName,
+  });
+
+  factory SafetyIncidentConcern.fromJson(Map<String, dynamic> json) => SafetyIncidentConcern(
+        id: json['id'].toString(),
+        actionNo: json['actionNo'] as String,
+        title: json['title'] as String,
+        actionType: json['actionType'] as String? ?? 'concern',
+        status: json['status'] as String? ?? 'open',
+        priority: (json['priority'] as int?) ?? 3,
+        isOverdue: json['isOverdue'] == true,
+        ownerName: json['ownerName'] as String?,
+        dueDate: json['dueDate'] as String?,
+        raisedAt: json['raisedAt'] == null ? null : DateTime.tryParse(json['raisedAt'] as String),
+        orgUnitId: json['orgUnitId']?.toString(),
+        orgUnitName: json['orgUnitName'] as String?,
+      );
+
+  final String id;
+
+  /// The number a person quotes: `AC-HCM-2026-00001`.
+  final String actionNo;
+
+  final String title;
+  final String actionType;
+  final String status;
+  final int priority;
+
+  /// Whether the Concern is past its due date, as the server judges it — the
+  /// register's own rule, not a client's comparison against its own clock.
+  final bool isOverdue;
+
+  final String? ownerName;
+  final String? dueDate;
+  final DateTime? raisedAt;
+  final String? orgUnitId;
+  final String? orgUnitName;
+
+  String get statusLabel => actionStatusLabel(status);
+  StatusTone get statusTone => actionStatusTone(status);
+  String get typeLabel => actionTypeLabel(actionType);
+}
+
 @immutable
 class SafetyIncident {
   const SafetyIncident({
@@ -317,6 +386,7 @@ class SafetyIncident {
     required this.investigationDueAt,
     required this.closedAt,
     this.events = const [],
+    this.concerns = const [],
   });
 
   factory SafetyIncident.fromJson(Map<String, dynamic> json) => SafetyIncident(
@@ -371,6 +441,10 @@ class SafetyIncident {
         events: [
           for (final row in json['events'] as List<dynamic>? ?? const [])
             SafetyIncidentEvent.fromJson(row as Map<String, dynamic>),
+        ],
+        concerns: [
+          for (final row in json['concerns'] as List<dynamic>? ?? const [])
+            SafetyIncidentConcern.fromJson(row as Map<String, dynamic>),
         ],
       );
 
@@ -472,6 +546,12 @@ class SafetyIncident {
   /// `getSafetyIncidentDetail` reads back with the record (issue #228).
   final List<SafetyIncidentEvent> events;
 
+  /// The Concern raised from this incident, if one has been (issue #229) —
+  /// empty on a list row and on a plain find, filled in only by
+  /// `getSafetyIncidentDetail`. Empty is a real state — nothing is being done
+  /// about the cause yet — not a missing field.
+  final List<SafetyIncidentConcern> concerns;
+
   bool get isClosed => status == SafetyIncidentStatus.closed;
 
   /// The one legal next step for the ordinary status move, or null when there
@@ -529,6 +609,9 @@ class SafetyIncident {
   /// when [injuryDetailsVisible] is true; a caller who may not read the
   /// fields cannot tell, and must not be shown a guess.
   bool get isClassified => employeeId != null || injuryTypeId != null || bodyPartId != null;
+
+  /// Whether a Concern has been raised from this incident (issue #229).
+  bool get hasConcerns => concerns.isNotEmpty;
 }
 
 /// Every filter the register offers, as one value — so a Screen's state and

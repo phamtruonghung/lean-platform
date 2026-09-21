@@ -84,6 +84,23 @@ String _dispositionLabel(LinkedDisposition disposition) =>
         ? 'Concession'
         : (_dispositionLabels[disposition.dispositionType] ?? disposition.dispositionType);
 
+/// The words this report prints for a Safety incident's severity level (issue
+/// #229) — the same trade as [_dispositionLabels] above and for the same
+/// reason: the ladder's own words belong to the Safety Module, whose client
+/// entry point this one does not import (`actions` imports neither `quality`
+/// nor `safety` — see `actions.dart`), and this is the one Screen that has to
+/// print rather than link to them.
+const Map<String, String> _severityLabels = {
+  'near_miss': 'No injury',
+  'first_aid': 'First aid',
+  'medical_treatment': 'Medical treatment',
+  'restricted_work': 'Restricted work',
+  'lost_time': 'Lost time',
+  'fatality': 'Fatality',
+};
+
+String _severityLabel(String severityLevel) => _severityLabels[severityLevel] ?? severityLevel;
+
 class CapaReportScreen extends StatelessWidget {
   const CapaReportScreen({super.key, required this.capaId});
 
@@ -161,6 +178,12 @@ class CapaReportScreen extends StatelessWidget {
       ValueKey<String>('capa-report-nonconformances');
   static const ValueKey<String> noNonconformancesKey =
       ValueKey<String>('capa-report-no-nonconformances');
+
+  /// The evidence, the other way round (issue #229): the Safety incident
+  /// behind the Concern, where the Concern was raised from one rather than
+  /// from a Non-conformance.
+  static const ValueKey<String> safetyIncidentKey =
+      ValueKey<String>('capa-report-safety-incident');
 
   static ValueKey<String> chainKey(String chain) => ValueKey<String>('capa-report-chain-$chain');
 
@@ -432,24 +455,45 @@ class _Report extends StatelessWidget {
         measures: ofType('preventive'),
       ),
       _Effectiveness(capa: capa),
-      _Section(
-        key: CapaReportScreen.nonconformancesKey,
-        heading: 'The Non-conformances this investigation answers',
-        summary: 'The occurrences the Concern answers, with the number, the Product, the Defect '
-            'code, the quantity and what was decided about the product.',
-        children: [
-          if (concern == null || concern.nonconformances.isEmpty)
+      // The evidence, one of two shapes depending on what the Concern was
+      // raised from (issue #229): a safety-sourced Concern names the Safety
+      // incident behind it here, where a quality-sourced one lists its
+      // Non-conformances below — the single-source rule
+      // (`action_items_single_source`) means a Concern is never both, so the
+      // report never needs to show both sections at once.
+      if (concern?.safetyIncident != null)
+        _Section(
+          key: CapaReportScreen.safetyIncidentKey,
+          heading: 'The Safety incident this investigation answers',
+          summary: 'The incident the Concern was raised from, with its number and severity — '
+              'never the injury details, which the incident\'s own record restricts.',
+          children: [
             Text(
-              key: CapaReportScreen.noNonconformancesKey,
-              'No Non-conformance is linked to this Concern, so the report has no evidence to '
-              'list.',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              '${concern!.safetyIncident!.incidentNo} · '
+              '${_severityLabel(concern.safetyIncident!.severityLevel)}',
+              style: theme.textTheme.bodyMedium,
             ),
-          for (final occurrence in concern?.nonconformances ?? const <LinkedNonconformance>[])
-            _Occurrence(occurrence: occurrence),
-        ],
-      ),
+          ],
+        )
+      else
+        _Section(
+          key: CapaReportScreen.nonconformancesKey,
+          heading: 'The Non-conformances this investigation answers',
+          summary: 'The occurrences the Concern answers, with the number, the Product, the '
+              'Defect code, the quantity and what was decided about the product.',
+          children: [
+            if (concern == null || concern.nonconformances.isEmpty)
+              Text(
+                key: CapaReportScreen.noNonconformancesKey,
+                'No Non-conformance is linked to this Concern, so the report has no evidence to '
+                'list.',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            for (final occurrence in concern?.nonconformances ?? const <LinkedNonconformance>[])
+              _Occurrence(occurrence: occurrence),
+          ],
+        ),
     ];
   }
 }

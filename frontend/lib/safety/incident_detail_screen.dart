@@ -131,6 +131,20 @@ class SafetyIncidentDetailScreen extends StatelessWidget {
 
   static ValueKey<String> eventRowKey(String id) => ValueKey<String>('safety-incident-event-$id');
 
+  // The Concern raised from this incident (issue #229): the section, its
+  // empty state, one row per Concern, the notice from the last raise, and the
+  // control that raises one.
+  static const ValueKey<String> concernsKey = ValueKey<String>('safety-incident-detail-concerns');
+  static const ValueKey<String> noConcernsKey =
+      ValueKey<String>('safety-incident-detail-no-concerns');
+  static const ValueKey<String> raiseConcernKey =
+      ValueKey<String>('safety-incident-detail-raise-concern');
+  static const ValueKey<String> concernNoticeKey =
+      ValueKey<String>('safety-incident-detail-concern-notice');
+
+  static ValueKey<String> concernRowKey(String id) =>
+      ValueKey<String>('safety-incident-concern-$id');
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<SafetyIncidentDetailBloc>().state;
@@ -261,6 +275,16 @@ class _Loaded extends StatelessWidget {
             ],
             const SizedBox(height: Spacing.lg),
             _EventHistoryCard(events: row.events),
+            const SizedBox(height: Spacing.lg),
+            // What is being done about the cause (issue #229). Below the
+            // record's own story, the same order the Non-conformance Screen
+            // keeps: the event itself comes first, the problem behind it
+            // second.
+            _ConcernsCard(
+              incident: row,
+              notice: state.notice,
+              busy: state.isRaisingConcern,
+            ),
             const SizedBox(height: Spacing.lg),
             Wrap(
               spacing: Spacing.md,
@@ -421,6 +445,106 @@ class _InjuryCard extends StatelessWidget {
                         '${BodyPartRegion.label(incident.bodyPartRegion ?? BodyPartRegion.other)}',
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The Concern raised from this incident (issue #229) — mirrors Quality's own
+/// `_ConcernsCard` shape closely: the card is drawn even when there is
+/// nothing, because "nobody is answering this yet" is a state a reader of an
+/// incident needs to see, and the control that changes it (raising a Concern)
+/// sits exactly there. Anyone who can see the Site may raise one — a Grant is
+/// not asked here or by the server (#198's Concern rule, #223's own
+/// acceptance criterion for this path).
+class _ConcernsCard extends StatelessWidget {
+  const _ConcernsCard({required this.incident, required this.busy, this.notice});
+
+  final SafetyIncident incident;
+
+  /// The raise is in flight: the control goes quiet so a second one cannot be
+  /// started against the incident mid-change.
+  final bool busy;
+
+  /// What the last raise had to say for itself, from the Bloc's own state —
+  /// the dialog that asked has closed by the time it is worth reading.
+  final String? notice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final concerns = incident.concerns;
+
+    return Card(
+      key: SafetyIncidentDetailScreen.concernsKey,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('The cause', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              'The incident itself is recorded here; the cause behind it is solved in the action '
+              'log, as a Concern.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            if (notice != null) ...[
+              const SizedBox(height: Spacing.sm),
+              Text(
+                key: SafetyIncidentDetailScreen.concernNoticeKey,
+                notice!,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+            const SizedBox(height: Spacing.sm),
+            if (concerns.isEmpty)
+              Text(
+                key: SafetyIncidentDetailScreen.noConcernsKey,
+                'Nothing is being done about the cause yet.',
+                style: theme.textTheme.bodyMedium,
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final concern in concerns)
+                    // `ListTile` carries the row's own `Key`, so a test finds
+                    // the row by the Concern's id rather than by its text.
+                    Card(
+                      key: SafetyIncidentDetailScreen.concernRowKey(concern.id),
+                      margin: const EdgeInsets.only(bottom: Spacing.sm),
+                      child: ListTile(
+                        onTap: () => context.go('${Routes.actions}/${concern.id}'),
+                        title: Text(concern.title),
+                        subtitle: Text(
+                          [
+                            concern.actionNo,
+                            concern.typeLabel,
+                            if (concern.ownerName != null) concern.ownerName!,
+                            if (concern.isOverdue) 'overdue',
+                          ].join(' · '),
+                        ),
+                        trailing: StatusChip(
+                          label: concern.statusLabel,
+                          tone: concern.statusTone,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            const SizedBox(height: Spacing.sm),
+            FilledButton.icon(
+              key: SafetyIncidentDetailScreen.raiseConcernKey,
+              onPressed: busy
+                  ? null
+                  : () => context.go('${Routes.safetyIncidents}/${incident.id}/raise-concern'),
+              icon: const Icon(Icons.lightbulb_outline),
+              label: const Text('Raise a Concern'),
+            ),
           ],
         ),
       ),

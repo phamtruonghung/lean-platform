@@ -18,10 +18,19 @@
 /// date) keep this record's event history, so the whole record — the write's
 /// own answer — is what every mutation re-emits, the same discipline
 /// `NonconformanceDetailBloc`'s own `_mutate` keeps.
+///
+/// Issue #229 adds a sixth: raising a Concern from this incident, in the
+/// action log. Like `NonconformanceDetailBloc`'s own raise, this is a write to
+/// the *Actions* Module — its own route, reached through its own client entry
+/// point — so this Bloc holds `ActionsApi` beside `SafetyApi`, and the raise
+/// keeps its own `isRaisingConcern`/`concernRaiseFailure`/`notice` fields
+/// rather than sharing `isMutating`'s: a refusal to raise a Concern must not
+/// look like a refusal to close the incident.
 library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../actions/actions.dart';
 import '../platform/auth_gateway.dart';
 import 'safety_api.dart';
 import 'safety_incident.dart';
@@ -113,6 +122,22 @@ class SafetyIncidentClosed extends SafetyIncidentDetailEvent {
   final String note;
 }
 
+/// A Concern was raised from this incident (issue #229), in the action log.
+/// The dialog decides the title and the optional fields; the Bloc only ever
+/// sees a decision already made — mirrors
+/// `NonconformanceConcernRaised`.
+class SafetyIncidentConcernRaised extends SafetyIncidentDetailEvent {
+  const SafetyIncidentConcernRaised({
+    required this.title,
+    this.description,
+    this.priority,
+  });
+
+  final String title;
+  final String? description;
+  final int? priority;
+}
+
 sealed class SafetyIncidentDetailState {
   const SafetyIncidentDetailState();
 }
@@ -140,6 +165,9 @@ class SafetyIncidentDetailLoaded extends SafetyIncidentDetailState {
     required this.incident,
     this.isMutating = false,
     this.mutationFailure,
+    this.isRaisingConcern = false,
+    this.concernRaiseFailure,
+    this.notice,
   });
 
   final SafetyIncident incident;
@@ -150,16 +178,33 @@ class SafetyIncidentDetailLoaded extends SafetyIncidentDetailState {
   /// `NonconformanceDetailLoaded.mutationFailure`.
   final String? mutationFailure;
 
+  /// A Concern is being raised from this incident, and why the last one did
+  /// not land (issue #229). Its own pair rather than `isMutating`'s, the same
+  /// reason `NonconformanceDetailLoaded` keeps its own: a refusal to raise a
+  /// Concern must not look like a refusal to close the incident.
+  final bool isRaisingConcern;
+  final String? concernRaiseFailure;
+
+  /// What the last Concern had to say for itself — the one sentence the
+  /// Screen shows once the dialog that asked has closed.
+  final String? notice;
+
   SafetyIncidentDetailLoaded copyWith({
     SafetyIncident? incident,
     bool? isMutating,
     String? mutationFailure,
+    bool? isRaisingConcern,
+    String? concernRaiseFailure,
+    String? notice,
   }) =>
       SafetyIncidentDetailLoaded(
         incident: incident ?? this.incident,
         isMutating: isMutating ?? this.isMutating,
         // Always overwritten, never carried forward.
         mutationFailure: mutationFailure,
+        isRaisingConcern: isRaisingConcern ?? this.isRaisingConcern,
+        concernRaiseFailure: concernRaiseFailure,
+        notice: notice,
       );
 }
 
@@ -167,8 +212,10 @@ class SafetyIncidentDetailBloc
     extends Bloc<SafetyIncidentDetailEvent, SafetyIncidentDetailState> {
   SafetyIncidentDetailBloc({
     required SafetyApi safetyApi,
+    required ActionsApi actionsApi,
     required AuthGateway authGateway,
   })  : _api = safetyApi,
+        _actions = actionsApi,
         _auth = authGateway,
         super(const SafetyIncidentDetailLoading()) {
     on<SafetyIncidentDetailStarted>(_onStarted);
@@ -179,9 +226,16 @@ class SafetyIncidentDetailBloc
     on<SafetyIncidentClassified>(_onClassified);
     on<SafetyIncidentDaysRecorded>(_onDaysRecorded);
     on<SafetyIncidentClosed>(_onClosed);
+    on<SafetyIncidentConcernRaised>(_onConcernRaised);
   }
 
   final SafetyApi _api;
+
+  /// The Actions Module's client, reached through its own entry point:
+  /// raising a Concern from this incident is a write to the action log, and
+  /// the action log's own routes are where it lives (issue #229).
+  final ActionsApi _actions;
+
   final AuthGateway _auth;
 
   static const String signedOutMessage = 'This session has ended. Sign in again to continue.';
@@ -346,6 +400,61 @@ class SafetyIncidentDetailBloc
       emit,
       (token) => _api.closeSafetyIncident(token, current.incident.id, note: event.note),
     );
+  }
+
+  /// A Concern was raised from this incident (issue #229).
+  ///
+  /// The write is the Actions Module's, so it is `ActionsApi` that carries it
+  /// and `ActionsApiException` that can refuse it. What comes back is the
+  /// *Concern*, not this incident, so the incident is re-read afterwards: the
+  /// Screen that raised it is this incident's own, and what it has to show is
+  /// the Concern now named among the ones raised from it, with the status the
+  /// server just gave it rather than a client's guess.
+  Future<void> _onConcernRaised(
+    SafetyIncidentConcernRaised event,
+    Emitter<SafetyIncidentDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! SafetyIncidentDetailLoaded || current.isRaisingConcern) return;
+    if (event.title.trim().isEmpty) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(concernRaiseFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isRaisingConcern: true, concernRaiseFailure: null));
+    try {
+      final concern = await _actions.raiseConcernFromSafetyIncident(
+        token,
+        current.incident.id,
+        title: event.title,
+        description: event.description,
+        priority: event.priority,
+      );
+      final refreshed = await _api.fetchSafetyIncident(token, current.incident.id);
+      final settled = state;
+      if (settled is! SafetyIncidentDetailLoaded) return;
+      emit(
+        settled.copyWith(
+          incident: refreshed,
+          isRaisingConcern: false,
+          notice: '${concern.actionNo} was raised from this Safety incident.',
+        ),
+      );
+    } on ActionsApiException catch (error) {
+      final settled = state;
+      if (settled is! SafetyIncidentDetailLoaded) return;
+      emit(settled.copyWith(isRaisingConcern: false, concernRaiseFailure: error.message));
+    } on SafetyApiException catch (error) {
+      // The re-read is the Safety Module's own read and can fail on its own:
+      // the Concern exists either way, and saying so beats reporting the
+      // raise as failed.
+      final settled = state;
+      if (settled is! SafetyIncidentDetailLoaded) return;
+      emit(settled.copyWith(isRaisingConcern: false, concernRaiseFailure: error.message));
+    }
   }
 
   Future<void> _mutate(

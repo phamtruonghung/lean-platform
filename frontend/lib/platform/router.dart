@@ -131,6 +131,7 @@ import '../safety/incident_detail_bloc.dart';
 import '../safety/incident_detail_screen.dart';
 import '../safety/incident_due_date_dialog.dart';
 import '../safety/incident_form_dialog.dart';
+import '../safety/incident_raise_concern_dialog.dart';
 import '../safety/incident_severity_dialog.dart';
 import '../safety/incident_status_dialog.dart';
 import '../safety/incidents_screen.dart';
@@ -1510,6 +1511,11 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                     key: ValueKey<String>(incidentId),
                     create: (context) => SafetyIncidentDetailBloc(
                       safetyApi: context.read<SafetyApi>(),
+                      // Raising a Concern from this incident is a write to
+                      // the action log (issue #229), so this Bloc holds the
+                      // Actions Module's client too — reached through its
+                      // own entry point.
+                      actionsApi: context.read<ActionsApi>(),
                       authGateway: context.read<AuthGateway>(),
                     )..add(SafetyIncidentDetailStarted(incidentId)),
                     child: child,
@@ -1669,6 +1675,36 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                                 );
                               }
                               return SafetyIncidentCloseDialog(incident: detail.incident);
+                            },
+                          );
+                        },
+                      ),
+                      // `/safety/incidents/:id/raise-concern` — raising a
+                      // Concern from this incident in the action log (issue
+                      // #229). Addressed for the same reason every other
+                      // transition is (ADR-0021): a refresh lands on the
+                      // record with the form open, and the write itself is
+                      // the Actions Module's route reached through its own
+                      // client entry point. Anyone who can see the Site may
+                      // raise one — a Grant is not asked here or by the
+                      // server (#198's Concern rule).
+                      GoRoute(
+                        path: 'raise-concern',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SafetyIncidentDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SafetyIncidentDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SafetyIncidentRaiseConcernDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SafetyIncidentRaiseConcernDialog(incident: detail.incident);
                             },
                           );
                         },

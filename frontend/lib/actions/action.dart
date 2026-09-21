@@ -416,6 +416,45 @@ class LinkedNonconformance {
       '${quantityAffected == quantityAffected.roundToDouble() ? quantityAffected.toStringAsFixed(0) : quantityAffected} $uomCode';
 }
 
+/// The Safety incident a Concern was raised from (issue #229), as the
+/// backend's own nested `safetyIncident` field on an Action names it: enough
+/// to recognise the incident and go to it — its number and its severity —
+/// and deliberately nothing else.
+///
+/// **Never the injury details.** ADR-0037 restricts who was hurt, the Injury
+/// type and the Body part to a holder of Safety authority and to the injured
+/// person's own Account; this Module's own read never selects those columns
+/// in the first place (`actions.js`'s header explains why), so there is no
+/// key here that could leak them even by accident. What this carries — the
+/// severity level — is one of the fields ADR-0037 names as public: the
+/// numbers a plant acts on, not a diagnosis.
+///
+/// Deliberately not Safety's own `SafetyIncident`: that is a whole record
+/// with its event history, and the dependency between the two client Modules
+/// runs one way, the same argument [LinkedNonconformance]'s own doc comment
+/// makes about Quality. No status or tone lives here for the same reason —
+/// an incident's own status vocabulary belongs to the Safety Module, whose
+/// entry point this one does not import.
+@immutable
+class LinkedSafetyIncident {
+  const LinkedSafetyIncident({
+    required this.id,
+    required this.incidentNo,
+    required this.severityLevel,
+  });
+
+  final String id;
+
+  /// The number a person quotes: `SI-HCM-2026-00001`.
+  final String incidentNo;
+
+  /// The wire value from Safety's own severity ladder — not translated to a
+  /// label here, because the ladder's words belong to the Safety Module and a
+  /// second copy of them in this one is exactly the drift the seam exists to
+  /// prevent. A caller that wants the label imports it from there.
+  final String severityLevel;
+}
+
 @immutable
 class Action {
   const Action({
@@ -453,6 +492,8 @@ class Action {
     this.phases = const [],
     this.nonconformances = const [],
     this.sourceNonconformanceId,
+    this.sourceSafetyIncidentId,
+    this.safetyIncident,
     this.capa,
   });
 
@@ -563,6 +604,18 @@ class Action {
   /// The Non-conformance this Action was raised from, if any (issue #208) —
   /// provenance rather than the link list, which is [nonconformances].
   final String? sourceNonconformanceId;
+
+  /// The Safety incident this Action was raised from, if any (issue #229) —
+  /// provenance the same way [sourceNonconformanceId] is, and mutually
+  /// exclusive with it: the baseline's own `action_items_single_source` CHECK
+  /// permits at most one source column set at once.
+  final String? sourceSafetyIncidentId;
+
+  /// The Safety incident's own number and severity, named rather than
+  /// nested-in-full — the evidence a reader needs to recognise it and go
+  /// there, never its injury details (see [LinkedSafetyIncident]'s own doc
+  /// comment).
+  final LinkedSafetyIncident? safetyIncident;
 
   /// The CAPA somebody has opened on this Action, if anybody has (issue #209).
   /// Set only on a Concern, and only once: a Concern has at most one

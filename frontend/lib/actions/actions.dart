@@ -33,6 +33,15 @@
 /// Modules running one way only: `quality` imports `actions`, and `actions`
 /// imports nothing of `quality`.
 ///
+/// The Safety Module's incident detail Screen (issue #229) is the second
+/// consumer, for the same reasons as Quality's: raising a Concern from a
+/// Safety incident is a write to the action log, so it needs `ActionsApi` and
+/// the vocabulary `Action`'s status carries. `LinkedSafetyIncident` is
+/// exported for the same reason `LinkedNonconformance` is — it is the row
+/// Actions' own Concern read carries from Safety's table, and `safety`'s own
+/// Screens render it, keeping the dependency running one way: `quality` and
+/// `safety` each import `actions`, and `actions` imports neither.
+///
 /// `lib/platform/` is not a cross-Module consumer and does not go through
 /// here: it is the mounting layer, the same special case `src/index.js` is for
 /// a Module's `router` on the server.
@@ -45,6 +54,7 @@ export 'action.dart'
         ActionPhase,
         ActionType,
         LinkedNonconformance,
+        LinkedSafetyIncident,
         actionPriorityLabels,
         actionStatusLabel,
         actionStatusTone,
