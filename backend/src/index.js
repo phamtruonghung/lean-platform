@@ -61,7 +61,13 @@ const kpiRegistry = {
   // complaints received in the period and the cost of poor quality, each read
   // from this Module's records — quality/kpi-registry.js argues the entries and
   // what it deliberately leaves reporting `no_data`.
-  ...quality.kpiRegistry
+  ...quality.kpiRegistry,
+  // Safety's own (issue #232, parent #223 decisions 3 and 5): incidents that
+  // caused something, near misses reported and observations logged, each read
+  // from this Module's records — safety/kpi-registry.js argues the entries,
+  // the departure from a seeded formula, and why SAF_TRIR/SAF_LTIFR stay
+  // reporting `no_data`.
+  ...safety.kpiRegistry
 };
 
 // ---------------------------------------------------------------------------
