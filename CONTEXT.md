@@ -140,6 +140,38 @@ history stays answerable.
 _Avoid_: Placement, posting, allocation, transfer (a transfer is the act; an
 Assignment is what it produces)
 
+### Attendance
+
+**Attendance sheet**:
+One record per shift instance, confirming who worked it and for how long.
+Pre-filled from the crew roster — the Org Unit roster when the shift has no
+crew — so a normal shift takes one tap to confirm; the supervisor's own work
+is marking the exceptions. Confirmation (`confirmed_at`,
+`confirmed_by_account_id`) is its own fact and is never inferred from the
+rows a sheet holds, because "everyone on the roster was absent" and "nobody
+has filled this in" must stay different states.
+_Avoid_: Timesheet, clock-in (both name a device or a payroll record; this is
+neither), roster (that is what a sheet starts from, not what it is)
+
+**Worked hours**:
+The minutes an Employee is confirmed to have actually worked a shift. A
+sheet's pre-filled default is the shift's duration minus its breaks; the
+supervisor corrects it for a late arrival, an early finish or overtime.
+Every Employee's worked hours count toward it, whatever their
+`employment_type` — the plant supervises their work day to day whether they
+are permanent, temporary, agency, contractor or apprentice.
+_Avoid_: Scheduled hours (the shift's own duration, before any correction),
+clock time, paid hours (a payroll question this Platform does not answer)
+
+**Exposure hours**:
+Worked hours, summed over a window and an Org Unit subtree, read as the
+denominator `SAF_TRIR` and `SAF_LTIFR` divide by rather than as a cost.
+Because it is a sum of Worked hours across every confirmed shift in the
+window, a past shift within that window with no confirmed Attendance sheet
+leaves the sum incomplete, which is why an unconfirmed shift makes the rate
+`no_data` rather than silently understating it.
+_Avoid_: Man-hours, FTE hours
+
 ### The work
 
 **Asset**:
