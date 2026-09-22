@@ -114,6 +114,26 @@ That reasoning is why these are expected to render identically on CI — it is
 not yet confirmed by an actual CI run. Only a real CI run, not this
 document's own argument for why it should pass, is evidence that it does.
 
+**A golden failure under any other Flutter version is an environment
+result, not a regression.** Skia's own rendering changes between versions,
+so a golden generated against `3.44.0` can fail on an unpinned SDK — 3.47.2,
+say — with no code change involved at all (see issue #236). Before reading
+anything into a golden failure, settle which one it is with the one command
+that is guaranteed to match the version these were generated against
+(`AGENTS.md` §3):
+
+```bash
+rm -rf /tmp/frontend-check && cp -r frontend /tmp/frontend-check
+docker run --rm -v /tmp/frontend-check:/app -w /app \
+  ghcr.io/cirruslabs/flutter:3.44.0 \
+  bash -c "flutter pub get && flutter analyze && flutter test"
+rm -rf /tmp/frontend-check
+```
+
+A failure that disappears under this command was never a regression. A
+failure that survives it is real — go read the diff as the next section
+describes.
+
 ## Regenerating a golden
 
 **Only for a deliberate, reviewed visual change** — a token value, a layout
