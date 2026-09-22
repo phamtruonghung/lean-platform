@@ -69,6 +69,9 @@ import '../people/accounts_bloc.dart';
 import '../people/accounts_screen.dart';
 import '../people/approval_queue_bloc.dart';
 import '../people/approval_queue_screen.dart';
+import '../people/attendance_picker_screen.dart';
+import '../people/attendance_sheet_bloc.dart';
+import '../people/attendance_sheet_screen.dart';
 import '../people/directory_bloc.dart';
 import '../people/directory_screen.dart';
 import '../people/employee_detail_bloc.dart';
@@ -175,6 +178,7 @@ abstract final class Routes {
   static const String orgUnits = '/org-units';
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
+  static const String attendance = '/attendance';
   static const String tierBoard = '/tier-board';
 
   /// The Quality Module's own Destinations (issue #203): the Product catalogue
@@ -563,6 +567,45 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   // `Routes.workOrders`'s own `canAssignWorkOrder` already
                   // reads off `orgUnitScope` below.
                   canAssign: account.account.orgUnitScope.canWriteSomewhere,
+                ),
+              );
+            },
+          ),
+          // The Attendance picker (issue #249) — chooses an Org Unit and a
+          // production day, then opens one of that day's shift instances'
+          // sheets. Offered to every approved Account, the same openness
+          // `Routes.directory`/`Routes.jobRoles` above already have: reading
+          // a sheet needs only visibility of the Site (issue #249's own
+          // criterion), which the server decides per shift instance, so a
+          // role check here would gate a door the route itself opens wider.
+          GoRoute(
+            path: Routes.attendance,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return const AttendancePickerScreen();
+            },
+          ),
+          // The shift's attendance sheet itself (issue #249), reached from
+          // the picker above or linked to directly. [canRecord] is the same
+          // coarse "can write somewhere" signal `Routes.directory`'s own
+          // `canAssign` reads off `orgUnitScope` just above — the server is
+          // the real per-Org-Unit gate either way (403
+          // `OUTSIDE_GRANTED_ORG_UNITS`).
+          GoRoute(
+            path: '${Routes.attendance}/:shiftInstanceId',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              final shiftInstanceId = state.pathParameters['shiftInstanceId']!;
+              return BlocProvider<AttendanceSheetBloc>(
+                create: (context) => AttendanceSheetBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(AttendanceSheetRequested(shiftInstanceId)),
+                child: AttendanceSheetScreen(
+                  shiftInstanceId: shiftInstanceId,
+                  canRecord: account.account.orgUnitScope.canWriteSomewhere,
                 ),
               );
             },

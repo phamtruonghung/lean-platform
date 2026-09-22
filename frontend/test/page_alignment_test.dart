@@ -184,6 +184,10 @@ const _excluded = <String, String>{
   'lib/platform/access_denied_screen.dart': 'a centred state on purpose',
   'lib/platform/not_found_screen.dart': 'a centred state on purpose',
   'lib/platform/session_error_screen.dart': 'a centred state on purpose',
+  'lib/people/attendance_sheet_screen.dart':
+      'reached by shift instance id; its rows are plain list items, not the audited card-row shape',
+  'lib/people/attendance_picker_screen.dart':
+      'a chooser (an Org Unit tree and a date field), not a browsable register of card rows',
 };
 
 /// One wire for every page in the table: each Screen finds the collection it

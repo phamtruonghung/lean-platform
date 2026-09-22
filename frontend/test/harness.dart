@@ -1554,6 +1554,71 @@ Map<String, dynamic> qualifiedEmployeeJson(
       'expiresOn': expiresOn,
     };
 
+/// One `attendance_records` row exactly as `GET .../attendance-sheet`,
+/// `PATCH .../attendance-records/:id` and `POST .../attendance-records`
+/// answer it (`toAttendanceRecord`, attendance.js, issue #249).
+Map<String, dynamic> attendanceRecordJson(
+  String id,
+  String employeeId,
+  String displayName, {
+  String employeeNo = 'EMP-1',
+  String attendanceStatus = 'present',
+  String? absenceReasonId,
+  int scheduledMinutes = 450,
+  int workedMinutes = 450,
+  int overtimeMinutes = 0,
+  String? note,
+}) =>
+    {
+      'id': id,
+      'employeeId': employeeId,
+      'employeeNo': employeeNo,
+      'displayName': displayName,
+      'attendanceStatus': attendanceStatus,
+      'absenceReasonId': absenceReasonId,
+      'absenceReason': null,
+      'scheduledMinutes': scheduledMinutes,
+      'workedMinutes': workedMinutes,
+      'overtimeMinutes': overtimeMinutes,
+      'note': note,
+    };
+
+/// One `attendance_sheets` row (`toAttendanceSheet`, attendance.js, issue
+/// #249). `confirmedAt`/`confirmedByAccountId` null is an opened-but-not-yet-
+/// confirmed sheet — the ordinary starting state a test builds from.
+Map<String, dynamic> attendanceSheetJson(
+  String id,
+  String shiftInstanceId, {
+  String? confirmedAt,
+  String? confirmedByAccountId,
+}) =>
+    {
+      'id': id,
+      'shiftInstanceId': shiftInstanceId,
+      'confirmedAt': confirmedAt,
+      'confirmedByAccountId': confirmedByAccountId,
+    };
+
+/// One `absence_reasons` row (`GET /api/people/absence-reasons`,
+/// `toAbsenceReason`, attendance.js, issue #249) — shared reference data,
+/// mirroring `skillJson`'s own shape for a catalogue row.
+Map<String, dynamic> absenceReasonJson(
+  String code,
+  String name, {
+  String? id,
+  bool isPlanned = false,
+  bool countsAsAbsenteeism = true,
+  bool isActive = true,
+}) =>
+    {
+      'id': id ?? code,
+      'code': code,
+      'name': name,
+      'isPlanned': isPlanned,
+      'countsAsAbsenteeism': countsAsAbsenteeism,
+      'isActive': isActive,
+    };
+
 /// One row of `GET /api/people/sites/:siteId/skill-coverage`
 /// (`getSiteSkillCoverage`, skills.js, issue #89) — already filtered to
 /// `shortfall > 0` server-side, so every row this fixture builds is thin by
@@ -1959,6 +2024,19 @@ class FakeWire {
     this.qualifiedEmployeesStatus = 200,
     Map<String, List<Map<String, dynamic>>>? skillCoverage,
     this.skillCoverageStatus = 200,
+    this.attendanceSheet,
+    List<Map<String, dynamic>>? attendanceRecords,
+    this.attendanceSheetStatus = 200,
+    this.attendanceSheetMessage = 'The attendance sheet is unavailable.',
+    this.confirmAttendanceSheetStatus = 200,
+    this.confirmAttendanceSheetMessage = 'That sheet could not be confirmed.',
+    this.updateAttendanceRecordStatus = 200,
+    this.updateAttendanceRecordMessage = 'That row could not be corrected.',
+    this.addStandInStatus = 201,
+    this.addStandInMessage = 'That stand-in could not be added.',
+    this.removeAttendanceRecordStatus = 204,
+    List<Map<String, dynamic>>? absenceReasons,
+    this.absenceReasonsStatus = 200,
     List<Map<String, dynamic>>? jobPlans,
     this.jobPlansStatus = 200,
     this.createJobPlanStatus = 201,
@@ -2160,6 +2238,12 @@ class FakeWire {
         skills = skills ?? [],
         qualifiedEmployees = qualifiedEmployees ?? [],
         skillCoverage = skillCoverage ?? {},
+        attendanceRecords = attendanceRecords ?? [],
+        absenceReasons = absenceReasons ??
+            [
+              absenceReasonJson('SICK', 'Sickness'),
+              absenceReasonJson('HOL', 'Annual leave', isPlanned: true, countsAsAbsenteeism: false),
+            ],
         jobPlans = jobPlans ?? [],
         pmSchedules = pmSchedules ?? {},
         unitsOfMeasure = unitsOfMeasure ??
@@ -3575,6 +3659,62 @@ class FakeWire {
   /// requests reached the wire.
   final List<String> skillCoverageRequests = [];
 
+  /// `GET /api/people/shift-instances/:id/attendance-sheet` (issue #249) —
+  /// one scenario at a time, the same simplification [employees] etc.
+  /// already make: not keyed by shift instance id, since every attendance
+  /// test in this suite works with exactly one shift instance's sheet at a
+  /// time. Null [attendanceSheet] with a non-empty [attendanceRecords] is
+  /// not a state the real API can answer (a sheet is created the moment it
+  /// is first pre-filled) — a test scripts both together, or neither.
+  Map<String, dynamic>? attendanceSheet;
+  List<Map<String, dynamic>> attendanceRecords;
+  int attendanceSheetStatus;
+  String attendanceSheetMessage;
+
+  /// Every shift instance id a sheet was opened for, in the order the
+  /// requests reached the wire.
+  final List<String> attendanceSheetRequests = [];
+
+  /// `POST /api/people/shift-instances/:id/attendance-sheet/confirm`.
+  int confirmAttendanceSheetStatus;
+  String confirmAttendanceSheetMessage;
+
+  /// Every shift instance id confirmed, in the order the requests reached
+  /// the wire.
+  final List<String> attendanceConfirmRequests = [];
+
+  /// `PATCH /api/people/shift-instances/:id/attendance-records/:recordId`.
+  int updateAttendanceRecordStatus;
+  String updateAttendanceRecordMessage;
+
+  /// Every correction body that actually reached the wire, as `(recordId,
+  /// body)` — so a test can assert exactly one request was sent and what it
+  /// carried.
+  final List<(String, Map<String, dynamic>)> attendanceRecordPatches = [];
+
+  /// `POST /api/people/shift-instances/:id/attendance-records` — a
+  /// stand-in, drawn from the Directory.
+  int addStandInStatus;
+  String addStandInMessage;
+
+  /// Every stand-in body that actually reached the wire, as
+  /// `(shiftInstanceId, body)`.
+  final List<(String, Map<String, dynamic>)> attendanceStandInPosts = [];
+
+  /// `DELETE /api/people/shift-instances/:id/attendance-records/:recordId`.
+  int removeAttendanceRecordStatus;
+
+  /// Every Attendance record id removed, in the order the requests reached
+  /// the wire.
+  final List<String> attendanceRecordDeletes = [];
+
+  /// `GET /api/people/absence-reasons` (issue #249) — the shared catalogue,
+  /// seeded with two entries by default (mirroring the baseline's own
+  /// `SICK`/`HOL` rows) so a test that never scripts it still sees a
+  /// non-empty dropdown.
+  List<Map<String, dynamic>> absenceReasons;
+  int absenceReasonsStatus;
+
   /// `GET /api/maintenance/job-plans` (issue #74) — the shared catalogue,
   /// deactivated rows included by default, the same shape the real route's
   /// own includeInactive handling follows.
@@ -3816,6 +3956,7 @@ class FakeWire {
   final List<Map<String, dynamic>> floorNonconformancePosts = [];
 
   int _nextEmployeeId = 900;
+  int _nextAttendanceRecordId = 600;
   int _nextAssignmentId = 500;
   int _nextJobRoleId = 950;
   int _nextSkillId = 970;
@@ -7254,6 +7395,106 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'coverage': skillCoverage[siteId] ?? []}), 200);
+        }
+        // The attendance sheet (issue #249) — GET .../attendance-sheet,
+        // POST .../attendance-sheet/confirm, POST/PATCH/DELETE
+        // .../attendance-records[/:id]. One scenario at a time, not keyed by
+        // shift instance id — see [attendanceSheet]'s own doc comment.
+        if (path.startsWith('/api/people/shift-instances/') && path.endsWith('/attendance-sheet')) {
+          final shiftInstanceId = path.split('/')[4];
+          attendanceSheetRequests.add(shiftInstanceId);
+          if (attendanceSheetStatus != 200) {
+            return http.Response(jsonEncode({'message': attendanceSheetMessage}), attendanceSheetStatus);
+          }
+          // `started` mirrors the real route's own Grant-gated rule (issue
+          // #249's fix): a sheet exists (and is returned) only once someone
+          // who could record has started it — derived here from whether
+          // [attendanceSheet] was scripted at all, so a test scripting the
+          // not-started state simply leaves it (and [attendanceRecords]) at
+          // their defaults rather than needing a third field to say so.
+          return http.Response(
+            jsonEncode({
+              'started': attendanceSheet != null,
+              'sheet': attendanceSheet,
+              'records': attendanceSheet != null ? attendanceRecords : const <Map<String, dynamic>>[],
+            }),
+            200,
+          );
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/people/shift-instances/') &&
+            path.endsWith('/attendance-sheet/confirm')) {
+          final shiftInstanceId = path.split('/')[4];
+          attendanceConfirmRequests.add(shiftInstanceId);
+          if (confirmAttendanceSheetStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': confirmAttendanceSheetMessage}),
+              confirmAttendanceSheetStatus,
+            );
+          }
+          attendanceSheet = {
+            ...?attendanceSheet,
+            'confirmedAt': DateTime.now().toUtc().toIso8601String(),
+            'confirmedByAccountId': selfId,
+          };
+          return http.Response(jsonEncode({'sheet': attendanceSheet}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/people/shift-instances/') &&
+            path.endsWith('/attendance-records')) {
+          final shiftInstanceId = path.split('/')[4];
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          attendanceStandInPosts.add((shiftInstanceId, sent));
+          if (addStandInStatus != 201) {
+            return http.Response(jsonEncode({'message': addStandInMessage}), addStandInStatus);
+          }
+          final created = attendanceRecordJson(
+            (_nextAttendanceRecordId++).toString(),
+            sent['employeeId'] as String,
+            'Stand-in Employee',
+          );
+          attendanceRecords = [...attendanceRecords, created];
+          return http.Response(jsonEncode({'record': created}), 201);
+        }
+        if (path.startsWith('/api/people/shift-instances/') &&
+            path.contains('/attendance-records/')) {
+          // '', 'api', 'people', 'shift-instances', ':id', 'attendance-records', ':recordId'.
+          final recordId = path.split('/')[6];
+          if (request.method == 'PATCH') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            attendanceRecordPatches.add((recordId, sent));
+            if (updateAttendanceRecordStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': updateAttendanceRecordMessage}),
+                updateAttendanceRecordStatus,
+              );
+            }
+            attendanceRecords = [
+              for (final r in attendanceRecords) if (r['id'] == recordId) {...r, ...sent} else r,
+            ];
+            final updated = attendanceRecords.firstWhere((r) => r['id'] == recordId);
+            return http.Response(jsonEncode({'record': updated}), 200);
+          }
+          if (request.method == 'DELETE') {
+            attendanceRecordDeletes.add(recordId);
+            if (removeAttendanceRecordStatus != 204) {
+              return http.Response(
+                jsonEncode({'message': 'That row could not be removed.'}),
+                removeAttendanceRecordStatus,
+              );
+            }
+            attendanceRecords = [for (final r in attendanceRecords) if (r['id'] != recordId) r];
+            return http.Response('', 204);
+          }
+        }
+        if (path == '/api/people/absence-reasons') {
+          if (absenceReasonsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The absence reason catalogue is unavailable.'}),
+              absenceReasonsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'absenceReasons': absenceReasons}), 200);
         }
         if (request.method == 'POST' && path == '/api/people/sites') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;

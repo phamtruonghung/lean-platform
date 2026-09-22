@@ -4,12 +4,15 @@
  * `./service`, `./plant`, `./middleware`, `./directory`, `./authorization`,
  * `./job-roles`, `./errors` or `./skills` directly.
  *
- * `router` combines five route files under the one `/api/people` mount:
+ * `router` combines six route files under the one `/api/people` mount:
  * routes.js (Accounts, issue #6), plant-routes.js (Sites and the Org Unit
  * tree, issue #7), directory-routes.js (the Employee directory, issue #9,
  * plus Org Unit assignments, issue #10), job-role-routes.js (the job role
- * catalogue, issue #10), and skill-routes.js (the skills matrix — the skill
- * catalogue, an Employee holding a skill, and skill coverage, issue #11).
+ * catalogue, issue #10), skill-routes.js (the skills matrix — the skill
+ * catalogue, an Employee holding a skill, and skill coverage, issue #11),
+ * and attendance-routes.js (the attendance sheet — one per shift instance,
+ * pre-filled, recorded, confirmed and corrected, plus the absence reason
+ * catalogue, issue #249).
  *
  * `floorRouter` is a second router rather than a sixth file inside `router`,
  * and that is issue #201's one deliberate oddity: floor-routes.js owns the
@@ -203,6 +206,7 @@ const plantRoutes = require('./plant-routes');
 const directoryRoutes = require('./directory-routes');
 const jobRoleRoutes = require('./job-role-routes');
 const skillRoutes = require('./skill-routes');
+const attendanceRoutes = require('./attendance-routes');
 const floorRoutes = require('./floor-routes');
 const { authenticate, requireActive } = require('./middleware');
 const { canAct, canSeeSite, safetyAuthorityOrgUnitIds } = require('./authorization');
@@ -222,6 +226,7 @@ router.use(plantRoutes);
 router.use(directoryRoutes);
 router.use(jobRoleRoutes);
 router.use(skillRoutes);
+router.use(attendanceRoutes);
 
 module.exports = {
   router,
