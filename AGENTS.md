@@ -113,29 +113,43 @@ without checking their own `t.skip` calls.
 
 Frontend commands need Flutter. CI and `frontend/Dockerfile` both pin `3.44.0`
 (`ghcr.io/cirruslabs/flutter` is the image `frontend/Dockerfile`'s build stage
-uses; CI's `flutter-action` pins the same version number). **Docker's WSL
-integration is not enabled on this host**, so use the Linux SDK installed at
-`~/flutter` (`~/flutter/bin/flutter`) and give each phase its own `timeout`, so
-a stuck fetch or a lockfile rewrite cannot hang the session:
+uses; CI's `flutter-action` pins the same version number). **The pinned
+Docker image is the canonical environment for `flutter test`** — goldens are
+Skia-version-sensitive (`frontend/test/GOLDENS.md`), and this image is the
+only environment guaranteed to match the version they were generated
+against:
 
 ```bash
 # From the repo root. Work against a COPY, never the real frontend/ — see below.
-export PATH="$HOME/flutter/bin:$PATH"
+rm -rf /tmp/frontend-check && cp -r frontend /tmp/frontend-check
+docker run --rm -v /tmp/frontend-check:/app -w /app \
+  ghcr.io/cirruslabs/flutter:3.44.0 \
+  bash -c "flutter pub get && flutter analyze && flutter test"
+rm -rf /tmp/frontend-check
+```
+
+If Docker's WSL integration is not enabled on this host, a local SDK is a
+fallback, with each phase given its own `timeout` so a stuck fetch or a
+lockfile rewrite cannot hang the session. Guard the SDK path itself first: a
+bare `export PATH="$FLUTTER_SDK/bin:$PATH"` fails **open** — if that path is
+wrong, `flutter` silently resolves to whatever else is on `PATH`, runs
+against the wrong Skia version, and fails exactly the golden tests without
+touching anything else, which reads as a real regression rather than an
+environment mismatch. Refuse to run unless the SDK exists at the path you
+name and reports exactly `3.44.0` before trusting any result:
+
+```bash
+# From the repo root. Work against a COPY, never the real frontend/ — see below.
+FLUTTER_SDK="${FLUTTER_SDK:-$HOME/flutter}"
+[ -x "$FLUTTER_SDK/bin/flutter" ] || { echo "no flutter at $FLUTTER_SDK/bin/flutter — set FLUTTER_SDK to the SDK's install root, or use the pinned Docker image above" >&2; exit 1; }
+export PATH="$FLUTTER_SDK/bin:$PATH"
+flutter --version 2>&1 | grep -q '^Flutter 3\.44\.0' || { echo "flutter --version is not 3.44.0 — a golden result from this SDK is not trustworthy, use the pinned Docker image above instead" >&2; exit 1; }
 rm -rf /tmp/frontend-check && cp -r frontend /tmp/frontend-check
 (cd /tmp/frontend-check \
   && timeout 900 flutter pub get \
   && timeout 900 flutter analyze \
   && timeout 1800 flutter test)
 rm -rf /tmp/frontend-check
-```
-
-If Docker's WSL integration is enabled instead, the pinned image is the
-canonical environment and replaces the local SDK:
-
-```bash
-docker run --rm -v /tmp/frontend-check:/app -w /app \
-  ghcr.io/cirruslabs/flutter:3.44.0 \
-  bash -c "flutter pub get && flutter analyze && flutter test"
 ```
 
 **If `pub get` fails with `no versions of <package> match <version>`.** An
