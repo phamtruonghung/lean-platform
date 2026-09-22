@@ -348,6 +348,131 @@ void main() {
     );
   });
 
+  testWidgets("the Safety Pillar renders the numbers Safety's own records answer, and still says "
+      'no data for the two rates it cannot compute', (tester) async {
+    // The board the server answers once Safety contributes its own entries
+    // (issue #232): the three counts are measured, and the two rates per
+    // worked hour — with no exposure hours recorded anywhere — are not.
+    final wire = boardWire(
+      board: boardBody(
+        pillars: [
+          boardPillarJson(
+            'S',
+            'Safety',
+            sortOrder: 1,
+            kpis: [
+              boardKpiJson(
+                'SAF_TRIR',
+                'Recordable injury rate (TRIR)',
+                unit: 'per 200k hrs',
+                direction: 'lower_better',
+                decimalPlaces: 2,
+                value: null,
+                status: 'no_data',
+              ),
+              boardKpiJson(
+                'SAF_LTIFR',
+                'Lost time injury frequency (LTIFR)',
+                unit: 'per 1M hrs',
+                direction: 'lower_better',
+                decimalPlaces: 2,
+                value: null,
+                status: 'no_data',
+              ),
+              boardKpiJson(
+                'SAF_INCIDENTS',
+                'Safety incidents',
+                unit: 'count',
+                direction: 'lower_better',
+                decimalPlaces: 0,
+                value: 2,
+                status: 'amber',
+                targetValue: 0,
+              ),
+              boardKpiJson(
+                'SAF_NEARMISS',
+                'Near misses reported',
+                unit: 'count',
+                direction: 'higher_better',
+                decimalPlaces: 0,
+                value: 5,
+                status: 'green',
+                targetValue: 3,
+              ),
+              boardKpiJson(
+                'SAF_OBSERVATIONS',
+                'Safety observations',
+                unit: 'count',
+                direction: 'higher_better',
+                decimalPlaces: 0,
+                value: 12,
+                status: 'no_target',
+              ),
+            ],
+          ),
+          boardPillarJson('Q', 'Quality', sortOrder: 2, kpis: const []),
+          boardPillarJson(
+            'D',
+            'Delivery',
+            sortOrder: 3,
+            kpis: [
+              boardKpiJson(
+                'MNT_MTBF',
+                'Mean time between failures',
+                unit: 'hours',
+                decimalPlaces: 1,
+                value: 7,
+                status: 'no_target',
+              ),
+            ],
+          ),
+          boardPillarJson('C', 'Cost', sortOrder: 4, kpis: const []),
+          boardPillarJson('P', 'People', sortOrder: 5, kpis: const []),
+        ],
+      ),
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    // The Safety Pillar is a Pillar with data behind it, and each of its
+    // measured numbers is on its own card, toned by the target the
+    // definition carries.
+    final safety = find.byKey(TierBoardScreen.pillarKey('S'));
+    expect(safety, findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('SAF_INCIDENTS'))).data,
+      '2',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('SAF_NEARMISS'))).data,
+      '5',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('SAF_OBSERVATIONS'))).data,
+      '12',
+    );
+
+    // The two rates per worked hour are still not numbers: they read as no
+    // data, exactly as they did before Safety contributed anything.
+    for (final code in ['SAF_TRIR', 'SAF_LTIFR']) {
+      expect(
+        tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey(code))).data,
+        '—',
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(TierBoardScreen.kpiKey(code)),
+          matching: find.text('No data'),
+        ),
+        findsOneWidget,
+      );
+    }
+  });
+
   testWidgets('changing the Org Unit sends exactly one board request with the new orgUnitId',
       (tester) async {
     final wire = boardWire(
