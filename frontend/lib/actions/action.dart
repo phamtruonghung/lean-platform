@@ -455,6 +455,41 @@ class LinkedSafetyIncident {
   final String severityLevel;
 }
 
+/// The Safety observation an Action was raised from (issue #231), as the
+/// backend's own nested `safetyObservation` field on an Action names it:
+/// enough to recognise what was seen and go to it — its type, category and
+/// severity potential — and deliberately nothing else, mirroring
+/// [LinkedSafetyIncident]'s own shape.
+///
+/// Unlike [LinkedSafetyIncident] there is no restricted field to leave out
+/// and never any number to quote: an observation carries no injury details
+/// (#223 decision 9) and no document number of its own (#230), so what a
+/// reader needs to recognise it is what was seen and how bad it could have
+/// been, not a number.
+///
+/// Deliberately not Safety's own `SafetyObservation`: that is a whole record,
+/// and the dependency between the two client Modules runs one way, the same
+/// argument [LinkedSafetyIncident]'s own doc comment makes.
+@immutable
+class LinkedSafetyObservation {
+  const LinkedSafetyObservation({
+    required this.id,
+    required this.observationType,
+    required this.category,
+    required this.severityPotential,
+  });
+
+  final String id;
+
+  /// The wire values from Safety's own sets — not translated to labels here,
+  /// because that vocabulary belongs to the Safety Module and a second copy
+  /// of it in this one is exactly the drift the seam exists to prevent. A
+  /// caller that wants the label imports it from there.
+  final String observationType;
+  final String category;
+  final String severityPotential;
+}
+
 @immutable
 class Action {
   const Action({
@@ -494,6 +529,8 @@ class Action {
     this.sourceNonconformanceId,
     this.sourceSafetyIncidentId,
     this.safetyIncident,
+    this.sourceSafetyObservationId,
+    this.safetyObservation,
     this.capa,
   });
 
@@ -616,6 +653,19 @@ class Action {
   /// there, never its injury details (see [LinkedSafetyIncident]'s own doc
   /// comment).
   final LinkedSafetyIncident? safetyIncident;
+
+  /// The Safety observation this Action was raised from, if any (issue #231)
+  /// — provenance the same way [sourceSafetyIncidentId] is, and mutually
+  /// exclusive with it and with [sourceNonconformanceId]: the baseline's own
+  /// `action_items_single_source` CHECK permits at most one source column set
+  /// at once.
+  final String? sourceSafetyObservationId;
+
+  /// The Safety observation's own type, category and severity potential,
+  /// named rather than nested-in-full — the evidence a reader needs to
+  /// recognise what was seen (see [LinkedSafetyObservation]'s own doc
+  /// comment).
+  final LinkedSafetyObservation? safetyObservation;
 
   /// The CAPA somebody has opened on this Action, if anybody has (issue #209).
   /// Set only on a Concern, and only once: a Concern has at most one

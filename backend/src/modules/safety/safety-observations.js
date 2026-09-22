@@ -11,10 +11,14 @@
  * Three things about this file are worth reading before changing it.
  *
  * **An observation has no status, and no migration introduces one** (#223
- * decision 9). It is a fact; the Action raised from it (#231, out of scope
- * here) carries the state, and worst-first ordering by severity potential is
- * the worklist. There is nothing here resembling `safety_incidents.status` or
- * `safety_incident_events` — no ladder to move, nothing to close.
+ * decision 9). It is a fact; the Action raised from it (#231) carries the
+ * state, and worst-first ordering by severity potential is the worklist.
+ * There is nothing here resembling `safety_incidents.status` or
+ * `safety_incident_events` — no ladder to move, nothing to close. Because
+ * that Action is the only thing that says an observation was dealt with, an
+ * observation with none has to stay findable — `listSafetyObservations`'s own
+ * `hasAction` filter, and `getSafetyObservationDetail`'s own `actions` list,
+ * exist for exactly that reason.
  *
  * **Every observation names its recorder, and there is no unattributed
  * path.** Two doors record one, and each names a different kind of recorder:
@@ -162,7 +166,7 @@ const SAFETY_OBSERVATION_JOINS = `
   LEFT JOIN shift_instances shi ON shi.id = so.shift_instance_id
   LEFT JOIN shift_definitions sd ON sd.id = shi.shift_definition_id`;
 
-function toSafetyObservation(row) {
+function toSafetyObservation(row, { actions = [] } = {}) {
   return {
     id: row.id,
     observedAt: row.observed_at,
@@ -192,7 +196,13 @@ function toSafetyObservation(row) {
     shiftStartsAt: row.shift_starts_at ?? null,
     shiftEndsAt: row.shift_ends_at ?? null,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    // The Actions raised from this observation, with their own status (issue
+    // #231) — empty on a list row and on a plain find, filled in only by
+    // `getSafetyObservationDetail`, the same shape `toSafetyIncident` gives
+    // its own `events`/`concerns`. Empty is a real state — nothing has been
+    // done about it yet, which is exactly what `hasAction=false` finds.
+    actions
   };
 }
 
@@ -231,6 +241,7 @@ async function listSafetyObservations(
     category = null,
     severityPotential = null,
     isStopWork = null,
+    hasAction = null,
     from = null,
     to = null,
     limit = SAFETY_OBSERVATION_LIST_LIMIT
@@ -258,6 +269,19 @@ async function listSafetyObservations(
   if (isStopWork !== null) {
     params.push(isStopWork);
     conditions.push(`so.is_stop_work = $${params.length}`);
+  }
+  // Whether an Action has been raised from this observation (issue #231) —
+  // an EXISTS/NOT EXISTS against action_items rather than a join, so a row
+  // with two Actions raised against it is still counted once. `hasAction:
+  // false` is #231's own acceptance criterion: an observation with none has
+  // to stay findable, since it carries no status of its own to say so
+  // (#223 decision 9).
+  if (hasAction !== null) {
+    conditions.push(
+      hasAction
+        ? `EXISTS (SELECT 1 FROM action_items ai WHERE ai.safety_observation_id = so.id)`
+        : `NOT EXISTS (SELECT 1 FROM action_items ai WHERE ai.safety_observation_id = so.id)`
+    );
   }
   if (from !== null) {
     params.push(from);
@@ -295,6 +319,73 @@ async function findSafetyObservation(id) {
     [id]
   );
   return rows[0] ? toSafetyObservation(rows[0]) : null;
+}
+
+// The Actions raised from this observation, if any have been (issue #231) —
+// read from the Actions Module's own `action_items` table by ordinary SQL
+// join (ADR-0006's "code seams, not data seams"), the mirror of
+// safety-incidents.js's own `CONCERN_COLUMNS`/`listConcernsForIncident`.
+// `ai.safety_observation_id` is the whole of the relationship: an observation
+// carries no status of its own (#223 decision 9), so the Actions raised
+// against it, and each one's own status, are the only answer to "was this
+// dealt with".
+const OBSERVATION_ACTION_COLUMNS = `
+  ai.id, ai.action_no, ai.title, ai.action_type, ai.status, ai.priority,
+  to_char(ai.due_date, 'YYYY-MM-DD') AS due_date,
+  (ai.due_date IS NOT NULL AND ai.due_date < CURRENT_DATE) AS is_overdue,
+  ai.raised_at, ai.org_unit_id, ou.name AS org_unit_name,
+  e.display_name AS owner_name`;
+
+const OBSERVATION_ACTION_JOINS = `
+  FROM action_items ai
+  JOIN org_units ou ON ou.id = ai.org_unit_id
+  LEFT JOIN employees e ON e.id = ai.owner_employee_id`;
+
+function toObservationAction(row) {
+  return {
+    id: row.id,
+    actionNo: row.action_no,
+    title: row.title,
+    actionType: row.action_type,
+    status: row.status,
+    priority: row.priority,
+    ownerName: row.owner_name ?? null,
+    dueDate: row.due_date ?? null,
+    isOverdue: row.is_overdue === true,
+    raisedAt: row.raised_at,
+    orgUnitId: row.org_unit_id,
+    orgUnitName: row.org_unit_name
+  };
+}
+
+async function listActionsForObservation(safetyObservationId, client = null) {
+  const runner = client ?? getPool();
+  const { rows } = await runner.query(
+    `SELECT ${OBSERVATION_ACTION_COLUMNS}
+     ${OBSERVATION_ACTION_JOINS}
+     WHERE ai.safety_observation_id = $1
+     ORDER BY ai.raised_at, ai.id`,
+    [safetyObservationId]
+  );
+  return rows.map(toObservationAction);
+}
+
+// The detail read: the observation together with the Actions raised from it,
+// oldest first — the order a person reads a record's own story in, the same
+// choice `getSafetyIncidentDetail` makes for its own events and Concerns. Its
+// own function, mirroring the list/find pair above, so the register's plain
+// row stays cheap: nothing about a walk's whole register needs a per-row
+// Actions list, only the one record a reader opens.
+async function getSafetyObservationDetail(id) {
+  if (parseId(id) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT ${SAFETY_OBSERVATION_COLUMNS} ${SAFETY_OBSERVATION_JOINS} WHERE so.id = $1`,
+    [id]
+  );
+  if (!rows[0]) return null;
+  return toSafetyObservation(rows[0], {
+    actions: await listActionsForObservation(rows[0].id)
+  });
 }
 
 // The Site's short code, which nothing here quotes today — observations carry
@@ -381,5 +472,6 @@ module.exports = {
   SEVERITY_POTENTIALS,
   listSafetyObservations,
   findSafetyObservation,
+  getSafetyObservationDetail,
   recordSafetyObservation
 };

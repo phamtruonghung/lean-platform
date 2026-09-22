@@ -75,6 +75,13 @@ class ActionDetailScreen extends StatelessWidget {
   static const ValueKey<String> safetyIncidentKey =
       ValueKey<String>('action-detail-safety-incident');
 
+  /// The Safety observation this Action was raised from, if it was raised
+  /// from one (issue #231) — the section a Concern-or-any-other-kind renders
+  /// instead of [nonconformancesKey]/[safetyIncidentKey], never more than one
+  /// (the single-source rule).
+  static const ValueKey<String> safetyObservationKey =
+      ValueKey<String>('action-detail-safety-observation');
+
   static ValueKey<String> addMeasureKindKey(String wire) =>
       ValueKey<String>('action-detail-add-measure-$wire');
   static ValueKey<String> measureKey(String id) => ValueKey<String>('action-measure-$id');
@@ -227,12 +234,15 @@ class _ActionDetail extends StatelessWidget {
             // The evidence behind the Concern, at the foot of the record on
             // purpose: the cycle and the work answering it are what was asked
             // for first, and the source is what proves the problem is real. A
-            // Concern raised from the register has neither, and the empty
-            // state says so rather than leaving a blank. The single-source
-            // rule (`action_items_single_source`) means a Concern is never
-            // both, so exactly one of the two renders (issue #229).
+            // Concern raised from the register has none of the three, and the
+            // empty state says so rather than leaving a blank. The
+            // single-source rule (`action_items_single_source`) means an
+            // Action is never more than one of these, so exactly one of the
+            // three renders (issues #229, #231).
             if (action.safetyIncident != null)
               _SafetyIncidentSource(action: action)
+            else if (action.safetyObservation != null)
+              _SafetyObservationSource(action: action)
             else
               _Nonconformances(action: action),
           ],
@@ -722,6 +732,82 @@ const Map<String, String> _severityLabels = {
   'lost_time': 'Lost time',
   'fatality': 'Fatality',
 };
+
+/// The words this Screen prints for a Safety observation's own fields (issue
+/// #231) — the same deliberate second copy [_severityLabels] above is, and
+/// for the same reason: these sets belong to `safety`, whose client entry
+/// point this Module does not import.
+const Map<String, String> _observationTypeLabels = {
+  'safe_act': 'Safe act',
+  'unsafe_act': 'Unsafe act',
+  'unsafe_condition': 'Unsafe condition',
+};
+
+const Map<String, String> _observationCategoryLabels = {
+  'ppe': 'PPE',
+  'machine_guarding': 'Machine guarding',
+  'housekeeping': 'Housekeeping',
+  'ergonomics': 'Ergonomics',
+  'chemical': 'Chemical',
+  'working_at_height': 'Working at height',
+  'traffic': 'Traffic',
+  'energy_isolation': 'Energy isolation',
+  'procedure': 'Procedure',
+  'other': 'Other',
+};
+
+const Map<String, String> _severityPotentialLabels = {
+  'low': 'Low',
+  'medium': 'Medium',
+  'high': 'High',
+  'fatal': 'Fatal',
+};
+
+/// The Safety observation this Action was raised from (issue #231) — the
+/// mirror of `_SafetyIncidentSource` for the third source an Action may
+/// carry. One row, linking to the observation's own address, naming what was
+/// seen and how bad it could have been: an observation carries no injury
+/// details of its own to withhold (#223 decision 9), so there is nothing
+/// restricted to leave out here the way `_SafetyIncidentSource` does.
+class _SafetyObservationSource extends StatelessWidget {
+  const _SafetyObservationSource({required this.action});
+
+  final Action action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final observation = action.safetyObservation!;
+
+    return Column(
+      key: ActionDetailScreen.safetyObservationKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Safety observation', style: theme.textTheme.titleSmall),
+        const SizedBox(height: Spacing.xs),
+        Text(
+          'The observation this Action was raised from — what was seen, and how bad it could '
+          'have been.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Spacing.sm),
+        Card(
+          child: ListTile(
+            onTap: () => context.go('${Routes.safetyObservations}/${observation.id}'),
+            title: Text(
+              _observationCategoryLabels[observation.category] ?? observation.category,
+            ),
+            subtitle: Text(
+              '${_observationTypeLabels[observation.observationType] ?? observation.observationType} '
+              '· ${_severityPotentialLabels[observation.severityPotential] ?? observation.severityPotential}',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 /// The Safety incident this Concern was raised from (issue #229) — the mirror
 /// of `_Nonconformances` for the other source a Concern may carry. One row,

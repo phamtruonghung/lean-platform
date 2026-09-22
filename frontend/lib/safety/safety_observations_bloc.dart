@@ -77,6 +77,16 @@ class SafetyObservationsStopWorkFilterChanged extends SafetyObservationsEvent {
   final bool? isStopWork;
 }
 
+/// Narrow to observations with (`true`) or without (`false`) an Action raised
+/// against them (issue #231) — `false` is the filter a walk's own worklist is
+/// read through, since an observation carries no status of its own to say so
+/// (#223 decision 9).
+class SafetyObservationsHasActionFilterChanged extends SafetyObservationsEvent {
+  const SafetyObservationsHasActionFilterChanged(this.hasAction);
+
+  final bool? hasAction;
+}
+
 /// The production days the register covers, either end optional.
 class SafetyObservationsDateRangeChanged extends SafetyObservationsEvent {
   const SafetyObservationsDateRangeChanged({
@@ -209,6 +219,7 @@ class SafetyObservationsBloc extends Bloc<SafetyObservationsEvent, SafetyObserva
     on<SafetyObservationsCategoryFilterChanged>(_onCategoryFilterChanged);
     on<SafetyObservationsSeverityPotentialFilterChanged>(_onSeverityPotentialFilterChanged);
     on<SafetyObservationsStopWorkFilterChanged>(_onStopWorkFilterChanged);
+    on<SafetyObservationsHasActionFilterChanged>(_onHasActionFilterChanged);
     on<SafetyObservationsDateRangeChanged>(_onDateRangeChanged);
     on<SafetyObservationsFiltersCleared>(_onFiltersCleared);
     on<SafetyObservationRecordConfirmed>(_onRecordConfirmed);
@@ -330,6 +341,18 @@ class SafetyObservationsBloc extends Bloc<SafetyObservationsEvent, SafetyObserva
     final moved = event.isStopWork == null
         ? settled.filters.copyWith(clearIsStopWork: true)
         : settled.filters.copyWith(isStopWork: event.isStopWork);
+    await _applyFilters(settled, moved, emit);
+  }
+
+  Future<void> _onHasActionFilterChanged(
+    SafetyObservationsHasActionFilterChanged event,
+    Emitter<SafetyObservationsState> emit,
+  ) async {
+    final settled = state;
+    if (settled is! SafetyObservationsLoaded) return;
+    final moved = event.hasAction == null
+        ? settled.filters.copyWith(clearHasAction: true)
+        : settled.filters.copyWith(hasAction: event.hasAction);
     await _applyFilters(settled, moved, emit);
   }
 

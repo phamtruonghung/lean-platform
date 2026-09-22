@@ -1079,6 +1079,7 @@ Map<String, dynamic> safetyObservationJson(
   String? productionDate,
   String? shiftCode,
   String? shiftName,
+  List<Map<String, dynamic>> actions = const [],
 }) =>
     {
       'id': id,
@@ -1104,6 +1105,10 @@ Map<String, dynamic> safetyObservationJson(
       'shiftName': shiftName,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      // The Actions raised from this observation, with their own status
+      // (issue #231) — empty on a fixture that names none, the real state
+      // for a walk's unanswered items.
+      'actions': actions,
     };
 
 /// One row of a Safety incident's event history (issue #228) as `GET
@@ -1165,6 +1170,26 @@ Map<String, dynamic> concernJson(
 /// incident's Concern is a single source column, not a gathered link, so
 /// there is nothing for either field to distinguish.
 Map<String, dynamic> safetyIncidentConcernJson(Map<String, dynamic> action) => {
+      'id': action['id'],
+      'actionNo': action['actionNo'],
+      'title': action['title'],
+      'actionType': action['actionType'],
+      'status': action['status'],
+      'priority': action['priority'],
+      'ownerName': action['ownerName'],
+      'dueDate': action['dueDate'],
+      'isOverdue': action['isOverdue'] ?? false,
+      'raisedAt': action['raisedAt'],
+      'orgUnitId': action['orgUnitId'],
+      'orgUnitName': action['orgUnitName'],
+    };
+
+/// One Action among a Safety observation's own `actions` array (issue #231)
+/// — mirrors `toObservationAction` (safety-observations.js) key for key, the
+/// same way [safetyIncidentConcernJson] mirrors the incident's own. No
+/// `isSource`/`linkedAt`: an observation's Action is a single source column,
+/// not a gathered link, the same shape a Safety incident's Concern has.
+Map<String, dynamic> safetyObservationActionJson(Map<String, dynamic> action) => {
       'id': action['id'],
       'actionNo': action['actionNo'],
       'title': action['title'],
@@ -1845,6 +1870,8 @@ class FakeWire {
     this.raiseConcernMessage = 'this Non-conformance was cancelled, so no Concern can be raised from it',
     this.raiseSafetyConcernStatus = 201,
     this.raiseSafetyConcernMessage = 'Safety incident not found',
+    this.raiseSafetyObservationActionStatus = 201,
+    this.raiseSafetyObservationActionMessage = 'Safety observation not found',
     this.linkNonconformanceStatus = 201,
     this.linkNonconformanceMessage = 'this Non-conformance is already linked to this Concern',
     this.unlinkNonconformanceStatus = 200,
@@ -2746,6 +2773,19 @@ class FakeWire {
   /// [raisedConcern] for this path. Null means the fake builds one from the
   /// request.
   Map<String, dynamic>? raisedSafetyConcern;
+
+  /// Every Action raised from a Safety observation that reached the wire
+  /// (issue #231), as `(safetyObservationId, body)` — `POST
+  /// /api/actions/safety-observations/:id/action`.
+  final List<(String, Map<String, dynamic>)> safetyObservationActionRaisePosts = [];
+  int raiseSafetyObservationActionStatus;
+  String raiseSafetyObservationActionMessage;
+
+  /// The Action a Safety-observation raise answers with, when a test wants
+  /// the row the server would have written named differently — the mirror of
+  /// [raisedSafetyConcern] for this path. Null means the fake builds one from
+  /// the request.
+  Map<String, dynamic>? raisedSafetyObservationAction;
 
   /// Every link that reached the wire, as `(concernId, body)` — `POST
   /// /api/actions/:id/nonconformances`.
@@ -3855,6 +3895,18 @@ class FakeWire {
   void _replaceSafetyIncident(String id, Map<String, dynamic> updated) {
     safetyIncidents = {
       for (final entry in safetyIncidents.entries)
+        entry.key: [
+          for (final row in entry.value)
+            if (row['id'] == id) updated else row,
+        ],
+    };
+  }
+
+  /// Replaces one Safety observation row wherever it sits, mirroring
+  /// [_replaceSafetyIncident] exactly (issue #231).
+  void _replaceSafetyObservation(String id, Map<String, dynamic> updated) {
+    safetyObservations = {
+      for (final entry in safetyObservations.entries)
         entry.key: [
           for (final row in entry.value)
             if (row['id'] == id) updated else row,
@@ -5771,6 +5823,7 @@ class FakeWire {
           final category = query['category'];
           final severityPotential = query['severityPotential'];
           final isStopWork = query['isStopWork'];
+          final hasAction = query['hasAction'];
           final from = query['from'];
           final to = query['to'];
           final sent = [
@@ -5781,8 +5834,11 @@ class FakeWire {
                     if (severityPotential == null ||
                         row['severityPotential'] == severityPotential)
                       if (isStopWork == null || row['isStopWork'].toString() == isStopWork)
-                        if (from == null || _safetyObservationDayOf(row).compareTo(from) >= 0)
-                          if (to == null || _safetyObservationDayOf(row).compareTo(to) <= 0) row,
+                        if (hasAction == null ||
+                            ((row['actions'] as List<dynamic>? ?? const []).isNotEmpty).toString() ==
+                                hasAction)
+                          if (from == null || _safetyObservationDayOf(row).compareTo(from) >= 0)
+                            if (to == null || _safetyObservationDayOf(row).compareTo(to) <= 0) row,
           ]..sort((a, b) => _severityPotentialRank(b).compareTo(_severityPotentialRank(a)));
           return http.Response(
             jsonEncode({'observations': sent, 'truncated': safetyObservationsTruncated}),
@@ -7727,6 +7783,60 @@ class FakeWire {
           return http.Response(jsonEncode({'action': concern}), 201);
         }
         if (request.method == 'POST' &&
+            path.startsWith('/api/actions/safety-observations/') &&
+            path.endsWith('/action')) {
+          // `/api/actions/safety-observations/:id/action` (issue #231):
+          // raising an Action from a Safety observation — the mirror of the
+          // Safety incident handler immediately above, with the one
+          // difference the ticket calls for: the caller's own `actionType`
+          // is used rather than a fixed `'concern'`. Both sides are
+          // recorded: the Action in `actionDetails` so its own Screen reads
+          // it, and the Action on the observation's own row so the re-read
+          // after the raise shows it.
+          final remainder = path.substring('/api/actions/safety-observations/'.length);
+          final safetyObservationId = remainder.substring(0, remainder.length - '/action'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          safetyObservationActionRaisePosts.add((safetyObservationId, body));
+          if (raiseSafetyObservationActionStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': raiseSafetyObservationActionMessage}),
+              raiseSafetyObservationActionStatus,
+            );
+          }
+          final row = safetyObservationById(safetyObservationId);
+          if (row == null) {
+            return http.Response(jsonEncode({'message': 'Safety observation not found'}), 404);
+          }
+          final actionId = (raisedSafetyObservationAction?['id'] ?? '901').toString();
+          final action = actionJson(
+            actionId,
+            'AC-TEST-2026-00009',
+            (body['title'] as String?) ?? 'An Action',
+            actionType: (body['actionType'] as String?) ?? 'containment',
+            description: body['description'] as String?,
+            orgUnitId: row['orgUnitId'] as String,
+            orgUnitName: row['orgUnitName'] as String,
+            siteId: row['siteId'] as String,
+            priority: (body['priority'] as int?) ?? 3,
+            sourceSafetyObservationId: safetyObservationId,
+            safetyObservation: linkedSafetyObservationJson(
+              safetyObservationId,
+              observationType: row['observationType'] as String,
+              category: row['category'] as String,
+              severityPotential: row['severityPotential'] as String,
+            ),
+          )..['openPhase'] = phaseJson(1, 'plan');
+          actionDetails[actionId] = action;
+          _replaceSafetyObservation(safetyObservationId, {
+            ...row,
+            'actions': [
+              ...(row['actions'] as List<dynamic>? ?? const []),
+              safetyObservationActionJson(action),
+            ],
+          });
+          return http.Response(jsonEncode({'action': action}), 201);
+        }
+        if (request.method == 'POST' &&
             path.startsWith('/api/actions/') &&
             path.endsWith('/unlink')) {
           // `/api/actions/:id/nonconformances/:nonconformanceId/unlink` (issue
@@ -8306,6 +8416,8 @@ Map<String, dynamic> actionJson(
   List<Map<String, dynamic>> nonconformances = const [],
   String? sourceSafetyIncidentId,
   Map<String, dynamic>? safetyIncident,
+  String? sourceSafetyObservationId,
+  Map<String, dynamic>? safetyObservation,
   Map<String, dynamic>? capa,
 }) =>
     {
@@ -8351,6 +8463,13 @@ Map<String, dynamic> actionJson(
       // which is every Concern this fixture builds unless a test names one.
       'sourceSafetyIncidentId': sourceSafetyIncidentId,
       'safetyIncident': safetyIncident,
+      // Provenance the third way round (issue #231): the Safety observation
+      // the Action was raised from, and the type/category/severity potential
+      // a reader needs to recognise what was seen — `null` for every Action
+      // raised from anything else, which is every Action this fixture builds
+      // unless a test names one.
+      'sourceSafetyObservationId': sourceSafetyObservationId,
+      'safetyObservation': safetyObservation,
       // The CAPA opened on this Action, if one has been (issue #209) —
       // `{id, capaNo, status}` or null, which is the state every Concern is in
       // until somebody opens one.
@@ -8370,6 +8489,24 @@ Map<String, dynamic> linkedSafetyIncidentJson(
       'id': id,
       'incidentNo': incidentNo,
       'severityLevel': severityLevel,
+    };
+
+/// The Safety observation behind an Action (issue #231), as an Action's own
+/// nested `safetyObservation` field names it — mirrors the backend's own
+/// `safetyObservation` object key for key: the type, category and severity
+/// potential only, the same shape [linkedSafetyIncidentJson] gives its own
+/// incident.
+Map<String, dynamic> linkedSafetyObservationJson(
+  String id, {
+  String observationType = 'unsafe_condition',
+  String category = 'housekeeping',
+  String severityPotential = 'high',
+}) =>
+    {
+      'id': id,
+      'observationType': observationType,
+      'category': category,
+      'severityPotential': severityPotential,
     };
 
 /// One CAPA as `GET /api/actions/capas/:id` sends it (issue #209) — the

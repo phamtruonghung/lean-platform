@@ -54,6 +54,8 @@ class SafetyObservationsScreen extends StatelessWidget {
       ValueKey<String>('safety-observations-filter-severity-potential');
   static const ValueKey<String> stopWorkFilterKey =
       ValueKey<String>('safety-observations-filter-stop-work');
+  static const ValueKey<String> hasActionFilterKey =
+      ValueKey<String>('safety-observations-filter-has-action');
   static const ValueKey<String> fromDateKey = ValueKey<String>('safety-observations-filter-from');
   static const ValueKey<String> toDateKey = ValueKey<String>('safety-observations-filter-to');
   static const ValueKey<String> clearFiltersKey =
@@ -330,6 +332,27 @@ class _Filters extends StatelessWidget {
             onChanged: (value) => context
                 .read<SafetyObservationsBloc>()
                 .add(SafetyObservationsStopWorkFilterChanged(value)),
+          ),
+        ),
+        // Whether an Action has been raised from the observation (issue
+        // #231) — `false` is a walk's own worklist, so its unanswered items
+        // do not disappear into the register.
+        SizedBox(
+          width: 170,
+          child: DropdownButtonFormField<bool?>(
+            key: SafetyObservationsScreen.hasActionFilterKey,
+            initialValue: filters.hasAction,
+            isDense: true,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Action', border: OutlineInputBorder()),
+            items: const [
+              DropdownMenuItem<bool?>(value: null, child: Text('Any')),
+              DropdownMenuItem<bool?>(value: false, child: Text('No Action raised')),
+              DropdownMenuItem<bool?>(value: true, child: Text('Action raised')),
+            ],
+            onChanged: (value) => context
+                .read<SafetyObservationsBloc>()
+                .add(SafetyObservationsHasActionFilterChanged(value)),
           ),
         ),
         SizedBox(

@@ -151,6 +151,7 @@ router.get(
         safetyObservations.SEVERITY_POTENTIALS
       );
       const isStopWork = requireQueryBoolean('isStopWork', req.query.isStopWork);
+      const hasAction = requireQueryBoolean('hasAction', req.query.hasAction);
       const from = requireQueryDate('from', req.query.from);
       const to = requireQueryDate('to', req.query.to);
 
@@ -168,6 +169,7 @@ router.get(
         category,
         severityPotential,
         isStopWork,
+        hasAction,
         from,
         to
       });
@@ -223,15 +225,23 @@ router.post(
   }
 );
 
-// One Safety observation — what the detail Screen reads. Visible to anyone
-// who can see its Site, the same rule the register follows.
+// One Safety observation — what the detail Screen reads, together with the
+// Actions raised from it (issue #231), since an observation carries no
+// status of its own to say whether it was dealt with (#223 decision 9).
+// Visible to anyone who can see its Site, the same rule the register follows.
 router.get(
   '/observations/:id',
   people.authenticate,
   people.requireActive,
   requireSafetyObservationVisible,
   async (req, res, next) => {
-    res.json({ observation: req.safetyObservation });
+    try {
+      const observation = await safetyObservations.getSafetyObservationDetail(req.params.id);
+      if (!observation) throw notFound('Safety observation');
+      res.json({ observation });
+    } catch (error) {
+      handleError(error, res, next);
+    }
   }
 );
 
