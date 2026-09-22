@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'people/assignee_candidate.dart';
+import 'people/attendance.dart';
 import 'people/employee.dart';
 import 'people/employee_ref.dart';
 import 'people/job_role.dart';
@@ -113,6 +114,20 @@ class OrgUnitImportException extends PeopleApiException {
   OrgUnitImportException(super.message, {required this.errors}) : super(statusCode: 422);
 
   final List<OrgUnitImportRowError> errors;
+}
+
+/// `GET .../attendance-sheet`'s own response shape (issue #249) — the sheet
+/// and its rows together, exactly as the API answers them in one call.
+/// [started] is false only when this caller lacks the edit Grant that would
+/// have started the sheet, and no sheet exists yet — [sheet] and [records]
+/// are then null/empty because nothing was created. See
+/// [PeopleApi.fetchAttendanceSheet]'s own header for the full rule.
+class AttendanceSheetPage {
+  const AttendanceSheetPage({required this.started, required this.sheet, required this.records});
+
+  final bool started;
+  final AttendanceSheet? sheet;
+  final List<AttendanceRecord> records;
 }
 
 class PeopleApi {
@@ -1250,6 +1265,175 @@ class PeopleApi {
         expiredHeadcount: (entry['expiredHeadcount'] as num).toInt(),
         shortfall: (entry['shortfall'] as num).toInt(),
       );
+
+  /// Opens the attendance sheet for a shift instance (issue #249,
+  /// `GET /api/people/shift-instances/:id/attendance-sheet`). Pre-fills it
+  /// from the roster the first time it is opened **by a caller who holds an
+  /// edit Grant reaching the shift's Org Unit** (or is an administrator);
+  /// every later call reads the same rows back, exactly as `attendance.js`'s
+  /// own `getAttendanceSheet` documents. A caller with only a read Grant (or
+  /// none) opening a shift instance with no sheet yet gets back
+  /// `started: false`, `sheet: null`, `records: []` — the read succeeds, but
+  /// nothing is created: starting a sheet is recording, and recording needs
+  /// an edit Grant (ADR-0040). Once a sheet has been started by someone who
+  /// could, any caller who can see the Site reads it back in full
+  /// (`started: true`) regardless of their own write scope.
+  Future<AttendanceSheetPage> fetchAttendanceSheet(String accessToken, String shiftInstanceId) async {
+    final path = '/api/people/shift-instances/$shiftInstanceId/attendance-sheet';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final sheetJson = body['sheet'] as Map<String, dynamic>?;
+      return AttendanceSheetPage(
+        started: body['started'] == true,
+        sheet: sheetJson == null ? null : AttendanceSheet.fromJson(sheetJson),
+        records: [
+          for (final record in body['records'] as List<dynamic>)
+            AttendanceRecord.fromJson(record as Map<String, dynamic>),
+        ],
+      );
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Confirms the sheet (issue #249, ADR-0040,
+  /// `POST .../attendance-sheet/confirm`) — sets `confirmedAt` and the
+  /// confirming Account. Needs an edit Grant reaching the shift instance's
+  /// Org Unit, or the administrator role.
+  Future<AttendanceSheet> confirmAttendanceSheet(String accessToken, String shiftInstanceId) async {
+    final path = '/api/people/shift-instances/$shiftInstanceId/attendance-sheet/confirm';
+    final response = await _send(
+      () => _client.post(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return AttendanceSheet.fromJson(body['sheet'] as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Marks a row's exception, changes its minutes, or corrects it after
+  /// confirmation (issue #249, ADR-0040,
+  /// `PATCH .../attendance-records/:recordId`). [changes] is sent exactly as
+  /// given — only the keys actually present are touched, the same
+  /// `hasOwnProperty` contract [updateSkill] documents.
+  Future<AttendanceRecord> updateAttendanceRecord(
+    String accessToken,
+    String shiftInstanceId,
+    String recordId,
+    Map<String, Object?> changes,
+  ) async {
+    final path = '/api/people/shift-instances/$shiftInstanceId/attendance-records/$recordId';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return AttendanceRecord.fromJson(body['record'] as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Adds a stand-in from the Directory (issue #249, ADR-0040,
+  /// `POST .../attendance-records`) — any active Employee not already on the
+  /// sheet. A departed Employee is refused (400); an Employee already on the
+  /// sheet is refused (409, `attendance_records_unique`).
+  Future<AttendanceRecord> addAttendanceStandIn(
+    String accessToken,
+    String shiftInstanceId, {
+    required String employeeId,
+  }) async {
+    final path = '/api/people/shift-instances/$shiftInstanceId/attendance-records';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'employeeId': employeeId}),
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return AttendanceRecord.fromJson(body['record'] as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Removes a row from the sheet (issue #249, ADR-0040,
+  /// `DELETE .../attendance-records/:recordId`) — someone who was never
+  /// actually rostered. Returns nothing: the real route answers 204.
+  Future<void> removeAttendanceRecord(
+    String accessToken,
+    String shiftInstanceId,
+    String recordId,
+  ) async {
+    final path = '/api/people/shift-instances/$shiftInstanceId/attendance-records/$recordId';
+    await _send(
+      () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+  }
+
+  /// The absence reason catalogue (issue #249,
+  /// `GET /api/people/absence-reasons`) — an open read, mirroring
+  /// [fetchSkills]/[fetchJobRoles] exactly: shared reference data every Site
+  /// draws from.
+  Future<List<AbsenceReason>> fetchAbsenceReasons(String accessToken) async {
+    const path = '/api/people/absence-reasons';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final reason in body['absenceReasons'] as List<dynamic>)
+          AbsenceReason.fromJson(reason as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// A production day's shift instances at one Org Unit (issue #249,
+  /// `GET /api/people/org-units/:id/shift-instances?date=...`) — the
+  /// Attendance picker's own listing, so a supervisor can find the sheet
+  /// they mean to open (there being no shift calendar Screen to link from
+  /// yet — #250 is the worklist that will do that job properly).
+  Future<List<ShiftInstanceSummary>> fetchShiftInstances(
+    String accessToken,
+    String orgUnitId, {
+    required String date,
+  }) async {
+    final path = '/api/people/org-units/$orgUnitId/shift-instances';
+    final uri = Uri.parse(path).replace(queryParameters: {'date': date});
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final shiftInstance in body['shiftInstances'] as List<dynamic>)
+          ShiftInstanceSummary.fromJson(shiftInstance as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
 
   /// Admits an Account: sets its role and its Grants in one act
   /// (`POST /api/people/accounts/:id/approval`, administrator only). The

@@ -216,6 +216,19 @@ const List<Destination> platformDestinations = [
     path: Routes.orgUnits,
     group: DestinationGroupNames.people,
   ),
+  // Also offered to every approved Account (issue #249): reading the sheet
+  // needs only visibility of the Site (attendance-routes.js's own
+  // `canSeeSite` gate on the read), the same openness `Directory`/`Job
+  // roles`/`Skills` above already have. Only the write affordances inside
+  // the sheet Screen — marking a row, a stand-in, Confirm — are gated, by
+  // the server's own edit-Grant check, exactly as the picker's and the
+  // sheet's own headers describe.
+  Destination(
+    label: 'Attendance',
+    icon: Icons.event_available_outlined,
+    path: Routes.attendance,
+    group: DestinationGroupNames.people,
+  ),
   Destination(
     label: 'Assets',
     icon: Icons.precision_manufacturing_outlined,
