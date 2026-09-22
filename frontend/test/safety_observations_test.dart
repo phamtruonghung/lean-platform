@@ -216,6 +216,56 @@ void main() {
     expect(find.byKey(SafetyObservationsScreen.rowKey('701')), findsOneWidget);
   });
 
+  testWidgets(
+      'the register can be filtered to observations with no Action against them, so a walk\'s '
+      'unanswered items are findable (issue #231)', (tester) async {
+    final wire = FakeWire(
+      orgUnitScope: {
+        'everywhere': false,
+        'grants': [scopeGrantJson('10', canWrite: true)],
+      },
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {null: [orgUnitJson('10', 'Assembly')]},
+      safetyObservations: {
+        '1': [
+          safetyObservationJson(
+            '701',
+            severityPotential: 'fatal',
+            orgUnitId: '10',
+            orgUnitName: 'Assembly',
+            description: 'Already answered.',
+            actions: [
+              safetyObservationActionJson(
+                actionJson('501', 'AC-HCM-2026-00001', 'Fix it', status: 'open'),
+              ),
+            ],
+          ),
+          safetyObservationJson(
+            '702',
+            severityPotential: 'medium',
+            orgUnitId: '10',
+            orgUnitName: 'Assembly',
+            description: 'Nobody has followed up.',
+          ),
+        ],
+      },
+    );
+    await _pump(tester, wire);
+
+    expect(find.byKey(SafetyObservationsScreen.rowKey('701')), findsOneWidget);
+    expect(find.byKey(SafetyObservationsScreen.rowKey('702')), findsOneWidget);
+
+    await _choose(tester, SafetyObservationsScreen.hasActionFilterKey, 'No Action raised');
+    expect(wire.safetyObservationListRequests.last, {'hasAction': 'false'});
+    expect(find.byKey(SafetyObservationsScreen.rowKey('701')), findsNothing);
+    expect(find.byKey(SafetyObservationsScreen.rowKey('702')), findsOneWidget);
+
+    await _choose(tester, SafetyObservationsScreen.hasActionFilterKey, 'Action raised');
+    expect(wire.safetyObservationListRequests.last, {'hasAction': 'true'});
+    expect(find.byKey(SafetyObservationsScreen.rowKey('701')), findsOneWidget);
+    expect(find.byKey(SafetyObservationsScreen.rowKey('702')), findsNothing);
+  });
+
   // -------------------------------------------------------------------------
   // Recording
   // -------------------------------------------------------------------------

@@ -55,6 +55,7 @@ export 'action.dart'
         ActionType,
         LinkedNonconformance,
         LinkedSafetyIncident,
+        LinkedSafetyObservation,
         actionPriorityLabels,
         actionStatusLabel,
         actionStatusTone,

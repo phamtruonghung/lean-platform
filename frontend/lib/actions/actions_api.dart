@@ -326,6 +326,48 @@ class ActionsApi {
     return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
   }
 
+  /// Raises an Action from a Safety observation (issue #231) — the mirror of
+  /// [raiseConcernFromSafetyIncident], with the one difference #231's own
+  /// acceptance criterion calls for: the caller chooses the Action's kind
+  /// ([actionType], from [ActionType]'s own known set) rather than always
+  /// getting a Concern.
+  ///
+  /// The Org Unit is deliberately NOT in the body, for the same reason as
+  /// both paths above: the Action lands at the observation's own Org Unit,
+  /// and the server resolves it from the record rather than trusting a
+  /// caller to name it.
+  Future<Action> raiseActionFromSafetyObservation(
+    String accessToken,
+    String safetyObservationId, {
+    required String actionType,
+    required String title,
+    String? description,
+    String? pillarCode,
+    String? ownerEmployeeId,
+    String? dueDate,
+    int? priority,
+  }) async {
+    final path = '/api/actions/safety-observations/$safetyObservationId/action';
+    final body = <String, dynamic>{
+      'actionType': actionType,
+      'title': title,
+      'description': ?description,
+      'pillarCode': ?pillarCode,
+      'ownerEmployeeId': ?ownerEmployeeId,
+      'dueDate': ?dueDate,
+      'priority': ?priority,
+    };
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    return _actionFrom(_decode(response, path)['action'] as Map<String, dynamic>);
+  }
+
   /// Links a further Non-conformance to an existing Concern (issue #208).
   ///
   /// The act is on the Concern — one problem answering several occurrences
@@ -750,6 +792,20 @@ class ActionsApi {
                     (json['safetyIncident'] as Map<String, dynamic>)['incidentNo'] as String,
                 severityLevel:
                     (json['safetyIncident'] as Map<String, dynamic>)['severityLevel'] as String,
+              ),
+        sourceSafetyObservationId: json['sourceSafetyObservationId']?.toString(),
+        // The Safety observation this Action was raised from, if one is named
+        // (issue #231) — the type, category and severity potential only.
+        safetyObservation: json['safetyObservation'] == null
+            ? null
+            : LinkedSafetyObservation(
+                id: (json['safetyObservation'] as Map<String, dynamic>)['id'].toString(),
+                observationType: (json['safetyObservation'] as Map<String, dynamic>)['observationType']
+                    as String,
+                category: (json['safetyObservation'] as Map<String, dynamic>)['category'] as String,
+                severityPotential:
+                    (json['safetyObservation'] as Map<String, dynamic>)['severityPotential']
+                        as String,
               ),
         // The CAPA opened on this Action, if one has been (issue #209).
         capa: json['capa'] == null

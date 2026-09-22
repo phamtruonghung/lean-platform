@@ -140,6 +140,7 @@ import '../safety/injury_types_screen.dart';
 import '../safety/observation_detail_bloc.dart';
 import '../safety/observation_detail_screen.dart';
 import '../safety/observation_form_dialog.dart';
+import '../safety/observation_raise_action_dialog.dart';
 import '../safety/observations_screen.dart';
 import '../safety/safety_api.dart';
 import '../safety/safety_incidents_bloc.dart';
@@ -1808,6 +1809,11 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                     key: ValueKey<String>(observationId),
                     create: (context) => SafetyObservationDetailBloc(
                       safetyApi: context.read<SafetyApi>(),
+                      // Raising an Action from this observation is a write to
+                      // the action log (issue #231), so this Bloc holds the
+                      // Actions Module's client too — reached through its own
+                      // entry point.
+                      actionsApi: context.read<ActionsApi>(),
                       authGateway: context.read<AuthGateway>(),
                     )..add(SafetyObservationDetailStarted(observationId)),
                     child: child,
@@ -1822,6 +1828,40 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                     builder: (context, state) => SafetyObservationDetailScreen(
                       observationId: state.pathParameters['id']!,
                     ),
+                    routes: [
+                      // `/safety/observations/:id/raise-action` — raising an
+                      // Action from this observation in the action log (issue
+                      // #231). Addressed for the same reason every other
+                      // transition is (ADR-0021): a refresh lands on the
+                      // record with the form open, and the write itself is
+                      // the Actions Module's route reached through its own
+                      // client entry point. Anyone who can see the Site may
+                      // raise one — a Grant is not asked here or by the
+                      // server (#231's own acceptance criterion).
+                      GoRoute(
+                        path: 'raise-action',
+                        pageBuilder: (context, state) {
+                          final detail = context.watch<SafetyObservationDetailBloc>().state;
+                          return DialogPage<void>(
+                            key: state.pageKey,
+                            builder: (dialogContext) {
+                              if (detail is! SafetyObservationDetailLoaded) {
+                                return const AlertDialog(
+                                  key: SafetyObservationRaiseActionDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              return SafetyObservationRaiseActionDialog(
+                                observation: detail.observation,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),

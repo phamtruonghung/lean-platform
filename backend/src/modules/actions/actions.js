@@ -75,6 +75,19 @@
  * Action row as the nested `safetyIncident` field (id, number, severity only
  * — never the injury details ADR-0037 restricts, which this Module does not
  * select and therefore cannot leak).
+ *
+ * ## Raising an Action from a Safety observation lives here too (issue #231)
+ *
+ * Same three reasons again, and the same shape as `raiseConcernFromSafetyIncident`
+ * — `raiseActionFromSafetyObservation` reads the observation by ordinary SQL
+ * join (`findSafetyObservationForAction`), sets `action_items.safety_observation_id`
+ * as the source, and lands the Action at the observation's own Org Unit. The
+ * one real difference: an observation carries no fixed kind of Concern to
+ * inherit the way a Non-conformance's or an incident's own path always writes
+ * `actionType: 'concern'` — #231's own acceptance criterion has the caller
+ * choose the Action's kind from `ACTION_TYPES`, this file's own known set, so
+ * `actionType` is accepted from the request and validated by `createAction`
+ * exactly as every other Action's is.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -160,6 +173,17 @@ const ACTION_COLUMNS = `
   -- Module's to hand out.
   ai.safety_incident_id, si.incident_no AS safety_incident_no,
   si.severity_level AS safety_incident_severity_level,
+  -- The Safety observation this Action was raised from, if it was raised
+  -- from one (issue #231) — the same shape again, for the third source this
+  -- Module reads by ordinary join. observation_type, category and
+  -- severity_potential are read alongside it so a reader of the Action can
+  -- name what was seen and how bad it could have been without a second
+  -- request; an observation has no read restriction of any kind (#223), so
+  -- there is nothing here to withhold the way safety_incident's own fields
+  -- are limited.
+  ai.safety_observation_id, so.observation_type AS safety_observation_type,
+  so.category AS safety_observation_category,
+  so.severity_potential AS safety_observation_severity_potential,
   ai.created_at, ai.updated_at,
   ou.code AS org_unit_code, ou.name AS org_unit_name, ou.site_id,
   e.display_name AS owner_name,
@@ -206,6 +230,10 @@ const ACTION_JOINS = `
   -- read directly from safety_incidents the way assets.js reads org_units: a
   -- cross-Module read done as an ordinary SQL join (ADR-0006).
   LEFT JOIN safety_incidents si ON si.id = ai.safety_incident_id
+  -- The Safety observation this Action was raised from, if any (issue #231) —
+  -- read directly from safety_observations, the same cross-Module join as the
+  -- safety_incidents one immediately above (ADR-0006).
+  LEFT JOIN safety_observations so ON so.id = ai.safety_observation_id
   -- The Concern this Action answers, if it answers one (issue #178).
   LEFT JOIN action_items par ON par.id = ai.parent_action_item_id
   -- How many measures answer this Action, and how many of them are
@@ -266,6 +294,19 @@ function toAction(row) {
           id: String(row.safety_incident_id),
           incidentNo: row.safety_incident_no,
           severityLevel: row.safety_incident_severity_level
+        }
+      : null,
+    // The Safety observation this Action was raised from (issue #231) — null
+    // for every Action but one raised from an observation. Named the same
+    // shape as `safetyIncident` above: the type, category and severity
+    // potential a reader needs to recognise what was seen, nothing more.
+    sourceSafetyObservationId: row.safety_observation_id ?? null,
+    safetyObservation: row.safety_observation_id
+      ? {
+          id: String(row.safety_observation_id),
+          observationType: row.safety_observation_type,
+          category: row.safety_observation_category,
+          severityPotential: row.safety_observation_severity_potential
         }
       : null,
     // The CAPA opened on this Action (issue #209) — null for every Action but
@@ -792,7 +833,7 @@ async function createAction(
     priority = 3
   },
   accountId,
-  { raisedBy = null, qualityIssueId = null, safetyIncidentId = null } = {}
+  { raisedBy = null, qualityIssueId = null, safetyIncidentId = null, safetyObservationId = null } = {}
 ) {
   requireNonEmptyString('title', title);
   requireMemberOf('actionType', actionType, ACTION_TYPES);
@@ -829,10 +870,10 @@ async function createAction(
          INSERT INTO action_items
            (action_no, org_unit_id, title, description, action_type, pillar_code,
             owner_employee_id, due_date, priority, raised_by, quality_issue_id,
-            safety_incident_id)
+            safety_incident_id, safety_observation_id)
          VALUES
            (next_document_number('AC', (SELECT code FROM site), EXTRACT(YEAR FROM now())::int),
-            $1, $2, $3, $4, $5, $6, $7::date, $8, $9, $10, $11)
+            $1, $2, $3, $4, $5, $6, $7::date, $8, $9, $10, $11, $12)
          RETURNING id`,
         [
           orgUnitId,
@@ -845,7 +886,8 @@ async function createAction(
           priorityValue,
           raisedBy,
           qualityIssueId,
-          safetyIncidentId
+          safetyIncidentId,
+          safetyObservationId
         ]
       );
 
@@ -1436,6 +1478,105 @@ async function raiseConcernFromSafetyIncident(
   );
 
   // The detail read, so the answer carries the Safety incident it was just
+  // raised from rather than an empty read the caller would have to make twice.
+  return getActionDetail(action.id);
+}
+
+/**
+ * The Safety observation an Action is about to be raised from (issue #231) —
+ * the mirror of `findSafetyIncidentForConcern`: the record's own id, what it
+ * says (type, category, severity potential), the Org Unit it sits at and the
+ * Site that Org Unit is in. Unlike an incident, an observation has no
+ * document number of its own (#230 never gives it one) and no read
+ * restriction to respect (#223 decision — nothing about an observation is
+ * health information about a named person), so there is nothing here to
+ * leave out the way `findSafetyIncidentForConcern` leaves out the injury
+ * fields.
+ *
+ * Read as an ordinary SQL join rather than through Safety's entry point, for
+ * the same reason every other cross-Module read in this file is (ADR-0006).
+ * Total, like `findAction`: a malformed id resolves to null rather than
+ * reaching Postgres as a BIGINT parameter.
+ */
+async function findSafetyObservationForAction(id) {
+  if (parseId(id) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT so.id, so.observation_type, so.category, so.severity_potential,
+            so.org_unit_id, ou.site_id
+       FROM safety_observations so
+       JOIN org_units ou ON ou.id = so.org_unit_id
+      WHERE so.id = $1`,
+    [id]
+  );
+  if (!rows[0]) return null;
+  return {
+    id: rows[0].id,
+    observationType: rows[0].observation_type,
+    category: rows[0].category,
+    severityPotential: rows[0].severity_potential,
+    orgUnitId: rows[0].org_unit_id,
+    siteId: rows[0].site_id
+  };
+}
+
+/**
+ * Raises an Action from a Safety observation (issue #231) — closing the loop
+ * on a safety walk: an unsafe condition becomes something somebody owns. The
+ * Action log's own rules, unchanged: the title is required, the number is the
+ * Site's own, and the cycle-1 Plan is its own. What this adds is the fact
+ * that makes it an Action *from* something: the `safety_observation_id`
+ * source column, written on the row that names it.
+ *
+ * Unlike `raiseConcernFromSafetyIncident` and `raiseConcernFromNonconformance`,
+ * `actionType` is not fixed to `'concern'` here — #231's own acceptance
+ * criterion has the caller choose the kind of Action from `ACTION_TYPES`, the
+ * same known set every other Action in this log is raised from, and
+ * `createAction`'s own `requireMemberOf('actionType', …)` is what validates
+ * it; nothing new is invented here.
+ *
+ * It lands at the observation's own Org Unit, for the reason every sourced
+ * Action in this file does: a problem is owned where it was seen. The route
+ * asks `people.canSeeSite` about the observation's Site — #231's own
+ * permission, "anyone who can see the observation", the same weak question
+ * the observation's own read already asks, never a Grant.
+ *
+ * Nothing refuses a *second* Action from the same observation: the source
+ * column names where an Action came from, not a limit on how many a record
+ * may have raised against it — the same reasoning every other source column
+ * in this file gives about its own record.
+ */
+async function raiseActionFromSafetyObservation(
+  safetyObservationId,
+  input,
+  accountId,
+  { raisedBy = null } = {}
+) {
+  const observation = await findSafetyObservationForAction(safetyObservationId);
+  if (!observation) throw notFound('Safety observation');
+
+  const body = input ?? {};
+  // `createAction`'s own `actionType` parameter defaults to `'concern'` when
+  // left undefined — the right default for the two callers above, which never
+  // offer a choice, and the wrong one here: #231's own acceptance criterion is
+  // that the caller *chooses* the kind, so a missing one is refused by name
+  // rather than silently becoming a Concern.
+  requireMemberOf('actionType', body.actionType, ACTION_TYPES);
+  const action = await createAction(
+    {
+      orgUnitId: observation.orgUnitId,
+      title: body.title,
+      description: body.description ?? null,
+      actionType: body.actionType,
+      pillarCode: body.pillarCode ?? null,
+      ownerEmployeeId: body.ownerEmployeeId ?? null,
+      dueDate: body.dueDate ?? null,
+      priority: body.priority ?? 3
+    },
+    accountId,
+    { raisedBy, safetyObservationId: observation.id }
+  );
+
+  // The detail read, so the answer carries the Safety observation it was just
   // raised from rather than an empty read the caller would have to make twice.
   return getActionDetail(action.id);
 }
@@ -3363,10 +3504,12 @@ module.exports = {
   listLinkedNonconformances,
   findNonconformanceForConcern,
   findSafetyIncidentForConcern,
+  findSafetyObservationForAction,
   createAction,
   createMeasure,
   raiseConcernFromNonconformance,
   raiseConcernFromSafetyIncident,
+  raiseActionFromSafetyObservation,
   linkNonconformance,
   unlinkNonconformance,
   completePhase,

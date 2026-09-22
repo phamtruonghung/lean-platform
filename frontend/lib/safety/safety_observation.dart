@@ -6,8 +6,8 @@
 /// wrong — a safe act, an unsafe act, or an unsafe condition, under one
 /// category — recorded at the Org Unit it was seen at. **An observation has
 /// no status** (#223 decision 9): it is a fact, and the Action raised from it
-/// (#231, out of scope here) carries the state. There is no event history and
-/// no restricted field the way a Safety incident's injury classification is —
+/// (issue #231) carries the state. There is no event history and no
+/// restricted field the way a Safety incident's injury classification is —
 /// every field here is readable by anyone who can see the Site.
 ///
 /// The production day and the shift are on the row for the reason
@@ -18,6 +18,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../actions/actions.dart';
 import '../status_tone.dart';
 
 /// A safe act, an unsafe act, or an unsafe condition — the baseline's own
@@ -150,6 +151,76 @@ abstract final class SeverityPotential {
   static int worstFirstRank(String potential) => values.indexOf(potential);
 }
 
+/// The Action raised from a Safety observation (issue #231), as the
+/// observation's own detail read names it — the mirror of
+/// `SafetyIncidentConcern`, minus the source-column facts that record has and
+/// this one does not: an observation carries no document number of its own to
+/// contrast with an Action's, and its Action can be any kind, not always a
+/// Concern.
+///
+/// The vocabulary — `actionStatusLabel`/`actionStatusTone`/`actionTypeLabel`
+/// — is imported from the Actions Module's own entry point rather than
+/// duplicated here, for the same reason `SafetyIncidentConcern`'s own comment
+/// gives: an Action's status and kind are the action log's own words, and a
+/// second copy of that map in this Module is exactly the drift the seam
+/// exists to prevent.
+@immutable
+class SafetyObservationAction {
+  const SafetyObservationAction({
+    required this.id,
+    required this.actionNo,
+    required this.title,
+    required this.actionType,
+    required this.status,
+    required this.priority,
+    required this.isOverdue,
+    this.ownerName,
+    this.dueDate,
+    this.raisedAt,
+    this.orgUnitId,
+    this.orgUnitName,
+  });
+
+  factory SafetyObservationAction.fromJson(Map<String, dynamic> json) => SafetyObservationAction(
+        id: json['id'].toString(),
+        actionNo: json['actionNo'] as String,
+        title: json['title'] as String,
+        actionType: json['actionType'] as String? ?? 'concern',
+        status: json['status'] as String? ?? 'open',
+        priority: (json['priority'] as int?) ?? 3,
+        isOverdue: json['isOverdue'] == true,
+        ownerName: json['ownerName'] as String?,
+        dueDate: json['dueDate'] as String?,
+        raisedAt: json['raisedAt'] == null ? null : DateTime.tryParse(json['raisedAt'] as String),
+        orgUnitId: json['orgUnitId']?.toString(),
+        orgUnitName: json['orgUnitName'] as String?,
+      );
+
+  final String id;
+
+  /// The number a person quotes: `AC-HCM-2026-00001`.
+  final String actionNo;
+
+  final String title;
+  final String actionType;
+  final String status;
+  final int priority;
+
+  /// Whether the Action is past its due date, as the server judges it — the
+  /// register's own rule, not a client's comparison against its own clock.
+  final bool isOverdue;
+
+  final String? ownerName;
+  final String? dueDate;
+  final DateTime? raisedAt;
+  final String? orgUnitId;
+  final String? orgUnitName;
+
+  String get statusLabel => actionStatusLabel(status);
+  StatusTone get statusTone => actionStatusTone(status);
+  String get typeLabel => actionTypeLabel(actionType);
+}
+
 @immutable
 class SafetyObservation {
   const SafetyObservation({
@@ -174,6 +245,7 @@ class SafetyObservation {
     required this.productionDate,
     required this.shiftCode,
     required this.shiftName,
+    this.actions = const [],
   });
 
   factory SafetyObservation.fromJson(Map<String, dynamic> json) => SafetyObservation(
@@ -198,6 +270,10 @@ class SafetyObservation {
         productionDate: json['productionDate'] as String?,
         shiftCode: json['shiftCode'] as String?,
         shiftName: json['shiftName'] as String?,
+        actions: [
+          for (final row in json['actions'] as List<dynamic>? ?? const [])
+            SafetyObservationAction.fromJson(row as Map<String, dynamic>),
+        ],
       );
 
   final String id;
@@ -236,6 +312,15 @@ class SafetyObservation {
   final String? productionDate;
   final String? shiftCode;
   final String? shiftName;
+
+  /// The Actions raised from this observation, with their own status (issue
+  /// #231) — empty on a list row and on a plain find, filled in only by the
+  /// detail read. Empty is a real state — nothing has been done about it yet
+  /// — not a missing field, the same shape `SafetyIncident.concerns` keeps.
+  final List<SafetyObservationAction> actions;
+
+  /// Whether any Action has been raised from this observation (issue #231).
+  bool get hasActions => actions.isNotEmpty;
 
   String get observationTypeLabel => ObservationType.label(observationType);
   String get categoryLabel => ObservationCategory.label(category);
@@ -280,6 +365,7 @@ class SafetyObservationFilters {
     this.category,
     this.severityPotential,
     this.isStopWork,
+    this.hasAction,
     this.from,
     this.to,
   });
@@ -295,6 +381,12 @@ class SafetyObservationFilters {
   final String? severityPotential;
   final bool? isStopWork;
 
+  /// Whether an Action has been raised from the observation (issue #231).
+  /// `false` is the filter a walk's own worklist is read through: an
+  /// observation with none stays findable rather than disappearing into the
+  /// list, since it carries no status of its own to say so (#223 decision 9).
+  final bool? hasAction;
+
   /// The first and last production day the register covers, as `YYYY-MM-DD`.
   final String? from;
   final String? to;
@@ -305,6 +397,7 @@ class SafetyObservationFilters {
       category != null ||
       severityPotential != null ||
       isStopWork != null ||
+      hasAction != null ||
       from != null ||
       to != null;
 
@@ -315,6 +408,7 @@ class SafetyObservationFilters {
     String? category,
     String? severityPotential,
     bool? isStopWork,
+    bool? hasAction,
     String? from,
     String? to,
     bool clearOrgUnit = false,
@@ -322,6 +416,7 @@ class SafetyObservationFilters {
     bool clearCategory = false,
     bool clearSeverityPotential = false,
     bool clearIsStopWork = false,
+    bool clearHasAction = false,
     bool clearFrom = false,
     bool clearTo = false,
   }) {
@@ -333,6 +428,7 @@ class SafetyObservationFilters {
       severityPotential:
           clearSeverityPotential ? null : (severityPotential ?? this.severityPotential),
       isStopWork: clearIsStopWork ? null : (isStopWork ?? this.isStopWork),
+      hasAction: clearHasAction ? null : (hasAction ?? this.hasAction),
       from: clearFrom ? null : (from ?? this.from),
       to: clearTo ? null : (to ?? this.to),
     );
@@ -352,6 +448,8 @@ class SafetyObservationFilters {
     if (potential != null) params['severityPotential'] = potential;
     final stopWork = isStopWork;
     if (stopWork != null) params['isStopWork'] = stopWork.toString();
+    final action = hasAction;
+    if (action != null) params['hasAction'] = action.toString();
     final fromValue = from;
     if (fromValue != null) params['from'] = fromValue;
     final toValue = to;

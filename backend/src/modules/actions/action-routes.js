@@ -602,6 +602,74 @@ router.post(
   }
 );
 
+// Raising an Action from a Safety observation (issue #231) — closing the loop
+// on a safety walk: an unsafe condition becomes something somebody owns.
+//
+// Mirrors the Safety incident route immediately above, with two differences
+// #231's own acceptance criteria call for. First, the caller chooses the
+// Action's kind (`actionType`) from `actions.ACTION_TYPES`, the log's own
+// known set — an observation carries no fixed kind of Concern to inherit the
+// way an incident's or a Non-conformance's own path always does, so it is not
+// hardcoded here either; `createAction`'s own `requireMemberOf` is what
+// refuses a bad one. Second, the permission is #231's own: "anyone who can
+// see the observation", the same weak `people.canSeeSite` question the
+// observation's own read already asks, never a Grant — a safety walk is
+// followed up by whoever finds it, not gated by who is rostered where it was
+// seen.
+router.post(
+  '/safety-observations/:id/action',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+
+      const observation = await actions.findSafetyObservationForAction(req.params.id);
+      if (!observation) throw notFound('Safety observation');
+
+      const allowed = await people.canSeeSite({
+        account: req.account,
+        siteId: observation.siteId
+      });
+      if (!allowed) {
+        return res.status(403).json({ message: people.OUTSIDE_GRANTED_ORG_UNITS });
+      }
+
+      let ownerEmployeeId = null;
+      if (body.ownerEmployeeId !== undefined && body.ownerEmployeeId !== null) {
+        ownerEmployeeId = parseId(body.ownerEmployeeId);
+        if (ownerEmployeeId === null) {
+          return res.status(400).json({ message: 'ownerEmployeeId must be a valid Employee id' });
+        }
+        const employee = await people.findEmployee(ownerEmployeeId);
+        if (!employee) throw notFound('Employee');
+        if (!employee.isActive) {
+          throw httpError(409, 'this Employee has departed and cannot be given an Action');
+        }
+      }
+
+      const action = await actions.raiseActionFromSafetyObservation(
+        observation.id,
+        {
+          title: body.title,
+          description: body.description ?? null,
+          actionType: body.actionType,
+          pillarCode: body.pillarCode ?? null,
+          ownerEmployeeId,
+          dueDate: body.dueDate ?? null,
+          priority: body.priority ?? 3
+        },
+        req.account.id,
+        { raisedBy: req.account.employeeId ?? null }
+      );
+
+      res.status(201).json({ action });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
 // Linking a further Non-conformance to an existing Concern (issue #208).
 //
 // Two permissions, and they are the two the act actually needs. The Concern
