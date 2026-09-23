@@ -348,11 +348,16 @@ void main() {
     );
   });
 
-  testWidgets("the Safety Pillar renders the numbers Safety's own records answer, and still says "
-      'no data for the two rates it cannot compute', (tester) async {
-    // The board the server answers once Safety contributes its own entries
-    // (issue #232): the three counts are measured, and the two rates per
-    // worked hour — with no exposure hours recorded anywhere — are not.
+  testWidgets(
+      "the Safety Pillar renders SAF_TRIR and SAF_LTIFR from confirmed attendance, "
+      'and no_data for the rate an unconfirmed shift still blocks', (tester) async {
+    // The board the server answers once attendance is confirmed (issue #233,
+    // ADR-0041): SAF_TRIR is a real rate over the rolling 12-month window,
+    // while SAF_LTIFR — computed the same way, over the same window and
+    // subtree — still reads no_data here, exactly as it would for a caller
+    // whose subtree has a past shift instance still waiting to be confirmed.
+    // Both are rates per worked hour this client never computes itself; it
+    // only ever renders whatever `value`/`status` the board already resolved.
     final wire = boardWire(
       board: boardBody(
         pillars: [
@@ -367,8 +372,9 @@ void main() {
                 unit: 'per 200k hrs',
                 direction: 'lower_better',
                 decimalPlaces: 2,
-                value: null,
-                status: 'no_data',
+                value: 5.71,
+                status: 'red',
+                targetValue: 3,
               ),
               boardKpiJson(
                 'SAF_LTIFR',
@@ -456,21 +462,35 @@ void main() {
       '12',
     );
 
-    // The two rates per worked hour are still not numbers: they read as no
-    // data, exactly as they did before Safety contributed anything.
-    for (final code in ['SAF_TRIR', 'SAF_LTIFR']) {
-      expect(
-        tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey(code))).data,
-        '—',
-      );
-      expect(
-        find.descendant(
-          of: find.byKey(TierBoardScreen.kpiKey(code)),
-          matching: find.text('No data'),
-        ),
-        findsOneWidget,
-      );
-    }
+    // SAF_TRIR is a real, measured rate now — never rendered as no data or
+    // as an em dash — and its own card is toned red against its target.
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('SAF_TRIR'))).data,
+      '5.71',
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(TierBoardScreen.kpiKey('SAF_TRIR')),
+        matching: find.text('No data'),
+      ),
+      findsNothing,
+    );
+
+    // SAF_LTIFR still reads no data — the board's own vocabulary for it is
+    // unchanged by #233: a rate can still be `no_data` on a subtree with an
+    // unconfirmed shift, exactly as one with no exposure hours at all read
+    // before this ticket.
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('SAF_LTIFR'))).data,
+      '—',
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(TierBoardScreen.kpiKey('SAF_LTIFR')),
+        matching: find.text('No data'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('changing the Org Unit sends exactly one board request with the new orgUnitId',

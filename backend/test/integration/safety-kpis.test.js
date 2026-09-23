@@ -22,8 +22,14 @@
  * 'near_miss'`) for the chosen Org Unit and everything beneath it,
  * `SAF_NEARMISS` counts `incident_type = 'near_miss'` and not the severity
  * rung, `SAF_OBSERVATIONS` counts the observations logged, each with its own
- * period boundary, and `SAF_TRIR`/`SAF_LTIFR` keep reporting `no_data` on a
- * Site that does have Safety records.
+ * period boundary, `SAF_TRIR`/`SAF_LTIFR` report `no_data` when nothing has
+ * ever been confirmed anywhere in the subtree, and (issue #233, ADR-0041) the
+ * two rates' own arithmetic, roll-up, rolling window and `no_data`-from-an-
+ * unconfirmed-shift rule — the "What stays no_data" section below covers the
+ * one case attendance never reaches, and the "SAF_TRIR and SAF_LTIFR" section
+ * covers the rest, against a dedicated minimal ground (`makeRateGround`)
+ * built one shift instance at a time, so a test never has to confirm more
+ * shifts than the scenario it is proving needs.
  *
  * Needs a database with every migration applied. This slice adds no
  * migration of its own: the board computes on read, and every record it reads
@@ -316,6 +322,98 @@ async function recordAnObservation(ground, orgUnit, overrides = {}) {
   return recorded.body.observation;
 }
 
+// ---------------------------------------------------------------------------
+// SAF_TRIR / SAF_LTIFR fixtures (issue #233, ADR-0041) — a dedicated,
+// minimal ground built one shift instance at a time via
+// `generate_shift_instances(orgUnitId, date, date)` rather than `makeGround`'s
+// own 8-day, 4-Org-Unit calendar: ADR-0041's own rule makes ANY past shift
+// instance in the window and subtree that lacks a confirmed sheet block the
+// whole rate, so a test asserting a specific rate value must never leave a
+// shift instance lying around it did not mean to create. Building exactly
+// the days a test needs, and confirming every one of them (see
+// `setUpConfirmedShift`), is what keeps that rule from becoming an accident
+// of fixture size.
+// ---------------------------------------------------------------------------
+
+async function makeRateGround() {
+  const site = await insertSite();
+  const area = await insertOrgUnit(site.id, { name: 'Rate Area' });
+  const lineA = await insertOrgUnit(site.id, { parentId: area.id, unitType: 'line', name: 'Rate Line A' });
+  const lineB = await insertOrgUnit(site.id, { parentId: area.id, unitType: 'line', name: 'Rate Line B' });
+  await insertShiftDefinition(site.id, { code: 'DAY', startTime: '06:00', durationMinutes: 480 });
+  // One write Grant at the area: `canAct`'s own `target.path <@ granted.path`
+  // reaches lineA and lineB too, so this one recorder can confirm anywhere in
+  // this ground.
+  const recorder = await insertAccount({ grants: [{ orgUnitId: area.id, write: true }] });
+  return { site, area, lineA, lineB, recorder };
+}
+
+// An active Employee whose `default_org_unit_id` is `orgUnitId` — the
+// Org-Unit-fallback branch of the roster pre-fill (no crew in this ground),
+// exactly `attendance.js`'s own header describes. `employmentType` defaults
+// to `permanent` but every value in the CHECK is a legal roster member
+// (#247 decision 2: "whatever their employment_type").
+async function insertRosterEmployee(orgUnitId, { employmentType = 'permanent' } = {}) {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name, is_active, default_org_unit_id, employment_type)
+     VALUES ($1, 'Roster', 'Employee', TRUE, $2, $3) RETURNING id`,
+    [uniqueCode('SKROS'), orgUnitId, employmentType]
+  );
+  insertedEmployeeIds.push(row.id);
+  return row;
+}
+
+async function findShiftInstanceId(orgUnitId, productionDate) {
+  const { rows: [row] } = await pool.query(
+    'SELECT id FROM shift_instances WHERE org_unit_id = $1 AND production_date = $2::date',
+    [orgUnitId, productionDate]
+  );
+  assert.ok(row, `expected a shift instance at org unit ${orgUnitId} on ${productionDate}`);
+  return row.id;
+}
+
+async function confirmSheet(token, shiftInstanceId) {
+  const response = await fetch(
+    `${base}/api/people/shift-instances/${shiftInstanceId}/attendance-sheet/confirm`,
+    { method: 'POST', headers: token }
+  );
+  return json(response);
+}
+
+// Generates exactly one shift instance (`generateShifts(orgUnit, date, date)`
+// — never a wider range, see this section's own header), pre-fills it with
+// `employeeCount` roster Employees (each an 8-hour shift under this ground's
+// own DAY shift definition: 480 duration_minutes, 0 break_minutes), and
+// confirms it. Returns the shift instance id, so a test can record an
+// incident against the same production day.
+async function setUpConfirmedShift(ground, orgUnit, date, { employeeCount = 0, employmentType = 'permanent' } = {}) {
+  await generateShifts(orgUnit.id, date, date);
+  const shiftInstanceId = await findShiftInstanceId(orgUnit.id, date);
+  for (let i = 0; i < employeeCount; i += 1) {
+    await insertRosterEmployee(orgUnit.id, { employmentType });
+  }
+  const confirmed = await confirmSheet(ground.recorder.token, shiftInstanceId);
+  assert.strictEqual(confirmed.status, 200, JSON.stringify(confirmed.body));
+  return shiftInstanceId;
+}
+
+// An incident on a chosen production day (unlike `recordCausedIncident`,
+// which is pinned to `PRODUCTION_DAY` for the other three KPIs' own fixture).
+// `T04:00:00Z` is 11:00 local (Asia/Ho_Chi_Minh, UTC+7) — inside the DAY
+// shift's 06:00-14:00 window, exactly like `ON_SHIFT_AT` above.
+async function recordIncidentOn(ground, orgUnit, date, overrides = {}) {
+  const recorded = await recordIncident(ground.recorder.token, ground.site.id, {
+    orgUnitId: orgUnit.id,
+    occurredAt: `${date}T04:00:00Z`,
+    incidentType: 'injury',
+    severityLevel: 'medical_treatment',
+    description: 'Recorded for the injury-rate test.',
+    ...overrides
+  });
+  assert.strictEqual(recorded.status, 201, JSON.stringify(recorded.body));
+  return recorded.body.incident;
+}
+
 test.before(async () => {
   jwks = await createTestJwks();
   process.env.SUPABASE_JWKS_URL = jwks.url;
@@ -352,6 +450,16 @@ test.after(async () => {
       WHERE org_unit_id IN (SELECT id FROM org_units WHERE site_id = ANY($1))`,
     [insertedSiteIds]
   );
+  // attendance_records/attendance_sheets (issue #233's own fixtures, for
+  // SAF_TRIR/SAF_LTIFR) both reference shift_instances and attendance_records
+  // also references employees — both tables must go before either of those,
+  // the same order attendance.test.js's own test.after establishes.
+  await pool.query('DELETE FROM attendance_records WHERE shift_instance_id = ANY($1)', [
+    insertedShiftInstanceIds
+  ]);
+  await pool.query('DELETE FROM attendance_sheets WHERE shift_instance_id = ANY($1)', [
+    insertedShiftInstanceIds
+  ]);
   // The classification catalogue (issue #224): only the read-restriction test
   // below creates any of these, and the incidents naming them are already
   // gone by this point.
@@ -588,10 +696,10 @@ test('a period with no observation reports no_data for SAF_OBSERVATIONS', async 
 });
 
 // ---------------------------------------------------------------------------
-// What stays no_data, and why: SAF_TRIR and SAF_LTIFR
+// What stays no_data, and why: no confirmed sheet anywhere in the subtree
 // ---------------------------------------------------------------------------
 
-test('SAF_TRIR and SAF_LTIFR keep reporting no_data, on a Site that does have Safety records', async () => {
+test('SAF_TRIR and SAF_LTIFR report no_data when nothing has ever been confirmed in the subtree, and the board response shape is unchanged', async () => {
   const ground = await makeGround();
   await recordCausedIncident(ground, ground.line, { severityLevel: 'lost_time' });
   await recordNearMiss(ground, ground.line);
@@ -603,9 +711,9 @@ test('SAF_TRIR and SAF_LTIFR keep reporting no_data, on a Site that does have Sa
     `?periodType=day&date=${PRODUCTION_DAY}`
   );
 
-  // Both are rates per worked hour, and nothing writes attendance_records:
-  // a number here would be invented, so the board keeps saying what it said
-  // before this ticket.
+  // Neither rate has a floor to start from: makeGround's own shift calendar
+  // has never had a sheet confirmed against it, so the window has not opened
+  // (ADR-0041's own "Why not a no_data rule with no start date").
   for (const code of ['SAF_TRIR', 'SAF_LTIFR']) {
     const kpi = readKpi(payload, 'S', code);
     assert.strictEqual(kpi.value, null, `${code} must not have a value`);
@@ -636,4 +744,188 @@ test('SAF_TRIR and SAF_LTIFR keep reporting no_data, on a Site that does have Sa
     'unit',
     'value'
   ]);
+});
+
+// ---------------------------------------------------------------------------
+// SAF_TRIR and SAF_LTIFR (issue #233, ADR-0041)
+// ---------------------------------------------------------------------------
+
+test('SAF_TRIR and SAF_LTIFR sum incidents and hours over the window and subtree, then divide once — never averaged across days or Org Units', async () => {
+  const ground = await makeRateGround();
+
+  // lineA, 2026-05-01: 2 confirmed Employees (16 hours) plus one recordable
+  // (medical_treatment) incident. lineB, 2026-05-04: 3 confirmed Employees
+  // (24 hours), no incident. Two distinct Org Units, not two dates on the
+  // same one: the roster pre-fill matches every active Employee whose
+  // `default_org_unit_id` is the shift's Org Unit, with no date filter of its
+  // own (`attendance.js`'s own header), so reusing one Org Unit for two
+  // different production days would silently roll each day's earlier
+  // Employees onto every later sheet at that same Org Unit too.
+  await setUpConfirmedShift(ground, ground.lineA, '2026-05-01', { employeeCount: 2 });
+  await recordIncidentOn(ground, ground.lineA, '2026-05-01', { severityLevel: 'medical_treatment' });
+  await setUpConfirmedShift(ground, ground.lineB, '2026-05-04', { employeeCount: 3 });
+
+  // Averaging each line's own daily rate would read
+  // (200000*1/16 + 0) / 2 = 6250; summing both lines' incidents and hours
+  // first and dividing once — at the area, which rolls up both lines — reads
+  // 200000*1/40 = 5000. This is the roll-up and the sum-then-divide rule,
+  // proved by the same read.
+  const areaBoard = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=day&date=2026-05-04&orgUnitId=${ground.area.id}`
+  );
+  assert.strictEqual(readKpi(areaBoard.payload, 'S', 'SAF_TRIR').value, 5000);
+  // Zero lost-time incidents over positive hours is a real, reportable zero —
+  // this file's own header, "A ZERO IS A REAL MEASUREMENT HERE".
+  assert.strictEqual(readKpi(areaBoard.payload, 'S', 'SAF_LTIFR').value, 0);
+
+  // Reading lineA alone (excluding lineB from the subtree) shows the
+  // un-rolled-up rate for comparison: 200000*1/16 = 12500 — different from
+  // the area's 5000, because lineB's hours are excluded from the sum.
+  const lineABoard = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=day&date=2026-05-04&orgUnitId=${ground.lineA.id}`
+  );
+  assert.strictEqual(readKpi(lineABoard.payload, 'S', 'SAF_TRIR').value, 12500);
+});
+
+test('the rolling 12-month window ends at the board period\'s end and ignores the period asked for, but never starts before the subtree\'s first confirmed sheet', async () => {
+  const ground = await makeRateGround();
+
+  // Before any confirmation exists anywhere in this ground, a shift instance
+  // on 2026-01-01 is created and left with no attendance sheet at all — it
+  // must never become a blocker, because it falls before the window's own
+  // start point once that start point exists.
+  await generateShifts(ground.lineA.id, '2026-01-01', '2026-01-01');
+
+  // The subtree's first-ever confirmed sheet: 2026-03-01, 2 Employees
+  // (16 hours), one recordable incident.
+  await setUpConfirmedShift(ground, ground.lineA, '2026-03-01', { employeeCount: 2 });
+  await recordIncidentOn(ground, ground.lineA, '2026-03-01', { severityLevel: 'medical_treatment' });
+
+  // Asking for a period ending BEFORE the first confirmed sheet still reports
+  // no_data: from that period's own end, the window has zero confirmed hours
+  // to divide by, and the 2026-01-01 shift is excluded from it entirely
+  // (its production_date is before the floor), so it is not what causes the
+  // no_data here — there is simply nothing yet.
+  const beforeFloor = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=day&date=2026-01-15&orgUnitId=${ground.lineA.id}`
+  );
+  assert.strictEqual(readKpi(beforeFloor.payload, 'S', 'SAF_TRIR').status, 'no_data');
+
+  // Asking for a period ending on or after the floor reads the real rate, and
+  // the pre-floor 2026-01-01 shift — created above, never confirmed — does
+  // not block it: it falls outside the window the floor opened.
+  const onFloor = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=day&date=2026-03-01&orgUnitId=${ground.lineA.id}`
+  );
+  assert.strictEqual(readKpi(onFloor.payload, 'S', 'SAF_TRIR').value, 12500); // 200000*1/16
+
+  // A week-type board asked for seven weeks later still reads the same
+  // 2026-03-01 hours and incident, because the window is the 12 months
+  // ending at THAT period's own end, not the seven days the period itself
+  // covers — ADR-0041's own "the one board number that ignores the period".
+  const laterWeek = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=week&date=2026-04-20&orgUnitId=${ground.lineA.id}`
+  );
+  assert.strictEqual(readKpi(laterWeek.payload, 'S', 'SAF_TRIR').value, 12500);
+});
+
+test('a past, unconfirmed shift in the window and subtree makes the rate no_data, and confirming it brings the rate back', async () => {
+  const ground = await makeRateGround();
+
+  await setUpConfirmedShift(ground, ground.lineA, '2026-05-01', { employeeCount: 2 });
+  await recordIncidentOn(ground, ground.lineA, '2026-05-01', { severityLevel: 'medical_treatment' });
+
+  // A second, later shift instance in the same window and subtree, created
+  // but never confirmed.
+  await generateShifts(ground.lineA.id, '2026-05-04', '2026-05-04');
+  const blockingShiftId = await findShiftInstanceId(ground.lineA.id, '2026-05-04');
+
+  const blocked = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=day&date=2026-05-04&orgUnitId=${ground.lineA.id}`
+  );
+  assert.strictEqual(readKpi(blocked.payload, 'S', 'SAF_TRIR').value, null);
+  assert.strictEqual(readKpi(blocked.payload, 'S', 'SAF_TRIR').status, 'no_data');
+  assert.strictEqual(readKpi(blocked.payload, 'S', 'SAF_LTIFR').status, 'no_data');
+
+  // Confirming the blocking shift brings the rate back — no new Employee is
+  // added for this call, but the same 2 Employees from 2026-05-01 are still
+  // active with `default_org_unit_id` = lineA, so the roster pre-fill (which
+  // matches on Org Unit, not on date) adds them to this sheet too, for
+  // another 16 hours: 32 hours total, 1 recordable incident,
+  // 200000*1/32 = 6250.
+  const confirmed = await confirmSheet(ground.recorder.token, blockingShiftId);
+  assert.strictEqual(confirmed.status, 200, JSON.stringify(confirmed.body));
+
+  const unblocked = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=day&date=2026-05-04&orgUnitId=${ground.lineA.id}`
+  );
+  assert.strictEqual(readKpi(unblocked.payload, 'S', 'SAF_TRIR').value, 6250);
+});
+
+test('SAF_TRIR counts medical-treatment-or-worse, SAF_LTIFR counts lost-time-or-worse, and a near miss counts in neither', async () => {
+  const ground = await makeRateGround();
+
+  await setUpConfirmedShift(ground, ground.lineA, '2026-05-01', { employeeCount: 4 }); // 32 hours
+
+  // Below the recordable rung: never counted in either rate.
+  await recordIncidentOn(ground, ground.lineA, '2026-05-01', { severityLevel: 'first_aid' });
+  // Recordable, not lost-time: SAF_TRIR only.
+  await recordIncidentOn(ground, ground.lineA, '2026-05-01', { severityLevel: 'medical_treatment' });
+  // Recordable AND lost-time: both rates.
+  await recordIncidentOn(ground, ground.lineA, '2026-05-01', { severityLevel: 'lost_time' });
+  // A near miss has, by definition, no injury — counted in neither rate,
+  // exactly as SAF_NEARMISS's own section above already establishes for the
+  // period counts.
+  await recordIncidentOn(ground, ground.lineA, '2026-05-01', {
+    incidentType: 'near_miss',
+    severityLevel: 'near_miss'
+  });
+
+  const board = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=day&date=2026-05-01&orgUnitId=${ground.lineA.id}`
+  );
+  // Recordable: medical_treatment + lost_time = 2, over 32 hours.
+  assert.strictEqual(readKpi(board.payload, 'S', 'SAF_TRIR').value, (200000 * 2) / 32);
+  // Lost-time: lost_time alone = 1, over 32 hours.
+  assert.strictEqual(readKpi(board.payload, 'S', 'SAF_LTIFR').value, (1000000 * 1) / 32);
+});
+
+test('an Employee counts toward worked hours whatever their employment type', async () => {
+  const ground = await makeRateGround();
+
+  await generateShifts(ground.lineA.id, '2026-05-01', '2026-05-01');
+  const shiftInstanceId = await findShiftInstanceId(ground.lineA.id, '2026-05-01');
+  // Neither Employee is `permanent` (#247 decision 2: "whatever their
+  // employment_type" — every value in the CHECK is a legal roster member).
+  await insertRosterEmployee(ground.lineA.id, { employmentType: 'contractor' });
+  await insertRosterEmployee(ground.lineA.id, { employmentType: 'apprentice' });
+  const confirmed = await confirmSheet(ground.recorder.token, shiftInstanceId);
+  assert.strictEqual(confirmed.status, 200, JSON.stringify(confirmed.body));
+
+  await recordIncidentOn(ground, ground.lineA, '2026-05-01', { severityLevel: 'medical_treatment' });
+
+  const board = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=day&date=2026-05-01&orgUnitId=${ground.lineA.id}`
+  );
+  // If either Employee's hours had been silently excluded for not being
+  // `permanent`, the denominator would be 8 hours (12500 * 2 = 25000), not 16.
+  assert.strictEqual(readKpi(board.payload, 'S', 'SAF_TRIR').value, 12500); // 200000*1/16
 });

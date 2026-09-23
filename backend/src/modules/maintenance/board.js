@@ -39,10 +39,14 @@
  * is a per-asset average, one a per-org-unit ratio, one a snapshot with no
  * date at all. A small, explicit mapping is therefore the honest reading, not
  * a general SQL-string engine: each KPI code is tied to { view, valueColumn |
- * ratio, dateColumn, orgUnitColumn }. A definition whose `source_view` is in
- * no Module's contribution — the whole Safety, Quality and People catalogue,
- * whose Modules do not record work yet — reports `no_data` rather than
- * inventing an answer.
+ * ratio, dateColumn, orgUnitColumn }, or — for the one case that shape cannot
+ * express — to a single `compute` function that owns its whole computation
+ * (see computeRegistryKpi's own comment, and `safety/kpi-registry.js`'s
+ * `SAF_TRIR`/`SAF_LTIFR` entries, whose window is a rolling 12 months ending
+ * at the board period's end rather than the period itself). A definition
+ * whose `source_view` is in no Module's contribution — the whole Safety,
+ * Quality and People catalogue, whose Modules do not record work yet —
+ * reports `no_data` rather than inventing an answer.
  *
  * That mapping is no longer this file's to hold (issue #202). Each Module's
  * entry point contributes its own entries — this Module's eight are in
@@ -261,6 +265,22 @@ async function resolveTargets(boardPath, periodType, periodStart) {
 async function computeRegistryKpi(definition, siteId, orgUnit, period, kpiRegistry) {
   const entry = kpiRegistry[definition.kpi_code];
   if (!entry || definition.calculation_type !== 'derived') return null;
+
+  // An entry may own its whole computation instead of describing rows for the
+  // generic reader below — the escape hatch #233/ADR-0041 needed for
+  // `SAF_TRIR`/`SAF_LTIFR`, whose window is a rolling 12 months ending at the
+  // board period's end (not the period itself) and whose `no_data` rule is an
+  // EXISTS over unconfirmed attendance, not an aggregate over the rolled-up
+  // rows the generic path below can express. `compute` is handed exactly what
+  // this function has — `siteId`, `orgUnit`, `period` — and returns exactly
+  // what this function returns: a number, or null for no_data. Everything
+  // else about the board — the target, the status, the response shape — is
+  // still decided by getBoard, identically, and this file still knows no KPI
+  // by name. No existing entry needs this; it exists for the entries that
+  // cannot be expressed any other way.
+  if (typeof entry.compute === 'function') {
+    return entry.compute({ siteId, orgUnit, period });
+  }
 
   const params = [siteId];
   const conditions = [];
