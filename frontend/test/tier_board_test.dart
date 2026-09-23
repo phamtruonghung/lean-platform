@@ -349,6 +349,101 @@ void main() {
   });
 
   testWidgets(
+      'the Cost Pillar renders no data for COST_COPQ and COST_SCRAP when the server '
+      'could not price what was recorded', (tester) async {
+    // The board a Site reads once it records scrap and rework but nothing has
+    // written a standard cost or a labour rate (issue #258): the server
+    // answers `no_data` for both codes rather than a currency zero, and the
+    // client must render that as the blank it is. This client prices nothing
+    // and knows none of that rule — it renders whatever `value`/`status` the
+    // board resolved, which is why the fix needed no client change and why
+    // this test is about the rendering, not the arithmetic.
+    final wire = boardWire(
+      board: boardBody(
+        pillars: [
+          boardPillarJson('S', 'Safety', sortOrder: 1, kpis: const []),
+          boardPillarJson('Q', 'Quality', sortOrder: 2, kpis: const []),
+          boardPillarJson(
+            'D',
+            'Delivery',
+            sortOrder: 3,
+            kpis: [
+              boardKpiJson(
+                'MNT_MTBF',
+                'Mean time between failures',
+                unit: 'hours',
+                decimalPlaces: 1,
+                value: 7,
+                status: 'no_target',
+              ),
+            ],
+          ),
+          boardPillarJson(
+            'C',
+            'Cost',
+            sortOrder: 4,
+            kpis: [
+              boardKpiJson(
+                'COST_COPQ',
+                'Cost of poor quality',
+                unit: 'currency',
+                direction: 'lower_better',
+                decimalPlaces: 2,
+                value: null,
+                status: 'no_data',
+                targetValue: 500,
+              ),
+              boardKpiJson(
+                'COST_SCRAP',
+                'Scrap cost',
+                unit: 'currency',
+                direction: 'lower_better',
+                decimalPlaces: 2,
+                value: null,
+                status: 'no_data',
+                targetValue: 300,
+              ),
+            ],
+          ),
+          boardPillarJson('P', 'People', sortOrder: 5, kpis: const []),
+        ],
+      ),
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    final cost = find.byKey(TierBoardScreen.pillarKey('C'));
+    expect(cost, findsOneWidget);
+
+    for (final code in ['COST_COPQ', 'COST_SCRAP']) {
+      // An em dash, never a number — and in particular never `0.00`, which is
+      // what a currency KPI formatted from a zero would read as.
+      final rendered = tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey(code))).data;
+      expect(rendered, '—', reason: '$code must not be formatted as a number');
+      expect(rendered, isNot('0.00'), reason: '$code must never render as a measured zero');
+
+      // And it says so in words, rather than being toned green against the
+      // target it would beat if the zero had been believed.
+      expect(
+        find.descendant(
+          of: find.byKey(TierBoardScreen.kpiKey(code)),
+          matching: find.text('No data'),
+        ),
+        findsOneWidget,
+        reason: '$code should say it has no data',
+      );
+    }
+
+    // The Pillar itself has nothing measured behind it and says so, the same
+    // way a Pillar no Module reports under already did.
+    expect(find.byKey(TierBoardScreen.pillarNoDataKey('C')), findsOneWidget);
+  });
+
+  testWidgets(
       "the Safety Pillar renders SAF_TRIR and SAF_LTIFR from confirmed attendance, "
       'and no_data for the rate an unconfirmed shift still blocks', (tester) async {
     // The board the server answers once attendance is confirmed (issue #233,

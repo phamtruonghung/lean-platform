@@ -23,7 +23,16 @@
  * or with an overdue effectiveness check, `QUA_COMPLAINTS` counts the complaints
  * received in the period, and the Cost pillar's two cost-of-poor-quality KPIs
  * report the scrap and the rework from recorded Dispositions — each of them with
- * its Org Unit reach and its period boundaries. `QUA_FPY`, `QUA_INT_PPM`,
+ * its Org Unit reach and its period boundaries.
+ *
+ * Issue #258 adds the other half of those two Cost figures: what they say when
+ * the Platform cannot price what was recorded. Nothing here writes
+ * `product_costs` or `cost_rates` for those tests on purpose — that is the
+ * state every Site is in today — and the claim is that a recorded scrap or
+ * rework nobody has a price for reports `no_data` rather than a currency zero,
+ * that a partially priced period reports `no_data` for the whole period rather
+ * than the low figure it could total, and that a period with nothing to price
+ * is left exactly as it was. `QUA_FPY`, `QUA_INT_PPM`,
  * `QUA_CUST_PPM` and `DEL_QUALITY_RATE` keep reporting `no_data`, because every
  * one of them is a ratio against quantity produced and no Production Module
  * writes a production count.
@@ -286,13 +295,17 @@ async function makeGround() {
 }
 
 // A Non-conformance of the ordinary kind, at the Org Unit the caller names.
-async function openNonconformance(ground, orgUnit, { quantity = 10, token = null } = {}) {
+async function openNonconformance(
+  ground,
+  orgUnit,
+  { quantity = 10, token = null, product = null } = {}
+) {
   const recorded = await recordNonconformance(
     token ?? ground.engineer.token,
     ground.site.id,
     {
       orgUnitId: orgUnit.id,
-      productId: ground.product.id,
+      productId: (product ?? ground.product).id,
       defectCodeId: ground.defectCode.id,
       detectionPoint: 'in_process',
       quantity,
@@ -743,6 +756,202 @@ test('the Cost pillar reports the scrap and the rework of recorded Dispositions 
   const pastKpi = readKpi(past.payload, 'C', 'COST_SCRAP');
   assert.strictEqual(pastKpi.value, null);
   assert.strictEqual(pastKpi.status, 'no_data');
+});
+
+// ---------------------------------------------------------------------------
+// The Cost pillar: a cost nobody can price is not a cost of zero (issue #258)
+// ---------------------------------------------------------------------------
+
+test('recorded scrap and rework with no standard cost and no labour rate report no_data, not zero, at every Org Unit in the subtree', async () => {
+  // Deliberately no insertStandardCost and no insertLabourRate: this is the
+  // state every Site is in today, since nothing in the Platform writes
+  // `product_costs` or `cost_rates` (issue #252 is where that would come
+  // from, and this ticket does not wait for it). The view's own
+  // `COALESCE(..., 0)` would value all of the below at zero.
+  const ground = await makeGround();
+
+  const record = await openNonconformance(ground, ground.line, { quantity: 10 });
+  const scrap = await recordDisposition(ground.engineer.token, record.id, {
+    dispositionType: 'scrap',
+    quantity: 6
+  });
+  assert.strictEqual(scrap.status, 201, JSON.stringify(scrap.body));
+  const rework = await recordDisposition(ground.engineer.token, record.id, {
+    dispositionType: 'rework',
+    quantity: 4,
+    reworkMinutes: 30
+  });
+  assert.strictEqual(rework.status, 201, JSON.stringify(rework.body));
+
+  // The Org Unit the Dispositions were recorded at, the area above it, and the
+  // whole Site: the answer is the same everywhere the rows roll up to.
+  for (const query of [
+    `?periodType=month&orgUnitId=${ground.line.id}`,
+    `?periodType=month&orgUnitId=${ground.area.id}`,
+    '?periodType=month'
+  ]) {
+    const { payload } = await getBoard(adminToken, ground.site.id, query);
+    for (const code of ['COST_COPQ', 'COST_SCRAP']) {
+      const kpi = readKpi(payload, 'C', code);
+      assert.strictEqual(kpi.value, null, `${code} must not have a value for ${query}`);
+      assert.notStrictEqual(kpi.value, 0, `${code} must never read as a measured zero`);
+      assert.strictEqual(kpi.status, 'no_data', `${code} should be no_data for ${query}`);
+    }
+  }
+});
+
+test('a period with nothing to price is not a period that could not be priced', async () => {
+  // The distinction issue #258 insists on. A complaint with no claim cost
+  // recorded puts a row in the view whose every column is a real, measured
+  // zero — nothing was scrapped, nothing was reworked, nothing was claimed —
+  // and that zero is the answer it was before this ticket. Nothing here is
+  // priced through a rate, so nothing here is blocked.
+  const ground = await makeGround();
+  await receiveComplaint(ground, ground.line);
+
+  const { payload } = await getBoard(ground.engineer.token, ground.site.id, '?periodType=month');
+  for (const code of ['COST_COPQ', 'COST_SCRAP']) {
+    const kpi = readKpi(payload, 'C', code);
+    assert.strictEqual(kpi.value, 0, `${code} should still read as a measured zero`);
+    assert.notStrictEqual(kpi.status, 'no_data', `${code} is a measurement, not a blank`);
+  }
+
+  // And a period with no record of any kind is `no_data` from an absence of
+  // rows, exactly as it was — never widened into the blocked state above.
+  const quiet = await getBoard(
+    ground.engineer.token,
+    ground.site.id,
+    '?periodType=month&date=2026-01-15'
+  );
+  for (const code of ['COST_COPQ', 'COST_SCRAP']) {
+    const kpi = readKpi(quiet.payload, 'C', code);
+    assert.strictEqual(kpi.value, null, `${code} has nothing to report`);
+    assert.strictEqual(kpi.status, 'no_data', `${code} should be no_data`);
+  }
+});
+
+test('a partially priced period reports no_data for the whole period rather than a confidently low figure', async () => {
+  // The choice this ticket left to the registry, argued in
+  // quality/kpi-registry.js's own header on ADR-0041's precedent: a cost
+  // summed over only the rows that happened to price is always low and never
+  // recognisable as wrong, so the whole period is `no_data`.
+  const ground = await makeGround();
+  const unpricedProduct = await createProduct(adminToken);
+  await insertStandardCost(ground.product.id, 8.5, '2025-01-01');
+  await insertLabourRate(ground.area.id, 'labor_per_hour', 32.0, '2025-01-01');
+
+  // At the line: six units of a Product that has a standard cost, scrapped —
+  // 51.00 that would resolve on its own — and two units of one that has none.
+  const priced = await openNonconformance(ground, ground.line, { quantity: 6 });
+  const pricedScrap = await recordDisposition(ground.engineer.token, priced.id, {
+    dispositionType: 'scrap',
+    quantity: 6
+  });
+  assert.strictEqual(pricedScrap.status, 201, JSON.stringify(pricedScrap.body));
+
+  const unpriced = await openNonconformance(ground, ground.line, {
+    quantity: 2,
+    product: unpricedProduct
+  });
+  const unpricedScrap = await recordDisposition(ground.engineer.token, unpriced.id, {
+    dispositionType: 'scrap',
+    quantity: 2
+  });
+  assert.strictEqual(unpricedScrap.status, 201, JSON.stringify(unpricedScrap.body));
+
+  const { payload } = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=month&orgUnitId=${ground.area.id}`
+  );
+  for (const code of ['COST_COPQ', 'COST_SCRAP']) {
+    const kpi = readKpi(payload, 'C', code);
+    assert.strictEqual(kpi.value, null, `${code} must not report the half it could price`);
+    assert.notStrictEqual(kpi.value, 51, `${code} must never report the priced rows alone`);
+    assert.strictEqual(kpi.status, 'no_data', `${code} should be no_data`);
+  }
+
+  // The block reaches exactly as far as the unpriced row does. The sibling
+  // area, whose own scrap is on the priced Product, still reports its number.
+  const sibling = await openNonconformance(ground, ground.otherLine, { quantity: 4 });
+  const siblingScrap = await recordDisposition(ground.engineer.token, sibling.id, {
+    dispositionType: 'scrap',
+    quantity: 4
+  });
+  assert.strictEqual(siblingScrap.status, 201, JSON.stringify(siblingScrap.body));
+
+  const siblingBoard = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=month&orgUnitId=${ground.otherArea.id}`
+  );
+  assert.strictEqual(readKpi(siblingBoard.payload, 'C', 'COST_SCRAP').value, 34);
+  assert.strictEqual(readKpi(siblingBoard.payload, 'C', 'COST_COPQ').value, 34);
+});
+
+test('an unpriceable rework blocks the cost of poor quality without blocking the scrap cost it is no part of', async () => {
+  // Each code is blocked only by what its own value is made of: `COST_SCRAP`
+  // is the scrap slice, which no labour rate enters, while `COST_COPQ` is the
+  // whole. The Site here has a standard cost and no labour rate of any kind.
+  const ground = await makeGround();
+  await insertStandardCost(ground.product.id, 8.5, '2025-01-01');
+
+  const record = await openNonconformance(ground, ground.line, { quantity: 10 });
+  const scrap = await recordDisposition(ground.engineer.token, record.id, {
+    dispositionType: 'scrap',
+    quantity: 6
+  });
+  assert.strictEqual(scrap.status, 201, JSON.stringify(scrap.body));
+  const rework = await recordDisposition(ground.engineer.token, record.id, {
+    dispositionType: 'rework',
+    quantity: 4,
+    reworkMinutes: 30
+  });
+  assert.strictEqual(rework.status, 201, JSON.stringify(rework.body));
+
+  const { payload } = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=month&orgUnitId=${ground.area.id}`
+  );
+
+  // 6 x 8.50, a slice the Platform can price in full.
+  assert.strictEqual(readKpi(payload, 'C', 'COST_SCRAP').value, 51);
+  // The whole cannot be: half an hour of rework nobody has a rate for.
+  const copq = readKpi(payload, 'C', 'COST_COPQ');
+  assert.strictEqual(copq.value, null);
+  assert.notStrictEqual(copq.value, 51, 'COST_COPQ must not silently drop the rework');
+  assert.strictEqual(copq.status, 'no_data');
+});
+
+test('a rework of no minutes needs no labour rate, because there is nothing to price', async () => {
+  // `0 minutes x whatever the rate turns out to be` is zero either way, so a
+  // missing rate is not a missing price here — the rule
+  // quality/kpi-registry.js's header states under "NOTHING RECORDED IS NOT THE
+  // SAME AS NOTHING PRICEABLE".
+  const ground = await makeGround();
+  await insertStandardCost(ground.product.id, 8.5, '2025-01-01');
+
+  const record = await openNonconformance(ground, ground.line, { quantity: 10 });
+  const scrap = await recordDisposition(ground.engineer.token, record.id, {
+    dispositionType: 'scrap',
+    quantity: 6
+  });
+  assert.strictEqual(scrap.status, 201, JSON.stringify(scrap.body));
+  const rework = await recordDisposition(ground.engineer.token, record.id, {
+    dispositionType: 'rework',
+    quantity: 4,
+    reworkMinutes: 0
+  });
+  assert.strictEqual(rework.status, 201, JSON.stringify(rework.body));
+
+  const { payload } = await getBoard(
+    adminToken,
+    ground.site.id,
+    `?periodType=month&orgUnitId=${ground.area.id}`
+  );
+  assert.strictEqual(readKpi(payload, 'C', 'COST_SCRAP').value, 51);
+  assert.strictEqual(readKpi(payload, 'C', 'COST_COPQ').value, 51);
 });
 
 // ---------------------------------------------------------------------------
