@@ -58,7 +58,7 @@
  * refuses. The rule stays narrow — a Module may export middleware that
  * establishes the caller's identity, and only that.
  *
- * Exactly fifteen exports, each justified below against the sibling ticket
+ * Exactly sixteen exports, each justified below against the sibling ticket
  * that needs it:
  *
  *   - router — mounted by src/index.js, which lives outside `modules/` and so
@@ -70,6 +70,18 @@
  *     the three clauses evaluate it. It is kept apart from `router` only so
  *     that src/index.js can mount it at the frozen `/api/maintenance`
  *     prefix; see the header above.
+ *   - kpiRegistry — issue #251, parent #247: this Module's contribution to the
+ *     tier board, `PPL_ABSENTEEISM` and `PPL_HEADCOUNT`, read from the
+ *     attendance #249 records. Like `quality.kpiRegistry` and
+ *     `safety.kpiRegistry` it is data rather than a route (issue #202's own
+ *     composition): src/index.js spreads every Module's contribution into one
+ *     registry and hands it to the board's route, so no Module has to know
+ *     about another, and the board keeps its single address inside
+ *     Maintenance. ADR-0006 allows it under all three clauses — read-only data
+ *     about records this Module owns, a value rather than a command, and
+ *     domain rather than utility. kpi-registry.js's own header argues each
+ *     entry, each deliberate absence, and why neither entry needs board.js's
+ *     `compute` escape hatch the way `SAF_TRIR`/`SAF_LTIFR` do.
  *   - authenticate, requireActive — every Maintenance route in #56, #57,
  *     #61, #62, #63 sits behind these two, the same as every People route
  *     does today; a second Module guarding its own routes needs the exact
@@ -219,6 +231,10 @@ const {
   deviceReachesOrgUnit
 } = require('./floor-devices');
 const { OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
+// This Module's own contribution to the tier board's registry (issue #251),
+// beside the routers rather than among them: it is data src/index.js spreads
+// into the assembled registry, not a piece of the HTTP surface.
+const kpiRegistry = require('./kpi-registry');
 
 const router = express.Router();
 router.use(accountRoutes);
@@ -233,6 +249,7 @@ module.exports = {
   // Mounted at `/api/maintenance` by src/index.js, not at `/api/people` — see
   // the header above. It is a router, not a route file added to `router`.
   floorRouter: floorRoutes,
+  kpiRegistry,
   authenticate,
   requireActive,
   canAct,

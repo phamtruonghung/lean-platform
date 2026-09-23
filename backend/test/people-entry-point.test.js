@@ -20,6 +20,13 @@
  * shape ADR-0006's first two clauses require; the router is the documented
  * control-flow exception `router` already is.
  *
+ * Issue #251 adds a sixteenth, `kpiRegistry`: this Module's contribution to
+ * the tier board (issue #202's composable registry), spread into the assembled
+ * one at src/index.js. Dropping it would not break a require path anywhere —
+ * `{ ...undefined }` is a legal spread — so the board would simply go back to
+ * reporting `no_data` for both People KPIs with nothing failing to say so,
+ * which is exactly the silent regression this file exists to catch. The same
+ * reasoning `quality-entry-point.test.js` already records for its own.
  * Needs no database: `getPool()` (platform/db.js) is lazy, so simply
  * requiring the Module and inspecting its export shape never opens a
  * connection.
@@ -37,7 +44,7 @@ const assert = require('node:assert');
 
 const people = require('../src/modules/people');
 
-test('the People Module entry point exposes exactly fifteen names', () => {
+test('the People Module entry point exposes exactly sixteen names', () => {
   assert.deepStrictEqual(
     Object.keys(people).sort(),
     [
@@ -52,6 +59,7 @@ test('the People Module entry point exposes exactly fifteen names', () => {
       'findOrgUnit',
       'findValidIdentification',
       'findSite',
+      'kpiRegistry',
       'safetyAuthorityOrgUnitIds',
       'floorRouter',
       'requireActive',
@@ -99,6 +107,52 @@ test('the four floor lookups another Module asks through this entry point are fu
 test('floorRouter and router are distinct mountable routers', () => {
   assert.strictEqual(typeof people.floorRouter, 'function');
   assert.notStrictEqual(people.floorRouter, people.router);
+});
+
+// #251: the two People-pillar numbers confirmed attendance answers. Asserted
+// at the same level as quality-entry-point.test.js's own — the codes claimed,
+// the fields board.js reads off each entry, and the codes deliberately left
+// unclaimed so the board keeps answering `no_data` for them.
+test('kpiRegistry names the two People KPIs this Module computes, and nothing else', () => {
+  assert.strictEqual(typeof people.kpiRegistry, 'object');
+  assert.notStrictEqual(people.kpiRegistry, null);
+  assert.deepStrictEqual(Object.keys(people.kpiRegistry).sort(), [
+    'PPL_ABSENTEEISM',
+    'PPL_HEADCOUNT'
+  ]);
+
+  // Both are period measures filed at an Org Unit, read from one derived table
+  // over confirmed attendance sheets (people/kpi-registry.js's own header).
+  for (const [code, entry] of Object.entries(people.kpiRegistry)) {
+    assert.strictEqual(typeof entry.view, 'string', `${code} names its source`);
+    assert.strictEqual(entry.dateColumn, 'production_date', `${code} is filed by production day`);
+    assert.strictEqual(entry.orgUnitColumn, 'org_unit_id', `${code} is filed at an Org Unit`);
+    // Neither carries board.js's `compute` escape hatch: these two use the
+    // board's own period, where SAF_TRIR/SAF_LTIFR use a rolling window the
+    // generic reader cannot express (ADR-0041, and this Module's own header).
+    assert.strictEqual(entry.compute, undefined, `${code} needs no compute escape hatch`);
+  }
+
+  // Absenteeism is a ratio the board sums top and bottom of before dividing
+  // once — never an average of per-day or per-Org-Unit percentages — and the
+  // headcount is a plain column the board averages per confirmed shift
+  // instance.
+  assert.deepStrictEqual(people.kpiRegistry.PPL_ABSENTEEISM.ratio, {
+    numerator: 'absent_headcount',
+    denominator: 'scheduled_headcount',
+    scale: 100
+  });
+  assert.strictEqual(people.kpiRegistry.PPL_ABSENTEEISM.valueColumn, undefined);
+  assert.strictEqual(people.kpiRegistry.PPL_HEADCOUNT.valueColumn, 'present_headcount');
+  assert.strictEqual(people.kpiRegistry.PPL_HEADCOUNT.ratio, undefined);
+
+  // Left unclaimed on purpose (people/kpi-registry.js's own header):
+  // PPL_OVERDUE_ACTIONS reads an Actions record rather than a People one,
+  // COST_OVERTIME is the Cost pillar's reading of attendance and belongs to
+  // #252, and PPL_SKILL_COVERAGE is not a number this ticket unblocked.
+  for (const code of ['PPL_SKILL_COVERAGE', 'PPL_OVERDUE_ACTIONS', 'COST_OVERTIME', 'COST_LABOUR']) {
+    assert.strictEqual(people.kpiRegistry[code], undefined, `${code} must stay no_data`);
+  }
 });
 
 test('OUTSIDE_GRANTED_ORG_UNITS is the exact shared 403 wording', () => {

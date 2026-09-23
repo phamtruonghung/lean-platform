@@ -46,9 +46,10 @@ const healthRoutes = health.mount(app);
 // number is read out of the Module's own records (the entry shape is in
 // maintenance/kpi-registry.js's header) — and this is the one place they meet.
 // The board's own code knows no KPI by name: it computes whatever this registry
-// names and reports `no_data` for everything else, which is still most of the
-// catalogue: Safety and People record no work yet, and the Quality and Delivery
-// KPIs that would need quantity produced have no Production Module to count it.
+// names and reports `no_data` for everything else, which is still much of the
+// catalogue: the Quality and Delivery KPIs that would need quantity produced
+// have no Production Module to count it, and the Cost pillar's own reading of
+// attendance is not written yet.
 //
 // Adding a Module's KPIs is one spread below and nothing else: no file in
 // another Module changes, and no Module requires another (ADR-0006). A KPI
@@ -67,7 +68,13 @@ const kpiRegistry = {
   // from this Module's records — safety/kpi-registry.js argues the entries,
   // the departure from a seeded formula, and why SAF_TRIR/SAF_LTIFR stay
   // reporting `no_data`.
-  ...safety.kpiRegistry
+  ...safety.kpiRegistry,
+  // People's own (issue #251, parent #247): absenteeism and the headcount
+  // present, both read from the attendance sheets #249 records and only from
+  // the confirmed ones — people/kpi-registry.js argues the two entries, the
+  // codes it deliberately leaves unclaimed, and why these two use the board's
+  // own period where the injury rates above use a rolling window.
+  ...people.kpiRegistry
 };
 
 // ---------------------------------------------------------------------------
