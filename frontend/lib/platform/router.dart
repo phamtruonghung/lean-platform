@@ -72,6 +72,7 @@ import '../people/approval_queue_screen.dart';
 import '../people/attendance_picker_screen.dart';
 import '../people/attendance_sheet_bloc.dart';
 import '../people/attendance_sheet_screen.dart';
+import '../people/attendance_to_confirm_screen.dart';
 import '../people/directory_bloc.dart';
 import '../people/directory_screen.dart';
 import '../people/employee_detail_bloc.dart';
@@ -584,6 +585,27 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               final account = context.watch<AccountBloc>().state;
               if (account is! AccountApproved) return const SizedBox.shrink();
               return const AttendancePickerScreen();
+            },
+          ),
+          // The attendance-to-confirm worklist (issue #250) — its own
+          // address nested under the Attendance Destination rather than a
+          // second sidebar entry (see `attendance_to_confirm_screen.dart`'s
+          // own header for why). Registered ahead of the
+          // `:shiftInstanceId` route immediately below so the literal
+          // segment `to-confirm` is never captured as a shift instance id.
+          // Offered to every approved Account, the same openness
+          // `Routes.attendance` above already has: the list is
+          // self-scoped to the caller's own edit Grants server-side
+          // (`attendance-routes.js`'s own header on `GET
+          // /attendance-to-confirm`), so a role check here would gate a
+          // door the route itself never refuses — an Account with no
+          // write Grant anywhere simply reads an empty list back.
+          GoRoute(
+            path: '${Routes.attendance}/to-confirm',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return const AttendanceToConfirmScreen();
             },
           ),
           // The shift's attendance sheet itself (issue #249), reached from

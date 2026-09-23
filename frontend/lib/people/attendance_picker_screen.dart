@@ -1,11 +1,11 @@
 /// The Attendance Destination's own landing Screen (issue #249): choose an
 /// Org Unit and a production day, then open the sheet for one of that day's
 /// shift instances. There is no shift calendar Screen to link a sheet from
-/// yet (#250, the "attendance to confirm" worklist, is what will do that job
-/// properly) — this picker exists so the sheet Screen
-/// (`/people/attendance/:shiftInstanceId`) has a real address to be reached
-/// from, per issue #249's own "at its own address under the People
-/// Destination group" criterion.
+/// yet — #250, the "attendance to confirm" worklist reached via the button
+/// this Screen now carries, is what does that job properly — this picker
+/// exists so the sheet Screen (`/attendance/:shiftInstanceId`) has a real
+/// address to be reached from, per issue #249's own "at its own address
+/// under the People Destination group" criterion.
 ///
 /// Org Unit browsing reuses `OrgUnitPickerBloc`, the same Bloc
 /// `DirectoryOrgUnitFilterDialog` already drives for a single-select choice
@@ -19,6 +19,7 @@ import 'package:go_router/go_router.dart';
 
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
@@ -32,6 +33,7 @@ class AttendancePickerScreen extends StatelessWidget {
   static const double maxWidth = 640;
 
   static const ValueKey<String> dateFieldKey = ValueKey<String>('attendance-picker-date');
+  static const ValueKey<String> toConfirmLinkKey = ValueKey<String>('attendance-picker-to-confirm-link');
   static const ValueKey<String> orgUnitChosenKey = ValueKey<String>('attendance-picker-org-unit-chosen');
   static const ValueKey<String> emptyKey = ValueKey<String>('attendance-picker-empty');
   static const ValueKey<String> failureKey = ValueKey<String>('attendance-picker-failure');
@@ -72,7 +74,30 @@ class _PickerBody extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
-              Text('Attendance', style: theme.textTheme.headlineSmall),
+              // A `Wrap`, not a `Row`: at this Screen's narrower widths
+              // (`maxWidth` is 640) the title plus the button below do not
+              // both fit on one line, and a `Row` would overflow rather than
+              // reflow — `Wrap` moves the button to its own line instead.
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: Spacing.md,
+                runSpacing: Spacing.sm,
+                children: [
+                  Text('Attendance', style: theme.textTheme.headlineSmall),
+                  // The worklist (issue #250): every past shift this caller
+                  // could confirm whose sheet is missing or unconfirmed —
+                  // its own address nested under this one, reached from
+                  // here rather than from a second sidebar entry (see
+                  // `attendance_to_confirm_screen.dart`'s own header).
+                  OutlinedButton.icon(
+                    key: AttendancePickerScreen.toConfirmLinkKey,
+                    onPressed: () => context.go('${Routes.attendance}/to-confirm'),
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: const Text('Attendance to confirm'),
+                  ),
+                ],
+              ),
               const SizedBox(height: Spacing.sm),
               Text(
                 'Choose an Org Unit and a production day to open that '
@@ -140,7 +165,13 @@ class _ShiftRow extends StatelessWidget {
           ? (shiftInstance.confirmedAt != null ? 'Confirmed' : 'Started, not yet confirmed')
           : 'Not opened yet'),
       trailing: const Icon(Icons.chevron_right),
-      onTap: () => context.go('/people/attendance/${shiftInstance.id}'),
+      // Fixed alongside #250: this used to `context.go('/people/attendance/...')`,
+      // an address no GoRoute registers (`Routes.attendance` and every route
+      // nested under it, router.dart, are all `/attendance...` with no
+      // `/people` prefix), so tapping a row here landed on the not-found
+      // Screen instead of the sheet. Caught while wiring the worklist's own
+      // entries to the same address.
+      onTap: () => context.go('${Routes.attendance}/${shiftInstance.id}'),
       tileColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
     );
   }

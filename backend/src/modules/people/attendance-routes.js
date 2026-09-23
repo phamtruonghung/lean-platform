@@ -43,13 +43,21 @@
  * every Site draws from, not a thing a caller must already hold a Grant on
  * to be told about (skill-routes.js's own header makes the identical
  * argument for `skills`).
+ *
+ * GET /attendance-to-confirm (issue #250) is a third scope shape, distinct
+ * from both above: not Site-wide visibility and not one shift instance's own
+ * write Grant, but "every Org Unit this caller's edit Grants reach, across
+ * every Site" — self-filtered the way GET /people/me already is, with no
+ * separate 403 gate, since an empty reach is itself an honest (empty)
+ * answer. See its own route handler below and attendance.js's
+ * `listAttendanceToConfirm` header for the full reasoning.
  */
 
 const express = require('express');
 const { authenticate, requireActive } = require('./middleware');
 const authorization = require('./authorization');
 const plant = require('./plant');
-const { notFound, parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
+const { notFound, parseId, handleError, httpError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 const attendance = require('./attendance');
 
 const router = express.Router();
@@ -107,6 +115,72 @@ router.get('/org-units/:orgUnitId/shift-instances', authenticate, requireActive,
     }
     const shiftInstances = await attendance.listShiftInstances(orgUnit.id, { date: req.query.date });
     res.json({ shiftInstances });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+// The attendance-to-confirm worklist (issue #250): past shift instances
+// whose sheet is missing or unconfirmed, oldest first, restricted to the Org
+// Units the caller's own edit Grants reach — "the sheets it could confirm"
+// (issue #250's own wording) — rather than to Site visibility the way every
+// other read in this file is. An administrator holds no Grant rows at all
+// (see authorization.js's own header), so it is asked the same `everywhere`
+// question `GET /people/me` already answers with `orgUnitScopeFor`, reused
+// here rather than a second, narrower query of the same Grant rows —
+// AGENTS.md's own "do not re-spell authorization SQL outside People" is
+// honoured by staying inside this Module and by reusing an existing
+// authorization.js entry point instead of adding a new one.
+//
+// No separate scope gate on this route: the list already IS the caller's
+// own reach, the same self-filtering shape `GET /people/me` has, so a
+// caller with no write Grant anywhere sees an empty list (200), never a
+// 403 — there is nothing to refuse when the query already answers "nowhere"
+// honestly.
+const WORKLIST_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function requireWorklistQueryDate(field, value) {
+  if (value === undefined) return null;
+  if (typeof value !== 'string' || !WORKLIST_DATE_PATTERN.test(value)) {
+    throw httpError(400, `${field} must be a date in YYYY-MM-DD form`);
+  }
+  return value;
+}
+
+router.get('/attendance-to-confirm', authenticate, requireActive, async (req, res, next) => {
+  try {
+    // `writeGrantOrgUnitIds === null` means "everywhere" (administrator);
+    // otherwise the flattened `orgUnitIds` of every grant carrying
+    // `canWrite` — a read-only Grant contributes nothing here, per ADR-0040's
+    // "recording needs an edit Grant" (attendance.js's own header on this
+    // function explains why).
+    let writeGrantOrgUnitIds = null;
+    if (!authorization.isAdmin(req.account)) {
+      const scope = await authorization.orgUnitScopeFor({ account: req.account });
+      const reach = new Set();
+      for (const grant of scope.grants) {
+        if (!grant.canWrite) continue;
+        for (const id of grant.orgUnitIds) reach.add(id);
+      }
+      writeGrantOrgUnitIds = Array.from(reach);
+    }
+
+    let orgUnitPath = null;
+    if (req.query.orgUnitId !== undefined) {
+      const orgUnit = await plant.getOrgUnit(req.query.orgUnitId); // 404s if it does not exist.
+      orgUnitPath = orgUnit.path;
+    }
+
+    const from = requireWorklistQueryDate('from', req.query.from);
+    const to = requireWorklistQueryDate('to', req.query.to);
+
+    const worklist = await attendance.listAttendanceToConfirm({
+      writeGrantOrgUnitIds,
+      orgUnitPath,
+      from,
+      to
+    });
+    res.json(worklist);
   } catch (error) {
     handleError(error, res, next);
   }

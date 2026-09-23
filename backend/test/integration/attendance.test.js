@@ -216,6 +216,18 @@ async function listShiftInstances(token, orgUnitId, date) {
   return json(response);
 }
 
+async function listAttendanceToConfirm(token, { orgUnitId, from, to } = {}) {
+  const params = new URLSearchParams();
+  if (orgUnitId !== undefined) params.set('orgUnitId', orgUnitId);
+  if (from !== undefined) params.set('from', from);
+  if (to !== undefined) params.set('to', to);
+  const qs = params.toString();
+  const response = await fetch(`${base}/api/people/attendance-to-confirm${qs ? `?${qs}` : ''}`, {
+    headers: token
+  });
+  return json(response);
+}
+
 // A whole scenario's ground: a Site, one Org Unit, a shift definition and a
 // shift instance at it, plus a recording Account holding an edit Grant
 // reaching the Org Unit. `crewId` is passed straight through to the shift
@@ -648,4 +660,320 @@ test('the shift instance picker refuses an Account that cannot see the Site', as
 
   const { status, body } = await listShiftInstances(outsider.token, unit.id, '2026-05-04');
   assert.strictEqual(status, 403, JSON.stringify(body));
+});
+
+// ---------------------------------------------------------------------------
+// 7. The attendance-to-confirm worklist (issue #250)
+// ---------------------------------------------------------------------------
+
+test('the worklist lists a missing sheet and an unconfirmed sheet, oldest first, and a confirmed sheet does not appear', async () => {
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id);
+  const shiftDefinition = await insertShiftDefinition(site.id);
+  const recorder = await insertAccount({ grants: [{ orgUnitId: unit.id }] });
+
+  // Establishes the Org Unit's own floor.
+  const floorInstance = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2026-01-01',
+    startsAt: '2026-01-01T06:00:00Z',
+    endsAt: '2026-01-01T14:00:00Z'
+  });
+  await getSheet(recorder.token, floorInstance.id);
+  await confirmSheet(recorder.token, floorInstance.id);
+
+  // No sheet at all — "missing".
+  const missingInstance = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2026-01-10',
+    startsAt: '2026-01-10T06:00:00Z',
+    endsAt: '2026-01-10T14:00:00Z'
+  });
+
+  // Opened, never confirmed — "unconfirmed".
+  const unconfirmedInstance = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2026-01-15',
+    startsAt: '2026-01-15T06:00:00Z',
+    endsAt: '2026-01-15T14:00:00Z'
+  });
+  await getSheet(recorder.token, unconfirmedInstance.id);
+
+  // Opened AND confirmed, after the other two — must not appear.
+  const confirmedInstance = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2026-01-20',
+    startsAt: '2026-01-20T06:00:00Z',
+    endsAt: '2026-01-20T14:00:00Z'
+  });
+  await getSheet(recorder.token, confirmedInstance.id);
+  await confirmSheet(recorder.token, confirmedInstance.id);
+
+  const { status, body } = await listAttendanceToConfirm(recorder.token, { orgUnitId: unit.id });
+  assert.strictEqual(status, 200, JSON.stringify(body));
+  const ids = body.entries.map((entry) => entry.shiftInstanceId);
+  assert.deepStrictEqual(ids, [missingInstance.id, unconfirmedInstance.id], 'oldest first, missing then unconfirmed');
+  assert.strictEqual(body.entries[0].sheetState, 'missing');
+  assert.strictEqual(body.entries[1].sheetState, 'unconfirmed');
+  assert.ok(!ids.includes(floorInstance.id), 'the confirmed floor shift must not appear');
+  assert.ok(!ids.includes(confirmedInstance.id), 'a confirmed sheet must not appear');
+});
+
+test('a shift instance before the Site\'s first confirmed sheet is not listed, even though it is unconfirmed', async () => {
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id);
+  const shiftDefinition = await insertShiftDefinition(site.id);
+  const recorder = await insertAccount({ grants: [{ orgUnitId: unit.id }] });
+
+  // Before the floor — never touched, ended, unconfirmed, but must not
+  // appear: the floor for this Site has not opened yet.
+  const beforeFloor = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2026-02-01',
+    startsAt: '2026-02-01T06:00:00Z',
+    endsAt: '2026-02-01T14:00:00Z'
+  });
+
+  const floorInstance = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2026-02-10',
+    startsAt: '2026-02-10T06:00:00Z',
+    endsAt: '2026-02-10T14:00:00Z'
+  });
+  await getSheet(recorder.token, floorInstance.id);
+  await confirmSheet(recorder.token, floorInstance.id);
+
+  const afterFloor = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2026-02-15',
+    startsAt: '2026-02-15T06:00:00Z',
+    endsAt: '2026-02-15T14:00:00Z'
+  });
+
+  const { status, body } = await listAttendanceToConfirm(recorder.token, { orgUnitId: unit.id });
+  assert.strictEqual(status, 200, JSON.stringify(body));
+  const ids = body.entries.map((entry) => entry.shiftInstanceId);
+  assert.ok(!ids.includes(beforeFloor.id), 'a shift instance before the first confirmed sheet must not be listed');
+  assert.ok(ids.includes(afterFloor.id), 'a shift instance after the floor must still be listed');
+});
+
+test('a Site with no confirmed sheet ever has no floor, and lists nothing for it', async () => {
+  const site = await insertSite();
+  const unitA = await insertOrgUnit(site.id, { name: 'Line A' });
+  const unitB = await insertOrgUnit(site.id, { name: 'Line B' });
+  const shiftDefinitionA = await insertShiftDefinition(site.id);
+  const shiftDefinitionB = await insertShiftDefinition(site.id);
+  const recorder = await insertAccount({ grants: [{ orgUnitId: unitA.id }, { orgUnitId: unitB.id }] });
+
+  // Ended, unconfirmed, and the caller holds a write Grant at both Org
+  // Units — but nobody, anywhere in this Site, has ever confirmed a single
+  // sheet, so the Site has no floor at all.
+  await insertShiftInstance(site, unitA, shiftDefinitionA, {
+    productionDate: '2026-03-01',
+    startsAt: '2026-03-01T06:00:00Z',
+    endsAt: '2026-03-01T14:00:00Z'
+  });
+  await insertShiftInstance(site, unitB, shiftDefinitionB, {
+    productionDate: '2026-03-01',
+    startsAt: '2026-03-01T07:00:00Z',
+    endsAt: '2026-03-01T15:00:00Z'
+  });
+
+  const { status, body } = await listAttendanceToConfirm(recorder.token, {});
+  assert.strictEqual(status, 200, JSON.stringify(body));
+  assert.deepStrictEqual(body.entries, []);
+});
+
+test('the Site-wide floor: Line A confirms a sheet, Line B never does, and Line B\'s later unconfirmed '
+    + "shifts are listed anyway — because they are exactly what is keeping the Site's rate at no_data",
+async () => {
+  const site = await insertSite();
+  const lineA = await insertOrgUnit(site.id, { name: 'Line A' });
+  const lineB = await insertOrgUnit(site.id, { name: 'Line B' });
+  const shiftDefinitionA = await insertShiftDefinition(site.id);
+  const shiftDefinitionB = await insertShiftDefinition(site.id);
+  const recorder = await insertAccount({ grants: [{ orgUnitId: lineA.id }, { orgUnitId: lineB.id }] });
+
+  // Line A confirms a sheet — this alone opens the Site's floor.
+  const lineAFloor = await insertShiftInstance(site, lineA, shiftDefinitionA, {
+    productionDate: '2026-07-01',
+    startsAt: '2026-07-01T06:00:00Z',
+    endsAt: '2026-07-01T14:00:00Z'
+  });
+  await getSheet(recorder.token, lineAFloor.id);
+  await confirmSheet(recorder.token, lineAFloor.id);
+
+  // Line B, before the Site's floor opened — must not be listed.
+  const lineBBefore = await insertShiftInstance(site, lineB, shiftDefinitionB, {
+    productionDate: '2026-06-20',
+    startsAt: '2026-06-20T06:00:00Z',
+    endsAt: '2026-06-20T14:00:00Z'
+  });
+
+  // Line B, after Line A's confirmation — Line B itself has never confirmed
+  // anything, but this must still be listed: it is exactly the shift
+  // keeping the Site's rate at no_data (issue #250's own amended wording).
+  const lineBAfter = await insertShiftInstance(site, lineB, shiftDefinitionB, {
+    productionDate: '2026-07-05',
+    startsAt: '2026-07-05T06:00:00Z',
+    endsAt: '2026-07-05T14:00:00Z'
+  });
+
+  const { status, body } = await listAttendanceToConfirm(recorder.token, { orgUnitId: lineB.id });
+  assert.strictEqual(status, 200, JSON.stringify(body));
+  const ids = body.entries.map((entry) => entry.shiftInstanceId);
+  assert.ok(!ids.includes(lineBBefore.id), 'before the Site\'s floor, even on the never-confirmed line');
+  assert.ok(ids.includes(lineBAfter.id), 'after the Site\'s floor, even though Line B itself never confirmed');
+});
+
+test('a shift instance that has not yet ended is not listed, even though it would otherwise be unconfirmed', async () => {
+  const site = await insertSite();
+  const unit = await insertOrgUnit(site.id);
+  const shiftDefinition = await insertShiftDefinition(site.id);
+  const recorder = await insertAccount({ grants: [{ orgUnitId: unit.id }] });
+
+  const floorInstance = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2026-04-01',
+    startsAt: '2026-04-01T06:00:00Z',
+    endsAt: '2026-04-01T14:00:00Z'
+  });
+  await getSheet(recorder.token, floorInstance.id);
+  await confirmSheet(recorder.token, floorInstance.id);
+
+  // Ends long in the future — has not happened yet.
+  const notEnded = await insertShiftInstance(site, unit, shiftDefinition, {
+    productionDate: '2030-01-01',
+    startsAt: '2030-01-01T06:00:00Z',
+    endsAt: '2030-01-01T14:00:00Z'
+  });
+
+  const { status, body } = await listAttendanceToConfirm(recorder.token, { orgUnitId: unit.id });
+  assert.strictEqual(status, 200, JSON.stringify(body));
+  const ids = body.entries.map((entry) => entry.shiftInstanceId);
+  assert.ok(!ids.includes(notEnded.id));
+});
+
+test('the worklist is scoped to the caller\'s own edit Grants: a read-only Grant contributes nothing, and an administrator sees every Site\'s list', async () => {
+  const siteA = await insertSite();
+  const unitA = await insertOrgUnit(siteA.id);
+  const shiftDefinitionA = await insertShiftDefinition(siteA.id);
+  const writer = await insertAccount({ grants: [{ orgUnitId: unitA.id, write: true }] });
+  const readOnly = await insertAccount({ grants: [{ orgUnitId: unitA.id, write: false }] });
+
+  const floorA = await insertShiftInstance(siteA, unitA, shiftDefinitionA, {
+    productionDate: '2026-05-01',
+    startsAt: '2026-05-01T06:00:00Z',
+    endsAt: '2026-05-01T14:00:00Z'
+  });
+  await getSheet(writer.token, floorA.id);
+  await confirmSheet(writer.token, floorA.id);
+  const unconfirmedA = await insertShiftInstance(siteA, unitA, shiftDefinitionA, {
+    productionDate: '2026-05-05',
+    startsAt: '2026-05-05T06:00:00Z',
+    endsAt: '2026-05-05T14:00:00Z'
+  });
+
+  // A second Site the writer holds no Grant on at all.
+  const siteB = await insertSite();
+  const unitB = await insertOrgUnit(siteB.id);
+  const shiftDefinitionB = await insertShiftDefinition(siteB.id);
+  const writerB = await insertAccount({ grants: [{ orgUnitId: unitB.id, write: true }] });
+  const floorB = await insertShiftInstance(siteB, unitB, shiftDefinitionB, {
+    productionDate: '2026-05-01',
+    startsAt: '2026-05-01T06:00:00Z',
+    endsAt: '2026-05-01T14:00:00Z'
+  });
+  await getSheet(writerB.token, floorB.id);
+  await confirmSheet(writerB.token, floorB.id);
+  const unconfirmedB = await insertShiftInstance(siteB, unitB, shiftDefinitionB, {
+    productionDate: '2026-05-05',
+    startsAt: '2026-05-05T06:00:00Z',
+    endsAt: '2026-05-05T14:00:00Z'
+  });
+
+  const writerResult = await listAttendanceToConfirm(writer.token);
+  assert.strictEqual(writerResult.status, 200, JSON.stringify(writerResult.body));
+  const writerIds = writerResult.body.entries.map((entry) => entry.shiftInstanceId);
+  assert.ok(writerIds.includes(unconfirmedA.id), 'the writer sees the unconfirmed shift it holds an edit Grant on');
+  assert.ok(!writerIds.includes(unconfirmedB.id), 'the writer does not see a Site it holds no Grant on at all');
+
+  const readOnlyResult = await listAttendanceToConfirm(readOnly.token);
+  assert.strictEqual(readOnlyResult.status, 200, JSON.stringify(readOnlyResult.body));
+  const readOnlyIds = readOnlyResult.body.entries.map((entry) => entry.shiftInstanceId);
+  assert.ok(!readOnlyIds.includes(unconfirmedA.id), 'a read-only Grant contributes nothing to the worklist');
+
+  const adminResult = await listAttendanceToConfirm(adminToken);
+  assert.strictEqual(adminResult.status, 200, JSON.stringify(adminResult.body));
+  const adminIds = adminResult.body.entries.map((entry) => entry.shiftInstanceId);
+  assert.ok(adminIds.includes(unconfirmedA.id), 'an administrator sees every Site\'s list (Site A)');
+  assert.ok(adminIds.includes(unconfirmedB.id), 'an administrator sees every Site\'s list (Site B)');
+});
+
+test('the worklist filters by Org Unit, including beneath it, and by date range', async () => {
+  const site = await insertSite();
+  const parent = await insertOrgUnit(site.id, { name: 'Parent' });
+  const child = await insertOrgUnit(site.id, { parentId: parent.id, name: 'Child' });
+  const shiftDefinitionParent = await insertShiftDefinition(site.id);
+  const shiftDefinitionChild = await insertShiftDefinition(site.id);
+  // A single Grant on the parent reaches the child too (ADR-0027), so one
+  // recorder Account can establish and read both floors.
+  const recorder = await insertAccount({ grants: [{ orgUnitId: parent.id }] });
+
+  const floorParent = await insertShiftInstance(site, parent, shiftDefinitionParent, {
+    productionDate: '2026-06-01',
+    startsAt: '2026-06-01T06:00:00Z',
+    endsAt: '2026-06-01T14:00:00Z'
+  });
+  await getSheet(recorder.token, floorParent.id);
+  await confirmSheet(recorder.token, floorParent.id);
+  const unconfirmedParent = await insertShiftInstance(site, parent, shiftDefinitionParent, {
+    productionDate: '2026-06-05',
+    startsAt: '2026-06-05T06:00:00Z',
+    endsAt: '2026-06-05T14:00:00Z'
+  });
+  // A second, later unconfirmed shift at the parent, for the date-range filter.
+  const laterUnconfirmedParent = await insertShiftInstance(site, parent, shiftDefinitionParent, {
+    productionDate: '2026-06-25',
+    startsAt: '2026-06-25T06:00:00Z',
+    endsAt: '2026-06-25T14:00:00Z'
+  });
+
+  const floorChild = await insertShiftInstance(site, child, shiftDefinitionChild, {
+    productionDate: '2026-06-01',
+    startsAt: '2026-06-01T07:00:00Z',
+    endsAt: '2026-06-01T15:00:00Z'
+  });
+  await getSheet(recorder.token, floorChild.id);
+  await confirmSheet(recorder.token, floorChild.id);
+  const unconfirmedChild = await insertShiftInstance(site, child, shiftDefinitionChild, {
+    productionDate: '2026-06-05',
+    startsAt: '2026-06-05T07:00:00Z',
+    endsAt: '2026-06-05T15:00:00Z'
+  });
+
+  // Filtered to the child alone: only the child's own unconfirmed shift.
+  const childOnly = await listAttendanceToConfirm(recorder.token, { orgUnitId: child.id });
+  assert.strictEqual(childOnly.status, 200, JSON.stringify(childOnly.body));
+  const childOnlyIds = childOnly.body.entries.map((entry) => entry.shiftInstanceId);
+  assert.deepStrictEqual(childOnlyIds.sort(), [unconfirmedChild.id].sort());
+
+  // Filtered to the parent: both the parent's own and the child's, beneath it.
+  const parentAndBeneath = await listAttendanceToConfirm(recorder.token, { orgUnitId: parent.id });
+  assert.strictEqual(parentAndBeneath.status, 200, JSON.stringify(parentAndBeneath.body));
+  const parentIds = parentAndBeneath.body.entries.map((entry) => entry.shiftInstanceId);
+  assert.ok(parentIds.includes(unconfirmedParent.id));
+  assert.ok(parentIds.includes(laterUnconfirmedParent.id));
+  assert.ok(parentIds.includes(unconfirmedChild.id));
+
+  // Date range: only the earlier of the parent's two unconfirmed shifts.
+  const ranged = await listAttendanceToConfirm(recorder.token, {
+    orgUnitId: parent.id,
+    from: '2026-06-04',
+    to: '2026-06-10'
+  });
+  assert.strictEqual(ranged.status, 200, JSON.stringify(ranged.body));
+  const rangedIds = ranged.body.entries.map((entry) => entry.shiftInstanceId);
+  assert.ok(rangedIds.includes(unconfirmedParent.id));
+  assert.ok(!rangedIds.includes(laterUnconfirmedParent.id), 'outside the date range');
+});
+
+test('the worklist refuses an unauthenticated caller and 404s an unknown orgUnitId filter', async () => {
+  const noAuth = await listAttendanceToConfirm({});
+  assert.strictEqual(noAuth.status, 401, JSON.stringify(noAuth.body));
+
+  const { status, body } = await listAttendanceToConfirm(adminToken, { orgUnitId: '999999999' });
+  assert.strictEqual(status, 404, JSON.stringify(body));
 });

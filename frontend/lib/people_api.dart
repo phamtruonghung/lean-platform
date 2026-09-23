@@ -1435,6 +1435,42 @@ class PeopleApi {
     }
   }
 
+  /// The attendance-to-confirm worklist (issue #250,
+  /// `GET /api/people/attendance-to-confirm`) — past shift instances whose
+  /// sheet is missing or unconfirmed, oldest first, restricted server-side to
+  /// the Org Units this caller's own edit Grants reach (or, for an
+  /// administrator, every Site's list — `attendance-routes.js`'s own header).
+  /// [orgUnitId] narrows further to one Org Unit and everything beneath it;
+  /// [from]/[to] narrow by production day. All three are optional filters on
+  /// top of that server-side scope, not a replacement for it.
+  Future<List<AttendanceToConfirmEntry>> fetchAttendanceToConfirm(
+    String accessToken, {
+    String? orgUnitId,
+    String? from,
+    String? to,
+  }) async {
+    const path = '/api/people/attendance-to-confirm';
+    final queryParameters = <String, String>{
+      'orgUnitId': ?orgUnitId,
+      'from': ?from,
+      'to': ?to,
+    };
+    final uri = Uri.parse(path).replace(queryParameters: queryParameters.isEmpty ? null : queryParameters);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final entry in body['entries'] as List<dynamic>)
+          AttendanceToConfirmEntry.fromJson(entry as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// Admits an Account: sets its role and its Grants in one act
   /// (`POST /api/people/accounts/:id/approval`, administrator only). The
   /// server writes both in one transaction, so no Account is observably left
