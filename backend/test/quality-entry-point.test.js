@@ -71,9 +71,10 @@ test('kpiRegistry names the Quality KPIs this Module computes, and nothing else'
   // `dateColumn` is a string for a period measure and `null` for a state, which
   // is the difference board.js acts on: a null column means the source is not
   // narrowed by the period at all, the shape Maintenance's own snapshot KPI
-  // (`MNT_BACKLOG`) has. The two counts here are states; the complaints and
-  // both Cost entries are period measures.
-  for (const [code, entry] of Object.entries(quality.kpiRegistry)) {
+  // (`MNT_BACKLOG`) has. The two counts here are states; the complaints entry
+  // is a period measure.
+  for (const code of ['QUA_OPEN_NC', 'QUA_OVERDUE_CAPA', 'QUA_COMPLAINTS']) {
+    const entry = quality.kpiRegistry[code];
     assert.strictEqual(typeof entry.view, 'string', `${code} names its source`);
     assert.strictEqual(typeof entry.valueColumn, 'string', `${code} names its value column`);
     assert.ok(
@@ -81,15 +82,29 @@ test('kpiRegistry names the Quality KPIs this Module computes, and nothing else'
       `${code} names its date column, or none when it is a state rather than a period measure`
     );
     assert.strictEqual(entry.orgUnitColumn, 'org_unit_id', `${code} is filed at an Org Unit`);
+    assert.strictEqual(entry.compute, undefined, `${code} needs no compute escape hatch`);
   }
 
-  // Which of the two readings each of the five is: the counts are states, and
-  // the three period measures carry the day their events happened on.
+  // Which of the two readings each of those three is: the counts are states,
+  // and the one period measure carries the day its events happened on.
   for (const code of ['QUA_OPEN_NC', 'QUA_OVERDUE_CAPA']) {
     assert.strictEqual(quality.kpiRegistry[code].dateColumn, null, `${code} is a state`);
   }
-  for (const code of ['QUA_COMPLAINTS', 'COST_COPQ', 'COST_SCRAP']) {
-    assert.strictEqual(typeof quality.kpiRegistry[code].dateColumn, 'string', `${code} is a measure`);
+  assert.strictEqual(typeof quality.kpiRegistry.QUA_COMPLAINTS.dateColumn, 'string');
+
+  // The two Cost entries take board.js's other reading — a `compute` function
+  // owning its whole computation — because the generic shape above can only
+  // sum what priced and would therefore report a confidently low currency
+  // figure for a period the Platform cannot price (issue #258, and
+  // quality/kpi-registry.js's own header for the argument). They name no
+  // `view`, no `valueColumn` and no `dateColumn`: the period and the subtree
+  // are arguments `compute` is handed, not a filter board.js applies for them.
+  for (const code of ['COST_COPQ', 'COST_SCRAP']) {
+    const entry = quality.kpiRegistry[code];
+    assert.strictEqual(typeof entry.compute, 'function', `${code} owns its own computation`);
+    assert.strictEqual(entry.view, undefined, `${code} names no source for the generic reader`);
+    assert.strictEqual(entry.valueColumn, undefined, `${code} names no value column`);
+    assert.strictEqual(entry.dateColumn, undefined, `${code} is not narrowed by board.js`);
   }
 
   // The production-count KPIs stay unclaimed on purpose: a denominator nothing
