@@ -53,8 +53,15 @@ with a confirmed `attendance_sheets` row, so a Site does not read `no_data`
 for a full year after it goes live just because the calendar window reaches
 back before attendance was ever recorded there. Within the window, once it
 has a start, any past shift instance that still has no confirmed sheet makes
-the rate `no_data` for that read, with the reason given — naming the
-unconfirmed shift rather than a bare "no data". Leaving that shift's hours
+the rate `no_data` for that read. The reason is not carried on the board's
+own response: `status` is a closed set of values and `formulaText` is static
+text, so naming the unconfirmed shift there would mean widening a response
+shape every Pillar shares, for one KPI's benefit. The reason has its own
+home instead — `GET /people/attendance-to-confirm` (#250), which names the
+exact shifts still to be confirmed, in the caller's own reach, and links to
+each sheet. That worklist's floor is Site-wide for precisely this reason: a
+shift that holds a rate at `no_data` is always listed there. Leaving that
+shift's hours
 and any incident against it out of the sums would not be silence; it would
 be a wrong number reported as a right one, either inflating the rate by
 undercounting its denominator or, worse, dropping an injury that happened on
@@ -101,13 +108,12 @@ had no way to have filled in advance.
 
 ## Consequences
 
-`SAF_TRIR` and `SAF_LTIFR` gain entries in `safety/kpi-registry.js` only once
-this window-and-sum arithmetic and the `no_data` reason are implemented — #233
-is that ticket, and this ADR is what it is built to. Until then the board
-keeps answering `no_data` for both exactly as it does today, for the reason
-already named in that file's own header, now joined by this one: even once
-`attendance_records` has rows, a `no_data` reader still has to be told
-*which* unconfirmed shift is why, not just that the number is missing.
+`SAF_TRIR` and `SAF_LTIFR` gain entries in `safety/kpi-registry.js` once this
+window-and-sum arithmetic is implemented — #233 is that ticket, and this ADR
+is what it is built to. A reader who finds either rate at `no_data` is still
+owed *which* unconfirmed shift is why, not just that the number is missing;
+that answer lives on the attendance-to-confirm worklist rather than on the
+board, as the decision above records.
 Every other Safety and Cost number that reads `attendance_records` —
 `v_labour_cost`, `v_attendance_rate`, `PPL_ABSENTEEISM`, `PPL_HEADCOUNT` —
 stays filed against its own board period exactly as it already is; the
