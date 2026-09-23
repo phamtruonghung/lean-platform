@@ -493,6 +493,110 @@ void main() {
     );
   });
 
+  testWidgets(
+      'the People Pillar renders the absenteeism and the headcount present from '
+      'confirmed attendance, and no data for the KPIs nothing reports yet', (tester) async {
+    // The board the server answers once People contributes its own entries
+    // (issue #251, parent #247): `PPL_ABSENTEEISM` is a percentage of what the
+    // confirmed sheets recorded and `PPL_HEADCOUNT` is the average present per
+    // confirmed shift instance, while the two People codes no Module claims
+    // still read as no data. This client computes neither number and knows
+    // neither rule — it renders whatever `value`/`status` the board resolved,
+    // which is the whole reason this ticket changes no client code.
+    final wire = boardWire(
+      board: boardBody(
+        pillars: [
+          boardPillarJson('S', 'Safety', sortOrder: 1, kpis: const []),
+          boardPillarJson('Q', 'Quality', sortOrder: 2, kpis: const []),
+          boardPillarJson('D', 'Delivery', sortOrder: 3, kpis: const []),
+          boardPillarJson('C', 'Cost', sortOrder: 4, kpis: const []),
+          boardPillarJson(
+            'P',
+            'People',
+            sortOrder: 5,
+            kpis: [
+              boardKpiJson(
+                'PPL_ABSENTEEISM',
+                'Absenteeism',
+                unit: '%',
+                direction: 'lower_better',
+                decimalPlaces: 1,
+                value: 4.2,
+                status: 'green',
+                targetValue: 5,
+              ),
+              boardKpiJson(
+                'PPL_HEADCOUNT',
+                'Headcount present',
+                unit: 'count',
+                decimalPlaces: 0,
+                value: 27,
+                status: 'no_target',
+              ),
+              boardKpiJson(
+                'PPL_SKILL_COVERAGE',
+                'Skill coverage',
+                unit: '%',
+                decimalPlaces: 0,
+                value: null,
+                status: 'no_data',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/tier-board',
+    );
+
+    // The Pillar itself has data, so it never falls back to the whole-Pillar
+    // "No data yet" placeholder the Safety Pillar shows above.
+    expect(find.byKey(TierBoardScreen.pillarKey('P')), findsOneWidget);
+    expect(find.byKey(TierBoardScreen.pillarNoDataKey('P')), findsNothing);
+
+    // Both numbers render at the catalogue's own precision — a percentage to
+    // one place, a headcount to none — and neither is an em dash.
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('PPL_ABSENTEEISM'))).data,
+      '4.2',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('PPL_HEADCOUNT'))).data,
+      '27',
+    );
+    for (final code in ['PPL_ABSENTEEISM', 'PPL_HEADCOUNT']) {
+      expect(
+        find.descendant(
+          of: find.byKey(TierBoardScreen.kpiKey(code)),
+          matching: find.text('No data'),
+        ),
+        findsNothing,
+      );
+    }
+
+    // A People KPI no Module reports is still visibly unmeasured — never a
+    // zero, and never a number (issue #76's own rule, unchanged here).
+    expect(
+      tester.widget<Text>(find.byKey(TierBoardScreen.kpiValueKey('PPL_SKILL_COVERAGE'))).data,
+      '—',
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(TierBoardScreen.kpiKey('PPL_SKILL_COVERAGE')),
+        matching: find.text('No data'),
+      ),
+      findsOneWidget,
+    );
+
+    // One board read, and no request of its own for attendance: the People
+    // numbers arrive on the board the client already asks for.
+    expect(wire.boardRequests.length, 1);
+  });
+
   testWidgets('changing the Org Unit sends exactly one board request with the new orgUnitId',
       (tester) async {
     final wire = boardWire(
