@@ -184,3 +184,65 @@ class ShiftInstanceSummary {
         confirmedAt: json['confirmedAt'] as String?,
       );
 }
+
+/// One row of `GET /api/people/attendance-to-confirm` (issue #250) — a past
+/// shift instance whose sheet is missing or unconfirmed, restricted to the
+/// Org Units the caller's own edit Grants reach (`attendance.js`'s own
+/// `listAttendanceToConfirm`). [sheetState] is exactly `attendance.js`'s own
+/// `'missing'`/`'unconfirmed'` — a value with a known set, read here rather
+/// than re-derived from [hasSheet]/[confirmedAt] the way [ShiftInstanceSummary]
+/// carries them, because the worklist's whole reason to exist is that
+/// distinction.
+class AttendanceToConfirmEntry {
+  const AttendanceToConfirmEntry({
+    required this.shiftInstanceId,
+    required this.siteId,
+    required this.siteName,
+    required this.orgUnitId,
+    required this.orgUnitName,
+    required this.shiftDefinitionCode,
+    required this.shiftDefinitionName,
+    required this.productionDate,
+    required this.startsAt,
+    required this.endsAt,
+    required this.sheetState,
+  });
+
+  final String shiftInstanceId;
+  final String siteId;
+  final String siteName;
+  final String orgUnitId;
+  final String orgUnitName;
+  final String shiftDefinitionCode;
+  final String shiftDefinitionName;
+  final String productionDate;
+  final String startsAt;
+  final String endsAt;
+  final String sheetState;
+
+  bool get isMissing => sheetState == 'missing';
+
+  factory AttendanceToConfirmEntry.fromJson(Map<String, dynamic> json) => AttendanceToConfirmEntry(
+        shiftInstanceId: json['shiftInstanceId'].toString(),
+        siteId: json['siteId'].toString(),
+        siteName: json['siteName'] as String,
+        orgUnitId: json['orgUnitId'].toString(),
+        orgUnitName: json['orgUnitName'] as String,
+        shiftDefinitionCode: json['shiftDefinitionCode'] as String,
+        shiftDefinitionName: json['shiftDefinitionName'] as String,
+        productionDate: json['productionDate'] as String,
+        startsAt: json['startsAt'] as String,
+        endsAt: json['endsAt'] as String,
+        sheetState: json['sheetState'] as String,
+      );
+}
+
+/// A human label for [AttendanceToConfirmEntry.sheetState], the same two
+/// readings `_ShiftRow` in `attendance_picker_screen.dart` already gives
+/// `hasSheet`/`confirmedAt` — kept in step so a shift reads the same way
+/// whichever Screen a supervisor found it from.
+String attendanceSheetStateLabel(String sheetState) => switch (sheetState) {
+      'missing' => 'Not opened yet',
+      'unconfirmed' => 'Started, not yet confirmed',
+      _ => sheetState,
+    };

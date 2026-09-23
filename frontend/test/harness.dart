@@ -1619,6 +1619,36 @@ Map<String, dynamic> absenceReasonJson(
       'isActive': isActive,
     };
 
+/// One row of `GET /api/people/attendance-to-confirm`
+/// (`toAttendanceToConfirmEntry`, attendance.js, issue #250) — a past shift
+/// instance whose sheet is missing or unconfirmed.
+Map<String, dynamic> attendanceToConfirmEntryJson(
+  String shiftInstanceId, {
+  String siteId = '1',
+  String siteName = 'Site A',
+  String orgUnitId = '10',
+  String orgUnitName = 'Line 1',
+  String shiftDefinitionCode = 'DAY',
+  String shiftDefinitionName = 'Day shift',
+  String productionDate = '2026-05-04',
+  String startsAt = '2026-05-04T06:00:00.000Z',
+  String endsAt = '2026-05-04T14:00:00.000Z',
+  String sheetState = 'missing',
+}) =>
+    {
+      'shiftInstanceId': shiftInstanceId,
+      'siteId': siteId,
+      'siteName': siteName,
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'shiftDefinitionCode': shiftDefinitionCode,
+      'shiftDefinitionName': shiftDefinitionName,
+      'productionDate': productionDate,
+      'startsAt': startsAt,
+      'endsAt': endsAt,
+      'sheetState': sheetState,
+    };
+
 /// One row of `GET /api/people/sites/:siteId/skill-coverage`
 /// (`getSiteSkillCoverage`, skills.js, issue #89) — already filtered to
 /// `shortfall > 0` server-side, so every row this fixture builds is thin by
@@ -2037,6 +2067,9 @@ class FakeWire {
     this.removeAttendanceRecordStatus = 204,
     List<Map<String, dynamic>>? absenceReasons,
     this.absenceReasonsStatus = 200,
+    List<Map<String, dynamic>>? attendanceToConfirm,
+    this.attendanceToConfirmStatus = 200,
+    this.attendanceToConfirmMessage = 'The attendance-to-confirm worklist is unavailable.',
     List<Map<String, dynamic>>? jobPlans,
     this.jobPlansStatus = 200,
     this.createJobPlanStatus = 201,
@@ -2244,6 +2277,7 @@ class FakeWire {
               absenceReasonJson('SICK', 'Sickness'),
               absenceReasonJson('HOL', 'Annual leave', isPlanned: true, countsAsAbsenteeism: false),
             ],
+        attendanceToConfirm = attendanceToConfirm ?? [],
         jobPlans = jobPlans ?? [],
         pmSchedules = pmSchedules ?? {},
         unitsOfMeasure = unitsOfMeasure ??
@@ -3714,6 +3748,18 @@ class FakeWire {
   /// non-empty dropdown.
   List<Map<String, dynamic>> absenceReasons;
   int absenceReasonsStatus;
+
+  /// `GET /api/people/attendance-to-confirm` (issue #250) — the worklist,
+  /// empty by default so a test that never scripts it sees the genuine empty
+  /// state rather than a fixture row nobody asked for.
+  List<Map<String, dynamic>> attendanceToConfirm;
+  int attendanceToConfirmStatus;
+  String attendanceToConfirmMessage;
+
+  /// Every request's own query string, in the order the requests reached the
+  /// wire — so a test can assert exactly which `orgUnitId`/`from`/`to`
+  /// filters were actually sent, not merely that a request happened.
+  final List<Map<String, String>> attendanceToConfirmRequests = [];
 
   /// `GET /api/maintenance/job-plans` (issue #74) — the shared catalogue,
   /// deactivated rows included by default, the same shape the real route's
@@ -7495,6 +7541,16 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'absenceReasons': absenceReasons}), 200);
+        }
+        if (path == '/api/people/attendance-to-confirm') {
+          attendanceToConfirmRequests.add(request.url.queryParameters);
+          if (attendanceToConfirmStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': attendanceToConfirmMessage}),
+              attendanceToConfirmStatus,
+            );
+          }
+          return http.Response(jsonEncode({'entries': attendanceToConfirm}), 200);
         }
         if (request.method == 'POST' && path == '/api/people/sites') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;

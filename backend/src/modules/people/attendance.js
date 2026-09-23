@@ -8,6 +8,16 @@
  * correcting, `canSeeSite` for reading — issue #249's own acceptance
  * criteria, and ADR-0040's "Recording needs an edit Grant, and nothing more".
  *
+ * Also `listAttendanceToConfirm` (issue #250): the worklist of past shift
+ * instances whose sheet is missing or unconfirmed, restricted to whichever
+ * Org Units the caller can actually act on. Unlike everything else in this
+ * file, its scope IS baked into its own arguments
+ * (`writeGrantOrgUnitIds`) rather than resolved against a single shift
+ * instance the way `canAct`/`canSeeSite` are — see that function's own
+ * header for why the shape still keeps policy in attendance-routes.js
+ * and stays this file's job only to filter and order.
+ *
+
  * **Opening a sheet pre-fills it, once — and only for a caller who could
  * have recorded on it anyway.** ADR-0040's own words: "everyone on the
  * roster was absent" and "nobody has filled this in" must stay different
@@ -198,6 +208,141 @@ async function listShiftInstances(orgUnitId, { date } = {}) {
     [orgUnitId, date]
   );
   return rows.map(toShiftInstanceSummary);
+}
+
+// ---------------------------------------------------------------------------
+// The attendance-to-confirm worklist (issue #250) — the past shift instances
+// whose sheet is missing or unconfirmed, oldest first. Under #247 decision 9,
+// a single unconfirmed shift makes the injury rates `no_data`, so this is
+// what keeps that from becoming a permanent blank: it is where the sheet
+// that is blocking a rate gets found and opened.
+//
+// `writeGrantOrgUnitIds` is `null` for an administrator (issue #250's own
+// "an administrator sees every Site's list" — no restriction at all, the
+// same `everywhere` shape `authorization.orgUnitScopeFor` already answers
+// with) or the array of Org Unit ids the caller's own edit Grants reach
+// (attendance-routes.js resolves this from that same function, flattening
+// only the `canWrite` grants' own `orgUnitIds` — ADR-0040's "recording needs
+// an edit Grant" is exactly "could confirm this sheet", so a read-only Grant
+// contributes nothing here). An empty array is a legitimate answer — a
+// caller with no write Grant anywhere sees an empty list, not a refusal,
+// the same self-scoped shape `GET /people/me` already has.
+//
+// `orgUnitPath` narrows further to one Org Unit and everything beneath it
+// (the `?orgUnitId=` filter, resolved by the route), intersected with the
+// reach above rather than replacing it.
+//
+// **The "first confirmed sheet" floor is Site-wide, not per Org Unit —
+// deliberately, per issue #250's own amended wording.** #233's rate window
+// starts at the first confirmed sheet anywhere in the *chosen subtree*, not
+// at each Org Unit's own history, so a line that has never confirmed a
+// single sheet still holds its Site's rate at `no_data` for as long as it
+// stays unconfirmed — decision 9's window has already opened at that Site,
+// via whichever other line confirmed first, and this line's unconfirmed
+// shifts are exactly what is keeping the rate blank. A per-Org-Unit floor
+// (this function's own earlier shape) would hide precisely those shifts:
+// a line with zero confirmations would show zero floor and therefore zero
+// worklist entries, which reads as "nothing to confirm here" when the truth
+// is "everything here is unconfirmed and it is silently costing the Site's
+// rate." Anchoring the floor to the Site instead means: once *any* Org Unit
+// in the Site has confirmed a sheet, every other Org Unit's past, ended,
+// unconfirmed shifts from that point on are listed too — whatever that
+// other Org Unit's own confirmation history — because those are precisely
+// the shifts a rate computation is being forced to call `no_data` over.
+// `orgUnitPath` still narrows *which* of those entries are shown (the
+// `?orgUnitId=` filter); it does not change where the floor itself sits.
+//
+// **A Site with no confirmed sheet EVER has no floor, and lists nothing for
+// it.** `first_confirmed` below is an INNER JOIN, not a LEFT JOIN, on
+// purpose: with no confirmed shift anywhere in the Site to anchor on,
+// #233's rate window has not opened yet either, so there is no "everything
+// after the floor" to show — the same reasoning ADR-0041 gives for not
+// reaching back a full calendar year before any confirmation exists. A
+// brand new Site's very first sheet is opened and confirmed from the
+// `/attendance` picker directly (there is nothing to have missed yet);
+// only once that first confirmation exists anywhere in the Site does this
+// worklist have a floor to start listing every other unconfirmed shift
+// from.
+const ATTENDANCE_TO_CONFIRM_LIMIT = 200;
+
+function toAttendanceToConfirmEntry(row) {
+  return {
+    shiftInstanceId: row.id,
+    siteId: row.site_id,
+    siteName: row.site_name,
+    orgUnitId: row.org_unit_id,
+    orgUnitName: row.org_unit_name,
+    shiftDefinitionCode: row.shift_definition_code,
+    shiftDefinitionName: row.shift_definition_name,
+    productionDate: row.production_date,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    // "missing" — no attendance_sheets row at all; "unconfirmed" — the sheet
+    // was opened (and therefore pre-filled) but confirmed_at is still null.
+    sheetState: row.has_sheet ? 'unconfirmed' : 'missing'
+  };
+}
+
+async function listAttendanceToConfirm({
+  writeGrantOrgUnitIds = null,
+  orgUnitPath = null,
+  from = null,
+  to = null,
+  limit = ATTENDANCE_TO_CONFIRM_LIMIT
+} = {}) {
+  const conditions = [
+    'si.ends_at <= now()', // "has ended" (issue #250's own criterion)
+    'si.starts_at >= fc.first_confirmed_starts_at', // the Site-wide floor, see this function's own header
+    '(sh.id IS NULL OR sh.confirmed_at IS NULL)' // missing or unconfirmed
+  ];
+  const params = [];
+
+  if (writeGrantOrgUnitIds !== null) {
+    params.push(writeGrantOrgUnitIds);
+    conditions.push(`si.org_unit_id = ANY($${params.length}::bigint[])`);
+  }
+  if (orgUnitPath !== null) {
+    params.push(orgUnitPath);
+    conditions.push(`ou.path <@ $${params.length}::ltree`);
+  }
+  if (from !== null) {
+    params.push(from);
+    conditions.push(`si.production_date >= $${params.length}::date`);
+  }
+  if (to !== null) {
+    params.push(to);
+    conditions.push(`si.production_date <= $${params.length}::date`);
+  }
+
+  const { rows } = await getPool().query(
+    `WITH first_confirmed AS (
+       SELECT si2.site_id, MIN(si2.starts_at) AS first_confirmed_starts_at
+         FROM shift_instances si2
+         JOIN attendance_sheets sh2 ON sh2.shift_instance_id = si2.id
+        WHERE sh2.confirmed_at IS NOT NULL
+        GROUP BY si2.site_id
+     )
+     SELECT si.id, si.site_id, s.name AS site_name, si.org_unit_id, ou.name AS org_unit_name,
+            sd.code AS shift_definition_code, sd.name AS shift_definition_name,
+            si.production_date, si.starts_at, si.ends_at,
+            (sh.id IS NOT NULL) AS has_sheet
+       FROM shift_instances si
+       JOIN shift_definitions sd ON sd.id = si.shift_definition_id
+       JOIN org_units ou ON ou.id = si.org_unit_id
+       JOIN sites s ON s.id = si.site_id
+       JOIN first_confirmed fc ON fc.site_id = si.site_id
+       LEFT JOIN attendance_sheets sh ON sh.shift_instance_id = si.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY si.starts_at ASC, si.id ASC
+      LIMIT ${limit + 1}`,
+    params
+  );
+
+  const truncated = rows.length > limit;
+  return {
+    entries: rows.slice(0, limit).map(toAttendanceToConfirmEntry),
+    truncated
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -614,6 +759,7 @@ module.exports = {
   findShiftInstance,
   getShiftInstance,
   listShiftInstances,
+  listAttendanceToConfirm,
   listAbsenceReasons,
   getAttendanceSheet,
   updateAttendanceRecord,

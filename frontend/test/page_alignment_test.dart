@@ -150,6 +150,12 @@ const _pages = <_Page>[
       'The guard keeps working loose',
       'The 8D record of this investigation',
       inset: Spacing.xl),
+  // The attendance-to-confirm worklist (issue #250). Its rows are plain
+  // `ListTile`s, not `Card`s — the same shape `attendance_picker_screen.dart`'s
+  // own rows take — so only the title/description half of this audit
+  // actually exercises anything; there is no card-row inset to bound.
+  _Page('/attendance/to-confirm', 'lib/people/attendance_to_confirm_screen.dart',
+      'Attendance to confirm', 'Past shifts whose sheet is missing'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this
@@ -264,6 +270,9 @@ FakeWire _wire() => FakeWire(
         '801': capaJson('801', 'CA-HCM-2026-00001', 'The guard keeps working loose',
             orgUnitId: '10', orgUnitName: 'Assembly'),
       },
+      // The attendance-to-confirm worklist (issue #250), so the page renders
+      // an entry rather than the empty state.
+      attendanceToConfirm: [attendanceToConfirmEntryJson('501')],
     );
 
 void main() {
