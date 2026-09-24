@@ -335,20 +335,48 @@ test('a device registered against an unknown Org Unit is a 404', async () => {
 
 test('a PIN is never stored in the clear and is never returned', async () => {
   const employee = await insertEmployee({ displayName: 'Prue Pin' });
+  const pin = '1357';
   const response = await putJson(
     `/api/maintenance/floor-technician-credentials/${employee.id}`,
     admin.token,
-    { pin: '1357' }
+    { pin }
   );
   assert.strictEqual(response.response.status, 200);
-  assert.ok(!JSON.stringify(response.payload).includes('1357'));
+  assert.ok(!JSON.stringify(response.payload).includes(pin), 'the PIN is not in the response');
 
   const { rows: [row] } = await pool.query(
     'SELECT pin_hash FROM employee_floor_credentials WHERE employee_id = $1',
     [employee.id]
   );
-  assert.ok(row.pin_hash.startsWith('scrypt$'));
-  assert.ok(!row.pin_hash.includes('1357'));
+
+  // The stored value has the documented shape — the scheme, a 16-byte random
+  // salt and a 32-byte derived key, both hex — and is not the PIN itself under
+  // any encoding a reader could trivially reverse. Deliberately not a
+  // substring check against the digest: hex is drawn from the digits, so
+  // "the hash does not contain 1357" holds by chance rather than by
+  // construction and fails roughly once in five hundred runs (issue #261).
+  assert.match(row.pin_hash, /^scrypt\$[0-9a-f]{32}\$[0-9a-f]{64}$/);
+  const reversible = [
+    pin,
+    Buffer.from(pin).toString('hex'),
+    Buffer.from(pin).toString('base64'),
+    Buffer.from(pin).toString('base64url')
+  ];
+  for (const encoded of reversible) {
+    assert.notStrictEqual(row.pin_hash, encoded);
+  }
+
+  // And the honest proof that what is stored is a hash OF this PIN: the
+  // verification path the floor actually uses accepts the right PIN against
+  // that stored value and refuses a wrong one — asserted at the HTTP door
+  // rather than by rederiving scrypt here (AGENTS.md §5).
+  const right = await identify(device.credential, employee.employee_no, pin);
+  assert.strictEqual(right.response.status, 200, JSON.stringify(right.payload));
+  assert.ok(right.payload.identification, 'the right PIN identifies the technician');
+  assert.ok(!JSON.stringify(right.payload).includes(pin), 'the PIN is not echoed back');
+
+  const wrong = await identify(device.credential, employee.employee_no, '2468');
+  assert.strictEqual(wrong.response.status, 401);
 });
 
 // ---------------------------------------------------------------------------
