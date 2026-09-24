@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 
 import 'people/assignee_candidate.dart';
 import 'people/attendance.dart';
+import 'people/cost_rate.dart';
 import 'people/employee.dart';
 import 'people/employee_ref.dart';
 import 'people/job_role.dart';
@@ -18,6 +19,7 @@ import 'people/managed_account.dart';
 import 'people/org_unit.dart';
 import 'people/org_unit_scope.dart';
 import 'people/pending_account.dart';
+import 'people/product_cost.dart';
 import 'people/skill.dart';
 
 /// What the API answered for the caller's own Account: either it is still
@@ -1634,6 +1636,193 @@ class PeopleApi {
         body: jsonEncode({'isActive': isActive}),
       ),
       '/api/people/accounts/$accountId',
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // The cost catalogues (issue #252) — the prices the baseline's cost views
+  // already resolve through `resolve_cost_rate` and `product_standard_cost`.
+  // Both are administrator-only to write and readable by any active Account,
+  // the shape [fetchJobRoles]/[createJobRole] above already keep; what is
+  // different is that both are versioned, so a new amount for a new period is
+  // its own call ([reviseCostRate]/[reviseProductCost]) rather than a PATCH.
+  // -------------------------------------------------------------------------
+
+  /// The cost rate catalogue (`GET /api/people/cost-rates`), history included
+  /// — a closed period is what makes a historical cost reproducible, so the
+  /// server sends every row and the Screen shows each with its effective dates.
+  Future<List<CostRate>> fetchCostRates(String accessToken) async {
+    const path = '/api/people/cost-rates';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final rate in body['costRates'] as List<dynamic>)
+          CostRate.fromJson(rate as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Everything a rate may be scoped to (`GET /api/people/cost-rates/scopes`) —
+  /// Sites, Org Units, Assets and cost centres in one list, each carrying its
+  /// own scope type, so the form picks a scope rather than typing an id
+  /// (ADR-0023).
+  Future<List<CostRateScope>> fetchCostRateScopes(String accessToken) async {
+    const path = '/api/people/cost-rates/scopes';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final scope in body['scopes'] as List<dynamic>)
+          CostRateScope.fromJson(scope as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Adds a cost rate (`POST /api/people/cost-rates`, administrator only).
+  /// [body] is sent as given — the form assembles it, so an optional
+  /// `effectiveTo` or `note` is simply absent rather than sent as null.
+  Future<void> createCostRate(String accessToken, Map<String, Object?> body) async {
+    const path = '/api/people/cost-rates';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+  }
+
+  /// Corrects a cost rate in place, or closes one by setting `effectiveTo`
+  /// (`PATCH /api/people/cost-rates/:id`, administrator only). [changes] is
+  /// sent exactly as given — only the keys actually present are touched,
+  /// mirroring `updateCostRate`'s (cost-rates.js) own `hasOwnProperty`
+  /// contract, the same discipline [updateJobRole] keeps.
+  Future<void> updateCostRate(
+    String accessToken,
+    String id,
+    Map<String, Object?> changes,
+  ) async {
+    final path = '/api/people/cost-rates/$id';
+    await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+  }
+
+  /// A new amount from a date (`POST /api/people/cost-rates/:id/revision`,
+  /// administrator only): closes the old row and opens a new one in one
+  /// transaction, so the earlier period stays readable and still resolves.
+  Future<void> reviseCostRate(String accessToken, String id, Map<String, Object?> body) async {
+    final path = '/api/people/cost-rates/$id/revision';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+  }
+
+  /// The product standard cost catalogue (`GET /api/people/product-costs`),
+  /// history included — see [fetchCostRates].
+  Future<List<ProductCost>> fetchProductCosts(String accessToken) async {
+    const path = '/api/people/product-costs';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final cost in body['productCosts'] as List<dynamic>)
+          ProductCost.fromJson(cost as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The Products a standard cost may be recorded against
+  /// (`GET /api/people/product-costs/products`) — the known set the form picks
+  /// from (ADR-0023), the counterpart of [fetchCostRateScopes].
+  Future<List<CostableProduct>> fetchCostableProducts(String accessToken) async {
+    const path = '/api/people/product-costs/products';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final product in body['products'] as List<dynamic>)
+          CostableProduct.fromJson(product as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Adds a product standard cost (`POST /api/people/product-costs`,
+  /// administrator only).
+  Future<void> createProductCost(String accessToken, Map<String, Object?> body) async {
+    const path = '/api/people/product-costs';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+  }
+
+  /// Corrects a standard cost in place, or closes one
+  /// (`PATCH /api/people/product-costs/:id`, administrator only).
+  Future<void> updateProductCost(
+    String accessToken,
+    String id,
+    Map<String, Object?> changes,
+  ) async {
+    final path = '/api/people/product-costs/$id';
+    await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+  }
+
+  /// A new cost from a date
+  /// (`POST /api/people/product-costs/:id/revision`, administrator only) — see
+  /// [reviseCostRate].
+  Future<void> reviseProductCost(String accessToken, String id, Map<String, Object?> body) async {
+    final path = '/api/people/product-costs/$id/revision';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
     );
   }
 
