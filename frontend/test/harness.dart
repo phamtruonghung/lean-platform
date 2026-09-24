@@ -1508,6 +1508,88 @@ Map<String, dynamic> jobRoleJson(String id, String code, String name, {bool isAc
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
+/// One row of `GET /api/people/cost-rates` (`cost-rates.js`'s own
+/// `toCostRate`, issue #252). `effectiveTo` null is an open period — the rate
+/// that is still current.
+Map<String, dynamic> costRateJson(
+  String id, {
+  String scopeType = 'site',
+  String scopeId = '1',
+  String scopeName = 'Ho Chi Minh',
+  String rateType = 'labor_per_hour',
+  num amount = 22.5,
+  String currency = 'USD',
+  String effectiveFrom = '2026-01-01',
+  String? effectiveTo,
+  String? note,
+}) =>
+    {
+      'id': id,
+      'scopeType': scopeType,
+      'scopeId': scopeId,
+      'scopeName': scopeName,
+      'rateType': rateType,
+      'amount': amount,
+      'currency': currency,
+      'effectiveFrom': effectiveFrom,
+      'effectiveTo': effectiveTo,
+      'note': note,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One row of `GET /api/people/cost-rates/scopes` (issue #252) — something a
+/// rate can be scoped to, carrying its own scope type.
+Map<String, dynamic> costRateScopeJson(
+  String scopeType,
+  String id,
+  String code,
+  String name, {
+  String? siteName = 'Ho Chi Minh',
+}) =>
+    {
+      'scopeType': scopeType,
+      'id': id,
+      'code': code,
+      'name': name,
+      'siteName': siteName,
+    };
+
+/// One row of `GET /api/people/product-costs` (`product-costs.js`'s own
+/// `toProductCost`, issue #252).
+Map<String, dynamic> productCostJson(
+  String id, {
+  String productId = '40',
+  String productCode = 'PRD-1',
+  String productName = 'Gearbox',
+  num standardCost = 4.25,
+  String currency = 'USD',
+  String effectiveFrom = '2026-01-01',
+  String? effectiveTo,
+  String? note,
+}) =>
+    {
+      'id': id,
+      'productId': productId,
+      'productCode': productCode,
+      'productName': productName,
+      'standardCost': standardCost,
+      'currency': currency,
+      'effectiveFrom': effectiveFrom,
+      'effectiveTo': effectiveTo,
+      'note': note,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One row of `GET /api/people/product-costs/products` (issue #252) — a
+/// Product a standard cost can be recorded against.
+Map<String, dynamic> costableProductJson(String id, String code, String name) => {
+      'id': id,
+      'code': code,
+      'name': name,
+    };
+
 /// One row of `GET /api/people/skills` (`skills.js`'s own `toSkill`, issue
 /// #89). `orgUnitId` is sent by the real route but carried by no model on
 /// this client (`Skill`'s own header) — omitted here for the same reason.
@@ -2028,6 +2110,27 @@ class FakeWire {
     this.employeeDetailMessage = 'That Employee record could not be read.',
     List<Map<String, dynamic>>? jobRoles,
     this.jobRolesStatus = 200,
+    // The two cost catalogues (issue #252).
+    List<Map<String, dynamic>>? costRates,
+    this.costRatesStatus = 200,
+    List<Map<String, dynamic>>? costRateScopes,
+    this.costRateScopesStatus = 200,
+    this.createCostRateStatus = 201,
+    this.createCostRateMessage = 'That cost rate could not be added.',
+    this.updateCostRateStatus = 200,
+    this.updateCostRateMessage = 'That cost rate could not be corrected.',
+    this.reviseCostRateStatus = 201,
+    this.reviseCostRateMessage = 'That cost rate could not be revised.',
+    List<Map<String, dynamic>>? productCosts,
+    this.productCostsStatus = 200,
+    List<Map<String, dynamic>>? costableProducts,
+    this.costableProductsStatus = 200,
+    this.createProductCostStatus = 201,
+    this.createProductCostMessage = 'That standard cost could not be added.',
+    this.updateProductCostStatus = 200,
+    this.updateProductCostMessage = 'That standard cost could not be corrected.',
+    this.reviseProductCostStatus = 201,
+    this.reviseProductCostMessage = 'That standard cost could not be revised.',
     this.createEmployeeStatus = 201,
     this.createEmployeeMessage = 'That Employee could not be added.',
     this.updateEmployeeStatus = 200,
@@ -2268,6 +2371,10 @@ class FakeWire {
         employees = employees ?? [],
         employeeDetails = employeeDetails ?? {},
         jobRoles = jobRoles ?? [],
+        costRates = costRates ?? [],
+        costRateScopes = costRateScopes ?? [],
+        productCosts = productCosts ?? [],
+        costableProducts = costableProducts ?? [],
         skills = skills ?? [],
         qualifiedEmployees = qualifiedEmployees ?? [],
         skillCoverage = skillCoverage ?? {},
@@ -3579,6 +3686,82 @@ class FakeWire {
   /// `GET /api/people/job-roles`.
   List<Map<String, dynamic>> jobRoles;
   int jobRolesStatus;
+
+  // ---------------------------------------------------------------------
+  // The two cost catalogues (issue #252). Both are versioned, so beside the
+  // ordinary create and correct there is a *revision*, which closes the row it
+  // names and opens a new one — this wire does the same, so a test can assert
+  // on what the list looks like afterwards rather than only on the request.
+  // ---------------------------------------------------------------------
+
+  /// `GET /api/people/cost-rates`.
+  List<Map<String, dynamic>> costRates;
+  int costRatesStatus;
+
+  /// `GET /api/people/cost-rates/scopes`.
+  List<Map<String, dynamic>> costRateScopes;
+  int costRateScopesStatus;
+
+  /// `POST /api/people/cost-rates` (administrator only).
+  int createCostRateStatus;
+  String createCostRateMessage;
+
+  /// Every cost rate create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> costRatePosts = [];
+
+  /// `PATCH /api/people/cost-rates/:id` (administrator only).
+  int updateCostRateStatus;
+  String updateCostRateMessage;
+
+  /// Every cost rate correction that reached the wire, as `(id, body)` — so a
+  /// test can assert exactly one request was sent and that it carried only the
+  /// fields that actually changed.
+  final List<(String, Map<String, dynamic>)> costRatePatches = [];
+
+  /// `POST /api/people/cost-rates/:id/revision` (administrator only).
+  int reviseCostRateStatus;
+  String reviseCostRateMessage;
+
+  /// Every cost rate revision that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> costRateRevisions = [];
+
+  /// `GET /api/people/product-costs`.
+  List<Map<String, dynamic>> productCosts;
+  int productCostsStatus;
+
+  /// `GET /api/people/product-costs/products`.
+  List<Map<String, dynamic>> costableProducts;
+  int costableProductsStatus;
+
+  /// `POST /api/people/product-costs` (administrator only).
+  int createProductCostStatus;
+  String createProductCostMessage;
+  final List<Map<String, dynamic>> productCostPosts = [];
+
+  /// `PATCH /api/people/product-costs/:id` (administrator only).
+  int updateProductCostStatus;
+  String updateProductCostMessage;
+  final List<(String, Map<String, dynamic>)> productCostPatches = [];
+
+  /// `POST /api/people/product-costs/:id/revision` (administrator only).
+  int reviseProductCostStatus;
+  String reviseProductCostMessage;
+  final List<(String, Map<String, dynamic>)> productCostRevisions = [];
+
+  int _nextCostRateId = 900;
+  int _nextProductCostId = 950;
+
+  /// The scoped record's own name, resolved out of [costRateScopes] the way the
+  /// server resolves it out of its own joins — so a rate created through this
+  /// wire renders with a real scope name rather than a placeholder.
+  String _scopeNameFor(String scopeType, String scopeId) {
+    for (final scope in costRateScopes) {
+      if (scope['scopeType'] == scopeType && scope['id'] == scopeId) {
+        return scope['name'] as String;
+      }
+    }
+    return 'Scope $scopeId';
+  }
 
   /// `POST /api/people/employees` (issue #87, administrator only).
   int createEmployeeStatus;
@@ -7323,6 +7506,210 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'employee': detail}), 200);
         }
+        // --- The cost rate catalogue (issue #252) -------------------------
+        if (request.method == 'POST' && path == '/api/people/cost-rates') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          costRatePosts.add(sent);
+          if (createCostRateStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createCostRateMessage}),
+              createCostRateStatus,
+            );
+          }
+          final id = (_nextCostRateId++).toString();
+          final created = costRateJson(
+            id,
+            scopeType: sent['scopeType'] as String,
+            scopeId: sent['scopeId'] as String,
+            scopeName: _scopeNameFor(sent['scopeType'] as String, sent['scopeId'] as String),
+            rateType: sent['rateType'] as String,
+            amount: sent['amount'] as num,
+            currency: sent['currency'] as String? ?? 'USD',
+            effectiveFrom: sent['effectiveFrom'] as String,
+            effectiveTo: sent['effectiveTo'] as String?,
+            note: sent['note'] as String?,
+          );
+          costRates = [...costRates, created];
+          return http.Response(jsonEncode({'costRate': created}), 201);
+        }
+        if (request.method == 'POST' && path.startsWith('/api/people/cost-rates/') &&
+            path.endsWith('/revision')) {
+          final id = path.substring(
+            '/api/people/cost-rates/'.length,
+            path.length - '/revision'.length,
+          );
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          costRateRevisions.add((id, body));
+          if (reviseCostRateStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': reviseCostRateMessage}),
+              reviseCostRateStatus,
+            );
+          }
+          final existing = costRates.where((rate) => rate['id'] == id).toList();
+          if (existing.isEmpty) {
+            return http.Response(jsonEncode({'message': 'Cost rate not found'}), 404);
+          }
+          // Exactly what the server does: close the old row on the day the new
+          // one starts, and open a new one carrying the old row's own scope.
+          final closed = {...existing.single, 'effectiveTo': body['effectiveFrom']};
+          final opened = {
+            ...existing.single,
+            'id': (_nextCostRateId++).toString(),
+            'amount': body['amount'],
+            'currency': body['currency'] ?? existing.single['currency'],
+            'effectiveFrom': body['effectiveFrom'],
+            'effectiveTo': existing.single['effectiveTo'],
+            'note': body['note'],
+          };
+          costRates = [
+            for (final rate in costRates)
+              if (rate['id'] == id) closed else rate,
+            opened,
+          ];
+          return http.Response(jsonEncode({'closed': closed, 'opened': opened}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/people/cost-rates/')) {
+          final id = path.substring('/api/people/cost-rates/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          costRatePatches.add((id, body));
+          if (updateCostRateStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateCostRateMessage}),
+              updateCostRateStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          costRates = [
+            for (final rate in costRates)
+              if (rate['id'] == id) (updated = {...rate, ...body}) else rate,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Cost rate not found'}), 404);
+          }
+          return http.Response(jsonEncode({'costRate': updated}), 200);
+        }
+        if (path == '/api/people/cost-rates/scopes') {
+          if (costRateScopesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The scope list is unavailable.'}),
+              costRateScopesStatus,
+            );
+          }
+          return http.Response(jsonEncode({'scopes': costRateScopes}), 200);
+        }
+        if (path == '/api/people/cost-rates') {
+          if (costRatesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'Cost rates are unavailable.'}),
+              costRatesStatus,
+            );
+          }
+          return http.Response(jsonEncode({'costRates': costRates}), 200);
+        }
+
+        // --- The product standard cost catalogue (issue #252) --------------
+        if (request.method == 'POST' && path == '/api/people/product-costs') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          productCostPosts.add(sent);
+          if (createProductCostStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': createProductCostMessage}),
+              createProductCostStatus,
+            );
+          }
+          final id = (_nextProductCostId++).toString();
+          final product = costableProducts
+              .where((row) => row['id'] == sent['productId'])
+              .toList();
+          final created = productCostJson(
+            id,
+            productId: sent['productId'] as String,
+            productCode: product.isEmpty ? 'PRD-?' : product.single['code'] as String,
+            productName: product.isEmpty ? 'Unknown' : product.single['name'] as String,
+            standardCost: sent['standardCost'] as num,
+            currency: sent['currency'] as String? ?? 'USD',
+            effectiveFrom: sent['effectiveFrom'] as String,
+            effectiveTo: sent['effectiveTo'] as String?,
+            note: sent['note'] as String?,
+          );
+          productCosts = [...productCosts, created];
+          return http.Response(jsonEncode({'productCost': created}), 201);
+        }
+        if (request.method == 'POST' && path.startsWith('/api/people/product-costs/') &&
+            path.endsWith('/revision')) {
+          final id = path.substring(
+            '/api/people/product-costs/'.length,
+            path.length - '/revision'.length,
+          );
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          productCostRevisions.add((id, body));
+          if (reviseProductCostStatus != 201) {
+            return http.Response(
+              jsonEncode({'message': reviseProductCostMessage}),
+              reviseProductCostStatus,
+            );
+          }
+          final existing = productCosts.where((cost) => cost['id'] == id).toList();
+          if (existing.isEmpty) {
+            return http.Response(jsonEncode({'message': 'Product standard cost not found'}), 404);
+          }
+          final closed = {...existing.single, 'effectiveTo': body['effectiveFrom']};
+          final opened = {
+            ...existing.single,
+            'id': (_nextProductCostId++).toString(),
+            'standardCost': body['standardCost'],
+            'currency': body['currency'] ?? existing.single['currency'],
+            'effectiveFrom': body['effectiveFrom'],
+            'effectiveTo': existing.single['effectiveTo'],
+            'note': body['note'],
+          };
+          productCosts = [
+            for (final cost in productCosts)
+              if (cost['id'] == id) closed else cost,
+            opened,
+          ];
+          return http.Response(jsonEncode({'closed': closed, 'opened': opened}), 201);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/people/product-costs/')) {
+          final id = path.substring('/api/people/product-costs/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          productCostPatches.add((id, body));
+          if (updateProductCostStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': updateProductCostMessage}),
+              updateProductCostStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          productCosts = [
+            for (final cost in productCosts)
+              if (cost['id'] == id) (updated = {...cost, ...body}) else cost,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Product standard cost not found'}), 404);
+          }
+          return http.Response(jsonEncode({'productCost': updated}), 200);
+        }
+        if (path == '/api/people/product-costs/products') {
+          if (costableProductsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'The Product list is unavailable.'}),
+              costableProductsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'products': costableProducts}), 200);
+        }
+        if (path == '/api/people/product-costs') {
+          if (productCostsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'Standard costs are unavailable.'}),
+              productCostsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'productCosts': productCosts}), 200);
+        }
+
         if (request.method == 'POST' && path == '/api/people/job-roles') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;
           jobRolePosts.add(sent);

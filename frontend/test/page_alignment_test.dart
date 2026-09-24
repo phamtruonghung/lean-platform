@@ -72,6 +72,16 @@ const _pages = <_Page>[
       maxRowInset: 68),
   _Page('/job-roles', 'lib/people/job_roles_screen.dart', 'Job roles', 'What an Employee does'),
   _Page('/skills', 'lib/people/skills_screen.dart', 'Skills', 'What the plant qualifies'),
+  // The two cost catalogues (issue #252). Flat lists of rows at the card's own
+  // padding, like the Product catalogue, so the default bound holds for each.
+  // Audited rather than excluded even though their Destinations are an
+  // administrator's: the addresses themselves are open to any active Account
+  // (cost-rate-routes.js/product-cost-routes.js), and a page a reader can reach
+  // is a page whose alignment is asserted — the same reasoning the Safety
+  // Module's two catalogues already carry below.
+  _Page('/cost-rates', 'lib/people/cost_rates_screen.dart', 'Cost rates', 'What an hour costs'),
+  _Page('/product-costs', 'lib/people/product_costs_screen.dart', 'Product standard costs',
+      'What a unit is costed at'),
   // The tree indents by depth and leads with a disclosure control.
   _Page('/org-units', 'lib/people/org_units_screen.dart', 'Org Units', "A Site's own shape",
       maxRowInset: 44),
@@ -217,6 +227,10 @@ FakeWire _wire() => FakeWire(
       },
       employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
       jobRoles: [jobRoleJson('20', 'WELD', 'Welder')],
+      // The two cost catalogues (issue #252), so each page renders its card
+      // rather than an empty state and the row assertion actually runs.
+      costRates: [costRateJson('900')],
+      productCosts: [productCostJson('950')],
       skills: [skillJson('30', 'WELD', 'Welding')],
       jobPlans: [jobPlanJson('1', 'JP-1', 'Monthly check')],
       meters: {

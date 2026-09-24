@@ -4,15 +4,21 @@
  * `./service`, `./plant`, `./middleware`, `./directory`, `./authorization`,
  * `./job-roles`, `./errors` or `./skills` directly.
  *
- * `router` combines six route files under the one `/api/people` mount:
+ * `router` combines eight route files under the one `/api/people` mount:
  * routes.js (Accounts, issue #6), plant-routes.js (Sites and the Org Unit
  * tree, issue #7), directory-routes.js (the Employee directory, issue #9,
  * plus Org Unit assignments, issue #10), job-role-routes.js (the job role
  * catalogue, issue #10), skill-routes.js (the skills matrix — the skill
  * catalogue, an Employee holding a skill, and skill coverage, issue #11),
- * and attendance-routes.js (the attendance sheet — one per shift instance,
+ * attendance-routes.js (the attendance sheet — one per shift instance,
  * pre-filled, recorded, confirmed and corrected, plus the absence reason
- * catalogue, issue #249).
+ * catalogue, issue #249), and — issue #252 — cost-rate-routes.js and
+ * product-cost-routes.js, the two catalogues that maintain the prices the
+ * baseline's cost views already resolve through `resolve_cost_rate` and
+ * `product_standard_cost`. Those two live in this Module rather than one of
+ * their own because People already owns the Org Unit and cost-centre
+ * vocabulary a rate is scoped by, and two CRUD surfaces do not earn a Module;
+ * see cost-rates.js's own header.
  *
  * `floorRouter` is a second router rather than a sixth file inside `router`,
  * and that is issue #201's one deliberate oddity: floor-routes.js owns the
@@ -219,6 +225,8 @@ const directoryRoutes = require('./directory-routes');
 const jobRoleRoutes = require('./job-role-routes');
 const skillRoutes = require('./skill-routes');
 const attendanceRoutes = require('./attendance-routes');
+const costRateRoutes = require('./cost-rate-routes');
+const productCostRoutes = require('./product-cost-routes');
 const floorRoutes = require('./floor-routes');
 const { authenticate, requireActive } = require('./middleware');
 const { canAct, canSeeSite, safetyAuthorityOrgUnitIds } = require('./authorization');
@@ -243,6 +251,8 @@ router.use(directoryRoutes);
 router.use(jobRoleRoutes);
 router.use(skillRoutes);
 router.use(attendanceRoutes);
+router.use(costRateRoutes);
+router.use(productCostRoutes);
 
 module.exports = {
   router,

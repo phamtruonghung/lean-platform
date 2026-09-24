@@ -229,6 +229,35 @@ const List<Destination> platformDestinations = [
     path: Routes.attendance,
     group: DestinationGroupNames.people,
   ),
+  // The two cost catalogues (issue #252) — the rates an hour is costed at, and
+  // what one unit of a Product is costed at. Filed under **People**, the group
+  // that names the Module behind them (ADR-0020): both live in the People
+  // Module because People already owns the Org Unit and cost-centre vocabulary
+  // a rate is scoped by (cost-rates.js's own header), and neither earns a
+  // Module — or a group — of its own for a CRUD surface.
+  //
+  // **Administrator only**, unlike Directory/Job roles/Skills/Org Units/
+  // Attendance above them, which are offered to everyone. A plant's labour
+  // rates are commercially sensitive in a way a job role list is not, and an
+  // operator has nothing to do here: the one thing the numbers are for is the
+  // Cost pillar of the tier board, which they already reach. This is the same
+  // shape the Safety Module's two catalogues take (Injury types, Body parts) —
+  // the Destination filters away, the Screen behind it does not, because the
+  // read itself carries no admin check.
+  Destination(
+    label: 'Cost rates',
+    icon: Icons.payments_outlined,
+    path: Routes.costRates,
+    roles: {Roles.admin},
+    group: DestinationGroupNames.people,
+  ),
+  Destination(
+    label: 'Product standard costs',
+    icon: Icons.sell_outlined,
+    path: Routes.productCosts,
+    roles: {Roles.admin},
+    group: DestinationGroupNames.people,
+  ),
   Destination(
     label: 'Assets',
     icon: Icons.precision_manufacturing_outlined,

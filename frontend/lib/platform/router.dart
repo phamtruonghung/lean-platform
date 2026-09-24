@@ -73,6 +73,8 @@ import '../people/attendance_picker_screen.dart';
 import '../people/attendance_sheet_bloc.dart';
 import '../people/attendance_sheet_screen.dart';
 import '../people/attendance_to_confirm_screen.dart';
+import '../people/cost_rates_bloc.dart';
+import '../people/cost_rates_screen.dart';
 import '../people/directory_bloc.dart';
 import '../people/directory_screen.dart';
 import '../people/employee_detail_bloc.dart';
@@ -82,6 +84,8 @@ import '../people/job_roles_screen.dart';
 import '../people/org_unit_admin_bloc.dart';
 import '../people/org_unit_picker_bloc.dart';
 import '../people/org_units_screen.dart';
+import '../people/product_costs_bloc.dart';
+import '../people/product_costs_screen.dart';
 import '../people/skill_coverage_bloc.dart';
 import '../people/skill_coverage_screen.dart';
 import '../people/skills_bloc.dart';
@@ -180,6 +184,16 @@ abstract final class Routes {
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
   static const String attendance = '/attendance';
+
+  /// The two cost catalogues (issue #252): the rates the plant costs an hour
+  /// at, and what one unit of a Product is costed at. Addressed at the
+  /// Platform root like `/job-roles` and `/skills` beside them rather than
+  /// under a prefix — the People Module owns them (cost-rates.js's own header)
+  /// but People has never claimed a path prefix, and a Destination names what a
+  /// person does, not the Module behind it.
+  static const String costRates = '/cost-rates';
+  static const String productCosts = '/product-costs';
+
   static const String tierBoard = '/tier-board';
 
   /// The Quality Module's own Destinations (issue #203): the Product catalogue
@@ -705,6 +719,43 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const SkillsStarted()),
                 child: SkillsScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          // The two cost catalogues (issue #252): the rates an hour is costed
+          // at, and what one unit of a Product is costed at. Not role-gated
+          // here, the same shape `Routes.injuryTypes`/`Routes.bodyParts` take:
+          // neither read carries an admin or scope check of its own
+          // (cost-rate-routes.js/product-cost-routes.js), so a Screen-level
+          // refusal would close a door the route itself opens. What IS
+          // administrator-only is the **Destination** — a plant's labour rates
+          // are commercially sensitive in a way a job role list is not — and
+          // the write affordances inside each Screen.
+          GoRoute(
+            path: Routes.costRates,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<CostRatesBloc>(
+                create: (context) => CostRatesBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const CostRatesStarted()),
+                child: CostRatesScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.productCosts,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<ProductCostsBloc>(
+                create: (context) => ProductCostsBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const ProductCostsStarted()),
+                child: ProductCostsScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
           ),
