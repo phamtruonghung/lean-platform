@@ -22,6 +22,18 @@
  * not editable here), then the body (400), the Employee (404), a departed
  * Employee (409, as assigning a Work order to one is refused) and the write.
  * Both answer with the fresh whole record, Trainees included.
+ *
+ * Sending (#289): the record (404), its scope (403, the same edit Grant as
+ * every other write, `write: true` explicit), already sent (409), then the
+ * record's completeness (409, in the Module's own words — the request is
+ * well formed and it is the record's state that refuses it).
+ *
+ * A Trainee's answer (#289) is the one write here with no Grant question at
+ * all: the caller must BE the Trainee, i.e. the Employee their own Account is
+ * linked to (`app_users.employee_id`). Not even an administrator holding an
+ * edit Grant may answer for anyone — an answer is a person's own signature.
+ * The order: the answer value (400), the Trainee row (404), whose it is (403),
+ * a record not yet sent (404), then the write.
  */
 
 const express = require('express');
@@ -151,6 +163,66 @@ router.delete('/training/:id/trainees/:traineeId', authenticate, requireActive, 
 
     const updated = await training.removeTrainee(req.account.id, record.id, trainee.id);
     return res.json({ trainingRecord: updated });
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+});
+
+router.post('/training/:id/send', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const record = await training.getTrainingRecord(req.params.id); // 404s.
+    const allowed = await authorization.canAct({
+      account: req.account,
+      orgUnitId: record.orgUnitId,
+      write: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
+    }
+    if (record.status === 'sent') {
+      throw httpError(409, 'This Training record has already been sent');
+    }
+    const missing = training.incompleteness(record);
+    if (missing !== null) throw httpError(409, missing);
+
+    const sent = await training.sendTrainingRecord(req.account.id, record.id);
+    return res.json({ trainingRecord: sent });
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+});
+
+router.post('/training/trainees/:traineeId/answer', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const answer = training.requireAnswer(req.body?.answer);
+    const trainee = await training.findTraineeForAnswer(req.params.traineeId);
+    if (!trainee) throw notFound('Trainee');
+
+    // "Not yours" is a 403, not a 404: the row exists and the caller is told
+    // plainly that an answer is the Trainee's own. An Account linked to no
+    // Employee is refused the same way. No administrator bypass.
+    if (req.account.employeeId === null || String(trainee.employeeId) !== String(req.account.employeeId)) {
+      return res.status(403).json({ message: 'Only the Trainee can answer for themselves' });
+    }
+    // The one place the order bends: a draft is not yet a fact to its Trainees,
+    // so, like the detail read of a draft, it is a 404 and not a 409.
+    if (trainee.recordStatus !== 'sent') throw notFound('Trainee');
+
+    const updated = await training.answerTrainee(req.account.id, trainee.id, answer);
+    return res.json({ trainingRecord: updated });
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+});
+
+// Declared before GET /training/:id on purpose: Express matches in
+// declaration order, so the other order reads `to-confirm` as a record id.
+router.get('/training/to-confirm', authenticate, requireActive, async (req, res, next) => {
+  try {
+    // A caller whose Account is linked to no Employee has nothing waiting on
+    // them: an empty list, not an error.
+    const trainingToConfirm = await training.listTrainingToConfirm(req.account.employeeId ?? null);
+    return res.json({ trainingToConfirm });
   } catch (error) {
     return handleError(error, res, next);
   }

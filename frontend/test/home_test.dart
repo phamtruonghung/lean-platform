@@ -87,7 +87,12 @@ void main() {
     // the Sites and the log are not read at all. (The default fixture serves
     // `/employees/me` the way the server does for this Account: a 404 saying
     // 'This Account has no linked Employee record'.)
-    expect(wire.requests, ['GET /api/people/me', 'GET /api/people/employees/me']);
+    expect(wire.requests, [
+      'GET /api/people/me',
+      'GET /api/people/employees/me',
+      // The Training-to-confirm card (issue #289) is read for every role.
+      'GET /api/people/training/to-confirm',
+    ]);
   });
 
   testWidgets('an Account link to an Employee turns the card into a count of what is assigned',
@@ -371,7 +376,8 @@ void main() {
 
     // Section order: what is assigned to you (its context line is the long
     // one in this fixture, since this Account carries no Employee link), the
-    // two Work order cards, then Approvals.
+    // two Work order cards, Approvals, then Training to confirm (issue #289),
+    // which is alone in the last row.
     final myActionsSize = tester.getSize(find.byKey(HomeScreen.myActionsCardKey));
     final openOrdersSize = tester.getSize(find.byKey(HomeScreen.openWorkOrdersCardKey));
     final approvalsSize = tester.getSize(find.byKey(HomeScreen.approvalsCardKey));
@@ -405,16 +411,12 @@ void main() {
 
   testWidgets('a lone card fills its own row rather than sitting at a column width',
       (tester) async {
-    tester.view.devicePixelRatio = 1.0;
-    tester.view.physicalSize = const Size(1200, 1400);
-    addTearDown(tester.view.reset);
-
-    // An operator's Home carries one card (#185).
-    final wire = wireWith(role: Roles.operator);
-    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+    // An administrator's Home carries five cards (#289): two full rows, and
+    // Training to confirm alone in the third.
+    await pumpWideAdminHome(tester);
 
     // Half of Home's 900px page would be ~420px; the whole content box is 852.
-    expect(tester.getSize(find.byKey(HomeScreen.myActionsCardKey)).width, greaterThan(800));
+    expect(tester.getSize(find.byKey(HomeScreen.trainingToConfirmCardKey)).width, greaterThan(800));
   });
 
   testWidgets('a narrow page lays the cards out in one column', (tester) async {
@@ -435,6 +437,7 @@ void main() {
       HomeScreen.openWorkOrdersCardKey,
       HomeScreen.unassignedCardKey,
       HomeScreen.approvalsCardKey,
+      HomeScreen.trainingToConfirmCardKey,
     ]) {
       expect(tester.getTopLeft(find.byKey(key)).dx, left);
     }

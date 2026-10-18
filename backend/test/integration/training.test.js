@@ -41,12 +41,12 @@ async function authHeader(subject) {
   return { authorization: `Bearer ${token}` };
 }
 
-async function insertAccount({ role = 'supervisor' } = {}) {
+async function insertAccount({ role = 'supervisor', employeeId = null } = {}) {
   const subject = uniqueCode('trn');
   const { rows: [row] } = await pool.query(
-    `INSERT INTO app_users (email, display_name, role, external_subject, is_active, approval_status)
-     VALUES ($1, 'Training Test Account', $2, $3, TRUE, 'approved') RETURNING id`,
-    [`${subject}@example.com`, role, subject]
+    `INSERT INTO app_users (email, display_name, role, external_subject, is_active, approval_status, employee_id)
+     VALUES ($1, 'Training Test Account', $2, $3, TRUE, 'approved', $4) RETURNING id`,
+    [`${subject}@example.com`, role, subject, employeeId]
   );
   insertedAccountIds.push(row.id);
   return { id: row.id, token: await authHeader(subject) };
@@ -86,6 +86,15 @@ async function insertGrant({ accountId, orgUnitId, canWrite }) {
   await pool.query(
     `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write) VALUES ($1, $2, $3)`,
     [accountId, orgUnitId, canWrite]
+  );
+}
+
+// Puts a record in the sent state directly, for the tests that are about
+// something other than sending; the CHECK wants all three sent columns.
+async function markSent(id) {
+  await pool.query(
+    `UPDATE training_records SET status = 'sent', sent_at = now(), sent_by_account_id = $2 WHERE id = $1`,
+    [id, sender.id]
   );
 }
 
@@ -299,7 +308,7 @@ test('a draft is read by a sender and an administrator but is a 404 and absent f
 test('a sent record is read by any approved Account, register and own address', async () => {
   const { payload } = await raise(sender.token, line.id, { title: 'Sent visibility probe' });
   const id = payload.trainingRecord.id;
-  await pool.query(`UPDATE training_records SET status = 'sent' WHERE id = $1`, [id]);
+  await markSent(id);
 
   const one = await call('GET', `/training/${id}`, reader.token);
   assert.strictEqual(one.response.status, 200);
@@ -399,7 +408,7 @@ test('the Org Unit of a record is not correctable', async () => {
 test('a sent record\'s own facts cannot be changed here: 409 saying to correct it instead', async () => {
   const { payload } = await raise(sender.token, line.id, { title: 'Sent and fixed' });
   const id = payload.trainingRecord.id;
-  await pool.query(`UPDATE training_records SET status = 'sent' WHERE id = $1`, [id]);
+  await markSent(id);
 
   const { response, payload: refusal } = await call('PATCH', `/training/${id}`, sender.token, { title: 'Changed' });
   assert.strictEqual(response.status, 409);
@@ -412,7 +421,7 @@ test('a sent record\'s own facts cannot be changed here: 409 saying to correct i
 test('a caller outside the Grants is refused 403 on a sent record before the 409', async () => {
   const { payload } = await raise(sender.token, line.id);
   const id = payload.trainingRecord.id;
-  await pool.query(`UPDATE training_records SET status = 'sent' WHERE id = $1`, [id]);
+  await markSent(id);
   const { response } = await call('PATCH', `/training/${id}`, reader.token, { title: 'x' });
   assert.strictEqual(response.status, 403);
 });
@@ -568,7 +577,7 @@ test('a sent record\'s list refuses both add and remove with a 409', async () =>
   const late = await insertNamedEmployee();
   const added = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: onList.id });
   const traineeId = added.payload.trainingRecord.trainees[0].id;
-  await pool.query(`UPDATE training_records SET status = 'sent' WHERE id = $1`, [record.id]);
+  await markSent(record.id);
 
   const add = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: late.id });
   assert.strictEqual(add.response.status, 409);
@@ -595,4 +604,278 @@ test('adding and removing a Trainee are audited against the acting Account', asy
   );
   assert.deepStrictEqual(rows.map((r) => r.operation), ['DELETE', 'INSERT']);
   for (const row of rows) assert.strictEqual(String(row.changed_by), String(sender.id));
+});
+
+// ---------------------------------------------------------------------------
+// Sending a record, and a Trainee answering it (issue #289).
+// ---------------------------------------------------------------------------
+
+// A draft with a trainer, an objective and the given Employees as Trainees.
+async function completeDraft(employees, overrides = {}) {
+  const { payload } = await raise(sender.token, line.id, {
+    title: 'Send probe',
+    trainerEmployeeId: trainer.id,
+    objective: 'Everyone can isolate the press',
+    ...overrides
+  });
+  const record = payload.trainingRecord;
+  for (const employee of employees) {
+    const { response } = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: employee.id });
+    assert.strictEqual(response.status, 201);
+  }
+  return record;
+}
+
+// An Account linked to a fresh Employee, who is the Trainee.
+async function insertTrainee() {
+  const employee = await insertNamedEmployee();
+  const account = await insertAccount({ employeeId: employee.id });
+  return { employee, account };
+}
+
+async function traineeRowId(recordId, employeeId) {
+  const read = await call('GET', `/training/${recordId}`, admin.token);
+  return read.payload.trainingRecord.trainees.find((t) => t.employeeId === employeeId).id;
+}
+
+// A sent record with the given Trainees; returns the record and their row ids.
+async function sentRecord(trainees) {
+  const record = await completeDraft(trainees.map((t) => t.employee));
+  const { response } = await call('POST', `/training/${record.id}/send`, sender.token);
+  assert.strictEqual(response.status, 200);
+  const ids = [];
+  for (const t of trainees) ids.push(await traineeRowId(record.id, t.employee.id));
+  return { record, ids };
+}
+
+test('sending a complete draft sets the three sent columns and reads back as sent', async () => {
+  const { employee } = await insertTrainee();
+  const record = await completeDraft([employee]);
+  const { response, payload } = await call('POST', `/training/${record.id}/send`, sender.token);
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.trainingRecord.status, 'sent');
+  assert.ok(payload.trainingRecord.sentAt);
+  const { rows: [row] } = await pool.query(
+    'SELECT status, sent_at, sent_by_account_id FROM training_records WHERE id = $1', [record.id]
+  );
+  assert.strictEqual(row.status, 'sent');
+  assert.ok(row.sent_at);
+  assert.strictEqual(String(row.sent_by_account_id), String(sender.id));
+});
+
+test('sending refuses a record with no trainer, no objective or no Trainee, each in its own words', async () => {
+  // Title, date and duration are NOT NULL in the schema and a correction that
+  // blanks one is a 400, so a draft can never be missing them over HTTP (the
+  // check in `incompleteness` is defensive and unreachable through the API);
+  // only the optional facts and the list can be.
+  const probe = await completeDraft([await insertNamedEmployee()]);
+  for (const blank of [{ title: '  ' }, { trainedOn: null }, { durationHours: 0 }]) {
+    const { response } = await call('PATCH', `/training/${probe.id}`, sender.token, blank);
+    assert.strictEqual(response.status, 400);
+  }
+  const employee = await insertNamedEmployee();
+  const noTrainer = await completeDraft([employee], { trainerEmployeeId: undefined });
+  const noObjective = await completeDraft([employee], { objective: undefined });
+  const noTrainee = await completeDraft([]);
+  const cases = [
+    [noTrainer, /trainer/],
+    [noObjective, /objective/],
+    [noTrainee, /Trainee/]
+  ];
+  for (const [record, pattern] of cases) {
+    const { response, payload } = await call('POST', `/training/${record.id}/send`, sender.token);
+    assert.strictEqual(response.status, 409);
+    assert.match(payload.message, pattern);
+    const read = await call('GET', `/training/${record.id}`, sender.token);
+    assert.strictEqual(read.payload.trainingRecord.status, 'draft');
+    assert.strictEqual(read.payload.trainingRecord.sentAt, null);
+  }
+});
+
+test('a second send is a 409 and leaves sent_at as it was', async () => {
+  const { employee } = await insertTrainee();
+  const record = await completeDraft([employee]);
+  const first = await call('POST', `/training/${record.id}/send`, sender.token);
+  const again = await call('POST', `/training/${record.id}/send`, sender.token);
+  assert.strictEqual(again.response.status, 409);
+  assert.match(again.payload.message, /already been sent/);
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.sentAt, first.payload.trainingRecord.sentAt);
+});
+
+test('sending is refused 403 outside the Grants, and 404 for an unknown record', async () => {
+  const { employee } = await insertTrainee();
+  const record = await completeDraft([employee]);
+  for (const who of [reader, viewer]) {
+    const { response, payload } = await call('POST', `/training/${record.id}/send`, who.token);
+    assert.strictEqual(response.status, 403);
+    assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+  }
+  const unknown = await call('POST', '/training/999999999/send', admin.token);
+  assert.strictEqual(unknown.response.status, 404);
+  assert.strictEqual(unknown.payload.message, 'Training record not found');
+  assert.strictEqual((await call('POST', '/training/abc/send', admin.token)).response.status, 404);
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.status, 'draft');
+});
+
+test('a Trainee answers for themselves; a declined answer persists on the record\'s read', async () => {
+  const mine = await insertTrainee();
+  const { record, ids } = await sentRecord([mine]);
+  const { response, payload } = await call('POST', `/training/trainees/${ids[0]}/answer`, mine.account.token, { answer: 'declined' });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.trainingRecord.id, record.id);
+
+  const read = await call('GET', `/training/${record.id}`, reader.token);
+  const [trainee] = read.payload.trainingRecord.trainees;
+  assert.strictEqual(trainee.answer, 'declined');
+  assert.ok(trainee.answeredAt);
+  assert.strictEqual(trainee.answeredVia, 'account');
+  const { rows: [row] } = await pool.query(
+    'SELECT answered_by_account_id, answered_by_employee_id FROM training_trainees WHERE id = $1', [ids[0]]
+  );
+  assert.strictEqual(String(row.answered_by_account_id), String(mine.account.id));
+  assert.strictEqual(row.answered_by_employee_id, null);
+});
+
+test('nobody else can answer for a Trainee: not a colleague with an edit Grant, not an administrator', async () => {
+  const mine = await insertTrainee();
+  const { record, ids } = await sentRecord([mine]);
+  // A colleague: linked to an Employee of their own, holding an edit Grant on the record's Org Unit.
+  const colleagueEmployee = await insertNamedEmployee();
+  const colleague = await insertAccount({ employeeId: colleagueEmployee.id });
+  await insertGrant({ accountId: colleague.id, orgUnitId: line.id, canWrite: true });
+
+  for (const who of [colleague, sender, admin, reader]) {
+    const { response, payload } = await call('POST', `/training/trainees/${ids[0]}/answer`, who.token, { answer: 'confirmed' });
+    assert.strictEqual(response.status, 403);
+    assert.strictEqual(payload.message, 'Only the Trainee can answer for themselves');
+  }
+  const read = await call('GET', `/training/${record.id}`, admin.token);
+  assert.strictEqual(read.payload.trainingRecord.trainees[0].answer, null);
+});
+
+test('an unknown answer is 400, an unknown or malformed Trainee is 404, a draft\'s Trainee is 404', async () => {
+  const mine = await insertTrainee();
+  const { ids } = await sentRecord([mine]);
+  const bad = await call('POST', `/training/trainees/${ids[0]}/answer`, mine.account.token, { answer: 'maybe' });
+  assert.strictEqual(bad.response.status, 400);
+  assert.strictEqual((await call('POST', `/training/trainees/${ids[0]}/answer`, mine.account.token, {})).response.status, 400);
+  const unknown = await call('POST', '/training/trainees/999999999/answer', mine.account.token, { answer: 'confirmed' });
+  assert.strictEqual(unknown.response.status, 404);
+  assert.strictEqual(unknown.payload.message, 'Trainee not found');
+  assert.strictEqual((await call('POST', '/training/trainees/abc/answer', mine.account.token, { answer: 'confirmed' })).response.status, 404);
+
+  // Their own row on a record that has not been sent: not an answerable thing yet.
+  const draft = await completeDraft([mine.employee]);
+  const draftRow = await traineeRowId(draft.id, mine.employee.id);
+  const early = await call('POST', `/training/trainees/${draftRow}/answer`, mine.account.token, { answer: 'confirmed' });
+  assert.strictEqual(early.response.status, 404);
+});
+
+test('an Account linked to no Employee cannot answer, and has an empty queue', async () => {
+  const mine = await insertTrainee();
+  const { ids } = await sentRecord([mine]);
+  const { response } = await call('POST', `/training/trainees/${ids[0]}/answer`, reader.token, { answer: 'confirmed' });
+  assert.strictEqual(response.status, 403);
+  const queue = await call('GET', '/training/to-confirm', reader.token);
+  assert.strictEqual(queue.response.status, 200);
+  assert.deepStrictEqual(queue.payload.trainingToConfirm, []);
+});
+
+test('a changed answer updates the same row and the update is audited', async () => {
+  const mine = await insertTrainee();
+  const other = await insertTrainee();
+  const { record, ids } = await sentRecord([mine, other]);
+  await call('POST', `/training/trainees/${ids[0]}/answer`, mine.account.token, { answer: 'declined' });
+  await call('POST', `/training/trainees/${ids[0]}/answer`, mine.account.token, { answer: 'confirmed' });
+
+  const { rows: [count] } = await pool.query(
+    'SELECT count(*)::int AS n FROM training_trainees WHERE training_record_id = $1', [record.id]
+  );
+  assert.strictEqual(count.n, 2);
+  const read = await call('GET', `/training/${record.id}`, reader.token);
+  assert.strictEqual(read.payload.trainingRecord.trainees[0].answer, 'confirmed');
+
+  const { rows } = await pool.query(
+    `SELECT operation, changed_by FROM audit_log
+      WHERE table_name = 'training_trainees' AND record_id = $1 AND operation = 'UPDATE'`,
+    [ids[0]]
+  );
+  assert.strictEqual(rows.length, 2);
+  for (const row of rows) assert.strictEqual(String(row.changed_by), String(mine.account.id));
+});
+
+test('the record reads three different ways: nobody asked, one declined, all confirmed', async () => {
+  const first = await insertTrainee();
+  const second = await insertTrainee();
+  const draft = await completeDraft([first.employee, second.employee]);
+  const draftRead = (await call('GET', `/training/${draft.id}`, sender.token)).payload.trainingRecord;
+  assert.deepStrictEqual(
+    [draftRead.status, draftRead.traineeCount, draftRead.answeredCount, draftRead.fullyConfirmed],
+    ['draft', 2, 0, false]
+  );
+
+  const { record, ids } = await sentRecord([first, second]);
+  const asked = (await call('GET', `/training/${record.id}`, reader.token)).payload.trainingRecord;
+  assert.deepStrictEqual(
+    [asked.status, asked.traineeCount, asked.answeredCount, asked.declinedCount, asked.fullyConfirmed],
+    ['sent', 2, 0, 0, false]
+  );
+
+  await call('POST', `/training/trainees/${ids[0]}/answer`, first.account.token, { answer: 'confirmed' });
+  await call('POST', `/training/trainees/${ids[1]}/answer`, second.account.token, { answer: 'declined' });
+  const declined = (await call('GET', `/training/${record.id}`, reader.token)).payload.trainingRecord;
+  assert.deepStrictEqual(
+    [declined.answeredCount, declined.confirmedCount, declined.declinedCount, declined.fullyConfirmed],
+    [2, 1, 1, false]
+  );
+
+  await call('POST', `/training/trainees/${ids[1]}/answer`, second.account.token, { answer: 'confirmed' });
+  const confirmed = (await call('GET', `/training/${record.id}`, reader.token)).payload.trainingRecord;
+  assert.deepStrictEqual(
+    [confirmed.answeredCount, confirmed.confirmedCount, confirmed.declinedCount, confirmed.fullyConfirmed],
+    [2, 2, 0, true]
+  );
+
+  // The register carries the same reading.
+  const register = await call('GET', '/training', reader.token);
+  const listed = register.payload.trainingRecords.find((r) => r.id === record.id);
+  assert.strictEqual(listed.fullyConfirmed, true);
+  assert.strictEqual(listed.confirmedCount, 2);
+  assert.ok(listed.sentAt);
+});
+
+test('the queue holds only the caller\'s own, sent, unanswered Trainee rows, oldest sent first', async () => {
+  const mine = await insertTrainee();
+  const colleague = await insertTrainee();
+  const older = await completeDraft([mine.employee, colleague.employee], { title: 'Queue older' });
+  const newer = await completeDraft([mine.employee], { title: 'Queue newer' });
+  const answered = await completeDraft([mine.employee], { title: 'Queue answered' });
+  const unsent = await completeDraft([mine.employee], { title: 'Queue draft' });
+  // Send out of creation order, so ordering is by when each was sent.
+  await call('POST', `/training/${newer.id}/send`, sender.token);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  await call('POST', `/training/${older.id}/send`, sender.token);
+  await call('POST', `/training/${answered.id}/send`, sender.token);
+  const answeredRow = await traineeRowId(answered.id, mine.employee.id);
+  await call('POST', `/training/trainees/${answeredRow}/answer`, mine.account.token, { answer: 'confirmed' });
+
+  const queue = await call('GET', '/training/to-confirm', mine.account.token);
+  assert.strictEqual(queue.response.status, 200);
+  const rows = queue.payload.trainingToConfirm;
+  assert.deepStrictEqual(rows.map((r) => r.title), ['Queue newer', 'Queue older']);
+  assert.ok(!rows.some((r) => r.id === unsent.id));
+  const [first] = rows;
+  assert.strictEqual(first.id, newer.id);
+  assert.strictEqual(first.number, newer.number);
+  assert.strictEqual(first.trainedOn, '2026-03-10');
+  assert.strictEqual(first.durationHours, 1.5);
+  assert.strictEqual(first.trainerName, trainer.display_name);
+  assert.strictEqual(first.objective, 'Everyone can isolate the press');
+  assert.strictEqual(first.orgUnitName, 'Training Line');
+  assert.strictEqual(first.traineeId, await traineeRowId(newer.id, mine.employee.id));
+
+  const theirs = await call('GET', '/training/to-confirm', colleague.account.token);
+  assert.deepStrictEqual(theirs.payload.trainingToConfirm.map((r) => r.title), ['Queue older']);
 });

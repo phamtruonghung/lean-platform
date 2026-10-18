@@ -180,6 +180,11 @@ const _pages = <_Page>[
   // the list card, so the default row bound holds.
   _Page('/training', 'lib/people/training_screen.dart', 'Training records',
       'What the plant has trained people on'),
+  // A Trainee's own outstanding answers (issue #289). Its rows are cards with
+  // the two answer buttons; the audited fixture has none outstanding, so the
+  // title/description half is what this exercises.
+  _Page('/training/to-confirm', 'lib/people/training_to_confirm_screen.dart',
+      'Training to confirm', 'Training records sent to you'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this

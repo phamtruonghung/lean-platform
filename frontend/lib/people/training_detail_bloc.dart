@@ -36,6 +36,19 @@ class TrainingTraineeRemoved extends TrainingDetailEvent {
   final String traineeId;
 }
 
+/// Sends the draft on screen, asking every Trainee on it at once (issue #289).
+class TrainingRecordSent extends TrainingDetailEvent {
+  const TrainingRecordSent();
+}
+
+/// The signed-in Trainee's own answer, `confirmed` or `declined`, on the row
+/// with this id (the Trainee row's, not the Employee's).
+class TrainingTraineeAnswered extends TrainingDetailEvent {
+  const TrainingTraineeAnswered(this.traineeId, this.answer);
+  final String traineeId;
+  final String answer;
+}
+
 sealed class TrainingDetailState {
   const TrainingDetailState();
 }
@@ -59,6 +72,8 @@ class TrainingDetailLoaded extends TrainingDetailState {
     this.isWriting = false,
     this.addFailure,
     this.removeFailure,
+    this.sendFailure,
+    this.answerFailure,
   });
   final TrainingRecord record;
 
@@ -69,6 +84,12 @@ class TrainingDetailLoaded extends TrainingDetailState {
   /// last remove (shown on the Screen), cleared by the next write.
   final String? addFailure;
   final String? removeFailure;
+
+  /// The server's refusal of the last send (a record that still lacks a fact,
+  /// in the server's own words) and of the last answer, shown beside the
+  /// control that caused them.
+  final String? sendFailure;
+  final String? answerFailure;
 }
 
 class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> {
@@ -79,6 +100,8 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
     on<TrainingDetailRequested>(_onRequested);
     on<TrainingTraineeAdded>(_onAdded);
     on<TrainingTraineeRemoved>(_onRemoved);
+    on<TrainingRecordSent>(_onSent);
+    on<TrainingTraineeAnswered>(_onAnswered);
   }
 
   final PeopleApi _api;
@@ -99,37 +122,44 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
   }
 
   Future<void> _onAdded(TrainingTraineeAdded event, Emitter<TrainingDetailState> emit) =>
-      _write(emit, isAdd: true, call: (token, record) => _api.addTrainee(token, record.id, event.employeeId));
+      _write(emit, _Write.add, (token, record) => _api.addTrainee(token, record.id, event.employeeId));
 
   Future<void> _onRemoved(TrainingTraineeRemoved event, Emitter<TrainingDetailState> emit) =>
-      _write(emit, isAdd: false, call: (token, record) => _api.removeTrainee(token, record.id, event.traineeId));
+      _write(emit, _Write.remove, (token, record) => _api.removeTrainee(token, record.id, event.traineeId));
+
+  Future<void> _onSent(TrainingRecordSent event, Emitter<TrainingDetailState> emit) =>
+      _write(emit, _Write.send, (token, record) => _api.sendTrainingRecord(token, record.id));
+
+  Future<void> _onAnswered(TrainingTraineeAnswered event, Emitter<TrainingDetailState> emit) =>
+      _write(emit, _Write.answer, (token, _) => _api.answerTrainee(token, event.traineeId, event.answer));
+
+  TrainingDetailLoaded _failed(TrainingRecord record, _Write kind, String message) => TrainingDetailLoaded(
+        record: record,
+        addFailure: kind == _Write.add ? message : null,
+        removeFailure: kind == _Write.remove ? message : null,
+        sendFailure: kind == _Write.send ? message : null,
+        answerFailure: kind == _Write.answer ? message : null,
+      );
 
   Future<void> _write(
-    Emitter<TrainingDetailState> emit, {
-    required bool isAdd,
-    required Future<TrainingRecord> Function(String token, TrainingRecord record) call,
-  }) async {
+    Emitter<TrainingDetailState> emit,
+    _Write kind,
+    Future<TrainingRecord> Function(String token, TrainingRecord record) call,
+  ) async {
     final current = state;
     if (current is! TrainingDetailLoaded || current.isWriting) return;
     final token = _auth.currentAccessToken;
     if (token == null) {
-      const message = 'This session has ended. Sign in again to continue.';
-      emit(TrainingDetailLoaded(
-        record: current.record,
-        addFailure: isAdd ? message : null,
-        removeFailure: isAdd ? null : message,
-      ));
+      emit(_failed(current.record, kind, 'This session has ended. Sign in again to continue.'));
       return;
     }
     emit(TrainingDetailLoaded(record: current.record, isWriting: true));
     try {
       emit(TrainingDetailLoaded(record: await call(token, current.record)));
     } on PeopleApiException catch (error) {
-      emit(TrainingDetailLoaded(
-        record: current.record,
-        addFailure: isAdd ? error.message : null,
-        removeFailure: isAdd ? null : error.message,
-      ));
+      emit(_failed(current.record, kind, error.message));
     }
   }
 }
+
+enum _Write { add, remove, send, answer }

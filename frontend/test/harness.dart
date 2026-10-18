@@ -1742,12 +1742,50 @@ Map<String, dynamic> leaveRequestJson(
 
 /// One Trainee on a Training record (issue #288; `listTrainees`,
 /// backend/src/modules/people/training.js).
-Map<String, dynamic> traineeJson(String id, String employeeId, String employeeNo, String employeeName) => {
+Map<String, dynamic> traineeJson(
+  String id,
+  String employeeId,
+  String employeeNo,
+  String employeeName, {
+  String? answer,
+  String? answeredAt,
+  String? answeredVia,
+}) =>
+    {
       'id': id,
       'employeeId': employeeId,
       'employeeNo': employeeNo,
       'employeeName': employeeName,
       'addedAt': '2026-05-04T08:00:00.000Z',
+      'answer': answer,
+      'answeredAt': answeredAt ?? (answer == null ? null : '2026-05-06T09:30:00.000Z'),
+      'answeredVia': answeredVia ?? (answer == null ? null : 'account'),
+    };
+
+/// One row of `GET /api/people/training/to-confirm` (issue #289;
+/// `listTrainingToConfirm`, backend/src/modules/people/training.js).
+Map<String, dynamic> trainingToConfirmJson(
+  String traineeId, {
+  String id = '1',
+  String number = 'TR-HCM-2026-00001',
+  String title = 'Lockout and tagout refresher',
+  String trainedOn = '2026-05-04',
+  double durationHours = 2,
+  String? trainerName = 'Tina Trainer',
+  String? objective = 'Everyone can isolate the press',
+  String orgUnitName = 'Assembly',
+}) =>
+    {
+      'traineeId': traineeId,
+      'id': id,
+      'number': number,
+      'title': title,
+      'trainedOn': trainedOn,
+      'durationHours': durationHours,
+      'trainerName': trainerName,
+      'objective': objective,
+      'orgUnitName': orgUnitName,
+      'sentAt': '2026-05-05T08:00:00.000Z',
     };
 
 /// One Training record as `GET /api/people/training` sends it (issue #287;
@@ -1781,10 +1819,24 @@ Map<String, dynamic> trainingRecordJson(
       'objective': objective,
       'status': status,
       'trainees': trainees,
-      'traineeCount': trainees.length,
+      ..._trainingReading(trainees),
       'createdAt': '2026-05-04T08:00:00.000Z',
       'updatedAt': '2026-05-04T08:00:00.000Z',
     };
+
+/// The record's computed reading of its Trainees' answers, as `toReading`
+/// (training.js) sends it.
+Map<String, dynamic> _trainingReading(List<Map<String, dynamic>> trainees) {
+  final answered = trainees.where((t) => t['answer'] != null).length;
+  final confirmed = trainees.where((t) => t['answer'] == 'confirmed').length;
+  return {
+    'traineeCount': trainees.length,
+    'answeredCount': answered,
+    'confirmedCount': confirmed,
+    'declinedCount': answered - confirmed,
+    'fullyConfirmed': trainees.isNotEmpty && confirmed == trainees.length,
+  };
+}
 
 /// One row of `GET /api/people/attendance-to-confirm`
 /// (`toAttendanceToConfirmEntry`, attendance.js, issue #250) — a past shift
@@ -2303,6 +2355,12 @@ class FakeWire {
     this.trainingWriteMessage = 'That Training record could not be saved.',
     this.traineeWriteStatus = 200,
     this.traineeWriteMessage = 'That Trainee could not be saved.',
+    List<Map<String, dynamic>>? trainingToConfirm,
+    this.trainingToConfirmStatus = 200,
+    this.trainingSendStatus = 200,
+    this.trainingSendMessage = 'A Training record needs a trainer before it is sent',
+    this.trainingAnswerStatus = 200,
+    this.trainingAnswerMessage = 'Only the Trainee can answer for themselves',
     Map<String, dynamic>? employeeWorkedHours,
     this.employeeWorkedHoursStatus = 200,
     this.employeeWorkedHoursMessage = 'The worked-hours summary is unavailable.',
@@ -2521,6 +2579,7 @@ class FakeWire {
         leaveRequestsMine = leaveRequestsMine ?? [],
         leaveRequestsToDecide = leaveRequestsToDecide ?? [],
         trainingRecords = trainingRecords ?? [],
+        trainingToConfirm = trainingToConfirm ?? [],
         employeeWorkedHours = employeeWorkedHours ??
             {'days': const [], 'totals': {'scheduledMinutes': 0, 'workedMinutes': 0, 'overtimeMinutes': 0}},
         jobPlans = jobPlans ?? [],
@@ -4139,6 +4198,25 @@ class FakeWire {
   int traineeWriteStatus;
   String traineeWriteMessage;
   final List<(String, Map<String, dynamic>)> traineeWrites = [];
+
+  /// `GET /api/people/training/to-confirm` (issue #289) — the caller's own
+  /// outstanding answers, empty by default. A successful answer removes its
+  /// row.
+  List<Map<String, dynamic>> trainingToConfirm;
+  int trainingToConfirmStatus;
+
+  /// The status (and `{message}`) the send and the answer answer with; 200
+  /// means the write succeeds. A send flips the record to `sent`; an answer
+  /// writes the answer onto the Trainee row.
+  int trainingSendStatus;
+  String trainingSendMessage;
+  int trainingAnswerStatus;
+  String trainingAnswerMessage;
+
+  /// Every send's request line (`POST /api/people/training/1/send`), and every
+  /// answer's request line with its decoded body.
+  final List<String> trainingSends = [];
+  final List<(String, Map<String, dynamic>)> trainingAnswers = [];
 
   /// Every `GET /api/people/absence-reasons` query string.
   final List<Map<String, String>> absenceReasonRequests = [];
@@ -8175,6 +8253,53 @@ class FakeWire {
         }
         // /api/people/training (issue #287).
         if (path == '/api/people/training' || path.startsWith('/api/people/training/')) {
+          if (request.method == 'GET' && path == '/api/people/training/to-confirm') {
+            if (trainingToConfirmStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': 'Your Training to confirm is unavailable.'}),
+                trainingToConfirmStatus,
+              );
+            }
+            return http.Response(jsonEncode({'trainingToConfirm': trainingToConfirm}), 200);
+          }
+          final sendPath = RegExp(r'^/api/people/training/([^/]+)/send$').firstMatch(path);
+          if (request.method == 'POST' && sendPath != null) {
+            trainingSends.add('POST $path');
+            if (trainingSendStatus != 200) {
+              return http.Response(jsonEncode({'message': trainingSendMessage}), trainingSendStatus);
+            }
+            final index = trainingRecords.indexWhere((row) => row['id'] == sendPath.group(1));
+            if (index < 0) return http.Response(jsonEncode({'message': 'Training record not found'}), 404);
+            final record = {...trainingRecords[index], 'status': 'sent', 'sentAt': '2026-05-05T08:00:00.000Z'};
+            trainingRecords = [...trainingRecords]..[index] = record;
+            return http.Response(jsonEncode({'trainingRecord': record}), 200);
+          }
+          final answerPath = RegExp(r'^/api/people/training/trainees/([^/]+)/answer$').firstMatch(path);
+          if (request.method == 'POST' && answerPath != null) {
+            final traineeId = answerPath.group(1)!;
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            trainingAnswers.add(('POST $path', sent));
+            if (trainingAnswerStatus != 200) {
+              return http.Response(jsonEncode({'message': trainingAnswerMessage}), trainingAnswerStatus);
+            }
+            trainingToConfirm = [for (final row in trainingToConfirm) if (row['traineeId'] != traineeId) row];
+            Map<String, dynamic>? answered;
+            for (var i = 0; i < trainingRecords.length; i++) {
+              final trainees = (trainingRecords[i]['trainees'] as List<dynamic>).cast<Map<String, dynamic>>();
+              if (!trainees.any((t) => t['id'] == traineeId)) continue;
+              final updated = [
+                for (final t in trainees)
+                  if (t['id'] == traineeId)
+                    {...t, 'answer': sent['answer'], 'answeredAt': '2026-05-06T09:30:00.000Z', 'answeredVia': 'account'}
+                  else
+                    t,
+              ];
+              answered = {...trainingRecords[i], 'trainees': updated, ..._trainingReading(updated)};
+              trainingRecords = [...trainingRecords]..[i] = answered;
+              break;
+            }
+            return http.Response(jsonEncode({'trainingRecord': answered ?? trainingRecordJson('0')}), 200);
+          }
           if (request.method == 'GET') {
             if (path == '/api/people/training') {
               trainingReads.add(request.url.queryParameters);
@@ -8222,7 +8347,7 @@ class FakeWire {
               trainees = [for (final t in trainees) if (t['id'] != traineeId) t];
             }
             record['trainees'] = trainees;
-            record['traineeCount'] = trainees.length;
+            record.addAll(_trainingReading(trainees));
             trainingRecords = [...trainingRecords]..[index] = record;
             return http.Response(jsonEncode({'trainingRecord': record}), request.method == 'POST' ? 201 : 200);
           }

@@ -1625,6 +1625,56 @@ class PeopleApi {
     return _trainingRecordFrom(response.body);
   }
 
+  /// Sends a draft Training record (`POST /api/people/training/:id/send`),
+  /// asking every Trainee on it at once. Answers the whole record. An
+  /// incomplete record is a 409 whose `message` says what it still lacks, in
+  /// the server's own words; a second send is a 409 too.
+  Future<TrainingRecord> sendTrainingRecord(String accessToken, String recordId) async {
+    final path = '/api/people/training/$recordId/send';
+    final response = await _send(
+      () => _client.post(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _trainingRecordFrom(response.body);
+  }
+
+  /// The caller's own outstanding answers
+  /// (`GET /api/people/training/to-confirm`), oldest sent first. An Account
+  /// linked to no Employee gets an empty list.
+  Future<List<TrainingToConfirm>> fetchTrainingToConfirm(String accessToken) async {
+    const path = '/api/people/training/to-confirm';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final row in body['trainingToConfirm'] as List<dynamic>)
+          TrainingToConfirm.fromJson(row as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// A Trainee's own answer (`POST /api/people/training/trainees/:traineeId/answer`),
+  /// `confirmed` or `declined`. [traineeId] is the Trainee row's id. Answers
+  /// the whole record. Answering for anybody else is a 403 with the server's
+  /// `message`.
+  Future<TrainingRecord> answerTrainee(String accessToken, String traineeId, String answer) async {
+    final path = '/api/people/training/trainees/$traineeId/answer';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'answer': answer}),
+      ),
+      path,
+    );
+    return _trainingRecordFrom(response.body);
+  }
+
   static TrainingRecord _trainingRecordFrom(String responseBody) {
     try {
       final decoded = jsonDecode(responseBody) as Map<String, dynamic>;

@@ -76,6 +76,7 @@ import '../people/attendance_to_confirm_screen.dart';
 import '../people/training_detail_bloc.dart';
 import '../people/training_detail_screen.dart';
 import '../people/training_screen.dart';
+import '../people/training_to_confirm_screen.dart';
 import '../people/cost_rates_bloc.dart';
 import '../people/cost_rates_screen.dart';
 import '../people/directory_bloc.dart';
@@ -199,6 +200,11 @@ abstract final class Routes {
   /// The Training record register (issue #287) and, beneath it, one record
   /// (`/training/:id`). Filed under the People group.
   static const String training = '/training';
+
+  /// A Trainee's own outstanding answers (issue #289), nested under
+  /// [training] rather than a second Destination — the `/attendance/to-confirm`
+  /// shape.
+  static const String trainingToConfirm = '/training/to-confirm';
 
   /// Leave requests (issue #265): asking for leave, and deciding what others
   /// asked for. Its dialogs are addresses beneath it (`/new`,
@@ -707,10 +713,25 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               return TrainingScreen(canRaise: account.account.orgUnitScope.canWriteSomewhere);
             },
           ),
-          // One Training record. When `/training/to-confirm` (issue #289)
-          // lands it MUST be declared before this route, or the literal
-          // segment `to-confirm` is captured as a record id — the same order
-          // `/attendance/to-confirm` keeps above `/attendance/:shiftInstanceId`.
+          // A Trainee's own outstanding answers (issue #289) — a nested
+          // address under the Training Destination, not a second sidebar
+          // entry. Declared BEFORE `/training/:id` on purpose: go_router
+          // matches in declaration order, so the other order reads the literal
+          // segment `to-confirm` as a record id and renders the record's
+          // "not found" in place of the queue (the same order
+          // `/attendance/to-confirm` keeps above `/attendance/:shiftInstanceId`).
+          // Offered to every approved Account: the server answers an Account
+          // linked to no Employee with an empty list, not a refusal.
+          GoRoute(
+            path: Routes.trainingToConfirm,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return const TrainingToConfirmScreen();
+            },
+          ),
+          // One Training record. It MUST stay below `/training/to-confirm`
+          // above (see the comment there).
           // The Bloc is keyed on the id in the address: go_router reuses a
           // route's page when the pattern matches, so without the key,
           // moving from one record to another would keep showing the first.
@@ -726,7 +747,11 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   peopleApi: context.read<PeopleApi>(),
                   authGateway: context.read<AuthGateway>(),
                 )..add(TrainingDetailRequested(id)),
-                child: TrainingDetailScreen(trainingRecordId: id),
+                child: TrainingDetailScreen(
+                  trainingRecordId: id,
+                  orgUnitScope: account.account.orgUnitScope,
+                  employeeId: account.account.employeeId,
+                ),
               );
             },
           ),

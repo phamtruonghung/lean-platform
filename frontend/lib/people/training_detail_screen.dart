@@ -10,6 +10,15 @@
 /// refused removal is rendered beside the list. A draft the caller could not
 /// send reads as "no such Training record" here, exactly as the server answers
 /// it (404), so the address does not reveal that the draft exists.
+///
+/// Sending and answering (issue #289): a draft carries a send control for a
+/// caller who could send it (an edit Grant reaching its Org Unit, the same
+/// predicate the server asks), and the server's completeness refusal renders
+/// beside it. Each Trainee's row reads its answer, the day it came and the
+/// door it came through; the record's own reading — not sent, nobody has
+/// answered, a decline among the answers, fully confirmed — is the server's
+/// computation, shown as it arrives. A Trainee looking at a sent record they
+/// are on gets the two answer controls on their own row only.
 library;
 
 import 'package:flutter/material.dart';
@@ -23,14 +32,28 @@ import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
+import 'org_unit_scope.dart';
 import 'training_detail_bloc.dart';
 import 'training_record.dart';
 import 'training_trainee_dialog.dart';
 
 class TrainingDetailScreen extends StatelessWidget {
-  const TrainingDetailScreen({super.key, required this.trainingRecordId});
+  const TrainingDetailScreen({
+    super.key,
+    required this.trainingRecordId,
+    this.orgUnitScope = const OrgUnitScope.nowhere(),
+    this.employeeId,
+  });
 
   final String trainingRecordId;
+
+  /// Where the viewing Account may edit — decides whether the send control is
+  /// offered (the server's own `canAct({ write: true })` is the real gate).
+  final OrgUnitScope orgUnitScope;
+
+  /// The Employee the viewing Account is linked to, when it is: the Trainee
+  /// row carrying this Employee is the one the answer controls appear on.
+  final String? employeeId;
 
   static const double maxWidth = 720;
 
@@ -50,6 +73,13 @@ class TrainingDetailScreen extends StatelessWidget {
   static const ValueKey<String> traineesHeadingKey = ValueKey<String>('training-detail-trainees-heading');
   static const ValueKey<String> addTraineeKey = ValueKey<String>('training-detail-add-trainee');
   static const ValueKey<String> removeFailureKey = ValueKey<String>('training-detail-remove-failure');
+  static const ValueKey<String> sendKey = ValueKey<String>('training-detail-send');
+  static const ValueKey<String> sendFailureKey = ValueKey<String>('training-detail-send-failure');
+  static const ValueKey<String> readingKey = ValueKey<String>('training-detail-reading');
+  static const ValueKey<String> answerFailureKey = ValueKey<String>('training-detail-answer-failure');
+  static ValueKey<String> traineeAnswerKey(String id) => ValueKey<String>('training-detail-trainee-answer-$id');
+  static ValueKey<String> confirmKey(String id) => ValueKey<String>('training-detail-confirm-$id');
+  static ValueKey<String> declineKey(String id) => ValueKey<String>('training-detail-decline-$id');
   static ValueKey<String> traineeRowKey(String id) => ValueKey<String>('training-detail-trainee-$id');
   static ValueKey<String> removeTraineeKey(String id) => ValueKey<String>('training-detail-remove-trainee-$id');
 
@@ -76,19 +106,38 @@ class TrainingDetailScreen extends StatelessWidget {
             retryKey: retryKey,
             onRetry: () => context.read<TrainingDetailBloc>().add(TrainingDetailRequested(trainingRecordId)),
           ),
-        TrainingDetailLoaded(record: final record, isWriting: final isWriting, removeFailure: final failure) =>
-          _Loaded(record: record, isWriting: isWriting, removeFailure: failure),
+        TrainingDetailLoaded loaded => _Loaded(
+            record: loaded.record,
+            isWriting: loaded.isWriting,
+            removeFailure: loaded.removeFailure,
+            sendFailure: loaded.sendFailure,
+            answerFailure: loaded.answerFailure,
+            canSend: orgUnitScope.canWriteAt(loaded.record.orgUnitId),
+            employeeId: employeeId,
+          ),
       },
     );
   }
 }
 
 class _Loaded extends StatelessWidget {
-  const _Loaded({required this.record, required this.isWriting, required this.removeFailure});
+  const _Loaded({
+    required this.record,
+    required this.isWriting,
+    required this.removeFailure,
+    required this.sendFailure,
+    required this.answerFailure,
+    required this.canSend,
+    required this.employeeId,
+  });
 
   final TrainingRecord record;
   final bool isWriting;
   final String? removeFailure;
+  final String? sendFailure;
+  final String? answerFailure;
+  final bool canSend;
+  final String? employeeId;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +180,29 @@ class _Loaded extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.xs),
             Text(record.title, key: TrainingDetailScreen.titleKey, style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.sm),
+            Text(_readingOf(record), key: TrainingDetailScreen.readingKey, style: muted),
+            if (record.isDraft && canSend) ...[
+              const SizedBox(height: Spacing.md),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  key: TrainingDetailScreen.sendKey,
+                  onPressed: isWriting ? null : () => context.read<TrainingDetailBloc>().add(const TrainingRecordSent()),
+                  icon: const Icon(Icons.send_outlined),
+                  label: const Text('Send to Trainees'),
+                ),
+              ),
+              if (sendFailure != null)
+                Padding(
+                  key: TrainingDetailScreen.sendFailureKey,
+                  padding: const EdgeInsets.only(top: Spacing.sm),
+                  child: Text(
+                    sendFailure!,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                  ),
+                ),
+            ],
             const SizedBox(height: Spacing.lg),
             Card(
               margin: EdgeInsets.zero,
@@ -199,6 +271,44 @@ class _Loaded extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                   title: Text('${trainee.employeeNo} · ${trainee.employeeName}'),
+                  subtitle: record.isDraft
+                      ? null
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _answerOf(trainee),
+                              key: TrainingDetailScreen.traineeAnswerKey(trainee.id),
+                            ),
+                            if (employeeId != null && trainee.employeeId == employeeId)
+                              Padding(
+                                padding: const EdgeInsets.only(top: Spacing.xs),
+                                child: Wrap(
+                                  spacing: Spacing.sm,
+                                  children: [
+                                    FilledButton(
+                                      key: TrainingDetailScreen.confirmKey(trainee.id),
+                                      onPressed: isWriting
+                                          ? null
+                                          : () => context
+                                              .read<TrainingDetailBloc>()
+                                              .add(TrainingTraineeAnswered(trainee.id, 'confirmed')),
+                                      child: const Text('Confirm'),
+                                    ),
+                                    OutlinedButton(
+                                      key: TrainingDetailScreen.declineKey(trainee.id),
+                                      onPressed: isWriting
+                                          ? null
+                                          : () => context
+                                              .read<TrainingDetailBloc>()
+                                              .add(TrainingTraineeAnswered(trainee.id, 'declined')),
+                                      child: const Text('Decline'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
                   trailing: record.isDraft
                       ? IconButton(
                           key: TrainingDetailScreen.removeTraineeKey(trainee.id),
@@ -210,6 +320,15 @@ class _Loaded extends StatelessWidget {
                         )
                       : null,
                 ),
+            if (answerFailure != null)
+              Padding(
+                key: TrainingDetailScreen.answerFailureKey,
+                padding: const EdgeInsets.only(top: Spacing.sm),
+                child: Text(
+                  answerFailure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
             if (removeFailure != null)
               Padding(
                 key: TrainingDetailScreen.removeFailureKey,
@@ -224,6 +343,35 @@ class _Loaded extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The record's reading of its Trainees' answers. Four different sentences
+/// for four different states, so "nobody has been asked", "nobody has
+/// answered", "somebody declined" and "everybody confirmed" never blur — the
+/// server computes the counts, this only words them.
+String _readingOf(TrainingRecord record) {
+  if (record.isDraft) return 'Not sent yet: nobody has been asked.';
+  if (record.fullyConfirmed) return 'Fully confirmed by all ${record.traineeCount} Trainees.';
+  if (record.declinedCount > 0) {
+    return 'Not fully confirmed: ${record.declinedCount} declined, '
+        '${record.confirmedCount} of ${record.traineeCount} confirmed.';
+  }
+  if (record.answeredCount == 0) return 'Sent: nobody has answered yet.';
+  return '${record.confirmedCount} of ${record.traineeCount} confirmed.';
+}
+
+/// One Trainee's answer, the day it came and the door it came through.
+String _answerOf(TrainingTrainee trainee) {
+  final answer = trainee.answer;
+  if (answer == null) return 'Not answered yet';
+  final at = trainee.answeredAt;
+  final day = at == null || at.length < 10 ? '' : ' on ${at.substring(0, 10)}';
+  final door = switch (trainee.answeredVia) {
+    'account' => ' from their own Account',
+    'device' => ' at the floor device',
+    _ => '',
+  };
+  return '${answer == 'confirmed' ? 'Confirmed' : 'Declined'}$day$door';
 }
 
 class _Fact extends StatelessWidget {

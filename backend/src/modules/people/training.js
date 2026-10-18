@@ -18,8 +18,11 @@
  * the route's check and the write is refused, never changed. Whether the
  * Employee exists or has departed is the route's question.
  *
- * Sending (#289) and correcting a sent record (#291) are not here; nothing in
- * this file writes status 'sent'.
+ * Sending (#289) is here: `sendTrainingRecord` is the only writer of status
+ * 'sent', and a Trainee's answer (`answerTrainee`) and the Trainee's own queue
+ * (`listTrainingToConfirm`) with it. Whether the caller may send is the
+ * route's question; whether the answerer IS the Trainee is the route's too.
+ * Correcting a sent record (#291) is not here.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -32,12 +35,21 @@ const SELECT_RECORD = `
   SELECT tr.id, tr.site_id, tr.org_unit_id, tr.number, tr.title,
          tr.trained_on::text AS trained_on, tr.duration_hours::float8 AS duration_hours,
          tr.trainer_employee_id, tr.objective, tr.status,
+         tr.sent_at, tr.sent_by_account_id,
          tr.created_at, tr.updated_at,
          ou.name AS org_unit_name, ou.path AS org_unit_path,
-         e.display_name AS trainer_name
+         e.display_name AS trainer_name,
+         counts.trainee_count, counts.answered_count, counts.confirmed_count
     FROM training_records tr
     JOIN org_units ou ON ou.id = tr.org_unit_id
-    LEFT JOIN employees e ON e.id = tr.trainer_employee_id`;
+    LEFT JOIN employees e ON e.id = tr.trainer_employee_id
+    CROSS JOIN LATERAL (
+      SELECT count(*)::int AS trainee_count,
+             count(tt.answer)::int AS answered_count,
+             (count(*) FILTER (WHERE tt.answer = 'confirmed'))::int AS confirmed_count
+        FROM training_trainees tt
+       WHERE tt.training_record_id = tr.id
+    ) counts`;
 
 function toTrainingRecord(row) {
   return {
@@ -53,8 +65,32 @@ function toTrainingRecord(row) {
     trainerName: row.trainer_name,
     objective: row.objective,
     status: row.status,
+    sentAt: row.sent_at,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    ...toReading(row)
+  };
+}
+
+// The record's reading of its Trainees' answers, computed from the rows on
+// every read and never stored (ADR-0040's rule for an attendance sheet, for the
+// same reason: "nobody has been asked yet" and "everybody declined" must stay
+// different states). `fullyConfirmed` means EVERY Trainee answered `confirmed`:
+// one declined answer keeps a record from reading as fully confirmed, even
+// though every Trainee has answered it. The counts let a caller tell the three
+// readings apart: nobody asked (a draft, or sent with answeredCount 0), partly
+// or wholly answered with a decline (answeredCount - confirmedCount > 0), and
+// fully confirmed. A record with no Trainee is never fully confirmed.
+function toReading(row) {
+  const traineeCount = row.trainee_count;
+  const answeredCount = row.answered_count;
+  const confirmedCount = row.confirmed_count;
+  return {
+    traineeCount,
+    answeredCount,
+    confirmedCount,
+    declinedCount: answeredCount - confirmedCount,
+    fullyConfirmed: traineeCount > 0 && confirmedCount === traineeCount
   };
 }
 
@@ -139,7 +175,8 @@ async function findTrainingRecord(id) {
 // A record's Trainees in the order they were added.
 async function listTrainees(recordId) {
   const { rows } = await getPool().query(
-    `SELECT tt.id, tt.employee_id, tt.created_at, e.employee_no, e.display_name
+    `SELECT tt.id, tt.employee_id, tt.created_at, e.employee_no, e.display_name,
+            tt.answer, tt.answered_at, tt.answered_by_account_id, tt.answered_by_employee_id
        FROM training_trainees tt
        JOIN employees e ON e.id = tt.employee_id
       WHERE tt.training_record_id = $1
@@ -151,7 +188,13 @@ async function listTrainees(recordId) {
     employeeId: row.employee_id,
     employeeNo: row.employee_no,
     employeeName: row.display_name,
-    addedAt: row.created_at
+    addedAt: row.created_at,
+    answer: row.answer,
+    answeredAt: row.answered_at,
+    // The door the answer came through, read from which actor column is set.
+    answeredVia: row.answered_by_account_id !== null
+      ? 'account'
+      : (row.answered_by_employee_id !== null ? 'device' : null)
   }));
 }
 
@@ -159,7 +202,7 @@ async function getTrainingRecord(id) {
   const record = await findTrainingRecord(id);
   if (!record) throw notFound('Training record');
   const trainees = await listTrainees(record.id);
-  return { ...record, trainees, traineeCount: trainees.length };
+  return { ...record, trainees };
 }
 
 const SENT_TRAINEES_MESSAGE = "A sent Training record's Trainees cannot be changed here; correct it instead";
@@ -321,7 +364,135 @@ async function listTrainingRecords({ viewer, orgUnitPath = null, from = null, to
   return rows.map(toTrainingRecord);
 }
 
+// What a record still lacks before it can be sent, in the Module's own words,
+// or null when it is complete. A refusal here is a 409: the request is well
+// formed, it is the record's current state that cannot take it (the same code
+// a second send gets), as opposed to the 400 a malformed body gets.
+function incompleteness(record) {
+  if (!record.title) return 'A Training record needs a title before it is sent';
+  if (!record.trainedOn) return 'A Training record needs a date of training before it is sent';
+  if (!record.durationHours) return 'A Training record needs a duration before it is sent';
+  if (record.trainerEmployeeId === null) return 'A Training record needs a trainer before it is sent';
+  if (!record.objective) return 'A Training record needs an objective before it is sent';
+  if (record.traineeCount === 0) return 'A Training record needs at least one Trainee before it is sent';
+  return null;
+}
+
+const ALREADY_SENT_MESSAGE = 'This Training record has already been sent';
+
+// Sends a draft: the three sent columns in one statement. `status = 'draft'`
+// is in the WHERE clause so two sends racing, or a Trainee removed between
+// the route's check and this write, cannot both win; the loser gets a 409.
+// The trainer, objective and Trainee guards are in the statement too, so a
+// record corrected or emptied between the check and the write is not sent.
+async function sendTrainingRecord(accountId, id) {
+  const sent = await withActor(accountId, async (client) => {
+    const { rowCount } = await client.query(
+      `UPDATE training_records
+          SET status = 'sent', sent_at = now(), sent_by_account_id = $2
+        WHERE id = $1 AND status = 'draft'
+          AND trainer_employee_id IS NOT NULL AND objective IS NOT NULL
+          AND EXISTS (SELECT 1 FROM training_trainees WHERE training_record_id = $1)`,
+      [id, accountId]
+    );
+    return rowCount;
+  });
+  if (sent === 0) {
+    const record = await getTrainingRecord(id); // 404s if it was discarded meanwhile.
+    if (record.status === 'sent') throw httpError(409, ALREADY_SENT_MESSAGE);
+    throw httpError(409, incompleteness(record) ?? 'This Training record cannot be sent');
+  }
+  return getTrainingRecord(id);
+}
+
+const ANSWERS = ['confirmed', 'declined'];
+
+function requireAnswer(value) {
+  if (!ANSWERS.includes(value)) {
+    throw httpError(400, `answer must be one of: ${ANSWERS.join(', ')}`);
+  }
+  return value;
+}
+
+// One Trainee row with its record's status, for the answer's door.
+async function findTraineeForAnswer(traineeId) {
+  if (parseId(traineeId) === null) return null;
+  const { rows } = await getPool().query(
+    `SELECT tt.id, tt.employee_id, tt.training_record_id, tr.status
+       FROM training_trainees tt
+       JOIN training_records tr ON tr.id = tt.training_record_id
+      WHERE tt.id = $1`,
+    [traineeId]
+  );
+  if (!rows[0]) return null;
+  return {
+    id: rows[0].id,
+    employeeId: rows[0].employee_id,
+    recordId: rows[0].training_record_id,
+    recordStatus: rows[0].status
+  };
+}
+
+// Writes (or changes) a Trainee's answer through the Account door: an UPDATE
+// of the same row, so a changed answer is audited and never a second row. The
+// Employee-actor column is cleared, so the CHECK's "exactly one actor" holds
+// even when a floor device answered earlier. Only ever a sent record.
+async function answerTrainee(accountId, traineeId, answer) {
+  const row = await withActor(accountId, async (client) => {
+    const { rows } = await client.query(
+      `UPDATE training_trainees tt
+          SET answer = $2, answered_at = now(),
+              answered_by_account_id = $3, answered_by_employee_id = NULL
+         FROM training_records tr
+        WHERE tt.id = $1 AND tr.id = tt.training_record_id AND tr.status = 'sent'
+        RETURNING tt.training_record_id`,
+      [traineeId, answer, accountId]
+    );
+    return rows[0];
+  });
+  if (!row) throw notFound('Trainee');
+  return getTrainingRecord(row.training_record_id);
+}
+
+// The Employee's own outstanding answers: sent records they are a Trainee on
+// and have not yet answered. Oldest first by when the record was sent (the one
+// that has waited longest leads), then by the day of training, then by row.
+async function listTrainingToConfirm(employeeId) {
+  if (employeeId === null || employeeId === undefined) return [];
+  const { rows } = await getPool().query(
+    `SELECT tt.id AS trainee_id, tr.id, tr.number, tr.title,
+            tr.trained_on::text AS trained_on, tr.duration_hours::float8 AS duration_hours,
+            tr.objective, tr.sent_at, ou.name AS org_unit_name,
+            e.display_name AS trainer_name
+       FROM training_trainees tt
+       JOIN training_records tr ON tr.id = tt.training_record_id
+       JOIN org_units ou ON ou.id = tr.org_unit_id
+       LEFT JOIN employees e ON e.id = tr.trainer_employee_id
+      WHERE tt.employee_id = $1 AND tt.answer IS NULL AND tr.status = 'sent'
+      ORDER BY tr.sent_at, tr.trained_on, tt.id`,
+    [employeeId]
+  );
+  return rows.map((row) => ({
+    traineeId: row.trainee_id,
+    id: row.id,
+    number: row.number,
+    title: row.title,
+    trainedOn: row.trained_on,
+    durationHours: row.duration_hours,
+    trainerName: row.trainer_name,
+    objective: row.objective,
+    orgUnitName: row.org_unit_name,
+    sentAt: row.sent_at
+  }));
+}
+
 module.exports = {
+  incompleteness,
+  sendTrainingRecord,
+  requireAnswer,
+  findTraineeForAnswer,
+  answerTrainee,
+  listTrainingToConfirm,
   validateRaise,
   validateCorrection,
   findTrainingRecord,

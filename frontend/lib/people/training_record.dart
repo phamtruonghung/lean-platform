@@ -14,6 +14,9 @@ class TrainingTrainee {
     required this.employeeId,
     required this.employeeNo,
     required this.employeeName,
+    this.answer,
+    this.answeredAt,
+    this.answeredVia,
   });
 
   /// The Trainee row's own id — what a removal names, not the Employee's.
@@ -22,11 +25,66 @@ class TrainingTrainee {
   final String employeeNo;
   final String employeeName;
 
+  /// `confirmed` or `declined`; null while the Trainee has not answered
+  /// (issue #289). Pending is never inferred from anything else.
+  final String? answer;
+
+  /// When the answer was given (an ISO timestamp), null while pending.
+  final String? answeredAt;
+
+  /// The door the answer came through — `account` (their own Account) or
+  /// `device` (identified at the shared floor device); null while pending.
+  final String? answeredVia;
+
+  bool get hasAnswered => answer != null;
+
   factory TrainingTrainee.fromJson(Map<String, dynamic> json) => TrainingTrainee(
         id: json['id'].toString(),
         employeeId: json['employeeId'].toString(),
         employeeNo: json['employeeNo'] as String,
         employeeName: json['employeeName'] as String,
+        answer: json['answer'] as String?,
+        answeredAt: json['answeredAt'] as String?,
+        answeredVia: json['answeredVia'] as String?,
+      );
+}
+
+/// One row of `GET /api/people/training/to-confirm` (issue #289): a sent
+/// record the caller is a Trainee on and has not answered. [traineeId] is the
+/// Trainee row's own id — what an answer names.
+class TrainingToConfirm {
+  const TrainingToConfirm({
+    required this.traineeId,
+    required this.id,
+    required this.number,
+    required this.title,
+    required this.trainedOn,
+    required this.durationHours,
+    required this.orgUnitName,
+    this.trainerName,
+    this.objective,
+  });
+
+  final String traineeId;
+  final String id;
+  final String number;
+  final String title;
+  final String trainedOn;
+  final double durationHours;
+  final String orgUnitName;
+  final String? trainerName;
+  final String? objective;
+
+  factory TrainingToConfirm.fromJson(Map<String, dynamic> json) => TrainingToConfirm(
+        traineeId: json['traineeId'].toString(),
+        id: json['id'].toString(),
+        number: json['number'] as String,
+        title: json['title'] as String,
+        trainedOn: json['trainedOn'] as String,
+        durationHours: (json['durationHours'] as num).toDouble(),
+        orgUnitName: json['orgUnitName'] as String,
+        trainerName: json['trainerName'] as String?,
+        objective: json['objective'] as String?,
       );
 }
 
@@ -46,6 +104,10 @@ class TrainingRecord {
     this.objective,
     this.trainees = const [],
     this.traineeCount = 0,
+    this.answeredCount = 0,
+    this.confirmedCount = 0,
+    this.declinedCount = 0,
+    this.fullyConfirmed = false,
   });
 
   final String id;
@@ -72,6 +134,15 @@ class TrainingRecord {
   final List<TrainingTrainee> trainees;
   final int traineeCount;
 
+  /// The record's reading of its Trainees' answers, computed by the server
+  /// from the rows and never stored (issue #289): nobody asked
+  /// ([answeredCount] 0), a decline among the answers ([declinedCount] > 0),
+  /// or [fullyConfirmed] — every Trainee confirmed.
+  final int answeredCount;
+  final int confirmedCount;
+  final int declinedCount;
+  final bool fullyConfirmed;
+
   bool get isDraft => status == 'draft';
 
   String get statusLabel => trainingStatusLabel(status);
@@ -94,6 +165,10 @@ class TrainingRecord {
             TrainingTrainee.fromJson(trainee as Map<String, dynamic>),
         ],
         traineeCount: (json['traineeCount'] as num?)?.toInt() ?? 0,
+        answeredCount: (json['answeredCount'] as num?)?.toInt() ?? 0,
+        confirmedCount: (json['confirmedCount'] as num?)?.toInt() ?? 0,
+        declinedCount: (json['declinedCount'] as num?)?.toInt() ?? 0,
+        fullyConfirmed: json['fullyConfirmed'] as bool? ?? false,
       );
 }
 
