@@ -101,7 +101,14 @@ jobs:
           # valid path — and moving the repository does not mean editing five
           # files to match.
           tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ steps.meta.outputs.tag }}
-          build-args: ${{ matrix.build_args }}
+          # The build's version is the tag the `meta` step computes, and `steps`
+          # is not available in `strategy.matrix` (the matrix is expanded
+          # before any step runs), so it cannot live in `build_args` above. It
+          # is added here instead, for the frontend only: the backend image
+          # takes no such arg and Docker would warn about an unused one.
+          build-args: |
+            ${{ matrix.build_args }}
+            ${{ matrix.name == 'frontend' && format('APP_VERSION={0}', steps.meta.outputs.tag) || '' }}
           # Scoped per image. Unscoped, the two matrix legs share one cache and
           # clobber each other's layers on every run.
           cache-from: type=gha,scope=release-${{ matrix.name }}
