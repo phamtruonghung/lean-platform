@@ -176,6 +176,10 @@ const _pages = <_Page>[
   // card, so the default row bound holds.
   _Page('/leave-requests', 'lib/people/leave_requests_screen.dart', 'Leave requests',
       'Ask to be away from work'),
+  // The Training record register (issue #287). Rows are padded rows inside
+  // the list card, so the default row bound holds.
+  _Page('/training', 'lib/people/training_screen.dart', 'Training records',
+      'What the plant has trained people on'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this
@@ -210,6 +214,8 @@ const _excluded = <String, String>{
   'lib/platform/access_denied_screen.dart': 'a centred state on purpose',
   'lib/platform/not_found_screen.dart': 'a centred state on purpose',
   'lib/platform/session_error_screen.dart': 'a centred state on purpose',
+  'lib/people/training_detail_screen.dart':
+      "its title is the Training record's own number, not a page heading",
   'lib/people/attendance_sheet_screen.dart':
       'reached by shift instance id; its rows are plain list items, not the audited card-row shape',
   'lib/people/attendance_picker_screen.dart':
@@ -300,6 +306,9 @@ FakeWire _wire() => FakeWire(
       // Leave requests (issue #265), so the page renders a row rather than
       // the empty state.
       leaveRequestsMine: [leaveRequestJson('1')],
+      // The Training record register (issue #287), so the page renders a row
+      // rather than the empty state.
+      trainingRecords: [trainingRecordJson('1')],
       // The per-Employee worked-hours summary (issue #263), so the page
       // renders its day rows rather than the empty state and the row
       // assertion actually runs. Employee '7' is the fixture Employee above.

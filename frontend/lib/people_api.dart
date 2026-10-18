@@ -23,6 +23,7 @@ import 'people/org_unit_scope.dart';
 import 'people/pending_account.dart';
 import 'people/product_cost.dart';
 import 'people/skill.dart';
+import 'people/training_record.dart';
 
 /// What the API answered for the caller's own Account: either it is still
 /// waiting on Approval, or it is active and may use the rest of the API.
@@ -1505,6 +1506,92 @@ class PeopleApi {
     );
     try {
       return EmployeeWorkedHours.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The Training record register (issue #287,
+  /// `GET /api/people/training`), newest first. [orgUnitId] narrows to that
+  /// Org Unit and everything beneath it (the server does the "beneath");
+  /// [from]/[to] narrow by the day the training was given. The server shows a
+  /// draft only to a caller who could send it.
+  Future<List<TrainingRecord>> fetchTrainingRecords(
+    String accessToken, {
+    String? orgUnitId,
+    String? from,
+    String? to,
+  }) async {
+    const path = '/api/people/training';
+    final queryParameters = <String, String>{
+      'orgUnitId': ?orgUnitId,
+      'from': ?from,
+      'to': ?to,
+    };
+    final uri = Uri.parse(path).replace(queryParameters: queryParameters.isEmpty ? null : queryParameters);
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final record in body['trainingRecords'] as List<dynamic>)
+          TrainingRecord.fromJson(record as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One Training record (`GET /api/people/training/:id`). A 404 reads
+  /// `Training record not found` — also what a draft the caller could not
+  /// send answers.
+  Future<TrainingRecord> fetchTrainingRecord(String accessToken, String id) async {
+    final path = '/api/people/training/$id';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return TrainingRecord.fromJson(body['trainingRecord'] as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Raises a Training record (`POST /api/people/training`). It starts as a
+  /// draft. A refusal (400/403/404) carries the server's `message`.
+  Future<TrainingRecord> raiseTrainingRecord(
+    String accessToken, {
+    required String orgUnitId,
+    required String title,
+    required String trainedOn,
+    required double durationHours,
+    String? trainerEmployeeId,
+    String? objective,
+  }) async {
+    const path = '/api/people/training';
+    final body = <String, Object?>{
+      'orgUnitId': orgUnitId,
+      'title': title,
+      'trainedOn': trainedOn,
+      'durationHours': durationHours,
+    };
+    if (trainerEmployeeId != null) body['trainerEmployeeId'] = trainerEmployeeId;
+    if (objective != null) body['objective'] = objective;
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return TrainingRecord.fromJson(decoded['trainingRecord'] as Map<String, dynamic>);
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }

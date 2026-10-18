@@ -1740,6 +1740,39 @@ Map<String, dynamic> leaveRequestJson(
       'canCancel': canCancel,
     };
 
+/// One Training record as `GET /api/people/training` sends it (issue #287;
+/// `toTrainingRecord`, backend/src/modules/people/training.js). Ids are
+/// strings, as node-postgres sends BIGINTs.
+Map<String, dynamic> trainingRecordJson(
+  String id, {
+  String number = 'TR-HCM-2026-00001',
+  String title = 'Lockout and tagout refresher',
+  String orgUnitId = '10',
+  String orgUnitName = 'Assembly',
+  String trainedOn = '2026-05-04',
+  double durationHours = 2,
+  String? trainerEmployeeId,
+  String? trainerName,
+  String? objective,
+  String status = 'draft',
+}) =>
+    {
+      'id': id,
+      'siteId': '1',
+      'orgUnitId': orgUnitId,
+      'orgUnitName': orgUnitName,
+      'number': number,
+      'title': title,
+      'trainedOn': trainedOn,
+      'durationHours': durationHours,
+      'trainerEmployeeId': trainerEmployeeId,
+      'trainerName': trainerName,
+      'objective': objective,
+      'status': status,
+      'createdAt': '2026-05-04T08:00:00.000Z',
+      'updatedAt': '2026-05-04T08:00:00.000Z',
+    };
+
 /// One row of `GET /api/people/attendance-to-confirm`
 /// (`toAttendanceToConfirmEntry`, attendance.js, issue #250) — a past shift
 /// instance whose sheet is missing or unconfirmed.
@@ -2251,6 +2284,10 @@ class FakeWire {
     this.leaveRequestsStatus = 200,
     this.leaveRequestWriteStatus = 200,
     this.leaveRequestWriteMessage = 'That leave request could not be saved.',
+    List<Map<String, dynamic>>? trainingRecords,
+    this.trainingStatus = 200,
+    this.trainingWriteStatus = 201,
+    this.trainingWriteMessage = 'That Training record could not be saved.',
     Map<String, dynamic>? employeeWorkedHours,
     this.employeeWorkedHoursStatus = 200,
     this.employeeWorkedHoursMessage = 'The worked-hours summary is unavailable.',
@@ -2468,6 +2505,7 @@ class FakeWire {
         attendanceToConfirm = attendanceToConfirm ?? [],
         leaveRequestsMine = leaveRequestsMine ?? [],
         leaveRequestsToDecide = leaveRequestsToDecide ?? [],
+        trainingRecords = trainingRecords ?? [],
         employeeWorkedHours = employeeWorkedHours ??
             {'days': const [], 'totals': {'scheduledMinutes': 0, 'workedMinutes': 0, 'overtimeMinutes': 0}},
         jobPlans = jobPlans ?? [],
@@ -4061,6 +4099,21 @@ class FakeWire {
   /// in the order they reached the wire.
   final List<Map<String, String>> leaveRequestReads = [];
   final List<(String, Map<String, dynamic>)> leaveRequestWrites = [];
+
+  /// `GET /api/people/training` (issue #287) — the register, empty by default.
+  /// A successful `POST` puts the new draft at the head of it.
+  List<Map<String, dynamic>> trainingRecords;
+  int trainingStatus;
+
+  /// The status (and `{message}`) the Training record `POST` answers with; 201
+  /// means the write succeeds.
+  int trainingWriteStatus;
+  String trainingWriteMessage;
+
+  /// Every register read's query string, and every `POST`'s decoded body, in
+  /// the order they reached the wire.
+  final List<Map<String, String>> trainingReads = [];
+  final List<Map<String, dynamic>> trainingWrites = [];
 
   /// Every `GET /api/people/absence-reasons` query string.
   final List<Map<String, String>> absenceReasonRequests = [];
@@ -8094,6 +8147,43 @@ class FakeWire {
             }),
             200,
           );
+        }
+        // /api/people/training (issue #287).
+        if (path == '/api/people/training' || path.startsWith('/api/people/training/')) {
+          if (request.method == 'GET') {
+            if (path == '/api/people/training') {
+              trainingReads.add(request.url.queryParameters);
+              if (trainingStatus != 200) {
+                return http.Response(
+                  jsonEncode({'message': 'Training records are unavailable.'}),
+                  trainingStatus,
+                );
+              }
+              return http.Response(jsonEncode({'trainingRecords': trainingRecords}), 200);
+            }
+            final id = path.substring('/api/people/training/'.length);
+            for (final row in trainingRecords) {
+              if (row['id'] == id) return http.Response(jsonEncode({'trainingRecord': row}), 200);
+            }
+            return http.Response(jsonEncode({'message': 'Training record not found'}), 404);
+          }
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          trainingWrites.add(body);
+          if (trainingWriteStatus != 201) {
+            return http.Response(jsonEncode({'message': trainingWriteMessage}), trainingWriteStatus);
+          }
+          final created = trainingRecordJson(
+            'new-${trainingRecords.length + 1}',
+            number: 'TR-HCM-2026-${(trainingRecords.length + 1).toString().padLeft(5, '0')}',
+            title: body['title'] as String,
+            orgUnitId: body['orgUnitId'].toString(),
+            trainedOn: body['trainedOn'] as String,
+            durationHours: (body['durationHours'] as num).toDouble(),
+            trainerEmployeeId: body['trainerEmployeeId']?.toString(),
+            objective: body['objective'] as String?,
+          );
+          trainingRecords = [created, ...trainingRecords];
+          return http.Response(jsonEncode({'trainingRecord': created}), 201);
         }
         // /api/people/leave-requests (issue #265).
         if (path.startsWith('/api/people/leave-requests')) {

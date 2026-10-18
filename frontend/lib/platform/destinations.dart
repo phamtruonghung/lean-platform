@@ -229,6 +229,15 @@ const List<Destination> platformDestinations = [
     path: Routes.attendance,
     group: DestinationGroupNames.people,
   ),
+  // Training records (issue #287, ADR-0043), offered to every approved
+  // Account: the register is an open read, and only the "Raise training
+  // record" control inside the Screen is gated, by an edit Grant somewhere.
+  Destination(
+    label: 'Training',
+    icon: Icons.school_outlined,
+    path: Routes.training,
+    group: DestinationGroupNames.people,
+  ),
   // Leave requests (issue #265), offered to every active Account: anyone may
   // ask for leave. The "To decide" view inside the Screen is the part gated, by
   // an edit Grant somewhere or the administrator role.

@@ -73,6 +73,9 @@ import '../people/attendance_picker_screen.dart';
 import '../people/attendance_sheet_bloc.dart';
 import '../people/attendance_sheet_screen.dart';
 import '../people/attendance_to_confirm_screen.dart';
+import '../people/training_detail_bloc.dart';
+import '../people/training_detail_screen.dart';
+import '../people/training_screen.dart';
 import '../people/cost_rates_bloc.dart';
 import '../people/cost_rates_screen.dart';
 import '../people/directory_bloc.dart';
@@ -192,6 +195,10 @@ abstract final class Routes {
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
   static const String attendance = '/attendance';
+
+  /// The Training record register (issue #287) and, beneath it, one record
+  /// (`/training/:id`). Filed under the People group.
+  static const String training = '/training';
 
   /// Leave requests (issue #265): asking for leave, and deciding what others
   /// asked for. Its dialogs are addresses beneath it (`/new`,
@@ -683,6 +690,43 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   shiftInstanceId: shiftInstanceId,
                   canRecord: account.account.orgUnitScope.canWriteSomewhere,
                 ),
+              );
+            },
+          ),
+          // The Training record register (issue #287, ADR-0043). Offered to
+          // every approved Account: the register is an open read (ADR-0009)
+          // and the server alone decides which drafts a caller may see.
+          // [canRaise] is the same coarse "can write somewhere" signal the
+          // attendance sheet's `canRecord` reads — the server is the real
+          // per-Org-Unit gate (403 `OUTSIDE_GRANTED_ORG_UNITS`).
+          GoRoute(
+            path: Routes.training,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return TrainingScreen(canRaise: account.account.orgUnitScope.canWriteSomewhere);
+            },
+          ),
+          // One Training record. When `/training/to-confirm` (issue #289)
+          // lands it MUST be declared before this route, or the literal
+          // segment `to-confirm` is captured as a record id — the same order
+          // `/attendance/to-confirm` keeps above `/attendance/:shiftInstanceId`.
+          // The Bloc is keyed on the id in the address: go_router reuses a
+          // route's page when the pattern matches, so without the key,
+          // moving from one record to another would keep showing the first.
+          GoRoute(
+            path: '${Routes.training}/:id',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              final id = state.pathParameters['id']!;
+              return BlocProvider<TrainingDetailBloc>(
+                key: ValueKey<String>(id),
+                create: (context) => TrainingDetailBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(TrainingDetailRequested(id)),
+                child: TrainingDetailScreen(trainingRecordId: id),
               );
             },
           ),
