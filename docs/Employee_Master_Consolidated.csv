@@ -1,0 +1,167 @@
+﻿No,ID,Name,Position,Section,Area / Process,Joining Date,Present in
+1,900002,Nguyễn Văn Anh,Operator,TX,Braiding,2018-07-17,Skill Matrix + Attendance + Overtime
+2,900004,Nguyễn Thị Mỹ Diệu,Operator,TX,Reeling,2018-07-17,Skill Matrix + Attendance + Overtime
+3,900005,Lê Xuân Đào,Production Team Leader,TX,Leader,2018-06-26,Skill Matrix + Attendance + Overtime
+4,900010,Đặng Văn Khánh,Production Shift Supervisor,TX,Shift sup,2018-07-05,Skill Matrix + Attendance + Overtime + Skills planing
+5,900027,Nguyễn Thị Ánh Ly,Production Team Leader,SC,Leader,2018-08-02,Skill Matrix + Attendance + Overtime
+6,900033,Nguyễn Thị Cẩm Nhung,Production Team Leader,TX,Leader,2018-09-19,Skill Matrix + Attendance + Overtime
+7,900038,Nguyễn Hữu Vinh,Operator,TX,Singing,2018-10-02,Skill Matrix + Attendance + Overtime + Skills planing
+8,900049,Phạm Ngọc Quý,Production Team Leader,SC,Leader,2018-11-07,Skill Matrix + Attendance + Overtime + Skills planing
+9,900051,Lê Hồ Thanh Kiều,Operator,SC,Cutting MTU,2018-11-15,Skill Matrix + Attendance + Overtime + Skills planing
+10,900066,Đinh Hữu Kha,Production Team Leader,SC,Leader,2019-02-25,Skill Matrix + Attendance + Overtime
+11,900067,Nguyễn Thị Anh Thư,Operator,TX,Fest,2019-02-25,Skill Matrix + Attendance + Overtime
+12,900076,Hà Đức Linh,Operator,SC,Shaping,2019-03-25,Skill Matrix + Attendance + Overtime + Skills planing
+13,900092,Nguyễn Tấn Sơn,Production Team Leader,SC,Leader,2019-05-27,Skill Matrix + Attendance + Overtime
+14,900109,Phan Thị Tiểu Loan,Operator,TX,Winding,2019-07-11,Skill Matrix + Attendance + Overtime
+15,900114,Nguyễn Thị Cẩm Vy,Operator,TX,Vision,2019-08-07,Skill Matrix + Attendance + Overtime + Skills planing
+16,900118,Nguyễn Thị Thanh Vân,Operator,,Cutting SC,2019-09-04,Skills planing
+17,900129,Nguyễn Thị Hồng Yến,Operator,,Raschel,2019-12-03,Skill Matrix + Skills planing
+18,900133,Nguyễn Thanh Phúc,Production Team Leader,TX,Leader,2020-02-07,Skill Matrix + Attendance + Overtime
+19,900143,Nguyễn Thị Thiên,Operator,TX,Winding,2020-02-24,Skill Matrix + Attendance + Overtime
+20,900151,Dương Văn Chương,Operator,,Shaping,2020-03-16,Skills planing
+21,900155,Nguyễn Thị Hạnh Nguyên,Operator,SC,Cutting MTU,2020-03-23,Skill Matrix + Attendance + Overtime + Skills planing
+22,900169,Lê Thị Ngọc Hân,Operator,TX,Cutting VSC,2020-09-07,Skill Matrix + Attendance + Overtime
+23,900170,Nguyễn Viết Tâm,Production Team Leader,SC,Leader,2020-09-10,Skill Matrix + Attendance + Overtime
+24,900171,Dương Võ Sĩ,Quality Inspector,,Cutting SC,2020-09-11,Skills planing
+25,900177,Lê Văn Tỉnh,Production Team Leader,SC,Leader,2020-09-23,Skill Matrix + Attendance + Overtime + Skills planing
+26,900179,Tạ Văn Toàn,Operator,SC,Cutting MTU,2020-10-12,Skill Matrix + Attendance + Overtime + Skills planing
+27,900180,Trần Thị Mỹ Lệ,Operator,SC,Cutting MTU,2020-10-22,Skill Matrix + Attendance + Overtime + Skills planing
+28,900182,Ngô Thương,Operator,SC,Cutting MTU,2020-10-26,Skill Matrix + Attendance + Overtime + Skills planing
+29,900187,Hồ Thị Hình,Operator,SC,Cutting MTU,2020-11-04,Skill Matrix + Attendance + Overtime + Skills planing
+30,900189,Nguyễn Thị Phương Thảo,Production Team Leader,SC,Leader,2020-11-10,Skill Matrix + Attendance + Overtime
+31,900192,Nguyễn Quang Lợi,Production Team Leader,TX,Leader,2020-11-18,Skill Matrix + Attendance + Overtime
+32,900209,Nguyễn Thị Thúy Linh,Operator,TX,Winding,2021-02-22,Skill Matrix + Attendance + Overtime
+33,900213,Dương Võ Công,Operator,TX,Braiding,2021-03-02,Skill Matrix + Attendance + Overtime
+34,900228,Lê Công Nhân,Production Shift Supervisor,SC,Shift sup,2021-03-25,Skill Matrix + Attendance + Overtime
+35,900229,Trần Thị Ngân,Production Shift Supervisor,TX,Shift sup,2021-04-01,Skill Matrix + Attendance + Overtime
+36,900232,Blúp Thị Ngơi,Operator,TX,Braiding,2021-03-29,Skill Matrix + Attendance + Overtime
+37,900236,Huỳnh Đức Dũng,Operator,TX,Coating,2021-04-01,Skill Matrix + Attendance + Overtime
+38,900255,Nguyễn Nhật Huy,Production Team Leader,SC,Leader,2021-05-19,Skill Matrix + Attendance + Overtime + Skills planing
+39,900263,Huỳnh Thị Hà,Operator,TX,Winding,2021-06-10,Skill Matrix + Attendance + Overtime
+40,900281,Lê Văn Quang,Operator,TX,Singing,2022-02-17,Skill Matrix + Attendance + Overtime
+41,900289,Võ Thị Hằng Ly,Operator,SC,Raschel,2022-02-22,Skill Matrix + Attendance + Overtime + Skills planing
+42,900294,Phạm Thị Như Ý,Operator,SC,Warping,2022-03-01,Skill Matrix + Attendance + Overtime + Skills planing
+43,900299,Nguyễn Thu Giang,Operator,SC,Raschel,2022-03-07,Attendance + Overtime + Skills planing
+44,900319,Hồ Thị Hậu,Operator,,Cutting SC,2022-04-13,Skills planing
+45,900320,Lê Văn Thiện,Operator,SC,Cutting MTU,2022-04-13,Skill Matrix + Attendance + Overtime + Skills planing
+46,900323,Đặng Thị Ngọc Quý,Operator,SC,Raschel,2022-04-21,Skill Matrix + Attendance + Overtime + Skills planing
+47,900334,Lê Tự Nghĩa,Operator,SC,Cutting MTU,2022-05-04,Skill Matrix + Attendance + Overtime + Skills planing
+48,900335,Võ Thị Thảo Ngọc,Operator,TX,Fest,2022-05-09,Skill Matrix + Attendance + Overtime
+49,900343,Đinh Văn Linh,Operator,,Shaping,2022-05-17,Skills planing
+50,900346,Phan Văn Bình,Operator,SC,Shaping,2022-05-19,Skill Matrix + Attendance + Overtime + Skills planing
+51,900348,Phạm Thanh,Operator,SC,Cutting MTU,2022-05-19,Skill Matrix + Attendance + Overtime + Skills planing
+52,900351,Lê Thị Xuân Sang,Operator,TX,Cutting VSC,2022-05-23,Skill Matrix + Attendance + Overtime
+53,900352,Võ Đức Khánh,Operator,SC,Cutting MTU,2022-05-23,Skill Matrix + Attendance + Overtime + Skills planing
+54,900353,Nguyễn Văn Tuấn,Operator,,Cutting SC,2022-05-23,Skills planing
+55,900369,Đặng Văn Thắng,Operator,,Cutting SC,2022-07-01,Skills planing
+56,900370,Hồ Thị Thanh Thủy,Operator,TX,Vision,2022-07-04,Skill Matrix + Attendance + Overtime
+57,900376,Nguyễn Thị Thủy,Operator,TX,Vision,2022-07-26,Skill Matrix + Attendance + Overtime
+58,900380,Lê Quốc Tuấn,Operator,SC,Cutting MTU,2022-08-02,Skill Matrix + Attendance + Overtime + Skills planing
+59,900385,Tiêu Thị Hoài,Operator,,Cutting SC,2022-08-10,Skills planing
+60,900387,Ngô Thị Tưởng,Operator,TX,Braiding,2022-08-16,Skill Matrix + Attendance + Overtime
+61,900388,Ngô Thanh Hà,Operator,SC,Cutting MTU,2022-08-18,Skill Matrix + Attendance + Overtime + Skills planing
+62,900389,Huỳnh Khánh Hưng,Operator,,Cutting SC,2022-08-18,Skills planing
+63,900420,Nguyễn Đức Duẩn,Operator,,Cutting SC,2023-02-06,Skills planing
+64,900421,Dương Thanh Thúy,Operator,,Raschel,2023-02-06,Skills planing
+65,900422,Nguyễn Như Trung,Operator,,Cutting SC,2023-02-06,Skills planing
+66,900423,Võ Thị Hoài Hiếu,Operator,SC,Cutting MTU,2023-02-07,Skill Matrix + Attendance + Overtime + Skills planing
+67,900424,Lê Dương Vỹ,Operator,,Raschel,2023-02-07,Skills planing
+68,900425,Hồ Thị Thu Thảo,Operator,SC,Cutting MTU,2023-02-07,Skill Matrix + Attendance + Overtime + Skills planing
+69,900426,Đỗ Phi Long,Operator,,Cutting SC,2023-02-09,Skills planing
+70,900427,Nguyễn Đức Sinh,Operator,SC,Cutting MTU,2023-02-10,Skill Matrix + Attendance + Overtime + Skills planing
+71,900440,Trần Thị Liên,Operator,,Braiding,2023-03-03,Skills planing
+72,900448,Trương Công Pháp,Operator,SC,Warping,2023-03-27,Skill Matrix + Attendance + Overtime + Skills planing
+73,900452,Nguyễn Văn Sinh Tửu,Operator,,Cutting SC,2023-05-15,Skills planing
+74,900453,Thái Bá Vương,Operator,SC,Cutting MTU,2023-05-22,Skill Matrix + Attendance + Overtime + Skills planing
+75,900454,Phan Phạm Tiến Đạt,Operator,,Cutting SC,2023-05-22,Skills planing
+76,900456,Nguyễn Văn Thắng,Operator,SC,Cutting MTU,2023-05-24,Skill Matrix + Attendance + Overtime + Skills planing
+77,900457,Trầm Quốc Trung,Operator,,Raschel,2023-05-24,Skills planing
+78,900460,Lăng Thế Luận,Operator,SC,Raschel,2023-07-03,Skill Matrix + Attendance + Overtime + Skills planing
+79,900462,Trương Đoàn Phi Bảo,Operator,,Shaping,2023-07-17,Skills planing
+80,900471,Ngô Thị Thu Tâm,Operator,TX,Vision,2023-08-25,Skill Matrix + Attendance + Overtime
+81,900472,Lâm Văn Kin,Operator,SC,Cutting SC,2023-08-28,Overtime + Skills planing
+82,900474,Nguyễn Đắc Hải,Operator,SC,Shaping,2023-09-11,Skill Matrix + Attendance + Overtime + Skills planing
+83,900477,Hà Thanh Trường,Operator,SC,Cutting MTU,2023-09-14,Skill Matrix + Attendance + Overtime + Skills planing
+84,900482,Ngô Văn Hiếu,Operator,,Cutting SC,2023-09-26,Skills planing
+85,900485,Hà Ngọc Mỹ,Operator,,Cutting SC,2023-10-05,Skills planing
+86,900486,Nguyễn Hiệp,Operator,,Cutting SC,2023-10-09,Skills planing
+87,900491,Nguyễn Thị Diệu Linh,Operator,TX,Braiding,2024-01-15,Skill Matrix + Attendance + Overtime + Skills planing
+88,900496,Hà Đức Trung,Operator,SC,Shaping,2024-02-22,Skill Matrix + Attendance + Overtime + Skills planing
+89,900498,Lê Văn Hiếu,Operator,,Coating,2024-02-26,Skills planing
+90,900518,Đỗ Anh Tuấn,Operator,,Braiding,2024-05-08,Skills planing
+91,900519,Phạm Thông,Operator,TX,Braiding,2024-05-08,Skill Matrix + Attendance + Overtime + Skills planing
+92,900523,Lê Tự Phúc,Operator,TX,Braiding,2024-06-05,Skill Matrix + Attendance + Overtime + Skills planing
+93,900526,Trần Văn Tâm,Operator,TX,Coating,2024-06-24,Skill Matrix + Attendance + Overtime + Skills planing
+94,900527,Hà Đức Hiếu,Operator,SC,Shaping,2024-07-03,Skill Matrix + Attendance + Overtime + Skills planing
+95,900528,Trần Thị Trúc Hà,Operator,,Braiding,2024-07-03,Skills planing
+96,900529,Nguyễn Thị Hậu,Operator,SC,Cutting MTU,2024-04-07,Skill Matrix + Attendance + Overtime + Skills planing
+97,900531,Huỳnh Nhất,Operator,SC,Cutting MTU,2024-07-08,Skill Matrix + Attendance + Overtime + Skills planing
+98,900532,Hà Đức Tài,Operator,SC,Cutting MTU,2024-07-08,Skill Matrix + Attendance + Overtime + Skills planing
+99,900533,Lê Thị Thu Thảo,Operator,TX,Winding,2024-07-08,Skill Matrix + Attendance + Overtime + Skills planing
+100,900535,Nguyễn Thị Thiên Nga,Operator,,Cutting SC,2024-07-18,Skills planing
+101,900538,Nguyễn Văn Quốc,Operator,SC,Shaping,2024-08-13,Skill Matrix + Attendance + Overtime + Skills planing
+102,900539,Nguyễn Thị Ngọc Ánh,Operator,TX,Braiding,2024-08-16,Skill Matrix + Attendance + Overtime + Skills planing
+103,900544,Trương Thị Hồng,Operator,,Cutting SC,2024-10-02,Skills planing
+104,900545,Lê Thị Tú,Operator,TX,Winding,2024-10-02,Skill Matrix + Attendance + Overtime + Skills planing
+105,900546,Thân Thị Hùng Anh,Operator,,Cutting SC,2024-10-02,Skills planing
+106,900547,Nguyễn Văn Danh,Operator,,Braiding,2024-10-02,Skills planing
+107,900548,Trần Thị Trí,Operator,TX,Braiding,2024-10-03,Attendance + Overtime + Skills planing
+108,900550,Nguyễn Thị Thúy Hà,Operator,,Cutting SC,2024-10-11,Skills planing
+109,900554,Đào Duy Hiếu,Operator,,Cutting SC,2024-11-25,Skills planing
+110,900555,Nguyễn Thị Bích Trâm,Operator,SC,Cutting MTU,2024-11-25,Skill Matrix + Attendance + Overtime + Skills planing
+111,900557,Nguyễn Văn An,Operator,,Cutting SC,2025-01-02,Skills planing
+112,900558,Phạm Quang,Operator,SC,Shaping,2025-01-02,Skill Matrix + Attendance + Overtime + Skills planing
+113,900559,Đỗ Văn Việt,Operator,,Raschel,2025-01-15,Skills planing
+114,900560,Phan Phụng Nguyên,Operator,,Warping,2025-02-19,Skills planing
+115,900561,Phạm Hưng Đạt,Operator,,Cutting SC,2025-02-20,Skills planing
+116,900563,Ngô Văn Tuấn,Operator,,Cutting SC,2025-02-24,Skills planing
+117,900566,Nguyễn Văn Niêm,Operator,,Braiding,2025-03-13,Skills planing
+118,900567,Nguyễn Văn Thịnh,Operator,TX,Braiding,2025-03-17,Skill Matrix + Attendance + Overtime + Skills planing
+119,900568,Trần Bảo Lộc,Operator,,Cutting SC,2025-03-17,Skills planing
+120,900571,Trần Thị Thu Hương,Operator,,Winding,2025-03-27,Skills planing
+121,900572,Lưu Thị Mỹ,Operator,TX,Vision,2025-04-03,Skill Matrix + Attendance + Overtime + Skills planing
+122,900573,Đỗ Thị Huỳnh Giang,Operator,,Braiding,2025-04-03,Skills planing
+123,900578,Nguyễn Thị Bích Trâm,Operator,SC,Cutting MTU,2025-04-22,Skill Matrix + Attendance + Overtime
+124,900579,Trương Công Khoa,Operator,SC,Cutting MTU,2025-04-23,Skill Matrix + Attendance + Overtime
+125,900586,Phạm Quốc Toàn,Operator,SC,Cutting MTU,2025-05-22,Skill Matrix + Attendance + Overtime
+126,900595,Phan Thị Xuân,Operator,TX,Vision,2025-06-19,Skill Matrix + Attendance + Overtime
+127,900599,Huỳnh Nguyễn Phước,Operator,TX,Braiding,2025-07-03,Skill Matrix + Attendance + Overtime
+128,900602,Cù Duy Tân,Operator,TX,Braiding,2025-07-21,Skill Matrix + Attendance + Overtime
+129,900609,Nguyễn Thanh Tiến,Operator,SC,Raschel,2025-08-22,Skill Matrix + Attendance + Overtime
+130,900610,Lê Thị Ánh,Operator,SC,Cutting SC,,Overtime
+131,900617,Trầm Quốc Trung,Operator,SC,Warping,2025-11-07,Skill Matrix + Attendance + Overtime
+132,900618,Nguyễn Thị Thu Hiền,Operator,TX,Reeling,2025-11-24,Skill Matrix + Attendance + Overtime
+133,900626,Nguyễn Thanh Sỹ,Operator,SC,Cutting MTU,2025-12-18,Skill Matrix + Attendance + Overtime
+134,900628,Lương Tấn hạnh,Operator,SC,Cutting MTU,2026-01-05,Skill Matrix + Attendance + Overtime
+135,900629,Lê Minh Hiếu,Operator,TX,Coating,2026-01-26,Skill Matrix + Attendance + Overtime
+136,900632,Hoàng Thị Hà,Operator,SC,Cutting MTU,2026-02-26,Skill Matrix + Attendance + Overtime
+137,900633,Nguyễn Võ Vân Thiên,Operator,SC,Cutting MTU,2026-03-02,Skill Matrix + Attendance + Overtime
+138,900634,Phạm Nhật Hào,Operator,SC,Cutting MTU,2026-03-05,Skill Matrix + Attendance + Overtime
+139,900635,Nguyễn Văn Thái,Operator,SC,Warping,2026-03-09,Skill Matrix + Attendance + Overtime
+140,900638,Ngô Thanh Ngân,Operator,SC,Cutting MTU,2026-03-11,Skill Matrix + Attendance + Overtime
+141,900641,Trương Võ Yến Nhi,Operator,TX,Reeling,2026-03-18,Skill Matrix + Attendance + Overtime
+142,900643,Huỳnh Thị Thúy Sự,Operator,SC,Cutting MTU,2026-03-23,Skill Matrix + Attendance + Overtime
+143,900647,Nguyễn Lê Quân,Operator,SC,Shaping,,Overtime
+144,900648,Nguyễn Viết An,Operator,SC,Cutting SC,,Attendance + Overtime
+145,900650,Tô Đình Duy,Operator,TX,Coating,,Attendance + Overtime
+146,900651,Nguyễn Thị Pha Lê Uyên,Operator,TX,Winding,,Attendance + Overtime
+147,900655,Hà Phước Huy,Operator,TX,Braiding,2026-06-01,Skill Matrix + Attendance + Overtime
+148,900656,Hà Phước Hoàng,Operator,TX,Braiding,2026-06-01,Skill Matrix + Attendance + Overtime
+149,900657,Nguyễn Thị Mơ,Operator,SC,Raschel,,Attendance + Overtime
+150,900659,Nguyễn Văn Hưng,Operator,SC,Raschel,2026-06-08,Skill Matrix + Attendance + Overtime
+151,900660,Dương Tấn Hưng,Operator,SC,Raschel,,Attendance + Overtime
+152,900661,Trần Bá Thanh,Operator,SC,Cutting SC,,Attendance
+153,900662,Lại Thanh Khê,Trainee,SC,Shaping,2026-06-17,Skill Matrix + Attendance
+154,900665,Nguyễn Bá Vũ Hiệu,Trainee,TX,Braiding,,Attendance
+155,900666,Nguyễn Văn Linh,Operator,SC,Cutting MTU,2026-07-01,Skill Matrix + Attendance
+156,900667,Trần cảnh Phát,Operator,SC,Cutting SC,,Attendance
+157,900668,Hồ Thị Nhi,Operator,TX,Winding,2026-07-09,Skill Matrix + Attendance + Overtime
+158,900670,Đỗ Anh Tuấn,Operator,TX,Braiding,2026-07-30,Skill Matrix + Attendance + Overtime
+159,900671,Nguyễn Thị Mai Như,Trainee,SC,Raschel,,Attendance
+160,900672,Nguyễn Thị Nga,Operator,TX,Winding,,Attendance + Overtime
+161,900673,Võ Thị Như Ý,Trainee,TX,Winding,,Attendance
+162,900674,Lê Thị Lành,Trainee,TX,Winding,,Attendance
+163,900675,Tạ Quang Hữu,Operator,SC,Cutting MTU,2026-08-17,Skill Matrix + Attendance
+164,900677,Plong Thị Duyên,Trainee,TX,Winding,,Attendance
+165,900678,Huỳnh Thị Thùy Chinh,Operator,TX,Cutting VSC,2026-09-04,Skill Matrix + Attendance
+166,900683,Nguyễn Viết Sỹ,Trainee,TX,Braiding,,Attendance
