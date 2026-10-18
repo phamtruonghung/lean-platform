@@ -78,6 +78,11 @@ class TrainingDetailScreen extends StatelessWidget {
   static const ValueKey<String> readingKey = ValueKey<String>('training-detail-reading');
   static const ValueKey<String> answerFailureKey = ValueKey<String>('training-detail-answer-failure');
   static ValueKey<String> traineeAnswerKey(String id) => ValueKey<String>('training-detail-trainee-answer-$id');
+  static const ValueKey<String> evaluationFailureKey = ValueKey<String>('training-detail-evaluation-failure');
+  static ValueKey<String> evaluationKey(String id) => ValueKey<String>('training-detail-evaluation-$id');
+  static ValueKey<String> evaluationChoiceKey(String id, String evaluation) =>
+      ValueKey<String>('training-detail-evaluation-$id-$evaluation');
+  static ValueKey<String> evaluationClearKey(String id) => ValueKey<String>('training-detail-evaluation-clear-$id');
   static ValueKey<String> confirmKey(String id) => ValueKey<String>('training-detail-confirm-$id');
   static ValueKey<String> declineKey(String id) => ValueKey<String>('training-detail-decline-$id');
   static ValueKey<String> traineeRowKey(String id) => ValueKey<String>('training-detail-trainee-$id');
@@ -112,6 +117,7 @@ class TrainingDetailScreen extends StatelessWidget {
             removeFailure: loaded.removeFailure,
             sendFailure: loaded.sendFailure,
             answerFailure: loaded.answerFailure,
+            evaluationFailure: loaded.evaluationFailure,
             canSend: orgUnitScope.canWriteAt(loaded.record.orgUnitId),
             employeeId: employeeId,
           ),
@@ -127,6 +133,7 @@ class _Loaded extends StatelessWidget {
     required this.removeFailure,
     required this.sendFailure,
     required this.answerFailure,
+    required this.evaluationFailure,
     required this.canSend,
     required this.employeeId,
   });
@@ -136,6 +143,7 @@ class _Loaded extends StatelessWidget {
   final String? removeFailure;
   final String? sendFailure;
   final String? answerFailure;
+  final String? evaluationFailure;
   final bool canSend;
   final String? employeeId;
 
@@ -271,44 +279,50 @@ class _Loaded extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                   title: Text('${trainee.employeeNo} · ${trainee.employeeName}'),
-                  subtitle: record.isDraft
-                      ? null
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _answerOf(trainee),
-                              key: TrainingDetailScreen.traineeAnswerKey(trainee.id),
-                            ),
-                            if (employeeId != null && trainee.employeeId == employeeId)
-                              Padding(
-                                padding: const EdgeInsets.only(top: Spacing.xs),
-                                child: Wrap(
-                                  spacing: Spacing.sm,
-                                  children: [
-                                    FilledButton(
-                                      key: TrainingDetailScreen.confirmKey(trainee.id),
-                                      onPressed: isWriting
-                                          ? null
-                                          : () => context
-                                              .read<TrainingDetailBloc>()
-                                              .add(TrainingTraineeAnswered(trainee.id, 'confirmed')),
-                                      child: const Text('Confirm'),
-                                    ),
-                                    OutlinedButton(
-                                      key: TrainingDetailScreen.declineKey(trainee.id),
-                                      onPressed: isWriting
-                                          ? null
-                                          : () => context
-                                              .read<TrainingDetailBloc>()
-                                              .add(TrainingTraineeAnswered(trainee.id, 'declined')),
-                                      child: const Text('Decline'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!record.isDraft)
+                        Text(
+                          _answerOf(trainee),
+                          key: TrainingDetailScreen.traineeAnswerKey(trainee.id),
                         ),
+                      if (canSend)
+                        _EvaluationPicker(trainee: trainee, isWriting: isWriting)
+                      else if (trainee.evaluation != null)
+                        Text(
+                          'Evaluated: ${trainingEvaluationLabel(trainee.evaluation!)}',
+                          key: TrainingDetailScreen.evaluationKey(trainee.id),
+                        ),
+                      if (!record.isDraft && employeeId != null && trainee.employeeId == employeeId)
+                        Padding(
+                          padding: const EdgeInsets.only(top: Spacing.xs),
+                          child: Wrap(
+                            spacing: Spacing.sm,
+                            children: [
+                              FilledButton(
+                                key: TrainingDetailScreen.confirmKey(trainee.id),
+                                onPressed: isWriting
+                                    ? null
+                                    : () => context
+                                        .read<TrainingDetailBloc>()
+                                        .add(TrainingTraineeAnswered(trainee.id, 'confirmed')),
+                                child: const Text('Confirm'),
+                              ),
+                              OutlinedButton(
+                                key: TrainingDetailScreen.declineKey(trainee.id),
+                                onPressed: isWriting
+                                    ? null
+                                    : () => context
+                                        .read<TrainingDetailBloc>()
+                                        .add(TrainingTraineeAnswered(trainee.id, 'declined')),
+                                child: const Text('Decline'),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                   trailing: record.isDraft
                       ? IconButton(
                           key: TrainingDetailScreen.removeTraineeKey(trainee.id),
@@ -326,6 +340,15 @@ class _Loaded extends StatelessWidget {
                 padding: const EdgeInsets.only(top: Spacing.sm),
                 child: Text(
                   answerFailure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+            if (evaluationFailure != null)
+              Padding(
+                key: TrainingDetailScreen.evaluationFailureKey,
+                padding: const EdgeInsets.only(top: Spacing.sm),
+                child: Text(
+                  evaluationFailure!,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),
               ),
@@ -372,6 +395,49 @@ String _answerOf(TrainingTrainee trainee) {
     _ => '',
   };
   return '${answer == 'confirmed' ? 'Confirmed' : 'Declined'}$day$door';
+}
+
+/// The trainer's two-value picker for one Trainee (issue #290): chosen, never
+/// typed. Tapping the chip already chosen does nothing; the Clear control is
+/// the way back to unevaluated, and is offered only while a value is set.
+class _EvaluationPicker extends StatelessWidget {
+  const _EvaluationPicker({required this.trainee, required this.isWriting});
+
+  final TrainingTrainee trainee;
+  final bool isWriting;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = trainee.evaluation;
+    return Padding(
+      padding: const EdgeInsets.only(top: Spacing.xs),
+      child: Wrap(
+        key: TrainingDetailScreen.evaluationKey(trainee.id),
+        spacing: Spacing.sm,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          const Text('Evaluation'),
+          for (final evaluation in trainingEvaluations)
+            ChoiceChip(
+              key: TrainingDetailScreen.evaluationChoiceKey(trainee.id, evaluation),
+              label: Text(trainingEvaluationLabel(evaluation)),
+              selected: current == evaluation,
+              onSelected: isWriting || current == evaluation
+                  ? null
+                  : (_) => context.read<TrainingDetailBloc>().add(TrainingTraineeEvaluated(trainee.id, evaluation)),
+            ),
+          if (current != null)
+            TextButton(
+              key: TrainingDetailScreen.evaluationClearKey(trainee.id),
+              onPressed: isWriting
+                  ? null
+                  : () => context.read<TrainingDetailBloc>().add(TrainingTraineeEvaluated(trainee.id, null)),
+              child: const Text('Clear'),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Fact extends StatelessWidget {

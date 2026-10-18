@@ -62,6 +62,13 @@ the thing.** No answer writes `employee_skills`, and the trainer's
 evaluated — the form's own assessment-shaped data — rather than a pass or a
 fail.
 
+`Paper` / `Job-training` is recorded as a reading of the template's own
+Evaluation header: **the method the Trainee was evaluated by, as the trainer
+records it.** It is the trainer's own field and not a correction, so it is
+settable after the record is sent, when the trainer often fills it in. If a
+plant means something else by that header, such as the Trainee's own answer or
+both methods applying, the change is one column and one enum, not the model.
+
 **A record is a draft until somebody sends it, and a draft is visible to
 whoever could send it.** Sending asks every Trainee at once, and requires
 the record's own facts and at least one Trainee. The form is filled in

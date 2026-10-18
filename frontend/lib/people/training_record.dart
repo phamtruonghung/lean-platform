@@ -17,6 +17,7 @@ class TrainingTrainee {
     this.answer,
     this.answeredAt,
     this.answeredVia,
+    this.evaluation,
   });
 
   /// The Trainee row's own id — what a removal names, not the Employee's.
@@ -36,6 +37,11 @@ class TrainingTrainee {
   /// `device` (identified at the shared floor device); null while pending.
   final String? answeredVia;
 
+  /// How the trainer recorded this Trainee was evaluated - `paper` or
+  /// `job_training` (issue #290), a value with a known set; null until the
+  /// trainer says so.
+  final String? evaluation;
+
   bool get hasAnswered => answer != null;
 
   factory TrainingTrainee.fromJson(Map<String, dynamic> json) => TrainingTrainee(
@@ -46,6 +52,7 @@ class TrainingTrainee {
         answer: json['answer'] as String?,
         answeredAt: json['answeredAt'] as String?,
         answeredVia: json['answeredVia'] as String?,
+        evaluation: json['evaluation'] as String?,
       );
 }
 
@@ -171,6 +178,16 @@ class TrainingRecord {
         fullyConfirmed: json['fullyConfirmed'] as bool? ?? false,
       );
 }
+
+/// The two methods a Trainee can have been evaluated by, in the order the
+/// picker offers them (issue #290).
+const List<String> trainingEvaluations = ['paper', 'job_training'];
+
+String trainingEvaluationLabel(String evaluation) => switch (evaluation) {
+      'paper' => 'Paper',
+      'job_training' => 'Job-training',
+      _ => evaluation,
+    };
 
 String trainingStatusLabel(String status) => switch (status) {
       'draft' => 'Draft',

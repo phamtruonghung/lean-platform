@@ -1750,6 +1750,7 @@ Map<String, dynamic> traineeJson(
   String? answer,
   String? answeredAt,
   String? answeredVia,
+  String? evaluation,
 }) =>
     {
       'id': id,
@@ -1760,6 +1761,7 @@ Map<String, dynamic> traineeJson(
       'answer': answer,
       'answeredAt': answeredAt ?? (answer == null ? null : '2026-05-06T09:30:00.000Z'),
       'answeredVia': answeredVia ?? (answer == null ? null : 'account'),
+      'evaluation': evaluation,
     };
 
 /// One row of `GET /api/people/training/to-confirm` (issue #289;
@@ -4217,6 +4219,11 @@ class FakeWire {
   /// answer's request line with its decoded body.
   final List<String> trainingSends = [];
   final List<(String, Map<String, dynamic>)> trainingAnswers = [];
+
+  /// Every Trainee evaluation's request line
+  /// (`PATCH /api/people/training/1/trainees/t1`) with its decoded body
+  /// (issue #290). A [traineeWriteStatus] other than 200 refuses it too.
+  final List<(String, Map<String, dynamic>)> traineeEvaluations = [];
 
   /// Every `GET /api/people/absence-reasons` query string.
   final List<Map<String, String>> absenceReasonRequests = [];
@@ -8316,6 +8323,24 @@ class FakeWire {
               if (row['id'] == id) return http.Response(jsonEncode({'trainingRecord': row}), 200);
             }
             return http.Response(jsonEncode({'message': 'Training record not found'}), 404);
+          }
+          final evaluationPath = RegExp(r'^/api/people/training/([^/]+)/trainees/([^/]+)$').firstMatch(path);
+          if (request.method == 'PATCH' && evaluationPath != null) {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            traineeEvaluations.add(('PATCH $path', sent));
+            if (traineeWriteStatus != 200) {
+              return http.Response(jsonEncode({'message': traineeWriteMessage}), traineeWriteStatus);
+            }
+            final index = trainingRecords.indexWhere((row) => row['id'] == evaluationPath.group(1));
+            if (index < 0) return http.Response(jsonEncode({'message': 'Training record not found'}), 404);
+            final trainees = (trainingRecords[index]['trainees'] as List<dynamic>).cast<Map<String, dynamic>>();
+            final updated = [
+              for (final t in trainees)
+                if (t['id'] == evaluationPath.group(2)) {...t, 'evaluation': sent['evaluation']} else t,
+            ];
+            final record = {...trainingRecords[index], 'trainees': updated};
+            trainingRecords = [...trainingRecords]..[index] = record;
+            return http.Response(jsonEncode({'trainingRecord': record}), 200);
           }
           final traineePath = RegExp(r'^/api/people/training/([^/]+)/trainees(?:/([^/]+))?$').firstMatch(path);
           if (traineePath != null) {

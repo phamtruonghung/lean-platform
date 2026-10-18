@@ -1625,6 +1625,28 @@ class PeopleApi {
     return _trainingRecordFrom(response.body);
   }
 
+  /// Sets or clears how the trainer evaluated one Trainee
+  /// (`PATCH /api/people/training/:id/trainees/:traineeId`, issue #290):
+  /// [evaluation] is `paper`, `job_training` or null to clear it. Allowed on a
+  /// sent record too. Answers the whole record.
+  Future<TrainingRecord> setTraineeEvaluation(
+    String accessToken,
+    String recordId,
+    String traineeId,
+    String? evaluation,
+  ) async {
+    final path = '/api/people/training/$recordId/trainees/$traineeId';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'evaluation': evaluation}),
+      ),
+      path,
+    );
+    return _trainingRecordFrom(response.body);
+  }
+
   /// Sends a draft Training record (`POST /api/people/training/:id/send`),
   /// asking every Trainee on it at once. Answers the whole record. An
   /// incomplete record is a 409 whose `message` says what it still lacks, in

@@ -879,3 +879,139 @@ test('the queue holds only the caller\'s own, sent, unanswered Trainee rows, old
   const theirs = await call('GET', '/training/to-confirm', colleague.account.token);
   assert.deepStrictEqual(theirs.payload.trainingToConfirm.map((r) => r.title), ['Queue older']);
 });
+
+// ---------------------------------------------------------------------------
+// What the trainer recorded about each Trainee (issue #290).
+// ---------------------------------------------------------------------------
+
+// A draft with one Trainee; returns the record and the Trainee row's id.
+async function recordWithTrainee() {
+  const employee = await insertNamedEmployee();
+  const record = await completeDraft([employee]);
+  return { record, traineeId: await traineeRowId(record.id, employee.id) };
+}
+
+test('a Trainee reads with no evaluation until the trainer sets one', async () => {
+  const { record } = await recordWithTrainee();
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.trainees[0].evaluation, null);
+});
+
+test('the trainer sets each evaluation, and clears it back to null', async () => {
+  const { record, traineeId } = await recordWithTrainee();
+  const path = `/training/${record.id}/trainees/${traineeId}`;
+
+  for (const evaluation of ['paper', 'job_training', 'paper']) {
+    const { response, payload } = await call('PATCH', path, sender.token, { evaluation });
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(payload.trainingRecord.trainees[0].evaluation, evaluation);
+    const read = await call('GET', `/training/${record.id}`, sender.token);
+    assert.strictEqual(read.payload.trainingRecord.trainees[0].evaluation, evaluation);
+  }
+
+  const cleared = await call('PATCH', path, sender.token, { evaluation: null });
+  assert.strictEqual(cleared.response.status, 200);
+  assert.strictEqual(cleared.payload.trainingRecord.trainees[0].evaluation, null);
+  assert.strictEqual(cleared.payload.trainingRecord.traineeCount, 1);
+});
+
+test('an unknown evaluation and a missing key are each a 400 in the Module\'s own words', async () => {
+  const { record, traineeId } = await recordWithTrainee();
+  const path = `/training/${record.id}/trainees/${traineeId}`;
+  await call('PATCH', path, sender.token, { evaluation: 'paper' });
+
+  const unknown = await call('PATCH', path, sender.token, { evaluation: 'oral' });
+  assert.strictEqual(unknown.response.status, 400);
+  assert.match(unknown.payload.message, /evaluation must be one of: paper, job_training/);
+  const wrongType = await call('PATCH', path, sender.token, { evaluation: 3 });
+  assert.strictEqual(wrongType.response.status, 400);
+  const missing = await call('PATCH', path, sender.token, {});
+  assert.strictEqual(missing.response.status, 400);
+  assert.match(missing.payload.message, /evaluation is required/);
+
+  // None of the refusals touched the value.
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.trainees[0].evaluation, 'paper');
+});
+
+test('an unknown record is a 404, for an administrator as well', async () => {
+  const { response, payload } = await call('PATCH', '/training/999999999/trainees/1', admin.token, { evaluation: 'paper' });
+  assert.strictEqual(response.status, 404);
+  assert.strictEqual(payload.message, 'Training record not found');
+});
+
+test('an unknown Trainee, or one from a different record, is a 404 and changes nothing', async () => {
+  const { record } = await recordWithTrainee();
+  const other = await recordWithTrainee();
+
+  const unknown = await call('PATCH', `/training/${record.id}/trainees/999999999`, sender.token, { evaluation: 'paper' });
+  assert.strictEqual(unknown.response.status, 404);
+  assert.strictEqual(unknown.payload.message, 'Trainee not found');
+  const malformed = await call('PATCH', `/training/${record.id}/trainees/abc`, sender.token, { evaluation: 'paper' });
+  assert.strictEqual(malformed.response.status, 404);
+  const foreign = await call('PATCH', `/training/${record.id}/trainees/${other.traineeId}`, sender.token, { evaluation: 'paper' });
+  assert.strictEqual(foreign.response.status, 404);
+  assert.strictEqual(foreign.payload.message, 'Trainee not found');
+
+  const read = await call('GET', `/training/${other.record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.trainees[0].evaluation, null);
+});
+
+test('a caller outside the record\'s Grants is a 403 with the canonical message, for a read-only Grant too', async () => {
+  const { record, traineeId } = await recordWithTrainee();
+  const path = `/training/${record.id}/trainees/${traineeId}`;
+
+  for (const caller of [reader, viewer]) {
+    const { response, payload } = await call('PATCH', path, caller.token, { evaluation: 'paper' });
+    assert.strictEqual(response.status, 403);
+    assert.strictEqual(payload.message, "Outside the caller's granted Org Units");
+  }
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.trainees[0].evaluation, null);
+});
+
+test('the evaluation is settable after the record is sent, while add and remove still refuse with a 409', async () => {
+  const { record, traineeId } = await recordWithTrainee();
+  await markSent(record.id);
+
+  const { response, payload } = await call('PATCH', `/training/${record.id}/trainees/${traineeId}`, sender.token, {
+    evaluation: 'job_training'
+  });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.trainingRecord.status, 'sent');
+  assert.strictEqual(payload.trainingRecord.trainees[0].evaluation, 'job_training');
+
+  const late = await insertNamedEmployee();
+  const add = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: late.id });
+  assert.strictEqual(add.response.status, 409);
+  const remove = await call('DELETE', `/training/${record.id}/trainees/${traineeId}`, sender.token);
+  assert.strictEqual(remove.response.status, 409);
+});
+
+test('setting the evaluation does not disturb a Trainee\'s answer', async () => {
+  const mine = await insertTrainee();
+  const { record, ids } = await sentRecord([mine]);
+  await call('POST', `/training/trainees/${ids[0]}/answer`, mine.account.token, { answer: 'confirmed' });
+
+  const { response, payload } = await call('PATCH', `/training/${record.id}/trainees/${ids[0]}`, sender.token, {
+    evaluation: 'paper'
+  });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.trainingRecord.trainees[0].answer, 'confirmed');
+  assert.strictEqual(payload.trainingRecord.trainees[0].evaluation, 'paper');
+});
+
+test('setting and clearing the evaluation are audited against the acting Account', async () => {
+  const { record, traineeId } = await recordWithTrainee();
+  const path = `/training/${record.id}/trainees/${traineeId}`;
+  await call('PATCH', path, sender.token, { evaluation: 'paper' });
+  await call('PATCH', path, sender.token, { evaluation: null });
+
+  const { rows } = await pool.query(
+    `SELECT operation, changed_by FROM audit_log
+      WHERE table_name = 'training_trainees' AND record_id = $1 AND operation = 'UPDATE'`,
+    [traineeId]
+  );
+  assert.strictEqual(rows.length, 2);
+  for (const row of rows) assert.strictEqual(String(row.changed_by), String(sender.id));
+});

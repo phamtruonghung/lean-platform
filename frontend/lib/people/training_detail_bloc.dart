@@ -49,6 +49,14 @@ class TrainingTraineeAnswered extends TrainingDetailEvent {
   final String answer;
 }
 
+/// The trainer's evaluation of one Trainee (the row's id): `paper`,
+/// `job_training`, or null to return the Trainee to unevaluated (issue #290).
+class TrainingTraineeEvaluated extends TrainingDetailEvent {
+  const TrainingTraineeEvaluated(this.traineeId, this.evaluation);
+  final String traineeId;
+  final String? evaluation;
+}
+
 sealed class TrainingDetailState {
   const TrainingDetailState();
 }
@@ -74,6 +82,7 @@ class TrainingDetailLoaded extends TrainingDetailState {
     this.removeFailure,
     this.sendFailure,
     this.answerFailure,
+    this.evaluationFailure,
   });
   final TrainingRecord record;
 
@@ -90,6 +99,9 @@ class TrainingDetailLoaded extends TrainingDetailState {
   /// control that caused them.
   final String? sendFailure;
   final String? answerFailure;
+
+  /// The server's refusal of the last evaluation, shown beside the list.
+  final String? evaluationFailure;
 }
 
 class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> {
@@ -102,6 +114,7 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
     on<TrainingTraineeRemoved>(_onRemoved);
     on<TrainingRecordSent>(_onSent);
     on<TrainingTraineeAnswered>(_onAnswered);
+    on<TrainingTraineeEvaluated>(_onEvaluated);
   }
 
   final PeopleApi _api;
@@ -133,12 +146,18 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
   Future<void> _onAnswered(TrainingTraineeAnswered event, Emitter<TrainingDetailState> emit) =>
       _write(emit, _Write.answer, (token, _) => _api.answerTrainee(token, event.traineeId, event.answer));
 
+  Future<void> _onEvaluated(TrainingTraineeEvaluated event, Emitter<TrainingDetailState> emit) => _write(
+      emit,
+      _Write.evaluation,
+      (token, record) => _api.setTraineeEvaluation(token, record.id, event.traineeId, event.evaluation));
+
   TrainingDetailLoaded _failed(TrainingRecord record, _Write kind, String message) => TrainingDetailLoaded(
         record: record,
         addFailure: kind == _Write.add ? message : null,
         removeFailure: kind == _Write.remove ? message : null,
         sendFailure: kind == _Write.send ? message : null,
         answerFailure: kind == _Write.answer ? message : null,
+        evaluationFailure: kind == _Write.evaluation ? message : null,
       );
 
   Future<void> _write(
@@ -162,4 +181,4 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
   }
 }
 
-enum _Write { add, remove, send, answer }
+enum _Write { add, remove, send, answer, evaluation }

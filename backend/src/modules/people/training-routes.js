@@ -28,6 +28,9 @@
  * record's completeness (409, in the Module's own words — the request is
  * well formed and it is the record's state that refuses it).
  *
+ * A Trainee's evaluation (#290) is the trainer's own field, settable after
+ * sending: the record (404), its scope (403), the body (400), the Trainee (404).
+ *
  * A Trainee's answer (#289) is the one write here with no Grant question at
  * all: the caller must BE the Trainee, i.e. the Employee their own Account is
  * linked to (`app_users.employee_id`). Not even an administrator holding an
@@ -162,6 +165,32 @@ router.delete('/training/:id/trainees/:traineeId', authenticate, requireActive, 
     if (!trainee) throw notFound('Trainee');
 
     const updated = await training.removeTrainee(req.account.id, record.id, trainee.id);
+    return res.json({ trainingRecord: updated });
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+});
+
+// The trainer's own field, so unlike add and remove it is allowed on a sent
+// record as well as a draft: the record (404), its scope (403), the body (400),
+// then the Trainee on THIS record (404).
+router.patch('/training/:id/trainees/:traineeId', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const record = await training.getTrainingRecord(req.params.id); // 404s.
+    const allowed = await authorization.canAct({
+      account: req.account,
+      orgUnitId: record.orgUnitId,
+      write: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
+    }
+
+    const evaluation = training.requireEvaluation(req.body);
+    const trainee = await training.findTrainee(record.id, req.params.traineeId);
+    if (!trainee) throw notFound('Trainee');
+
+    const updated = await training.setTraineeEvaluation(req.account.id, record.id, trainee.id, evaluation);
     return res.json({ trainingRecord: updated });
   } catch (error) {
     return handleError(error, res, next);

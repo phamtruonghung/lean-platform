@@ -23,6 +23,9 @@
  * (`listTrainingToConfirm`) with it. Whether the caller may send is the
  * route's question; whether the answerer IS the Trainee is the route's too.
  * Correcting a sent record (#291) is not here.
+ *
+ * A Trainee's `evaluation` (#290) is the trainer's own field - `paper`, `job_training`
+ * or null - and is settable on a sent record too: it is not a correction.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -176,7 +179,8 @@ async function findTrainingRecord(id) {
 async function listTrainees(recordId) {
   const { rows } = await getPool().query(
     `SELECT tt.id, tt.employee_id, tt.created_at, e.employee_no, e.display_name,
-            tt.answer, tt.answered_at, tt.answered_by_account_id, tt.answered_by_employee_id
+            tt.answer, tt.answered_at, tt.answered_by_account_id, tt.answered_by_employee_id,
+            tt.evaluation
        FROM training_trainees tt
        JOIN employees e ON e.id = tt.employee_id
       WHERE tt.training_record_id = $1
@@ -194,7 +198,9 @@ async function listTrainees(recordId) {
     // The door the answer came through, read from which actor column is set.
     answeredVia: row.answered_by_account_id !== null
       ? 'account'
-      : (row.answered_by_employee_id !== null ? 'device' : null)
+      : (row.answered_by_employee_id !== null ? 'device' : null),
+    // How the trainer recorded this Trainee was evaluated; null until they do.
+    evaluation: row.evaluation
   }));
 }
 
@@ -259,6 +265,36 @@ async function findTrainee(recordId, traineeId) {
     [traineeId, recordId]
   );
   return rows[0] ?? null;
+}
+
+const EVALUATIONS = ['paper', 'job_training'];
+
+// `null` clears the evaluation; a missing key is not the same thing as null
+// and is refused, so a body that forgot the field cannot wipe it.
+function requireEvaluation(body) {
+  if (!body || !Object.hasOwn(body, 'evaluation')) {
+    throw httpError(400, `evaluation is required: one of ${EVALUATIONS.join(', ')}, or null to clear it`);
+  }
+  const value = body.evaluation;
+  if (value !== null && !EVALUATIONS.includes(value)) {
+    throw httpError(400, `evaluation must be one of: ${EVALUATIONS.join(', ')}, or null to clear it`);
+  }
+  return value;
+}
+
+// Sets or clears how one Trainee was evaluated. The trainer's own field, so
+// it is written on a draft and on a sent record alike; it is not a correction.
+async function setTraineeEvaluation(accountId, recordId, traineeId, evaluation) {
+  const updated = await withActor(accountId, async (client) => {
+    const { rowCount } = await client.query(
+      `UPDATE training_trainees SET evaluation = $3
+        WHERE id = $2 AND training_record_id = $1`,
+      [recordId, traineeId, evaluation]
+    );
+    return rowCount;
+  });
+  if (updated === 0) throw notFound('Trainee');
+  return getTrainingRecord(recordId);
 }
 
 // Issues the number and inserts, in one transaction. The Site is the Org Unit's
@@ -500,6 +536,8 @@ module.exports = {
   raiseTrainingRecord,
   addTrainee,
   removeTrainee,
+  requireEvaluation,
+  setTraineeEvaluation,
   findTrainee,
   correctTrainingRecord,
   listTrainingRecords
