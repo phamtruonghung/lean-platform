@@ -90,6 +90,8 @@ import '../people/skill_coverage_bloc.dart';
 import '../people/skill_coverage_screen.dart';
 import '../people/skills_bloc.dart';
 import '../people/skills_screen.dart';
+import '../people/worked_hours_bloc.dart';
+import '../people/worked_hours_screen.dart';
 import '../people_api.dart';
 import '../quality/complaint_detail_bloc.dart';
 import '../quality/complaint_detail_screen.dart';
@@ -583,6 +585,33 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   // reads off `orgUnitScope` below.
                   canAssign: account.account.orgUnitScope.canWriteSomewhere,
                 ),
+              );
+            },
+          ),
+          // One Employee's worked hours (issue #263) — the per-Employee
+          // summary reached from a button on the Employee's own detail Screen
+          // (`/directory/:employeeId/work-hours`), nested under the directory
+          // detail route the way `/attendance/to-confirm` nests under the
+          // Attendance Destination (see `worked_hours_screen.dart`'s own
+          // header). A distinct, more specific path, so register order does
+          // not matter against `:id` above (different segment counts never
+          // collide). Offered to every approved Account, the same openness
+          // the directory detail route itself has: the route is an open read
+          // (ADR-0009 — an Employee's work record is not a secret), so a
+          // role check here would gate a door the server never closes.
+          GoRoute(
+            path: '${Routes.directory}/:employeeId/work-hours',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              final employeeId = state.pathParameters['employeeId']!;
+              return BlocProvider<WorkedHoursBloc>(
+                create: (context) => WorkedHoursBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                  employeeId: employeeId,
+                )..add(const WorkedHoursStarted()),
+                child: WorkedHoursScreen(employeeId: employeeId),
               );
             },
           ),

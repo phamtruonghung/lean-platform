@@ -191,6 +191,67 @@ function toShiftInstanceSummary(row) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Per-Employee worked hours (issue #263 — the classic HRM question the
+// Platform until now answered only per shift: "how much did THIS Employee
+// work, across a window?"). Read-only — no schema change, no write — built on
+// the rows the attendance sheet already confirms.
+//
+// **Only confirmed sheets count**, and that is deliberate, exactly as
+// CONTEXT.md's Worked hours entry describes: "Worked hours" are the minutes
+// an Employee is *confirmed* to have actually worked, and an unconfirmed
+// sheet's `worked_minutes` is a draft the supervisor may still correct
+// (ADR-0040: "A confirmed sheet can still be corrected"). So this summary
+// joins `attendance_sheets` and keeps only rows whose `confirmed_at` is set —
+// mirroring how `v_safety_rates`/`EXPOSURE_HOURS` already treat a confirmed
+// sheet as fact and an unconfirmed one as data-in-flight. A past shift inside
+// the window with no confirmed sheet is simply absent, not counted as zero: a
+// planted "0 hours" would be indistinguishable from "truly stood down", the
+// same reason exposure hours stay `no_data` rather than silently understating.
+//
+// One row per production day, summing the Employee's confirmed scheduled,
+// worked and overtime minutes across every shift instance confirmed that day
+// (an Employee can work more than one shift in a day — a stand-in on a second
+// line, say — so it is a SUM over the day, never a single row). `from`/`to`
+// are exclusive-side-open dates (null = unbounded) validated by the route.
+async function summariseEmployeeWorkedHours(employeeId, { from = null, to = null } = {}) {
+  await getEmployee(employeeId); // the 404 — "no such Employee" is not a scope problem.
+  const { rows } = await getPool().query(
+    `SELECT si.production_date::text AS date,
+            COALESCE(SUM(ar.scheduled_minutes), 0)::integer AS scheduled_minutes,
+            COALESCE(SUM(ar.worked_minutes), 0)::integer AS worked_minutes,
+            COALESCE(SUM(ar.overtime_minutes), 0)::integer AS overtime_minutes
+       FROM attendance_records ar
+       JOIN shift_instances si ON si.id = ar.shift_instance_id
+       JOIN attendance_sheets sh ON sh.shift_instance_id = si.id
+      WHERE ar.employee_id = $1
+        AND sh.confirmed_at IS NOT NULL
+        AND ($2::date IS NULL OR si.production_date >= $2::date)
+        AND ($3::date IS NULL OR si.production_date <= $3::date)
+      GROUP BY si.production_date
+      ORDER BY si.production_date`,
+    [employeeId, from, to]
+  );
+
+  const days = rows.map((row) => ({
+    date: row.date,
+    scheduledMinutes: row.scheduled_minutes,
+    workedMinutes: row.worked_minutes,
+    overtimeMinutes: row.overtime_minutes
+  }));
+
+  const totals = days.reduce(
+    (acc, day) => ({
+      scheduledMinutes: acc.scheduledMinutes + day.scheduledMinutes,
+      workedMinutes: acc.workedMinutes + day.workedMinutes,
+      overtimeMinutes: acc.overtimeMinutes + day.overtimeMinutes
+    }),
+    { scheduledMinutes: 0, workedMinutes: 0, overtimeMinutes: 0 }
+  );
+
+  return { days, totals };
+}
+
 async function listShiftInstances(orgUnitId, { date } = {}) {
   if (typeof date !== 'string' || !DATE_RE.test(date)) {
     throw httpError(400, 'date must be a YYYY-MM-DD date');
@@ -760,6 +821,7 @@ module.exports = {
   getShiftInstance,
   listShiftInstances,
   listAttendanceToConfirm,
+  summariseEmployeeWorkedHours,
   listAbsenceReasons,
   getAttendanceSheet,
   updateAttendanceRecord,

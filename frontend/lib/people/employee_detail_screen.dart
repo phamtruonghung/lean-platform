@@ -23,7 +23,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
@@ -74,6 +76,7 @@ class EmployeeDetailScreen extends StatelessWidget {
   static const ValueKey<String> departKey = ValueKey<String>('employee-detail-depart');
   static const ValueKey<String> reinstateKey = ValueKey<String>('employee-detail-reinstate');
   static const ValueKey<String> assignKey = ValueKey<String>('employee-detail-assign');
+  static const ValueKey<String> workedHoursKey = ValueKey<String>('employee-detail-worked-hours');
   static const ValueKey<String> noticeKey = ValueKey<String>('employee-detail-notice');
   static ValueKey<String> assignmentRowKey(String id) =>
       ValueKey<String>('employee-detail-assignment-$id');
@@ -217,6 +220,16 @@ class _Detail extends StatelessWidget {
                           : () => EmployeeAssignmentDialog.open(context, employee),
                       child: const Text('Assign'),
                     ),
+                  // Worked hours (issue #263) is offered to every approved
+                  // Account, the same openness the directory detail route
+                  // itself has (see `worked_hours_screen.dart`'s own header):
+                  // the summary is an open read from the server, so no role
+                  // gate belongs on the door that leads to it.
+                  OutlinedButton(
+                    key: EmployeeDetailScreen.workedHoursKey,
+                    onPressed: () => context.go('${Routes.directory}/${employee.id}/work-hours'),
+                    child: const Text('Worked hours'),
+                  ),
                 ],
               ),
             ],

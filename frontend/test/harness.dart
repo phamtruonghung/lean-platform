@@ -1731,6 +1731,40 @@ Map<String, dynamic> attendanceToConfirmEntryJson(
       'sheetState': sheetState,
     };
 
+/// The body of `GET /api/people/employees/:employeeId/work-hours`
+/// (`summariseEmployeeWorkedHours`, attendance.js, issue #263) — the days the
+/// server returns with the totals it computed from the same rows. Each day's
+/// minutes are integers; a day with no confirmed sheet is *absent* from
+/// `days`, never a planted zero.
+Map<String, dynamic> workedHoursSummaryJson({
+  List<Map<String, dynamic>> days = const [],
+  int scheduledMinutes = 0,
+  int workedMinutes = 0,
+  int overtimeMinutes = 0,
+}) =>
+    {
+      'days': days,
+      'totals': {
+        'scheduledMinutes': scheduledMinutes,
+        'workedMinutes': workedMinutes,
+        'overtimeMinutes': overtimeMinutes,
+      },
+    };
+
+/// One day of `.../work-hours`'s `days` array.
+Map<String, dynamic> workedHoursDayJson(
+  String date, {
+  int scheduledMinutes = 450,
+  int workedMinutes = 450,
+  int overtimeMinutes = 0,
+}) =>
+    {
+      'date': date,
+      'scheduledMinutes': scheduledMinutes,
+      'workedMinutes': workedMinutes,
+      'overtimeMinutes': overtimeMinutes,
+    };
+
 /// One row of `GET /api/people/sites/:siteId/skill-coverage`
 /// (`getSiteSkillCoverage`, skills.js, issue #89) — already filtered to
 /// `shortfall > 0` server-side, so every row this fixture builds is thin by
@@ -2173,6 +2207,9 @@ class FakeWire {
     List<Map<String, dynamic>>? attendanceToConfirm,
     this.attendanceToConfirmStatus = 200,
     this.attendanceToConfirmMessage = 'The attendance-to-confirm worklist is unavailable.',
+    Map<String, dynamic>? employeeWorkedHours,
+    this.employeeWorkedHoursStatus = 200,
+    this.employeeWorkedHoursMessage = 'The worked-hours summary is unavailable.',
     List<Map<String, dynamic>>? jobPlans,
     this.jobPlansStatus = 200,
     this.createJobPlanStatus = 201,
@@ -2385,6 +2422,8 @@ class FakeWire {
               absenceReasonJson('HOL', 'Annual leave', isPlanned: true, countsAsAbsenteeism: false),
             ],
         attendanceToConfirm = attendanceToConfirm ?? [],
+        employeeWorkedHours = employeeWorkedHours ??
+            {'days': const [], 'totals': {'scheduledMinutes': 0, 'workedMinutes': 0, 'overtimeMinutes': 0}},
         jobPlans = jobPlans ?? [],
         pmSchedules = pmSchedules ?? {},
         unitsOfMeasure = unitsOfMeasure ??
@@ -3943,6 +3982,19 @@ class FakeWire {
   /// wire — so a test can assert exactly which `orgUnitId`/`from`/`to`
   /// filters were actually sent, not merely that a request happened.
   final List<Map<String, String>> attendanceToConfirmRequests = [];
+
+  /// `GET /api/people/employees/:employeeId/work-hours` (issue #263) — the
+  /// per-Employee worked-hours summary, empty by default so a test that never
+  /// scripts it sees the genuine empty state rather than invented hours.
+  Map<String, dynamic> employeeWorkedHours;
+  int employeeWorkedHoursStatus;
+  String employeeWorkedHoursMessage;
+
+  /// Every request's own query string, in the order requests reached the
+  /// wire — so a test can assert exactly which `from`/`to` filters were
+  /// actually sent, the same shape `attendanceToConfirmRequests` records for
+  /// the worklist.
+  final List<(String, Map<String, String>)> employeeWorkedHoursRequests = [];
 
   /// `GET /api/maintenance/job-plans` (issue #74) — the shared catalogue,
   /// deactivated rows included by default, the same shape the real route's
@@ -7483,6 +7535,28 @@ class FakeWire {
             sent = sent.sublist(0, limitValue);
           }
           return http.Response(jsonEncode({'employees': sent}), 200);
+        }
+        // GET /api/people/employees/:employeeId/work-hours (issue #263) — the
+        // per-Employee worked-hours summary. It must be matched before the
+        // `/api/people/employees/` catch-all directly below, whose `:id`
+        // segment would otherwise swallow `:employeeId/work-hours` whole; the
+        // two are told apart exactly as directory-routes.js's own
+        // declaration order does (`work-hours` is not a plausible Employee id,
+        // the same trick `/employees/me` plays against `/employees/:id`).
+        if (request.method == 'GET' && path.endsWith('/work-hours') &&
+            path.startsWith('/api/people/employees/')) {
+          final employeeId = path.substring(
+            '/api/people/employees/'.length,
+            path.length - '/work-hours'.length,
+          );
+          employeeWorkedHoursRequests.add((employeeId, request.url.queryParameters));
+          if (employeeWorkedHoursStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': employeeWorkedHoursMessage}),
+              employeeWorkedHoursStatus,
+            );
+          }
+          return http.Response(jsonEncode(employeeWorkedHours), 200);
         }
         // GET /api/people/employees/me and GET /api/people/employees/:id
         // (issue #86) — `me` is a distinct fixture key, not a real Employee
