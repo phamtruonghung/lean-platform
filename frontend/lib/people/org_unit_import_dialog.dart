@@ -149,7 +149,7 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
                       onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        hintText: '[{"code": "A1", "name": "Assembly", "unitType": "area"}]',
+                        hintText: '[{"code": "SC", "name": "SC", "unitType": "section"}]',
                       ),
                     ),
                     if (_parseFailure != null)

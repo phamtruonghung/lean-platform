@@ -226,6 +226,7 @@ test('a Site\'s Org Unit tree spans every unit type, is browsable one level at a
   const chain = [
     { unitType: 'area', name: 'Area 1' },
     { unitType: 'department', name: 'Department 1' },
+    { unitType: 'section', name: 'Section 1' },
     { unitType: 'line', name: 'Line 1' },
     { unitType: 'cell', name: 'Cell 1' },
     { unitType: 'work_center', name: 'Work Centre 1' }
@@ -245,7 +246,7 @@ test('a Site\'s Org Unit tree spans every unit type, is browsable one level at a
     parentId = orgUnit.id;
   }
 
-  const [area, department, line, cell, workCenter] = created;
+  const [area, department, section, line, cell, workCenter] = created;
 
   // Browsed one level at a time, from the Site down to the work centre.
   const rootResponse = await fetch(`${base}/api/people/sites/${site.id}/org-units`, { headers: adminToken });
@@ -258,6 +259,17 @@ test('a Site\'s Org Unit tree spans every unit type, is browsable one level at a
   );
   const departmentBody = await departmentResponse.json();
   assert.deepStrictEqual(departmentBody.orgUnits.map((ou) => ou.id), [department.id]);
+
+  // A section is read back one level below its department, typed as a section.
+  const sectionResponse = await fetch(
+    `${base}/api/people/sites/${site.id}/org-units?parentId=${department.id}`,
+    { headers: adminToken }
+  );
+  const sectionBody = await sectionResponse.json();
+  assert.deepStrictEqual(
+    sectionBody.orgUnits.map((ou) => ({ id: ou.id, unitType: ou.unitType })),
+    [{ id: section.id, unitType: 'section' }]
+  );
 
   const workCenterChildren = await fetch(
     `${base}/api/people/sites/${site.id}/org-units?parentId=${workCenter.id}`,
@@ -272,7 +284,7 @@ test('a Site\'s Org Unit tree spans every unit type, is browsable one level at a
   const subtreeBody = await subtreeResponse.json();
   assert.deepStrictEqual(
     subtreeBody.orgUnits.map((ou) => ({ id: ou.id, depth: ou.depth })),
-    [area, department, line, cell, workCenter].map((ou, i) => ({ id: ou.id, depth: i }))
+    [area, department, section, line, cell, workCenter].map((ou, i) => ({ id: ou.id, depth: i }))
   );
 
   // And from the cell down: only the cell and the work centre beneath it,
