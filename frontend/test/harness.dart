@@ -3634,6 +3634,21 @@ class FakeWire {
   /// own neighbours already use.
   final List<(String, String?)> employeeLinkPuts = [];
 
+  /// `POST /api/people/accounts/:id/password` (issue #270): the status to
+  /// answer with and, for a refusal, the `message` it carries.
+  int resetPasswordStatus = 200;
+  String resetPasswordMessage = 'The password could not be changed.';
+
+  /// Every password reset that reached the wire, as `(accountId, body)`.
+  final List<(String, Map<String, dynamic>)> passwordResets = [];
+
+  /// `PUT /api/people/me/password` (issue #270), the same two knobs.
+  int changePasswordStatus = 200;
+  String changePasswordMessage = 'Current password is not correct.';
+
+  /// Every own-password change that reached the wire, as its body.
+  final List<Map<String, dynamic>> passwordChanges = [];
+
   /// The Account a given Employee id is linked to, as `POST
   /// .../departure`'s own `linkedAccount` reports it (issue #116, ADR-0022) —
   /// scripted per test, since this Fake Wire keeps no real link between
@@ -8302,6 +8317,30 @@ class FakeWire {
             return http.Response(jsonEncode({'message': 'That Org Unit does not exist.'}), 404);
           }
           return http.Response(jsonEncode({'orgUnit': updated}), 200);
+        }
+        if (request.method == 'POST' &&
+            path.startsWith('/api/people/accounts/') &&
+            path.endsWith('/password')) {
+          // '', 'api', 'people', 'accounts', ':id', 'password'.
+          final id = path.split('/')[4];
+          passwordResets.add((id, jsonDecode(request.body) as Map<String, dynamic>));
+          if (resetPasswordStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': resetPasswordMessage}),
+              resetPasswordStatus,
+            );
+          }
+          return http.Response(jsonEncode({'account': {'id': id}}), 200);
+        }
+        if (request.method == 'PUT' && path == '/api/people/me/password') {
+          passwordChanges.add(jsonDecode(request.body) as Map<String, dynamic>);
+          if (changePasswordStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': changePasswordMessage}),
+              changePasswordStatus,
+            );
+          }
+          return http.Response(jsonEncode({'account': {'id': '1'}}), 200);
         }
         if (path == '/api/people/accounts') {
           if (accountsStatus != 200) {

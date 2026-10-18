@@ -6,7 +6,8 @@
  * act), rejecting one, and later deactivating an admitted Account without
  * deleting it. Sites and the Org Unit tree are plant-routes.js's surface
  * (issue #7); Org Unit *scope* enforcement on those routes lives there too,
- * via authorization.js.
+ * via authorization.js. Issue #270 adds passwords: an administrator resetting
+ * an Account's, and a person changing their own (passwords.js).
  */
 
 const express = require('express');
@@ -21,6 +22,7 @@ const {
   setAccountActive,
   setAccountEmployee
 } = require('./service');
+const { resetPassword, changeOwnPassword } = require('./passwords');
 
 const router = express.Router();
 
@@ -189,6 +191,30 @@ router.put('/accounts/:id/employee', authenticate, requireActive, requireAdmin, 
       return res.status(400).json({ message: 'employeeId is required (a valid Employee id, or null to clear the link)' });
     }
     const account = await setAccountEmployee(id, req.body.employeeId, req.account.id);
+    res.json({ account });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+// An administrator sets another Account's password (issue #270). ADR-0013's
+// refusal applies: not their own. The body's password is never echoed.
+router.post('/accounts/:id/password', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+  try {
+    const id = requireAccountId(req);
+    const account = await resetPassword(id, req.body?.password, req.account.id);
+    res.json({ account });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+// A person changes their own password (issue #270). A wrong current password
+// is a 400, never a 401: a 401 makes the client sign the person out.
+router.put('/me/password', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body ?? {};
+    const account = await changeOwnPassword(req.account.id, { currentPassword, newPassword }, req.sessionId ?? null);
     res.json({ account });
   } catch (error) {
     handleError(error, res, next);

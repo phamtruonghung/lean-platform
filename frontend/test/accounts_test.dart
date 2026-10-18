@@ -222,6 +222,9 @@ void main() {
         findsNothing);
     expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
     expect(find.text('admitted@b.c'), findsOneWidget);
+    // The card's actions wrap rather than overflow at this width (issue #270),
+    // and the password reset is still offered here, not dropped.
+    expect(find.byKey(AccountsScreen.resetPasswordKey('7')), findsOneWidget);
   });
 
   // Both layouts share one row key (issue #112, Decision A).
