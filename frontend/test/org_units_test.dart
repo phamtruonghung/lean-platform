@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lean_platform/people/org_unit.dart';
 import 'package:lean_platform/people/org_unit_form_dialog.dart';
 import 'package:lean_platform/people/org_unit_import_dialog.dart';
 import 'package:lean_platform/people/org_units_screen.dart';
@@ -23,6 +24,18 @@ Future<void> openOrgUnits(WidgetTester tester, FakeWire wire) => pumpApp(
     );
 
 void main() {
+  // Mirrors plant.js's UNIT_TYPES (issue #271): a removal here fails loudly.
+  test('OrgUnitTypes.values is the list the backend accepts, section included', () {
+    expect(OrgUnitTypes.values, [
+      'area',
+      'department',
+      'section',
+      'line',
+      'cell',
+      'work_center',
+    ]);
+  });
+
   testWidgets('the Org Unit tree renders for the Site an Account can see', (tester) async {
     final wire = FakeWire(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
@@ -509,7 +522,7 @@ void main() {
       importOrgUnitsStatus: 422,
       importOrgUnitsMessage: 'The import contains invalid rows',
       importOrgUnitsErrors: [
-        {'row': 0, 'code': 'A1', 'field': 'unitType', 'message': 'unitType must be one of: area, department, line, cell, work_center'},
+        {'row': 0, 'code': 'A1', 'field': 'unitType', 'message': 'unitType must be one of: area, department, section, line, cell, work_center'},
         {'row': 1, 'code': null, 'field': 'code', 'message': 'code is required'},
       ],
     );
@@ -520,14 +533,14 @@ void main() {
 
     await tester.enterText(
       find.byKey(OrgUnitImportDialog.payloadKey),
-      '[{"code":"A1","name":"Area 1","unitType":"bogus"},{"name":"No code","unitType":"area"}]',
+      '[{"code":"A1","name":"Area 1","unitType":"bogus"},{"name":"No code","unitType":"area"},{"code":"SC","name":"SC","unitType":"section"}]',
     );
     await tapIn(tester, find.byKey(OrgUnitImportDialog.submitKey));
 
     expect(wire.orgUnitImportPosts.single.$1, '1');
     expect(
       (wire.orgUnitImportPosts.single.$2['orgUnits'] as List).length,
-      2,
+      3,
     );
     // Every row's own reason, not only the first.
     expect(find.byKey(OrgUnitImportDialog.rowErrorKey(0)), findsOneWidget);

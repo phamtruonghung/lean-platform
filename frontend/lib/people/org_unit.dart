@@ -105,17 +105,25 @@ class OrgUnitNode {
 
 /// The `unit_type` values `plant.js`'s own `UNIT_TYPES` accepts
 /// (`POST /sites/:siteId/org-units`, the bulk import, issue #90). Mirrored by
-/// hand rather than read off an endpoint — there is none, and no backend
-/// change is permitted for this ticket — so a change to the server's own list
-/// must be brought here too.
+/// hand rather than read off an endpoint — there is none — so a change to the
+/// server's own list (as `section` was, issue #271) must be brought here in
+/// the same commit.
 abstract final class OrgUnitTypes {
   static const String area = 'area';
   static const String department = 'department';
+  static const String section = 'section';
   static const String line = 'line';
   static const String cell = 'cell';
   static const String workCenter = 'work_center';
 
-  static const List<String> values = [area, department, line, cell, workCenter];
+  static const List<String> values = [
+    area,
+    department,
+    section,
+    line,
+    cell,
+    workCenter,
+  ];
 }
 
 /// One `GET /api/people/sites/:siteId/org-units/search` response

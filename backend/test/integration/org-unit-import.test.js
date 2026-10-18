@@ -245,6 +245,44 @@ test('an administrator imports a 3-level hierarchy in one call, and the subtree 
   );
 });
 
+test('an import accepts a section, and the subtree reads it back as one', async (t) => {
+  const site = await insertSite();
+  t.after(async () => {
+    await pool.query('DELETE FROM org_units WHERE site_id = $1', [site]);
+    await pool.query('DELETE FROM sites WHERE id = $1', [site]);
+  });
+
+  const departmentCode = uniqueCode('DEPT');
+  const sectionCode = uniqueCode('SC');
+  const areaCode = uniqueCode('AREA');
+
+  const response = await importRequest(site, {
+    orgUnits: [
+      { code: departmentCode, name: 'Production', unitType: 'department' },
+      { code: sectionCode, name: 'SC', unitType: 'section', parentCode: departmentCode },
+      { code: areaCode, name: 'Braiding', unitType: 'area', parentCode: sectionCode }
+    ]
+  });
+  assert.strictEqual(response.status, 201);
+  const { orgUnits } = await response.json();
+  const department = orgUnits.find((ou) => ou.code === departmentCode);
+  const section = orgUnits.find((ou) => ou.code === sectionCode);
+  const area = orgUnits.find((ou) => ou.code === areaCode);
+  assert.strictEqual(section.unitType, 'section');
+  assert.strictEqual(section.parentId, department.id);
+
+  const subtreeResponse = await fetch(`${base}/api/people/org-units/${department.id}/subtree`, { headers: adminAccount.token });
+  const subtreeBody = await subtreeResponse.json();
+  assert.deepStrictEqual(
+    subtreeBody.orgUnits.map((ou) => ({ id: ou.id, unitType: ou.unitType, depth: ou.depth })),
+    [
+      { id: department.id, unitType: 'department', depth: 0 },
+      { id: section.id, unitType: 'section', depth: 1 },
+      { id: area.id, unitType: 'area', depth: 2 }
+    ]
+  );
+});
+
 test('an import whose rows hang off an existing Org Unit succeeds', async (t) => {
   const site = await insertSite();
   const existing = await insertOrgUnit(site, { name: 'Existing Root' });

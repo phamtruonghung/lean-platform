@@ -32,10 +32,11 @@ const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
 const { escapeLikePattern } = require('./sql');
 
-// Mirrors the CHECK constraint on org_units.unit_type in the baseline.
+// Mirrors the CHECK constraint on org_units.unit_type, as last recreated by
+// migrations/1801400000000_org-units-section-unit-type.js (issue #271).
 // Validated here too so a bad value comes back as a 400 with a clear
 // message instead of a raw constraint-violation error.
-const UNIT_TYPES = ['area', 'department', 'line', 'cell', 'work_center'];
+const UNIT_TYPES = ['area', 'department', 'section', 'line', 'cell', 'work_center'];
 
 function requireNonEmptyString(field, value) {
   if (typeof value !== 'string' || value.trim() === '') {
