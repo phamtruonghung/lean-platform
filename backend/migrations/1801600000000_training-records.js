@@ -13,9 +13,10 @@
  * while a draft is still being filled in.
  *
  * **`site_id` is stored beside `org_unit_id`.** The number is the Site's own
- * (`next_document_number('TR', <site code>, <year>)`), and the register reads
- * by Site without a join; the route derives it from the Org Unit, never from
- * the caller.
+ * (`next_document_number('TR', <site code>, <year>)`), which is the one thing
+ * `site_id` is used for; the route derives it from the Org Unit, never from the
+ * caller. The register does not read by Site: it filters by Org Unit (and
+ * everything beneath it) and by date range, and has no Site predicate.
  *
  * The deny-all RLS floor is switched on in this same migration (ADR-0004),
  * with `attach_updated_at`, `attach_actor_columns` and `attach_audit` as

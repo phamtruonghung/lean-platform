@@ -201,6 +201,49 @@ test('raising a training record returns 201, a draft, with its facts and the tra
   assert.strictEqual(record.objective, 'Everyone can isolate the press');
 });
 
+test('a raise leaves its INSERT row on training_records in the audit table, against the acting Account', async () => {
+  const { payload } = await raise(sender.token, line.id, { title: 'Audited raise' });
+  const id = payload.trainingRecord.id;
+
+  const { rows } = await pool.query(
+    `SELECT operation, changed_by FROM audit_log
+      WHERE table_name = 'training_records' AND record_id = $1`,
+    [id]
+  );
+  assert.deepStrictEqual(rows.map((r) => r.operation), ['INSERT']);
+  assert.strictEqual(String(rows[0].changed_by), String(sender.id));
+});
+
+test('a raise whose INSERT fails after the number was issued does not consume the number', async () => {
+  // next_document_number is an upsert on document_sequences made in the SAME
+  // transaction as the INSERT (raiseTrainingRecord does both in one withActor),
+  // so a failed INSERT rolls the counter back with it. The Module's own
+  // function is called directly with a trainer id no Employee has, which the
+  // route's existence check would have refused: the FK then fails AFTER issuance.
+  const { raiseTrainingRecord } = require('../../src/modules/people/training');
+  const year = new Date().getUTCFullYear();
+  const scope = `TR-${site.code}-${year}`;
+  const counter = async () => {
+    const { rows } = await pool.query('SELECT next_value FROM document_sequences WHERE scope = $1', [scope]);
+    return rows.length === 0 ? null : Number(rows[0].next_value);
+  };
+  const before = await counter();
+
+  await assert.rejects(
+    raiseTrainingRecord(admin.id, line.id, {
+      title: 'Doomed', trainedOn: '2026-03-10', durationHours: 1,
+      trainerEmployeeId: '999999999', objective: null
+    }),
+    (error) => error.code === '23503'
+  );
+  assert.strictEqual(await counter(), before);
+
+  // The next raise takes the number the failed one would have had.
+  const { payload } = await raise(admin.token, line.id);
+  const expected = `${scope}-${String(before ?? 1).padStart(5, '0')}`;
+  assert.strictEqual(payload.trainingRecord.number, expected);
+});
+
 test('trainer and objective are optional when raising', async () => {
   const { response, payload } = await raise(sender.token, line.id);
   assert.strictEqual(response.status, 201);
@@ -343,7 +386,12 @@ test('the register filters by Org Unit including everything beneath it, and by d
   assert.ok(ids(underCell).includes(atCell.id));
 
   const ranged = await call('GET', `/training?orgUnitId=${line.id}&from=2025-02-01&to=2025-02-28`, admin.token);
-  assert.deepStrictEqual(ids(ranged), [atCell.id]);
+  // The register is a shared table: assert what this test put in, not that
+  // nothing else is there. atLine is outside the February window and atOther
+  // outside the Org Unit, so both must be absent.
+  assert.ok(ids(ranged).includes(atCell.id));
+  assert.ok(!ids(ranged).includes(atLine.id));
+  assert.ok(!ids(ranged).includes(atOther.id));
 
   const fromOnly = await call('GET', '/training?from=2025-02-11&to=2025-02-11', admin.token);
   assert.ok(ids(fromOnly).includes(atOther.id));
