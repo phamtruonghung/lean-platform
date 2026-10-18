@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lean_platform/auth/sign_in_screen.dart';
 import 'package:lean_platform/platform/auth_bootstrap.dart';
+import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/local_auth_gateway.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/sign_out_on_unauthorized.dart';
@@ -57,6 +60,18 @@ void main() {
         expect(supabaseCalls, 1);
       });
     }
+  });
+
+  testWidgets('an API that never answers still reaches the sign-in screen', (tester) async {
+    final neverAnswers = MockClient((_) => Completer<http.Response>().future);
+    AuthGateway? gateway;
+    unawaited(bootstrapAuth(client: neverAnswers, supabase: () async => FakeAuthGateway())
+        .then((g) => gateway = g));
+    await tester.pump(const Duration(seconds: 6));
+
+    expect(gateway, isA<FakeAuthGateway>());
+    await pumpApp(tester, gateway: gateway!, client: FakeAuthApi().client);
+    expect(find.byType(SignInScreen), findsOneWidget);
   });
 
   testWidgets('a refused login shows the API message verbatim', (tester) async {
