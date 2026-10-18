@@ -65,7 +65,7 @@
  * refuses. The rule stays narrow — a Module may export middleware that
  * establishes the caller's identity, and only that.
  *
- * Exactly sixteen exports, each justified below against the sibling ticket
+ * Exactly seventeen exports, each justified below against the sibling ticket
  * that needs it:
  *
  *   - router — mounted by src/index.js, which lives outside `modules/` and so
@@ -77,6 +77,10 @@
  *     the three clauses evaluate it. It is kept apart from `router` only so
  *     that src/index.js can mount it at the frozen `/api/maintenance`
  *     prefix; see the header above.
+ *   - authRouter — issue #268, the same special case again: mounted at
+ *     `/api/auth` by src/index.js, never called, because sign-in is the door
+ *     every other route's bearer token comes through rather than a People
+ *     resource under `/api/people`.
  *   - kpiRegistry — issue #251, parent #247: this Module's contribution to the
  *     tier board, `PPL_ABSENTEEISM` and `PPL_HEADCOUNT`, read from the
  *     attendance #249 records. Like `quality.kpiRegistry` and
@@ -230,6 +234,7 @@ const leaveRequestRoutes = require('./leave-requests-routes');
 const costRateRoutes = require('./cost-rate-routes');
 const productCostRoutes = require('./product-cost-routes');
 const floorRoutes = require('./floor-routes');
+const authRoutes = require('./auth-routes');
 const { authenticate, requireActive } = require('./middleware');
 const { canAct, canSeeSite, safetyAuthorityOrgUnitIds } = require('./authorization');
 const { findOrgUnit, findSite } = require('./plant');
@@ -262,6 +267,9 @@ module.exports = {
   // Mounted at `/api/maintenance` by src/index.js, not at `/api/people` — see
   // the header above. It is a router, not a route file added to `router`.
   floorRouter: floorRoutes,
+  // Mounted at `/api/auth` by src/index.js (issue #268): sign-in is the door
+  // every other route's token comes through, not a People resource.
+  authRouter: authRoutes,
   kpiRegistry,
   authenticate,
   requireActive,

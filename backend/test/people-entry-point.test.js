@@ -44,11 +44,12 @@ const assert = require('node:assert');
 
 const people = require('../src/modules/people');
 
-test('the People Module entry point exposes exactly sixteen names', () => {
+test('the People Module entry point exposes exactly seventeen names', () => {
   assert.deepStrictEqual(
     Object.keys(people).sort(),
     [
       'OUTSIDE_GRANTED_ORG_UNITS',
+      'authRouter',
       'authenticate',
       'canAct',
       'canSeeSite',
