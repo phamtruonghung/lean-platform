@@ -238,6 +238,21 @@ project name means the first deploy removes TLS termination.
 Images are tagged `sha-<commit>`, never `latest`. A floating tag would make a
 rollback meaningless, because the tag it rolls back to may since have moved.
 
+**The deploy takes its authentication settings from repository variables, not
+from the box.** `SUPABASE_URL` and `SUPABASE_ANON_KEY` are baked into the
+frontend at build; `SUPABASE_JWKS_URL` and `SUPABASE_JWT_ISSUER` reach the
+backend at deploy; so does `AUTH_PASSWORD_MODE`, which picks the door:
+`supabase` verifies a Supabase JWT, `local` keeps passwords in the
+deployment's own PostgreSQL (`POST /api/auth/login`). Unset means `supabase`.
+It is a variable, not a secret — set it with
+`gh variable set AUTH_PASSWORD_MODE --body local` — and it must live there
+because a runner deploy does not read `/opt/lean-platform/.env`; otherwise the
+next deploy would quietly switch a `local` deployment back. The deploy log's
+"Report what is serving" step prints the mode that was deployed. Caveat: it is
+a repository-level variable, not a per-target one, so every deployment this
+workflow drives gets the same door. A second deployment that wanted the other
+door would need this made per-target (a GitHub environment, say) first.
+
 First-time setup — Supabase, DNS, Docker, certificates and the runner — is
 walked through by `scripts/setup-deployment.sh`.
 
@@ -279,7 +294,9 @@ Configuration — `SUPABASE_JWKS_URL`/`SUPABASE_JWT_ISSUER` for the backend,
 `SUPABASE_URL`/`SUPABASE_ANON_KEY` for the frontend — lives in `.env.example`,
 with no local default: verifying or issuing a real session needs a real
 Supabase project. The test suite does not depend on one — see
-`backend/test/helpers/jwks.js`.
+`backend/test/helpers/jwks.js`. Beside them, `AUTH_PASSWORD_MODE` picks which
+door authenticates (`supabase`, the default, or `local`); on a deployment it
+comes from a repository variable — see Deployment above.
 
 ## Known gaps
 

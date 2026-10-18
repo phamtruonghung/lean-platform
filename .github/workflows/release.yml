@@ -137,6 +137,13 @@ jobs:
           # are variables, not secrets. See src/platform/tokens.js.
           SUPABASE_JWKS_URL: ${{ vars.SUPABASE_JWKS_URL }}
           SUPABASE_JWT_ISSUER: ${{ vars.SUPABASE_JWT_ISSUER }}
+          # Which door authenticates. A variable, not a secret: it is not
+          # secret, and the runbook must say which door is live. It has to be
+          # passed here because the box's own .env is not read by a runner
+          # deploy (compose reads .env from the checkout), so without it every
+          # deploy falls back to compose's default and silently switches a
+          # 'local' deployment back to supabase. The default matches compose's.
+          AUTH_PASSWORD_MODE: ${{ vars.AUTH_PASSWORD_MODE || 'supabase' }}
           GHCR_OWNER: ${{ github.repository_owner }}
           # The recorded tag lives outside the runner's workspace, which is
           # wiped between runs. Losing it would leave a deploy with nothing to
@@ -148,5 +155,10 @@ jobs:
 
       - name: Report what is serving
         if: always()
+        env:
+          # A step does not inherit the Deploy step's env. Stated here so the
+          # log says which door this deploy put live.
+          AUTH_PASSWORD_MODE: ${{ vars.AUTH_PASSWORD_MODE || 'supabase' }}
         run: |
           echo "deployed tag: $(cat /opt/lean-platform/.deployed-tag 2>/dev/null || echo none)"
+          echo "password mode: ${AUTH_PASSWORD_MODE}"
