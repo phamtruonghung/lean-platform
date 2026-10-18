@@ -31,12 +31,10 @@
  */
 
 const crypto = require('node:crypto');
-const { promisify } = require('node:util');
 const { getPool, withActor } = require('../../platform/db');
+const { hashSecret, verifySecret } = require('../../platform/secrets');
 const { httpError, parseId } = require('./errors');
 
-const scrypt = promisify(crypto.scrypt);
-const SCRYPT_KEY_LENGTH = 32;
 const PIN_PATTERN = /^[0-9]{4,8}$/;
 
 // How long an identification is good for. Deliberately short: ADR-0016's own
@@ -51,19 +49,10 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-async function hashPin(pin) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const derived = await scrypt(pin, salt, SCRYPT_KEY_LENGTH);
-  return `scrypt$${salt}$${derived.toString('hex')}`;
-}
-
-async function verifyPin(pin, stored) {
-  const [scheme, salt, expectedHex] = String(stored).split('$');
-  if (scheme !== 'scrypt' || !salt || !expectedHex) return false;
-  const derived = await scrypt(pin, salt, SCRYPT_KEY_LENGTH);
-  const expected = Buffer.from(expectedHex, 'hex');
-  return derived.length === expected.length && crypto.timingSafeEqual(derived, expected);
-}
+// The scrypt pair is platform/secrets.js's (issue #268): one scheme for the
+// floor PIN and for an Account's password.
+const hashPin = hashSecret;
+const verifyPin = verifySecret;
 
 // A malformed employeeNo is not an error the caller needs told apart from a
 // good one that simply matched nothing: both answer "not recognised", so the

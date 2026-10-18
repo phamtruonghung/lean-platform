@@ -86,6 +86,9 @@ const kpiRegistry = {
 // an omission (ADR-0002).
 app.use('/api', healthRoutes);
 app.use('/api/people', people.router);
+// Sign-in with an email and a password from our own database (issue #268),
+// beside the Module's other prefixes for the same reason the floor router is.
+app.use('/api/auth', people.authRouter);
 // The shared floor device's own addresses — register it, set an Employee's
 // floor PIN, exchange them for an identification — are People's routes since
 // issue #201, but they stay mounted under `/api/maintenance`, which is where a

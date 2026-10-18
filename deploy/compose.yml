@@ -24,6 +24,9 @@ services:
       SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:?set SUPABASE_JWKS_URL}
       SUPABASE_JWT_ISSUER: ${SUPABASE_JWT_ISSUER:?set SUPABASE_JWT_ISSUER}
       SUPABASE_JWT_AUDIENCE: ${SUPABASE_JWT_AUDIENCE:-authenticated}
+      # Which door authenticates: 'supabase' (default) or 'local' (passwords in
+      # our own database, issue #268). See .env.example.
+      AUTH_PASSWORD_MODE: ${AUTH_PASSWORD_MODE:-supabase}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
