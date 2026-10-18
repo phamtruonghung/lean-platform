@@ -196,6 +196,48 @@ router.get('/absence-reasons', authenticate, requireActive, async (req, res, nex
   }
 });
 
+// The per-Employee worked-hours summary (issue #263): one Employee's
+// confirmed scheduled/worked/overtime minutes across a date window, day by
+// day plus totals. This is the question the attendance sheet answers only
+// per shift ("who worked THIS shift, for how long") turned around — "how
+// much did THIS Employee work, across this window" — which is the reading a
+// supervisor actually wants when managing a person's hours, and which no
+// existing route served (the KPI views read the same confirmed rows but only
+// across whole Org Unit subtrees as a rate denominator).
+//
+// **An open read, deliberately, and for ADR-0009's own reason.** The whole
+// Employee directory read surface — GET /employees, /employees/:id and the
+// rest — is deliberately unscoped: "a plant directory is not a secret the
+// way an Account's own identity is" (ADR-0009), and Org Unit scope bounds
+// where an Account may *act*, not who it may know about. A single Employee's
+// own worked hours is part of their directory record, read platform-wide the
+// same way their detail view is. No `canSeeSite`, no `canAct`: those gate
+// the *sheet* (a roster visible within a Site) and *recording* an edit
+// Grant; reading one named Employee's confirmed hours is neither. The route
+// resolves the Employee first (404 for an unknown or malformed id — a
+// missing person is a 404, not a scope refusal), then validates the optional
+// `from`/`to` window, then reads.
+//
+// Only *confirmed* sheets count (attendance.js's own header argues it): the
+// summary joins attendance_sheets and keeps `confirmed_at` set, because an
+// unconfirmed sheet is a draft a supervisor may still correct. An unconfirmed
+// shift in the window is simply absent — never a planted zero — exactly how
+// `EXPOSURE_HOURS` treats it.
+router.get('/employees/:employeeId/work-hours', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const employeeId = parseId(req.params.employeeId);
+    if (employeeId === null) {
+      return res.status(400).json({ message: 'employeeId must be a valid Employee id' });
+    }
+    const from = requireWorklistQueryDate('from', req.query.from);
+    const to = requireWorklistQueryDate('to', req.query.to);
+    const summary = await attendance.summariseEmployeeWorkedHours(employeeId, { from, to }); // 404s for an unknown Employee.
+    res.json(summary);
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
 router.get(
   '/shift-instances/:shiftInstanceId/attendance-sheet',
   authenticate,

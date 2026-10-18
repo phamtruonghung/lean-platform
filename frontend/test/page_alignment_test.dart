@@ -166,6 +166,12 @@ const _pages = <_Page>[
   // actually exercises anything; there is no card-row inset to bound.
   _Page('/attendance/to-confirm', 'lib/people/attendance_to_confirm_screen.dart',
       'Attendance to confirm', 'Past shifts whose sheet is missing'),
+  // The per-Employee worked-hours summary (issue #263). Reached under the
+  // directory detail (`/directory/:id/work-hours`) and nested like the
+  // worklist above; its day rows live at the card's own padding, so the
+  // default row bound holds. Audited at the fixture Employee's own address.
+  _Page('/directory/7/work-hours', 'lib/people/worked_hours_screen.dart',
+      'Worked hours', 'The confirmed hours this Employee actually worked'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this
@@ -287,6 +293,14 @@ FakeWire _wire() => FakeWire(
       // The attendance-to-confirm worklist (issue #250), so the page renders
       // an entry rather than the empty state.
       attendanceToConfirm: [attendanceToConfirmEntryJson('501')],
+      // The per-Employee worked-hours summary (issue #263), so the page
+      // renders its day rows rather than the empty state and the row
+      // assertion actually runs. Employee '7' is the fixture Employee above.
+      employeeWorkedHours: workedHoursSummaryJson(
+        days: [workedHoursDayJson('2026-05-04')],
+        scheduledMinutes: 450,
+        workedMinutes: 450,
+      ),
     );
 
 void main() {

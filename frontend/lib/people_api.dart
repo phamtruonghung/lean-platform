@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 
 import 'people/assignee_candidate.dart';
 import 'people/attendance.dart';
+import 'people/worked_hours.dart';
 import 'people/cost_rate.dart';
 import 'people/employee.dart';
 import 'people/employee_ref.dart';
@@ -1468,6 +1469,37 @@ class PeopleApi {
         for (final entry in body['entries'] as List<dynamic>)
           AttendanceToConfirmEntry.fromJson(entry as Map<String, dynamic>),
       ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// An Employee's confirmed worked hours across a date window (issue #263,
+  /// `GET /api/people/employees/:employeeId/work-hours`) — day by day plus
+  /// totals, built server-side only from *confirmed* attendance sheets. An
+  /// open read, the same deliberate openness as the rest of the Employee
+  /// directory (ADR-0009). [from]/[to] are optional `YYYY-MM-DD` bounds; with
+  /// neither, the server returns every confirmed day it knows.
+  Future<EmployeeWorkedHours> fetchEmployeeWorkedHours(
+    String accessToken,
+    String employeeId, {
+    String? from,
+    String? to,
+  }) async {
+    const path = '/api/people/employees';
+    final queryParameters = <String, String>{
+      'from': ?from,
+      'to': ?to,
+    };
+    final uri = Uri.parse('$path/$employeeId/work-hours').replace(
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    );
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      return EmployeeWorkedHours.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }
