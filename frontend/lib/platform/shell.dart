@@ -11,6 +11,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../app_version.dart';
 import '../people_api.dart';
 import '../theme.dart';
 import 'change_password_dialog.dart';
@@ -58,6 +59,10 @@ class PlatformShell extends StatelessWidget {
   /// The account footer's menu (issue #270) — the avatar, and the name beside
   /// it where there is room — and the one entry in it.
   static const ValueKey<String> accountMenuKey = ValueKey<String>('platform-shell-account-menu');
+
+  /// The build's version in the account footer (issue #297). Drawn only on the
+  /// expanded sidebar; the 64px rail has no room for it.
+  static const ValueKey<String> appVersionKey = ValueKey<String>('platform-shell-app-version');
   static const ValueKey<String> changePasswordKey =
       ValueKey<String>('platform-shell-change-password');
 
@@ -413,39 +418,53 @@ class _AccountFooter extends StatelessWidget {
           ),
           child: collapsed
               ? Column(mainAxisSize: MainAxisSize.min, children: [menu(avatar), signOut])
-              : Row(
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: menu(
-                        Row(
-                          children: [
-                            avatar,
-                            const SizedBox(width: Spacing.sm),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    account.displayName,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(fontWeight: FontWeight.w600),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: menu(
+                            Row(
+                              children: [
+                                avatar,
+                                const SizedBox(width: Spacing.sm),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        account.displayName,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                      Text(
+                                        account.email,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    account.email,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodySmall
-                                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                        signOut,
+                      ],
                     ),
-                    signOut,
+                    Text(
+                      appVersion,
+                      key: PlatformShell.appVersionKey,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
                   ],
                 ),
         ),
