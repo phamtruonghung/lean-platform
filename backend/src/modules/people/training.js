@@ -11,8 +11,15 @@
  * with `can_write` whose Org Unit is the record's or an ancestor of it — and
  * an administrator sees every draft.
  *
- * Trainees (#288), sending (#289) and correcting a sent record (#291) are not
- * here; nothing in this file writes status 'sent'.
+ * The Trainees on a record (#288) are here too: a record's own read carries
+ * them in the order they were added, each naming the Employee's number and
+ * name, and a count. Adding and removing one are draft-only writes — the
+ * status is carried in the statement's WHERE clause, so a record sent between
+ * the route's check and the write is refused, never changed. Whether the
+ * Employee exists or has departed is the route's question.
+ *
+ * Sending (#289) and correcting a sent record (#291) are not here; nothing in
+ * this file writes status 'sent'.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -129,10 +136,86 @@ async function findTrainingRecord(id) {
   return rows[0] ? toTrainingRecord(rows[0]) : null;
 }
 
+// A record's Trainees in the order they were added.
+async function listTrainees(recordId) {
+  const { rows } = await getPool().query(
+    `SELECT tt.id, tt.employee_id, tt.created_at, e.employee_no, e.display_name
+       FROM training_trainees tt
+       JOIN employees e ON e.id = tt.employee_id
+      WHERE tt.training_record_id = $1
+      ORDER BY tt.created_at, tt.id`,
+    [recordId]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    employeeId: row.employee_id,
+    employeeNo: row.employee_no,
+    employeeName: row.display_name,
+    addedAt: row.created_at
+  }));
+}
+
 async function getTrainingRecord(id) {
   const record = await findTrainingRecord(id);
   if (!record) throw notFound('Training record');
-  return record;
+  const trainees = await listTrainees(record.id);
+  return { ...record, trainees, traineeCount: trainees.length };
+}
+
+const SENT_TRAINEES_MESSAGE = "A sent Training record's Trainees cannot be changed here; correct it instead";
+
+// Adds one Employee to a draft. A second add of the same Employee is the
+// UNIQUE constraint's refusal, mapped to a 409 here.
+async function addTrainee(accountId, recordId, employeeId) {
+  try {
+    const inserted = await withActor(accountId, async (client) => {
+      const { rowCount } = await client.query(
+        `INSERT INTO training_trainees (training_record_id, employee_id)
+         SELECT id, $2 FROM training_records WHERE id = $1 AND status = 'draft'`,
+        [recordId, employeeId]
+      );
+      return rowCount;
+    });
+    if (inserted === 0) throw httpError(409, SENT_TRAINEES_MESSAGE);
+  } catch (error) {
+    if (error.code === '23505') {
+      throw httpError(409, 'this Employee is already a Trainee on this Training record');
+    }
+    throw error;
+  }
+  return getTrainingRecord(recordId);
+}
+
+// Takes one Trainee off a draft. The row must belong to that record.
+async function removeTrainee(accountId, recordId, traineeId) {
+  const removed = await withActor(accountId, async (client) => {
+    const { rowCount } = await client.query(
+      `DELETE FROM training_trainees tt
+        USING training_records tr
+        WHERE tt.id = $2 AND tt.training_record_id = $1
+          AND tr.id = tt.training_record_id AND tr.status = 'draft'`,
+      [recordId, traineeId]
+    );
+    return rowCount;
+  });
+  if (removed === 0) {
+    const { rows } = await getPool().query(
+      'SELECT 1 FROM training_trainees WHERE id = $1 AND training_record_id = $2',
+      [traineeId, recordId]
+    );
+    if (rows.length > 0) throw httpError(409, SENT_TRAINEES_MESSAGE);
+    throw notFound('Trainee');
+  }
+  return getTrainingRecord(recordId);
+}
+
+async function findTrainee(recordId, traineeId) {
+  if (parseId(traineeId) === null) return null;
+  const { rows } = await getPool().query(
+    'SELECT id FROM training_trainees WHERE id = $1 AND training_record_id = $2',
+    [traineeId, recordId]
+  );
+  return rows[0] ?? null;
 }
 
 // Issues the number and inserts, in one transaction. The Site is the Org Unit's
@@ -244,6 +327,9 @@ module.exports = {
   findTrainingRecord,
   getTrainingRecord,
   raiseTrainingRecord,
+  addTrainee,
+  removeTrainee,
+  findTrainee,
   correctTrainingRecord,
   listTrainingRecords
 };

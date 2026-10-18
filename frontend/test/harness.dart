@@ -1740,6 +1740,16 @@ Map<String, dynamic> leaveRequestJson(
       'canCancel': canCancel,
     };
 
+/// One Trainee on a Training record (issue #288; `listTrainees`,
+/// backend/src/modules/people/training.js).
+Map<String, dynamic> traineeJson(String id, String employeeId, String employeeNo, String employeeName) => {
+      'id': id,
+      'employeeId': employeeId,
+      'employeeNo': employeeNo,
+      'employeeName': employeeName,
+      'addedAt': '2026-05-04T08:00:00.000Z',
+    };
+
 /// One Training record as `GET /api/people/training` sends it (issue #287;
 /// `toTrainingRecord`, backend/src/modules/people/training.js). Ids are
 /// strings, as node-postgres sends BIGINTs.
@@ -1755,6 +1765,7 @@ Map<String, dynamic> trainingRecordJson(
   String? trainerName,
   String? objective,
   String status = 'draft',
+  List<Map<String, dynamic>> trainees = const [],
 }) =>
     {
       'id': id,
@@ -1769,6 +1780,8 @@ Map<String, dynamic> trainingRecordJson(
       'trainerName': trainerName,
       'objective': objective,
       'status': status,
+      'trainees': trainees,
+      'traineeCount': trainees.length,
       'createdAt': '2026-05-04T08:00:00.000Z',
       'updatedAt': '2026-05-04T08:00:00.000Z',
     };
@@ -2288,6 +2301,8 @@ class FakeWire {
     this.trainingStatus = 200,
     this.trainingWriteStatus = 201,
     this.trainingWriteMessage = 'That Training record could not be saved.',
+    this.traineeWriteStatus = 200,
+    this.traineeWriteMessage = 'That Trainee could not be saved.',
     Map<String, dynamic>? employeeWorkedHours,
     this.employeeWorkedHoursStatus = 200,
     this.employeeWorkedHoursMessage = 'The worked-hours summary is unavailable.',
@@ -4114,6 +4129,16 @@ class FakeWire {
   /// the order they reached the wire.
   final List<Map<String, String>> trainingReads = [];
   final List<Map<String, dynamic>> trainingWrites = [];
+
+  /// The Trainee writes (issue #288): `POST .../training/:id/trainees` and
+  /// `DELETE .../training/:id/trainees/:traineeId`. Any status but 200 refuses
+  /// both with `{message}`; 200 lets them succeed (the add answering 201), the
+  /// record in [trainingRecords] gaining or losing the row. Every one is
+  /// recorded as its request line (`POST /api/people/training/1/trainees`)
+  /// with its decoded body (empty for a DELETE).
+  int traineeWriteStatus;
+  String traineeWriteMessage;
+  final List<(String, Map<String, dynamic>)> traineeWrites = [];
 
   /// Every `GET /api/people/absence-reasons` query string.
   final List<Map<String, String>> absenceReasonRequests = [];
@@ -8166,6 +8191,40 @@ class FakeWire {
               if (row['id'] == id) return http.Response(jsonEncode({'trainingRecord': row}), 200);
             }
             return http.Response(jsonEncode({'message': 'Training record not found'}), 404);
+          }
+          final traineePath = RegExp(r'^/api/people/training/([^/]+)/trainees(?:/([^/]+))?$').firstMatch(path);
+          if (traineePath != null) {
+            final recordId = traineePath.group(1)!;
+            final traineeId = traineePath.group(2);
+            final sent = request.body.isEmpty
+                ? <String, dynamic>{}
+                : jsonDecode(request.body) as Map<String, dynamic>;
+            traineeWrites.add(('${request.method} $path', sent));
+            if (traineeWriteStatus != 200) {
+              return http.Response(jsonEncode({'message': traineeWriteMessage}), traineeWriteStatus);
+            }
+            final index = trainingRecords.indexWhere((row) => row['id'] == recordId);
+            if (index < 0) return http.Response(jsonEncode({'message': 'Training record not found'}), 404);
+            final record = {...trainingRecords[index]};
+            var trainees = [...(record['trainees'] as List<dynamic>).cast<Map<String, dynamic>>()];
+            if (request.method == 'POST') {
+              final employee = employees.firstWhere((row) => row['id'] == sent['employeeId']);
+              trainees = [
+                ...trainees,
+                traineeJson(
+                  'tr-${trainees.length + 1}',
+                  employee['id'] as String,
+                  employee['employeeNo'] as String,
+                  employee['displayName'] as String,
+                ),
+              ];
+            } else {
+              trainees = [for (final t in trainees) if (t['id'] != traineeId) t];
+            }
+            record['trainees'] = trainees;
+            record['traineeCount'] = trainees.length;
+            trainingRecords = [...trainingRecords]..[index] = record;
+            return http.Response(jsonEncode({'trainingRecord': record}), request.method == 'POST' ? 201 : 200);
           }
           final body = jsonDecode(request.body) as Map<String, dynamic>;
           trainingWrites.add(body);

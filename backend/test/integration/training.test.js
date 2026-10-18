@@ -157,6 +157,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
+  await pool.query('DELETE FROM training_trainees WHERE training_record_id = ANY($1)', [insertedRecordIds]);
   await pool.query('DELETE FROM training_records WHERE id = ANY($1)', [insertedRecordIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
@@ -414,4 +415,184 @@ test('a caller outside the Grants is refused 403 on a sent record before the 409
   await pool.query(`UPDATE training_records SET status = 'sent' WHERE id = $1`, [id]);
   const { response } = await call('PATCH', `/training/${id}`, reader.token, { title: 'x' });
   assert.strictEqual(response.status, 403);
+});
+
+// ---------------------------------------------------------------------------
+// The Trainees on a record (issue #288).
+// ---------------------------------------------------------------------------
+
+async function insertNamedEmployee({ active = true } = {}) {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name, is_active)
+     VALUES ($1, 'Tom', 'Trainee', $2) RETURNING id, employee_no, display_name`,
+    [uniqueCode('EMP'), active]
+  );
+  insertedEmployeeIds.push(row.id);
+  return row;
+}
+
+async function draftRecord() {
+  const { payload } = await raise(sender.token, line.id, { title: 'Trainee probe' });
+  return payload.trainingRecord;
+}
+
+test('adding a Trainee is a 201 and the record reads with the Employee\'s number and name and a count', async () => {
+  const record = await draftRecord();
+  const employee = await insertNamedEmployee();
+
+  const added = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: employee.id });
+  assert.strictEqual(added.response.status, 201);
+  assert.strictEqual(added.payload.trainingRecord.traineeCount, 1);
+
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.traineeCount, 1);
+  const [trainee] = read.payload.trainingRecord.trainees;
+  assert.strictEqual(trainee.employeeId, employee.id);
+  assert.strictEqual(trainee.employeeNo, employee.employee_no);
+  assert.strictEqual(trainee.employeeName, employee.display_name);
+  assert.ok(trainee.id);
+  assert.ok(trainee.addedAt);
+});
+
+test('a record with no Trainees reads an empty list and a count of zero', async () => {
+  const record = await draftRecord();
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.deepStrictEqual(read.payload.trainingRecord.trainees, []);
+  assert.strictEqual(read.payload.trainingRecord.traineeCount, 0);
+});
+
+test('Trainees read back in the order they were added', async () => {
+  const record = await draftRecord();
+  const first = await insertNamedEmployee();
+  const second = await insertNamedEmployee();
+  const third = await insertNamedEmployee();
+  for (const employee of [second, third, first]) {
+    const { response } = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: employee.id });
+    assert.strictEqual(response.status, 201);
+  }
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.deepStrictEqual(
+    read.payload.trainingRecord.trainees.map((t) => t.employeeId),
+    [second.id, third.id, first.id]
+  );
+});
+
+test('the same Employee twice on one record is a 409, and on another record is fine', async () => {
+  const record = await draftRecord();
+  const other = await draftRecord();
+  const employee = await insertNamedEmployee();
+  assert.strictEqual((await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: employee.id })).response.status, 201);
+  const again = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: employee.id });
+  assert.strictEqual(again.response.status, 409);
+  assert.match(again.payload.message, /already a Trainee/);
+  assert.strictEqual((await call('POST', `/training/${other.id}/trainees`, sender.token, { employeeId: employee.id })).response.status, 201);
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.traineeCount, 1);
+});
+
+test('a departed Employee is refused with a 409', async () => {
+  const record = await draftRecord();
+  const departed = await insertNamedEmployee({ active: false });
+  const { response, payload } = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: departed.id });
+  assert.strictEqual(response.status, 409);
+  assert.match(payload.message, /departed/);
+});
+
+test('an unknown Employee, an unknown record and a bad employeeId are refused 404, 404 and 400', async () => {
+  const record = await draftRecord();
+  const unknownEmployee = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: '999999999' });
+  assert.strictEqual(unknownEmployee.response.status, 404);
+  assert.strictEqual(unknownEmployee.payload.message, 'Employee not found');
+  const employee = await insertNamedEmployee();
+  const unknownRecord = await call('POST', '/training/999999999/trainees', admin.token, { employeeId: employee.id });
+  assert.strictEqual(unknownRecord.response.status, 404);
+  assert.strictEqual(unknownRecord.payload.message, 'Training record not found');
+  assert.strictEqual((await call('POST', `/training/${record.id}/trainees`, sender.token, {})).response.status, 400);
+  assert.strictEqual((await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: 'abc' })).response.status, 400);
+});
+
+test('a caller outside the record\'s Org Unit is refused 403 on add and on remove', async () => {
+  const record = await draftRecord();
+  const employee = await insertNamedEmployee();
+  const seeded = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: employee.id });
+  const traineeId = seeded.payload.trainingRecord.trainees[0].id;
+
+  for (const who of [reader, viewer]) {
+    const add = await call('POST', `/training/${record.id}/trainees`, who.token, { employeeId: employee.id });
+    assert.strictEqual(add.response.status, 403);
+    assert.strictEqual(add.payload.message, "Outside the caller's granted Org Units");
+    const remove = await call('DELETE', `/training/${record.id}/trainees/${traineeId}`, who.token);
+    assert.strictEqual(remove.response.status, 403);
+    assert.strictEqual(remove.payload.message, "Outside the caller's granted Org Units");
+  }
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.traineeCount, 1);
+});
+
+test('removing a Trainee is a 200, the Trainee is gone from the read and the count drops', async () => {
+  const record = await draftRecord();
+  const keep = await insertNamedEmployee();
+  const drop = await insertNamedEmployee();
+  await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: keep.id });
+  const added = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: drop.id });
+  const dropId = added.payload.trainingRecord.trainees.find((t) => t.employeeId === drop.id).id;
+
+  const removed = await call('DELETE', `/training/${record.id}/trainees/${dropId}`, sender.token);
+  assert.strictEqual(removed.response.status, 200);
+  assert.strictEqual(removed.payload.trainingRecord.traineeCount, 1);
+
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.deepStrictEqual(read.payload.trainingRecord.trainees.map((t) => t.employeeId), [keep.id]);
+  assert.strictEqual(read.payload.trainingRecord.traineeCount, 1);
+});
+
+test('removing a Trainee id that is not on that record is a 404, and leaves the other record alone', async () => {
+  const record = await draftRecord();
+  const other = await draftRecord();
+  const employee = await insertNamedEmployee();
+  const added = await call('POST', `/training/${other.id}/trainees`, sender.token, { employeeId: employee.id });
+  const traineeId = added.payload.trainingRecord.trainees[0].id;
+
+  const wrong = await call('DELETE', `/training/${record.id}/trainees/${traineeId}`, sender.token);
+  assert.strictEqual(wrong.response.status, 404);
+  assert.strictEqual(wrong.payload.message, 'Trainee not found');
+  assert.strictEqual((await call('DELETE', `/training/${record.id}/trainees/abc`, sender.token)).response.status, 404);
+  assert.strictEqual((await call('DELETE', '/training/999999999/trainees/1', admin.token)).response.status, 404);
+  const read = await call('GET', `/training/${other.id}`, sender.token);
+  assert.strictEqual(read.payload.trainingRecord.traineeCount, 1);
+});
+
+test('a sent record\'s list refuses both add and remove with a 409', async () => {
+  const record = await draftRecord();
+  const onList = await insertNamedEmployee();
+  const late = await insertNamedEmployee();
+  const added = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: onList.id });
+  const traineeId = added.payload.trainingRecord.trainees[0].id;
+  await pool.query(`UPDATE training_records SET status = 'sent' WHERE id = $1`, [record.id]);
+
+  const add = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: late.id });
+  assert.strictEqual(add.response.status, 409);
+  assert.match(add.payload.message, /correct it instead/);
+  const remove = await call('DELETE', `/training/${record.id}/trainees/${traineeId}`, sender.token);
+  assert.strictEqual(remove.response.status, 409);
+
+  const read = await call('GET', `/training/${record.id}`, sender.token);
+  assert.deepStrictEqual(read.payload.trainingRecord.trainees.map((t) => t.employeeId), [onList.id]);
+});
+
+test('adding and removing a Trainee are audited against the acting Account', async () => {
+  const record = await draftRecord();
+  const employee = await insertNamedEmployee();
+  const added = await call('POST', `/training/${record.id}/trainees`, sender.token, { employeeId: employee.id });
+  const traineeId = added.payload.trainingRecord.trainees[0].id;
+  await call('DELETE', `/training/${record.id}/trainees/${traineeId}`, sender.token);
+
+  const { rows } = await pool.query(
+    `SELECT operation, changed_by FROM audit_log
+      WHERE table_name = 'training_trainees' AND record_id = $1
+      ORDER BY operation`,
+    [traineeId]
+  );
+  assert.deepStrictEqual(rows.map((r) => r.operation), ['DELETE', 'INSERT']);
+  for (const row of rows) assert.strictEqual(String(row.changed_by), String(sender.id));
 });

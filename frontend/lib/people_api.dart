@@ -1597,6 +1597,43 @@ class PeopleApi {
     }
   }
 
+  /// Adds one Employee to a draft Training record's Trainees
+  /// (`POST /api/people/training/:id/trainees`). Answers the whole record,
+  /// Trainees included. A refusal (403/404/409) carries the server's `message`.
+  Future<TrainingRecord> addTrainee(String accessToken, String recordId, String employeeId) async {
+    final path = '/api/people/training/$recordId/trainees';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'employeeId': employeeId}),
+      ),
+      path,
+    );
+    return _trainingRecordFrom(response.body);
+  }
+
+  /// Takes one Trainee off a draft Training record
+  /// (`DELETE /api/people/training/:id/trainees/:traineeId`). Answers the
+  /// whole record, Trainees included.
+  Future<TrainingRecord> removeTrainee(String accessToken, String recordId, String traineeId) async {
+    final path = '/api/people/training/$recordId/trainees/$traineeId';
+    final response = await _send(
+      () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _trainingRecordFrom(response.body);
+  }
+
+  static TrainingRecord _trainingRecordFrom(String responseBody) {
+    try {
+      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+      return TrainingRecord.fromJson(decoded['trainingRecord'] as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
   /// The leave requests the caller may see (issue #265,
   /// `GET /api/people/leave-requests?view=mine|to-decide`), newest first.
   Future<List<LeaveRequest>> fetchLeaveRequests(

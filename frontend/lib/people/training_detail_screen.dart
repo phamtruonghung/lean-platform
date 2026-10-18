@@ -2,10 +2,14 @@
 /// whether it is still a draft or has been sent, and its facts — the day it
 /// was given, how long it lasted, where, who trained and the objective.
 ///
-/// The Trainee list is empty for now and says so: Trainees are added by
-/// issue #288. A draft the caller could not send reads as "no such Training
-/// record" here, exactly as the server answers it (404), so the address does
-/// not reveal that the draft exists.
+/// The Trainee section (issue #288) lists who was trained — number and name,
+/// in the order they were added — under a heading carrying the count, and says
+/// so when nobody is on it yet. While the record is a draft each row carries a
+/// remove control and the section an add control (which opens
+/// `TrainingTraineeDialog`); once it is sent the list is shown without them. A
+/// refused removal is rendered beside the list. A draft the caller could not
+/// send reads as "no such Training record" here, exactly as the server answers
+/// it (404), so the address does not reveal that the draft exists.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,6 +25,7 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'training_detail_bloc.dart';
 import 'training_record.dart';
+import 'training_trainee_dialog.dart';
 
 class TrainingDetailScreen extends StatelessWidget {
   const TrainingDetailScreen({super.key, required this.trainingRecordId});
@@ -42,6 +47,11 @@ class TrainingDetailScreen extends StatelessWidget {
   static const ValueKey<String> trainerKey = ValueKey<String>('training-detail-trainer');
   static const ValueKey<String> objectiveKey = ValueKey<String>('training-detail-objective');
   static const ValueKey<String> noTraineesKey = ValueKey<String>('training-detail-no-trainees');
+  static const ValueKey<String> traineesHeadingKey = ValueKey<String>('training-detail-trainees-heading');
+  static const ValueKey<String> addTraineeKey = ValueKey<String>('training-detail-add-trainee');
+  static const ValueKey<String> removeFailureKey = ValueKey<String>('training-detail-remove-failure');
+  static ValueKey<String> traineeRowKey(String id) => ValueKey<String>('training-detail-trainee-$id');
+  static ValueKey<String> removeTraineeKey(String id) => ValueKey<String>('training-detail-remove-trainee-$id');
 
   @override
   Widget build(BuildContext context) {
@@ -66,16 +76,19 @@ class TrainingDetailScreen extends StatelessWidget {
             retryKey: retryKey,
             onRetry: () => context.read<TrainingDetailBloc>().add(TrainingDetailRequested(trainingRecordId)),
           ),
-        TrainingDetailLoaded(record: final record) => _Loaded(record: record),
+        TrainingDetailLoaded(record: final record, isWriting: final isWriting, removeFailure: final failure) =>
+          _Loaded(record: record, isWriting: isWriting, removeFailure: failure),
       },
     );
   }
 }
 
 class _Loaded extends StatelessWidget {
-  const _Loaded({required this.record});
+  const _Loaded({required this.record, required this.isWriting, required this.removeFailure});
 
   final TrainingRecord record;
+  final bool isWriting;
+  final String? removeFailure;
 
   @override
   Widget build(BuildContext context) {
@@ -148,13 +161,64 @@ class _Loaded extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Spacing.lg),
-            Text('Trainees', style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.sm),
-            Text(
-              'No Trainees are on this Training record yet.',
-              key: TrainingDetailScreen.noTraineesKey,
-              style: muted,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Trainees (${record.traineeCount})',
+                    key: TrainingDetailScreen.traineesHeadingKey,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                if (record.isDraft)
+                  OutlinedButton.icon(
+                    key: TrainingDetailScreen.addTraineeKey,
+                    onPressed: isWriting
+                        ? null
+                        : () => TrainingTraineeDialog.open(
+                              context,
+                              orgUnitId: record.orgUnitId,
+                              orgUnitName: record.orgUnitName,
+                            ),
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Add Trainee'),
+                  ),
+              ],
             ),
+            const SizedBox(height: Spacing.sm),
+            if (record.trainees.isEmpty)
+              Text(
+                'No Trainees are on this Training record yet.',
+                key: TrainingDetailScreen.noTraineesKey,
+                style: muted,
+              )
+            else
+              for (final trainee in record.trainees)
+                ListTile(
+                  key: TrainingDetailScreen.traineeRowKey(trainee.id),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text('${trainee.employeeNo} · ${trainee.employeeName}'),
+                  trailing: record.isDraft
+                      ? IconButton(
+                          key: TrainingDetailScreen.removeTraineeKey(trainee.id),
+                          tooltip: 'Remove ${trainee.employeeName}',
+                          icon: const Icon(Icons.close),
+                          onPressed: isWriting
+                              ? null
+                              : () => context.read<TrainingDetailBloc>().add(TrainingTraineeRemoved(trainee.id)),
+                        )
+                      : null,
+                ),
+            if (removeFailure != null)
+              Padding(
+                key: TrainingDetailScreen.removeFailureKey,
+                padding: const EdgeInsets.only(top: Spacing.sm),
+                child: Text(
+                  removeFailure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
           ],
         ),
       ),

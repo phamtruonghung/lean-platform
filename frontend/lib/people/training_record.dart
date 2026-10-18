@@ -6,6 +6,30 @@ library;
 
 import '../status_tone.dart';
 
+/// One Trainee on a Training record (issue #288): an Employee who was trained
+/// on it. Mirrors the rows `listTrainees` (training.js) sends.
+class TrainingTrainee {
+  const TrainingTrainee({
+    required this.id,
+    required this.employeeId,
+    required this.employeeNo,
+    required this.employeeName,
+  });
+
+  /// The Trainee row's own id — what a removal names, not the Employee's.
+  final String id;
+  final String employeeId;
+  final String employeeNo;
+  final String employeeName;
+
+  factory TrainingTrainee.fromJson(Map<String, dynamic> json) => TrainingTrainee(
+        id: json['id'].toString(),
+        employeeId: json['employeeId'].toString(),
+        employeeNo: json['employeeNo'] as String,
+        employeeName: json['employeeName'] as String,
+      );
+}
+
 class TrainingRecord {
   const TrainingRecord({
     required this.id,
@@ -20,6 +44,8 @@ class TrainingRecord {
     this.trainerEmployeeId,
     this.trainerName,
     this.objective,
+    this.trainees = const [],
+    this.traineeCount = 0,
   });
 
   final String id;
@@ -41,6 +67,11 @@ class TrainingRecord {
   final String? trainerName;
   final String? objective;
 
+  /// The Trainees in the order they were added. Only the record's own read
+  /// carries them; a register row has none and reads as an empty list.
+  final List<TrainingTrainee> trainees;
+  final int traineeCount;
+
   bool get isDraft => status == 'draft';
 
   String get statusLabel => trainingStatusLabel(status);
@@ -58,6 +89,11 @@ class TrainingRecord {
         trainerEmployeeId: json['trainerEmployeeId']?.toString(),
         trainerName: json['trainerName'] as String?,
         objective: json['objective'] as String?,
+        trainees: [
+          for (final trainee in (json['trainees'] as List<dynamic>? ?? const []))
+            TrainingTrainee.fromJson(trainee as Map<String, dynamic>),
+        ],
+        traineeCount: (json['traineeCount'] as num?)?.toInt() ?? 0,
       );
 }
 

@@ -16,6 +16,12 @@
  * the write check. A draft the caller could not send reads as a 404 at its
  * own address rather than a 403, so the register is not a way to learn a
  * draft exists.
+ *
+ * The Trainees (#288): adding and removing one follow the same order — the
+ * record (404), its scope (403), its status (409, a sent record's list is
+ * not editable here), then the body (400), the Employee (404), a departed
+ * Employee (409, as assigning a Work order to one is refused) and the write.
+ * Both answer with the fresh whole record, Trainees included.
  */
 
 const express = require('express');
@@ -91,6 +97,60 @@ router.patch('/training/:id', authenticate, requireActive, async (req, res, next
     }
     const corrected = await training.correctTrainingRecord(req.account.id, record.id, changes);
     return res.json({ trainingRecord: corrected });
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+});
+
+// Resolves the record and checks scope then status, the order every Trainee
+// write shares. Returns the record, or null when it has already answered 403.
+async function resolveDraftForTrainees(req, res) {
+  const record = await training.getTrainingRecord(req.params.id); // 404s.
+  const allowed = await authorization.canAct({
+    account: req.account,
+    orgUnitId: record.orgUnitId,
+    write: true
+  });
+  if (!allowed) {
+    res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
+    return null;
+  }
+  if (record.status !== 'draft') {
+    throw httpError(409, "A sent Training record's Trainees cannot be changed here; correct it instead");
+  }
+  return record;
+}
+
+router.post('/training/:id/trainees', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const record = await resolveDraftForTrainees(req, res);
+    if (record === null) return undefined;
+
+    const employeeId = parseId(req.body?.employeeId);
+    if (employeeId === null) throw httpError(400, 'employeeId must be a valid Employee id');
+    const employee = await directory.findEmployee(employeeId);
+    if (!employee) throw notFound('Employee');
+    if (!employee.isActive) {
+      throw httpError(409, 'this Employee has departed and cannot be added as a Trainee');
+    }
+
+    const updated = await training.addTrainee(req.account.id, record.id, employeeId);
+    return res.status(201).json({ trainingRecord: updated });
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+});
+
+router.delete('/training/:id/trainees/:traineeId', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const record = await resolveDraftForTrainees(req, res);
+    if (record === null) return undefined;
+
+    const trainee = await training.findTrainee(record.id, req.params.traineeId);
+    if (!trainee) throw notFound('Trainee');
+
+    const updated = await training.removeTrainee(req.account.id, record.id, trainee.id);
+    return res.json({ trainingRecord: updated });
   } catch (error) {
     return handleError(error, res, next);
   }
