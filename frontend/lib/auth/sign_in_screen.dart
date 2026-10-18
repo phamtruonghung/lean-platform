@@ -1,6 +1,9 @@
-/// Sign up and sign in — password, and Google — against Supabase Auth
-/// directly. There is no backend involved here at all: the API never sees a
-/// password (ADR-0002), it only ever verifies the session Supabase issues.
+/// Sign up and sign in — password, and Google — through whichever
+/// [AuthGateway] the deployment runs on. Against Supabase Auth there is no
+/// backend involved at all: the API never sees a password (ADR-0002), it only
+/// ever verifies the session Supabase issues. Against the API's own sign-in
+/// (issue #269) the gateway posts the password to the API, and what the API
+/// refuses with is shown verbatim as an [AuthRefusal].
 library;
 
 import 'package:flutter/material.dart';
@@ -43,6 +46,8 @@ class _SignInScreenState extends State<SignInScreen> {
       await action();
       // On success the app moves on via AccountBloc's own access-token
       // listener — nothing to navigate to here.
+    } on AuthRefusal catch (error) {
+      setState(() => _error = error.message);
     } on AuthException catch (error) {
       setState(() => _error = authErrorMessage(error));
     } catch (error) {

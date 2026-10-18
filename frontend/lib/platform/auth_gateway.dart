@@ -1,7 +1,24 @@
-/// The one seam between this client and Supabase Auth.
+/// The one seam between this client and whichever identity provider the
+/// deployment uses: Supabase Auth (ADR-0002) or the API's own sign-in
+/// (platform/local_auth_gateway.dart, issue #269).
 library;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// A sign-in the provider refused, in words already fit to show a person.
+///
+/// Provider-neutral on purpose (issue #269): Supabase refusals arrive as its
+/// own `AuthException` and keep their code-to-copy mapping in
+/// auth/auth_error_messages.dart, while the API's own sign-in answers with a
+/// `message` the screen must show verbatim, inventing no copy of its own.
+class AuthRefusal implements Exception {
+  const AuthRefusal(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'AuthRefusal: $message';
+}
 
 abstract class AuthGateway {
   String? get currentAccessToken;
