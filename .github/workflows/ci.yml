@@ -59,6 +59,7 @@ jobs:
 
       # Includes the Module boundary rule from ADR-0006. It is a convention, so
       # something has to enforce it; leaving it to review is how it decays.
+      # The syntax half also parses the repository-root dev/ scripts (#279).
       - name: Lint
         working-directory: backend
         run: npm run lint

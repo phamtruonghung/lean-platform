@@ -7,13 +7,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-function listJsFiles(dir) {
+function listJsFiles(dir, extensions = ['.js']) {
   if (!fs.existsSync(dir)) return [];
 
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return listJsFiles(full);
-    return entry.isFile() && full.endsWith('.js') ? [full] : [];
+    if (entry.isDirectory()) return listJsFiles(full, extensions);
+    return entry.isFile() && extensions.some((ext) => full.endsWith(ext)) ? [full] : [];
   });
 }
 
