@@ -1663,6 +1663,51 @@ class PeopleApi {
     );
   }
 
+  /// An administrator sets another Account's password (`POST
+  /// /api/people/accounts/:id/password`, issue #270). Refuses an administrator
+  /// acting on their own Account (403, ADR-0013), a password under
+  /// [minimumPasswordLength] (400) and an unknown Account (404) — the
+  /// server's `message` is what the caller shows.
+  Future<void> resetAccountPassword(
+    String accessToken, {
+    required String accountId,
+    required String password,
+  }) async {
+    final path = '/api/people/accounts/$accountId/password';
+    await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'password': password}),
+      ),
+      path,
+    );
+  }
+
+  /// The signed-in person changes their own password (`PUT
+  /// /api/people/me/password`, issue #270). A wrong current password is a 400,
+  /// not a 401: the person stays signed in, and the server's `message` is
+  /// what the caller shows.
+  Future<void> changeOwnPassword(
+    String accessToken, {
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    const path = '/api/people/me/password';
+    await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'currentPassword': currentPassword, 'newPassword': newPassword}),
+      ),
+      path,
+    );
+  }
+
+  /// The shortest password the server accepts (issue #270) — only used to
+  /// pre-check, the server's own refusal stays authoritative.
+  static const int minimumPasswordLength = 8;
+
   /// Every Account the server knows about (`GET /api/people/accounts`,
   /// administrator only), each carrying the decision made about it and the
   /// whole Grant set it currently holds. Nothing is filtered here: which of

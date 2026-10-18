@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 
 import '../people_api.dart';
 import '../theme.dart';
+import 'change_password_dialog.dart';
 import 'destinations.dart';
 
 class PlatformShell extends StatelessWidget {
@@ -53,6 +54,12 @@ class PlatformShell extends StatelessWidget {
   static const double collapsedWidth = 64;
 
   static const ValueKey<String> sidebarKey = ValueKey<String>('platform-shell-sidebar');
+
+  /// The account footer's menu (issue #270) — the avatar, and the name beside
+  /// it where there is room — and the one entry in it.
+  static const ValueKey<String> accountMenuKey = ValueKey<String>('platform-shell-account-menu');
+  static const ValueKey<String> changePasswordKey =
+      ValueKey<String>('platform-shell-change-password');
 
   @override
   Widget build(BuildContext context) {
@@ -372,6 +379,22 @@ class _AccountFooter extends StatelessWidget {
       // place a Screen sized text by hand.
       child: Text(initial, style: AppTypography.dense(context)),
     );
+    // The account menu wraps what is already drawn rather than adding a
+    // control beside it, so the footer looks exactly as it did (issue #270).
+    Widget menu(Widget child) => PopupMenuButton<String>(
+          key: PlatformShell.accountMenuKey,
+          tooltip: 'Account menu',
+          padding: EdgeInsets.zero,
+          onSelected: (_) => ChangePasswordDialog.open(context),
+          itemBuilder: (context) => const [
+            PopupMenuItem<String>(
+              key: PlatformShell.changePasswordKey,
+              value: 'change-password',
+              child: Text('Change password'),
+            ),
+          ],
+          child: child,
+        );
     final signOut = IconButton(
       tooltip: 'Sign out',
       onPressed: onSignOut,
@@ -389,29 +412,37 @@ class _AccountFooter extends StatelessWidget {
             vertical: Spacing.sm,
           ),
           child: collapsed
-              ? Column(mainAxisSize: MainAxisSize.min, children: [avatar, signOut])
+              ? Column(mainAxisSize: MainAxisSize.min, children: [menu(avatar), signOut])
               : Row(
                   children: [
-                    avatar,
-                    const SizedBox(width: Spacing.sm),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            account.displayName,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          Text(
-                            account.email,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ],
+                      child: menu(
+                        Row(
+                          children: [
+                            avatar,
+                            const SizedBox(width: Spacing.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    account.displayName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodyMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    account.email,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall
+                                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     signOut,

@@ -72,6 +72,16 @@ class AccountsEmployeeLinkConfirmed extends AccountsEvent {
   final String? employeeId;
 }
 
+/// The administrator has typed a new password for another Account (issue
+/// #270) — `POST /accounts/:id/password`. The dialog has already collected it;
+/// the Bloc only ever sees a decision made. Never the caller's own Account:
+/// the Screen offers no such action and the server refuses it (ADR-0013).
+class AccountsPasswordResetConfirmed extends AccountsEvent {
+  const AccountsPasswordResetConfirmed({required this.accountId, required this.password});
+  final String accountId;
+  final String password;
+}
+
 sealed class AccountsState {
   const AccountsState();
 }
@@ -88,6 +98,8 @@ class AccountsLoaded extends AccountsState {
     this.correctionFailure,
     this.employeeLinkingId,
     this.employeeLinkFailure,
+    this.passwordResettingId,
+    this.passwordResetFailure,
     this.notice,
   });
 
@@ -123,6 +135,15 @@ class AccountsLoaded extends AccountsState {
   /// role [correctionFailure] plays for a role/Grants correction.
   final String? employeeLinkFailure;
 
+  /// The row whose password reset is in flight, if any (issue #270) — kept
+  /// apart from the others for the same reason they are kept apart from each
+  /// other: the dialog needs to know that *its own* act is the one running.
+  final String? passwordResettingId;
+
+  /// Why the last password reset did not land, if it did not — the server's
+  /// own words, shown inside the open dialog.
+  final String? passwordResetFailure;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [AccountsUnavailable].
   final String? notice;
@@ -145,6 +166,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     on<AccountsActiveToggled>(_onActiveToggled);
     on<AccountsCorrectionConfirmed>(_onCorrectionConfirmed);
     on<AccountsEmployeeLinkConfirmed>(_onEmployeeLinkConfirmed);
+    on<AccountsPasswordResetConfirmed>(_onPasswordResetConfirmed);
   }
 
   final PeopleApi _api;
@@ -158,6 +180,12 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   static String correctedMessage(String role, int grantCount) => grantCount == 0
       ? 'Now $role, with no Org Unit Grants.'
       : 'Now $role, with $grantCount Org Unit ${grantCount == 1 ? 'Grant' : 'Grants'}.';
+
+  static bool _anyInFlight(AccountsLoaded current) =>
+      current.busyId != null ||
+      current.correctingId != null ||
+      current.employeeLinkingId != null ||
+      current.passwordResettingId != null;
 
   Future<void> _onRequested(AccountsRequested event, Emitter<AccountsState> emit) async {
     final token = _auth.currentAccessToken;
@@ -202,7 +230,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     // event was aimed at (a correction dialog watching a different id) has no
     // way to tell "ignored" apart from "nothing happened yet" otherwise, and
     // would be left waiting on a click that will never resolve.
-    if (current.busyId != null || current.correctingId != null || current.employeeLinkingId != null) {
+    if (_anyInFlight(current)) {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
@@ -270,7 +298,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     // row is busy, which the dialog cannot distinguish from "my own
     // correction just landed", and it would wrongly close claiming success
     // for a save that never happened.
-    if (current.busyId != null || current.correctingId != null || current.employeeLinkingId != null) {
+    if (_anyInFlight(current)) {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
@@ -321,7 +349,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   ) async {
     final current = state;
     if (current is! AccountsLoaded) return;
-    if (current.busyId != null || current.correctingId != null || current.employeeLinkingId != null) {
+    if (_anyInFlight(current)) {
       emit(
         AccountsLoaded(
           accounts: current.accounts,
@@ -353,6 +381,48 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       );
     } on PeopleApiException catch (error) {
       emit(AccountsLoaded(accounts: current.accounts, employeeLinkFailure: error.message));
+    }
+  }
+
+  /// Sets another Account's password (issue #270) — `POST
+  /// /accounts/:id/password`. Nothing about the Account row changes, so there
+  /// is no re-read: success is a [AccountsLoaded.notice]; a refusal (too
+  /// short, the caller's own Account, unknown Account) is shown to the open
+  /// dialog exactly as the server worded it. The password is never kept in
+  /// any state.
+  Future<void> _onPasswordResetConfirmed(
+    AccountsPasswordResetConfirmed event,
+    Emitter<AccountsState> emit,
+  ) async {
+    final current = state;
+    if (current is! AccountsLoaded) return;
+    if (_anyInFlight(current)) {
+      emit(
+        AccountsLoaded(
+          accounts: current.accounts,
+          passwordResetFailure: 'Another action is already in progress. Try again in a moment.',
+        ),
+      );
+      return;
+    }
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(AccountsLoaded(accounts: current.accounts, passwordResetFailure: signedOutMessage));
+      return;
+    }
+
+    emit(AccountsLoaded(accounts: current.accounts, passwordResettingId: event.accountId));
+    try {
+      await _api.resetAccountPassword(token, accountId: event.accountId, password: event.password);
+      emit(
+        AccountsLoaded(
+          accounts: current.accounts,
+          notice: 'That Account\'s password was changed.',
+        ),
+      );
+    } on PeopleApiException catch (error) {
+      emit(AccountsLoaded(accounts: current.accounts, passwordResetFailure: error.message));
     }
   }
 }

@@ -29,6 +29,7 @@ import '../widgets/app_page_frame.dart';
 import '../widgets/skeleton_list.dart';
 import 'account_correction_dialog.dart';
 import 'account_employee_dialog.dart';
+import 'account_password_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
 import 'pending_account.dart' show waitingFor;
@@ -59,7 +60,7 @@ class AccountsScreen extends StatelessWidget {
   ///
   /// 850, not 700 or 800: this table carries an eighth column
   /// (`work_orders_screen.dart`'s table has seven) and a wider fixed actions
-  /// column (388px against that Screen's 232px), so less room is left for the
+  /// column (420px against that Screen's 232px), so less room is left for the
   /// seven flexed columns (Name, Email, Role, Standing, Since, Grants,
   /// Employee) at any given content width. Rendered in 50px steps from 700:
   /// at 700–800px, every flexed header label wraps two or three lines deep
@@ -104,6 +105,12 @@ class AccountsScreen extends StatelessWidget {
   /// [correctKey]/[activeKey] are already absent from.
   static ValueKey<String> linkEmployeeKey(String id) => ValueKey<String>('accounts-link-employee-$id');
 
+  /// The control that opens [AccountPasswordDialog] (issue #270) — absent on
+  /// the caller's own row (ADR-0013) and on a pending row, like
+  /// [linkEmployeeKey].
+  static ValueKey<String> resetPasswordKey(String id) =>
+      ValueKey<String>('accounts-reset-password-$id');
+
   /// The pending row's own action (issue #112, Decision E): neither
   /// correction nor deactivation, since the server refuses both for a
   /// pending Account — a link to the one place Approval is actually decided.
@@ -145,6 +152,7 @@ class AccountsScreen extends StatelessWidget {
                   busyId: state.busyId,
                   correctingId: state.correctingId,
                   employeeLinkingId: state.employeeLinkingId,
+                  passwordResettingId: state.passwordResettingId,
                   selfAccountId: selfAccountId,
                 ),
             },
@@ -266,6 +274,7 @@ class _AccountsList extends StatefulWidget {
     required this.busyId,
     required this.correctingId,
     required this.employeeLinkingId,
+    required this.passwordResettingId,
     required this.selfAccountId,
   });
 
@@ -273,6 +282,7 @@ class _AccountsList extends StatefulWidget {
   final String? busyId;
   final String? correctingId;
   final String? employeeLinkingId;
+  final String? passwordResettingId;
   final String selfAccountId;
 
   @override
@@ -309,7 +319,10 @@ class _AccountsListState extends State<_AccountsList> {
     // only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingAccounts;
     bool isBusy(String id) =>
-        id == widget.busyId || id == widget.correctingId || id == widget.employeeLinkingId;
+        id == widget.busyId ||
+        id == widget.correctingId ||
+        id == widget.employeeLinkingId ||
+        id == widget.passwordResettingId;
     // `constraints.maxWidth` — the box this Screen actually got from its own
     // parent — not `MediaQuery.sizeOf(context).width`, the whole browser
     // window (issue #120). This Screen always renders inside the Shell's
@@ -401,7 +414,7 @@ class _AccountsListState extends State<_AccountsList> {
 /// Employee cell itself (a flex-sized column): that cell is narrow enough at
 /// ordinary widths that a button folded into it overflowed, where this fixed
 /// column has room to spare.
-const double _actionsColumnWidth = 388;
+const double _actionsColumnWidth = 420;
 
 class _AccountTableHeader extends StatelessWidget {
   const _AccountTableHeader();
@@ -651,26 +664,30 @@ class _RowActions extends StatelessWidget {
       );
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    // A `Wrap`, not a `Row` (issue #270): four controls fit on one line in the
+    // table's fixed [_actionsColumnWidth], but the card at the 700px window
+    // hands this widget only 376px, so there they flow onto a second line
+    // rather than overflow — and are never dropped, since an administrator
+    // needs them most on the phone-sized layout.
+    return Wrap(
+      spacing: Spacing.xs,
+      runSpacing: Spacing.xs,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         // Only an approved Account can be deactivated or reactivated: the
         // server refuses either for a rejected one, whose way back in is a
         // correction (`setAccountActive`, service.js).
-        if (account.isApproved) ...[
+        if (account.isApproved)
           OutlinedButton(
             key: AccountsScreen.activeKey(account.id),
             onPressed: busy ? null : () => _toggleActive(context, account),
             child: Text(account.isActive ? 'Deactivate' : 'Reactivate'),
           ),
-          const SizedBox(width: Spacing.sm),
-        ],
         FilledButton(
           key: AccountsScreen.correctKey(account.id),
           onPressed: busy ? null : () => AccountCorrectionDialog.open(context, account),
           child: const Text('Change'),
         ),
-        const SizedBox(width: Spacing.xs),
         // The Employee link's own control (issue #116, ADR-0022) — an icon
         // button, not a labelled one, so it fits this fixed-width column
         // alongside the two above; [_actionsColumnWidth] was widened to make
@@ -683,6 +700,15 @@ class _RowActions extends StatelessWidget {
           tooltip: account.linkedEmployee == null ? 'Link an Employee' : 'Change Employee link',
           visualDensity: VisualDensity.compact,
           onPressed: busy ? null : () => AccountEmployeeDialog.open(context, account),
+        ),
+        // Reset the Account's password (issue #270) — after the two early
+        // returns above, so absent on the caller's own row and a pending one.
+        IconButton(
+          key: AccountsScreen.resetPasswordKey(account.id),
+          icon: const Icon(Icons.lock_reset, size: 20),
+          tooltip: 'Reset password',
+          visualDensity: VisualDensity.compact,
+          onPressed: busy ? null : () => AccountPasswordDialog.open(context, account),
         ),
       ],
     );

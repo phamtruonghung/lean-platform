@@ -114,9 +114,15 @@ function requireApprovalStatusUnchanged(current, expectedApprovalStatus) {
 const SELF_ACTION_REFUSED =
   'An administrator cannot approve, reject or deactivate their own Account — another administrator has to do it.';
 
-function refuseSelfAction(id, actingAccountId) {
+// A password reset (passwords.js, issue #270) is refused under the same rule,
+// with its own wording: an administrator changes their own password through
+// the self-change door, which asks for the current one.
+const SELF_PASSWORD_RESET_REFUSED =
+  'An administrator cannot reset their own password here — change it from the account menu, or ask another administrator.';
+
+function refuseSelfAction(id, actingAccountId, message = SELF_ACTION_REFUSED) {
   if (actingAccountId != null && String(actingAccountId) === String(id)) {
-    throw httpError(403, SELF_ACTION_REFUSED);
+    throw httpError(403, message);
   }
 }
 
@@ -689,5 +695,10 @@ module.exports = {
   rejectAccount,
   setAccountActive,
   setAccountEmployee,
-  SELF_ACTION_REFUSED
+  SELF_ACTION_REFUSED,
+  SELF_PASSWORD_RESET_REFUSED,
+  refuseSelfAction,
+  notFoundAccount,
+  toAccount,
+  ACCOUNT_COLUMNS
 };
