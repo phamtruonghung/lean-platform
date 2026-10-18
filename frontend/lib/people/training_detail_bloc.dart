@@ -57,6 +57,29 @@ class TrainingTraineeEvaluated extends TrainingDetailEvent {
   final String? evaluation;
 }
 
+/// The correction dialog has decided: a full restatement of the record's own
+/// facts (issue #291), on a draft and a sent record alike.
+class TrainingRecordCorrected extends TrainingDetailEvent {
+  const TrainingRecordCorrected({
+    required this.title,
+    required this.trainedOn,
+    required this.durationHours,
+    this.trainerEmployeeId,
+    this.objective,
+  });
+
+  final String title;
+  final String trainedOn;
+  final double durationHours;
+  final String? trainerEmployeeId;
+  final String? objective;
+}
+
+/// Discards the draft on screen (issue #291). A sent record is refused.
+class TrainingRecordDiscarded extends TrainingDetailEvent {
+  const TrainingRecordDiscarded();
+}
+
 sealed class TrainingDetailState {
   const TrainingDetailState();
 }
@@ -74,6 +97,12 @@ class TrainingDetailUnavailable extends TrainingDetailState {
   final bool isMissing;
 }
 
+/// The draft was discarded: there is nothing left at this address to show, so
+/// the Screen takes the person back to the register.
+class TrainingDetailDiscarded extends TrainingDetailState {
+  const TrainingDetailDiscarded();
+}
+
 class TrainingDetailLoaded extends TrainingDetailState {
   const TrainingDetailLoaded({
     required this.record,
@@ -83,6 +112,8 @@ class TrainingDetailLoaded extends TrainingDetailState {
     this.sendFailure,
     this.answerFailure,
     this.evaluationFailure,
+    this.correctFailure,
+    this.discardFailure,
   });
   final TrainingRecord record;
 
@@ -102,6 +133,11 @@ class TrainingDetailLoaded extends TrainingDetailState {
 
   /// The server's refusal of the last evaluation, shown beside the list.
   final String? evaluationFailure;
+
+  /// The server's refusal of the last correction (shown in the correction
+  /// dialog) or of the last discard (shown on the Screen).
+  final String? correctFailure;
+  final String? discardFailure;
 }
 
 class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> {
@@ -115,6 +151,8 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
     on<TrainingRecordSent>(_onSent);
     on<TrainingTraineeAnswered>(_onAnswered);
     on<TrainingTraineeEvaluated>(_onEvaluated);
+    on<TrainingRecordCorrected>(_onCorrected);
+    on<TrainingRecordDiscarded>(_onDiscarded);
   }
 
   final PeopleApi _api;
@@ -151,6 +189,36 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
       _Write.evaluation,
       (token, record) => _api.setTraineeEvaluation(token, record.id, event.traineeId, event.evaluation));
 
+  Future<void> _onCorrected(TrainingRecordCorrected event, Emitter<TrainingDetailState> emit) => _write(
+      emit,
+      _Write.correct,
+      (token, record) => _api.correctTrainingRecord(
+            token,
+            record.id,
+            title: event.title,
+            trainedOn: event.trainedOn,
+            durationHours: event.durationHours,
+            trainerEmployeeId: event.trainerEmployeeId,
+            objective: event.objective,
+          ));
+
+  Future<void> _onDiscarded(TrainingRecordDiscarded event, Emitter<TrainingDetailState> emit) async {
+    final current = state;
+    if (current is! TrainingDetailLoaded || current.isWriting) return;
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(_failed(current.record, _Write.discard, 'This session has ended. Sign in again to continue.'));
+      return;
+    }
+    emit(TrainingDetailLoaded(record: current.record, isWriting: true));
+    try {
+      await _api.discardTrainingRecord(token, current.record.id);
+      emit(const TrainingDetailDiscarded());
+    } on PeopleApiException catch (error) {
+      emit(_failed(current.record, _Write.discard, error.message));
+    }
+  }
+
   TrainingDetailLoaded _failed(TrainingRecord record, _Write kind, String message) => TrainingDetailLoaded(
         record: record,
         addFailure: kind == _Write.add ? message : null,
@@ -158,6 +226,8 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
         sendFailure: kind == _Write.send ? message : null,
         answerFailure: kind == _Write.answer ? message : null,
         evaluationFailure: kind == _Write.evaluation ? message : null,
+        correctFailure: kind == _Write.correct ? message : null,
+        discardFailure: kind == _Write.discard ? message : null,
       );
 
   Future<void> _write(
@@ -181,4 +251,4 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
   }
 }
 
-enum _Write { add, remove, send, answer, evaluation }
+enum _Write { add, remove, send, answer, evaluation, correct, discard }

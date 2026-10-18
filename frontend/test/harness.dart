@@ -2355,6 +2355,8 @@ class FakeWire {
     this.trainingStatus = 200,
     this.trainingWriteStatus = 201,
     this.trainingWriteMessage = 'That Training record could not be saved.',
+    this.recordWriteStatus = 200,
+    this.recordWriteMessage = 'That Training record could not be changed.',
     this.traineeWriteStatus = 200,
     this.traineeWriteMessage = 'That Trainee could not be saved.',
     List<Map<String, dynamic>>? trainingToConfirm,
@@ -4190,6 +4192,16 @@ class FakeWire {
   /// the order they reached the wire.
   final List<Map<String, String>> trainingReads = [];
   final List<Map<String, dynamic>> trainingWrites = [];
+
+  /// The record's own correction and discard (issue #291):
+  /// `PATCH .../training/:id` and `DELETE .../training/:id`. Any status but 200
+  /// refuses both with `{message}`; 200 lets a correction restate the record's
+  /// facts (answering the whole record) and a discard remove it (answering
+  /// 204). Every one is recorded as its request line with its decoded body
+  /// (empty for a DELETE).
+  int recordWriteStatus;
+  String recordWriteMessage;
+  final List<(String, Map<String, dynamic>)> recordWrites = [];
 
   /// The Trainee writes (issue #288): `POST .../training/:id/trainees` and
   /// `DELETE .../training/:id/trainees/:traineeId`. Any status but 200 refuses
@@ -8323,6 +8335,25 @@ class FakeWire {
               if (row['id'] == id) return http.Response(jsonEncode({'trainingRecord': row}), 200);
             }
             return http.Response(jsonEncode({'message': 'Training record not found'}), 404);
+          }
+          final recordPath = RegExp(r'^/api/people/training/([^/]+)$').firstMatch(path);
+          if (recordPath != null && (request.method == 'PATCH' || request.method == 'DELETE')) {
+            final sent = request.body.isEmpty
+                ? <String, dynamic>{}
+                : jsonDecode(request.body) as Map<String, dynamic>;
+            recordWrites.add(('${request.method} $path', sent));
+            if (recordWriteStatus != 200) {
+              return http.Response(jsonEncode({'message': recordWriteMessage}), recordWriteStatus);
+            }
+            final index = trainingRecords.indexWhere((row) => row['id'] == recordPath.group(1));
+            if (index < 0) return http.Response(jsonEncode({'message': 'Training record not found'}), 404);
+            if (request.method == 'DELETE') {
+              trainingRecords = [...trainingRecords]..removeAt(index);
+              return http.Response('', 204);
+            }
+            final record = {...trainingRecords[index], ...sent};
+            trainingRecords = [...trainingRecords]..[index] = record;
+            return http.Response(jsonEncode({'trainingRecord': record}), 200);
           }
           final evaluationPath = RegExp(r'^/api/people/training/([^/]+)/trainees/([^/]+)$').firstMatch(path);
           if (request.method == 'PATCH' && evaluationPath != null) {

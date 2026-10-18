@@ -13,16 +13,22 @@
  *
  * The Trainees on a record (#288) are here too: a record's own read carries
  * them in the order they were added, each naming the Employee's number and
- * name, and a count. Adding and removing one are draft-only writes — the
- * status is carried in the statement's WHERE clause, so a record sent between
- * the route's check and the write is refused, never changed. Whether the
- * Employee exists or has departed is the route's question.
+ * name, and a count. Whether the Employee exists or has departed is the
+ * route's question.
  *
  * Sending (#289) is here: `sendTrainingRecord` is the only writer of status
  * 'sent', and a Trainee's answer (`answerTrainee`) and the Trainee's own queue
  * (`listTrainingToConfirm`) with it. Whether the caller may send is the
  * route's question; whether the answerer IS the Trainee is the route's too.
- * Correcting a sent record (#291) is not here.
+ *
+ * Putting a record right (#291): a correction is a full restatement of the
+ * record's own facts, validated by `validateRaise` (the raise route's own
+ * validator), and lands on a draft and a sent record alike. A Trainee may be
+ * added to, or removed from, a sent record too: an added Trainee is asked at
+ * once because pending is `answer IS NULL` and the queue reads exactly that,
+ * and a removed Trainee takes their answer with the row. Only a draft can be
+ * discarded - a sent record is evidence and is never deleted. Every one of
+ * these writes is audited through the tables' own `attach_audit` triggers.
  *
  * A Trainee's `evaluation` (#290) is the trainer's own field - `paper`, `job_training`
  * or null - and is settable on a sent record too: it is not a correction.
@@ -145,30 +151,6 @@ function validateRaise(body) {
   };
 }
 
-// A correction names only the facts it changes. Returns the validated subset.
-const CORRECTABLE = ['title', 'trainedOn', 'durationHours', 'trainerEmployeeId', 'objective'];
-
-function validateCorrection(body) {
-  const changes = {};
-  if (body.title !== undefined) changes.title = requireTitle(body.title);
-  if (body.trainedOn !== undefined) changes.trainedOn = requireTrainedOn(body.trainedOn);
-  if (body.durationHours !== undefined) changes.durationHours = requireDurationHours(body.durationHours);
-  if (body.objective !== undefined) changes.objective = optionalObjective(body.objective);
-  if (body.trainerEmployeeId !== undefined) {
-    if (body.trainerEmployeeId === null) {
-      changes.trainerEmployeeId = null;
-    } else {
-      const id = parseId(body.trainerEmployeeId);
-      if (id === null) throw httpError(400, 'trainerEmployeeId must be a valid Employee id');
-      changes.trainerEmployeeId = id;
-    }
-  }
-  if (Object.keys(changes).length === 0) {
-    throw httpError(400, `Name at least one of: ${CORRECTABLE.join(', ')}`);
-  }
-  return changes;
-}
-
 async function findTrainingRecord(id) {
   if (parseId(id) === null) return null;
   const { rows } = await getPool().query(`${SELECT_RECORD} WHERE tr.id = $1`, [id]);
@@ -211,21 +193,21 @@ async function getTrainingRecord(id) {
   return { ...record, trainees };
 }
 
-const SENT_TRAINEES_MESSAGE = "A sent Training record's Trainees cannot be changed here; correct it instead";
-
-// Adds one Employee to a draft. A second add of the same Employee is the
-// UNIQUE constraint's refusal, mapped to a 409 here.
+// Adds one Employee to a record, draft or sent. On a sent record the new row
+// is pending (`answer IS NULL`), which is all the Trainee's own queue reads, so
+// they are asked at once with no second send. A second add of the same
+// Employee is the UNIQUE constraint's refusal, mapped to a 409 here.
 async function addTrainee(accountId, recordId, employeeId) {
   try {
     const inserted = await withActor(accountId, async (client) => {
       const { rowCount } = await client.query(
         `INSERT INTO training_trainees (training_record_id, employee_id)
-         SELECT id, $2 FROM training_records WHERE id = $1 AND status = 'draft'`,
+         SELECT id, $2 FROM training_records WHERE id = $1`,
         [recordId, employeeId]
       );
       return rowCount;
     });
-    if (inserted === 0) throw httpError(409, SENT_TRAINEES_MESSAGE);
+    if (inserted === 0) throw notFound('Training record'); // discarded meanwhile.
   } catch (error) {
     if (error.code === '23505') {
       throw httpError(409, 'this Employee is already a Trainee on this Training record');
@@ -235,26 +217,18 @@ async function addTrainee(accountId, recordId, employeeId) {
   return getTrainingRecord(recordId);
 }
 
-// Takes one Trainee off a draft. The row must belong to that record.
+// Takes one Trainee off a record, draft or sent, answered or not: the answer
+// goes with the row, and the removal is audited. The row must belong to that
+// record.
 async function removeTrainee(accountId, recordId, traineeId) {
   const removed = await withActor(accountId, async (client) => {
     const { rowCount } = await client.query(
-      `DELETE FROM training_trainees tt
-        USING training_records tr
-        WHERE tt.id = $2 AND tt.training_record_id = $1
-          AND tr.id = tt.training_record_id AND tr.status = 'draft'`,
+      'DELETE FROM training_trainees WHERE id = $2 AND training_record_id = $1',
       [recordId, traineeId]
     );
     return rowCount;
   });
-  if (removed === 0) {
-    const { rows } = await getPool().query(
-      'SELECT 1 FROM training_trainees WHERE id = $1 AND training_record_id = $2',
-      [traineeId, recordId]
-    );
-    if (rows.length > 0) throw httpError(409, SENT_TRAINEES_MESSAGE);
-    throw notFound('Trainee');
-  }
+  if (removed === 0) throw notFound('Trainee');
   return getTrainingRecord(recordId);
 }
 
@@ -331,35 +305,45 @@ async function raiseTrainingRecord(accountId, orgUnitId, facts) {
   return getTrainingRecord(id);
 }
 
-const COLUMN_FOR = {
-  title: 'title',
-  trainedOn: 'trained_on',
-  durationHours: 'duration_hours',
-  trainerEmployeeId: 'trainer_employee_id',
-  objective: 'objective'
-};
-
-// Only ever a draft: the WHERE clause carries the status, so a record sent
-// between the route's check and this write is refused here too, never changed.
-async function correctTrainingRecord(accountId, id, changes) {
-  const sets = [];
-  const params = [id];
-  for (const [field, value] of Object.entries(changes)) {
-    params.push(value);
-    sets.push(`${COLUMN_FOR[field]} = $${params.length}`);
-  }
+// A correction restates the record's own facts in full - the number, the Org
+// Unit and the status are not among them - on a draft and a sent record alike.
+// The Trainees' answers are untouched.
+async function correctTrainingRecord(accountId, id, facts) {
   const updated = await withActor(accountId, async (client) => {
     const { rowCount } = await client.query(
-      `UPDATE training_records SET ${sets.join(', ')}
-        WHERE id = $1 AND status = 'draft'`,
-      params
+      `UPDATE training_records
+          SET title = $2, trained_on = $3, duration_hours = $4,
+              trainer_employee_id = $5, objective = $6
+        WHERE id = $1`,
+      [id, facts.title, facts.trainedOn, facts.durationHours,
+        facts.trainerEmployeeId, facts.objective]
     );
     return rowCount;
   });
-  if (updated === 0) {
-    throw httpError(409, 'A sent Training record cannot be changed here; correct it instead');
-  }
+  if (updated === 0) throw notFound('Training record'); // discarded meanwhile.
   return getTrainingRecord(id);
+}
+
+const SENT_DISCARD_MESSAGE = 'A sent Training record is evidence and cannot be discarded; correct it instead';
+
+// Discards a draft and its Trainee rows in one transaction, children first.
+// The record row is locked first (`FOR UPDATE`): a concurrent send's UPDATE of
+// that row waits for this transaction, and then re-reads it as gone (the send
+// answers 404), so a send can never commit between the Trainee deletion and
+// the record's. A record already sent is refused with the 409 thrown INSIDE
+// the callback, so `withActor` rolls the transaction back and no Trainee row is
+// lost; a missing record is a 404.
+async function discardTrainingRecord(accountId, id) {
+  await withActor(accountId, async (client) => {
+    const { rows: [locked] } = await client.query(
+      'SELECT status FROM training_records WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (!locked) throw notFound('Training record');
+    if (locked.status !== 'draft') throw httpError(409, SENT_DISCARD_MESSAGE);
+    await client.query('DELETE FROM training_trainees WHERE training_record_id = $1', [id]);
+    await client.query('DELETE FROM training_records WHERE id = $1', [id]);
+  });
 }
 
 // The register, newest training first. `viewer` is { accountId, isAdmin };
@@ -530,7 +514,6 @@ module.exports = {
   answerTrainee,
   listTrainingToConfirm,
   validateRaise,
-  validateCorrection,
   findTrainingRecord,
   getTrainingRecord,
   raiseTrainingRecord,
@@ -540,5 +523,6 @@ module.exports = {
   setTraineeEvaluation,
   findTrainee,
   correctTrainingRecord,
+  discardTrainingRecord,
   listTrainingRecords
 };

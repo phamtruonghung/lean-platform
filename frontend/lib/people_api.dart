@@ -1597,7 +1597,50 @@ class PeopleApi {
     }
   }
 
-  /// Adds one Employee to a draft Training record's Trainees
+  /// Corrects a Training record's own facts
+  /// (`PATCH /api/people/training/:id`, issue #291): a full restatement, so
+  /// every fact is sent and a trainer or objective left null is cleared. Allowed
+  /// on a draft and a sent record alike. Answers the whole record. A refusal
+  /// (400/403/404) carries the server's `message`.
+  Future<TrainingRecord> correctTrainingRecord(
+    String accessToken,
+    String recordId, {
+    required String title,
+    required String trainedOn,
+    required double durationHours,
+    String? trainerEmployeeId,
+    String? objective,
+  }) async {
+    final path = '/api/people/training/$recordId';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'title': title,
+          'trainedOn': trainedOn,
+          'durationHours': durationHours,
+          'trainerEmployeeId': trainerEmployeeId,
+          'objective': objective,
+        }),
+      ),
+      path,
+    );
+    return _trainingRecordFrom(response.body);
+  }
+
+  /// Discards a draft Training record (`DELETE /api/people/training/:id`,
+  /// issue #291), its Trainees with it. Answers 204. A sent record is a 409
+  /// whose `message` says why.
+  Future<void> discardTrainingRecord(String accessToken, String recordId) async {
+    final path = '/api/people/training/$recordId';
+    await _send(
+      () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+  }
+
+  /// Adds one Employee to a Training record's Trainees, draft or sent
   /// (`POST /api/people/training/:id/trainees`). Answers the whole record,
   /// Trainees included. A refusal (403/404/409) carries the server's `message`.
   Future<TrainingRecord> addTrainee(String accessToken, String recordId, String employeeId) async {
@@ -1613,7 +1656,7 @@ class PeopleApi {
     return _trainingRecordFrom(response.body);
   }
 
-  /// Takes one Trainee off a draft Training record
+  /// Takes one Trainee off a Training record, draft or sent, answered or not
   /// (`DELETE /api/people/training/:id/trainees/:traineeId`). Answers the
   /// whole record, Trainees included.
   Future<TrainingRecord> removeTrainee(String accessToken, String recordId, String traineeId) async {

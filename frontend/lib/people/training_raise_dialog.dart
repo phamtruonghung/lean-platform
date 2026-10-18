@@ -1,7 +1,13 @@
 /// Raising a Training record (issue #287, ADR-0043): the Org Unit it was given
 /// at, a title, the day, how many hours it lasted, optionally who trained and
-/// the objective. It starts as a draft; correcting and sending are later
-/// slices (#288 adds the Trainees).
+/// the objective. It starts as a draft.
+///
+/// Correction mode (issue #291): opened with a [TrainingRecord] the dialog
+/// shows the record's own facts pre-filled and restates them in full - the
+/// same fields, the same submit gate - on a draft and a sent record alike. The
+/// Org Unit is not a correctable fact, so its picker is not drawn. It talks to
+/// the record's own `TrainingDetailBloc` rather than the register's, and
+/// closes when the server has taken the restatement.
 ///
 /// Every value with a known set is chosen, never typed (AGENTS.md §7,
 /// ADR-0023): the Org Unit is browsed from the tree, the day comes from
@@ -27,9 +33,14 @@ import 'employee.dart';
 import 'org_unit.dart';
 import 'org_unit_picker_bloc.dart';
 import 'training_bloc.dart';
+import 'training_detail_bloc.dart';
+import 'training_record.dart';
 
 class TrainingRaiseDialog extends StatefulWidget {
-  const TrainingRaiseDialog({super.key});
+  const TrainingRaiseDialog({super.key, this.record});
+
+  /// The record being corrected, or null when raising a new one.
+  final TrainingRecord? record;
 
   static const ValueKey<String> siteKey = ValueKey<String>('training-raise-site');
   static const ValueKey<String> titleKey = ValueKey<String>('training-raise-title');
@@ -69,21 +80,60 @@ class TrainingRaiseDialog extends StatefulWidget {
     );
   }
 
+  /// Opens the dialog in correction mode over the record's Screen, handing
+  /// across its own [TrainingDetailBloc] (`showDialog`'s route sits outside the
+  /// route-scoped provider).
+  static Future<void> openCorrection(BuildContext context, TrainingRecord record) {
+    final bloc = context.read<TrainingDetailBloc>();
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => BlocProvider<TrainingDetailBloc>.value(
+        value: bloc,
+        child: TrainingRaiseDialog(record: record),
+      ),
+    );
+  }
+
   @override
   State<TrainingRaiseDialog> createState() => _TrainingRaiseDialogState();
 }
 
 class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
-  final TextEditingController _title = TextEditingController();
-  final TextEditingController _duration = TextEditingController();
-  final TextEditingController _objective = TextEditingController();
+  late final TextEditingController _title = TextEditingController(text: widget.record?.title ?? '');
+  late final TextEditingController _duration = TextEditingController(
+    text: widget.record == null ? '' : _hoursText(widget.record!.durationHours),
+  );
+  late final TextEditingController _objective = TextEditingController(text: widget.record?.objective ?? '');
 
   String? _orgUnitId;
-  String? _trainedOn;
-  Employee? _trainer;
+  late String? _trainedOn = widget.record?.trainedOn;
+  late Employee? _trainer = _trainerOf(widget.record);
 
   bool _awaiting = false;
   String? _failure;
+
+  bool get _correcting => widget.record != null;
+
+  // Whole hours without a decimal point, so 2.0 pre-fills as `2`.
+  static String _hoursText(double hours) =>
+      hours == hours.roundToDouble() ? hours.toInt().toString() : hours.toString();
+
+  // The record names its trainer by id and name only; the picker's value is an
+  // Employee, of which only those two are shown or sent.
+  static Employee? _trainerOf(TrainingRecord? record) {
+    final id = record?.trainerEmployeeId;
+    if (record == null || id == null) return null;
+    return Employee(
+      id: id,
+      employeeNo: '',
+      displayName: record.trainerName ?? '',
+      employmentType: '',
+      isActive: true,
+      orgUnitName: null,
+      jobRoleName: null,
+    );
+  }
 
   @override
   void dispose() {
@@ -99,7 +149,7 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
   }
 
   bool get _complete =>
-      _orgUnitId != null && _title.text.trim().isNotEmpty && _trainedOn != null && _hours != null;
+      (_correcting || _orgUnitId != null) && _title.text.trim().isNotEmpty && _trainedOn != null && _hours != null;
 
   void _submit() {
     if (!_complete || _awaiting) return;
@@ -108,6 +158,18 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
       _failure = null;
     });
     final objective = _objective.text.trim();
+    if (_correcting) {
+      context.read<TrainingDetailBloc>().add(
+            TrainingRecordCorrected(
+              title: _title.text.trim(),
+              trainedOn: _trainedOn!,
+              durationHours: _hours!,
+              trainerEmployeeId: _trainer?.id,
+              objective: objective.isEmpty ? null : objective,
+            ),
+          );
+      return;
+    }
     context.read<TrainingBloc>().add(
           TrainingRaised(
             orgUnitId: _orgUnitId!,
@@ -132,89 +194,111 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
     Navigator.of(context).pop();
   }
 
+  void _onRecordChanged(BuildContext context, TrainingDetailState state) {
+    if (!_awaiting || state is! TrainingDetailLoaded || state.isWriting) return;
+    if (state.correctFailure != null) {
+      setState(() {
+        _awaiting = false;
+        _failure = state.correctFailure;
+      });
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return BlocListener<TrainingBloc, TrainingState>(
-      listener: _onRegisterChanged,
-      child: AlertDialog(
-        title: const Text('Raise training record'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: TrainingRaiseDialog.titleKey,
-                  controller: _title,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    helperText: 'What the training was.',
-                    border: OutlineInputBorder(),
-                  ),
+    final dialog = _buildDialog(context, theme);
+    if (_correcting) {
+      return BlocListener<TrainingDetailBloc, TrainingDetailState>(
+        listener: _onRecordChanged,
+        child: dialog,
+      );
+    }
+    return BlocListener<TrainingBloc, TrainingState>(listener: _onRegisterChanged, child: dialog);
+  }
+
+  Widget _buildDialog(BuildContext context, ThemeData theme) {
+    return AlertDialog(
+      title: Text(_correcting ? 'Correct training record' : 'Raise training record'),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                key: TrainingRaiseDialog.titleKey,
+                controller: _title,
+                enabled: !_awaiting,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  helperText: 'What the training was.',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: Spacing.md),
-                AppDateField(
-                  key: TrainingRaiseDialog.trainedOnKey,
-                  name: 'training-raise-trained-on',
-                  label: 'Trained on',
-                  helperText: 'The day it was given.',
-                  value: _trainedOn,
-                  enabled: !_awaiting,
-                  onChanged: (value) => setState(() => _trainedOn = value),
+              ),
+              const SizedBox(height: Spacing.md),
+              AppDateField(
+                key: TrainingRaiseDialog.trainedOnKey,
+                name: 'training-raise-trained-on',
+                label: 'Trained on',
+                helperText: 'The day it was given.',
+                value: _trainedOn,
+                enabled: !_awaiting,
+                onChanged: (value) => setState(() => _trainedOn = value),
+              ),
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: TrainingRaiseDialog.durationKey,
+                controller: _duration,
+                enabled: !_awaiting,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Duration (hours)',
+                  helperText: 'How long it lasted, e.g. 1.5.',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: TrainingRaiseDialog.durationKey,
-                  controller: _duration,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Duration (hours)',
-                    helperText: 'How long it lasted, e.g. 1.5.',
-                    border: OutlineInputBorder(),
-                  ),
+              ),
+              const SizedBox(height: Spacing.md),
+              AppSearchField<Employee>(
+                name: TrainingRaiseDialog.trainerFieldName,
+                label: 'Trainer (optional)',
+                helperText: 'Who gave it, found in the Directory.',
+                value: _trainer,
+                enabled: !_awaiting,
+                onChanged: (employee) => setState(() => _trainer = employee),
+                onSelected: (employee) => setState(() => _trainer = employee),
+                fetchSuggestions: (term) async {
+                  final token = context.read<AuthGateway>().currentAccessToken;
+                  if (token == null) return const [];
+                  return context.read<PeopleApi>().fetchEmployees(token, search: term, limit: 10);
+                },
+                suggestionBuilder: (context, employee) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+                  child: Text(employee.displayName),
                 ),
-                const SizedBox(height: Spacing.md),
-                AppSearchField<Employee>(
-                  name: TrainingRaiseDialog.trainerFieldName,
-                  label: 'Trainer (optional)',
-                  helperText: 'Who gave it, found in the Directory.',
-                  value: _trainer,
-                  enabled: !_awaiting,
-                  onChanged: (employee) => setState(() => _trainer = employee),
-                  onSelected: (employee) => setState(() => _trainer = employee),
-                  fetchSuggestions: (term) async {
-                    final token = context.read<AuthGateway>().currentAccessToken;
-                    if (token == null) return const [];
-                    return context.read<PeopleApi>().fetchEmployees(token, search: term, limit: 10);
-                  },
-                  suggestionBuilder: (context, employee) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-                    child: Text(employee.displayName),
-                  ),
-                  idOf: (employee) => employee.id,
-                  displayStringFor: (employee) => employee.displayName,
+                idOf: (employee) => employee.id,
+                displayStringFor: (employee) => employee.displayName,
+              ),
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: TrainingRaiseDialog.objectiveKey,
+                controller: _objective,
+                enabled: !_awaiting,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Objective (optional)',
+                  helperText: 'What the training set out to teach.',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: TrainingRaiseDialog.objectiveKey,
-                  controller: _objective,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Objective (optional)',
-                    helperText: 'What the training set out to teach.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
+              ),
+              const SizedBox(height: Spacing.md),
+              if (!_correcting) ...[
                 Text('Where it was given', style: theme.textTheme.titleSmall),
                 const SizedBox(height: Spacing.xs),
                 _OrgUnitPicker(
@@ -222,32 +306,36 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
                   enabled: !_awaiting,
                   onSelected: (node) => setState(() => _orgUnitId = node.id),
                 ),
-                if (_failure != null)
-                  Padding(
-                    key: TrainingRaiseDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
               ],
-            ),
+              if (_failure != null)
+                Padding(
+                  key: TrainingRaiseDialog.failureKey,
+                  padding: const EdgeInsets.only(top: Spacing.md),
+                  child: Text(
+                    _failure!,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                  ),
+                ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            key: TrainingRaiseDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: TrainingRaiseDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Raising…' : 'Raise training record'),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          key: TrainingRaiseDialog.cancelKey,
+          onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: TrainingRaiseDialog.submitKey,
+          onPressed: _complete && !_awaiting ? _submit : null,
+          child: Text(
+            _correcting
+                ? (_awaiting ? 'Correcting…' : 'Correct training record')
+                : (_awaiting ? 'Raising…' : 'Raise training record'),
+          ),
+        ),
+      ],
     );
   }
 }

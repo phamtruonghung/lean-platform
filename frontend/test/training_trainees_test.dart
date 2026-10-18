@@ -87,7 +87,8 @@ void main() {
       expect(find.byKey(TrainingDetailScreen.addTraineeKey), findsOneWidget);
     });
 
-    testWidgets('a sent record shows its list with no add and no remove controls', (tester) async {
+    testWidgets('a sent record carries the add and the remove controls too, for a caller who can correct it',
+        (tester) async {
       await _open(
         tester,
         _wire(trainingRecords: [
@@ -96,8 +97,8 @@ void main() {
       );
 
       expect(find.text('E-7 · Alice Nguyen'), findsOneWidget);
-      expect(find.byKey(TrainingDetailScreen.addTraineeKey), findsNothing);
-      expect(find.byKey(TrainingDetailScreen.removeTraineeKey('11')), findsNothing);
+      expect(find.byKey(TrainingDetailScreen.addTraineeKey), findsOneWidget);
+      expect(find.byKey(TrainingDetailScreen.removeTraineeKey('11')), findsOneWidget);
     });
 
     testWidgets('the remove control issues the DELETE and the row goes', (tester) async {

@@ -6,9 +6,14 @@
  * Writes follow AGENTS.md section 6's order — existence first, then scope —
  * so an administrator's typo is a 404, never a 500: required fields (400),
  * the Org Unit (404), the trainer Employee (404), then
- * `canAct({ write: true })` (403). Correcting resolves the record (404) and
- * its scope (403) before it looks at the record's status (409) and only then
- * at the body (400, 404).
+ * `canAct({ write: true })` (403). Correcting (#291) is a full restatement of
+ * the record's facts, draft or sent alike, validated by the raise route's own
+ * `validateRaise`: the record (404), its scope (403), then the body (400) and
+ * the trainer Employee (404). There is no status refusal any more.
+ *
+ * Discarding (#291), `DELETE /training/:id`: the record (404), its scope
+ * (403), then a sent record (409 - sending is where a record becomes
+ * evidence); a draft is deleted with its Trainee rows, answering 204.
  *
  * Reads: the register answers every approved Account, as ADR-0009 says of a
  * read, but a draft is shown only to a caller who could send it (an edit
@@ -17,11 +22,13 @@
  * own address rather than a 403, so the register is not a way to learn a
  * draft exists.
  *
- * The Trainees (#288): adding and removing one follow the same order — the
- * record (404), its scope (403), its status (409, a sent record's list is
- * not editable here), then the body (400), the Employee (404), a departed
- * Employee (409, as assigning a Work order to one is refused) and the write.
- * Both answer with the fresh whole record, Trainees included.
+ * The Trainees (#288, #291): adding and removing one follow the same order —
+ * the record (404), its scope (403), then the body (400), the Employee (404),
+ * a departed Employee (409, as assigning a Work order to one is refused) and
+ * the write; removal asks for the Trainee on THIS record (404). Both are legal
+ * on a sent record: an added Trainee is asked at once, and a removed one takes
+ * their answer with the row. Both answer with the fresh whole record, Trainees
+ * included.
  *
  * Sending (#289): the record (404), its scope (403, the same edit Grant as
  * every other write, `write: true` explicit), already sent (409), then the
@@ -102,24 +109,19 @@ router.patch('/training/:id', authenticate, requireActive, async (req, res, next
     if (!allowed) {
       return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
     }
-    if (record.status !== 'draft') {
-      throw httpError(409, 'A sent Training record cannot be changed here; correct it instead');
-    }
 
-    const changes = training.validateCorrection(req.body ?? {});
-    if (changes.trainerEmployeeId !== undefined) {
-      await requireKnownTrainer(changes.trainerEmployeeId);
-    }
-    const corrected = await training.correctTrainingRecord(req.account.id, record.id, changes);
+    const facts = training.validateRaise(req.body ?? {});
+    await requireKnownTrainer(facts.trainerEmployeeId);
+    const corrected = await training.correctTrainingRecord(req.account.id, record.id, facts);
     return res.json({ trainingRecord: corrected });
   } catch (error) {
     return handleError(error, res, next);
   }
 });
 
-// Resolves the record and checks scope then status, the order every Trainee
-// write shares. Returns the record, or null when it has already answered 403.
-async function resolveDraftForTrainees(req, res) {
+// Resolves the record and checks its scope, the order every Trainee write
+// shares. Returns the record, or null when it has already answered 403.
+async function resolveRecordForTrainees(req, res) {
   const record = await training.getTrainingRecord(req.params.id); // 404s.
   const allowed = await authorization.canAct({
     account: req.account,
@@ -130,15 +132,31 @@ async function resolveDraftForTrainees(req, res) {
     res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
     return null;
   }
-  if (record.status !== 'draft') {
-    throw httpError(409, "A sent Training record's Trainees cannot be changed here; correct it instead");
-  }
   return record;
 }
 
+router.delete('/training/:id', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const record = await training.getTrainingRecord(req.params.id); // 404s.
+    const allowed = await authorization.canAct({
+      account: req.account,
+      orgUnitId: record.orgUnitId,
+      write: true
+    });
+    if (!allowed) {
+      return res.status(403).json({ message: OUTSIDE_GRANTED_ORG_UNITS });
+    }
+
+    await training.discardTrainingRecord(req.account.id, record.id); // 409s a sent record.
+    return res.status(204).end();
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+});
+
 router.post('/training/:id/trainees', authenticate, requireActive, async (req, res, next) => {
   try {
-    const record = await resolveDraftForTrainees(req, res);
+    const record = await resolveRecordForTrainees(req, res);
     if (record === null) return undefined;
 
     const employeeId = parseId(req.body?.employeeId);
@@ -158,7 +176,7 @@ router.post('/training/:id/trainees', authenticate, requireActive, async (req, r
 
 router.delete('/training/:id/trainees/:traineeId', authenticate, requireActive, async (req, res, next) => {
   try {
-    const record = await resolveDraftForTrainees(req, res);
+    const record = await resolveRecordForTrainees(req, res);
     if (record === null) return undefined;
 
     const trainee = await training.findTrainee(record.id, req.params.traineeId);

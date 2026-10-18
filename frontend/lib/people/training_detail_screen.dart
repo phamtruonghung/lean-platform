@@ -6,8 +6,10 @@
 /// in the order they were added — under a heading carrying the count, and says
 /// so when nobody is on it yet. While the record is a draft each row carries a
 /// remove control and the section an add control (which opens
-/// `TrainingTraineeDialog`); once it is sent the list is shown without them. A
-/// refused removal is rendered beside the list. A draft the caller could not
+/// `TrainingTraineeDialog`); a sent record carries them too (issue #291) for a
+/// caller who could correct it, an added Trainee being asked at once and a
+/// removed one taking their answer with the row. A refused removal is rendered
+/// beside the list. A draft the caller could not
 /// send reads as "no such Training record" here, exactly as the server answers
 /// it (404), so the address does not reveal that the draft exists.
 ///
@@ -19,6 +21,13 @@
 /// answered, a decline among the answers, fully confirmed — is the server's
 /// computation, shown as it arrives. A Trainee looking at a sent record they
 /// are on gets the two answer controls on their own row only.
+///
+/// Putting a record right (issue #291): a caller who could send it is offered
+/// a correction control on a draft and a sent record alike, which opens the
+/// raise dialog in correction mode with the record's facts pre-filled, and on
+/// a draft only a discard control behind a confirmation. A sent record is
+/// never offered discard - sending is where a record becomes evidence. A
+/// discarded draft takes the person back to the register.
 library;
 
 import 'package:flutter/material.dart';
@@ -34,6 +43,7 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'org_unit_scope.dart';
 import 'training_detail_bloc.dart';
+import 'training_raise_dialog.dart';
 import 'training_record.dart';
 import 'training_trainee_dialog.dart';
 
@@ -74,6 +84,11 @@ class TrainingDetailScreen extends StatelessWidget {
   static const ValueKey<String> addTraineeKey = ValueKey<String>('training-detail-add-trainee');
   static const ValueKey<String> removeFailureKey = ValueKey<String>('training-detail-remove-failure');
   static const ValueKey<String> sendKey = ValueKey<String>('training-detail-send');
+  static const ValueKey<String> correctKey = ValueKey<String>('training-detail-correct');
+  static const ValueKey<String> discardKey = ValueKey<String>('training-detail-discard');
+  static const ValueKey<String> discardConfirmKey = ValueKey<String>('training-detail-discard-confirm');
+  static const ValueKey<String> discardCancelKey = ValueKey<String>('training-detail-discard-cancel');
+  static const ValueKey<String> discardFailureKey = ValueKey<String>('training-detail-discard-failure');
   static const ValueKey<String> sendFailureKey = ValueKey<String>('training-detail-send-failure');
   static const ValueKey<String> readingKey = ValueKey<String>('training-detail-reading');
   static const ValueKey<String> answerFailureKey = ValueKey<String>('training-detail-answer-failure');
@@ -91,37 +106,43 @@ class TrainingDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<TrainingDetailBloc>().state;
-    return Scaffold(
-      body: switch (state) {
-        TrainingDetailLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
-        TrainingDetailUnavailable(isMissing: true) => PlatformEmptyState.noneExist(
-            key: missingKey,
-            title: 'No such Training record',
-            message: 'Nothing is recorded at this address. It may have been removed, or '
-                'the address may be wrong.',
-            icon: Icons.search_off_outlined,
-            actionLabel: 'Back to Training records',
-            actionKey: backKey,
-            onAction: () => context.go(Routes.training),
-          ),
-        TrainingDetailUnavailable(message: final message) => PlatformFailureState(
-            key: failedKey,
-            title: 'The Training record could not be read',
-            message: message,
-            retryKey: retryKey,
-            onRetry: () => context.read<TrainingDetailBloc>().add(TrainingDetailRequested(trainingRecordId)),
-          ),
-        TrainingDetailLoaded loaded => _Loaded(
-            record: loaded.record,
-            isWriting: loaded.isWriting,
-            removeFailure: loaded.removeFailure,
-            sendFailure: loaded.sendFailure,
-            answerFailure: loaded.answerFailure,
-            evaluationFailure: loaded.evaluationFailure,
-            canSend: orgUnitScope.canWriteAt(loaded.record.orgUnitId),
-            employeeId: employeeId,
-          ),
-      },
+    return BlocListener<TrainingDetailBloc, TrainingDetailState>(
+      listenWhen: (previous, current) => current is TrainingDetailDiscarded,
+      listener: (context, state) => context.go(Routes.training),
+      child: Scaffold(
+        body: switch (state) {
+          TrainingDetailDiscarded() => const SizedBox.shrink(),
+          TrainingDetailLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
+          TrainingDetailUnavailable(isMissing: true) => PlatformEmptyState.noneExist(
+              key: missingKey,
+              title: 'No such Training record',
+              message: 'Nothing is recorded at this address. It may have been removed, or '
+                  'the address may be wrong.',
+              icon: Icons.search_off_outlined,
+              actionLabel: 'Back to Training records',
+              actionKey: backKey,
+              onAction: () => context.go(Routes.training),
+            ),
+          TrainingDetailUnavailable(message: final message) => PlatformFailureState(
+              key: failedKey,
+              title: 'The Training record could not be read',
+              message: message,
+              retryKey: retryKey,
+              onRetry: () => context.read<TrainingDetailBloc>().add(TrainingDetailRequested(trainingRecordId)),
+            ),
+          TrainingDetailLoaded loaded => _Loaded(
+              record: loaded.record,
+              isWriting: loaded.isWriting,
+              removeFailure: loaded.removeFailure,
+              sendFailure: loaded.sendFailure,
+              answerFailure: loaded.answerFailure,
+              evaluationFailure: loaded.evaluationFailure,
+              discardFailure: loaded.discardFailure,
+              canSend: orgUnitScope.canWriteAt(loaded.record.orgUnitId),
+              employeeId: employeeId,
+            ),
+        },
+      ),
     );
   }
 }
@@ -134,6 +155,7 @@ class _Loaded extends StatelessWidget {
     required this.sendFailure,
     required this.answerFailure,
     required this.evaluationFailure,
+    required this.discardFailure,
     required this.canSend,
     required this.employeeId,
   });
@@ -144,6 +166,7 @@ class _Loaded extends StatelessWidget {
   final String? sendFailure;
   final String? answerFailure;
   final String? evaluationFailure;
+  final String? discardFailure;
   final bool canSend;
   final String? employeeId;
 
@@ -153,6 +176,10 @@ class _Loaded extends StatelessWidget {
     final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final trainerName = record.trainerName;
     final objective = record.objective;
+    // A draft is only ever shown to a caller who could send it; a sent record
+    // is shown to everybody, so its Trainee list is changed only by one who can
+    // correct it (the server's own gate, asked again on every write).
+    final canChangeTrainees = record.isDraft || canSend;
     return Center(
       child: AppPageFrame(
         maxWidth: TrainingDetailScreen.maxWidth,
@@ -211,6 +238,37 @@ class _Loaded extends StatelessWidget {
                   ),
                 ),
             ],
+            if (canSend) ...[
+              const SizedBox(height: Spacing.md),
+              Wrap(
+                spacing: Spacing.sm,
+                runSpacing: Spacing.sm,
+                children: [
+                  OutlinedButton.icon(
+                    key: TrainingDetailScreen.correctKey,
+                    onPressed: isWriting ? null : () => TrainingRaiseDialog.openCorrection(context, record),
+                    icon: const Icon(Icons.rule_outlined),
+                    label: const Text('Correct record'),
+                  ),
+                  if (record.isDraft)
+                    OutlinedButton.icon(
+                      key: TrainingDetailScreen.discardKey,
+                      onPressed: isWriting ? null : () => _discard(context),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Discard draft'),
+                    ),
+                ],
+              ),
+              if (discardFailure != null)
+                Padding(
+                  key: TrainingDetailScreen.discardFailureKey,
+                  padding: const EdgeInsets.only(top: Spacing.sm),
+                  child: Text(
+                    discardFailure!,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                  ),
+                ),
+            ],
             const SizedBox(height: Spacing.lg),
             Card(
               margin: EdgeInsets.zero,
@@ -250,7 +308,7 @@ class _Loaded extends StatelessWidget {
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
-                if (record.isDraft)
+                if (canChangeTrainees)
                   OutlinedButton.icon(
                     key: TrainingDetailScreen.addTraineeKey,
                     onPressed: isWriting
@@ -323,7 +381,7 @@ class _Loaded extends StatelessWidget {
                         ),
                     ],
                   ),
-                  trailing: record.isDraft
+                  trailing: canChangeTrainees
                       ? IconButton(
                           key: TrainingDetailScreen.removeTraineeKey(trainee.id),
                           tooltip: 'Remove ${trainee.employeeName}',
@@ -366,6 +424,35 @@ class _Loaded extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Asks before discarding: a draft that goes takes its Trainees with it, and
+/// it cannot be brought back. Cancel issues nothing.
+Future<void> _discard(BuildContext context) async {
+  final bloc = context.read<TrainingDetailBloc>();
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Discard this draft?'),
+      content: const Text(
+        'The draft and the Trainees listed on it will be deleted, and it cannot be brought back. '
+        'Nobody has been asked about it yet.',
+      ),
+      actions: [
+        TextButton(
+          key: TrainingDetailScreen.discardCancelKey,
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: TrainingDetailScreen.discardConfirmKey,
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Discard'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed ?? false) bloc.add(const TrainingRecordDiscarded());
 }
 
 /// The record's reading of its Trainees' answers. Four different sentences

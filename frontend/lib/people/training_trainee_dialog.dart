@@ -1,4 +1,4 @@
-/// Adding a Trainee to a draft Training record (issue #288, ADR-0043): one
+/// Adding a Trainee to a Training record, draft or sent (issues #288 and #291, ADR-0043): one
 /// Employee picked from the Directory. The picker is an `AppSearchField`
 /// (AGENTS.md §7, ADR-0023) — the Directory is a set nobody can scan — and it
 /// defaults to the record's own Org Unit's Employees, the common case, with a
@@ -9,7 +9,7 @@
 ///
 /// The submit button stays shut until an Employee is picked, and a failed
 /// read blocks it too (the field reports no pick). A server refusal (403, 404,
-/// or the 409s for a duplicate, a departed Employee and a sent record) is
+/// or the 409s for a duplicate and a departed Employee) is
 /// rendered inside the dialog, which stays open. Opened with `showDialog` and
 /// an explicit Bloc hand-off, as every dialog in this Module is.
 library;
