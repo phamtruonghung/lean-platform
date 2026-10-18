@@ -4,7 +4,7 @@
  * `./service`, `./plant`, `./middleware`, `./directory`, `./authorization`,
  * `./job-roles`, `./errors` or `./skills` directly.
  *
- * `router` combines eight route files under the one `/api/people` mount:
+ * `router` combines its route files under the one `/api/people` mount:
  * routes.js (Accounts, issue #6), plant-routes.js (Sites and the Org Unit
  * tree, issue #7), directory-routes.js (the Employee directory, issue #9,
  * plus Org Unit assignments, issue #10), job-role-routes.js (the job role
@@ -12,7 +12,8 @@
  * catalogue, an Employee holding a skill, and skill coverage, issue #11),
  * attendance-routes.js (the attendance sheet — one per shift instance,
  * pre-filled, recorded, confirmed and corrected, plus the absence reason
- * catalogue, issue #249), and — issue #252 — cost-rate-routes.js and
+ * catalogue, issue #249), leave-requests-routes.js (an Employee's request for
+ * time off and a supervisor's decision on it, issue #265), and — issue #252 — cost-rate-routes.js and
  * product-cost-routes.js, the two catalogues that maintain the prices the
  * baseline's cost views already resolve through `resolve_cost_rate` and
  * `product_standard_cost`. Those two live in this Module rather than one of
@@ -225,6 +226,7 @@ const directoryRoutes = require('./directory-routes');
 const jobRoleRoutes = require('./job-role-routes');
 const skillRoutes = require('./skill-routes');
 const attendanceRoutes = require('./attendance-routes');
+const leaveRequestRoutes = require('./leave-requests-routes');
 const costRateRoutes = require('./cost-rate-routes');
 const productCostRoutes = require('./product-cost-routes');
 const floorRoutes = require('./floor-routes');
@@ -251,6 +253,7 @@ router.use(directoryRoutes);
 router.use(jobRoleRoutes);
 router.use(skillRoutes);
 router.use(attendanceRoutes);
+router.use(leaveRequestRoutes);
 router.use(costRateRoutes);
 router.use(productCostRoutes);
 

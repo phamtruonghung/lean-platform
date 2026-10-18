@@ -81,6 +81,12 @@ import '../people/employee_detail_bloc.dart';
 import '../people/employee_detail_screen.dart';
 import '../people/job_roles_bloc.dart';
 import '../people/job_roles_screen.dart';
+import '../people/leave_request.dart';
+import '../people/leave_request_cancel_dialog.dart';
+import '../people/leave_request_decision_dialog.dart';
+import '../people/leave_request_form_dialog.dart';
+import '../people/leave_requests_bloc.dart';
+import '../people/leave_requests_screen.dart';
 import '../people/org_unit_admin_bloc.dart';
 import '../people/org_unit_picker_bloc.dart';
 import '../people/org_units_screen.dart';
@@ -186,6 +192,11 @@ abstract final class Routes {
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
   static const String attendance = '/attendance';
+
+  /// Leave requests (issue #265): asking for leave, and deciding what others
+  /// asked for. Its dialogs are addresses beneath it (`/new`,
+  /// `/:id/approve|reject|cancel`, ADR-0021).
+  static const String leaveRequests = '/leave-requests';
 
   /// The two cost catalogues (issue #252): the rates the plant costs an hour
   /// at, and what one unit of a Product is costed at. Addressed at the
@@ -750,6 +761,153 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 child: SkillsScreen(isAdmin: account.account.role == Roles.admin),
               );
             },
+          ),
+          // Leave requests (issue #265). Offered to every approved Account —
+          // anyone may ask for leave. The "To decide" view is offered only to
+          // an administrator or a holder of an edit Grant somewhere
+          // (`canWriteSomewhere`, which is true for `everywhere`); whether a
+          // given row may be decided or cancelled is the server's answer on
+          // the row. A `ShellRoute` so `LeaveRequestsBloc` is created once and
+          // shared by the Screen and its four dialogs (ADR-0021). A decision
+          // address starts the Bloc in "To decide", so a refresh on
+          // `/leave-requests/:id/approve` still finds its request.
+          ShellRoute(
+            builder: (context, state, child) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              final path = state.uri.path;
+              final deciding = account.account.orgUnitScope.canWriteSomewhere &&
+                  (path.endsWith('/approve') || path.endsWith('/reject'));
+              return BlocProvider<LeaveRequestsBloc>(
+                create: (context) => LeaveRequestsBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(
+                    LeaveRequestsStarted(
+                      view: deciding ? LeaveRequestView.toDecide : LeaveRequestView.mine,
+                    ),
+                  ),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: Routes.leaveRequests,
+                builder: (context, state) {
+                  final account = context.watch<AccountBloc>().state;
+                  if (account is! AccountApproved) return const SizedBox.shrink();
+                  return LeaveRequestsScreen(canDecide: account.account.orgUnitScope.canWriteSomewhere);
+                },
+                routes: [
+                  // Each dialog reads the Bloc through a `BlocBuilder` inside its
+                  // own builder: a `DialogRoute` keeps the builder it was
+                  // created with, so a state captured in `pageBuilder` would
+                  // leave a dialog opened by address stuck on its loading
+                  // placeholder. They resolve once, when the list first loads
+                  // (`buildWhen`): a decision or cancellation changes the row
+                  // under the dialog, which must stay put to close itself.
+                  GoRoute(
+                    path: 'new',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) => BlocBuilder<LeaveRequestsBloc, LeaveRequestsState>(
+                        buildWhen: (before, _) => before is! LeaveRequestsLoaded,
+                        builder: (context, list) {
+                          if (list is! LeaveRequestsLoaded) {
+                            return const AlertDialog(
+                              key: LeaveRequestFormDialog.loadingKey,
+                              content: SizedBox(
+                                height: 80,
+                                child: Center(child: CircularProgressIndicator()),
+                              ),
+                            );
+                          }
+                          return const LeaveRequestFormDialog();
+                        },
+                      ),
+                    ),
+                  ),
+                  for (final action in const ['approve', 'reject'])
+                    GoRoute(
+                      path: ':id/$action',
+                      pageBuilder: (context, state) {
+                        final id = state.pathParameters['id']!;
+                        return DialogPage<void>(
+                          key: state.pageKey,
+                          builder: (dialogContext) => BlocBuilder<LeaveRequestsBloc, LeaveRequestsState>(
+                            buildWhen: (before, _) => before is! LeaveRequestsLoaded,
+                            builder: (context, list) {
+                              if (list is! LeaveRequestsLoaded) {
+                                return const AlertDialog(
+                                  key: LeaveRequestDecisionDialog.loadingKey,
+                                  content: SizedBox(
+                                    height: 80,
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                                );
+                              }
+                              final request = list.requestById(id);
+                              if (request == null || !request.canDecide) {
+                                return AlertDialog(
+                                  key: LeaveRequestDecisionDialog.notFoundKey,
+                                  content: const Text('This leave request is not one you can decide.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(dialogContext).pop(),
+                                      child: const Text('Back'),
+                                    ),
+                                  ],
+                                );
+                              }
+                              return LeaveRequestDecisionDialog(
+                                request: request,
+                                approve: action == 'approve',
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  GoRoute(
+                    path: ':id/cancel',
+                    pageBuilder: (context, state) {
+                      final id = state.pathParameters['id']!;
+                      return DialogPage<void>(
+                        key: state.pageKey,
+                        builder: (dialogContext) => BlocBuilder<LeaveRequestsBloc, LeaveRequestsState>(
+                          buildWhen: (before, _) => before is! LeaveRequestsLoaded,
+                          builder: (context, list) {
+                            if (list is! LeaveRequestsLoaded) {
+                              return const AlertDialog(
+                                key: LeaveRequestCancelDialog.loadingKey,
+                                content: SizedBox(
+                                  height: 80,
+                                  child: Center(child: CircularProgressIndicator()),
+                                ),
+                              );
+                            }
+                            final request = list.requestById(id);
+                            if (request == null || !request.canCancel) {
+                              return AlertDialog(
+                                key: LeaveRequestCancelDialog.notFoundKey,
+                                content: const Text('This leave request cannot be cancelled.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(dialogContext).pop(),
+                                    child: const Text('Back'),
+                                  ),
+                                ],
+                              );
+                            }
+                            return LeaveRequestCancelDialog(request: request);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
           // The two cost catalogues (issue #252): the rates an hour is costed
           // at, and what one unit of a Product is costed at. Not role-gated

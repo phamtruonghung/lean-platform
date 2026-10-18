@@ -172,6 +172,10 @@ const _pages = <_Page>[
   // default row bound holds. Audited at the fixture Employee's own address.
   _Page('/directory/7/work-hours', 'lib/people/worked_hours_screen.dart',
       'Worked hours', 'The confirmed hours this Employee actually worked'),
+  // Leave requests (issue #265). Rows are plain padded rows inside the list
+  // card, so the default row bound holds.
+  _Page('/leave-requests', 'lib/people/leave_requests_screen.dart', 'Leave requests',
+      'Ask to be away from work'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this
@@ -293,6 +297,9 @@ FakeWire _wire() => FakeWire(
       // The attendance-to-confirm worklist (issue #250), so the page renders
       // an entry rather than the empty state.
       attendanceToConfirm: [attendanceToConfirmEntryJson('501')],
+      // Leave requests (issue #265), so the page renders a row rather than
+      // the empty state.
+      leaveRequestsMine: [leaveRequestJson('1')],
       // The per-Employee worked-hours summary (issue #263), so the page
       // renders its day rows rather than the empty state and the row
       // assertion actually runs. Employee '7' is the fixture Employee above.

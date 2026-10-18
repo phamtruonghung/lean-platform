@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 
 import 'people/assignee_candidate.dart';
 import 'people/attendance.dart';
+import 'people/leave_request.dart';
 import 'people/worked_hours.dart';
 import 'people/cost_rate.dart';
 import 'people/employee.dart';
@@ -1394,10 +1395,14 @@ class PeopleApi {
   /// `GET /api/people/absence-reasons`) — an open read, mirroring
   /// [fetchSkills]/[fetchJobRoles] exactly: shared reference data every Site
   /// draws from.
-  Future<List<AbsenceReason>> fetchAbsenceReasons(String accessToken) async {
+  ///
+  /// [requestable] narrows to the leave types an Employee may ask for (issue
+  /// #265, `?requestable=true`).
+  Future<List<AbsenceReason>> fetchAbsenceReasons(String accessToken, {bool requestable = false}) async {
     const path = '/api/people/absence-reasons';
+    final uri = Uri.parse(path).replace(queryParameters: requestable ? {'requestable': 'true'} : null);
     final response = await _send(
-      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
       path,
     );
     try {
@@ -1500,6 +1505,79 @@ class PeopleApi {
     );
     try {
       return EmployeeWorkedHours.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// The leave requests the caller may see (issue #265,
+  /// `GET /api/people/leave-requests?view=mine|to-decide`), newest first.
+  Future<List<LeaveRequest>> fetchLeaveRequests(
+    String accessToken, {
+    required LeaveRequestView view,
+    String? status,
+  }) async {
+    const path = '/api/people/leave-requests';
+    final uri = Uri.parse(path).replace(queryParameters: {'view': view.wire, 'status': ?status});
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final request in body['leaveRequests'] as List<dynamic>)
+          LeaveRequest.fromJson(request as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Asks for leave (issue #265, `POST /api/people/leave-requests`) for the
+  /// caller's own Employee. A refusal (400/403/409) carries the server's
+  /// `message`, which the exception exposes.
+  Future<LeaveRequest> submitLeaveRequest(
+    String accessToken, {
+    required String absenceReasonId,
+    required String startsOn,
+    required String endsOn,
+    String? note,
+  }) =>
+      _leaveRequestWrite(
+        accessToken,
+        '/api/people/leave-requests',
+        {'absenceReasonId': absenceReasonId, 'startsOn': startsOn, 'endsOn': endsOn, 'note': ?note},
+      );
+
+  /// Approves a pending leave request, with an optional note.
+  Future<LeaveRequest> approveLeaveRequest(String accessToken, String id, {String? note}) =>
+      _leaveRequestWrite(accessToken, '/api/people/leave-requests/$id/approve', {'note': ?note});
+
+  /// Rejects a pending leave request, with an optional note.
+  Future<LeaveRequest> rejectLeaveRequest(String accessToken, String id, {String? note}) =>
+      _leaveRequestWrite(accessToken, '/api/people/leave-requests/$id/reject', {'note': ?note});
+
+  /// Cancels a leave request.
+  Future<LeaveRequest> cancelLeaveRequest(String accessToken, String id) =>
+      _leaveRequestWrite(accessToken, '/api/people/leave-requests/$id/cancel', const {});
+
+  Future<LeaveRequest> _leaveRequestWrite(
+    String accessToken,
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(body),
+      ),
+      path,
+    );
+    try {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return LeaveRequest.fromJson(decoded['leaveRequest'] as Map<String, dynamic>);
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }

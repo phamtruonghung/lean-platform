@@ -133,6 +133,7 @@ class AbsenceReason {
     required this.isPlanned,
     required this.countsAsAbsenteeism,
     required this.isActive,
+    this.isRequestable = false,
   });
 
   final String id;
@@ -142,6 +143,10 @@ class AbsenceReason {
   final bool countsAsAbsenteeism;
   final bool isActive;
 
+  /// Whether this reason is a leave type an Employee may ask for (issue
+  /// #265) — Annual leave is, Sickness is not.
+  final bool isRequestable;
+
   factory AbsenceReason.fromJson(Map<String, dynamic> json) => AbsenceReason(
         id: json['id'].toString(),
         code: json['code'] as String,
@@ -149,6 +154,7 @@ class AbsenceReason {
         isPlanned: json['isPlanned'] == true,
         countsAsAbsenteeism: json['countsAsAbsenteeism'] == true,
         isActive: json['isActive'] == true,
+        isRequestable: json['isRequestable'] == true,
       );
 }
 
