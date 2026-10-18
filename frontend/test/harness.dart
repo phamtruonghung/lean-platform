@@ -9589,6 +9589,68 @@ class FakeFloorDeviceGateway implements FloorDeviceGateway {
   final String? deviceCredential;
 }
 
+/// The API's own sign-in endpoints (issue #269), faked at the wire, layered
+/// over a [FakeWire] that answers everything else. Records what the app sent:
+/// every request as `METHOD path` in [requests], the `authorization` header
+/// each non-auth request carried in [bearers], and the logout's in
+/// [logoutBearers].
+class FakeAuthApi {
+  FakeAuthApi({
+    this.mode = 'local',
+    this.loginStatus = 200,
+    this.loginMessage = 'Email or password is not recognised.',
+    this.token = 'opaque-token',
+    this.logoutStatus = 204,
+    FakeWire? wire,
+  }) : wire = wire ?? FakeWire();
+
+  final FakeWire wire;
+  String mode;
+  int loginStatus;
+  String loginMessage;
+  String token;
+  int logoutStatus;
+
+  final List<String> requests = [];
+  final List<String?> bearers = [];
+  final List<String?> logoutBearers = [];
+
+  http.Client get client {
+    final inner = wire.client;
+    return MockClient((request) async {
+      final path = request.url.path;
+      requests.add('${request.method} $path');
+      if (path == '/api/auth/mode') {
+        return http.Response(jsonEncode({'password': mode}), 200);
+      }
+      if (path == '/api/auth/login') {
+        if (loginStatus != 200) {
+          return http.Response(jsonEncode({'message': loginMessage}), loginStatus);
+        }
+        return http.Response(
+          jsonEncode({
+            'token': token,
+            'expiresAt': DateTime.now().add(const Duration(hours: 8)).toUtc().toIso8601String(),
+            'account': {'email': (jsonDecode(request.body) as Map)['email']},
+          }),
+          200,
+        );
+      }
+      if (path == '/api/auth/logout') {
+        logoutBearers.add(request.headers['authorization']);
+        return http.Response('', logoutStatus);
+      }
+      bearers.add(request.headers['authorization']);
+      // MockClient hands over an already-finalized request, so the pass-through
+      // sends a fresh copy of it.
+      final forwarded = http.Request(request.method, request.url)
+        ..headers.addAll(request.headers)
+        ..bodyBytes = request.bodyBytes;
+      return http.Response.fromStream(await inner.send(forwarded));
+    });
+  }
+}
+
 http.Client meClient(Map<String, dynamic> Function() body, {int status = 200}) {
   return MockClient((request) async => http.Response(jsonEncode(body()), status));
 }
@@ -9598,7 +9660,7 @@ http.Client meClient(Map<String, dynamic> Function() body, {int status = 200}) {
 /// then drives frames itself with `tester.pump()`.
 Future<void> pumpApp(
   WidgetTester tester, {
-  required FakeAuthGateway gateway,
+  required AuthGateway gateway,
   required http.Client client,
   FloorDeviceGateway? floorDeviceGateway,
   String? initialLocation,
