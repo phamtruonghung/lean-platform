@@ -1691,6 +1691,7 @@ Map<String, dynamic> absenceReasonJson(
   bool isPlanned = false,
   bool countsAsAbsenteeism = true,
   bool isActive = true,
+  bool isRequestable = false,
 }) =>
     {
       'id': id ?? code,
@@ -1699,6 +1700,44 @@ Map<String, dynamic> absenceReasonJson(
       'isPlanned': isPlanned,
       'countsAsAbsenteeism': countsAsAbsenteeism,
       'isActive': isActive,
+      'isRequestable': isRequestable,
+    };
+
+/// One `LeaveRequest` as `GET /api/people/leave-requests` sends it (issue
+/// #265). Ids are strings, as node-postgres sends BIGINTs.
+Map<String, dynamic> leaveRequestJson(
+  String id, {
+  String employeeName = 'Ada Lovelace',
+  String leaveTypeId = 'HOL',
+  String leaveTypeName = 'Annual leave',
+  String startsOn = '2026-06-01',
+  String endsOn = '2026-06-03',
+  int days = 3,
+  String? note,
+  String status = 'pending',
+  String? decisionNote,
+  bool canDecide = false,
+  bool canCancel = false,
+}) =>
+    {
+      'id': id,
+      'employee': {'id': '7', 'employeeNo': 'E007', 'displayName': employeeName},
+      'absenceReason': {'id': leaveTypeId, 'code': leaveTypeId, 'name': leaveTypeName},
+      'orgUnit': {'id': '10', 'name': 'Line 1'},
+      'startsOn': startsOn,
+      'endsOn': endsOn,
+      'days': days,
+      'note': note,
+      'status': status,
+      'requestedBy': {'id': '3', 'displayName': employeeName},
+      'requestedAt': '2026-05-01T08:00:00.000Z',
+      'decidedBy': null,
+      'decidedAt': null,
+      'decisionNote': decisionNote,
+      'cancelledBy': null,
+      'cancelledAt': null,
+      'canDecide': canDecide,
+      'canCancel': canCancel,
     };
 
 /// One row of `GET /api/people/attendance-to-confirm`
@@ -2207,6 +2246,11 @@ class FakeWire {
     List<Map<String, dynamic>>? attendanceToConfirm,
     this.attendanceToConfirmStatus = 200,
     this.attendanceToConfirmMessage = 'The attendance-to-confirm worklist is unavailable.',
+    List<Map<String, dynamic>>? leaveRequestsMine,
+    List<Map<String, dynamic>>? leaveRequestsToDecide,
+    this.leaveRequestsStatus = 200,
+    this.leaveRequestWriteStatus = 200,
+    this.leaveRequestWriteMessage = 'That leave request could not be saved.',
     Map<String, dynamic>? employeeWorkedHours,
     this.employeeWorkedHoursStatus = 200,
     this.employeeWorkedHoursMessage = 'The worked-hours summary is unavailable.',
@@ -2422,6 +2466,8 @@ class FakeWire {
               absenceReasonJson('HOL', 'Annual leave', isPlanned: true, countsAsAbsenteeism: false),
             ],
         attendanceToConfirm = attendanceToConfirm ?? [],
+        leaveRequestsMine = leaveRequestsMine ?? [],
+        leaveRequestsToDecide = leaveRequestsToDecide ?? [],
         employeeWorkedHours = employeeWorkedHours ??
             {'days': const [], 'totals': {'scheduledMinutes': 0, 'workedMinutes': 0, 'overtimeMinutes': 0}},
         jobPlans = jobPlans ?? [],
@@ -3982,6 +4028,27 @@ class FakeWire {
   /// wire — so a test can assert exactly which `orgUnitId`/`from`/`to`
   /// filters were actually sent, not merely that a request happened.
   final List<Map<String, String>> attendanceToConfirmRequests = [];
+
+  /// `GET /api/people/leave-requests` (issue #265) — the two views, empty by
+  /// default. A successful write updates them the way the real list would
+  /// change: a submitted request joins "mine", a decision or cancellation
+  /// changes the row's status and clears its action flags.
+  List<Map<String, dynamic>> leaveRequestsMine;
+  List<Map<String, dynamic>> leaveRequestsToDecide;
+  int leaveRequestsStatus;
+
+  /// The status (and `{message}`) every leave request `POST` answers with;
+  /// 200 means the write succeeds (a submit answers 201).
+  int leaveRequestWriteStatus;
+  String leaveRequestWriteMessage;
+
+  /// Every list read's query string, and every write's path and decoded body,
+  /// in the order they reached the wire.
+  final List<Map<String, String>> leaveRequestReads = [];
+  final List<(String, Map<String, dynamic>)> leaveRequestWrites = [];
+
+  /// Every `GET /api/people/absence-reasons` query string.
+  final List<Map<String, String>> absenceReasonRequests = [];
 
   /// `GET /api/people/employees/:employeeId/work-hours` (issue #263) — the
   /// per-Employee worked-hours summary, empty by default so a test that never
@@ -7995,13 +8062,79 @@ class FakeWire {
           }
         }
         if (path == '/api/people/absence-reasons') {
+          absenceReasonRequests.add(request.url.queryParameters);
           if (absenceReasonsStatus != 200) {
             return http.Response(
               jsonEncode({'message': 'The absence reason catalogue is unavailable.'}),
               absenceReasonsStatus,
             );
           }
-          return http.Response(jsonEncode({'absenceReasons': absenceReasons}), 200);
+          final requestableOnly = request.url.queryParameters['requestable'] == 'true';
+          return http.Response(
+            jsonEncode({
+              'absenceReasons': [
+                for (final r in absenceReasons)
+                  if (!requestableOnly || r['isRequestable'] == true) r,
+              ],
+            }),
+            200,
+          );
+        }
+        // /api/people/leave-requests (issue #265).
+        if (path.startsWith('/api/people/leave-requests')) {
+          if (request.method == 'GET') {
+            leaveRequestReads.add(request.url.queryParameters);
+            if (leaveRequestsStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': 'Leave requests are unavailable.'}),
+                leaveRequestsStatus,
+              );
+            }
+            final rows =
+                request.url.queryParameters['view'] == 'to-decide' ? leaveRequestsToDecide : leaveRequestsMine;
+            return http.Response(jsonEncode({'leaveRequests': rows}), 200);
+          }
+          final body = request.body.isEmpty
+              ? <String, dynamic>{}
+              : jsonDecode(request.body) as Map<String, dynamic>;
+          leaveRequestWrites.add((path, body));
+          if (leaveRequestWriteStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': leaveRequestWriteMessage}),
+              leaveRequestWriteStatus,
+            );
+          }
+          final segments = path.split('/');
+          if (segments.length == 4) {
+            final created = leaveRequestJson(
+              'new-${leaveRequestsMine.length + 1}',
+              note: body['note'] as String?,
+              startsOn: body['startsOn'] as String,
+              endsOn: body['endsOn'] as String,
+              canCancel: true,
+            );
+            leaveRequestsMine = [created, ...leaveRequestsMine];
+            return http.Response(jsonEncode({'leaveRequest': created}), 201);
+          }
+          final id = segments[4];
+          final newStatus = switch (segments[5]) {
+            'approve' => 'approved',
+            'reject' => 'rejected',
+            _ => 'cancelled',
+          };
+          Map<String, dynamic> settle(Map<String, dynamic> row) => row['id'] == id
+              ? {...row, 'status': newStatus, 'decisionNote': body['note'], 'canDecide': false, 'canCancel': false}
+              : row;
+          leaveRequestsMine = [for (final r in leaveRequestsMine) settle(r)];
+          leaveRequestsToDecide = [
+            for (final r in leaveRequestsToDecide)
+              if (r['id'] != id || newStatus == 'cancelled') settle(r),
+          ];
+          final all = [...leaveRequestsMine, ...leaveRequestsToDecide];
+          return http.Response(
+            jsonEncode({'leaveRequest': all.firstWhere((r) => r['id'] == id, orElse: () => leaveRequestJson(id, status: newStatus))}),
+            200,
+          );
         }
         if (path == '/api/people/attendance-to-confirm') {
           attendanceToConfirmRequests.add(request.url.queryParameters);

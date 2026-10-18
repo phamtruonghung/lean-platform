@@ -172,6 +172,17 @@ leaves the sum incomplete, which is why an unconfirmed shift makes the rate
 `no_data` rather than silently understating it.
 _Avoid_: Man-hours, FTE hours
 
+**Leave request**:
+An Employee's request for a run of calendar days off, naming an absence reason
+that is marked requestable. It starts pending and is approved or rejected by
+whoever holds an edit Grant reaching the Org Unit the Employee worked at when
+they asked, or cancelled by the one who submitted it (or the Employee) while
+still pending. Nobody decides their own, an administrator included. It is
+readable only by the people who may act on it, because its note may carry
+health detail, which makes it an exception to the open Employee directory.
+_Avoid_: Ticket, leave application, time-off request, holiday request,
+absence request
+
 ### The work
 
 **Asset**:

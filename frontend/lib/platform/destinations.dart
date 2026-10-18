@@ -229,6 +229,15 @@ const List<Destination> platformDestinations = [
     path: Routes.attendance,
     group: DestinationGroupNames.people,
   ),
+  // Leave requests (issue #265), offered to every active Account: anyone may
+  // ask for leave. The "To decide" view inside the Screen is the part gated, by
+  // an edit Grant somewhere or the administrator role.
+  Destination(
+    label: 'Leave requests',
+    icon: Icons.beach_access_outlined,
+    path: Routes.leaveRequests,
+    group: DestinationGroupNames.people,
+  ),
   // The two cost catalogues (issue #252) — the rates an hour is costed at, and
   // what one unit of a Product is costed at. Filed under **People**, the group
   // that names the Module behind them (ADR-0020): both live in the People

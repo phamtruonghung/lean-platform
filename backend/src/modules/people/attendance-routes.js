@@ -189,7 +189,8 @@ router.get('/attendance-to-confirm', authenticate, requireActive, async (req, re
 router.get('/absence-reasons', authenticate, requireActive, async (req, res, next) => {
   try {
     const includeInactive = req.query.includeInactive === 'true';
-    const absenceReasons = await attendance.listAbsenceReasons({ includeInactive });
+    const requestable = req.query.requestable === 'true';
+    const absenceReasons = await attendance.listAbsenceReasons({ includeInactive, requestable });
     res.json({ absenceReasons });
   } catch (error) {
     handleError(error, res, next);

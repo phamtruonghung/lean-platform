@@ -419,14 +419,20 @@ function toAbsenceReason(row) {
     name: row.name,
     isPlanned: row.is_planned,
     countsAsAbsenteeism: row.counts_as_absenteeism,
-    isActive: row.is_active
+    isActive: row.is_active,
+    // Whether an Employee may ask for this reason in a leave request (issue
+    // #265): Late arrival or Lay-off are recorded about someone, not requested.
+    isRequestable: row.is_requestable
   };
 }
 
-async function listAbsenceReasons({ includeInactive } = {}) {
-  const whereClause = includeInactive ? '' : 'WHERE is_active = TRUE';
+async function listAbsenceReasons({ includeInactive, requestable } = {}) {
+  const conditions = [];
+  if (!includeInactive) conditions.push('is_active = TRUE');
+  if (requestable) conditions.push('is_requestable = TRUE');
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const { rows } = await getPool().query(
-    `SELECT id, code, name, is_planned, counts_as_absenteeism, is_active
+    `SELECT id, code, name, is_planned, counts_as_absenteeism, is_active, is_requestable
        FROM absence_reasons ${whereClause} ORDER BY name`
   );
   return rows.map(toAbsenceReason);
@@ -435,7 +441,7 @@ async function listAbsenceReasons({ includeInactive } = {}) {
 async function getAbsenceReason(id) {
   if (id === null) throw notFound('Absence reason');
   const { rows } = await getPool().query(
-    `SELECT id, code, name, is_planned, counts_as_absenteeism, is_active
+    `SELECT id, code, name, is_planned, counts_as_absenteeism, is_active, is_requestable
        FROM absence_reasons WHERE id = $1`,
     [id]
   );
