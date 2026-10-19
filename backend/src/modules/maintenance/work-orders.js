@@ -507,6 +507,9 @@ async function completeWorkOrder(workOrderId, { note } = {}, actor = {}) {
       // moved on, or neither. Only a work order that came from a schedule does
       // this; a manually raised one leaves every schedule alone.
       //
+      // "Today" below is the Site's local date through the Work order's Org Unit
+      // (ADR-0048), not the database session's UTC date.
+      //
       // `last_completed_on` records when the work was actually done, on both
       // clocks. The next due point depends on the schedule's own `anchor` and
       // on which interval it carries:
@@ -536,11 +539,11 @@ async function completeWorkOrder(workOrderId, { note } = {}, actor = {}) {
 
         await client.query(
           `UPDATE pm_schedules
-              SET last_completed_on = CURRENT_DATE,
+              SET last_completed_on = org_unit_today($5::bigint),
                   next_due_on = CASE
                     WHEN $2::int IS NULL THEN next_due_on
-                    WHEN anchor = 'completed' THEN CURRENT_DATE + $2::int
-                    ELSE COALESCE(next_due_on, CURRENT_DATE) + $2::int
+                    WHEN anchor = 'completed' THEN org_unit_today($5::bigint) + $2::int
+                    ELSE COALESCE(next_due_on, org_unit_today($5::bigint)) + $2::int
                   END,
                   last_completed_meter = CASE
                     WHEN $3::numeric IS NULL THEN last_completed_meter
@@ -552,7 +555,7 @@ async function completeWorkOrder(workOrderId, { note } = {}, actor = {}) {
                     ELSE COALESCE(next_due_meter, $3::numeric) + $4::numeric
                   END
             WHERE id = $1`,
-          [row.pm_schedule_id, schedule.interval_days, accumulated, schedule.interval_meter]
+          [row.pm_schedule_id, schedule.interval_days, accumulated, schedule.interval_meter, row.org_unit_id]
         );
       }
 

@@ -307,3 +307,66 @@ test('a qualification expiring on the east default Org Unit date has lapsed ther
   assert.strictEqual(results.east.same_day, false);
   assert.strictEqual(results.east.still_current, false);
 });
+
+test('completing a PM Work order stamps last_completed_on and rolls next-due from the Site local date', async () => {
+  const { rows: [plan] } = await pool.query(
+    `INSERT INTO job_plans (code, name, work_type) VALUES ($1, 'Site Today Plan 3', 'preventive') RETURNING id`,
+    [uniqueCode('JP')]
+  );
+  jobPlanIds.push(plan.id);
+
+  const results = {};
+  for (const [label, timezone] of [['east', EAST], ['west', WEST]]) {
+    const fixture = await insertSiteWithAsset(timezone);
+    const scheduleIds = [];
+    for (const anchor of ['completed', 'due']) {
+      // No next_due_on: the 'due' anchor falls back to today, the 'completed'
+      // anchor rolls from today - both are the Site local date.
+      const { rows: [schedule] } = await pool.query(
+        `INSERT INTO pm_schedules (code, name, asset_id, job_plan_id, interval_days, lead_time_days, anchor)
+         VALUES ($1, 'Site Today PM', $2, $3, 30, 0, $4) RETURNING id`,
+        [uniqueCode('PM'), fixture.assetId, plan.id, anchor]
+      );
+      pmScheduleIds.push(schedule.id);
+      scheduleIds.push(schedule.id);
+
+      const { rows: [workOrder] } = await pool.query(
+        `INSERT INTO work_orders
+           (work_order_no, asset_id, summary, work_type, status, actual_start, pm_schedule_id)
+         VALUES ($1, $2, 'Site Today PM job', 'preventive', 'in_progress', now(), $3) RETURNING id`,
+        [uniqueCode('WO-'), fixture.assetId, schedule.id]
+      );
+      workOrderIds.push(workOrder.id);
+      const response = await fetch(`${base}/api/maintenance/work-orders/${workOrder.id}/complete`, {
+        method: 'POST',
+        headers: { ...admin.token, 'content-type': 'application/json' },
+        body: JSON.stringify({ note: 'done' })
+      });
+      assert.strictEqual(response.status, 200, await response.clone().text());
+    }
+    const { rows } = await pool.query(
+      `SELECT anchor,
+              to_char(last_completed_on, 'YYYY-MM-DD') AS last_completed_on,
+              to_char(next_due_on, 'YYYY-MM-DD') AS next_due_on
+         FROM pm_schedules WHERE id = ANY($1)`,
+      [scheduleIds]
+    );
+    const { rows: [plus30] } = await pool.query(
+      `SELECT to_char((now() AT TIME ZONE $1)::date + 30, 'YYYY-MM-DD') AS d`,
+      [timezone]
+    );
+    results[label] = { today: await localToday(timezone), rows, plus30: plus30.d };
+  }
+
+  for (const label of ['east', 'west']) {
+    const { today, rows, plus30 } = results[label];
+    assert.strictEqual(rows.length, 2);
+    for (const row of rows) {
+      assert.strictEqual(row.last_completed_on, today, `${label} ${row.anchor} last_completed_on`);
+      assert.strictEqual(row.next_due_on, plus30, `${label} ${row.anchor} next_due_on`);
+    }
+  }
+  // The two Sites are on different calendar dates, so a single UTC "today"
+  // could not have served both.
+  assert.notStrictEqual(results.east.today, results.west.today);
+});

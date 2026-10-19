@@ -66,6 +66,11 @@ If no Site can be resolved, "today" is the UTC date, which is what
   prefix is a year label and the application always supplies `assessed_on`.
 - `generate_shift_instances_ahead` still uses `CURRENT_DATE`; it is a nightly
   rollover job, not a per-row judgement, and is outside this decision.
-- Maintenance writes in `work-orders.js` (stamping `last_completed_on` and
-  rolling `next_due_on` when a PM is completed) are being changed separately;
-  they should use `org_unit_today(wo.org_unit_id)` as well.
+
+## Maintenance writes
+
+Completing a PM-raised Work order stamps `last_completed_on` and rolls
+`next_due_on` from `org_unit_today(wo.org_unit_id)`, the same Site-local date
+the PM views use to judge the schedule due. The only remaining `CURRENT_DATE`
+in `backend/src` was there; the rest are the deliberate exceptions above (all
+in migrations).
