@@ -15,7 +15,8 @@
 #
 # Two things a reviewer needs to know up front, both already true of this
 # repo's setup rather than invented here:
-#   - Sign-in is Supabase (ADR-0002). SUPABASE_URL/SUPABASE_ANON_KEY are baked
+#   - Sign-in defaults to Supabase (ADR-0002; production runs the "local"
+#     door instead, ADR-0051). SUPABASE_URL/SUPABASE_ANON_KEY are baked
 #     into the Flutter bundle at build time and have no local default, so on a
 #     clean checkout the app builds and serves fine but nobody can sign in
 #     until .env points at a real Supabase project.

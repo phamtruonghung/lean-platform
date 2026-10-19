@@ -7,6 +7,15 @@ membership in any role that has one. See
 [ADR-0004](./adr/0004-deny-all-rls-with-two-database-clients.md) for why this
 role exists at all rather than a per-table policy for Power BI.
 
+## Which database this describes
+
+Everything below describes a **Supabase** deployment (the session pooler,
+Supavisor usernames). Production (VIProd) is self-hosted PostgreSQL on LXC
+CT100 (ADR-0051), which has no pooler: there, `powerbi_reader` connects to
+CT100's Postgres directly. CT100's host, port and whether Power BI can reach
+it: not recorded. The role, its read-only grants and the password rule below
+apply to both.
+
 ## Connection string
 
 Use the Supabase **session pooler**, not the direct connection and not the

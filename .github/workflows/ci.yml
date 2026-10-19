@@ -22,12 +22,14 @@ jobs:
     # which is the Platform's one test seam. A stub here would prove the routes
     # are mounted and nothing about whether they can reach a database.
     services:
-      # Pinned to the major version we deploy to — Supabase Cloud runs
-      # PostgreSQL 17 — rather than a matrix spanning 16 and 17. Nothing we
-      # ship runs on 16, so 16 coverage buys nothing, and a matrix trains
-      # people to shrug at one red leg. (This image is 17.11, stock Postgres;
-      # Supabase Cloud is currently on 17.6 and its own build. Matching the
-      # major version closes the search_path-under-maintenance-operations gap
+      # Pinned to a single major version rather than a matrix spanning 16 and
+      # 17, so a matrix does not train people to shrug at one red leg. 17 was
+      # chosen to match Supabase Cloud, which still backs the home LXC 150
+      # deployment. Production (VIProd) is self-hosted PostgreSQL on CT100
+      # (ADR-0051), and its major version is not recorded in this repository:
+      # TO BE CONFIRMED - the pin should match CT100's major version. (This
+      # image is 17.11, stock Postgres; Supabase Cloud was on 17.6 and its own
+      # build. Matching the major version closes the search_path-under-maintenance-operations gap
       # that bit the baseline migration; it does not make this a Supabase
       # simulator.)
       postgres:
@@ -94,8 +96,9 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lean_platform_test
         run: npm run migrate
 
-      # sqdcp_maintenance() runs nightly in production via pg_cron (see
-      # migrations/1756000000001_schedule-maintenance.js), but until now no
+      # sqdcp_maintenance() runs nightly via pg_cron where that extension is available (see
+      # migrations/1756000000001_schedule-maintenance.js; whether CT100 has
+      # pg_cron is not recorded), but until now no
       # test or CI step had ever called it directly. It calls
       # refresh_sqdcp_rollups() and then ensure_time_partitions() for both
       # partitioned tables, so calling it here covers strictly more than the
