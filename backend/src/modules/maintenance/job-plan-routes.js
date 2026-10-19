@@ -35,12 +35,7 @@ const { notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-function requireAdmin(req, res, next) {
-  if (req.account.role !== 'admin') {
-    return res.status(403).json({ message: 'This action requires the administrator role.' });
-  }
-  return next();
-}
+const { requireAdmin } = require('./admin');
 
 // The shared catalogue: every plan by default, active-only when a caller asks
 // for that by name (`?includeInactive=false`). Only the exact string 'false'

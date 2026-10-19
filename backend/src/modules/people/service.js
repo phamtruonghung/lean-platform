@@ -417,6 +417,9 @@ function mapAccountWriteError(error) {
   if (error.code === '23505' && error.constraint === 'app_users_employee_id_key') {
     return httpError(409, 'This Employee is already linked to a different Account', EMPLOYEE_ALREADY_LINKED);
   }
+  if (error.code === '23505' && error.constraint === 'app_user_org_units_unique') {
+    return httpError(400, 'An Org Unit may be granted to an Account only once');
+  }
   return error;
 }
 
@@ -509,6 +512,14 @@ async function approveAccount(id, { role, grants, employeeId }, actingAccountId,
       // `qualityAuthority` in either direction — the two are independent.
       safetyAuthority: grant.safetyAuthority === true
     };
+  });
+
+  const seenOrgUnitIds = new Set();
+  parsedGrants.forEach((grant, index) => {
+    if (seenOrgUnitIds.has(grant.orgUnitId)) {
+      throw httpError(400, `grants[${index}].orgUnitId repeats an Org Unit already granted; name each Org Unit once`);
+    }
+    seenOrgUnitIds.add(grant.orgUnitId);
   });
 
   const parsedEmployeeId = parseOptionalEmployeeId(employeeId);

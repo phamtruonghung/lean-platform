@@ -360,6 +360,21 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
+// requireAdmin plus a stable machine-readable `code` beside the unchanged
+// sentence, so a client can match the refusal without matching its wording
+// (issue #252: every cost catalogue write refusal carries one).
+const ADMIN_ROLE_REQUIRED = 'ADMIN_ROLE_REQUIRED';
+
+function requireAdminWithCode(req, res, next) {
+  if (!isAdmin(req.account)) {
+    return res.status(403).json({
+      message: 'This action requires the administrator role.',
+      code: ADMIN_ROLE_REQUIRED
+    });
+  }
+  return next();
+}
+
 // "Must hold {read,write} scope on the Org Unit this route names" —
 // issue #8's own 403-vs-404 rule, settled in this order and no other:
 // existence first (plant.getOrgUnit's own 404 if the route's id names
@@ -456,6 +471,7 @@ module.exports = {
   grantedEntryPointIds,
   orgUnitScopeFor,
   requireAdmin,
+  requireAdminWithCode,
   requireOrgUnitScope,
   requireSiteScope,
   requireSiteAdmin

@@ -25,12 +25,7 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-function requireAdmin(req, res, next) {
-  if (req.account.role !== 'admin') {
-    return res.status(403).json({ message: 'This action requires the administrator role.' });
-  }
-  return next();
-}
+const { requireAdmin } = require('./admin');
 
 // The code named in the URL must exist before anything else — a clean 404,
 // even for an administrator, and even for a malformed id.

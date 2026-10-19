@@ -16,12 +16,7 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-function requireAdmin(req, res, next) {
-  if (req.account.role !== 'admin') {
-    return res.status(403).json({ message: 'This action requires the administrator role.' });
-  }
-  return next();
-}
+const { requireAdmin } = require('./admin');
 
 async function requireKnownBodyPart(req, res, next) {
   try {
