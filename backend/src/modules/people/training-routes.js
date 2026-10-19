@@ -43,7 +43,11 @@
  * linked to (`app_users.employee_id`). Not even an administrator holding an
  * edit Grant may answer for anyone — an answer is a person's own signature.
  * The order: the answer value (400), the Trainee row (404), whose it is (403),
- * a record not yet sent (404), then the write.
+ * a record not yet sent (404), then the write. The optional `signature`
+ * (#318) is `{ use: "stored" }` or `{ image }`, validated with the answer
+ * value (400, a decline carrying one included); `stored` resolves the caller's
+ * own current Signature and `image` writes a one-off row for the caller's own
+ * Employee, so no Signature id is ever taken from the request.
  */
 
 const express = require('express');
@@ -52,6 +56,7 @@ const authorization = require('./authorization');
 const plant = require('./plant');
 const directory = require('./directory');
 const training = require('./training');
+const { parseApplied } = require('./signatures');
 const { notFound, parseId, handleError, httpError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
@@ -242,6 +247,10 @@ router.post('/training/:id/send', authenticate, requireActive, async (req, res, 
 router.post('/training/trainees/:traineeId/answer', authenticate, requireActive, async (req, res, next) => {
   try {
     const answer = training.requireAnswer(req.body?.answer);
+    const applied = parseApplied(req.body?.signature);
+    if (applied !== null && answer === 'declined') {
+      throw httpError(400, 'a declined answer carries no Signature');
+    }
     const trainee = await training.findTraineeForAnswer(req.params.traineeId);
     if (!trainee) throw notFound('Trainee');
 
@@ -255,8 +264,27 @@ router.post('/training/trainees/:traineeId/answer', authenticate, requireActive,
     // so, like the detail read of a draft, it is a 404 and not a 409.
     if (trainee.recordStatus !== 'sent') throw notFound('Trainee');
 
-    const updated = await training.answerTrainee(req.account.id, trainee.id, answer);
+    const updated = await training.answerTrainee(
+      req.account.id,
+      req.account.employeeId,
+      trainee.id,
+      answer,
+      applied
+    );
     return res.json({ trainingRecord: updated });
+  } catch (error) {
+    return handleError(error, res, next);
+  }
+});
+
+// The Signature applied to a Trainee's answer, as the image itself. Under the
+// record's own read rule (any approved Account, ADR-0009 and ADR-0052): a
+// Signature is not a secret, and this is the only door that returns one.
+router.get('/training/trainees/:traineeId/signature', authenticate, requireActive, async (req, res, next) => {
+  try {
+    const image = await training.getTraineeSignatureImage(req.params.traineeId);
+    res.set('Cache-Control', 'private, no-cache');
+    return res.type('image/png').send(image);
   } catch (error) {
     return handleError(error, res, next);
   }

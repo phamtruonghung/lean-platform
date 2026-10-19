@@ -21,6 +21,7 @@ import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
+import 'training_answer_dialog.dart';
 import 'training_record.dart';
 import 'training_to_confirm_bloc.dart';
 
@@ -171,7 +172,13 @@ class _EntryCard extends StatelessWidget {
               children: [
                 FilledButton(
                   key: TrainingToConfirmScreen.confirmKey(entry.traineeId),
-                  onPressed: isWriting ? null : () => bloc.add(TrainingToConfirmAnswered(entry.traineeId, 'confirmed')),
+                  onPressed: isWriting
+                      ? null
+                      : () async {
+                          final signature = await showTrainingAnswerDialog(context);
+                          if (signature == null) return;
+                          bloc.add(TrainingToConfirmAnswered(entry.traineeId, 'confirmed', signature: signature));
+                        },
                   child: const Text('Confirm'),
                 ),
                 OutlinedButton(

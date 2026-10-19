@@ -129,6 +129,51 @@ async function removeSignature(accountId, employeeId) {
   if (removed === 0) throw notFound('Signature');
 }
 
+// What a Trainee's answer asks to be signed with: `{ use: 'stored' }`, an
+// inline `{ image }`, or nothing. Returns null (nothing), 'stored', or the
+// decoded PNG bytes. Pure request-shape and image validation - the same four
+// image refusals as keepSignature, because it is the same decodeImage.
+function parseApplied(value) {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw httpError(400, 'signature must be { use: "stored" } or { image: <base64 PNG> }');
+  }
+  const hasUse = value.use !== undefined;
+  const hasImage = value.image !== undefined;
+  if (hasUse === hasImage) {
+    throw httpError(400, 'signature must carry exactly one of use or image');
+  }
+  if (hasUse) {
+    if (value.use !== 'stored') throw httpError(400, 'signature use must be "stored"');
+    return 'stored';
+  }
+  return decodeImage(value.image);
+}
+
+// Inside the caller's transaction: the id of the Employee's own current kept
+// Signature, or a 400 when they keep none (never a silent no-signature).
+async function currentSignatureId(client, employeeId) {
+  const { rows } = await client.query(
+    `SELECT id FROM employee_signatures
+      WHERE employee_id = $1 AND kept AND superseded_at IS NULL`,
+    [employeeId]
+  );
+  if (rows.length === 0) throw httpError(400, 'no Signature kept: draw one now or answer without one');
+  return rows[0].id;
+}
+
+// Inside the caller's transaction: a one-off row for a stroke drawn for one
+// act. Never kept, so never current and it supersedes nothing.
+async function insertDrawnSignature(client, accountId, employeeId, image) {
+  const { rows } = await client.query(
+    `INSERT INTO employee_signatures (employee_id, image, image_bytes, origin, kept, set_by_account_id)
+     VALUES ($1, $2, $3, 'on_screen', FALSE, $4)
+     RETURNING id`,
+    [employeeId, image, image.length, accountId]
+  );
+  return rows[0].id;
+}
+
 function toSignature(row) {
   return {
     id: String(row.id),
@@ -144,6 +189,9 @@ module.exports = {
   MAX_HEIGHT,
   NO_SIGNATURE,
   keepSignature,
+  parseApplied,
+  currentSignatureId,
+  insertDrawnSignature,
   getCurrentSignature,
   removeSignature
 };

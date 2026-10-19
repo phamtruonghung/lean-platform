@@ -44,9 +44,12 @@ class TrainingRecordSent extends TrainingDetailEvent {
 /// The signed-in Trainee's own answer, `confirmed` or `declined`, on the row
 /// with this id (the Trainee row's, not the Employee's).
 class TrainingTraineeAnswered extends TrainingDetailEvent {
-  const TrainingTraineeAnswered(this.traineeId, this.answer);
+  const TrainingTraineeAnswered(this.traineeId, this.answer, {this.signature = const NoAnswerSignature()});
   final String traineeId;
   final String answer;
+
+  /// What a `confirmed` answer is signed with (issue #318); none for a decline.
+  final TrainingAnswerSignature signature;
 }
 
 /// The trainer's evaluation of one Trainee (the row's id): `paper`,
@@ -182,7 +185,7 @@ class TrainingDetailBloc extends Bloc<TrainingDetailEvent, TrainingDetailState> 
       _write(emit, _Write.send, (token, record) => _api.sendTrainingRecord(token, record.id));
 
   Future<void> _onAnswered(TrainingTraineeAnswered event, Emitter<TrainingDetailState> emit) =>
-      _write(emit, _Write.answer, (token, _) => _api.answerTrainee(token, event.traineeId, event.answer));
+      _write(emit, _Write.answer, (token, _) => _api.answerTrainee(token, event.traineeId, event.answer, signature: event.signature));
 
   Future<void> _onEvaluated(TrainingTraineeEvaluated event, Emitter<TrainingDetailState> emit) => _write(
       emit,

@@ -36,6 +36,9 @@ let unlinkedToken;
 
 const insertedAccountIds = [];
 const insertedEmployeeIds = [];
+const insertedRecordIds = [];
+const insertedOrgUnitIds = [];
+const insertedSiteIds = [];
 
 function crc32(bytes) {
   return zlib.crc32(bytes);
@@ -151,9 +154,14 @@ test.before(async () => {
 });
 
 test.after(async () => {
+  await pool.query('DELETE FROM training_trainees WHERE training_record_id = ANY($1)', [insertedRecordIds]);
+  await pool.query('DELETE FROM training_records WHERE id = ANY($1)', [insertedRecordIds]);
+  await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM employee_signatures WHERE employee_id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
+  await pool.query('DELETE FROM org_units WHERE id = ANY($1)', [insertedOrgUnitIds]);
+  await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
   await jwks.close();
@@ -169,6 +177,7 @@ async function rowsFor(employeeId) {
 }
 
 test.beforeEach(async () => {
+  await pool.query('DELETE FROM training_trainees WHERE training_record_id = ANY($1)', [insertedRecordIds]);
   await pool.query('DELETE FROM employee_signatures WHERE employee_id = ANY($1)', [insertedEmployeeIds]);
 });
 
@@ -299,4 +308,249 @@ test('an Account linked to no Employee has no Signature: GET, PUT and DELETE ans
 
 test('the Signature routes need a signed-in Account', async () => {
   assert.strictEqual((await getSignature({})).status, 401);
+});
+
+
+// ---------------------------------------------------------------------------
+// A Trainee's answer carries their Signature (issue #318, ADR-0052).
+// ---------------------------------------------------------------------------
+
+let answerSeq = 0;
+
+// A sent Training record at a fresh Site with the owner as its Trainee; the
+// fixtures go in by SQL because the behaviour under test is the answer.
+async function sentRecordWithOwner() {
+  answerSeq += 1;
+  const code = `SG${process.pid}${answerSeq}`;
+  const { rows: [site] } = await pool.query(
+    `INSERT INTO sites (code, name, timezone) VALUES ($1, 'Signature Site', 'Asia/Ho_Chi_Minh') RETURNING id`,
+    [code]
+  );
+  insertedSiteIds.push(site.id);
+  const { rows: [unit] } = await pool.query(
+    `INSERT INTO org_units (site_id, code, name, unit_type) VALUES ($1, $2, 'Signature Line', 'area') RETURNING id`,
+    [site.id, code]
+  );
+  insertedOrgUnitIds.push(unit.id);
+  const { rows: [record] } = await pool.query(
+    `INSERT INTO training_records (site_id, org_unit_id, number, title, trained_on, duration_hours,
+                                   status, sent_at, sent_by_account_id)
+     VALUES ($1, $2, $3, 'Signature refresher', '2026-03-10', 1, 'sent', now(), $4) RETURNING id`,
+    [site.id, unit.id, code, ownerAccountId]
+  );
+  insertedRecordIds.push(record.id);
+  const { rows: [trainee] } = await pool.query(
+    `INSERT INTO training_trainees (training_record_id, employee_id) VALUES ($1, $2) RETURNING id`,
+    [record.id, ownerEmployeeId]
+  );
+  return { recordId: record.id, traineeId: trainee.id, orgUnitId: unit.id };
+}
+
+async function answer(traineeId, headers, body) {
+  return fetch(`${base}/api/people/training/trainees/${traineeId}/answer`, {
+    method: 'POST',
+    headers: { ...headers, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+async function readTrainee(recordId, traineeId, headers = ownerToken) {
+  const response = await fetch(`${base}/api/people/training/${recordId}`, { headers });
+  const { trainingRecord } = await response.json();
+  return trainingRecord.trainees.find((t) => t.id === traineeId);
+}
+
+async function traineeImage(traineeId, headers = ownerToken) {
+  return fetch(`${base}/api/people/training/trainees/${traineeId}/signature`, { headers });
+}
+
+async function insertOtherAccount(prefix, { role = 'operator', employeeId = null } = {}) {
+  const subject = `${prefix}-${process.pid}`;
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO app_users (email, display_name, role, external_subject, is_active, approval_status, employee_id)
+     VALUES ($1, 'Signature Other', $2, $3, TRUE, 'approved', $4) RETURNING id`,
+    [`${subject}@example.com`, role, subject, employeeId]
+  );
+  insertedAccountIds.push(row.id);
+  return { id: row.id, headers: await authHeader(subject) };
+}
+
+test('an answer carries the three forms of Signature and the record reads back which', async () => {
+  const stored = makePng(100, 30, 11);
+  const drawn = makePng(100, 30, 22);
+  await putSignature(ownerToken, { image: stored.toString('base64') });
+
+  const a = await sentRecordWithOwner();
+  assert.strictEqual((await answer(a.traineeId, ownerToken, { answer: 'confirmed' })).status, 200);
+  let t = await readTrainee(a.recordId, a.traineeId);
+  assert.strictEqual(t.signatureAppliedAs, null);
+  assert.strictEqual(t.hasSignature, false);
+  assert.strictEqual((await traineeImage(a.traineeId)).status, 404);
+
+  assert.strictEqual(
+    (await answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { use: 'stored' } })).status,
+    200
+  );
+  t = await readTrainee(a.recordId, a.traineeId);
+  assert.strictEqual(t.signatureAppliedAs, 'stored');
+  assert.strictEqual(t.hasSignature, true);
+  assert.ok(!('image' in t) && !('signatureId' in t));
+
+  const b = await sentRecordWithOwner();
+  const res = await answer(b.traineeId, ownerToken, {
+    answer: 'confirmed',
+    signature: { image: drawn.toString('base64') }
+  });
+  assert.strictEqual(res.status, 200);
+  t = await readTrainee(b.recordId, b.traineeId);
+  assert.strictEqual(t.signatureAppliedAs, 'drawn');
+  assert.strictEqual(t.hasSignature, true);
+});
+
+test('stored with no kept Signature is a 400 in the Module\'s own words and records nothing', async () => {
+  const a = await sentRecordWithOwner();
+  const res = await answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { use: 'stored' } });
+  assert.strictEqual(res.status, 400);
+  assert.match((await res.json()).message, /no Signature kept/);
+  const t = await readTrainee(a.recordId, a.traineeId);
+  assert.strictEqual(t.answer, null);
+});
+
+test('a declined answer carrying a signature is a 400', async () => {
+  await putSignature(ownerToken, { image: makePng(100, 30, 3).toString('base64') });
+  const a = await sentRecordWithOwner();
+  for (const signature of [{ use: 'stored' }, { image: makePng(60, 20).toString('base64') }]) {
+    const res = await answer(a.traineeId, ownerToken, { answer: 'declined', signature });
+    assert.strictEqual(res.status, 400);
+  }
+  assert.strictEqual((await readTrainee(a.recordId, a.traineeId)).answer, null);
+});
+
+test('an inline image gets the same four refusals as keeping a Signature', async () => {
+  const a = await sentRecordWithOwner();
+  const send = (image) => answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { image } });
+  assert.strictEqual((await send('')).status, 400);
+  assert.strictEqual((await send(Buffer.from('not a png at all, just text bytes').toString('base64'))).status, 400);
+  assert.strictEqual((await send(makePngOfSize(48 * 1024 + 1).toString('base64'))).status, 400);
+  assert.strictEqual((await send(makePng(601, 20).toString('base64'))).status, 400);
+  assert.strictEqual((await answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { use: 'other' } })).status, 400);
+  assert.strictEqual((await rowsFor(ownerEmployeeId)).length, 0);
+});
+
+test('a second answer replaces the applied Signature, and answering without one clears it', async () => {
+  const first = makePng(100, 30, 31);
+  const second = makePng(100, 30, 32);
+  const a = await sentRecordWithOwner();
+  await answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { image: first.toString('base64') } });
+  assert.ok(Buffer.from(await (await traineeImage(a.traineeId)).arrayBuffer()).equals(first));
+
+  await answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { image: second.toString('base64') } });
+  assert.ok(Buffer.from(await (await traineeImage(a.traineeId)).arrayBuffer()).equals(second));
+
+  await answer(a.traineeId, ownerToken, { answer: 'confirmed' });
+  let t = await readTrainee(a.recordId, a.traineeId);
+  assert.strictEqual(t.signatureAppliedAs, null);
+  assert.strictEqual(t.hasSignature, false);
+
+  await answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { image: first.toString('base64') } });
+  await answer(a.traineeId, ownerToken, { answer: 'declined' });
+  t = await readTrainee(a.recordId, a.traineeId);
+  assert.strictEqual(t.answer, 'declined');
+  assert.strictEqual(t.signatureAppliedAs, null);
+  assert.strictEqual((await traineeImage(a.traineeId)).status, 404);
+});
+
+test('an inline image makes a one-off row, kept = FALSE, that supersedes nothing', async () => {
+  const stored = makePng(100, 30, 41);
+  await putSignature(ownerToken, { image: stored.toString('base64') });
+  const a = await sentRecordWithOwner();
+  await answer(a.traineeId, ownerToken, {
+    answer: 'confirmed',
+    signature: { image: makePng(100, 30, 42).toString('base64') }
+  });
+  const rows = await rowsFor(ownerEmployeeId);
+  assert.strictEqual(rows.length, 2);
+  assert.strictEqual(rows[0].kept, true);
+  assert.strictEqual(rows[0].superseded_at, null);
+  assert.strictEqual(rows[1].kept, false);
+  assert.strictEqual(rows[1].origin, 'on_screen');
+  assert.strictEqual(rows[1].superseded_at, null);
+  // The kept Signature is still the one GET /me/signature answers.
+  assert.ok(Buffer.from(await (await getSignature(ownerToken)).arrayBuffer()).equals(stored));
+});
+
+test('the image address answers image/png to any approved Account, and 404 where none was applied', async () => {
+  const png = makePng(100, 30, 51);
+  const a = await sentRecordWithOwner();
+  await answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { image: png.toString('base64') } });
+
+  const stranger = await insertOtherAccount('sig-stranger');
+  const res = await traineeImage(a.traineeId, stranger.headers);
+  assert.strictEqual(res.status, 200);
+  assert.match(res.headers.get('content-type'), /^image\/png/);
+  assert.ok(Buffer.from(await res.arrayBuffer()).equals(png));
+
+  const b = await sentRecordWithOwner();
+  const none = await traineeImage(b.traineeId, stranger.headers);
+  assert.strictEqual(none.status, 404);
+  assert.match((await none.json()).message, /Signature not found/);
+  assert.strictEqual((await traineeImage('999999999', stranger.headers)).status, 404);
+  assert.strictEqual((await traineeImage(a.traineeId, {})).status, 401);
+});
+
+test('nobody signs for a Trainee: an administrator and an edit-Grant colleague are refused', async () => {
+  const png = makePng(100, 30, 61).toString('base64');
+  const a = await sentRecordWithOwner();
+  const admin = await insertOtherAccount('sig-admin', { role: 'admin' });
+  const colleague = await insertOtherAccount('sig-colleague', { role: 'supervisor' });
+  await pool.query(
+    `INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write) VALUES ($1, $2, TRUE)`,
+    [colleague.id, a.orgUnitId]
+  );
+  for (const who of [admin, colleague]) {
+    const res = await answer(a.traineeId, who.headers, { answer: 'confirmed', signature: { image: png } });
+    assert.strictEqual(res.status, 403);
+  }
+  assert.strictEqual((await rowsFor(ownerEmployeeId)).length, 0);
+  assert.strictEqual((await readTrainee(a.recordId, a.traineeId)).answer, null);
+});
+
+test('a record keeps the row it was signed with after the Signature is replaced', async () => {
+  const original = makePng(100, 30, 71);
+  await putSignature(ownerToken, { image: original.toString('base64') });
+  const a = await sentRecordWithOwner();
+  await answer(a.traineeId, ownerToken, { answer: 'confirmed', signature: { use: 'stored' } });
+
+  await putSignature(ownerToken, { image: makePng(100, 30, 72).toString('base64') });
+  const rows = await rowsFor(ownerEmployeeId);
+  assert.strictEqual(rows.length, 2);
+
+  const res = await traineeImage(a.traineeId);
+  assert.ok(Buffer.from(await res.arrayBuffer()).equals(original));
+  const { rows: [named] } = await pool.query(
+    'SELECT signature_id FROM training_trainees WHERE id = $1',
+    [a.traineeId]
+  );
+  assert.strictEqual(String(named.signature_id), String(rows[0].id));
+  assert.strictEqual((await readTrainee(a.recordId, a.traineeId)).signatureAppliedAs, 'stored');
+});
+
+test('the record reads each answer\'s Site-local day: 18:00 UTC at a UTC+7 Site is the next day', async () => {
+  const a = await sentRecordWithOwner();
+  await pool.query(
+    `UPDATE sites SET timezone = 'Asia/Ho_Chi_Minh'
+      WHERE id = (SELECT site_id FROM training_records WHERE id = $1)`,
+    [a.recordId]
+  );
+  await answer(a.traineeId, ownerToken, { answer: 'confirmed' });
+  await pool.query(
+    `UPDATE training_trainees SET answered_at = '2026-05-06T18:00:00Z' WHERE id = $1`,
+    [a.traineeId]
+  );
+  const t = await readTrainee(a.recordId, a.traineeId);
+  assert.strictEqual(t.answeredOn, '2026-05-07');
+  assert.strictEqual(new Date(t.answeredAt).toISOString(), '2026-05-06T18:00:00.000Z');
+
+  const pending = await sentRecordWithOwner();
+  assert.strictEqual((await readTrainee(pending.recordId, pending.traineeId)).answeredOn, null);
 });

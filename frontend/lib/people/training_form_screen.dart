@@ -45,10 +45,14 @@
 /// colour is a theme token.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../people_api.dart';
+import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
@@ -87,6 +91,12 @@ class TrainingFormScreen extends StatelessWidget {
   static ValueKey<String> traineeRowKey(String id) => ValueKey<String>('training-form-trainee-$id');
   static ValueKey<String> signatureCellKey(String id) =>
       ValueKey<String>('training-form-signature-$id');
+
+  /// The applied Signature's image inside the cell (issue #318); absent where
+  /// none was applied, where the answer is a decline, or where it could not be
+  /// fetched - the cell then prints its date alone.
+  static ValueKey<String> signatureImageKey(String id) =>
+      ValueKey<String>('training-form-signature-image-$id');
   static ValueKey<String> paperMarkKey(String id) => ValueKey<String>('training-form-paper-$id');
   static ValueKey<String> jobTrainingMarkKey(String id) =>
       ValueKey<String>('training-form-job-training-$id');
@@ -130,10 +140,6 @@ class TrainingFormScreen extends StatelessWidget {
 /// `2`, `1.5` — the label already says hours.
 String _hours(double hours) =>
     hours == hours.roundToDouble() ? hours.toInt().toString() : hours.toString();
-
-/// The date part of an ISO timestamp, or empty when there is none.
-String _day(String? timestamp) =>
-    timestamp == null || timestamp.length < 10 ? '' : timestamp.substring(0, 10);
 
 class _Form extends StatelessWidget {
   const _Form({required this.record});
@@ -412,8 +418,8 @@ class _TraineeRow extends StatelessWidget {
   /// What the Signature cell prints, or null for a cell left empty for a hand
   /// signature. A decline says so, so it is never read as a signature.
   String? get _signature => switch (trainee.answer) {
-        'confirmed' => _day(trainee.answeredAt),
-        'declined' => 'Declined ${_day(trainee.answeredAt)}'.trim(),
+        'confirmed' => trainee.answeredOn ?? '',
+        'declined' => 'Declined ${trainee.answeredOn ?? ''}'.trim(),
         _ => null,
       };
 
@@ -439,7 +445,17 @@ class _TraineeRow extends StatelessWidget {
               key: TrainingFormScreen.signatureCellKey(trainee.id),
               flex: _flex[3],
               side: side,
-              child: signature == null ? null : Text(signature, style: style),
+              child: signature == null
+                  ? null
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // A decline is never a mark, whatever the row holds.
+                        if (trainee.answer == 'confirmed' && trainee.hasSignature)
+                          _SignatureImage(traineeId: trainee.id),
+                        Text(signature, style: style),
+                      ],
+                    ),
             ),
             _Cell(
               key: TrainingFormScreen.paperMarkKey(trainee.id),
@@ -456,6 +472,51 @@ class _TraineeRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The image applied to one Trainee's answer, fetched from that Trainee's own
+/// image address (issue #318, ADR-0052) and drawn inside the Signature cell.
+/// While it loads, and where it cannot be fetched, it is nothing at all: the
+/// cell reads as a cell with its date, not as an error.
+class _SignatureImage extends StatefulWidget {
+  const _SignatureImage({required this.traineeId});
+
+  final String traineeId;
+
+  @override
+  State<_SignatureImage> createState() => _SignatureImageState();
+}
+
+class _SignatureImageState extends State<_SignatureImage> {
+  late final Future<Uint8List?> _image = _fetch();
+
+  Future<Uint8List?> _fetch() async {
+    final token = context.read<AuthGateway>().currentAccessToken;
+    if (token == null) return null;
+    try {
+      return await context.read<PeopleApi>().fetchTraineeSignature(token, widget.traineeId);
+    } on PeopleApiException {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: _image,
+      builder: (context, snapshot) {
+        final bytes = snapshot.data;
+        if (bytes == null) return const SizedBox.shrink();
+        return Image.memory(
+          bytes,
+          key: TrainingFormScreen.signatureImageKey(widget.traineeId),
+          height: 40,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

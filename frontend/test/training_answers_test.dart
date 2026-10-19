@@ -9,9 +9,12 @@
 /// would answer as the first.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/home_screen.dart';
+import 'package:lean_platform/people/training_answer_dialog.dart';
 import 'package:lean_platform/people/training_detail_screen.dart';
 import 'package:lean_platform/people/training_to_confirm_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
@@ -106,6 +109,7 @@ void main() {
       );
       await _open(tester, wire, '/training/to-confirm');
       await tapIn(tester, find.byKey(TrainingToConfirmScreen.confirmKey('t1')));
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.noneKey));
 
       expect(wire.trainingAnswers.length, 1);
       expect(wire.trainingAnswers.single.$1, 'POST /api/people/training/trainees/t1/answer');
@@ -133,6 +137,7 @@ void main() {
       );
       await _open(tester, wire, '/training/to-confirm');
       await tapIn(tester, find.byKey(TrainingToConfirmScreen.confirmKey('t1')));
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.noneKey));
 
       expect(find.byKey(TrainingToConfirmScreen.rowKey('t1')), findsOneWidget);
       expect(find.byKey(TrainingToConfirmScreen.answerFailureKey), findsOneWidget);
@@ -247,6 +252,7 @@ void main() {
       final wire = FakeWire(role: Roles.operator, selfEmployeeId: '7', trainingRecords: [_sent()]);
       await _open(tester, wire, '/training/1');
       await tapIn(tester, find.byKey(TrainingDetailScreen.confirmKey('t1')));
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.noneKey));
 
       expect(wire.trainingAnswers.length, 1);
       expect(wire.trainingAnswers.single.$1, 'POST /api/people/training/trainees/t1/answer');
@@ -279,6 +285,7 @@ void main() {
       );
       await _open(tester, wire, '/training/1');
       await tapIn(tester, find.byKey(TrainingDetailScreen.confirmKey('t1')));
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.noneKey));
 
       expect(find.byKey(TrainingDetailScreen.answerFailureKey), findsOneWidget);
       expect(find.text('Only the Trainee can answer for themselves'), findsOneWidget);
@@ -314,6 +321,117 @@ void main() {
         '/training/1',
       );
       expect(find.text('Fully confirmed by all 2 Trainees.'), findsOneWidget);
+    });
+  });
+
+  group('the signature step of confirming', () {
+    testWidgets('Confirm opens the dialog and sends nothing until a choice is made', (tester) async {
+      final wire = FakeWire(role: Roles.operator, selfEmployeeId: '7', trainingRecords: [_sent()]);
+      await _open(tester, wire, '/training/1');
+      await tapIn(tester, find.byKey(TrainingDetailScreen.confirmKey('t1')));
+
+      expect(find.byKey(TrainingAnswerDialog.dialogKey), findsOneWidget);
+      expect(find.byKey(TrainingAnswerDialog.useStoredKey), findsOneWidget);
+      expect(find.byKey(TrainingAnswerDialog.drawKey), findsOneWidget);
+      expect(find.byKey(TrainingAnswerDialog.noneKey), findsOneWidget);
+      expect(wire.trainingAnswers, isEmpty);
+
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.cancelKey));
+      expect(find.byKey(TrainingAnswerDialog.dialogKey), findsNothing);
+      expect(wire.trainingAnswers, isEmpty);
+    });
+
+    testWidgets('"Use my Signature" sends use: stored and the record reads it back', (tester) async {
+      final wire = FakeWire(role: Roles.operator, selfEmployeeId: '7', trainingRecords: [_sent()]);
+      await _open(tester, wire, '/training/1');
+      await tapIn(tester, find.byKey(TrainingDetailScreen.confirmKey('t1')));
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.useStoredKey));
+
+      expect(wire.trainingAnswers.length, 1);
+      expect(wire.trainingAnswers.single.$1, 'POST /api/people/training/trainees/t1/answer');
+      expect(wire.trainingAnswers.single.$2, {
+        'answer': 'confirmed',
+        'signature': {'use': 'stored'},
+      });
+      expect(find.byKey(TrainingDetailScreen.traineeSignatureKey('t1')), findsOneWidget);
+      expect(find.text('Signed with their kept Signature'), findsOneWidget);
+    });
+
+    testWidgets('"No Signature" sends the answer alone', (tester) async {
+      final wire = FakeWire(role: Roles.operator, selfEmployeeId: '7', trainingRecords: [_sent()]);
+      await _open(tester, wire, '/training/1');
+      await tapIn(tester, find.byKey(TrainingDetailScreen.confirmKey('t1')));
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.noneKey));
+
+      expect(wire.trainingAnswers.single.$2, {'answer': 'confirmed'});
+      expect(find.byKey(TrainingDetailScreen.traineeSignatureKey('t1')), findsNothing);
+    });
+
+    testWidgets('"Draw one now" cannot be sent untouched, and sends the drawn PNG once drawn',
+        (tester) async {
+      final wire = FakeWire(role: Roles.operator, selfEmployeeId: '7', trainingRecords: [_sent()]);
+      await _open(tester, wire, '/training/1');
+      await tapIn(tester, find.byKey(TrainingDetailScreen.confirmKey('t1')));
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.drawKey));
+
+      expect(find.byKey(TrainingAnswerDialog.padKey), findsOneWidget);
+      final submit = find.byKey(TrainingAnswerDialog.submitDrawnKey);
+      expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+
+      await tester.drag(find.byKey(TrainingAnswerDialog.padKey), const Offset(120, 40));
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilledButton>(submit).onPressed, isNotNull);
+      expect(wire.trainingAnswers, isEmpty);
+
+      // Rendering the strokes to a PNG goes through the engine, which a
+      // fake-async test clock does not drive.
+      await tester.runAsync(() async {
+        await tester.tap(submit);
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      });
+      await tester.pumpAndSettle();
+
+      expect(wire.trainingAnswers.length, 1);
+      final sent = wire.trainingAnswers.single.$2;
+      expect(sent['answer'], 'confirmed');
+      final image = (sent['signature'] as Map<String, dynamic>)['image'] as String;
+      expect(base64Decode(image).sublist(0, 8), [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      expect(find.text('Signed with a Signature drawn as they answered'), findsOneWidget);
+    });
+
+    testWidgets('the queue offers the same three choices, and a decline opens no dialog', (tester) async {
+      final wire = FakeWire(role: Roles.operator, trainingToConfirm: [trainingToConfirmJson('t1')]);
+      await _open(tester, wire, '/training/to-confirm');
+      await tapIn(tester, find.byKey(TrainingToConfirmScreen.confirmKey('t1')));
+      expect(find.byKey(TrainingAnswerDialog.useStoredKey), findsOneWidget);
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.useStoredKey));
+      expect(wire.trainingAnswers.single.$2, {
+        'answer': 'confirmed',
+        'signature': {'use': 'stored'},
+      });
+    });
+
+    testWidgets('declining opens no dialog', (tester) async {
+      final wire = FakeWire(role: Roles.operator, trainingToConfirm: [trainingToConfirmJson('t1')]);
+      await _open(tester, wire, '/training/to-confirm');
+      await tapIn(tester, find.byKey(TrainingToConfirmScreen.declineKey('t1')));
+      expect(find.byKey(TrainingAnswerDialog.dialogKey), findsNothing);
+      expect(wire.trainingAnswers.single.$2, {'answer': 'declined'});
+    });
+
+    testWidgets('a refused stored Signature renders the server\'s words and leaves the row', (tester) async {
+      final wire = FakeWire(
+        role: Roles.operator,
+        trainingToConfirm: [trainingToConfirmJson('t1')],
+        trainingAnswerStatus: 400,
+        trainingAnswerMessage: 'no Signature kept: draw one now or answer without one',
+      );
+      await _open(tester, wire, '/training/to-confirm');
+      await tapIn(tester, find.byKey(TrainingToConfirmScreen.confirmKey('t1')));
+      await tapIn(tester, find.byKey(TrainingAnswerDialog.useStoredKey));
+
+      expect(find.byKey(TrainingToConfirmScreen.rowKey('t1')), findsOneWidget);
+      expect(find.text('no Signature kept: draw one now or answer without one'), findsOneWidget);
     });
   });
 }

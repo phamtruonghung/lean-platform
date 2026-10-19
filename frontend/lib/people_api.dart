@@ -1740,18 +1740,42 @@ class PeopleApi {
   /// A Trainee's own answer (`POST /api/people/training/trainees/:traineeId/answer`),
   /// `confirmed` or `declined`. [traineeId] is the Trainee row's id. Answers
   /// the whole record. Answering for anybody else is a 403 with the server's
-  /// `message`.
-  Future<TrainingRecord> answerTrainee(String accessToken, String traineeId, String answer) async {
+  /// `message`. [signature] (issue #318) is what the answer is signed with:
+  /// the Signature the Trainee keeps, a stroke drawn now, or none (the
+  /// default). A decline never carries one.
+  Future<TrainingRecord> answerTrainee(
+    String accessToken,
+    String traineeId,
+    String answer, {
+    TrainingAnswerSignature signature = const NoAnswerSignature(),
+  }) async {
     final path = '/api/people/training/trainees/$traineeId/answer';
     final response = await _send(
       () => _client.post(
         Uri.parse(path),
         headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
-        body: jsonEncode({'answer': answer}),
+        body: jsonEncode({'answer': answer, 'signature': ?signature.toJson()}),
       ),
       path,
     );
     return _trainingRecordFrom(response.body);
+  }
+
+  /// The image applied to a Trainee's answer
+  /// (`GET /api/people/training/trainees/:traineeId/signature`, issue #318) as
+  /// PNG bytes, or null where none was applied (404).
+  Future<Uint8List?> fetchTraineeSignature(String accessToken, String traineeId) async {
+    final path = '/api/people/training/trainees/$traineeId/signature';
+    try {
+      final response = await _send(
+        () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+        path,
+      );
+      return response.bodyBytes;
+    } on PeopleApiException catch (error) {
+      if (error.statusCode == 404) return null;
+      rethrow;
+    }
   }
 
   /// The caller's own current Signature image (`GET /api/people/me/signature`,

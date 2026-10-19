@@ -26,9 +26,12 @@ class TrainingToConfirmStarted extends TrainingToConfirmEvent {
 
 /// The caller's own answer, `confirmed` or `declined`, on one Trainee row.
 class TrainingToConfirmAnswered extends TrainingToConfirmEvent {
-  const TrainingToConfirmAnswered(this.traineeId, this.answer);
+  const TrainingToConfirmAnswered(this.traineeId, this.answer, {this.signature = const NoAnswerSignature()});
   final String traineeId;
   final String answer;
+
+  /// What a `confirmed` answer is signed with (issue #318); none for a decline.
+  final TrainingAnswerSignature signature;
 }
 
 class TrainingToConfirmState {
@@ -89,7 +92,7 @@ class TrainingToConfirmBloc extends Bloc<TrainingToConfirmEvent, TrainingToConfi
     }
     emit(TrainingToConfirmState(entries: current.entries, isLoading: false, isWriting: true));
     try {
-      await _api.answerTrainee(token, event.traineeId, event.answer);
+      await _api.answerTrainee(token, event.traineeId, event.answer, signature: event.signature);
       emit(TrainingToConfirmState(
         entries: [for (final entry in current.entries) if (entry.traineeId != event.traineeId) entry],
         isLoading: false,

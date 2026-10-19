@@ -36,6 +36,7 @@
 
 const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
+const signatures = require('./signatures');
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_DURATION_HOURS = 9999.99;
@@ -162,8 +163,11 @@ async function listTrainees(recordId) {
   const { rows } = await getPool().query(
     `SELECT tt.id, tt.employee_id, tt.created_at, e.employee_no, e.display_name,
             tt.answer, tt.answered_at, tt.answered_by_account_id, tt.answered_by_employee_id,
-            tt.evaluation
+            tt.evaluation, tt.signature_applied_as, (tt.signature_id IS NOT NULL) AS has_signature,
+            to_char(COALESCE(plant_date(tr.org_unit_id, tt.answered_at),
+                             (tt.answered_at AT TIME ZONE 'UTC')::date), 'YYYY-MM-DD') AS answered_on
        FROM training_trainees tt
+       JOIN training_records tr ON tr.id = tt.training_record_id
        JOIN employees e ON e.id = tt.employee_id
       WHERE tt.training_record_id = $1
       ORDER BY tt.created_at, tt.id`,
@@ -177,12 +181,19 @@ async function listTrainees(recordId) {
     addedAt: row.created_at,
     answer: row.answer,
     answeredAt: row.answered_at,
+    // The Site's local calendar day of the answer, resolved in the database
+    // with plant_date (ADR-0048) for the printed form; null while pending.
+    answeredOn: row.answered_on,
     // The door the answer came through, read from which actor column is set.
     answeredVia: row.answered_by_account_id !== null
       ? 'account'
       : (row.answered_by_employee_id !== null ? 'device' : null),
     // How the trainer recorded this Trainee was evaluated; null until they do.
-    evaluation: row.evaluation
+    evaluation: row.evaluation,
+    // Which Signature the answer carries ('stored', 'drawn' or null) and
+    // whether an image exists; never the bytes - those have their own address.
+    signatureAppliedAs: row.signature_applied_as,
+    hasSignature: row.has_signature
   }));
 }
 
@@ -509,21 +520,55 @@ async function findTraineeForAnswer(traineeId) {
 // of the same row, so a changed answer is audited and never a second row. The
 // Employee-actor column is cleared, so the CHECK's "exactly one actor" holds
 // even when a floor device answered earlier. Only ever a sent record.
-async function answerTrainee(accountId, traineeId, answer) {
+//
+// `applied` is signatures.parseApplied's result: null (no Signature), 'stored'
+// (the caller's own current kept row) or the bytes of a stroke drawn now (a
+// one-off row). `employeeId` is the caller's own Employee, never a request
+// value. The columns are written beside the answer, so answering again
+// replaces the applied Signature - or clears it when `applied` is null.
+async function answerTrainee(accountId, employeeId, traineeId, answer, applied) {
+  if (applied !== null && answer === 'declined') {
+    throw httpError(400, 'a declined answer carries no Signature');
+  }
   const row = await withActor(accountId, async (client) => {
+    let signatureId = null;
+    let appliedAs = null;
+    if (applied === 'stored') {
+      signatureId = await signatures.currentSignatureId(client, employeeId);
+      appliedAs = 'stored';
+    } else if (applied !== null) {
+      signatureId = await signatures.insertDrawnSignature(client, accountId, employeeId, applied);
+      appliedAs = 'drawn';
+    }
     const { rows } = await client.query(
       `UPDATE training_trainees tt
           SET answer = $2, answered_at = now(),
-              answered_by_account_id = $3, answered_by_employee_id = NULL
+              answered_by_account_id = $3, answered_by_employee_id = NULL,
+              signature_id = $4, signature_applied_as = $5
          FROM training_records tr
         WHERE tt.id = $1 AND tr.id = tt.training_record_id AND tr.status = 'sent'
         RETURNING tt.training_record_id`,
-      [traineeId, answer, accountId]
+      [traineeId, answer, accountId, signatureId, appliedAs]
     );
+    if (!rows[0]) throw notFound('Trainee');
     return rows[0];
   });
-  if (!row) throw notFound('Trainee');
   return getTrainingRecord(row.training_record_id);
+}
+
+// The image applied to a Trainee's answer, or a 404 where none was applied or
+// the Trainee is unknown.
+async function getTraineeSignatureImage(traineeId) {
+  if (parseId(traineeId) === null) throw notFound('Signature');
+  const { rows } = await getPool().query(
+    `SELECT es.image
+       FROM training_trainees tt
+       JOIN employee_signatures es ON es.id = tt.signature_id
+      WHERE tt.id = $1`,
+    [traineeId]
+  );
+  if (!rows[0]) throw notFound('Signature');
+  return rows[0].image;
 }
 
 // Writes (or changes) a Trainee's answer through the floor device's door
@@ -536,7 +581,8 @@ async function answerTraineeAtFloor(employeeId, traineeId, answer) {
     const { rows } = await client.query(
       `UPDATE training_trainees tt
           SET answer = $2, answered_at = now(),
-              answered_by_account_id = NULL, answered_by_employee_id = $3
+              answered_by_account_id = NULL, answered_by_employee_id = $3,
+              signature_id = NULL, signature_applied_as = NULL
          FROM training_records tr
         WHERE tt.id = $1 AND tr.id = tt.training_record_id AND tr.status = 'sent'
         RETURNING tt.training_record_id`,
@@ -595,6 +641,7 @@ module.exports = {
   findTraineeForAnswer,
   answerTrainee,
   answerTraineeAtFloor,
+  getTraineeSignatureImage,
   listTrainingToConfirm,
   validateRaise,
   findTrainingRecord,
