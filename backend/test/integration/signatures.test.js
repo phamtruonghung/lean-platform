@@ -789,3 +789,167 @@ test('no device route can create or supersede a kept Signature', async () => {
   assert.ok(after.every((r, i) => r.superseded_at === before[i].superseded_at));
   assert.ok(Buffer.from(await (await getSignature(ownerToken)).arrayBuffer()).equals(keptImage));
 });
+
+
+// ---------------------------------------------------------------------------
+// An administrator sets a Signature for an Employee who cannot (issue #320).
+// ---------------------------------------------------------------------------
+
+let adminToken;
+let adminAccountId;
+
+async function insertAdmin() {
+  const subject = `sig-setter-${process.pid}`;
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO app_users (email, display_name, role, external_subject, is_active)
+     VALUES ($1, 'Signature Admin', 'admin', $2, TRUE) RETURNING id`,
+    [`${subject}@example.com`, subject]
+  );
+  insertedAccountIds.push(row.id);
+  adminAccountId = row.id;
+  adminToken = await authHeader(subject);
+}
+
+async function accountlessEmployee(active = true) {
+  const { rows: [employee] } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name, is_active, terminated_on)
+     VALUES ($1, 'No', 'Account', $2, $3) RETURNING id`,
+    [`NA${process.pid}${insertedEmployeeIds.length}`, active, active ? null : '2024-01-01']
+  );
+  insertedEmployeeIds.push(employee.id);
+  return employee.id;
+}
+
+function forEmployee(id, suffix = '') {
+  return `${base}/api/people/employees/${id}/signature${suffix}`;
+}
+
+async function adminPut(headers, id, body) {
+  return fetch(forEmployee(id), {
+    method: 'PUT',
+    headers: { ...headers, 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+test('an administrator sets a Signature for an Employee with no Account and reads it back', async () => {
+  if (!adminToken) await insertAdmin();
+  const employeeId = await accountlessEmployee();
+  const png = makePng(100, 30, 7);
+
+  const put = await adminPut(adminToken, employeeId, { image: png.toString('base64'), origin: 'upload' });
+  assert.strictEqual(put.status, 200);
+
+  const get = await fetch(forEmployee(employeeId), { headers: adminToken });
+  assert.strictEqual(get.status, 200);
+  assert.strictEqual(get.headers.get('content-type'), 'image/png');
+  assert.ok(Buffer.from(await get.arrayBuffer()).equals(png));
+
+  const [row] = await rowsFor(employeeId);
+  assert.strictEqual(row.kept, true);
+  assert.strictEqual(String(row.set_by_account_id), String(adminAccountId));
+
+  const details = await (await fetch(forEmployee(employeeId, '/details'), { headers: adminToken })).json();
+  assert.strictEqual(details.signature.setForEmployee, true);
+  assert.strictEqual(details.signature.setByName, 'Signature Admin');
+  assert.strictEqual(details.signature.origin, 'upload');
+
+  const second = makePng(100, 30, 8);
+  assert.strictEqual((await adminPut(adminToken, employeeId, { image: second.toString('base64') })).status, 200);
+  const rows = await rowsFor(employeeId);
+  assert.strictEqual(rows.length, 2);
+  assert.notStrictEqual(rows[0].superseded_at, null);
+  assert.strictEqual(rows[1].superseded_at, null);
+});
+
+test('an administrator\'s write is refused the same four ways as the Employee\'s own', async () => {
+  if (!adminToken) await insertAdmin();
+  const employeeId = await accountlessEmployee();
+  const cases = [
+    [{}, /image is required/],
+    [{ image: Buffer.from('this is not a png at all, just text').toString('base64') }, /must be a PNG/],
+    [{ image: makePngOfSize(48 * 1024 + 1).toString('base64') }, /too large/],
+    [{ image: makePng(601, 100).toString('base64') }, /fits inside 600 x 300/]
+  ];
+  for (const [body, message] of cases) {
+    const response = await adminPut(adminToken, employeeId, body);
+    assert.strictEqual(response.status, 400);
+    assert.match((await response.json()).message, message);
+  }
+  assert.strictEqual((await rowsFor(employeeId)).length, 0);
+});
+
+test('an administrator is answered 409 once the Employee holds an Account, for PUT and DELETE', async () => {
+  if (!adminToken) await insertAdmin();
+  const png = makePng(100, 30, 4).toString('base64');
+  const put = await adminPut(adminToken, ownerEmployeeId, { image: png });
+  assert.strictEqual(put.status, 409);
+  assert.match((await put.json()).message, /holds an Account of their own/);
+  assert.strictEqual((await rowsFor(ownerEmployeeId)).length, 0);
+  const del = await fetch(forEmployee(ownerEmployeeId), { method: 'DELETE', headers: adminToken });
+  assert.strictEqual(del.status, 409);
+});
+
+test('the Employee\'s own Signature supersedes the administrator\'s, and reads as set by them', async () => {
+  if (!adminToken) await insertAdmin();
+  // An Employee set for first, who is then given an Account of their own.
+  const employeeId = await accountlessEmployee();
+  assert.strictEqual((await adminPut(adminToken, employeeId, { image: makePng(100, 30, 1).toString('base64') })).status, 200);
+  const subject = `sig-later-${process.pid}`;
+  await insertAccount(subject, employeeId);
+  const laterToken = await authHeader(subject);
+
+  const own = makePng(100, 30, 2);
+  assert.strictEqual((await putSignature(laterToken, { image: own.toString('base64') })).status, 200);
+
+  const rows = await rowsFor(employeeId);
+  assert.strictEqual(rows.length, 2);
+  assert.notStrictEqual(rows[0].superseded_at, null);
+  assert.strictEqual(rows[1].superseded_at, null);
+  assert.ok(Buffer.from(await (await getSignature(laterToken)).arrayBuffer()).equals(own));
+
+  const details = await (await fetch(forEmployee(employeeId, '/details'), { headers: adminToken })).json();
+  assert.strictEqual(details.signature.setForEmployee, false);
+});
+
+test('an administrator removes the Signature of an Employee with no Account, audited with the acting Account', async () => {
+  if (!adminToken) await insertAdmin();
+  const employeeId = await accountlessEmployee();
+  const { rows: [{ mark }] } = await pool.query('SELECT coalesce(max(id), 0) AS mark FROM audit_log');
+  await adminPut(adminToken, employeeId, { image: makePng(100, 30, 6).toString('base64') });
+  const [kept] = await rowsFor(employeeId);
+
+  const del = await fetch(forEmployee(employeeId), { method: 'DELETE', headers: adminToken });
+  assert.strictEqual(del.status, 204);
+  assert.strictEqual((await fetch(forEmployee(employeeId), { headers: adminToken })).status, 404);
+  assert.strictEqual((await fetch(forEmployee(employeeId), { method: 'DELETE', headers: adminToken })).status, 404);
+
+  const { rows: audit } = await pool.query(
+    `SELECT operation, changed_by FROM audit_log
+      WHERE table_name = 'employee_signatures' AND record_id = $1 AND id > $2 ORDER BY id`,
+    [kept.id, mark]
+  );
+  assert.deepStrictEqual(audit.map((r) => r.operation), ['INSERT', 'UPDATE']);
+  for (const entry of audit) assert.strictEqual(String(entry.changed_by), String(adminAccountId));
+});
+
+test('an unknown or Departed Employee is a 404 for an administrator', async () => {
+  if (!adminToken) await insertAdmin();
+  const png = makePng(60, 20).toString('base64');
+  assert.strictEqual((await adminPut(adminToken, 2147483000, { image: png })).status, 404);
+  const departed = await accountlessEmployee(false);
+  assert.strictEqual((await adminPut(adminToken, departed, { image: png })).status, 404);
+  assert.strictEqual((await fetch(forEmployee(departed), { method: 'DELETE', headers: adminToken })).status, 404);
+  assert.strictEqual((await fetch(forEmployee(departed), { headers: adminToken })).status, 404);
+});
+
+test('a non-administrator is refused every Employee Signature route', async () => {
+  if (!adminToken) await insertAdmin();
+  const employeeId = await accountlessEmployee();
+  const png = makePng(60, 20).toString('base64');
+  assert.strictEqual((await adminPut(ownerToken, employeeId, { image: png })).status, 403);
+  assert.strictEqual((await fetch(forEmployee(employeeId), { headers: ownerToken })).status, 403);
+  assert.strictEqual((await fetch(forEmployee(employeeId, '/details'), { headers: ownerToken })).status, 403);
+  assert.strictEqual((await fetch(forEmployee(employeeId), { method: 'DELETE', headers: ownerToken })).status, 403);
+  assert.strictEqual((await rowsFor(employeeId)).length, 0);
+});

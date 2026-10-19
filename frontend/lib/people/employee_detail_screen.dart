@@ -35,6 +35,7 @@ import 'employee.dart';
 import 'employee_assignment_dialog.dart';
 import 'employee_correction_dialog.dart';
 import 'employee_departure_dialog.dart';
+import 'employee_signature_dialog.dart';
 import 'employee_detail_bloc.dart';
 import 'employee_skill_form_dialog.dart';
 import 'skill.dart';
@@ -75,6 +76,7 @@ class EmployeeDetailScreen extends StatelessWidget {
   static const ValueKey<String> correctKey = ValueKey<String>('employee-detail-correct');
   static const ValueKey<String> departKey = ValueKey<String>('employee-detail-depart');
   static const ValueKey<String> reinstateKey = ValueKey<String>('employee-detail-reinstate');
+  static const ValueKey<String> signatureKey = ValueKey<String>('employee-detail-signature');
   static const ValueKey<String> assignKey = ValueKey<String>('employee-detail-assign');
   static const ValueKey<String> workedHoursKey = ValueKey<String>('employee-detail-worked-hours');
   static const ValueKey<String> noticeKey = ValueKey<String>('employee-detail-notice');
@@ -193,6 +195,16 @@ class _Detail extends StatelessWidget {
                           : () => EmployeeCorrectionDialog.open(context, employee),
                       child: const Text('Correct record'),
                     ),
+                    // A Departed Employee has no Signature to set (the server
+                    // answers 404), so the door is left off, as Assign is.
+                    if (employee.isActive)
+                      OutlinedButton(
+                        key: EmployeeDetailScreen.signatureKey,
+                        onPressed: state.isMutating
+                            ? null
+                            : () => EmployeeSignatureDialog.open(context, employee),
+                        child: const Text('Signature'),
+                      ),
                     if (employee.isActive)
                       OutlinedButton(
                         key: EmployeeDetailScreen.departKey,

@@ -89,7 +89,7 @@ void main() {
     expect(find.text('an Employee with this work_email already exists'), findsOneWidget);
   });
 
-  testWidgets('a non-administrator sees none of the four write controls', (tester) async {
+  testWidgets('a non-administrator sees none of the five write controls', (tester) async {
     final wire = FakeWire(
       role: Roles.supervisor,
       employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
@@ -104,6 +104,7 @@ void main() {
     expect(find.byKey(EmployeeDetailScreen.correctKey), findsNothing);
     expect(find.byKey(EmployeeDetailScreen.departKey), findsNothing);
     expect(find.byKey(EmployeeDetailScreen.reinstateKey), findsNothing);
+    expect(find.byKey(EmployeeDetailScreen.signatureKey), findsNothing);
   });
 
   testWidgets(
@@ -179,6 +180,9 @@ void main() {
     await openDirectory(tester, wire);
     await tapIn(tester, find.byKey(DirectoryScreen.rowKey('7')));
 
+    // An administrator is offered the Signature dialog on an active Employee.
+    expect(find.byKey(EmployeeDetailScreen.signatureKey), findsOneWidget);
+
     await tapIn(tester, find.byKey(EmployeeDetailScreen.departKey));
     expect(find.byType(EmployeeDepartureDialog), findsOneWidget);
     await pickDate(tester, EmployeeDepartureDialog.terminatedOnKey, DateTime(2024, 7, 1));
@@ -193,6 +197,8 @@ void main() {
     // entry) — the record is still on screen, reading as gone, not gone.
     expect(find.byKey(EmployeeDetailScreen.reinstateKey), findsOneWidget);
     expect(find.byKey(EmployeeDetailScreen.departKey), findsNothing);
+    // A Departed Employee has no Signature to set: the door goes with the departure.
+    expect(find.byKey(EmployeeDetailScreen.signatureKey), findsNothing);
     // No linked Account was scripted (issue #116): no warning, no extra step.
     expect(find.byKey(EmployeeDepartureDialog.linkedAccountWarningKey), findsNothing);
   });
@@ -361,11 +367,13 @@ void main() {
     await tapIn(tester, find.byKey(DirectoryScreen.rowKey('8')));
 
     expect(find.byKey(EmployeeDetailScreen.reinstateKey), findsOneWidget);
+    expect(find.byKey(EmployeeDetailScreen.signatureKey), findsNothing);
     await tapIn(tester, find.byKey(EmployeeDetailScreen.reinstateKey));
 
     expect(wire.employeeReinstatements, ['8']);
     expect(find.byKey(EmployeeDetailScreen.departedKey), findsNothing);
     expect(find.byKey(EmployeeDetailScreen.departKey), findsOneWidget);
     expect(find.byKey(EmployeeDetailScreen.reinstateKey), findsNothing);
+    expect(find.byKey(EmployeeDetailScreen.signatureKey), findsOneWidget);
   });
 }
