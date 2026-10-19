@@ -19,17 +19,7 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-const ADMIN_ROLE_REQUIRED = 'ADMIN_ROLE_REQUIRED';
-
-function requireAdmin(req, res, next) {
-  if (req.account.role !== 'admin') {
-    return res.status(403).json({
-      message: 'This action requires the administrator role.',
-      code: ADMIN_ROLE_REQUIRED
-    });
-  }
-  return next();
-}
+const { requireAdminWithCode: requireAdmin } = require('./authorization');
 
 async function requireKnownProductCost(req, res, next) {
   try {

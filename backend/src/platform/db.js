@@ -86,6 +86,7 @@ async function closePool() {
 // "no actor", which is the honest answer, not a guess.
 async function withActor(accountId, fn) {
   const client = await getPool().connect();
+  let releaseError;
   try {
     await client.query('BEGIN');
     if (accountId != null) {
@@ -95,10 +96,17 @@ async function withActor(accountId, fn) {
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      // The connection is unusable, and its failure must not hide the error
+      // that brought us here. Passing the error to release() makes the pool
+      // discard this client rather than hand it to the next caller.
+      releaseError = rollbackError;
+    }
     throw error;
   } finally {
-    client.release();
+    client.release(releaseError);
   }
 }
 

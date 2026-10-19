@@ -355,16 +355,18 @@ cmd_promote_admin() {
   id=$(docker compose -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null || true)
   [[ -n "$id" ]] || die "postgres is not running — run './scripts/review.sh up' first"
 
-  # email is CITEXT, so this match is already case-insensitive; the email is
-  # single-quoted for the SQL literal and not otherwise escaped — not worth
-  # over-engineering for a local dev convenience.
+  # email is CITEXT, so this match is already case-insensitive. The email goes
+  # in as a psql variable (:'email' quotes it as a literal), never spliced into
+  # the SQL text; psql only interpolates variables from stdin or -f, not -c.
   # -q on top of -t -A: without it, psql still prints its own "UPDATE n"
   # command tag to stdout, which would make $result non-empty even when the
   # UPDATE matched nothing and RETURNING produced no row — silently promoting
   # nobody while reporting success.
   result=$(docker compose -f "$COMPOSE_FILE" exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-    psql -v ON_ERROR_STOP=1 -q -t -A -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-    "UPDATE app_users SET role = 'admin', approval_status = 'approved', is_active = TRUE WHERE email = '${email}' RETURNING id;") \
+    psql -v ON_ERROR_STOP=1 -q -t -A -v "email=${email}" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f - <<'SQL'
+UPDATE app_users SET role = 'admin', approval_status = 'approved', is_active = TRUE WHERE email = :'email' RETURNING id;
+SQL
+  ) \
     || die "promoting ${email} failed — run './scripts/review.sh logs postgres' to see why"
 
   [[ -n "$result" ]] || die "no Account found for ${email} — sign in through the app once first (it starts as pending/operator), then run this again"
@@ -402,21 +404,25 @@ cmd_grant_account() {
   id=$(docker compose -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null || true)
   [[ -n "$id" ]] || die "postgres is not running — run './scripts/review.sh up' first"
 
-  # email is CITEXT, so the match is already case-insensitive; the values are
-  # single-quoted and otherwise unescaped, which is fine for a local dev
-  # convenience. -q -t -A so RETURNING gives one bare id per matched row and
+  # email is CITEXT, so the match is already case-insensitive. The values go in
+  # as psql variables (:'email' quotes them as literals), never spliced into
+  # the SQL text; psql only interpolates variables from stdin or -f, not -c.
+  # -q -t -A so RETURNING gives one bare id per matched row and
   # nothing else; an empty result means the Account or the Org Unit code did
   # not resolve.
   result=$(docker compose -f "$COMPOSE_FILE" exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" postgres \
-    psql -v ON_ERROR_STOP=1 -q -t -A -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-    "INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write)
-     SELECT au.id, ou.id, ${can_write}
-       FROM app_users au
-       JOIN org_units ou ON ou.code = '${code}'
-       JOIN sites s ON s.id = ou.site_id AND s.code = 'DEMO'
-      WHERE au.email = '${email}'
-     ON CONFLICT (app_user_id, org_unit_id) DO UPDATE SET can_write = EXCLUDED.can_write
-     RETURNING app_user_id;") \
+    psql -v ON_ERROR_STOP=1 -q -t -A -v "email=${email}" -v "code=${code}" -v "can_write=${can_write}" \
+    -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f - <<'SQL'
+INSERT INTO app_user_org_units (app_user_id, org_unit_id, can_write)
+SELECT au.id, ou.id, :can_write
+  FROM app_users au
+  JOIN org_units ou ON ou.code = :'code'
+  JOIN sites s ON s.id = ou.site_id AND s.code = 'DEMO'
+ WHERE au.email = :'email'
+ON CONFLICT (app_user_id, org_unit_id) DO UPDATE SET can_write = EXCLUDED.can_write
+RETURNING app_user_id;
+SQL
+  ) \
     || die "granting ${email} on ${code} failed — run './scripts/review.sh logs postgres' to see why"
 
   [[ -n "$result" ]] || die "no Account for ${email} or no Demo Org Unit '${code}' — sign in through the app once, check the code, then run this again"

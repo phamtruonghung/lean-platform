@@ -42,12 +42,7 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-function requireAdmin(req, res, next) {
-  if (req.account.role !== 'admin') {
-    return res.status(403).json({ message: 'This action requires the administrator role.' });
-  }
-  return next();
-}
+const { requireAdmin } = require('./admin');
 
 // The Site a listing names must exist, whoever is asking — a 404, never a
 // silently empty 200, the same answer asset-routes.js's requireKnownSite

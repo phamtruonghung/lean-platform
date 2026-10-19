@@ -249,6 +249,15 @@ router.get('/sites/:siteId/org-units', authenticate, requireActive, authorizatio
       return res.json({ orgUnits });
     }
 
+    // A Grant reaches downward (canAct's containment test), so a parent the
+    // caller can reach brings every child with it: one check answers for the
+    // whole list. A parent the caller cannot reach says nothing about its
+    // children, since a Grant on one child alone still reaches that child, so
+    // that case falls back to asking per child.
+    if (await authorization.canAct({ account: req.account, orgUnitId: parentId, write: false })) {
+      return res.json({ orgUnits });
+    }
+
     const visible = [];
     for (const orgUnit of orgUnits) {
       // eslint-disable-next-line no-await-in-loop

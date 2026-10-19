@@ -44,9 +44,7 @@ function requireNonEmptyString(field, value) {
 // first, so a literal backslash in the search text does not turn the `%`/`_`
 // escapes added after it into something else; the caller adds the
 // `ESCAPE '\'` clause that makes these three characters special and no others.
-function escapeLikePattern(value) {
-  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-}
+const { escapeLikePattern } = require('./sql');
 
 // `uom_name` is joined rather than left to the client so that a catalogue row
 // can say what a Product is measured in without a second read — the same thing

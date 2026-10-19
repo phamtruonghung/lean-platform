@@ -41,19 +41,7 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-// The machine-readable tag on the administrator refusal, shared verbatim with
-// product-cost-routes.js's own copy — the two catalogues refuse identically.
-const ADMIN_ROLE_REQUIRED = 'ADMIN_ROLE_REQUIRED';
-
-function requireAdmin(req, res, next) {
-  if (req.account.role !== 'admin') {
-    return res.status(403).json({
-      message: 'This action requires the administrator role.',
-      code: ADMIN_ROLE_REQUIRED
-    });
-  }
-  return next();
-}
+const { requireAdminWithCode: requireAdmin } = require('./authorization');
 
 // The cost rate named in the URL must exist before anything else — a clean 404,
 // even for an administrator, and even for a malformed id (`parseId` answers null

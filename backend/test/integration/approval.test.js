@@ -261,6 +261,31 @@ test('approving with an unknown role is rejected, and the Account stays untouche
   assert.strictEqual(row.role, 'operator');
 });
 
+test('approving with the same Org Unit granted twice is a 400, and the Account stays untouched', async () => {
+  const { root } = await createSiteWithTree();
+  const { account: pending } = await createPendingAccount('dupgrant');
+
+  const response = await approve(pending.id, {
+    role: 'operator',
+    grants: [
+      { orgUnitId: root.id, canWrite: false },
+      { orgUnitId: root.id, canWrite: true }
+    ]
+  });
+  assert.strictEqual(response.status, 400);
+
+  const { rows: [row] } = await pool.query(
+    'SELECT approval_status FROM app_users WHERE id = $1',
+    [pending.id]
+  );
+  assert.strictEqual(row.approval_status, 'pending');
+  const { rows: grants } = await pool.query(
+    'SELECT 1 FROM app_user_org_units WHERE app_user_id = $1',
+    [pending.id]
+  );
+  assert.strictEqual(grants.length, 0);
+});
+
 test('approving with an unknown Org Unit id rejects the whole request — no partial grants', async () => {
   const { root } = await createSiteWithTree();
   const { account: pending } = await createPendingAccount('badgrant');

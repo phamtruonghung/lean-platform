@@ -40,9 +40,7 @@ function requireNonEmptyString(field, value) {
 // Postgres's own LIKE/ILIKE escape rules, copied from products.js's definition
 // rather than shared with it: each file in this Module keeps its own private
 // helpers (errors.js's header argues why the duplication is the seam).
-function escapeLikePattern(value) {
-  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-}
+const { escapeLikePattern } = require('./sql');
 
 const CUSTOMER_COLUMNS = `c.id, c.code, c.name, c.contact_email, c.is_active, c.created_at, c.updated_at`;
 
