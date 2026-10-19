@@ -267,8 +267,21 @@ unset PW
 The password is read from stdin only and stored as temporary
 (`must_change_password`); #270's change flow replaces it afterwards. The script
 refuses to overwrite an existing password unless run with `--force`, and
-prints only the email and the time. Sign-in in `local` mode also needs the
-Account linked to an active Employee; the script warns when it is not.
+prints only the email and the time.
+
+**Two separate steps, in this order, for everyone but an administrator.** In
+`local` mode a non-admin Account signs in only when both are true: (1) it is
+linked to an active Employee, and (2) it has a password. Linking is not the
+script's job and setting a password does not link; do the link first (the
+Approval queue or the Account's Employee dialog, both need a signed-in
+administrator), then set the password. A password on an unlinked non-admin
+still answers 401, which is the rule working, not the script failing; the
+script prints a warning in that case.
+
+**An administrator needs only the password** (ADR-0045). An Account with role
+`admin` signs in without an Employee link, so the first administrator is just
+the command above. It must still be enabled and the password must match. Its
+identity is `local-account:<id>`, assigned at first sign-in.
 
 First-time setup — Supabase, DNS, Docker, certificates and the runner — is
 walked through by `scripts/setup-deployment.sh`.

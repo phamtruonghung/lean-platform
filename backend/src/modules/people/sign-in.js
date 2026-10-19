@@ -18,6 +18,18 @@
  * for one scrypt verification against a dummy hash, so response time does not
  * tell the two apart either.
  *
+ * ## Who needs an Employee (ADR-0045)
+ *
+ * An Account is how a person on the floor signs in, and a person is an
+ * Employee, so a non-admin Account signs in only while linked to an active
+ * Employee. An Account whose role is 'admin' is the exception, by decision
+ * and not by accident: the deployment's administrator is not necessarily a
+ * plant employee, and without this exception nobody could administer the
+ * site (issue #284). An admin still needs an enabled credential and a
+ * matching password. An admin who IS linked keeps the Employee rule (a
+ * Departed Employee's Account is still refused). An unlinked admin is
+ * identified as `local-account:<app_users.id>`, not `local:<employee_no>`.
+ *
  * ## Secrets
  *
  * The session token is 32 random bytes, base64url, returned once. Only its
@@ -53,6 +65,23 @@ async function spendVerificationTime(password) {
   await verifySecret(password, dummyHash);
 }
 
+// The sign-in rule about Employees, stated once (ADR-0045). A linked Account
+// needs its Employee to be active, whatever its role. An unlinked Account is
+// allowed only if it is an administrator; every other role is refused.
+function mayHoldLocalSession(row) {
+  if (row.employee_id) return row.employee_is_active === true;
+  return row.role === 'admin';
+}
+
+// The identity a local Account is known by, assigned on its first sign-in.
+// `local:<employee_no>` for an Account with an Employee. An unlinked
+// administrator has no employee number, so it is `local-account:<id>`: the
+// primary key never changes or repeats, and the prefix differs from `local:`
+// so it cannot equal any `local:<employee_no>` whatever an employee_no holds.
+function localSubjectFor(row) {
+  return row.employee_id ? `local:${row.employee_no}` : `local-account:${row.id}`;
+}
+
 // Verifies the email and password and mints a session. Deliberately does NOT
 // filter on `app_users.is_active`: a pending Account must be able to sign in,
 // so the app can show its awaiting-Approval screen, and it is requireActive
@@ -80,20 +109,20 @@ async function signIn({ email, password }) {
   }
 
   const passwordMatches = await verifySecret(password, row.password_hash);
-  if (!passwordMatches || !row.is_enabled || !row.employee_id || !row.employee_is_active) {
+  if (!passwordMatches || !row.is_enabled || !mayHoldLocalSession(row)) {
     throw notRecognised();
   }
 
   const token = crypto.randomBytes(32).toString('base64url');
   const expiresAt = await withActor(row.id, async (client) => {
-    // A local Account is identified as `local:<employee_no>`; one created
-    // without a subject gets it on its first sign-in.
+    // A local Account's subject is given by localSubjectFor; one created
+    // without a subject gets it on its first sign-in, and keeps it after.
     await client.query(
       `UPDATE app_users
           SET external_subject = COALESCE(external_subject, $2),
               last_login_at = now()
         WHERE id = $1`,
-      [row.id, `local:${row.employee_no}`]
+      [row.id, localSubjectFor(row)]
     );
     const { rows: [session] } = await client.query(
       `INSERT INTO account_sessions (app_user_id, token_hash, expires_at)

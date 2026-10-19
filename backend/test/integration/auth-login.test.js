@@ -33,7 +33,7 @@ const tag = `al${process.pid}`;
 const emailOf = (name) => `${tag}-${name}@example.com`;
 
 async function makeAccount(name, { password = PASSWORD, isActive = true, approvalStatus = 'approved',
-  isEnabled = true, employeeActive = true, linkEmployee = true, credential = true, subject = null } = {}) {
+  isEnabled = true, employeeActive = true, linkEmployee = true, credential = true, subject = null, role = 'operator' } = {}) {
   let employeeId = null;
   if (linkEmployee) {
     const { rows: [employee] } = await pool.query(
@@ -46,8 +46,8 @@ async function makeAccount(name, { password = PASSWORD, isActive = true, approva
   }
   const { rows: [account] } = await pool.query(
     `INSERT INTO app_users (email, display_name, role, external_subject, is_active, approval_status, employee_id)
-     VALUES ($1, $2, 'operator', $3, $4, $5, $6) RETURNING id`,
-    [emailOf(name), `Auth ${name}`, subject, isActive, approvalStatus, employeeId]
+     VALUES ($1, $2, $7, $3, $4, $5, $6) RETURNING id`,
+    [emailOf(name), `Auth ${name}`, subject, isActive, approvalStatus, employeeId, role]
   );
   accountIds.push(account.id);
   if (credential) {
@@ -232,4 +232,51 @@ test('with the mode unset, a local session token is not accepted', async () => {
   delete process.env.AUTH_PASSWORD_MODE;
   const me = await fetch(`${base}/api/people/me`, { headers: bearer(token) });
   assert.strictEqual(me.status, 401);
+});
+
+test('an admin with no Employee signs in, and is identified as local-account:<id>', async () => {
+  const who = await makeAccount('adminfree', { role: 'admin', linkEmployee: false });
+  const response = await login({ email: who.email, password: PASSWORD });
+  assert.strictEqual(response.status, 200);
+  const body = await response.json();
+  assert.strictEqual(body.account.role, 'admin');
+  assert.strictEqual(body.account.employeeId, null);
+
+  const me = await fetch(`${base}/api/people/me`, { headers: bearer(body.token) });
+  assert.strictEqual(me.status, 200);
+  assert.strictEqual((await me.json()).account.externalSubject, `local-account:${who.id}`);
+
+  const own = await fetch(`${base}/api/people/employees/me`, { headers: bearer(body.token) });
+  assert.strictEqual(own.status, 404);
+  const accounts = await fetch(`${base}/api/people/accounts`, { headers: bearer(body.token) });
+  assert.strictEqual(accounts.status, 200);
+});
+
+test('an Account with no Employee is refused for every role but admin', async () => {
+  for (const role of ['operator', 'supervisor', 'engineer', 'manager']) {
+    const who = await makeAccount(`unlinked${role}`, { role, linkEmployee: false });
+    const response = await login({ email: who.email, password: PASSWORD });
+    assert.strictEqual(response.status, 401, role);
+    assert.strictEqual(await response.text(), JSON.stringify(REFUSAL), role);
+  }
+});
+
+test('an admin with no Employee is still refused when disabled', async () => {
+  const who = await makeAccount('admindisabled', { role: 'admin', linkEmployee: false, isEnabled: false });
+  const response = await login({ email: who.email, password: PASSWORD });
+  assert.strictEqual(response.status, 401);
+  assert.strictEqual(await response.text(), JSON.stringify(REFUSAL));
+});
+
+test('an admin with no Employee is refused a wrong password', async () => {
+  const who = await makeAccount('adminwrongpw', { role: 'admin', linkEmployee: false });
+  const response = await login({ email: who.email, password: 'not the password' });
+  assert.strictEqual(response.status, 401);
+  assert.strictEqual(await response.text(), JSON.stringify(REFUSAL));
+});
+
+test('an admin linked to a Departed Employee is still refused', async () => {
+  const who = await makeAccount('admindeparted', { role: 'admin', employeeActive: false });
+  const response = await login({ email: who.email, password: PASSWORD });
+  assert.strictEqual(response.status, 401);
 });
