@@ -209,8 +209,8 @@ async function resolveEmployeeOrgUnitId(employeeId) {
          SELECT ea.org_unit_id
            FROM employee_assignments ea
           WHERE ea.employee_id = e.id
-            AND ea.effective_from <= CURRENT_DATE
-            AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
+            AND ea.effective_from <= employee_today(ea.employee_id)
+            AND (ea.effective_to IS NULL OR ea.effective_to > employee_today(ea.employee_id))
           LIMIT 1
        ) current_assignment ON TRUE
       WHERE e.id = $1`,

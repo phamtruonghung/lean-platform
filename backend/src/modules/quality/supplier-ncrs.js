@@ -182,7 +182,7 @@ const SUPPLIER_NCR_COLUMNS = `
      AND sn.response_due_at < now()
      AND sn.status NOT IN ('closed', 'rejected')) AS is_overdue,
   CASE WHEN sn.response_due_at IS NOT NULL AND sn.response_due_at < now()
-       THEN (CURRENT_DATE - (sn.response_due_at AT TIME ZONE s.timezone)::date) END AS days_overdue`;
+       THEN (org_unit_today(sn.org_unit_id) - (sn.response_due_at AT TIME ZONE s.timezone)::date) END AS days_overdue`;
 
 // Every join is an INNER join except the two the baseline leaves nullable. The
 // Org Unit is required by this slice's own routes (it is the Grant question's

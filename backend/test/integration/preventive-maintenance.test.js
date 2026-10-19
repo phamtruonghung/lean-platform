@@ -208,13 +208,13 @@ async function postComplete(token, workOrderId, body) {
 
 // --- Fixture helpers -------------------------------------------------------
 
-// The DB's own CURRENT_DATE, offset by whole days and formatted as the
+// The fixture Site's local date (Asia/Ho_Chi_Minh, ADR-0048), offset by whole days and formatted as the
 // service formats it. Using the database's date rather than a JS one keeps
 // these tests honest wherever the API process's timezone differs from
 // Postgres's.
 async function dbDate(offsetDays = 0) {
   const { rows: [row] } = await pool.query(
-    `SELECT to_char(CURRENT_DATE + $1::int, 'YYYY-MM-DD') AS d`,
+    `SELECT to_char((now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date + $1::int, 'YYYY-MM-DD') AS d`,
     [offsetDays]
   );
   return row.d;

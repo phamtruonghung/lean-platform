@@ -154,9 +154,9 @@ const ACTION_COLUMNS = `
   -- The register's own judgement about today, computed rather than stored: a
   -- row's status says whether it is finished, and this says whether it is
   -- late, which is a fact about the calendar and not about the record.
-  (ai.due_date IS NOT NULL AND ai.due_date < CURRENT_DATE) AS is_overdue,
-  CASE WHEN ai.due_date IS NOT NULL AND ai.due_date < CURRENT_DATE
-       THEN (CURRENT_DATE - ai.due_date) END AS days_overdue,
+  (ai.due_date IS NOT NULL AND ai.due_date < org_unit_today(ai.org_unit_id)) AS is_overdue,
+  CASE WHEN ai.due_date IS NOT NULL AND ai.due_date < org_unit_today(ai.org_unit_id)
+       THEN (org_unit_today(ai.org_unit_id) - ai.due_date) END AS days_overdue,
   ai.escalated_to_org_unit_id, ai.escalated_at, ai.source_type,
   -- The Non-conformance this Concern was raised from, if it was raised from
   -- one (issue #208). Read here rather than derived from the link table, so
@@ -711,7 +711,7 @@ async function listActionsAtSite(
     `SELECT ${ACTION_COLUMNS}
      ${ACTION_JOINS}
      WHERE ${conditions.join(' AND ')}
-     ORDER BY (ai.due_date IS NOT NULL AND ai.due_date < CURRENT_DATE) DESC,
+     ORDER BY (ai.due_date IS NOT NULL AND ai.due_date < org_unit_today(ai.org_unit_id)) DESC,
               ai.due_date ASC NULLS LAST,
               ai.priority ASC,
               ai.raised_at DESC
@@ -1853,7 +1853,7 @@ const CAPA_LIST_LIMIT = 200;
 // list: an effective check leaves the due date where it was, because that is
 // the date the check was judged against, and a closed CAPA is not a worklist.
 const CAPA_CHECK_OVERDUE =
-  "(c.effectiveness_check_due_at IS NOT NULL AND c.effectiveness_check_due_at < CURRENT_DATE " +
+  "(c.effectiveness_check_due_at IS NOT NULL AND c.effectiveness_check_due_at < org_unit_today(c.org_unit_id) " +
   "AND c.status NOT IN ('closed', 'cancelled'))";
 
 // The delay a CAPA is opened with, in days, and the bounds the schema's own

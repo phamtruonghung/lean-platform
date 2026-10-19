@@ -36,7 +36,7 @@
  * `assessed_on` (or `skill_id`) is actually part of the statement's own SET
  * list, not on any UPDATE whatsoever. The `ON CONFLICT ... DO UPDATE` below
  * always includes `assessed_on` in its SET clause (falling back to
- * CURRENT_DATE when the caller did not supply one, matching the column's own
+ * the Employee's local date when the caller did not supply one, matching the column's own
  * DB default) specifically so a re-assessment always re-triggers the
  * auto-expiry derivation from the skill's `revalidation_months` when the
  * caller omits `expiresOn` — see that function's own comment for the detail.
@@ -368,7 +368,7 @@ async function recordEmployeeSkill(employeeId, skillId, input, accountId) {
       const { rows: [row] } = await client.query(
         `INSERT INTO employee_skills
            (employee_id, skill_id, proficiency_level, assessed_on, expires_on, evidence_ref, note)
-         VALUES ($1, $2, $3, COALESCE($4::date, CURRENT_DATE), $5, $6, $7)
+         VALUES ($1, $2, $3, COALESCE($4::date, employee_today($1)), $5, $6, $7)
          ON CONFLICT (employee_id, skill_id) DO UPDATE
             SET proficiency_level = EXCLUDED.proficiency_level,
                 assessed_on       = EXCLUDED.assessed_on,
@@ -434,8 +434,8 @@ async function listQualifiedEmployees(skillId, { orgUnitId, minimumLevel } = {})
          SELECT ea.org_unit_id
            FROM employee_assignments ea
           WHERE ea.employee_id = e.id
-            AND ea.effective_from <= CURRENT_DATE
-            AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
+            AND ea.effective_from <= employee_today(ea.employee_id)
+            AND (ea.effective_to IS NULL OR ea.effective_to > employee_today(ea.employee_id))
           LIMIT 1
        ) current_assignment ON TRUE
        JOIN org_units resolved_ou

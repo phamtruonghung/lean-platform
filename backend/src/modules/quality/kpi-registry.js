@@ -224,9 +224,9 @@ const OVERDUE_CAPAS = `(
       ON c.org_unit_id = ou.id
      AND c.status NOT IN ('closed', 'cancelled')
      AND (
-       c.due_date < CURRENT_DATE
+       c.due_date < org_unit_today(c.org_unit_id)
        OR (c.effectiveness_check_due_at IS NOT NULL
-           AND c.effectiveness_check_due_at < CURRENT_DATE)
+           AND c.effectiveness_check_due_at < org_unit_today(c.org_unit_id))
      )
    GROUP BY ou.id
 )`;

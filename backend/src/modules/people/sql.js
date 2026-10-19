@@ -35,6 +35,6 @@ function escapeLikePattern(value) {
 // means. directory.js negates it for its own `isLapsed`; a second literal
 // copy of this expression anywhere in this Module is a bug.
 const QUALIFICATION_IS_CURRENT_SQL = (alias) =>
-  `(${alias}.expires_on IS NULL OR ${alias}.expires_on > CURRENT_DATE)`;
+  `(${alias}.expires_on IS NULL OR ${alias}.expires_on > employee_today(${alias}.employee_id))`;
 
 module.exports = { escapeLikePattern, QUALIFICATION_IS_CURRENT_SQL };
