@@ -22,7 +22,7 @@ const {
   setAccountActive,
   setAccountEmployee
 } = require('./service');
-const { resetPassword, changeOwnPassword } = require('./passwords');
+const { resetPassword, changeOwnPassword, mustChangePassword } = require('./passwords');
 
 const router = express.Router();
 
@@ -74,7 +74,7 @@ router.get('/me', authenticate, async (req, res, next) => {
   try {
     res.json({
       status: statusFor(req.account),
-      account: req.account,
+      account: { ...req.account, mustChangePassword: await mustChangePassword(req.account.id) },
       orgUnitScope: await orgUnitScopeFor({ account: req.account })
     });
   } catch (error) {

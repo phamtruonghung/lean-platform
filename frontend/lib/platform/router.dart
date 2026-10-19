@@ -169,6 +169,7 @@ import '../safety/safety_observations_bloc.dart';
 import 'access_denied_screen.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
+import 'change_password_screen.dart';
 import 'destinations.dart';
 import 'dialog_page.dart';
 import 'floor_device_gateway.dart';
@@ -179,6 +180,7 @@ abstract final class Routes {
   static const String home = '/';
   static const String signIn = '/sign-in';
   static const String awaitingApproval = '/awaiting-approval';
+  static const String changePassword = '/change-password';
   static const String approvals = '/approvals';
   static const String accounts = '/accounts';
   static const String assets = '/assets';
@@ -439,6 +441,12 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               ? AwaitingApprovalScreen(email: account.email)
               : const SizedBox.shrink();
         },
+      ),
+      // Where an Account whose password an administrator reset is held until
+      // it has chosen its own; `accountRedirect` is what sends it here.
+      GoRoute(
+        path: Routes.changePassword,
+        builder: (context, state) => const ChangePasswordScreen(),
       ),
       // The floor surface (issue #77, ADR-0016). A sibling of the Shell, not a
       // child of it and not an entry in its sidebar: a shared device is not an
@@ -3363,7 +3371,14 @@ String? accountRedirect(AccountState account, GoRouterState state) {
     case AccountAwaitingApproval():
       return atAwaiting ? null : Routes.awaitingApproval;
 
-    case AccountApproved():
+    case AccountApproved(account: final approved):
+      // A temporary password (an administrator's reset) allows nothing but
+      // choosing a new one. Once the flag is clear, the Screen has nothing
+      // left to do and the caller is moved on.
+      if (approved.mustChangePassword) {
+        return location == Routes.changePassword ? null : Routes.changePassword;
+      }
+      if (location == Routes.changePassword) return Routes.home;
       if (!atSignIn && !atAwaiting) return null;
       // Considered addition beyond the issue's literal ACs: after signing
       // in, the current location genuinely is `/sign-in?from=...`, so
@@ -3376,7 +3391,11 @@ String? accountRedirect(AccountState account, GoRouterState state) {
       final target = Uri.parse(from).path;
       // Redirect-loop guard: don't send an approved caller back to
       // sign-in/awaiting-approval even if that's what `from` points at.
-      if (target == Routes.signIn || target == Routes.awaitingApproval) return Routes.home;
+      if (target == Routes.signIn ||
+          target == Routes.awaitingApproval ||
+          target == Routes.changePassword) {
+        return Routes.home;
+      }
       return from;
   }
 }

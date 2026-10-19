@@ -95,7 +95,7 @@ async function signIn({ email, password }) {
   const { rows: [row] } = await getPool().query(
     `SELECT u.id, u.email, u.display_name, u.role, u.approval_status, u.employee_id,
             u.external_subject, e.employee_no, e.is_active AS employee_is_active,
-            c.password_hash, c.is_enabled
+            c.password_hash, c.is_enabled, c.must_change_password
        FROM app_users u
        LEFT JOIN employees e ON e.id = u.employee_id
        LEFT JOIN account_credentials c ON c.app_user_id = u.id
@@ -142,7 +142,8 @@ async function signIn({ email, password }) {
       displayName: row.display_name,
       role: row.role,
       approvalStatus: row.approval_status,
-      employeeId: row.employee_id
+      employeeId: row.employee_id,
+      mustChangePassword: row.must_change_password === true
     }
   };
 }

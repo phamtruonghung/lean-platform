@@ -11,6 +11,7 @@ import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/actions/actions_api.dart';
 import 'package:lean_platform/maintenance/maintenance_api.dart';
 import 'package:lean_platform/people_api.dart';
+import 'package:lean_platform/platform/change_password_screen.dart';
 import 'package:lean_platform/platform/not_found_screen.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 import 'package:lean_platform/quality/quality_api.dart';
@@ -184,5 +185,73 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  group('an Account whose password an administrator reset', () {
+    Map<String, dynamic> mustChangeBody(bool must) => {
+          'status': 'active',
+          'account': {
+            'id': '1',
+            'email': 'a@b.c',
+            'displayName': 'A B',
+            'role': 'administrator',
+            'mustChangePassword': must,
+          },
+        };
+
+    testWidgets('is sent to the change-password Screen from every address', (tester) async {
+      for (final location in ['/', '/some/deep/link']) {
+        await pumpApp(
+          tester,
+          gateway: FakeAuthGateway(accessToken: 'a-token'),
+          client: meClient(() => mustChangeBody(true)),
+          initialLocation: location,
+        );
+
+        expect(find.byType(ChangePasswordScreen), findsOneWidget);
+        expect(find.byType(HomeScreen), findsNothing);
+      }
+    });
+
+    testWidgets('is released once a change clears the flag', (tester) async {
+      var must = true;
+      final requests = <String>[];
+      final client = MockClient((request) async {
+        requests.add('${request.method} ${request.url.path}');
+        if (request.method == 'PUT' && request.url.path == '/api/people/me/password') {
+          must = false;
+          return http.Response(jsonEncode({'account': {'id': '1'}}), 200);
+        }
+        return http.Response(jsonEncode(mustChangeBody(must)), 200);
+      });
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: client,
+        initialLocation: '/',
+      );
+      expect(find.byType(ChangePasswordScreen), findsOneWidget);
+
+      await tester.enterText(find.byKey(ChangePasswordScreen.currentFieldKey), 'temporary pass');
+      await tester.enterText(find.byKey(ChangePasswordScreen.newFieldKey), 'a brand new passphrase');
+      await tester.tap(find.byKey(ChangePasswordScreen.submitKey));
+      await tester.pumpAndSettle();
+
+      expect(requests, contains('PUT /api/people/me/password'));
+      expect(find.byType(ChangePasswordScreen), findsNothing);
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('an Account with the flag clear cannot linger on the Screen', (tester) async {
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: meClient(() => mustChangeBody(false)),
+        initialLocation: '/change-password',
+      );
+
+      expect(find.byType(ChangePasswordScreen), findsNothing);
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
   });
 }

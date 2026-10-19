@@ -118,7 +118,8 @@ test('a correct email and password return a token that opens GET /api/people/me'
     displayName: 'Auth success',
     role: 'operator',
     approvalStatus: 'approved',
-    employeeId: who.employeeId
+    employeeId: who.employeeId,
+    mustChangePassword: false
   });
 
   const me = await fetch(`${base}/api/people/me`, { headers: bearer(body.token) });
