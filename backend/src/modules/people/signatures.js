@@ -129,6 +129,38 @@ async function removeSignature(accountId, employeeId) {
   if (removed === 0) throw notFound('Signature');
 }
 
+const EMPLOYEE_HAS_ACCOUNT =
+  'This Employee holds an Account of their own, so only they can set their Signature';
+
+// An administrator sets a Signature only for an Employee who cannot: one that
+// holds no Account. Whether an Employee holds one is `app_users.employee_id`.
+async function requireNoAccount(employeeId) {
+  const { rows } = await getPool().query('SELECT 1 FROM app_users WHERE employee_id = $1 LIMIT 1', [employeeId]);
+  if (rows.length > 0) throw httpError(409, EMPLOYEE_HAS_ACCOUNT);
+}
+
+// The current Signature's metadata for an administrator: who set it and
+// whether they set it for the Employee (`setForEmployee`) or the Employee
+// set it themselves (the setter's Account is linked to this Employee).
+async function getCurrentSignatureDetails(employeeId) {
+  const { rows } = await getPool().query(
+    `SELECT s.id, s.origin, s.image_bytes, s.created_at, s.set_by_account_id,
+            u.display_name AS set_by_name, u.employee_id AS set_by_employee_id
+       FROM employee_signatures s
+       LEFT JOIN app_users u ON u.id = s.set_by_account_id
+      WHERE s.employee_id = $1 AND s.kept AND s.superseded_at IS NULL`,
+    [employeeId]
+  );
+  if (rows.length === 0) throw notFound('Signature');
+  const row = rows[0];
+  return {
+    ...toSignature(row),
+    setByAccountId: row.set_by_account_id === null ? null : String(row.set_by_account_id),
+    setByName: row.set_by_name ?? null,
+    setForEmployee: String(row.set_by_employee_id) !== String(employeeId)
+  };
+}
+
 // What a Trainee's answer asks to be signed with: `{ use: 'stored' }`, an
 // inline `{ image }`, or nothing. Returns null (nothing), 'stored', or the
 // decoded PNG bytes. Pure request-shape and image validation - the same four
@@ -188,6 +220,9 @@ module.exports = {
   MAX_WIDTH,
   MAX_HEIGHT,
   NO_SIGNATURE,
+  EMPLOYEE_HAS_ACCOUNT,
+  requireNoAccount,
+  getCurrentSignatureDetails,
   keepSignature,
   parseApplied,
   currentSignatureId,

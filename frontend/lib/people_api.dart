@@ -18,6 +18,7 @@ import 'people/worked_hours.dart';
 import 'people/cost_rate.dart';
 import 'people/employee.dart';
 import 'people/employee_ref.dart';
+import 'people/employee_signature.dart';
 import 'people/job_role.dart';
 import 'people/managed_account.dart';
 import 'people/org_unit.dart';
@@ -1814,6 +1815,52 @@ class PeopleApi {
   /// the server supersedes it and keeps the row.
   Future<void> removeMySignature(String accessToken) async {
     const path = '/api/people/me/signature';
+    await _send(
+      () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+  }
+
+  /// An Employee's current Signature as an administrator sees it
+  /// (`GET /api/people/employees/:id/signature/details`, then the image at
+  /// `/signature`, issue #320), or null when none is kept (404).
+  Future<EmployeeSignature?> fetchEmployeeSignature(String accessToken, String employeeId) async {
+    final path = '/api/people/employees/$employeeId/signature';
+    final headers = {'authorization': 'Bearer $accessToken'};
+    try {
+      final details = await _send(() => _client.get(Uri.parse('$path/details'), headers: headers), '$path/details');
+      final image = await _send(() => _client.get(Uri.parse(path), headers: headers), path);
+      final body = jsonDecode(details.body) as Map<String, dynamic>;
+      return EmployeeSignature.fromDetailsJson(body['signature'] as Map<String, dynamic>, image.bodyBytes);
+    } on PeopleApiException catch (error) {
+      if (error.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  /// Keeps [png] as the Signature of an Employee who holds no Account
+  /// (`PUT /api/people/employees/:id/signature`, issue #320). The server
+  /// answers 409 once the Employee holds an Account of their own.
+  Future<void> keepEmployeeSignature(
+    String accessToken,
+    String employeeId,
+    Uint8List png, {
+    String origin = 'upload',
+  }) async {
+    final path = '/api/people/employees/$employeeId/signature';
+    await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'image': base64Encode(png), 'origin': origin}),
+      ),
+      path,
+    );
+  }
+
+  /// Removes an Employee's Signature (`DELETE /api/people/employees/:id/signature`).
+  Future<void> removeEmployeeSignature(String accessToken, String employeeId) async {
+    final path = '/api/people/employees/$employeeId/signature';
     await _send(
       () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
       path,

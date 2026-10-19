@@ -4242,6 +4242,16 @@ class FakeWire {
   String removeSignatureMessage = 'That Signature could not be removed.';
   final List<(String, Map<String, dynamic>)> signatureWrites = [];
 
+  /// An administrator's door to an Employee's Signature (issue #320):
+  /// [employeeSignatures] by Employee id with [employeeSignatureSetBy] (the
+  /// `/details` body); `PUT`/`DELETE` record into [employeeSignatureWrites]
+  /// and answer [employeeSignatureWriteStatus] with `{message}` when not 200.
+  final Map<String, Uint8List> employeeSignatures = {};
+  final Map<String, Map<String, dynamic>> employeeSignatureSetBy = {};
+  int employeeSignatureWriteStatus = 200;
+  String employeeSignatureWriteMessage = 'That Signature could not be kept.';
+  final List<(String, Map<String, dynamic>)> employeeSignatureWrites = [];
+
   /// `GET /api/people/training/to-confirm` (issue #289) — the caller's own
   /// outstanding answers, empty by default. A successful answer removes its
   /// row.
@@ -7916,6 +7926,52 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode(employeeWorkedHours), 200);
+        }
+        // An administrator's door to an Employee's Signature (issue #320).
+        final employeeSignaturePath =
+            RegExp(r'^/api/people/employees/([^/]+)/signature(/details)?$').firstMatch(path);
+        if (employeeSignaturePath != null) {
+          final id = employeeSignaturePath.group(1)!;
+          final isDetails = employeeSignaturePath.group(2) != null;
+          if (request.method == 'GET') {
+            final image = employeeSignatures[id];
+            if (image == null) return http.Response(jsonEncode({'message': 'Signature not found'}), 404);
+            if (isDetails) {
+              return http.Response(
+                jsonEncode({'signature': employeeSignatureSetBy[id] ?? {'setByName': 'Test Admin', 'setForEmployee': true, 'origin': 'upload'}}),
+                200,
+              );
+            }
+            return http.Response.bytes(image, 200, headers: {'content-type': 'image/png'});
+          }
+          if (request.method == 'PUT') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            employeeSignatureWrites.add(('PUT $path', sent));
+            if (employeeSignatureWriteStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': employeeSignatureWriteMessage}),
+                employeeSignatureWriteStatus,
+              );
+            }
+            employeeSignatures[id] = base64Decode(sent['image'] as String);
+            employeeSignatureSetBy[id] = {
+              'setByName': 'Test Admin',
+              'setForEmployee': true,
+              'origin': sent['origin'],
+            };
+            return http.Response(jsonEncode({'signature': {'id': '1', 'origin': sent['origin']}}), 200);
+          }
+          if (request.method == 'DELETE') {
+            employeeSignatureWrites.add(('DELETE $path', const {}));
+            if (employeeSignatureWriteStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': employeeSignatureWriteMessage}),
+                employeeSignatureWriteStatus,
+              );
+            }
+            employeeSignatures.remove(id);
+            return http.Response('', 204);
+          }
         }
         // GET /api/people/employees/me and GET /api/people/employees/:id
         // (issue #86) — `me` is a distinct fixture key, not a real Employee
