@@ -119,11 +119,27 @@ Two differences from the backend seam, both because the client has no
 equivalent of the backend's own tooling. First, `lib/platform/` — the Shell,
 router and DI wiring in `platform_app.dart` and `main.dart` — sits outside
 this seam entirely, the same way `src/index.js` sits outside `modules/` on
-the backend: it wires both Modules together rather than being a third Module
-consuming People's entry point. Second, there is no Dart equivalent of
+the backend: it wires the Modules together rather than being another Module
+consuming an entry point. Second, there is no Dart equivalent of
 `people-entry-point.test.js`'s export-set assertion — `show` lists are not
-introspectable at runtime the way a CommonJS `module.exports` object is — so
-`flutter analyze` (which already fails on an unused or unresolved import) is
-the only enforcement this seam gets on the client. That is weaker than the
-backend's test, and is recorded here as a known gap rather than a parity
-claim.
+introspectable at runtime the way a CommonJS `module.exports` object is.
+
+## Enforcement: `tool/check_module_seams.dart`
+
+Added 2026-10 (review finding). The paragraph above originally said `flutter
+analyze` was the only enforcement the seam got. That was wrong in a way that
+mattered: `flutter analyze` fails on an unused or unresolved import, not on an
+import that reaches into another Module's internals, so about seventeen such
+imports accumulated unnoticed. Every Module now has an entry point
+(`people/people.dart`, `maintenance/maintenance.dart`, `quality/quality.dart`,
+`safety/safety.dart`, `actions/actions.dart`), and
+`frontend/tool/check_module_seams.dart` (run `dart run
+tool/check_module_seams.dart` from `frontend/`) fails when a file under one
+Module imports a file under another Module other than that Module's
+`<module>/<module>.dart`. Allowed from inside a Module: its own files,
+`platform/`, `widgets/`, `auth/`, and the shared files directly under `lib/`
+(`theme.dart`, `status_tone.dart`, `people_api.dart`, ...). Files directly
+under `lib/` and `lib/platform/` are the wiring layer and may import anything.
+The check runs in CI's frontend job and in `scripts/flutter-ci.sh`. It does
+not check what an entry point exports, only that nobody goes around it; the
+export lists remain a review matter.

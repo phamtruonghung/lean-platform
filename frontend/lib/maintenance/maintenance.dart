@@ -38,3 +38,4 @@ library;
 export 'meter.dart' show UnitOfMeasure;
 export 'asset.dart' show Asset;
 export 'org_unit_chooser.dart' show OrgUnitChooser;
+export 'maintenance_api.dart' show MaintenanceApi, MaintenanceApiException;

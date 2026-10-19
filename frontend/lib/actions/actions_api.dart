@@ -7,6 +7,7 @@
 /// directly, the same way the Asset register does.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -968,10 +969,14 @@ class ActionsApi {
   /// own message where it sent one, and a status-and-path sentence where it did
   /// not — never a raw exception, which names internals a screen should not
   /// show.
+  static const Duration _requestTimeout = Duration(seconds: 30);
+
   Future<http.Response> _send(Future<http.Response> Function() send, String path) async {
     final http.Response response;
     try {
-      response = await send();
+      response = await send().timeout(_requestTimeout);
+    } on TimeoutException {
+      throw ActionsApiException('The API did not answer within ${_requestTimeout.inSeconds} seconds.');
     } catch (error) {
       throw ActionsApiException('Could not reach the API: $error');
     }

@@ -5,6 +5,7 @@
 /// call before Approval (see `backend/src/modules/people/routes.js`).
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -2278,10 +2279,14 @@ class PeopleApi {
   /// copy so its messages stay byte-identical. Accepts any 2xx, not only 200
   /// (issue #87): `createEmployee` answers 201, the same reason
   /// `MaintenanceApi._send` already accepts any 2xx rather than one exact code.
+  static const Duration _requestTimeout = Duration(seconds: 30);
+
   Future<http.Response> _send(Future<http.Response> Function() send, String path) async {
     final http.Response response;
     try {
-      response = await send();
+      response = await send().timeout(_requestTimeout);
+    } on TimeoutException {
+      throw PeopleApiException('The API did not answer within ${_requestTimeout.inSeconds} seconds.');
     } catch (error) {
       throw PeopleApiException('Could not reach the API: $error');
     }

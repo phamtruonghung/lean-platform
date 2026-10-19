@@ -123,5 +123,6 @@ docker run --rm \
     set -euo pipefail
     timeout 900 flutter pub get
     timeout 900 flutter analyze
+    dart run tool/check_module_seams.dart
     timeout 2700 flutter test -j "$1" "${@:2}"
   ' _ "$JOBS" "$@"
