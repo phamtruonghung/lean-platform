@@ -46,6 +46,7 @@ class AccountActive extends AccountStatus {
     required this.role,
     this.employeeId,
     this.orgUnitScope = const OrgUnitScope.nowhere(),
+    this.mustChangePassword = false,
   });
 
   /// The caller's own Account id — what the Accounts Screen compares each row
@@ -71,6 +72,12 @@ class AccountActive extends AccountStatus {
   /// cached client that predates this field, or a response the API sent with
   /// no `orgUnitScope` at all, still constructs a valid [AccountActive].
   final OrgUnitScope orgUnitScope;
+
+  /// An administrator reset this Account's password, so the one it holds is
+  /// temporary: the router sends it to the change-password Screen until it
+  /// has chosen its own. Absent from an older server's answer, which means
+  /// false.
+  final bool mustChangePassword;
 }
 
 /// The request could not be answered at all — unreachable API, a malformed
@@ -189,6 +196,7 @@ class PeopleApi {
       role: account['role'] as String,
       employeeId: account['employeeId']?.toString(),
       orgUnitScope: _orgUnitScopeFrom(body['orgUnitScope']),
+      mustChangePassword: account['mustChangePassword'] == true,
     );
   }
 

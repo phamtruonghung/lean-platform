@@ -146,7 +146,7 @@ test('an administrator reset lets the new password sign in and stops the old one
   assert.strictEqual(await loginStatus(target, NEW_PASSWORD), 200);
   assert.strictEqual(await loginStatus(target, PASSWORD), 401);
 
-  // No endpoint exposes must_change_password yet, so this one column is read directly.
+  // Read directly as well; the /me and /login report of the flag is asserted below.
   const { rows: [credential] } = await pool.query(
     'SELECT must_change_password, is_enabled FROM account_credentials WHERE app_user_id = $1', [target.id]);
   assert.strictEqual(credential.must_change_password, true);
@@ -238,13 +238,14 @@ test('a self-change takes the new password, keeps the caller signed in and ends 
   const who = await makeAccount('chgself');
   const bystander = await makeAccount('chgother');
   const adminToken = await signIn(admin);
-  const token = await signIn(who);
-  const otherDevice = await signIn(who);
   const bystanderToken = await signIn(bystander);
 
-  // An administrator's reset marks the password temporary.
+  // An administrator's reset marks the password temporary (and ends the old
+  // sessions, so the two sessions under test are opened after it).
   assert.strictEqual((await reset(who.id, adminToken, 'temporary pass')).status, 200);
-  // No endpoint exposes must_change_password yet, so it is read directly.
+  const token = await signIn(who, 'temporary pass');
+  const otherDevice = await signIn(who, 'temporary pass');
+  // Read directly as well; the /me and /login report of the flag is asserted below.
   const flag = async () => (await pool.query(
     'SELECT must_change_password FROM account_credentials WHERE app_user_id = $1', [who.id])).rows[0].must_change_password;
   assert.strictEqual(await flag(), true);
@@ -279,4 +280,41 @@ test('a self-change for an Account holding no credential is a 409', async () => 
   );
   const response = await change(token, PASSWORD, NEW_PASSWORD);
   assert.strictEqual(response.status, 409);
+});
+
+test('a reset ends every session of the target, which then gets 401', async () => {
+  const admin = await makeAccount('revadmin', { role: 'admin' });
+  const target = await makeAccount('revtarget');
+  const token = await signIn(admin);
+  const first = await signIn(target);
+  const second = await signIn(target);
+  assert.strictEqual(await meStatus(first), 200);
+
+  assert.strictEqual((await reset(target.id, token, NEW_PASSWORD)).status, 200);
+
+  assert.strictEqual(await meStatus(first), 401);
+  assert.strictEqual(await meStatus(second), 401);
+  assert.strictEqual(await meStatus(token), 200, 'the administrator keeps their own session');
+});
+
+test('mustChangePassword is true after a reset and false after a change', async () => {
+  const admin = await makeAccount('mcadmin', { role: 'admin' });
+  const target = await makeAccount('mctarget');
+  const adminToken = await signIn(admin);
+  const readMe = async (token) => (await (await fetch(`${base}/api/people/me`, { headers: bearer(token) })).json()).account;
+
+  const before = await login({ email: target.email, password: PASSWORD });
+  assert.strictEqual((await before.json()).account.mustChangePassword, false);
+
+  assert.strictEqual((await reset(target.id, adminToken, NEW_PASSWORD)).status, 200);
+
+  const afterReset = await login({ email: target.email, password: NEW_PASSWORD });
+  const session = await afterReset.json();
+  assert.strictEqual(session.account.mustChangePassword, true);
+  assert.strictEqual((await readMe(session.token)).mustChangePassword, true);
+
+  assert.strictEqual((await change(session.token, NEW_PASSWORD, 'yet another passphrase')).status, 200);
+  assert.strictEqual((await readMe(session.token)).mustChangePassword, false);
+  const again = await login({ email: target.email, password: 'yet another passphrase' });
+  assert.strictEqual((await again.json()).account.mustChangePassword, false);
 });

@@ -216,6 +216,7 @@ const _excluded = <String, String>{
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',
+  'lib/platform/change_password_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/platform/access_denied_screen.dart': 'a centred state on purpose',
   'lib/platform/not_found_screen.dart': 'a centred state on purpose',
   'lib/platform/session_error_screen.dart': 'a centred state on purpose',

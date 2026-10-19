@@ -13,9 +13,14 @@
  *
  * A reset stores `must_change_password = TRUE`: the administrator knows the
  * password they just set, so it is temporary. A person's own change stores
- * FALSE. The flag is stored only; sign-in does not enforce it yet (a named
- * follow-up). A reset leaves `is_enabled` alone and does not end the target's
- * sessions.
+ * FALSE. The flag is reported, not enforced by the API: /login and /api/people/me
+ * return it as `account.mustChangePassword`, and the client sends the person
+ * to change their password before anything else (frontend/lib/platform/
+ * router.dart). Enforcing it server-side (refusing other routes until the
+ * change) is a named follow-up. A reset leaves `is_enabled` alone, and ends
+ * ALL of the target's sessions in the same transaction as the new password:
+ * the old password may be known to someone else, and a session minted with it
+ * must not outlive the reset.
  *
  * A self-change revokes the Account's OTHER sessions and never the caller's:
  * the usual reason to change a password is that someone else may hold it, and
@@ -62,16 +67,35 @@ async function resetPassword(id, password, actingAccountId) {
   if (!row) throw notFoundAccount();
 
   const passwordHash = await hashSecret(password);
-  await withActor(actingAccountId, (client) => client.query(
-    `INSERT INTO account_credentials (app_user_id, password_hash, must_change_password)
-     VALUES ($1, $2, TRUE)
-     ON CONFLICT (app_user_id) DO UPDATE
-       SET password_hash = EXCLUDED.password_hash,
-           must_change_password = TRUE,
-           updated_at = now()`,
-    [id, passwordHash]
-  ));
+  await withActor(actingAccountId, async (client) => {
+    await client.query(
+      `INSERT INTO account_credentials (app_user_id, password_hash, must_change_password)
+       VALUES ($1, $2, TRUE)
+       ON CONFLICT (app_user_id) DO UPDATE
+         SET password_hash = EXCLUDED.password_hash,
+             must_change_password = TRUE,
+             updated_at = now()`,
+      [id, passwordHash]
+    );
+    await client.query(
+      `UPDATE account_sessions
+          SET revoked_at = now()
+        WHERE app_user_id = $1 AND revoked_at IS NULL`,
+      [id]
+    );
+  });
   return toAccount(row);
+}
+
+// Whether the Account must change its password before using the Platform. An
+// Account with no credential row (Supabase mode, or none set) has nothing to
+// change here, so false.
+async function mustChangePassword(accountId) {
+  const { rows: [row] } = await getPool().query(
+    'SELECT must_change_password FROM account_credentials WHERE app_user_id = $1',
+    [accountId]
+  );
+  return row?.must_change_password === true;
 }
 
 async function changeOwnPassword(accountId, { currentPassword, newPassword }, sessionId) {
@@ -113,4 +137,10 @@ async function changeOwnPassword(accountId, { currentPassword, newPassword }, se
   });
 }
 
-module.exports = { MIN_PASSWORD_LENGTH, requireAcceptablePassword, resetPassword, changeOwnPassword };
+module.exports = {
+  MIN_PASSWORD_LENGTH,
+  requireAcceptablePassword,
+  resetPassword,
+  changeOwnPassword,
+  mustChangePassword
+};

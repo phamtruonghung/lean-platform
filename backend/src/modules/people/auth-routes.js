@@ -4,7 +4,10 @@
  * route's bearer token comes through, not a People resource. sign-in.js owns
  * the logic; see its header for the single-refusal rule.
  *
- *   - POST /login  — {email, password} -> {token, expiresAt, account}.
+ *   - POST /login  — {email, password} -> {token, expiresAt, account}. Exists
+ *     only when passwordMode() is 'local' (404 otherwise, checked per request
+ *     like the mode itself), and is throttled per client address and per email
+ *     (login-throttle.js): 429 with Retry-After once a limit is reached.
  *   - POST /logout — ends the caller's own session. Idempotent.
  *   - GET  /mode   — {"password":"local"|"supabase"}, unauthenticated, so a
  *     client knows which sign-in form to show before it has any token.
@@ -14,6 +17,7 @@ const express = require('express');
 const { authenticate } = require('./middleware');
 const { handleError } = require('./errors');
 const { passwordMode, signIn, revokeSessionByToken } = require('./sign-in');
+const loginThrottle = require('./login-throttle');
 
 const router = express.Router();
 
@@ -22,11 +26,20 @@ router.get('/mode', (_req, res) => {
 });
 
 router.post('/login', async (req, res, next) => {
+  if (passwordMode() !== 'local') {
+    return res.status(404).json({ message: 'Not found' });
+  }
+
   try {
     const { email, password } = req.body ?? {};
-    res.json(await signIn({ email, password }));
+    const caller = { ip: req.ip, email };
+    loginThrottle.begin(caller);
+    const session = await signIn({ email, password });
+    loginThrottle.succeeded(caller);
+    return res.json(session);
   } catch (error) {
-    handleError(error, res, next);
+    if (error.retryAfterSeconds) res.set('Retry-After', String(error.retryAfterSeconds));
+    return handleError(error, res, next);
   }
 });
 
