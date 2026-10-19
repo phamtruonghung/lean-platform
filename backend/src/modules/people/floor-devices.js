@@ -37,6 +37,16 @@ const { httpError, parseId } = require('./errors');
 
 const PIN_PATTERN = /^[0-9]{4,8}$/;
 
+// The lockout (ADR-0047). Five consecutive wrong PINs for one Employee number
+// on one device lock that pair for fifteen minutes; thirty wrong PINs of any
+// Employee on one device inside fifteen minutes lock the whole device for the
+// same time. A correct PIN clears the Employee's counter, never the device's.
+const MAX_PIN_FAILURES = 5;
+const MAX_DEVICE_FAILURES = 30;
+const LOCKOUT_SECONDS = 15 * 60;
+const DEVICE_SCOPE = '';
+const MAX_EMPLOYEE_NO_LENGTH = 64;
+
 // How long an identification is good for. Deliberately short: ADR-0016's own
 // requirement is that "who was at the machine" and "who the system attributed
 // the action to" cannot drift across a shift change. Two minutes is long
@@ -60,7 +70,89 @@ const verifyPin = verifySecret;
 function normaliseEmployeeNo(employeeNo) {
   if (typeof employeeNo !== 'string') return null;
   const trimmed = employeeNo.trim();
-  return trimmed === '' ? null : trimmed;
+  return trimmed === '' || trimmed.length > MAX_EMPLOYEE_NO_LENGTH ? null : trimmed;
+}
+
+// Seconds left on the longest lock that applies to this device and Employee
+// number (its own pair, or the device as a whole), or 0 when none does. Asked
+// before the PIN is looked at, so a locked pair refuses even the right PIN.
+async function pinLockRemainingSeconds(deviceId, employeeNo) {
+  const normalised = normaliseEmployeeNo(employeeNo);
+  const { rows: [row] } = await getPool().query(
+    `SELECT COALESCE(CEIL(MAX(EXTRACT(EPOCH FROM (locked_until - now())))), 0)::int AS seconds
+       FROM floor_pin_attempts
+      WHERE floor_device_id = $1
+        AND employee_no = ANY($2)
+        AND locked_until > now()`,
+    [deviceId, normalised === null ? [DEVICE_SCOPE] : [DEVICE_SCOPE, normalised]]
+  );
+  return row.seconds;
+}
+
+// Counts one wrong PIN against the Employee number (when it was usable) and
+// the device, locking whichever reaches its limit. Each counter is changed in
+// one transaction under a row lock so concurrent guesses cannot slip past the
+// limit.
+async function recordPinFailure(deviceId, employeeNo) {
+  const normalised = normaliseEmployeeNo(employeeNo);
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const scopes = [{ no: DEVICE_SCOPE, limit: MAX_DEVICE_FAILURES, windowed: true }];
+    if (normalised !== null) scopes.push({ no: normalised, limit: MAX_PIN_FAILURES, windowed: false });
+    for (const scope of scopes) {
+      await client.query(
+        `INSERT INTO floor_pin_attempts (floor_device_id, employee_no, failures)
+         VALUES ($1, $2, 0) ON CONFLICT DO NOTHING`,
+        [deviceId, scope.no]
+      );
+      // A counter starts over once its lock has lifted (consecutive failures
+      // after the lock are a new run) or, for the device, once its window ran
+      // out.
+      await client.query(
+        `UPDATE floor_pin_attempts
+            SET failures = CASE
+                  WHEN (locked_until IS NOT NULL AND locked_until <= now())
+                    OR ($3::boolean AND window_started_at <= now() - make_interval(secs => $4))
+                  THEN 1 ELSE failures + 1 END,
+                window_started_at = CASE
+                  WHEN (locked_until IS NOT NULL AND locked_until <= now())
+                    OR ($3::boolean AND window_started_at <= now() - make_interval(secs => $4))
+                  THEN now() ELSE window_started_at END,
+                locked_until = CASE
+                  WHEN locked_until IS NOT NULL AND locked_until > now() THEN locked_until
+                  ELSE NULL END,
+                updated_at = now()
+          WHERE floor_device_id = $1 AND employee_no = $2`,
+        [deviceId, scope.no, scope.windowed, LOCKOUT_SECONDS]
+      );
+      await client.query(
+        `UPDATE floor_pin_attempts
+            SET locked_until = now() + make_interval(secs => $4)
+          WHERE floor_device_id = $1 AND employee_no = $2
+            AND failures >= $3 AND locked_until IS NULL`,
+        [deviceId, scope.no, scope.limit, LOCKOUT_SECONDS]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// A correct PIN clears that Employee's run of failures on the device. The
+// device-wide count is left alone: otherwise a person who knows one PIN could
+// reset it between guesses at the others.
+async function clearPinFailures(deviceId, employeeNo) {
+  const normalised = normaliseEmployeeNo(employeeNo);
+  if (normalised === null) return;
+  await getPool().query(
+    'DELETE FROM floor_pin_attempts WHERE floor_device_id = $1 AND employee_no = $2',
+    [deviceId, normalised]
+  );
 }
 
 // Registers a device against an Org Unit and returns the presentable
@@ -148,6 +240,13 @@ async function setEmployeePin(employeeId, pin, accountId) {
        DO UPDATE SET pin_hash = EXCLUDED.pin_hash, is_active = TRUE
        RETURNING id, employee_id, is_active`,
       [employeeId, pinHash]
+    );
+    // Setting a PIN is the administrator's reset: any lock on this Employee,
+    // on any device, ends with it (ADR-0047).
+    await client.query(
+      `DELETE FROM floor_pin_attempts
+        WHERE employee_no = (SELECT employee_no FROM employees WHERE id = $1)`,
+      [employeeId]
     );
     return { id: row.id, employeeId: row.employee_id, isActive: row.is_active };
   });
@@ -246,6 +345,9 @@ module.exports = {
   findDeviceContext,
   setEmployeePin,
   findCredentialForEmployeeNo,
+  pinLockRemainingSeconds,
+  recordPinFailure,
+  clearPinFailures,
   verifyPin,
   createIdentification,
   findValidIdentification,

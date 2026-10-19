@@ -64,6 +64,7 @@
 const express = require('express');
 const floorDevices = require('./floor-devices');
 const { authenticate, requireActive } = require('./middleware');
+const { requireFloorDevice } = require('./floor-device-middleware');
 const { canAct } = require('./authorization');
 const { findOrgUnit } = require('./plant');
 const { findEmployee } = require('./directory');
@@ -83,24 +84,6 @@ function requireAdmin(req, res, next) {
     return res.status(403).json({ message: 'This action requires the administrator role.' });
   }
   return next();
-}
-
-// The device's own credential, presented on every floor request. Deliberately
-// a separate header from the Account's bearer token so the two doors cannot be
-// confused: `work-order-routes.js` decides which door a write came through by
-// the presence of this header alone. An inactive device is refused the same
-// way an unknown one is.
-async function requireFloorDevice(req, res, next) {
-  try {
-    const device = await floorDevices.findDeviceByCredential(req.headers['x-floor-device']);
-    if (!device || !device.isActive) {
-      return res.status(401).json({ message: 'Invalid or inactive floor device' });
-    }
-    req.floorDevice = device;
-    return next();
-  } catch (error) {
-    return handleError(error, res, next);
-  }
 }
 
 async function registerDevice(req, res, next) {
@@ -165,14 +148,32 @@ async function setTechnicianCredential(req, res, next) {
 // not a way to enumerate a plant's workforce.
 async function identify(req, res, next) {
   try {
-    const credential = await floorDevices.findCredentialForEmployeeNo(req.body?.employeeNo);
+    const deviceId = req.floorDevice.id;
+    const employeeNo = req.body?.employeeNo;
+
+    // The lock is asked first, so a locked pair refuses even the right PIN. It
+    // answers 423, never 401: the person is not unauthenticated, they are
+    // locked out, and the client must not read it as a dead session.
+    const lockedFor = await floorDevices.pinLockRemainingSeconds(deviceId, employeeNo);
+    if (lockedFor > 0) {
+      res.set('Retry-After', String(lockedFor));
+      return res.status(423).json({
+        code: 'pin_locked',
+        retryAfterSeconds: lockedFor,
+        message: `Too many wrong PINs. Try again in ${Math.ceil(lockedFor / 60)} minutes, or ask an administrator to reset your PIN.`
+      });
+    }
+
+    const credential = await floorDevices.findCredentialForEmployeeNo(employeeNo);
     const pin = typeof req.body?.pin === 'string' ? req.body.pin : '';
     if (!credential || !(await floorDevices.verifyPin(pin, credential.pinHash))) {
+      await floorDevices.recordPinFailure(deviceId, employeeNo);
       return res.status(401).json({ message: 'That Employee number and PIN were not recognised' });
     }
 
+    await floorDevices.clearPinFailures(deviceId, employeeNo);
     const { token, expiresAt } = await floorDevices.createIdentification({
-      deviceId: req.floorDevice.id,
+      deviceId,
       employeeId: credential.employee.id
     });
     res.json({ identification: token, expiresAt, employee: credential.employee });

@@ -4,7 +4,10 @@
 /// and every Module's client would otherwise have to notice that for itself.
 /// One decorator around the shared client does it once: a 401 calls
 /// [AuthGateway.signOut] and the response passes through unchanged. There is
-/// no retry. A 403 is a role refusal, not a dead session, so it does not sign
+/// no retry. Only a request that carried an `authorization` header and was not
+/// a floor-device request (`x-floor-device`) can mean a dead session: a wrong
+/// floor PIN is a 401 too, and so is an unknown device, and neither says
+/// anything about the signed-in person. A 403 is a role refusal, not a dead session, so it does not sign
 /// anyone out.
 ///
 /// Wired only when the local gateway is selected (main.dart), leaving the
@@ -25,9 +28,12 @@ class SignOutOnUnauthorized extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final response = await _inner.send(request);
-    if (response.statusCode == 401) await _gateway.signOut();
+    if (response.statusCode == 401 && _carriesSession(request)) await _gateway.signOut();
     return response;
   }
+
+  static bool _carriesSession(http.BaseRequest request) =>
+      request.headers.containsKey('authorization') && !request.headers.containsKey('x-floor-device');
 
   @override
   void close() => _inner.close();
