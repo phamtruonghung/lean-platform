@@ -181,6 +181,19 @@ test('no view references an attachments relation', async () => {
   assert.deepStrictEqual(rows, []);
 });
 
+test('employee_signatures is the only table in the schema with a bytea column', async () => {
+  const { rows } = await pool.query(
+    `SELECT c.table_name, c.column_name
+       FROM information_schema.columns c
+       JOIN information_schema.tables t
+         ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+      WHERE c.data_type = 'bytea' AND t.table_type = 'BASE TABLE'
+        AND c.table_schema NOT IN ('pg_catalog', 'information_schema')
+      ORDER BY c.table_name, c.column_name`
+  );
+  assert.deepStrictEqual(rows, [{ table_name: 'employee_signatures', column_name: 'image' }]);
+});
+
 test('no directory_user_id column exists anywhere in the schema', async () => {
   const { rows } = await pool.query(
     `SELECT table_name FROM information_schema.columns WHERE column_name = 'directory_user_id'`

@@ -238,6 +238,15 @@ const List<Destination> platformDestinations = [
     path: Routes.training,
     group: DestinationGroupNames.people,
   ),
+  // My signature (issue #317, ADR-0052), offered to every approved Account:
+  // the Signature is the person's own mark, so no `roles` are set. An Account
+  // linked to no Employee is told it has none rather than refused.
+  Destination(
+    label: 'My signature',
+    icon: Icons.draw_outlined,
+    path: Routes.mySignature,
+    group: DestinationGroupNames.people,
+  ),
   // Leave requests (issue #265), offered to every active Account: anyone may
   // ask for leave. The "To decide" view inside the Screen is the part gated, by
   // an edit Grant somewhere or the administrator role.

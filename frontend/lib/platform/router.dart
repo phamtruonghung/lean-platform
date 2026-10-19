@@ -78,6 +78,7 @@ import '../people/training_detail_screen.dart';
 import '../people/training_form_screen.dart';
 import '../people/training_screen.dart';
 import '../people/training_to_confirm_screen.dart';
+import '../people/my_signature_screen.dart';
 import '../people/cost_rates_bloc.dart';
 import '../people/cost_rates_screen.dart';
 import '../people/directory_bloc.dart';
@@ -208,6 +209,10 @@ abstract final class Routes {
   /// [training] rather than a second Destination — the `/attendance/to-confirm`
   /// shape.
   static const String trainingToConfirm = '/training/to-confirm';
+
+  /// The caller's own Signature (issue #317, ADR-0052) - a Destination under
+  /// the People group, offered to every approved Account.
+  static const String mySignature = '/me/signature';
 
   /// One Training record's printed form (issue #292) — the plant's bilingual
   /// sheet, printable from the browser. A child address of the record's own
@@ -781,6 +786,18 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               final account = context.watch<AccountBloc>().state;
               if (account is! AccountApproved) return const SizedBox.shrink();
               return const TrainingToConfirmScreen();
+            },
+          ),
+          // The caller's own Signature (issue #317). Offered to every approved
+          // Account: the mark is the person's own, so there is no role to gate
+          // on, and the server answers an Account linked to no Employee as
+          // having none.
+          GoRoute(
+            path: Routes.mySignature,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return const MySignatureScreen();
             },
           ),
           // One Training record. It MUST stay below `/training/to-confirm`

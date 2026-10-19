@@ -8,6 +8,7 @@ import '../people_api.dart';
 import '../quality/quality_api.dart';
 import '../safety/safety_api.dart';
 import '../theme.dart';
+import '../widgets/signature_file_picker.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
 import 'floor_device_gateway.dart';
@@ -24,6 +25,7 @@ class PlatformApp extends StatefulWidget {
     required this.qualityApi,
     required this.safetyApi,
     this.floorDeviceGateway = const ConfiguredFloorDeviceGateway(),
+    this.signatureFilePicker,
     this.initialLocation,
   });
 
@@ -46,6 +48,11 @@ class PlatformApp extends StatefulWidget {
   /// the not-registered state rather than pretending to be a device.
   final FloorDeviceGateway floorDeviceGateway;
 
+  /// How a person chooses a picture of their Signature (issue #317). Left
+  /// null, the platform's own picker is used (the browser's file input on the
+  /// web); a widget test supplies one that answers without a browser.
+  final SignatureFilePicker? signatureFilePicker;
+
   /// Supplied only by tests; always null in production.
   final String? initialLocation;
 
@@ -56,12 +63,14 @@ class PlatformApp extends StatefulWidget {
 class _PlatformAppState extends State<PlatformApp> {
   late final AccountBloc _accountBloc;
   late final GoRouter _router;
+  late final SignatureFilePicker _signatureFilePicker;
 
   @override
   void initState() {
     super.initState();
     // Built exactly once: building either in build() would recreate the
     // router on every rebuild and destroy navigation history.
+    _signatureFilePicker = widget.signatureFilePicker ?? createSignatureFilePicker();
     _accountBloc = AccountBloc(authGateway: widget.authGateway, peopleApi: widget.peopleApi);
     _router = buildRouter(accountBloc: _accountBloc, initialLocation: widget.initialLocation);
   }
@@ -86,6 +95,7 @@ class _PlatformAppState extends State<PlatformApp> {
         RepositoryProvider<QualityApi>.value(value: widget.qualityApi),
         RepositoryProvider<SafetyApi>.value(value: widget.safetyApi),
         RepositoryProvider<FloorDeviceGateway>.value(value: widget.floorDeviceGateway),
+        RepositoryProvider<SignatureFilePicker>.value(value: _signatureFilePicker),
       ],
       child: BlocProvider<AccountBloc>.value(
         value: _accountBloc,

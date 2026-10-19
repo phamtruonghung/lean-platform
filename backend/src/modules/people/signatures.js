@@ -1,0 +1,149 @@
+/*
+ * A Signature (issue #317, CONTEXT.md's Signature, ADR-0052): an Employee's
+ * own mark, kept as a small PNG in `employee_signatures`.
+ *
+ * This file owns the SQL and the validation of the image itself. It never
+ * requires another Module and is unaware of who is calling: signature-routes.js
+ * resolves the caller's own Employee and hands the id in. The table is
+ * append-only - setting a Signature supersedes the previous kept row by
+ * stamping `superseded_at`, and removing one does the same; no row is ever
+ * rewritten or deleted.
+ *
+ * The image is validated by this file's own few lines, with no image
+ * dependency (ADR-0052): the PNG signature, a well-formed IHDR chunk, a byte
+ * ceiling, and a normalised box. The client does the pixel work; the server
+ * only refuses what is not a small PNG.
+ */
+
+const { getPool, withActor } = require('../../platform/db');
+const { httpError, notFound } = require('./errors');
+
+// 48 KiB. Base64 of this is ~64 KiB, which fits inside the API's existing
+// `express.json({ limit: '100kb' })`, so that limit is not raised (ADR-0052).
+const MAX_IMAGE_BYTES = 48 * 1024;
+
+// The normalised box: a Signature is a wide, short mark. The client scales
+// whatever it is given to fit inside 600 x 300 (and draws on a pad of that
+// shape), so the server accepts a PNG whose declared width is 1..600 and
+// height is 1..300 and refuses anything outside it.
+const MAX_WIDTH = 600;
+const MAX_HEIGHT = 300;
+
+const ORIGINS = ['upload', 'on_screen'];
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+// signature (8) + IHDR chunk: length (4) + type (4) + data (13) + crc (4).
+const IHDR_END = 8 + 4 + 4 + 13 + 4;
+
+const NO_SIGNATURE = 'No Signature is kept for this Employee';
+
+function decodeImage(value) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw httpError(400, 'image is required: send the Signature as a base64 PNG');
+  }
+  const text = value.trim();
+  if (text.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(text)) {
+    throw httpError(400, 'image must be a base64 PNG');
+  }
+  const bytes = Buffer.from(text, 'base64');
+  if (bytes.length > MAX_IMAGE_BYTES) {
+    throw httpError(400, `image is too large: a Signature is at most ${MAX_IMAGE_BYTES / 1024} KiB`);
+  }
+  if (
+    bytes.length < IHDR_END ||
+    !bytes.subarray(0, 8).equals(PNG_SIGNATURE) ||
+    bytes.readUInt32BE(8) !== 13 ||
+    bytes.toString('latin1', 12, 16) !== 'IHDR'
+  ) {
+    throw httpError(400, 'image must be a PNG');
+  }
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  if (width < 1 || height < 1 || width > MAX_WIDTH || height > MAX_HEIGHT) {
+    throw httpError(
+      400,
+      `image is ${width} x ${height} pixels: a Signature fits inside ${MAX_WIDTH} x ${MAX_HEIGHT}`
+    );
+  }
+  return bytes;
+}
+
+function requireOrigin(value) {
+  if (value === undefined || value === null) return 'upload';
+  if (!ORIGINS.includes(value)) {
+    throw httpError(400, `origin must be one of: ${ORIGINS.join(', ')}`);
+  }
+  return value;
+}
+
+// Keeps `image` as the Employee's current Signature, superseding the one kept
+// before it in the same transaction. Returns nothing about the image: the
+// caller reads it back through getCurrentSignature.
+async function keepSignature(accountId, employeeId, body) {
+  const image = decodeImage(body?.image);
+  const origin = requireOrigin(body?.origin);
+  try {
+    return await withActor(accountId, async (client) => {
+      await client.query(
+        `UPDATE employee_signatures SET superseded_at = now()
+          WHERE employee_id = $1 AND kept AND superseded_at IS NULL`,
+        [employeeId]
+      );
+      const { rows } = await client.query(
+        `INSERT INTO employee_signatures (employee_id, image, image_bytes, origin, kept, set_by_account_id)
+         VALUES ($1, $2, $3, $4, TRUE, $5)
+         RETURNING id, origin, image_bytes, created_at`,
+        [employeeId, image, image.length, origin, accountId]
+      );
+      return toSignature(rows[0]);
+    });
+  } catch (error) {
+    if (error.code === '23505') {
+      throw httpError(409, 'A Signature was just set for this Employee. Try again.');
+    }
+    throw error;
+  }
+}
+
+// The current Signature's image bytes, or a 404.
+async function getCurrentSignature(employeeId) {
+  const { rows } = await getPool().query(
+    `SELECT image FROM employee_signatures
+      WHERE employee_id = $1 AND kept AND superseded_at IS NULL`,
+    [employeeId]
+  );
+  if (rows.length === 0) throw notFound('Signature');
+  return rows[0].image;
+}
+
+// Supersedes the current Signature; the row stays. 404 when none is kept.
+async function removeSignature(accountId, employeeId) {
+  const removed = await withActor(accountId, async (client) => {
+    const { rowCount } = await client.query(
+      `UPDATE employee_signatures SET superseded_at = now()
+        WHERE employee_id = $1 AND kept AND superseded_at IS NULL`,
+      [employeeId]
+    );
+    return rowCount;
+  });
+  if (removed === 0) throw notFound('Signature');
+}
+
+function toSignature(row) {
+  return {
+    id: String(row.id),
+    origin: row.origin,
+    imageBytes: row.image_bytes,
+    createdAt: row.created_at
+  };
+}
+
+module.exports = {
+  MAX_IMAGE_BYTES,
+  MAX_WIDTH,
+  MAX_HEIGHT,
+  NO_SIGNATURE,
+  keepSignature,
+  getCurrentSignature,
+  removeSignature
+};
