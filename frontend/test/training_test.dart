@@ -18,6 +18,7 @@ import 'harness.dart';
 FakeWire _wire({
   List<Map<String, dynamic>>? trainingRecords,
   int trainingStatus = 200,
+  bool trainingTruncated = false,
   int trainingWriteStatus = 201,
   String trainingWriteMessage = 'That Training record could not be saved.',
   String role = Roles.admin,
@@ -34,6 +35,7 @@ FakeWire _wire({
       employees: [employeeJson('7', 'E-7', 'Alice Nguyen')],
       trainingRecords: trainingRecords,
       trainingStatus: trainingStatus,
+      trainingTruncated: trainingTruncated,
       trainingWriteStatus: trainingWriteStatus,
       trainingWriteMessage: trainingWriteMessage,
     );
@@ -56,6 +58,23 @@ int _postCount(FakeWire wire) => wire.requests.where((r) => r == 'POST /api/peop
 
 void main() {
   group('register', () {
+    testWidgets('says so when the server capped the register', (tester) async {
+      final capped = _wire(
+        trainingRecords: [trainingRecordJson('1', title: 'Forklift safety', status: 'sent')],
+        trainingTruncated: true,
+      );
+      await _open(tester, capped, Routes.training);
+      expect(find.byKey(TrainingScreen.rowKey('1')), findsOneWidget);
+      expect(find.byKey(TrainingScreen.truncatedKey), findsOneWidget);
+    });
+
+    testWidgets('says nothing about a cap when the register is whole', (tester) async {
+      final whole = _wire(trainingRecords: [trainingRecordJson('1', title: 'Forklift safety', status: 'sent')]);
+      await _open(tester, whole, Routes.training);
+      expect(find.byKey(TrainingScreen.rowKey('1')), findsOneWidget);
+      expect(find.byKey(TrainingScreen.truncatedKey), findsNothing);
+    });
+
     testWidgets(
         'shows each record with its number, title, day, Org Unit, hours and trainer, and marks '
         'only the drafts', (tester) async {
