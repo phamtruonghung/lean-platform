@@ -85,6 +85,19 @@ void main() {
     expect(find.byType(DowntimeScreen), findsOneWidget);
   });
 
+  testWidgets('a capped Downtime list says so on screen', (tester) async {
+    final wire = wireWith(role: Roles.supervisor, orgUnitScope: _writeGrant, downtime: {'1': []});
+    wire.downtimeTruncated = true;
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/downtime',
+    );
+
+    expect(find.byKey(DowntimeScreen.truncatedKey), findsOneWidget);
+  });
+
   testWidgets('an operator who types the Downtime address is refused it', (tester) async {
     final wire = wireWith(role: Roles.operator, downtime: {'1': []});
     await pumpApp(

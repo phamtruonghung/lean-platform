@@ -311,6 +311,11 @@ async function createWorkOrder({ assetId, summary, workType, priority, descripti
 // Ordered priority (ascending, so 1 — the most urgent — sorts first) then
 // work_order_no: a morning meeting reads worst-first, and the number is a
 // stable, human-readable tiebreaker for two jobs at the same priority.
+// Bounded like the Action register (ADR-0026): one row past the limit says
+// whether there is more, and `truncated` says so to the client. The open list
+// is small in practice; the history is what grows without end.
+const WORK_ORDER_LIST_LIMIT = 200;
+
 async function listWorkOrdersAtSite(siteId, { orgUnitPath = null, includeHistory = false } = {}) {
   const statuses = includeHistory ? [...OPEN_STATUSES, ...HISTORY_STATUSES] : OPEN_STATUSES;
   const scopeClause = orgUnitPath ? 'AND ou.path <@ $2::ltree' : '';
@@ -322,10 +327,14 @@ async function listWorkOrdersAtSite(siteId, { orgUnitPath = null, includeHistory
       WHERE ou.site_id = $1
         AND wo.status IN (${statuses.map((_, i) => `$${params.length + i + 1}`).join(', ')})
         ${scopeClause}
-      ORDER BY wo.priority, wo.work_order_no`,
+      ORDER BY wo.priority, wo.work_order_no
+      LIMIT ${WORK_ORDER_LIST_LIMIT + 1}`,
     [...params, ...statuses]
   );
-  return rows.map(toWorkOrder);
+  return {
+    workOrders: rows.slice(0, WORK_ORDER_LIST_LIMIT).map(toWorkOrder),
+    truncated: rows.length > WORK_ORDER_LIST_LIMIT
+  };
 }
 
 // The null-returning lookup this Module's own routes use before a write, the
@@ -460,8 +469,9 @@ async function startWorkOrder(workOrderId, actor = {}) {
 //     work_orders.completed_by is filled only when the actor is an Employee
 //     (issue #77's floor device door): it references employees(id), and an
 //     Account need not be an Employee at all (CONTEXT.md, Account), so a
-//     desktop completion — which has no Employee to name — leaves it null
-//     rather than inventing one. Note work_orders is not in the
+//     desktop completion falls back to the signed-in Account's own employeeId
+//     when it has one, and leaves it null otherwise rather than inventing one.
+//     Note work_orders is not in the
 //     attach_audit list, so updated_by and completed_by together are the
 //     record of who closed the job.
 async function completeWorkOrder(workOrderId, { note } = {}, actor = {}) {
@@ -603,9 +613,9 @@ async function cancelWorkOrder(workOrderId, { reason } = {}, accountId) {
 // only stamps the task with the value; it deliberately does not settle the
 // task's status — a task's own completion is a separate write this slice does
 // not offer.
-async function setTaskReading(workOrderId, taskId, reading, accountId) {
+async function setTaskReading(workOrderId, taskId, reading, accountId, client = null) {
   try {
-    return await withActor(accountId, async (client) => {
+    const run = async (client) => {
       const { rows: [updated] } = await client.query(
         `UPDATE work_order_tasks SET reading = $1
           WHERE id = $2 AND work_order_id = $3
@@ -623,7 +633,9 @@ async function setTaskReading(workOrderId, taskId, reading, accountId) {
         [taskId]
       );
       return toWorkOrderTask(row);
-    });
+    };
+    // With a client passed through, the caller's transaction owns the write.
+    return client ? await run(client) : await withActor(accountId, run);
   } catch (error) {
     throw mapWorkOrderWriteError(error);
   }

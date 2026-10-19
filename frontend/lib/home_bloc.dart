@@ -409,7 +409,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       var openCount = 0;
       var unassignedCount = 0;
       for (final site in sites) {
-        final workOrders = await _maintenance.fetchWorkOrders(token, siteId: site.id);
+        final workOrders = (await _maintenance.fetchWorkOrders(token, siteId: site.id)).workOrders;
         openCount += workOrders.length;
         unassignedCount += workOrders
             .where((workOrder) => workOrder.assignedTo == null && _reachesOrgUnit(workOrder.orgUnitId))

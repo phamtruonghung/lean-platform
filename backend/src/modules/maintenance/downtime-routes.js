@@ -166,7 +166,7 @@ router.get(
     try {
       const includeClosed = req.query.includeClosed === 'true';
       res.json({
-        downtimeEvents: await downtime.listDowntimeAtSite(req.site.id, { includeClosed })
+        ...(await downtime.listDowntimeAtSite(req.site.id, { includeClosed }))
       });
     } catch (error) {
       handleError(error, res, next);

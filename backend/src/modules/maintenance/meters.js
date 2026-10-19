@@ -324,7 +324,9 @@ async function readMeterById(client, meterId) {
 //
 // The row is locked and the check is made inside the same transaction as the
 // insert, so two concurrent readings cannot both pass the backward check.
-async function recordReading(meterId, { reading, note, readAt, source }, accountId) {
+// `client`, when given, is the caller's open withActor transaction: the reading
+// is then one write among the caller's, and the caller owns commit/rollback.
+async function recordReading(meterId, { reading, note, readAt, source }, accountId, client = null) {
   const resolvedReading = resolveReading(reading);
   const resolvedReadAt = resolveReadAt(readAt);
   const resolvedSource = source === undefined || source === null ? 'manual' : source;
@@ -333,7 +335,7 @@ async function recordReading(meterId, { reading, note, readAt, source }, account
   }
 
   try {
-    return await withActor(accountId, async (client) => {
+    const run = async (client) => {
       const meter = await lockMeter(client, meterId);
       if (!meter) throw notFound('Meter');
 
@@ -357,7 +359,8 @@ async function recordReading(meterId, { reading, note, readAt, source }, account
         note
       });
       return { reading: readingRow, meter: await readMeterById(client, meterId) };
-    });
+    };
+    return client ? await run(client) : await withActor(accountId, run);
   } catch (error) {
     throw mapMeterWriteError(error);
   }

@@ -58,6 +58,7 @@
  */
 
 const express = require('express');
+const { withActor } = require('../../platform/db');
 const people = require('../people');
 const assets = require('./assets');
 const meters = require('./meters');
@@ -308,7 +309,7 @@ router.post(
     try {
       const actor = req.floorDevice
         ? { employeeId: req.technician.id }
-        : { accountId: req.account.id };
+        : { accountId: req.account.id, employeeId: req.account.employeeId ?? null };
       const workOrder = await workOrders.startWorkOrder(req.workOrder.id, actor);
       res.json({ workOrder });
     } catch (error) {
@@ -325,7 +326,7 @@ router.post(
     try {
       const actor = req.floorDevice
         ? { employeeId: req.technician.id }
-        : { accountId: req.account.id };
+        : { accountId: req.account.id, employeeId: req.account.employeeId ?? null };
       const workOrder = await workOrders.completeWorkOrder(
         req.workOrder.id,
         { note: req.body?.note },
@@ -482,17 +483,44 @@ router.post(
         throw httpError(400, 'this task does not record a meter reading');
       }
 
-      const result = await meters.recordReading(
-        task.assetMeterId,
-        { reading: req.body?.reading, note: req.body?.note, readAt: req.body?.readAt },
-        req.account.id
-      );
-      const updatedTask = await workOrders.setTaskReading(
-        workOrder.id,
-        task.id,
-        result.reading.reading,
-        req.account.id
-      );
+      // A reading is work done on the job, so only a live one takes it.
+      if (!['approved', 'in_progress'].includes(workOrder.status)) {
+        throw httpError(
+          409,
+          `a ${workOrder.status} work order cannot take a meter reading; only an approved or in-progress one can`
+        );
+      }
+
+      // One transaction for both writes: the meter reading and the stamp on the
+      // task commit together or not at all. Status is re-read under the row
+      // lock so a concurrent close cannot slip between the check and the write.
+      const { result, updatedTask } = await withActor(req.account.id, async (client) => {
+        const { rows: [current] } = await client.query(
+          'SELECT status FROM work_orders WHERE id = $1 FOR UPDATE',
+          [workOrder.id]
+        );
+        if (!current) throw notFound('Work order');
+        if (!['approved', 'in_progress'].includes(current.status)) {
+          throw httpError(
+            409,
+            `a ${current.status} work order cannot take a meter reading; only an approved or in-progress one can`
+          );
+        }
+        const recorded = await meters.recordReading(
+          task.assetMeterId,
+          { reading: req.body?.reading, note: req.body?.note, readAt: req.body?.readAt },
+          req.account.id,
+          client
+        );
+        const stamped = await workOrders.setTaskReading(
+          workOrder.id,
+          task.id,
+          recorded.reading.reading,
+          req.account.id,
+          client
+        );
+        return { result: recorded, updatedTask: stamped };
+      });
       res.status(201).json({ reading: result.reading, meter: result.meter, task: updatedTask });
     } catch (error) {
       handleError(error, res, next);
@@ -527,9 +555,7 @@ router.get(
       // rather than a truthy check, since every query parameter arrives as a
       // string and anything else — missing, 'false', '1' — means "no".
       const includeHistory = req.query.includeHistory === 'true';
-      res.json({
-        workOrders: await workOrders.listWorkOrdersAtSite(req.site.id, { orgUnitPath, includeHistory })
-      });
+      res.json(await workOrders.listWorkOrdersAtSite(req.site.id, { orgUnitPath, includeHistory }));
     } catch (error) {
       handleError(error, res, next);
     }

@@ -155,6 +155,8 @@ async function listDowntimeReasons() {
 // of every stop; without it a closed stop is out, never mixed silently into
 // the "what is down right now" list. Newest first, because the most recent
 // stop is the one somebody is chasing.
+const DOWNTIME_LIST_LIMIT = 200; // ADR-0026: LIMIT n+1, `truncated`
+
 async function listDowntimeAtSite(siteId, { includeClosed = false } = {}) {
   const openClause = includeClosed ? '' : 'AND de.ended_at IS NULL';
   const { rows } = await getPool().query(
@@ -163,10 +165,14 @@ async function listDowntimeAtSite(siteId, { includeClosed = false } = {}) {
        ${DOWNTIME_FROM}
       WHERE ou.site_id = $1
         ${openClause}
-      ORDER BY de.started_at DESC, de.id DESC`,
+      ORDER BY de.started_at DESC, de.id DESC
+      LIMIT ${DOWNTIME_LIST_LIMIT + 1}`,
     [siteId]
   );
-  return rows.map(toDowntimeEvent);
+  return {
+    downtimeEvents: rows.slice(0, DOWNTIME_LIST_LIMIT).map(toDowntimeEvent),
+    truncated: rows.length > DOWNTIME_LIST_LIMIT
+  };
 }
 
 // The null-returning lookup this Module's own routes use before a write, the

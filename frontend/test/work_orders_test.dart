@@ -144,6 +144,23 @@ void main() {
     expect(find.byType(SkeletonList), findsNothing);
   });
 
+  testWidgets('a capped Work orders list says so on screen', (tester) async {
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+    );
+    wire.workOrdersTruncated = true;
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/work-orders',
+    );
+
+    expect(find.byKey(WorkOrdersScreen.truncatedKey), findsOneWidget);
+  });
+
   testWidgets('an empty list says plainly there is no open work', (tester) async {
     final wire = wireWith(workOrders: {'1': []});
     await pumpApp(

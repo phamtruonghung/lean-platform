@@ -339,6 +339,23 @@ async function computeRegistryKpi(definition, siteId, orgUnit, period, kpiRegist
 // Module claims keeps answering `no_data`. It defaults to an empty registry
 // rather than to Maintenance's own eight on purpose — the board belongs to the
 // Platform, and defaulting would quietly put this Module back in charge of it.
+const KPI_CONCURRENCY = 4;
+
+// Runs `fn` over `items` with at most `limit` in flight, keeping input order in
+// the result. The first rejection wins and stops further items from starting.
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index], index);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 async function getBoard(
   site,
   { orgUnit = null, periodType, date = null, shiftInstanceId = null, kpiRegistry = {} } = {}
@@ -352,7 +369,18 @@ async function getBoard(
   const pillars = [];
   const byCode = new Map();
 
-  for (const row of rows) {
+  // The KPI values are independent reads, so they run concurrently — but a
+  // bounded few at a time, because each one takes a pooled connection and the
+  // pool is small (10). Results come back in row order.
+  const values = await mapWithConcurrency(
+    rows,
+    KPI_CONCURRENCY,
+    (row) => (row.kpi_definition_id === null
+      ? null
+      : computeRegistryKpi(row, site.id, orgUnit, period, kpiRegistry))
+  );
+
+  for (const [index, row] of rows.entries()) {
     let pillar = byCode.get(row.pillar_code);
     if (!pillar) {
       pillar = {
@@ -368,7 +396,7 @@ async function getBoard(
 
     if (row.kpi_definition_id === null) continue;
 
-    const value = await computeRegistryKpi(row, site.id, orgUnit, period, kpiRegistry);
+    const value = values[index];
     const target = targets.get(String(row.kpi_definition_id)) ?? null;
 
     pillar.kpis.push({

@@ -138,6 +138,7 @@ class WorkOrdersLoaded extends WorkOrdersState {
     this.isTransitioning = false,
     this.transitionFailure,
     this.showHistory = false,
+    this.truncated = false,
     this.notice,
   });
 
@@ -189,6 +190,9 @@ class WorkOrdersLoaded extends WorkOrdersState {
   /// mirrors [AssetsLoaded.showRetired].
   final bool showHistory;
 
+  /// The list was capped by the server (ADR-0026) and is not the whole answer.
+  final bool truncated;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [WorkOrdersUnavailable].
   final String? notice;
@@ -214,6 +218,7 @@ class WorkOrdersLoaded extends WorkOrdersState {
     bool? isTransitioning,
     String? transitionFailure,
     bool? showHistory,
+    bool? truncated,
     String? notice,
   }) =>
       WorkOrdersLoaded(
@@ -235,6 +240,7 @@ class WorkOrdersLoaded extends WorkOrdersState {
         assignFailure: assignFailure,
         isTransitioning: isTransitioning ?? this.isTransitioning,
         transitionFailure: transitionFailure,
+        truncated: truncated ?? this.truncated,
         showHistory: showHistory ?? this.showHistory,
         notice: notice,
       );
@@ -409,7 +415,7 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
       return;
     }
     try {
-      final workOrders = await _maintenance.fetchWorkOrders(
+      final register = await _maintenance.fetchWorkOrders(
         token,
         siteId: siteId,
         orgUnitId: requestedOrgUnitId,
@@ -422,7 +428,12 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
           settled.showHistory != requestedShowHistory) {
         return;
       }
-      emit(settled.copyWith(workOrders: workOrders, isLoadingWorkOrders: false, notice: notice));
+      emit(settled.copyWith(
+        workOrders: register.workOrders,
+        truncated: register.truncated,
+        isLoadingWorkOrders: false,
+        notice: notice,
+      ));
     } on MaintenanceApiException catch (error) {
       final settled = state;
       if (settled is! WorkOrdersLoaded ||

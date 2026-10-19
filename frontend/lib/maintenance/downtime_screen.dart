@@ -46,6 +46,7 @@ class DowntimeScreen extends StatelessWidget {
   static const ValueKey<String> siteKey = ValueKey<String>('downtime-site');
   static const ValueKey<String> noticeKey = ValueKey<String>('downtime-notice');
   static const ValueKey<String> retryKey = ValueKey<String>('downtime-retry');
+  static const ValueKey<String> truncatedKey = ValueKey<String>('downtime-truncated');
   static const ValueKey<String> emptyKey = ValueKey<String>('downtime-empty');
   static const ValueKey<String> failedKey = ValueKey<String>('downtime-failed');
 
@@ -78,6 +79,7 @@ class DowntimeScreen extends StatelessWidget {
         children: [
           _Header(state: state, canAct: canAct),
           if (state is DowntimeLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is DowntimeLoaded && state.truncated) const _Truncated(),
           Expanded(
             child: switch (state) {
               DowntimeLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -188,6 +190,30 @@ class _Header extends StatelessWidget {
       builder: (_) => BlocProvider<DowntimeBloc>.value(
         value: bloc,
         child: BreakdownReportDialog(siteId: siteId),
+      ),
+    );
+  }
+}
+
+/// The list was capped. Said out loud rather than left to be inferred from a
+/// list that happens to end (ADR-0026).
+class _Truncated extends StatelessWidget {
+  const _Truncated();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: AppPageFrame(
+        maxWidth: DowntimeScreen.maxWidth,
+        child: Padding(
+          key: DowntimeScreen.truncatedKey,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            'There are more downtime events than this list shows.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
       ),
     );
   }

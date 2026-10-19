@@ -63,7 +63,7 @@ async function listFloorWorkOrders(req, res, next) {
     // is registered against and everything beneath it, via the same ltree
     // containment `listWorkOrdersAtSite` already uses. The device cannot ask
     // for a different one — there is no such parameter.
-    const list = await workOrders.listWorkOrdersAtSite(context.siteId, {
+    const { workOrders: list, truncated } = await workOrders.listWorkOrdersAtSite(context.siteId, {
       orgUnitPath: context.orgUnitPath
     });
     res.json({
@@ -72,7 +72,8 @@ async function listFloorWorkOrders(req, res, next) {
         orgUnitName: context.orgUnitName,
         siteId: context.siteId
       },
-      workOrders: list
+      workOrders: list,
+      truncated
     });
   } catch (error) {
     handleError(error, res, next);

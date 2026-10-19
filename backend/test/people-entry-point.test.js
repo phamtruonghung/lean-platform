@@ -62,6 +62,7 @@ test('the People Module entry point exposes exactly seventeen names', () => {
       'findSite',
       'kpiRegistry',
       'safetyAuthorityOrgUnitIds',
+      'writeReachOrgUnitIds',
       'floorRouter',
       'requireActive',
       'router'

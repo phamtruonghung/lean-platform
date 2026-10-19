@@ -145,6 +145,10 @@
  *     ADR-0006 refuses. Every other kind of Action — and everything that
  *     changes one after it is raised — still goes through `canAct` at its own
  *     Org Unit, unchanged by #198.
+ *   - writeReachOrgUnitIds — the Org Units (as a Set of text ids, or null for an
+ *     administrator) the caller's WRITE Grants reach, resolved once so the PM
+ *     sweep does not ask canAct per candidate. Same reason as canAct: which
+ *     Org Units a Grant reaches is People's own judgment; it returns a value.
  *   - safetyAuthorityOrgUnitIds — #224, ADR-0037: which Org Units in one Site
  *     a Grant carrying Safety authority reaches. It crosses this boundary for
  *     the same reason canAct and canSeeSite do — which Org Units a Grant
@@ -241,7 +245,7 @@ const floorRoutes = require('./floor-routes');
 const floorTrainingRoutes = require('./floor-training-routes');
 const authRoutes = require('./auth-routes');
 const { authenticate, requireActive } = require('./middleware');
-const { canAct, canSeeSite, safetyAuthorityOrgUnitIds } = require('./authorization');
+const { canAct, canSeeSite, safetyAuthorityOrgUnitIds, writeReachOrgUnitIds } = require('./authorization');
 const { findOrgUnit, findSite } = require('./plant');
 const { findEmployee } = require('./directory');
 const {
@@ -289,6 +293,7 @@ module.exports = {
   canAct,
   canSeeSite,
   safetyAuthorityOrgUnitIds,
+  writeReachOrgUnitIds,
   findOrgUnit,
   findSite,
   findEmployee,
