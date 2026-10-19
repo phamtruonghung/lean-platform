@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Training record, from raised to filed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* lean-platform profile: the app's own colours (frontend/lib/theme.dart). */
+    :root {
+      --color-paper:        #F8FAFC;   /* _Primitives.canvas */
+      --color-paper-2:      #FFFFFF;   /* AppColors.card */
+      --color-ink:          #1E3A8A;   /* onSurface / textPrimary */
+      --color-muted:        #475569;   /* onSurfaceVariant / textMuted */
+      --color-soft:         #64748B;   /* outline */
+      --color-rule:         #DBEAFE;   /* edge */
+      --color-rule-solid:   #64748B;   /* outline */
+      --color-accent:       #1E40AF;   /* primary / actionPrimary */
+      --color-accent-tint:  #DBEAFE;   /* primaryContainer */
+      --color-link:         #1E40AF;
+      --color-success:      #166534;
+      --color-success-tint: #DCFCE7;
+      --color-danger:       #B91C1C;
+      --color-danger-tint:  #FEE2E2;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1360px; width: 100%; min-width: 0; }
+    /* The SVG holds its readable width (min-width == the viewBox width) and
+       this wrapper scrolls on a narrow screen instead of the whole page. */
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: 1.75rem;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--color-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 1280px; display: block; }
+
+    .key { margin-top: 2.5rem; }
+    .key ol {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 3rem;
+    }
+    .key li {
+      display: grid;
+      grid-template-columns: 1.5rem minmax(0, 1fr);
+      column-gap: 0.75rem;
+      padding: 1rem 0;
+      border-top: 1px solid var(--color-rule-solid);
+    }
+    .key .num {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--color-ink);
+      padding-top: 0.15rem;
+    }
+    .key p {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      color: var(--color-muted);
+    }
+    .key strong { font-weight: 600; color: var(--color-ink); }
+    .key code { font-family: var(--font-mono); font-size: 0.78rem; }
+    .key em { font-style: italic; }
+    .closing {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--color-muted);
+      border-top: 1px solid var(--color-rule-solid);
+      padding-top: 1rem;
+      margin-top: 0;
+    }
+    footer {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      color: var(--color-muted);
+      border-top: 1px solid var(--color-rule);
+      margin-top: 2rem;
+      padding-top: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .key ol { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Swimlane · People · Training record</p>
+    <h1>The Training record, from raised to filed</h1>
+    <p class="subtitle">Who does what, in order: the Raiser drafts and sends, each Trainee answers for themselves, and HR files the printed form.</p>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="swimlane-title swimlane-desc">
+        <title id="swimlane-title">Training record swimlane, raised to filed</title>
+        <desc id="swimlane-desc">Swimlane of a Training record across three lanes. In the Raiser lane it is raised, filled in as a draft with its Trainees named, checked for completeness and sent, and may be corrected after sending. In the Trainee lane each Trainee answers for themselves and the answer carries their Signature. In the HR lane the printed form is filed.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#475569"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#1E40AF"/></marker>
+        </defs>
+
+        <rect width="100%" height="100%" fill="#F8FAFC"/>
+
+        <!-- Lane dividers and the label column rule -->
+        <line x1="40" y1="40" x2="1240" y2="40" stroke="#64748B" stroke-width="1"/>
+        <line x1="40" y1="224" x2="1240" y2="224" stroke="#64748B" stroke-width="1"/>
+        <line x1="40" y1="424" x2="1240" y2="424" stroke="#64748B" stroke-width="1"/>
+        <line x1="40" y1="616" x2="1240" y2="616" stroke="#64748B" stroke-width="1"/>
+        <line x1="184" y1="40" x2="184" y2="616" stroke="#64748B" stroke-width="1"/>
+
+        <!-- Lane labels -->
+        <text x="52" y="64" fill="#475569" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" letter-spacing="0.18em">RAISER</text>
+        <text x="52" y="80" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">an edit Grant at</text>
+        <text x="52" y="92" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">the Org Unit ·</text>
+        <text x="52" y="104" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">an administrator</text>
+        <text x="52" y="116" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">anywhere</text>
+        <text x="52" y="248" fill="#475569" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" letter-spacing="0.18em">TRAINEE</text>
+        <text x="52" y="264" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">answers for</text>
+        <text x="52" y="276" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">themselves · most</text>
+        <text x="52" y="288" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">hold no Account</text>
+        <text x="52" y="448" fill="#475569" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" letter-spacing="0.18em">HR</text>
+        <text x="52" y="464" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">files the printed</text>
+        <text x="52" y="476" fill="#475569" font-size="9" font-family="'Geist Mono', monospace">form</text>
+
+        <!-- Arrows (drawn first, behind nodes) -->
+        <!-- 1 to 2 -->
+        <line x1="376" y1="144" x2="408" y2="144" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 2 to 3 -->
+        <line x1="616" y1="144" x2="648" y2="144" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 3 not yet, back to 2 -->
+        <path d="M 704 104 V 84 Q 704 76 696 76 H 520 Q 512 76 512 84 V 100" fill="none" stroke="#475569" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <!-- 3 yes to 4 -->
+        <line x1="760" y1="144" x2="800" y2="144" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 4 to 5, the handoff (accent) -->
+        <line x1="880" y1="176" x2="880" y2="280" stroke="#1E40AF" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <!-- 4 to 8, dashed, after sending -->
+        <line x1="960" y1="144" x2="1056" y2="144" stroke="#475569" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <!-- 5 to 6 -->
+        <line x1="976" y1="324" x2="1040" y2="324" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 6 to 5, dashed, a decline stands -->
+        <path d="M 1096 280 V 260 Q 1096 252 1088 252 H 932 Q 924 252 924 260 V 280" fill="none" stroke="#475569" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <!-- 6 to 7, handoff into HR -->
+        <line x1="1136" y1="368" x2="1136" y2="480" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- Arrow labels -->
+        <rect x="552" y="58" width="44" height="12" rx="2" fill="#F8FAFC"/>
+        <text x="574" y="67" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NOT YET</text>
+        <rect x="766" y="126" width="28" height="12" rx="2" fill="#F8FAFC"/>
+        <text x="780" y="135" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+        <rect x="970" y="126" width="76" height="12" rx="2" fill="#F8FAFC"/>
+        <text x="1008" y="135" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">AFTER SENDING</text>
+        <rect x="966" y="234" width="88" height="12" rx="2" fill="#F8FAFC"/>
+        <text x="1010" y="243" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DECLINE STANDS</text>
+
+        <!-- Steps -->
+        <rect x="200" y="112" width="176" height="64" rx="32" fill="#F8FAFC"/>
+        <rect x="200" y="112" width="176" height="64" rx="32" fill="rgba(30,58,138,0.03)" stroke="#64748B" stroke-width="1"/>
+        <text x="288" y="142" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Raise a Training record</text>
+        <text x="288" y="156" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">number issued at creation</text>
+        <rect x="222" y="105" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="0.8"/>
+        <text x="230" y="115" fill="#1E3A8A" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="middle">1</text>
+        <rect x="408" y="100" width="208" height="88" rx="6" fill="#F8FAFC"/>
+        <rect x="408" y="100" width="208" height="88" rx="6" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="512" y="129" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fill it in as a draft,</text>
+        <text x="512" y="143" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">and name the Trainees</text>
+        <text x="512" y="157" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">title · day · hours ·</text>
+        <text x="512" y="169" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">trainer · objective</text>
+        <rect x="402" y="93" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="0.8"/>
+        <text x="410" y="103" fill="#1E3A8A" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="middle">2</text>
+        <polygon points="704,104 760,144 704,184 648,144" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="704" y="148" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Complete?</text>
+        <rect x="664" y="116" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="0.8"/>
+        <text x="672" y="126" fill="#1E3A8A" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="middle">3</text>
+        <rect x="800" y="112" width="160" height="64" rx="6" fill="#F8FAFC"/>
+        <rect x="800" y="112" width="160" height="64" rx="6" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="880" y="142" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Send it</text>
+        <text x="880" y="156" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">asks every Trainee at once</text>
+        <rect x="794" y="105" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="0.8"/>
+        <text x="802" y="115" fill="#1E3A8A" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="middle">4</text>
+        <rect x="1056" y="112" width="168" height="64" rx="6" fill="#F8FAFC"/>
+        <rect x="1056" y="112" width="168" height="64" rx="6" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="1140" y="142" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Correct a sent record</text>
+        <text x="1140" y="156" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">same Grant · audited</text>
+        <rect x="1050" y="105" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="0.8"/>
+        <text x="1058" y="115" fill="#1E3A8A" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="middle">8</text>
+        <rect x="784" y="280" width="192" height="88" rx="6" fill="#F8FAFC"/>
+        <rect x="784" y="280" width="192" height="88" rx="6" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="880" y="309" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">The Trainee answers</text>
+        <text x="880" y="323" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">for themselves</text>
+        <text x="880" y="337" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">own Account, or the floor</text>
+        <text x="880" y="349" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">device by number + PIN</text>
+        <rect x="778" y="273" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="0.8"/>
+        <text x="786" y="283" fill="#1E3A8A" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="middle">5</text>
+        <rect x="1040" y="280" width="192" height="88" rx="6" fill="#F8FAFC"/>
+        <rect x="1040" y="280" width="192" height="88" rx="6" fill="#DBEAFE" stroke="#1E40AF" stroke-width="1.2"/>
+        <text x="1136" y="315" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">The answer carries</text>
+        <text x="1136" y="329" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">their Signature</text>
+        <text x="1136" y="343" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">kept · drawn now · none</text>
+        <rect x="1034" y="273" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#1E40AF" stroke-width="0.8"/>
+        <text x="1042" y="283" fill="#1E40AF" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="middle">6</text>
+        <rect x="1040" y="480" width="192" height="80" rx="6" fill="#F8FAFC"/>
+        <rect x="1040" y="480" width="192" height="80" rx="6" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="1136" y="512" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Print the form, and file it</text>
+        <text x="1136" y="526" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">/training/:id/form ·</text>
+        <text x="1136" y="538" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">bilingual · outside the Shell</text>
+        <rect x="1034" y="473" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="0.8"/>
+        <text x="1042" y="483" fill="#1E3A8A" font-size="8" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="middle">7</text>
+
+        <!-- Callout 2, beside step 5 -->
+        <text x="720" y="312" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">Nobody answers for anybody else —</text>
+        <text x="720" y="332" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">not a supervisor, not HR, not an</text>
+        <text x="720" y="352" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">administrator with an edit Grant.</text>
+        <path d="M 732 320 Q 756 322 782 324" fill="none" stroke="rgba(30,58,138,0.40)" stroke-width="1" stroke-dasharray="4,3"/>
+        <circle cx="784" cy="324" r="2" fill="#1E3A8A"/>
+
+        <!-- Callout 1, beside steps 6 and 7 -->
+        <text x="980" y="488" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">Fully confirmed is counted from the rows, never stored:</text>
+        <text x="980" y="508" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">one decline keeps a record from reading that way, and</text>
+        <text x="980" y="528" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">&#8220;nobody asked yet&#8221; stays different from</text>
+        <text x="980" y="548" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">&#8220;everyone declined&#8221;.</text>
+        <path d="M 992 516 Q 1016 520 1038 520" fill="none" stroke="rgba(30,58,138,0.40)" stroke-width="1" stroke-dasharray="4,3"/>
+        <circle cx="1040" cy="520" r="2" fill="#1E3A8A"/>
+
+        <!-- Legend (bottom 60px strip, nothing else lives here) -->
+        <line x1="40" y1="648" x2="1240" y2="648" stroke="#DBEAFE" stroke-width="0.8"/>
+        <text x="40" y="672" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+
+        <rect x="120" y="662" width="28" height="12" rx="6" fill="rgba(30,58,138,0.03)" stroke="#64748B" stroke-width="1"/>
+        <text x="156" y="672" fill="#475569" font-size="10" font-family="'Geist', sans-serif">Start (oval)</text>
+
+        <rect x="244" y="662" width="28" height="12" rx="2" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="280" y="672" fill="#475569" font-size="10" font-family="'Geist', sans-serif">Step</text>
+
+        <polygon points="332,668 344,662 356,668 344,674" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="364" y="672" fill="#475569" font-size="10" font-family="'Geist', sans-serif">Decision</text>
+
+        <line x1="436" y1="668" x2="468" y2="668" stroke="#475569" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <text x="476" y="672" fill="#475569" font-size="10" font-family="'Geist', sans-serif">After sending, or a return (dashed)</text>
+
+        <line x1="690" y1="668" x2="722" y2="668" stroke="#1E40AF" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <text x="730" y="672" fill="#475569" font-size="10" font-family="'Geist', sans-serif">The handoff to the Trainee (accent)</text>
+
+        <rect x="946" y="662" width="28" height="12" rx="2" fill="#DBEAFE" stroke="#1E40AF" stroke-width="1.2"/>
+        <text x="982" y="672" fill="#475569" font-size="10" font-family="'Geist', sans-serif">The Signature (accent)</text>
+      </svg>
+    </div>
+
+    <section class="key" aria-label="Step key">
+      <ol>
+        <li><span class="num">1</span><p><strong>Raise a Training record.</strong> Anyone holding an edit Grant that reaches the Org Unit raises it there — a supervisor, HR; an administrator may raise one anywhere. The Platform resolves existence first and scope second: an unknown Org Unit or trainer is a 404 in the Module&rsquo;s own words, a write outside your Grants a 403. The record is numbered at creation from its Site&rsquo;s own counter (<code>TR-HCM-2026-00001</code>) and is never renumbered.</p></li>
+        <li><span class="num">2</span><p><strong>Fill it in as a draft, and name the Trainees.</strong> The title, the day the training was given, its length in hours, its trainer (any Employee from the Directory — a trainer who holds no Account is still nameable), and the objective. Trainees are added one at a time, so the list names real people: the same Employee twice is refused, and a departed Employee is refused the way a Work order&rsquo;s assignee is. A draft is visible only to whoever could send it, so a half-typed list never reads as a fact in the register.</p></li>
+        <li><span class="num">3</span><p><strong>Complete?</strong> Sending is refused until the record carries a title, a date, a duration, a trainer, an objective and at least one Trainee — refused in the Platform&rsquo;s own words, naming what is missing.</p></li>
+        <li><span class="num">4</span><p><strong>Send it.</strong> A deliberate act, and it asks every Trainee at once rather than in a trickle: status becomes <code>sent</code>, with the time and the Account that sent it, written in one statement, so two people pressing Send cannot both win and a second send is refused. Nothing notifies anybody — the Platform has no email and no push. &ldquo;Sent&rdquo; means the record appears in each Trainee&rsquo;s own list (<code>/training/to-confirm</code>) and on their Home card.</p></li>
+        <li><span class="num">5</span><p><strong>The Trainee answers for themselves — two doors, one write.</strong> On their own Account, or at the shared floor device by employee number and PIN, because most of a plant holds no Account; the device lists only the identified Employee&rsquo;s own unanswered records, and only at Org Units it reaches. Answering for a colleague is refused on both doors — <em>Only the Trainee can answer for themselves</em> — with no administrator bypass. A Trainee may change their own answer, and that rewrites the same row, audited.</p></li>
+        <li><span class="num">6</span><p><strong>The answer carries their Signature.</strong> Confirming may apply the Signature the Employee keeps (one image, append-only), one drawn at that moment, or none at all. Declining never carries one — the database refuses that combination. The floor device can show the kept Signature but can never set or replace it: that is the Employee&rsquo;s own act on their own Account. A signature says the person was there; no answer writes <code>employee_skills</code>, so a confirmation is never a claim that they can do the thing.</p></li>
+        <li><span class="num">7</span><p><strong>Print the form, and file it.</strong> <code>/training/:id/form</code>, deliberately outside the Shell so no sidebar, header or footer reaches the paper: the plant&rsquo;s own bilingual form, carrying the record&rsquo;s number, the trainer&rsquo;s line, and each Trainee&rsquo;s answer date in the Signature column — blank where they have not answered, so a hand signature can still be collected. It can be printed before everyone has confirmed, and no PDF or file is generated anywhere: the browser page is the document.</p></li>
+        <li><span class="num">8</span><p><strong>Correct a sent record.</strong> After sending, anyone with an edit Grant reaching the Org Unit may correct the record&rsquo;s own facts, add a Trainee who attended late, or remove one who should not be there — each audited, and removing an answered Trainee takes their answer with it. The trainer&rsquo;s evaluation (paper, or job training) is settable on a sent record too, because it is the trainer&rsquo;s reading and not a correction. A draft may be discarded; a sent record never — it is evidence.</p></li>
+      </ol>
+      <p class="closing">Every write here is audited. Nothing in this flow grants a skill or a qualification.</p>
+    </section>
+
+    <footer>lean-platform · docs/diagrams/training-record-flow-swimlane.html</footer>
+  </div>
+</body>
+</html>
