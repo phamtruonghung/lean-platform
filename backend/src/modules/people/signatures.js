@@ -35,6 +35,9 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 // signature (8) + IHDR chunk: length (4) + type (4) + data (13) + crc (4).
 const IHDR_END = 8 + 4 + 4 + 13 + 4;
 
+const EMPLOYEE_HAS_ACCOUNT =
+  'This Employee holds an Account of their own, so only they can set their Signature';
+
 const NO_SIGNATURE = 'No Signature is kept for this Employee';
 
 function decodeImage(value) {
@@ -101,6 +104,14 @@ async function keepSignature(accountId, employeeId, body) {
     if (error.code === '23505') {
       throw httpError(409, 'A Signature was just set for this Employee. Try again.');
     }
+    // The database's own rule (migration 1802800000000, ADR-0053): a kept mark
+    // for an Employee who holds an Account is set by that Account. This is the
+    // rule that holds; requireNoAccount, below, is only the ordinary-case
+    // wording ahead of it. Keep both - removing either because it "duplicates"
+    // the other reopens the window between the check and the write.
+    if (error.code === '23514' && /^a Signature for an Employee with an Account/.test(error.message)) {
+      throw httpError(409, EMPLOYEE_HAS_ACCOUNT);
+    }
     throw error;
   }
 }
@@ -129,11 +140,12 @@ async function removeSignature(accountId, employeeId) {
   if (removed === 0) throw notFound('Signature');
 }
 
-const EMPLOYEE_HAS_ACCOUNT =
-  'This Employee holds an Account of their own, so only they can set their Signature';
-
 // An administrator sets a Signature only for an Employee who cannot: one that
 // holds no Account. Whether an Employee holds one is `app_users.employee_id`.
+// This check gives the wording in the ordinary case; the trigger on
+// `employee_signatures` (ADR-0053) is the rule that holds when a link lands
+// between this read and the write. Keep both - keepSignature maps the
+// trigger's refusal to this same 409.
 async function requireNoAccount(employeeId) {
   const { rows } = await getPool().query('SELECT 1 FROM app_users WHERE employee_id = $1 LIMIT 1', [employeeId]);
   if (rows.length > 0) throw httpError(409, EMPLOYEE_HAS_ACCOUNT);
