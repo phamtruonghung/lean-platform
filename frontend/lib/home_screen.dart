@@ -50,6 +50,8 @@ class HomeScreen extends StatelessWidget {
   static const ValueKey<String> unassignedCardKey = ValueKey<String>('home-unassigned-work-orders');
   static const ValueKey<String> approvalsCardKey = ValueKey<String>('home-approvals');
   static const ValueKey<String> myActionsCardKey = ValueKey<String>('home-my-actions');
+  static const ValueKey<String> trainingToConfirmCardKey = ValueKey<String>('home-training-to-confirm');
+  static const ValueKey<String> trainingToConfirmRetryKey = ValueKey<String>('home-training-to-confirm-retry');
   static const ValueKey<String> workRetryKey = ValueKey<String>('home-work-retry');
   static const ValueKey<String> approvalsRetryKey = ValueKey<String>('home-approvals-retry');
   static const ValueKey<String> myActionsRetryKey = ValueKey<String>('home-my-actions-retry');
@@ -120,6 +122,9 @@ class _HomeBody extends StatelessWidget {
                   if (state.myActions != null) ..._myActionsCells(context, state.myActions!),
                   if (state.workSummary != null) ..._workSummaryCells(context, state.workSummary!),
                   if (state.approvals != null) ..._approvalsCells(context, state.approvals!),
+                  // Last, so the first rows an existing role saw keep their
+                  // place and pairing (issue #289).
+                  if (state.trainingToConfirm != null) ..._trainingToConfirmCells(context, state.trainingToConfirm!),
                 ],
               ),
             ],
@@ -173,6 +178,46 @@ List<Widget> _myActionsCells(BuildContext context, HomeSectionState<HomeMyAction
               : 'Your Account is not linked to an Employee record, so no Action can be '
                   'assigned to you — link one under Accounts',
           destination: Routes.actions,
+        ),
+      ],
+  };
+}
+
+/// The Training records sent to the caller and not yet answered (issue #289):
+/// a bare count that carries to `/training/to-confirm`, where the answers are
+/// given. Every role earns it — any approved Account may be a Trainee.
+List<Widget> _trainingToConfirmCells(BuildContext context, HomeSectionState<int> section) {
+  return switch (section) {
+    HomeSectionLoading<int>() => [
+        const _SpanningCell(
+          child: SkeletonGrid(
+            tiles: 1,
+            crossAxisCount: _CardGrid.wideColumns,
+            maxWidth: HomeScreen.maxWidth,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+    HomeSectionFailed<int>(:final isScopeRefused, :final message) => [
+        _SpanningCell(
+          child: isScopeRefused
+              ? const PlatformScopeRefusedState()
+              : PlatformFailureState(
+                  title: 'Your Training to confirm is unavailable',
+                  message: message,
+                  retryKey: HomeScreen.trainingToConfirmRetryKey,
+                  onRetry: () => context.read<HomeBloc>().add(const HomeTrainingToConfirmRetried()),
+                ),
+        ),
+      ],
+    HomeSectionLoaded<int>(:final data) => [
+        _HomeCard(
+          cardKey: HomeScreen.trainingToConfirmCardKey,
+          icon: Icons.school_outlined,
+          label: 'Training to confirm',
+          count: data,
+          context_: 'Training records sent to you that you have not answered',
+          destination: Routes.trainingToConfirm,
         ),
       ],
   };

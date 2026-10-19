@@ -11,12 +11,17 @@
 /// The device cannot sign in, so nothing here touches `AccountBloc`. It reads
 /// through the device credential and writes through the technician's own
 /// identification, obtained for one action at a time by
-/// [FloorTechnicianDialog].
+/// [FloorTechnicianDialog]. A Trainee with no Account answers the training
+/// waiting on them from the My-training action (issue #293), identifying in
+/// [FloorTrainingDialog].
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../people/floor_training_bloc.dart';
+import '../people/floor_training_dialog.dart';
+import '../people_api.dart';
 import '../platform/floor_device_gateway.dart';
 import '../quality/floor_nonconformance_bloc.dart';
 import '../quality/floor_nonconformance_dialog.dart';
@@ -73,6 +78,12 @@ class FloorScreen extends StatelessWidget {
   /// line has anything open.
   static const ValueKey<String> recordSafetyObservationKey =
       ValueKey<String>('floor-record-safety-observation');
+
+  /// The My-training action (issue #293) — a Trainee with no Account answers the
+  /// trainings waiting on them at this device, beside the other floor actions
+  /// and for the same reason: reachable whether or not the line has anything
+  /// open.
+  static const ValueKey<String> trainingKey = ValueKey<String>('floor-training');
 
   /// The floor list's own loading placeholders, so a test can tell a slow read
   /// from an empty or failed one.
@@ -193,6 +204,23 @@ class FloorScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(recorded)));
   }
 
+  /// A Trainee answers at this device (issue #293), mirroring the other floor
+  /// flows: the Bloc is built here from the repositories this Screen's context
+  /// reaches and handed to the dialog fresh per opening, so nothing an
+  /// Employee identified with outlives the dialog they used it in. The device's
+  /// reach decides which trainings the server lists; nothing here filters.
+  Future<void> _answerTraining(BuildContext context) => showDialog<void>(
+        context: context,
+        builder: (_) => BlocProvider<FloorTrainingBloc>(
+          create: (context) => FloorTrainingBloc(
+            peopleApi: context.read<PeopleApi>(),
+            maintenanceApi: context.read<MaintenanceApi>(),
+            floorDeviceGateway: context.read<FloorDeviceGateway>(),
+          ),
+          child: const FloorTrainingDialog(),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -237,6 +265,7 @@ class FloorScreen extends StatelessWidget {
                 onRecordSafetyObservation: isActing
                     ? null
                     : () => _recordSafetyObservation(context, info.orgUnitId),
+                onAnswerTraining: isActing ? null : () => _answerTraining(context),
                 notice: notice,
                 child: workOrders.isEmpty
                     ? PlatformEmptyState.noneExist(
@@ -277,6 +306,7 @@ class _FloorFrame extends StatelessWidget {
     this.onRecordNonconformance,
     this.onReportSafetyIncident,
     this.onRecordSafetyObservation,
+    this.onAnswerTraining,
     this.notice,
   });
 
@@ -286,6 +316,7 @@ class _FloorFrame extends StatelessWidget {
   final VoidCallback? onRecordNonconformance;
   final VoidCallback? onReportSafetyIncident;
   final VoidCallback? onRecordSafetyObservation;
+  final VoidCallback? onAnswerTraining;
   final String? notice;
 
   @override
@@ -342,7 +373,8 @@ class _FloorFrame extends StatelessWidget {
               ),
               if (onRecordNonconformance != null ||
                   onReportSafetyIncident != null ||
-                  onRecordSafetyObservation != null) ...[
+                  onRecordSafetyObservation != null ||
+                  onAnswerTraining != null) ...[
                 const SizedBox(height: Spacing.sm),
                 // The action strip under the title: a `Wrap`, not a fixed
                 // Row, so a fourth action or a longer label wraps onto a
@@ -404,6 +436,20 @@ class _FloorFrame extends StatelessWidget {
                         ),
                         icon: const Icon(Icons.visibility_outlined),
                         label: const Text('Observation'),
+                      ),
+                    // A Trainee answering the training waiting on them
+                    // (issue #293) is the fourth, for the same reason.
+                    if (onAnswerTraining != null)
+                      FilledButton.icon(
+                        key: FloorScreen.trainingKey,
+                        onPressed: onAnswerTraining,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.onPrimary,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          minimumSize: const Size(0, 48),
+                        ),
+                        icon: const Icon(Icons.school_outlined),
+                        label: const Text('My training'),
                       ),
                   ],
                 ),

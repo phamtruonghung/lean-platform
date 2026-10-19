@@ -183,6 +183,29 @@ health detail, which makes it an exception to the open Employee directory.
 _Avoid_: Ticket, leave application, time-off request, holiday request,
 absence request
 
+### Training
+
+**Training record**:
+One occasion of training delivered — what it was, the day it was given, how
+long it lasted, who gave it and what it was for, with the Employees who
+attended it listed one by one. It is the record HR files rather than the
+printed sheet, and every Trainee on it confirms their own attendance, so a
+record is fully confirmed only once the last of them has and a partly
+confirmed one is an ordinary state rather than a write still in progress.
+_Avoid_: Training session (a Training record is one occasion already, so the
+qualifier adds nothing), course, class (both name a reusable thing several
+occasions share, which this is not), training log, form (that is the printed
+document, not the record)
+
+**Trainee**:
+An Employee listed on a Training record as having been trained by it, and
+whose own confirmation is what closes their line on it. A Trainee need not
+hold an Account — most of a plant cannot sign in — so confirming follows the
+person rather than a sign-in, and an Employee can be a Trainee on a record
+they were never asked about only if they are taken off it.
+_Avoid_: Attendee, participant, student, learner (what the record states is
+that they were trained, not that they learned anything)
+
 ### The work
 
 **Asset**:

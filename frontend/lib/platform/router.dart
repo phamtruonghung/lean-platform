@@ -73,6 +73,11 @@ import '../people/attendance_picker_screen.dart';
 import '../people/attendance_sheet_bloc.dart';
 import '../people/attendance_sheet_screen.dart';
 import '../people/attendance_to_confirm_screen.dart';
+import '../people/training_detail_bloc.dart';
+import '../people/training_detail_screen.dart';
+import '../people/training_form_screen.dart';
+import '../people/training_screen.dart';
+import '../people/training_to_confirm_screen.dart';
 import '../people/cost_rates_bloc.dart';
 import '../people/cost_rates_screen.dart';
 import '../people/directory_bloc.dart';
@@ -192,6 +197,21 @@ abstract final class Routes {
   static const String skills = '/skills';
   static const String skillCoverage = '/skill-coverage';
   static const String attendance = '/attendance';
+
+  /// The Training record register (issue #287) and, beneath it, one record
+  /// (`/training/:id`). Filed under the People group.
+  static const String training = '/training';
+
+  /// A Trainee's own outstanding answers (issue #289), nested under
+  /// [training] rather than a second Destination — the `/attendance/to-confirm`
+  /// shape.
+  static const String trainingToConfirm = '/training/to-confirm';
+
+  /// One Training record's printed form (issue #292) — the plant's bilingual
+  /// sheet, printable from the browser. A child address of the record's own
+  /// (`/training/:id/form`) and routed **outside the Shell**, for the reason the
+  /// CAPA report is: see `buildRouter`.
+  static String trainingForm(String id) => '$training/$id/form';
 
   /// Leave requests (issue #265): asking for leave, and deciding what others
   /// asked for. Its dialogs are addresses beneath it (`/new`,
@@ -486,6 +506,44 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
           );
         },
       ),
+      // The Training record's printed form (issue #292) — the plant's bilingual
+      // sheet at its own address, printable from the browser.
+      //
+      // **Outside the Shell, deliberately**, for the CAPA report's reason: a
+      // form declared inside the Shell would carry the sidebar, the brand header
+      // and the account footer onto the printed page. A sibling `GoRoute` rather
+      // than a child of the record's own route, because the routes inside the
+      // Shell would not match it and because a child would be wrapped in the
+      // Shell; it is declared here, before the Shell, with the other addresses
+      // reached without chrome.
+      //
+      // No gate of its own either: reading a Training record is a platform-wide
+      // read for every active Account (ADR-0009), and the server alone decides
+      // whether a draft is visible (404 for a caller who could not send it, which
+      // the form renders as its missing state, "No such Training record"). A
+      // form that refused a reader would be a second, stricter rule for the
+      // record's own Screen.
+      GoRoute(
+        path: '${Routes.training}/:id/form',
+        builder: (context, state) {
+          final account = context.watch<AccountBloc>().state;
+          // Sealed-state type narrowing, not a per-Screen access check — the
+          // same line the CAPA report takes.
+          if (account is! AccountApproved) return const SizedBox.shrink();
+          final id = state.pathParameters['id']!;
+          return BlocProvider<TrainingDetailBloc>(
+            // Keyed on the record this form is of: go_router reuses a route's
+            // page when the pattern matches, so without a key moving from one
+            // form to another would repaint the first record's form.
+            key: ValueKey<String>('training-form-$id'),
+            create: (context) => TrainingDetailBloc(
+              peopleApi: context.read<PeopleApi>(),
+              authGateway: context.read<AuthGateway>(),
+            )..add(TrainingDetailRequested(id)),
+            child: TrainingFormScreen(trainingRecordId: id),
+          );
+        },
+      ),
       // Everything an admitted Account can reach sits inside the Shell.
       // Sign-in and awaiting-Approval are siblings of it, not children, so
       // they render outside the sidebar; the not-found Screen comes from
@@ -682,6 +740,62 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 child: AttendanceSheetScreen(
                   shiftInstanceId: shiftInstanceId,
                   canRecord: account.account.orgUnitScope.canWriteSomewhere,
+                ),
+              );
+            },
+          ),
+          // The Training record register (issue #287, ADR-0043). Offered to
+          // every approved Account: the register is an open read (ADR-0009)
+          // and the server alone decides which drafts a caller may see.
+          // [canRaise] is the same coarse "can write somewhere" signal the
+          // attendance sheet's `canRecord` reads — the server is the real
+          // per-Org-Unit gate (403 `OUTSIDE_GRANTED_ORG_UNITS`).
+          GoRoute(
+            path: Routes.training,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return TrainingScreen(canRaise: account.account.orgUnitScope.canWriteSomewhere);
+            },
+          ),
+          // A Trainee's own outstanding answers (issue #289) — a nested
+          // address under the Training Destination, not a second sidebar
+          // entry. Declared BEFORE `/training/:id` on purpose: go_router
+          // matches in declaration order, so the other order reads the literal
+          // segment `to-confirm` as a record id and renders the record's
+          // "not found" in place of the queue (the same order
+          // `/attendance/to-confirm` keeps above `/attendance/:shiftInstanceId`).
+          // Offered to every approved Account: the server answers an Account
+          // linked to no Employee with an empty list, not a refusal.
+          GoRoute(
+            path: Routes.trainingToConfirm,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return const TrainingToConfirmScreen();
+            },
+          ),
+          // One Training record. It MUST stay below `/training/to-confirm`
+          // above (see the comment there).
+          // The Bloc is keyed on the id in the address: go_router reuses a
+          // route's page when the pattern matches, so without the key,
+          // moving from one record to another would keep showing the first.
+          GoRoute(
+            path: '${Routes.training}/:id',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              final id = state.pathParameters['id']!;
+              return BlocProvider<TrainingDetailBloc>(
+                key: ValueKey<String>(id),
+                create: (context) => TrainingDetailBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(TrainingDetailRequested(id)),
+                child: TrainingDetailScreen(
+                  trainingRecordId: id,
+                  orgUnitScope: account.account.orgUnitScope,
+                  employeeId: account.account.employeeId,
                 ),
               );
             },

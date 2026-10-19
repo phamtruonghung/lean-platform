@@ -60,6 +60,12 @@ class HomeMyActionsRetried extends HomeEvent {
   const HomeMyActionsRetried();
 }
 
+/// The Training-to-confirm section's own retry (issue #289). Leaves the other
+/// sections untouched.
+class HomeTrainingToConfirmRetried extends HomeEvent {
+  const HomeTrainingToConfirmRetried();
+}
+
 /// One section's own reading of the server — loading, loaded, or failed.
 /// Kept apart from [HomeReady] itself so one section's failure carries no
 /// opinion about the other's.
@@ -149,7 +155,13 @@ class HomeLoading extends HomeState {
 }
 
 class HomeReady extends HomeState {
-  const HomeReady({required this.role, this.workSummary, this.myActions, this.approvals});
+  const HomeReady({
+    required this.role,
+    this.workSummary,
+    this.myActions,
+    this.approvals,
+    this.trainingToConfirm,
+  });
 
   final String role;
 
@@ -166,22 +178,31 @@ class HomeReady extends HomeState {
   /// Null when this role is not `admin` — never read in that case.
   final HomeSectionState<int>? approvals;
 
+  /// How many Training records the caller has been sent and not yet answered
+  /// (issue #289). Read for every role: any approved Account may be a Trainee,
+  /// and the server answers an Account linked to no Employee with an empty
+  /// list, so the count is a plain zero there.
+  final HomeSectionState<int>? trainingToConfirm;
+
   /// Whether no section applies to this role — #99 user story 6's case, and
   /// false for every role now: [myActions] is read for everyone, so there is
   /// always at least one card. Kept because it is the honest statement of the
   /// rule the Screen no longer needs to branch on.
-  bool get earnsNoCards => workSummary == null && myActions == null && approvals == null;
+  bool get earnsNoCards =>
+      workSummary == null && myActions == null && approvals == null && trainingToConfirm == null;
 
   HomeReady copyWith({
     HomeSectionState<HomeWorkSummary>? workSummary,
     HomeSectionState<HomeMyActions>? myActions,
     HomeSectionState<int>? approvals,
+    HomeSectionState<int>? trainingToConfirm,
   }) =>
       HomeReady(
         role: role,
         workSummary: workSummary ?? this.workSummary,
         myActions: myActions ?? this.myActions,
         approvals: approvals ?? this.approvals,
+        trainingToConfirm: trainingToConfirm ?? this.trainingToConfirm,
       );
 }
 
@@ -208,6 +229,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<HomeWorkSummaryRetried>(_onWorkSummaryRetried);
     on<HomeMyActionsRetried>(_onMyActionsRetried);
     on<HomeApprovalsRetried>(_onApprovalsRetried);
+    on<HomeTrainingToConfirmRetried>(_onTrainingToConfirmRetried);
   }
 
   final PeopleApi _people;
@@ -242,6 +264,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         workSummary: _earnsWorkSummary ? const HomeSectionLoading() : null,
         myActions: _earnsMyActions ? const HomeSectionLoading() : null,
         approvals: _earnsApprovals ? const HomeSectionLoading() : null,
+        trainingToConfirm: const HomeSectionLoading(),
       ),
     );
     // Both sections, when earned, are read concurrently — `Future.wait`
@@ -252,6 +275,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       if (_earnsWorkSummary) _loadWorkSummary(emit),
       if (_earnsMyActions) _loadMyActions(emit),
       if (_earnsApprovals) _loadApprovals(emit),
+      _loadTrainingToConfirm(emit),
     ]);
   }
 
@@ -328,6 +352,43 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final current = state;
     if (current is! HomeReady) return;
     emit(current.copyWith(myActions: section));
+  }
+
+  Future<void> _onTrainingToConfirmRetried(
+    HomeTrainingToConfirmRetried event,
+    Emitter<HomeState> emit,
+  ) async {
+    final current = state;
+    if (current is! HomeReady || current.trainingToConfirm == null) return;
+    emit(current.copyWith(trainingToConfirm: const HomeSectionLoading()));
+    await _loadTrainingToConfirm(emit);
+  }
+
+  /// How many Training records the caller still owes an answer to, read
+  /// exactly the way the queue Screen reads them
+  /// (`PeopleApi.fetchTrainingToConfirm`) — no new endpoint, and the count is
+  /// the length of that list.
+  Future<void> _loadTrainingToConfirm(Emitter<HomeState> emit) async {
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      _emitTrainingToConfirm(emit, const HomeSectionFailed(message: signedOutMessage));
+      return;
+    }
+    try {
+      final waiting = await _people.fetchTrainingToConfirm(token);
+      _emitTrainingToConfirm(emit, HomeSectionLoaded(waiting.length));
+    } on PeopleApiException catch (error) {
+      _emitTrainingToConfirm(
+        emit,
+        HomeSectionFailed(message: error.message, isScopeRefused: error.statusCode == 403),
+      );
+    }
+  }
+
+  void _emitTrainingToConfirm(Emitter<HomeState> emit, HomeSectionState<int> section) {
+    final current = state;
+    if (current is! HomeReady) return;
+    emit(current.copyWith(trainingToConfirm: section));
   }
 
   Future<void> _onApprovalsRetried(HomeApprovalsRetried event, Emitter<HomeState> emit) async {
