@@ -4260,6 +4260,11 @@ class FakeWire {
   String floorTrainingAnswerMessage = 'That answer could not be saved.';
   final List<Map<String, dynamic>> floorTrainingRequests = [];
 
+  /// The identified Employee's kept Signature at the device (issue #319):
+  /// `GET /api/maintenance/floor/signature` answers it as `image/png`, or a
+  /// 404 when null. Recorded in [floorTrainingRequests] like the rest.
+  Uint8List? floorSignature;
+
   /// The status (and `{message}`) the send and the answer answer with; 200
   /// means the write succeeds. A send flips the record to `sent`; an answer
   /// writes the answer onto the Trainee row.
@@ -5013,6 +5018,17 @@ class FakeWire {
             );
           }
           return http.Response(jsonEncode({'trainingToConfirm': floorTrainingToConfirm}), 200);
+        }
+        if (path == '/api/maintenance/floor/signature' && request.method == 'GET') {
+          floorTrainingRequests.add({
+            'request': 'GET $path',
+            'device': request.headers['x-floor-device'],
+            'identification': request.headers['x-technician-identification'],
+          });
+          if (floorSignature == null) {
+            return http.Response(jsonEncode({'message': 'Signature not found'}), 404);
+          }
+          return http.Response.bytes(floorSignature!, 200, headers: {'content-type': 'image/png'});
         }
         final floorAnswerPath =
             RegExp(r'^/api/maintenance/floor/training/trainees/([^/]+)/answer$').firstMatch(path);

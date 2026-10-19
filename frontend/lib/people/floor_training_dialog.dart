@@ -8,6 +8,11 @@
 /// the floor Screen, with the Bloc provided by the caller, the way the floor's
 /// other flows are.
 ///
+/// Confirming first asks what the answer is signed with (issue #319, ADR-0052):
+/// the Signature the identified Employee keeps - read through the device's own
+/// door and shown before it is applied - a mark drawn now, or none. With no
+/// Signature kept there is no stored control. A decline carries none.
+///
 /// Two steps in one dialog: identify (Employee number and PIN), then the
 /// Employee's own outstanding rows for this device. Done closes it and with it
 /// the identification.
@@ -18,6 +23,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import 'floor_training_bloc.dart';
+import 'training_answer_dialog.dart';
 import 'training_record.dart';
 
 class FloorTrainingDialog extends StatefulWidget {
@@ -88,6 +94,20 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
     );
   }
 
+  // Confirming asks what the answer is signed with first (issue #319): the
+  // Signature the Employee keeps - shown, read through the device's own door -
+  // a mark drawn now, or none. Dismissing the choice sends nothing.
+  Future<void> _confirm(TrainingToConfirm entry, FloorTrainingState state) async {
+    final bloc = context.read<FloorTrainingBloc>();
+    final signature = await showTrainingAnswerDialog(
+      context,
+      storedImage: state.signature,
+      offersStored: state.signature != null,
+    );
+    if (signature == null) return;
+    bloc.add(FloorTrainingAnswered(entry.traineeId, 'confirmed', signature: signature));
+  }
+
   Widget _failure(FloorTrainingState state) {
     if (state.failure == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
@@ -151,13 +171,14 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final entry in state.entries) _row(entry, state.isBusy),
+        for (final entry in state.entries) _row(entry, state),
         _failure(state),
       ],
     );
   }
 
-  Widget _row(TrainingToConfirm entry, bool isBusy) {
+  Widget _row(TrainingToConfirm entry, FloorTrainingState state) {
+    final isBusy = state.isBusy;
     final theme = Theme.of(context);
     final trainer = entry.trainerName;
     final objective = entry.objective;
@@ -187,9 +208,7 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
               children: [
                 FilledButton(
                   key: FloorTrainingDialog.confirmKey(entry.traineeId),
-                  onPressed: isBusy
-                      ? null
-                      : () => context.read<FloorTrainingBloc>().add(FloorTrainingAnswered(entry.traineeId, 'confirmed')),
+                  onPressed: isBusy ? null : () => _confirm(entry, state),
                   style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
                   child: const Text('Confirm'),
                 ),
