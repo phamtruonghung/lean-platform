@@ -1848,15 +1848,37 @@ class PeopleApi {
     }
   }
 
+  /// The identified Employee's own current Signature image at the shared floor
+  /// device (`GET /api/maintenance/floor/signature`, issue #319) as PNG bytes,
+  /// or null when none is kept (404). Read-only: a device never keeps one.
+  Future<Uint8List?> fetchFloorSignature(String deviceCredential, String identification) async {
+    const path = '/api/maintenance/floor/signature';
+    try {
+      final response = await _send(
+        () => _client.get(
+          Uri.parse(path),
+          headers: {'x-floor-device': deviceCredential, 'x-technician-identification': identification},
+        ),
+        path,
+      );
+      return response.bodyBytes;
+    } on PeopleApiException catch (error) {
+      if (error.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
   /// A Trainee's own answer given at the shared floor device (`POST
   /// /api/maintenance/floor/training/trainees/:traineeId/answer`, issue #293):
-  /// the same write as [answerTrainee] through the other door.
+  /// the same write as [answerTrainee] through the other door, with the same
+  /// optional [signature] (issue #319).
   Future<TrainingRecord> answerFloorTrainee(
     String deviceCredential,
     String identification,
     String traineeId,
-    String answer,
-  ) async {
+    String answer, {
+    TrainingAnswerSignature signature = const NoAnswerSignature(),
+  }) async {
     final path = '/api/maintenance/floor/training/trainees/$traineeId/answer';
     final response = await _send(
       () => _client.post(
@@ -1866,7 +1888,7 @@ class PeopleApi {
           'x-technician-identification': identification,
           'content-type': 'application/json',
         },
-        body: jsonEncode({'answer': answer}),
+        body: jsonEncode({'answer': answer, 'signature': ?signature.toJson()}),
       ),
       path,
     );

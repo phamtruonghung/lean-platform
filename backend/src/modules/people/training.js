@@ -516,6 +516,25 @@ async function findTraineeForAnswer(traineeId) {
   };
 }
 
+// Turns signatures.parseApplied's result into the two columns an answer
+// writes, inside the answer's own transaction. Shared by both doors so they
+// cannot drift: 'stored' is the Employee's own current kept row, a Buffer is a
+// one-off row (kept = FALSE) for that Employee, and neither ever creates or
+// supersedes a kept one. `accountId` is null at the floor device.
+async function resolveApplied(client, accountId, employeeId, applied) {
+  if (applied === null) return { signatureId: null, appliedAs: null };
+  if (applied === 'stored') {
+    return {
+      signatureId: await signatures.currentSignatureId(client, employeeId),
+      appliedAs: 'stored'
+    };
+  }
+  return {
+    signatureId: await signatures.insertDrawnSignature(client, accountId, employeeId, applied),
+    appliedAs: 'drawn'
+  };
+}
+
 // Writes (or changes) a Trainee's answer through the Account door: an UPDATE
 // of the same row, so a changed answer is audited and never a second row. The
 // Employee-actor column is cleared, so the CHECK's "exactly one actor" holds
@@ -531,15 +550,7 @@ async function answerTrainee(accountId, employeeId, traineeId, answer, applied) 
     throw httpError(400, 'a declined answer carries no Signature');
   }
   const row = await withActor(accountId, async (client) => {
-    let signatureId = null;
-    let appliedAs = null;
-    if (applied === 'stored') {
-      signatureId = await signatures.currentSignatureId(client, employeeId);
-      appliedAs = 'stored';
-    } else if (applied !== null) {
-      signatureId = await signatures.insertDrawnSignature(client, accountId, employeeId, applied);
-      appliedAs = 'drawn';
-    }
+    const { signatureId, appliedAs } = await resolveApplied(client, accountId, employeeId, applied);
     const { rows } = await client.query(
       `UPDATE training_trainees tt
           SET answer = $2, answered_at = now(),
@@ -576,17 +587,25 @@ async function getTraineeSignatureImage(traineeId) {
 // The identified Employee is the actor and there is no Account on this path, so
 // `answered_by_account_id` is cleared and the audit carries no Account (the
 // way Safety's floor writes do). Only ever a sent record.
-async function answerTraineeAtFloor(employeeId, traineeId, answer) {
+//
+// `applied` is as for answerTrainee. The device has no Account, so a stroke
+// drawn here is a one-off row with no `set_by_account_id`; no path from the
+// device creates or supersedes a kept Signature (ADR-0052).
+async function answerTraineeAtFloor(employeeId, traineeId, answer, applied) {
+  if (applied !== null && answer === 'declined') {
+    throw httpError(400, 'a declined answer carries no Signature');
+  }
   const row = await withActor(null, async (client) => {
+    const { signatureId, appliedAs } = await resolveApplied(client, null, employeeId, applied);
     const { rows } = await client.query(
       `UPDATE training_trainees tt
           SET answer = $2, answered_at = now(),
               answered_by_account_id = NULL, answered_by_employee_id = $3,
-              signature_id = NULL, signature_applied_as = NULL
+              signature_id = $4, signature_applied_as = $5
          FROM training_records tr
         WHERE tt.id = $1 AND tr.id = tt.training_record_id AND tr.status = 'sent'
         RETURNING tt.training_record_id`,
-      [traineeId, answer, employeeId]
+      [traineeId, answer, employeeId, signatureId, appliedAs]
     );
     return rows[0];
   });

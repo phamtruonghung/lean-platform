@@ -18,6 +18,8 @@
 /// Employee back to identify again.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../maintenance/maintenance.dart';
@@ -41,16 +43,20 @@ class FloorTrainingIdentified extends FloorTrainingEvent {
 /// The identified Employee's own answer, `confirmed` or `declined`, on one
 /// Trainee row.
 class FloorTrainingAnswered extends FloorTrainingEvent {
-  const FloorTrainingAnswered(this.traineeId, this.answer);
+  const FloorTrainingAnswered(this.traineeId, this.answer, {this.signature = const NoAnswerSignature()});
 
   final String traineeId;
   final String answer;
+
+  /// What a `confirmed` answer is signed with (issue #319); a decline has none.
+  final TrainingAnswerSignature signature;
 }
 
 class FloorTrainingState {
   const FloorTrainingState({
     this.employeeName,
     this.entries = const [],
+    this.signature,
     this.isBusy = false,
     this.failure,
   });
@@ -59,6 +65,10 @@ class FloorTrainingState {
   /// identification is refused as expired.
   final String? employeeName;
   final List<TrainingToConfirm> entries;
+
+  /// The identified Employee's kept Signature image, read at the device so it
+  /// can be shown before it is applied; null when none is kept (issue #319).
+  final Uint8List? signature;
 
   /// An exchange, a read or an answer is in flight.
   final bool isBusy;
@@ -114,8 +124,13 @@ class FloorTrainingBloc extends Bloc<FloorTrainingEvent, FloorTrainingState> {
         pin: event.pin,
       );
       final entries = await _people.fetchFloorTrainingToConfirm(credential, identification.token);
+      final signature = await _people.fetchFloorSignature(credential, identification.token);
       _identification = identification.token;
-      emit(FloorTrainingState(employeeName: identification.employeeName, entries: entries));
+      emit(FloorTrainingState(
+        employeeName: identification.employeeName,
+        entries: entries,
+        signature: signature,
+      ));
     } on MaintenanceApiException catch (error) {
       emit(FloorTrainingState(failure: error.message));
     } on PeopleApiException catch (error) {
@@ -129,12 +144,24 @@ class FloorTrainingBloc extends Bloc<FloorTrainingEvent, FloorTrainingState> {
     final identification = _identification;
     if (current.isBusy || !current.isIdentified || credential == null || identification == null) return;
 
-    emit(FloorTrainingState(employeeName: current.employeeName, entries: current.entries, isBusy: true));
+    emit(FloorTrainingState(
+      employeeName: current.employeeName,
+      entries: current.entries,
+      signature: current.signature,
+      isBusy: true,
+    ));
     try {
-      await _people.answerFloorTrainee(credential, identification, event.traineeId, event.answer);
+      await _people.answerFloorTrainee(
+        credential,
+        identification,
+        event.traineeId,
+        event.answer,
+        signature: event.signature,
+      );
       emit(
         FloorTrainingState(
           employeeName: current.employeeName,
+          signature: current.signature,
           entries: [for (final entry in current.entries) if (entry.traineeId != event.traineeId) entry],
         ),
       );
@@ -146,7 +173,12 @@ class FloorTrainingBloc extends Bloc<FloorTrainingEvent, FloorTrainingState> {
         emit(const FloorTrainingState(failure: expiredMessage));
         return;
       }
-      emit(FloorTrainingState(employeeName: current.employeeName, entries: current.entries, failure: error.message));
+      emit(FloorTrainingState(
+        employeeName: current.employeeName,
+        entries: current.entries,
+        signature: current.signature,
+        failure: error.message,
+      ));
     }
   }
 }

@@ -4,7 +4,7 @@
  * Account. Most of a plant holds no Account, so an Employee identifies at the
  * device with their number and PIN and answers the trainings waiting on them.
  *
- * Two routes, on the frozen `/api/maintenance` prefix the deployed devices are
+ * Three routes, on the frozen `/api/maintenance` prefix the deployed devices are
  * pointed at (#201) - composed into `floorRouter` by index.js beside
  * floor-routes.js, and owned by People because a Training record is People's:
  *
@@ -15,7 +15,15 @@
  *   - POST /floor/training/trainees/:traineeId/answer - `confirmed` or
  *     `declined`, written as the same columns the Account door writes, with
  *     `answered_by_employee_id` filled and `answered_by_account_id` null; the
- *     record's own read tells the two doors apart by `answeredVia` alone.
+ *     record's own read tells the two doors apart by `answeredVia` alone. The
+ *     optional `signature` (#319) is the Account door's own: `{ use: "stored" }`
+ *     or `{ image }`, parsed and refused alike (a decline carrying one is a 400)
+ *     before anything is read. `stored` is the identified Employee's own current
+ *     kept Signature; `image` is a one-off row with no Account. The device can
+ *     never create or supersede a kept Signature.
+ *   - GET  /floor/signature - the identified Employee's current kept Signature
+ *     as `image/png`, 404 when none is kept: the only way a device, which has no
+ *     Account and so no `/me/signature`, can show it before it is applied.
  *
  * The door: `x-floor-device` (401 when unknown or inactive) and
  * `x-technician-identification` (401 when missing, expired or issued to another
@@ -34,8 +42,9 @@
 const express = require('express');
 const floorDevices = require('./floor-devices');
 const training = require('./training');
+const signatures = require('./signatures');
 const { requireFloorDevice } = require('./floor-device-middleware');
-const { notFound, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
+const { notFound, httpError, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
 
@@ -78,6 +87,25 @@ router.get(
   }
 );
 
+// The identified Employee's own current Signature, so the device can show it
+// before it is applied and render no stored choice when none is kept (404).
+// Read-only by design: the device has no route that sets, replaces or removes
+// a kept Signature (ADR-0052) - that is the Employee's own Account's act.
+router.get(
+  '/floor/signature',
+  requireFloorDevice,
+  requireTechnicianIdentification,
+  async (req, res, next) => {
+    try {
+      const image = await signatures.getCurrentSignature(req.technician.id);
+      res.set('Cache-Control', 'private, no-cache');
+      return res.type('image/png').send(image);
+    } catch (error) {
+      return handleError(error, res, next);
+    }
+  }
+);
+
 router.post(
   '/floor/training/trainees/:traineeId/answer',
   requireFloorDevice,
@@ -85,6 +113,10 @@ router.post(
   async (req, res, next) => {
     try {
       const answer = training.requireAnswer(req.body?.answer);
+      const applied = signatures.parseApplied(req.body?.signature);
+      if (applied !== null && answer === 'declined') {
+        throw httpError(400, 'a declined answer carries no Signature');
+      }
       const trainee = await training.findTraineeForAnswer(req.params.traineeId);
       if (!trainee || trainee.recordStatus !== 'sent') throw notFound('Trainee');
 
@@ -99,7 +131,7 @@ router.post(
         return res.status(403).json({ message: 'Only the Trainee can answer for themselves' });
       }
 
-      const updated = await training.answerTraineeAtFloor(req.technician.id, trainee.id, answer);
+      const updated = await training.answerTraineeAtFloor(req.technician.id, trainee.id, answer, applied);
       return res.json({ trainingRecord: updated });
     } catch (error) {
       return handleError(error, res, next);

@@ -39,6 +39,7 @@ const insertedEmployeeIds = [];
 const insertedRecordIds = [];
 const insertedOrgUnitIds = [];
 const insertedSiteIds = [];
+const insertedDeviceIds = [];
 
 function crc32(bytes) {
   return zlib.crc32(bytes);
@@ -158,6 +159,9 @@ test.after(async () => {
   await pool.query('DELETE FROM training_records WHERE id = ANY($1)', [insertedRecordIds]);
   await pool.query('DELETE FROM app_user_org_units WHERE app_user_id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM employee_signatures WHERE employee_id = ANY($1)', [insertedEmployeeIds]);
+  await pool.query('DELETE FROM technician_identifications WHERE floor_device_id = ANY($1)', [insertedDeviceIds]);
+  await pool.query('DELETE FROM employee_floor_credentials WHERE employee_id = ANY($1)', [insertedEmployeeIds]);
+  await pool.query('DELETE FROM floor_devices WHERE id = ANY($1)', [insertedDeviceIds]);
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM org_units WHERE id = ANY($1)', [insertedOrgUnitIds]);
@@ -553,4 +557,235 @@ test('the record reads each answer\'s Site-local day: 18:00 UTC at a UTC+7 Site 
 
   const pending = await sentRecordWithOwner();
   assert.strictEqual((await readTrainee(pending.recordId, pending.traineeId)).answeredOn, null);
+});
+
+
+// ---------------------------------------------------------------------------
+// The floor device signs the same way (issue #319, ADR-0052).
+// ---------------------------------------------------------------------------
+
+async function jsonRequest(method, path, headers, body) {
+  const response = await fetch(`${base}${path}`, {
+    method,
+    headers: { ...headers, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  return { status: response.status, body: await response.json().catch(() => null) };
+}
+
+let floorAdmin;
+
+// A device registered at `orgUnitId`, and the owner identified at it. The
+// owner's PIN is set through the real admin route.
+async function deviceAt(orgUnitId) {
+  floorAdmin ??= await insertOtherAccount('sig-floor-admin', { role: 'admin' });
+  const registered = await jsonRequest('POST', '/api/maintenance/floor-devices', floorAdmin.headers, {
+    orgUnitId,
+    name: 'Signature terminal'
+  });
+  assert.strictEqual(registered.status, 201, JSON.stringify(registered.body));
+  insertedDeviceIds.push(registered.body.device.id);
+  const pin = await jsonRequest(
+    'PUT',
+    `/api/maintenance/floor-technician-credentials/${ownerEmployeeId}`,
+    floorAdmin.headers,
+    { pin: '4321' }
+  );
+  assert.strictEqual(pin.status, 200, JSON.stringify(pin.body));
+  const device = { 'x-floor-device': registered.body.credential };
+  const identified = await jsonRequest('POST', '/api/maintenance/floor/identify', device, {
+    employeeNo: `SIG${process.pid}`,
+    pin: '4321'
+  });
+  assert.strictEqual(identified.status, 200, JSON.stringify(identified.body));
+  return { device, headers: { ...device, 'x-technician-identification': identified.body.identification } };
+}
+
+const answerAtFloor = (headers, traineeId, body) =>
+  jsonRequest('POST', `/api/maintenance/floor/training/trainees/${traineeId}/answer`, headers, body);
+
+async function floorTrainee(recordId, traineeId) {
+  const { rows: [row] } = await pool.query(
+    `SELECT answer, answered_by_account_id, answered_by_employee_id, signature_id, signature_applied_as
+       FROM training_trainees WHERE id = $1`,
+    [traineeId]
+  );
+  return row;
+}
+
+async function keptCount() {
+  const { rows: [row] } = await pool.query(
+    `SELECT count(*)::int AS n FROM employee_signatures
+      WHERE employee_id = $1 AND kept AND superseded_at IS NULL`,
+    [ownerEmployeeId]
+  );
+  return row.n;
+}
+
+test('at the device, stored reads back as stored for the acting Employee, and a stroke as drawn', async () => {
+  const kept = makePng(100, 30, 81);
+  await putSignature(ownerToken, { image: kept.toString('base64') });
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+
+  const stored = await answerAtFloor(floor.headers, a.traineeId, { answer: 'confirmed', signature: { use: 'stored' } });
+  assert.strictEqual(stored.status, 200, JSON.stringify(stored.body));
+  const [shown] = stored.body.trainingRecord.trainees;
+  assert.strictEqual(shown.signatureAppliedAs, 'stored');
+  assert.strictEqual(shown.hasSignature, true);
+  assert.strictEqual(shown.answeredVia, 'device');
+  let row = await floorTrainee(a.recordId, a.traineeId);
+  assert.strictEqual(String(row.answered_by_employee_id), String(ownerEmployeeId));
+  assert.strictEqual(row.answered_by_account_id, null);
+  const kept0 = (await rowsFor(ownerEmployeeId))[0];
+  assert.strictEqual(String(row.signature_id), String(kept0.id));
+  assert.ok(Buffer.from(await (await traineeImage(a.traineeId)).arrayBuffer()).equals(kept));
+
+  const b = await sentRecordWithOwner();
+  const floorB = await deviceAt(b.orgUnitId);
+  const drawn = await answerAtFloor(floorB.headers, b.traineeId, {
+    answer: 'confirmed',
+    signature: { image: makePng(100, 30, 82).toString('base64') }
+  });
+  assert.strictEqual(drawn.status, 200, JSON.stringify(drawn.body));
+  assert.strictEqual(drawn.body.trainingRecord.trainees[0].signatureAppliedAs, 'drawn');
+  assert.strictEqual(drawn.body.trainingRecord.trainees[0].answeredVia, 'device');
+  row = await floorTrainee(b.recordId, b.traineeId);
+  assert.strictEqual(row.signature_applied_as, 'drawn');
+  assert.strictEqual(String((await readTrainee(b.recordId, b.traineeId)).hasSignature), 'true');
+});
+
+test('at the device, an answer with no signature part carries none', async () => {
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+  const res = await answerAtFloor(floor.headers, a.traineeId, { answer: 'confirmed' });
+  assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+  const row = await floorTrainee(a.recordId, a.traineeId);
+  assert.strictEqual(row.signature_id, null);
+  assert.strictEqual(row.signature_applied_as, null);
+});
+
+test('a stroke drawn at the device supersedes nothing and leaves no kept Signature behind', async () => {
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+  const res = await answerAtFloor(floor.headers, a.traineeId, {
+    answer: 'confirmed',
+    signature: { image: makePng(100, 30, 91).toString('base64') }
+  });
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(await keptCount(), 0);
+  assert.strictEqual((await jsonRequest('GET', '/api/maintenance/floor/signature', floor.headers)).status, 404);
+  const [row] = await rowsFor(ownerEmployeeId);
+  assert.strictEqual(row.kept, false);
+  assert.strictEqual(row.origin, 'on_screen');
+  assert.strictEqual(row.set_by_account_id, null);
+
+  // With a kept Signature already there, a stroke at the device leaves it current.
+  const keptImage = makePng(100, 30, 92);
+  await putSignature(ownerToken, { image: keptImage.toString('base64') });
+  const b = await sentRecordWithOwner();
+  const floorB = await deviceAt(b.orgUnitId);
+  await answerAtFloor(floorB.headers, b.traineeId, {
+    answer: 'confirmed',
+    signature: { image: makePng(100, 30, 93).toString('base64') }
+  });
+  assert.strictEqual(await keptCount(), 1);
+  assert.ok(Buffer.from(await (await getSignature(ownerToken)).arrayBuffer()).equals(keptImage));
+  assert.ok((await rowsFor(ownerEmployeeId)).filter((r) => r.kept).every((r) => r.superseded_at === null));
+});
+
+test('stored at the device with no kept Signature is a 400 and records nothing', async () => {
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+  const res = await answerAtFloor(floor.headers, a.traineeId, { answer: 'confirmed', signature: { use: 'stored' } });
+  assert.strictEqual(res.status, 400);
+  assert.match(res.body.message, /no Signature kept/);
+  assert.strictEqual((await floorTrainee(a.recordId, a.traineeId)).answer, null);
+});
+
+test('at the device, a decline carrying a signature is a 400, and an image gets the four refusals', async () => {
+  await putSignature(ownerToken, { image: makePng(100, 30, 94).toString('base64') });
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+  for (const signature of [{ use: 'stored' }, { image: makePng(60, 20).toString('base64') }]) {
+    const res = await answerAtFloor(floor.headers, a.traineeId, { answer: 'declined', signature });
+    assert.strictEqual(res.status, 400);
+  }
+  const send = (image) => answerAtFloor(floor.headers, a.traineeId, { answer: 'confirmed', signature: { image } });
+  assert.strictEqual((await send('')).status, 400);
+  assert.strictEqual((await send(Buffer.from('not a png at all, just text bytes').toString('base64'))).status, 400);
+  assert.strictEqual((await send(makePngOfSize(48 * 1024 + 1).toString('base64'))).status, 400);
+  assert.strictEqual((await send(makePng(601, 20).toString('base64'))).status, 400);
+  assert.strictEqual((await floorTrainee(a.recordId, a.traineeId)).answer, null);
+  assert.strictEqual((await rowsFor(ownerEmployeeId)).length, 1);
+});
+
+test('device scoping is unchanged with a signature part present', async () => {
+  await putSignature(ownerToken, { image: makePng(100, 30, 95).toString('base64') });
+  const body = { answer: 'confirmed', signature: { use: 'stored' } };
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+
+  // Another device's identification.
+  const elsewhere = await sentRecordWithOwner();
+  const other = await deviceAt(elsewhere.orgUnitId);
+  const crossed = { ...floor.device, 'x-technician-identification': other.headers['x-technician-identification'] };
+  assert.strictEqual((await answerAtFloor(crossed, a.traineeId, body)).status, 401);
+
+  // No identification at all.
+  assert.strictEqual((await answerAtFloor(floor.device, a.traineeId, body)).status, 401);
+
+  // An expired identification.
+  await pool.query(
+    `UPDATE technician_identifications SET expires_at = now() - interval '1 minute'
+      WHERE floor_device_id = ANY($1)`,
+    [insertedDeviceIds.slice(-2, -1)]
+  );
+  const expired = await answerAtFloor(floor.headers, a.traineeId, body);
+  assert.strictEqual(expired.status, 401);
+
+  // An Org Unit outside the device's reach.
+  const reaching = await deviceAt(elsewhere.orgUnitId);
+  assert.strictEqual((await answerAtFloor(reaching.headers, a.traineeId, body)).status, 403);
+
+  assert.strictEqual((await floorTrainee(a.recordId, a.traineeId)).answer, null);
+  assert.strictEqual((await floorTrainee(elsewhere.recordId, elsewhere.traineeId)).answer, null);
+});
+
+test('the device reads the identified Employee\'s Signature, behind its door', async () => {
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+  assert.strictEqual((await jsonRequest('GET', '/api/maintenance/floor/signature', floor.headers)).status, 404);
+
+  const kept = makePng(100, 30, 96);
+  await putSignature(ownerToken, { image: kept.toString('base64') });
+  const res = await fetch(`${base}/api/maintenance/floor/signature`, { headers: floor.headers });
+  assert.strictEqual(res.status, 200);
+  assert.match(res.headers.get('content-type'), /image\/png/);
+  assert.ok(Buffer.from(await res.arrayBuffer()).equals(kept));
+
+  assert.strictEqual((await jsonRequest('GET', '/api/maintenance/floor/signature', floor.device)).status, 401);
+  assert.strictEqual((await jsonRequest('GET', '/api/maintenance/floor/signature', {})).status, 401);
+});
+
+test('no device route can create or supersede a kept Signature', async () => {
+  const keptImage = makePng(100, 30, 97);
+  await putSignature(ownerToken, { image: keptImage.toString('base64') });
+  const before = await rowsFor(ownerEmployeeId);
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+  const image = makePng(100, 30, 98).toString('base64');
+
+  for (const path of ['/api/maintenance/floor/signature', '/api/maintenance/floor/me/signature', '/api/maintenance/floor/training/signature']) {
+    for (const method of ['PUT', 'POST', 'DELETE', 'PATCH']) {
+      const res = await jsonRequest(method, path, floor.headers, method === 'DELETE' ? undefined : { image });
+      assert.ok(res.status === 404, `${method} ${path} answered ${res.status}`);
+    }
+  }
+
+  const after = await rowsFor(ownerEmployeeId);
+  assert.strictEqual(after.length, before.length);
+  assert.strictEqual(await keptCount(), 1);
+  assert.ok(after.every((r, i) => r.superseded_at === before[i].superseded_at));
+  assert.ok(Buffer.from(await (await getSignature(ownerToken)).arrayBuffer()).equals(keptImage));
 });

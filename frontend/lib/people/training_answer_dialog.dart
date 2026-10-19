@@ -12,6 +12,8 @@
 /// confirms and their cell stays empty for a hand signature.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
@@ -19,17 +21,33 @@ import '../widgets/signature_pad.dart';
 import 'training_record.dart';
 
 /// Opens the dialog; null when the person dismissed it.
-Future<TrainingAnswerSignature?> showTrainingAnswerDialog(BuildContext context) =>
+///
+/// The Account door offers its Signature unseen. The shared floor device
+/// (issue #319) has no Account to ask, so it passes what it read for the
+/// identified Employee: [storedImage] is shown before it is applied, and
+/// [offersStored] false (none kept) leaves no stored control at all.
+Future<TrainingAnswerSignature?> showTrainingAnswerDialog(
+  BuildContext context, {
+  Uint8List? storedImage,
+  bool offersStored = true,
+}) =>
     showDialog<TrainingAnswerSignature>(
       context: context,
-      builder: (_) => const TrainingAnswerDialog(),
+      builder: (_) => TrainingAnswerDialog(storedImage: storedImage, offersStored: offersStored),
     );
 
 class TrainingAnswerDialog extends StatefulWidget {
-  const TrainingAnswerDialog({super.key});
+  const TrainingAnswerDialog({super.key, this.storedImage, this.offersStored = true});
+
+  /// The Signature the person keeps, when the caller can show it.
+  final Uint8List? storedImage;
+
+  /// Whether "Use my Signature" is offered at all.
+  final bool offersStored;
 
   static const ValueKey<String> dialogKey = ValueKey<String>('training-answer-dialog');
   static const ValueKey<String> useStoredKey = ValueKey<String>('training-answer-use-stored');
+  static const ValueKey<String> storedImageKey = ValueKey<String>('training-answer-stored-image');
   static const ValueKey<String> drawKey = ValueKey<String>('training-answer-draw');
   static const ValueKey<String> noneKey = ValueKey<String>('training-answer-none');
   static const ValueKey<String> padKey = ValueKey<String>('training-answer-pad');
@@ -70,19 +88,40 @@ class _TrainingAnswerDialogState extends State<TrainingAnswerDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Choose what your answer is signed with. You can also confirm without a Signature.',
+              widget.offersStored
+                  ? 'Choose what your answer is signed with. You can also confirm without a Signature.'
+                  : 'You keep no Signature. Draw one now for this answer, or confirm without a Signature.',
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: Spacing.md),
+            if (widget.offersStored && widget.storedImage != null) ...[
+              Text('Your Signature, which "Use my Signature" applies:', style: theme.textTheme.bodyMedium),
+              const SizedBox(height: Spacing.sm),
+              Container(
+                height: 90,
+                alignment: Alignment.centerLeft,
+                child: Image.memory(
+                  widget.storedImage!,
+                  key: TrainingAnswerDialog.storedImageKey,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Text(
+                    'This Signature could not be shown.',
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                  ),
+                ),
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
             Wrap(
               spacing: Spacing.sm,
               runSpacing: Spacing.sm,
               children: [
-                FilledButton(
-                  key: TrainingAnswerDialog.useStoredKey,
-                  onPressed: () => Navigator.of(context).pop(const StoredAnswerSignature()),
-                  child: const Text('Use my Signature'),
-                ),
+                if (widget.offersStored)
+                  FilledButton(
+                    key: TrainingAnswerDialog.useStoredKey,
+                    onPressed: () => Navigator.of(context).pop(const StoredAnswerSignature()),
+                    child: const Text('Use my Signature'),
+                  ),
                 OutlinedButton(
                   key: TrainingAnswerDialog.drawKey,
                   onPressed: _drawing ? null : () => setState(() => _drawing = true),
