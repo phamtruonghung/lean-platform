@@ -17,8 +17,8 @@
 # The layout mirrors production: an edge router splits /api to the backend and
 # everything else to the frontend, exactly as the reverse proxy on the LXC does.
 #
-# Postgres here is local and disposable. Production is Supabase Cloud (ADR-0002);
-# nothing in this file is deployed.
+# Postgres here is local and disposable. Production (VIProd) uses self-hosted
+# PostgreSQL on LXC CT100 (ADR-0051); nothing in this file is deployed.
 # ==============================================================================
 
 services:

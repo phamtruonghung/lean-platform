@@ -1,8 +1,9 @@
 /*
  * The Platform's connection to Postgres.
  *
- * The database is Supabase Cloud (ADR-0002) and the API reaches it as
- * `postgres`, the role that ran the baseline and every migration since — it
+ * Production (VIProd) is self-hosted PostgreSQL on LXC CT100 (ADR-0051); the
+ * home LXC 150 deployment still uses Supabase Cloud (ADR-0002). Either way the
+ * API reaches it as `postgres`, the role that ran the baseline and every migration since — it
  * owns every table in this schema and holds `rolbypassrls = true`, which is
  * what actually lets it keep reading and writing under the deny-all RLS
  * floor (ADR-0004), not any "service role": Supabase's `service_role` is

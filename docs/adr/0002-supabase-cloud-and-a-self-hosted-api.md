@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded in part by ADR-0051
 ---
 
 # Supabase Cloud for data, our own LXC for the API

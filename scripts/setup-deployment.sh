@@ -194,8 +194,11 @@ banner "Platform deployment setup"
 
 # ── 1 ─────────────────────────────────────────────────────────────────────
 stage "Supabase: create the project"
-say "The Platform's database is Supabase Cloud (ADR-0002). This stage creates"
-say "the project and captures the connection string the API will use."
+say "This wizard sets up a SUPABASE deployment (ADR-0002), such as home LXC 150."
+say "It is NOT how production (VIProd) was built: production uses self-hosted"
+say "PostgreSQL on LXC CT100 and local passwords (ADR-0051), and this wizard has"
+say "no stage for that. This stage creates the Supabase project and captures the"
+say "connection string the API will use."
 open_url "https://supabase.com/dashboard/new"
 step "Create a new project. Pick the region closest to the plant, not to you:"
 say "  every query the API makes pays that round trip."
