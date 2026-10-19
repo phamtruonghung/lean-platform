@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A Training record, from raised to the Trainee's Signature</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* lean-platform profile: the app's own colours (frontend/lib/theme.dart). */
+    :root {
+      --color-paper:        #F8FAFC;   /* _Primitives.canvas */
+      --color-paper-2:      #FFFFFF;   /* AppColors.card */
+      --color-ink:          #1E3A8A;   /* onSurface / textPrimary */
+      --color-muted:        #475569;   /* onSurfaceVariant / textMuted */
+      --color-soft:         #64748B;   /* outline */
+      --color-rule:         #DBEAFE;   /* edge */
+      --color-rule-solid:   #64748B;   /* outline */
+      --color-accent:       #1E40AF;   /* primary / actionPrimary */
+      --color-accent-tint:  #DBEAFE;   /* primaryContainer */
+      --color-link:         #1E40AF;
+      --color-success:      #166534;
+      --color-success-tint: #DCFCE7;
+      --color-danger:       #B91C1C;
+      --color-danger-tint:  #FEE2E2;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1360px; width: 100%; min-width: 0; }
+    /* The SVG holds its readable width (min-width == the viewBox width) and
+       this wrapper scrolls on a narrow screen instead of the whole page. */
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: 1.75rem;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 1280px; display: block; }
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Flowchart · People · Training record</p>
+    <h1>A Training record, from raised to the Trainee's Signature</h1>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="training-record-flow-title training-record-flow-desc">
+        <title id="training-record-flow-title">Training record flow, raised to Signature</title>
+        <desc id="training-record-flow-desc">Flowchart of a Training record being raised, filled in as a draft, sent to every Trainee at once, answered by each Trainee for themselves with their own Signature, and printed for HR once every Trainee has confirmed.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#475569"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#1E40AF"/></marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#1E40AF"/></marker>
+        </defs>
+
+        <rect width="100%" height="100%" fill="#F8FAFC"/>
+
+        <!-- Arrows (drawn first, behind nodes) -->
+        <!-- 1 to 2 -->
+        <line x1="336" y1="88" x2="336" y2="112" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 2 to 3 -->
+        <line x1="336" y1="160" x2="336" y2="184" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 3 not yet, back to 2 -->
+        <path d="M 216 224 H 80 Q 72 224 72 216 V 144 Q 72 136 80 136 H 136" fill="none" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 3 yes to 4 -->
+        <line x1="336" y1="264" x2="336" y2="288" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 4 to 5 -->
+        <path d="M 536 312 H 852 Q 860 312 860 320 V 344" fill="none" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 5 to 6 (accent) -->
+        <line x1="860" y1="392" x2="860" y2="416" stroke="#1E40AF" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <!-- 6 to 7 -->
+        <line x1="860" y1="464" x2="860" y2="488" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <!-- 7 a decline stands, dashed back to 6 -->
+        <path d="M 1020 528 H 1072 Q 1080 528 1080 520 V 448 Q 1080 440 1072 440 H 1040" fill="none" stroke="#475569" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <!-- 7 all confirmed to 8 -->
+        <line x1="860" y1="568" x2="860" y2="592" stroke="#475569" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- Arrow labels -->
+        <rect x="108" y="204" width="80" height="12" rx="2" fill="#F8FAFC"/>
+        <text x="148" y="213" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NOT YET · 409</text>
+
+        <rect x="344" y="270" width="28" height="12" rx="2" fill="#F8FAFC"/>
+        <text x="358" y="279" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+
+        <rect x="1088" y="478" width="88" height="12" rx="2" fill="#F8FAFC"/>
+        <text x="1132" y="487" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DECLINE STANDS</text>
+
+        <rect x="868" y="574" width="80" height="12" rx="2" fill="#F8FAFC"/>
+        <text x="908" y="583" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ALL CONFIRMED</text>
+
+        <!-- Node 1: oval, raise -->
+        <rect x="136" y="40" width="400" height="48" rx="20" fill="#F8FAFC"/>
+        <rect x="136" y="40" width="400" height="48" rx="20" fill="rgba(30,58,138,0.03)" stroke="#64748B" stroke-width="1"/>
+        <text x="336" y="61" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Raise a Training record</text>
+        <text x="336" y="76" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">edit Grant at the Org Unit · number issued at creation</text>
+
+        <!-- Node 2: rect, fill in as a draft -->
+        <rect x="136" y="112" width="400" height="48" rx="6" fill="#F8FAFC"/>
+        <rect x="136" y="112" width="400" height="48" rx="6" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="336" y="133" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fill it in as a draft</text>
+        <text x="336" y="148" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">title · day · hours · trainer · objective · Trainees one at a time</text>
+
+        <!-- Node 3: diamond, complete? -->
+        <polygon points="336,184 456,224 336,264 216,224" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="336" y="228" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Complete?</text>
+
+        <!-- Node 4: rect, send -->
+        <rect x="136" y="288" width="400" height="48" rx="6" fill="#F8FAFC"/>
+        <rect x="136" y="288" width="400" height="48" rx="6" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="336" y="309" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Send it, and every Trainee is asked at once</text>
+        <text x="336" y="324" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">status sent · sent_at · sent_by</text>
+
+        <!-- Node 5: rect, the Trainee answers -->
+        <rect x="680" y="344" width="360" height="48" rx="6" fill="#F8FAFC"/>
+        <rect x="680" y="344" width="360" height="48" rx="6" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="860" y="365" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">The Trainee answers for themselves</text>
+        <text x="860" y="380" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">their own Account, or the floor device by number + PIN</text>
+
+        <!-- Node 6: rect, the answer carries their Signature (focal) -->
+        <rect x="680" y="416" width="360" height="48" rx="6" fill="#F8FAFC"/>
+        <rect x="680" y="416" width="360" height="48" rx="6" fill="#DBEAFE" stroke="#1E40AF" stroke-width="1.2"/>
+        <text x="860" y="437" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">The answer carries their Signature</text>
+        <text x="860" y="452" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">the one they keep · drawn now · none</text>
+
+        <!-- Node 7: diamond, every Trainee confirmed? -->
+        <polygon points="860,488 1020,528 860,568 700,528" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="860" y="522" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Every Trainee confirmed?</text>
+        <text x="860" y="538" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">counted from the rows, never stored</text>
+
+        <!-- Node 8: oval, print and file -->
+        <rect x="680" y="592" width="360" height="48" rx="20" fill="#F8FAFC"/>
+        <rect x="680" y="592" width="360" height="48" rx="20" fill="rgba(30,58,138,0.03)" stroke="#64748B" stroke-width="1"/>
+        <text x="860" y="613" fill="#1E3A8A" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Print the form, and HR files it</text>
+        <text x="860" y="628" fill="#475569" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">/training/:id/form · bilingual · outside the Shell</text>
+
+        <!-- Callout 2, beside node 4 -->
+        <text x="600" y="232" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif">A sent record is evidence: corrected under</text>
+        <text x="600" y="252" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif">the same Grant and audited, never deleted.</text>
+        <text x="600" y="272" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif">Only a draft may be discarded.</text>
+        <path d="M 592 268 Q 556 272 539 294" fill="none" stroke="rgba(30,58,138,0.40)" stroke-width="1" stroke-dasharray="4,3"/>
+        <circle cx="536" cy="296" r="2" fill="#1E3A8A"/>
+
+        <!-- Callout 1, beside node 5 -->
+        <text x="632" y="384" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">Nobody answers for anybody else — not a</text>
+        <text x="632" y="404" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">supervisor, not HR, not an administrator</text>
+        <text x="632" y="424" fill="#1E3A8A" font-size="14" font-style="italic" font-family="'Instrument Serif', 'Noto Serif', serif" text-anchor="end">with an edit Grant.</text>
+        <path d="M 644 398 Q 664 392 678 380" fill="none" stroke="rgba(30,58,138,0.40)" stroke-width="1" stroke-dasharray="4,3"/>
+        <circle cx="680" cy="380" r="2" fill="#1E3A8A"/>
+
+        <!-- Legend (bottom 60px strip, nothing else lives here) -->
+        <line x1="40" y1="648" x2="1240" y2="648" stroke="#DBEAFE" stroke-width="0.8"/>
+        <text x="40" y="676" fill="#475569" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+
+        <rect x="120" y="666" width="28" height="12" rx="6" fill="rgba(30,58,138,0.03)" stroke="#64748B" stroke-width="1"/>
+        <text x="156" y="676" fill="#475569" font-size="10" font-family="'Geist', sans-serif">Start / end (oval)</text>
+
+        <rect x="284" y="666" width="28" height="12" rx="2" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="320" y="676" fill="#475569" font-size="10" font-family="'Geist', sans-serif">Step (rectangle)</text>
+
+        <polygon points="428,672 440,666 452,672 440,678" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="1"/>
+        <text x="460" y="676" fill="#475569" font-size="10" font-family="'Geist', sans-serif">Decision (diamond)</text>
+
+        <line x1="592" y1="672" x2="624" y2="672" stroke="#475569" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <text x="632" y="676" fill="#475569" font-size="10" font-family="'Geist', sans-serif">Still outstanding (dashed arrow)</text>
+
+        <rect x="824" y="666" width="28" height="12" rx="2" fill="#DBEAFE" stroke="#1E40AF" stroke-width="1.2"/>
+        <text x="860" y="676" fill="#475569" font-size="10" font-family="'Geist', sans-serif">The Signature (accent)</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
