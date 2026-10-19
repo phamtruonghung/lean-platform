@@ -81,6 +81,18 @@ March" — a question this Platform must still be able to answer after they
 leave.
 _Avoid_: Terminated, ex-employee, removed, deleted
 
+**Signature**:
+An Employee's own mark, kept once and applied wherever they would otherwise
+sign a sheet by hand. A record keeps which Signature was applied to it, when,
+and whether it was the one the person had stored or one drawn on the spot — so
+a Signature replaced later never changes a sheet already signed. Most of a
+plant holds one without ever signing in, so an administrator may set it for an
+Employee who has no Account, and the Employee's own supersedes it the moment
+they can set one.
+_Avoid_: E-signature, digital signature (each names a legal standard this
+Platform does not claim), wet signature, sign-off (that is an Approval, a
+different act), autograph
+
 **Directory**:
 The searchable listing of Employees, and the detail view behind one of
 them — job role, Org Unit assignments and skills. Readable by any approved
@@ -202,7 +214,8 @@ An Employee listed on a Training record as having been trained by it, and
 whose own confirmation is what closes their line on it. A Trainee need not
 hold an Account — most of a plant cannot sign in — so confirming follows the
 person rather than a sign-in, and an Employee can be a Trainee on a record
-they were never asked about only if they are taken off it.
+they were never asked about only if they are taken off it. The Signature on
+their line is theirs alone — the one they keep, or one drawn as they answer.
 _Avoid_: Attendee, participant, student, learner (what the record states is
 that they were trained, not that they learned anything)
 
