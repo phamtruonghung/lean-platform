@@ -19,6 +19,21 @@ name: Release
 on:
   push:
     branches: [main]
+    # A merge that only touches prose builds nothing and changes nothing in
+    # either image: `backend/Dockerfile` copies `src/` and `migrations/`, and
+    # the frontend image builds from the `./frontend` context, so `docs/` and
+    # the repository's markdown never enter a container. Redeploying for them
+    # restarts the plant's containers for no reason and puts a change that
+    # cannot affect production through a rollout it could, in principle, fail.
+    #
+    # The pull request that carried the change already ran the whole CI
+    # workflow (CI runs on every pull request and every non-main push), so
+    # nothing is left unchecked by skipping here. A push to main that touches
+    # anything outside these paths still builds and deploys exactly as before;
+    # `workflow_dispatch` still runs it by hand when a redeploy is wanted.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
 
 # One deploy at a time. Two overlapping deploys would race over the same
