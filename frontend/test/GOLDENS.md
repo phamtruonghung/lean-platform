@@ -123,11 +123,7 @@ that is guaranteed to match the version these were generated against
 (`AGENTS.md` §3):
 
 ```bash
-rm -rf /tmp/frontend-check && cp -r frontend /tmp/frontend-check
-docker run --rm -v /tmp/frontend-check:/app -w /app \
-  ghcr.io/cirruslabs/flutter:3.44.0 \
-  bash -c "flutter pub get && flutter analyze && flutter test"
-rm -rf /tmp/frontend-check
+scripts/flutter-ci.sh
 ```
 
 A failure that disappears under this command was never a regression. A
@@ -153,14 +149,12 @@ container's SDK resolves, and running that against a live `frontend/` can
 silently break the next real build.
 
 ```bash
-# From the repo root.
-rm -rf /tmp/golden-work && cp -r frontend /tmp/golden-work
-docker run --rm -v /tmp/golden-work:/app -w /app \
-  ghcr.io/cirruslabs/flutter:3.44.0 \
-  bash -c "flutter pub get && flutter test --update-goldens"
+# From the repo root. WORK_DIR keeps the working copy, so the regenerated PNGs
+# can be copied back out of it — the script deletes its own temp copy otherwise.
+WORK_DIR=/tmp/golden-work scripts/flutter-ci.sh --update-goldens
 
 # Copy the regenerated PNGs back into the real tree.
-cp /tmp/golden-work/test/goldens/*.png frontend/test/goldens/
+cp /tmp/golden-work/app/test/goldens/*.png frontend/test/goldens/
 
 # Confirm the container's own `pub get` did not leave a side effect behind.
 git status --short frontend/pubspec.lock
@@ -176,11 +170,9 @@ update flag, so the new goldens are actually asserted against once rather
 than only ever having been written:
 
 ```bash
-rm -rf /tmp/golden-verify && cp -r frontend /tmp/golden-verify
-docker run --rm -v /tmp/golden-verify:/app -w /app \
-  ghcr.io/cirruslabs/flutter:3.44.0 \
-  bash -c "flutter pub get && flutter analyze && flutter test"
-rm -rf /tmp/golden-verify
+# The script always starts from a fresh copy of frontend/, so this is the
+# "clean copy" step as well as the assertion.
+scripts/flutter-ci.sh
 ```
 
 Commit the changed PNGs alongside the Dart change that motivated them, in

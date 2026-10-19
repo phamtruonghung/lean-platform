@@ -148,7 +148,7 @@ rm -rf /tmp/frontend-check && cp -r frontend /tmp/frontend-check
 (cd /tmp/frontend-check \
   && timeout 900 flutter pub get \
   && timeout 900 flutter analyze \
-  && timeout 1800 flutter test)
+  && timeout 1800 flutter test -j 2)
 rm -rf /tmp/frontend-check
 ```
 
@@ -385,7 +385,8 @@ workflow it was written for.
   not a failure).
 - `flutter analyze` and `flutter test`, run via the pinned
   `ghcr.io/cirruslabs/flutter:3.44.0` image against a **copy** of `frontend/`,
-  both pass.
+  both pass. Use `scripts/flutter-ci.sh` so the run cannot starve the rest of
+  the machine; its `-j 2` matters as much as the CPU cap.
 - Every acceptance criterion in the ticket is covered by a test you can point
   to by name — not merely "the feature works when I tried it".
 - No schema migration was added unless the ticket explicitly calls for one.

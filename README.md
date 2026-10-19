@@ -253,6 +253,23 @@ a repository-level variable, not a per-target one, so every deployment this
 workflow drives gets the same door. A second deployment that wanted the other
 door would need this made per-target (a GitHub environment, say) first.
 
+**The first administrator's password.** In `local` mode nobody can sign in
+until an Account has a password, and the route that sets one (#270) needs a
+signed-in administrator, so the first one is set by hand, once, by a person
+at the deployment's database:
+
+```sh
+export DATABASE_URL=postgresql://...
+read -s -p 'New password: ' PW && printf '%s' "$PW" | node dev/set-a-password.mjs admin@example.com
+unset PW
+```
+
+The password is read from stdin only and stored as temporary
+(`must_change_password`); #270's change flow replaces it afterwards. The script
+refuses to overwrite an existing password unless run with `--force`, and
+prints only the email and the time. Sign-in in `local` mode also needs the
+Account linked to an active Employee; the script warns when it is not.
+
 First-time setup — Supabase, DNS, Docker, certificates and the runner — is
 walked through by `scripts/setup-deployment.sh`.
 

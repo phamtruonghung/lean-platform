@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:lean_platform/app_version.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/shell.dart';
@@ -151,6 +152,19 @@ void main() {
     for (final destination in _testDestinations) {
       expect(find.text(destination.label), findsOneWidget);
     }
+  });
+
+  testWidgets('the account footer shows the build version, muted and on one line (#297)',
+      (tester) async {
+    await tester.pumpWidget(_harness());
+    await tester.pumpAndSettle();
+
+    final finder = find.byKey(PlatformShell.appVersionKey);
+    expect(finder, findsOneWidget);
+    expect(find.text(appVersion), findsOneWidget);
+    final text = tester.widget<Text>(finder);
+    expect(text.maxLines, 1);
+    expect(text.style?.color, isNotNull);
   });
 
   testWidgets('selecting a destination navigates by address and swaps the Screen',

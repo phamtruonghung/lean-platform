@@ -33,13 +33,25 @@ COPY . .
 ARG SUPABASE_URL=""
 ARG SUPABASE_ANON_KEY=""
 
+# The identity of this build (lib/app_version.dart), shown in the app footer
+# and written to /version.txt below. The release workflow passes the image
+# tag (sha-<short sha>). Empty by default, like the ARGs above; an empty
+# value is read as `dev`, in both the footer and version.txt.
+ARG APP_VERSION=""
+
 # --no-web-resources-cdn makes the app load CanvasKit from its own origin
 # instead of www.gstatic.com. The engine bundles CanvasKit into the build either
 # way; without this flag the copy in the image is never used, and the app cannot
 # start without reaching a public CDN.
 RUN flutter build web --release --no-web-resources-cdn \
       --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
-      --dart-define=SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}"
+      --dart-define=SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}" \
+      --dart-define=APP_VERSION="${APP_VERSION}"
+
+# The same string over HTTP, so `curl <origin>/version.txt` establishes which
+# build is being served without a browser. Served with nginx's default
+# revalidation (nginx.conf has no rule for it), so it is never stale.
+RUN printf '%s\n' "${APP_VERSION:-dev}" > build/web/version.txt
 
 # ------------------------------------------------------------------------------
 # Serve the built files.
