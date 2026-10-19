@@ -219,6 +219,31 @@ void main() {
       );
     });
 
+    testWidgets('but a floor-device 401 does not, since it says nothing about the session',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({
+        LocalAuthGateway.tokenKey: 'stored-token',
+        LocalAuthGateway.expiresAtKey:
+            DateTime.now().add(const Duration(hours: 1)).toUtc().toIso8601String(),
+      });
+      final api = FakeAuthApi(wire: FakeWire(floorWorkOrdersStatus: 401));
+      final gateway = await LocalAuthGateway.load(client: api.client);
+      await pumpApp(
+        tester,
+        gateway: gateway,
+        client: SignOutOnUnauthorized(api.client, gateway),
+        initialLocation: '/floor',
+      );
+
+      expect(
+        api.requests.where((r) => r == 'GET /api/maintenance/floor/work-orders'),
+        hasLength(1),
+      );
+      expect(find.byType(SignInScreen), findsNothing);
+      // Signing out would have posted logout with the stored token.
+      expect(api.logoutBearers, isEmpty);
+    });
+
     testWidgets('but a 403 does not', (tester) async {
       await signedIn(tester, FakeWire(queueStatus: 403));
 

@@ -34,23 +34,10 @@
 const express = require('express');
 const floorDevices = require('./floor-devices');
 const training = require('./training');
+const { requireFloorDevice } = require('./floor-device-middleware');
 const { notFound, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
-
-// Same shape and wording as floor-routes.js's own requireFloorDevice.
-async function requireFloorDevice(req, res, next) {
-  try {
-    const device = await floorDevices.findDeviceByCredential(req.headers['x-floor-device']);
-    if (!device || !device.isActive) {
-      return res.status(401).json({ message: 'Invalid or inactive floor device' });
-    }
-    req.floorDevice = device;
-    return next();
-  } catch (error) {
-    return handleError(error, res, next);
-  }
-}
 
 // Same wording as the Safety floor routes' requireTechnicianIdentification.
 async function requireTechnicianIdentification(req, res, next) {
