@@ -74,7 +74,7 @@ async function main() {
   try {
     // `app_users.email` is CITEXT, so this match ignores case.
     const { rows: [account] } = await pool.query(
-      `SELECT u.id, u.email, (e.id IS NOT NULL AND e.is_active) AS has_active_employee,
+      `SELECT u.id, u.email, u.role, (e.id IS NOT NULL AND e.is_active) AS has_active_employee,
               EXISTS (SELECT 1 FROM account_credentials c WHERE c.app_user_id = u.id) AS has_credential
          FROM app_users u
          LEFT JOIN employees e ON e.id = u.employee_id
@@ -101,7 +101,7 @@ async function main() {
     );
     if (!written) fail(alreadyHasOne);
     console.log(`Password set for ${account.email} at ${written.updated_at.toISOString()}. It is temporary (must_change_password): this only makes the first sign-in possible — change it through #270's change flow.`);
-    if (!account.has_active_employee) {
+    if (!account.has_active_employee && account.role !== 'admin') {
       console.error(
         `WARNING: ${account.email} is not linked to an active Employee. The password is set, but sign-in will still be refused until the Account is linked to an active Employee.`
       );
