@@ -7,6 +7,7 @@
 /// `PeopleApi.fetchSites` and the tree, and it calls that directly.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -1726,10 +1727,14 @@ class MaintenanceApi {
   /// Accepts any 2xx, the same rule `PeopleApi._send` follows (issue #87):
   /// creating an Asset answers 201, which is the status this Module's own
   /// POST actually returns.
+  static const Duration _requestTimeout = Duration(seconds: 30);
+
   Future<http.Response> _send(Future<http.Response> Function() send, String path) async {
     final http.Response response;
     try {
-      response = await send();
+      response = await send().timeout(_requestTimeout);
+    } on TimeoutException {
+      throw MaintenanceApiException('The API did not answer within ${_requestTimeout.inSeconds} seconds.');
     } catch (error) {
       throw MaintenanceApiException('Could not reach the API: $error');
     }

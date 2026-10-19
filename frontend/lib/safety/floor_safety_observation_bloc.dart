@@ -27,7 +27,7 @@ library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../maintenance/maintenance_api.dart';
+import '../maintenance/maintenance.dart';
 import '../platform/floor_device_gateway.dart';
 import 'safety_api.dart';
 

@@ -146,6 +146,12 @@ jobs:
         working-directory: frontend
         run: flutter analyze
 
+      # ADR-0012: a Module may reach another only through its entry point.
+      # flutter analyze does not check this.
+      - name: Module seams
+        working-directory: frontend
+        run: dart run tool/check_module_seams.dart
+
       - name: Tests
         working-directory: frontend
         run: flutter test

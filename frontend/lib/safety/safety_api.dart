@@ -24,6 +24,7 @@
 /// Account, and writable only by an administrator, which the API decides.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -684,10 +685,14 @@ class SafetyApi {
   // leave here as the Module's own exception, carrying the API's own message
   // when it sent one (so a 400's sentence reaches the form that caused it
   // rather than being replaced by a status code).
+  static const Duration _requestTimeout = Duration(seconds: 30);
+
   Future<http.Response> _send(Future<http.Response> Function() send, String path) async {
     final http.Response response;
     try {
-      response = await send();
+      response = await send().timeout(_requestTimeout);
+    } on TimeoutException {
+      throw SafetyApiException('The API did not answer within ${_requestTimeout.inSeconds} seconds.');
     } catch (error) {
       throw SafetyApiException('Could not reach the API: $error');
     }

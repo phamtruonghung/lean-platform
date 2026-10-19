@@ -124,7 +124,7 @@ against:
 rm -rf /tmp/frontend-check && cp -r frontend /tmp/frontend-check
 docker run --rm -v /tmp/frontend-check:/app -w /app \
   ghcr.io/cirruslabs/flutter:3.44.0 \
-  bash -c "flutter pub get && flutter analyze && flutter test"
+  bash -c "flutter pub get && flutter analyze && dart run tool/check_module_seams.dart && flutter test"
 rm -rf /tmp/frontend-check
 ```
 
@@ -148,6 +148,7 @@ rm -rf /tmp/frontend-check && cp -r frontend /tmp/frontend-check
 (cd /tmp/frontend-check \
   && timeout 900 flutter pub get \
   && timeout 900 flutter analyze \
+  && dart run tool/check_module_seams.dart \
   && timeout 1800 flutter test -j 2)
 rm -rf /tmp/frontend-check
 ```
@@ -383,6 +384,8 @@ workflow it was written for.
 - `cd backend && npm run test:integration` passes against a migrated local
   Postgres (the two `rls.test.js` role skips noted in section 3 are expected,
   not a failure).
+- `dart run tool/check_module_seams.dart` (from `frontend/`; also run by
+  `scripts/flutter-ci.sh`) passes: no Module imports another's internals.
 - `flutter analyze` and `flutter test`, run via the pinned
   `ghcr.io/cirruslabs/flutter:3.44.0` image against a **copy** of `frontend/`,
   both pass. Use `scripts/flutter-ci.sh` so the run cannot starve the rest of
