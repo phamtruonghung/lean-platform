@@ -33,6 +33,10 @@
 #                             named volume for ~/.pub-cache so `pub get` is not
 #                             re-downloading every run; set to "" to use the image's
 #                             own (throwaway) cache
+#   SIBLING_FILES=".github/workflows/release.yml"
+#                             space-separated repo-root-relative files OUTSIDE frontend/
+#                             that tests read (via `../`); copied next to the app copy so
+#                             it is shaped like a checkout. A missing one aborts the run.
 #   WORK_DIR=<dir>            put the working copy in <dir>/app and DO NOT delete it
 #                             afterwards — use this when the run produces files to
 #                             copy back out (`--update-goldens`)
@@ -48,6 +52,7 @@ IMAGE="${IMAGE:-ghcr.io/cirruslabs/flutter:3.44.0}"
 FRONTEND="${FRONTEND:-frontend}"
 PUB_CACHE_VOLUME="${PUB_CACHE_VOLUME-lean-platform-pub-cache}"
 WORK_DIR="${WORK_DIR:-}"
+SIBLING_FILES="${SIBLING_FILES-.github/workflows/release.yml}"
 
 if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
   sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -83,6 +88,20 @@ fi
 echo "== copying $FRONTEND/ -> $app (never bind-mount the real tree)"
 cp -r "$FRONTEND/." "$app"
 
+# Tests read a few files outside frontend/ (version_plumbing_test.dart reads
+# ../.github/workflows/release.yml). Place them beside the app copy, at the same
+# relative paths, so `../` resolves as in a checkout. Absent source = hard error,
+# never a skip. $FRONTEND is a single directory under the repo root, so its parent
+# in the copy is $work.
+for f in $SIBLING_FILES; do
+  if [ ! -f "$f" ]; then
+    echo "sibling file $f is missing from $(pwd) — tests read it via ../" >&2
+    exit 1
+  fi
+  mkdir -p "$work/$(dirname "$f")"
+  cp "$f" "$work/$f"
+done
+
 volume_args=()
 if [ -n "$PUB_CACHE_VOLUME" ]; then
   volume_args=(-v "$PUB_CACHE_VOLUME:/root/.pub-cache")
@@ -96,9 +115,9 @@ echo "== caps: cpus=$CPUS memory=$MEMORY test-jobs=$JOBS image=$IMAGE"
 docker run --rm \
   --cpus="$CPUS" \
   --memory="$MEMORY" --memory-swap="$MEMORY" \
-  -v "$app:/app" \
+  -v "$work:/work" \
   ${volume_args[@]+"${volume_args[@]}"} \
-  -w /app \
+  -w /work/app \
   "$IMAGE" \
   bash -c '
     set -euo pipefail
