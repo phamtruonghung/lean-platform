@@ -58,6 +58,9 @@ class TrainingScreen extends StatelessWidget {
   static ValueKey<String> rowKey(String id) => ValueKey<String>('training-row-$id');
   static ValueKey<String> draftKey(String id) => ValueKey<String>('training-draft-$id');
 
+  /// A row's link to the record's printed form (issue #292).
+  static ValueKey<String> formKey(String id) => ValueKey<String>('training-form-$id');
+
   @override
   Widget build(BuildContext context) {
     final peopleApi = context.read<PeopleApi>();
@@ -386,42 +389,56 @@ class _TrainingRow extends StatelessWidget {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final trainerName = record.trainerName;
-    return InkWell(
-      key: TrainingScreen.rowKey(record.id),
-      onTap: () => context.go('${Routes.training}/${record.id}'),
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    '${record.number} · ${record.title}',
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            key: TrainingScreen.rowKey(record.id),
+            onTap: () => context.go('${Routes.training}/${record.id}'),
+            child: Padding(
+              padding: const EdgeInsets.all(Spacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '${record.number} · ${record.title}',
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                      if (record.isDraft) ...[
+                        const SizedBox(width: Spacing.sm),
+                        StatusChip(
+                          key: TrainingScreen.draftKey(record.id),
+                          label: record.statusLabel,
+                          tone: trainingStatusTone(record.status),
+                        ),
+                      ],
+                    ],
                   ),
-                ),
-                if (record.isDraft) ...[
-                  const SizedBox(width: Spacing.sm),
-                  StatusChip(
-                    key: TrainingScreen.draftKey(record.id),
-                    label: record.statusLabel,
-                    tone: trainingStatusTone(record.status),
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    '${record.trainedOn} · ${record.orgUnitName} · ${formatTrainingHours(record.durationHours)}'
+                    '${trainerName == null ? '' : ' · Trainer: $trainerName'}',
+                    style: muted,
                   ),
                 ],
-              ],
+              ),
             ),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              '${record.trainedOn} · ${record.orgUnitName} · ${formatTrainingHours(record.durationHours)}'
-              '${trainerName == null ? '' : ' · Trainer: $trainerName'}',
-              style: muted,
-            ),
-          ],
+          ),
         ),
-      ),
+        // The printed form, one tap from the register — a sibling of the row's
+        // own tap target so the two never fight over one gesture.
+        IconButton(
+          key: TrainingScreen.formKey(record.id),
+          tooltip: 'The form for ${record.number}',
+          icon: const Icon(Icons.description_outlined),
+          onPressed: () => context.go(Routes.trainingForm(record.id)),
+        ),
+      ],
     );
   }
 }

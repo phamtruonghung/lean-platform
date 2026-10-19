@@ -221,6 +221,8 @@ const _excluded = <String, String>{
   'lib/platform/session_error_screen.dart': 'a centred state on purpose',
   'lib/people/training_detail_screen.dart':
       "its title is the Training record's own number, not a page heading",
+  'lib/people/training_form_screen.dart':
+      "its title is the plant form's own bilingual heading, not a page heading",
   'lib/people/attendance_sheet_screen.dart':
       'reached by shift instance id; its rows are plain list items, not the audited card-row shape',
   'lib/people/attendance_picker_screen.dart':

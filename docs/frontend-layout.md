@@ -131,7 +131,8 @@ is only visible in a rendered tree (AGENTS.md §5's frontend seam).
   (#212) joins the wider list at 1100** — it is a document with two Why chains,
   three kinds of measure and a table of evidence on it, so it spends the
   registers' own width rather than the catalogues' 900, and its Screen says so
-  where the number is chosen.
+  where the number is chosen. **The Training form (#292) is narrower, at 800** —
+  a sheet of paper, about an A4 page at screen resolution, and its Screen says so.
 - **Goldens for every Screen.** `test/GOLDENS.md` scopes them to the Shell and the
   Work orders Screen: a golden per Screen fails on every ordinary content change and
   gets deleted. Geometry assertions catch this class without that cost.

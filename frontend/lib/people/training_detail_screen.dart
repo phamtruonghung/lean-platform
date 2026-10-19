@@ -68,6 +68,11 @@ class TrainingDetailScreen extends StatelessWidget {
   static const double maxWidth = 720;
 
   static const ValueKey<String> backKey = ValueKey<String>('training-detail-back');
+
+  /// The printed form (issue #292): the record laid out as the plant's bilingual
+  /// sheet, outside the Shell. Offered to every reader, not gated — the record
+  /// itself is an open read (ADR-0009).
+  static const ValueKey<String> formKey = ValueKey<String>('training-detail-form');
   static const ValueKey<String> missingKey = ValueKey<String>('training-detail-missing');
   static const ValueKey<String> failedKey = ValueKey<String>('training-detail-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('training-detail-retry');
@@ -188,11 +193,22 @@ class _Loaded extends StatelessWidget {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: TrainingDetailScreen.backKey,
-                onPressed: () => context.go(Routes.training),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Training records'),
+              child: Wrap(
+                spacing: Spacing.sm,
+                children: [
+                  TextButton.icon(
+                    key: TrainingDetailScreen.backKey,
+                    onPressed: () => context.go(Routes.training),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back to Training records'),
+                  ),
+                  TextButton.icon(
+                    key: TrainingDetailScreen.formKey,
+                    onPressed: () => context.go(Routes.trainingForm(record.id)),
+                    icon: const Icon(Icons.description_outlined),
+                    label: const Text('The form'),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: Spacing.sm),

@@ -75,6 +75,7 @@ import '../people/attendance_sheet_screen.dart';
 import '../people/attendance_to_confirm_screen.dart';
 import '../people/training_detail_bloc.dart';
 import '../people/training_detail_screen.dart';
+import '../people/training_form_screen.dart';
 import '../people/training_screen.dart';
 import '../people/training_to_confirm_screen.dart';
 import '../people/cost_rates_bloc.dart';
@@ -205,6 +206,12 @@ abstract final class Routes {
   /// [training] rather than a second Destination — the `/attendance/to-confirm`
   /// shape.
   static const String trainingToConfirm = '/training/to-confirm';
+
+  /// One Training record's printed form (issue #292) — the plant's bilingual
+  /// sheet, printable from the browser. A child address of the record's own
+  /// (`/training/:id/form`) and routed **outside the Shell**, for the reason the
+  /// CAPA report is: see `buildRouter`.
+  static String trainingForm(String id) => '$training/$id/form';
 
   /// Leave requests (issue #265): asking for leave, and deciding what others
   /// asked for. Its dialogs are addresses beneath it (`/new`,
@@ -496,6 +503,43 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               authGateway: context.read<AuthGateway>(),
             )..add(CapaDetailStarted(capaId)),
             child: CapaReportScreen(capaId: capaId),
+          );
+        },
+      ),
+      // The Training record's printed form (issue #292) — the plant's bilingual
+      // sheet at its own address, printable from the browser.
+      //
+      // **Outside the Shell, deliberately**, for the CAPA report's reason: a
+      // form declared inside the Shell would carry the sidebar, the brand header
+      // and the account footer onto the printed page. A sibling `GoRoute` rather
+      // than a child of the record's own route, because the routes inside the
+      // Shell would not match it and because a child would be wrapped in the
+      // Shell; it is declared here, before the Shell, with the other addresses
+      // reached without chrome.
+      //
+      // No gate of its own either: reading a Training record is a platform-wide
+      // read for every active Account (ADR-0009), and the server alone decides
+      // whether a draft is visible (404 for a caller who could not send it, which
+      // the form renders as its failure state). A form that refused a reader
+      // would be a second, stricter rule for the record's own Screen.
+      GoRoute(
+        path: '${Routes.training}/:id/form',
+        builder: (context, state) {
+          final account = context.watch<AccountBloc>().state;
+          // Sealed-state type narrowing, not a per-Screen access check — the
+          // same line the CAPA report takes.
+          if (account is! AccountApproved) return const SizedBox.shrink();
+          final id = state.pathParameters['id']!;
+          return BlocProvider<TrainingDetailBloc>(
+            // Keyed on the record this form is of: go_router reuses a route's
+            // page when the pattern matches, so without a key moving from one
+            // form to another would repaint the first record's form.
+            key: ValueKey<String>('training-form-$id'),
+            create: (context) => TrainingDetailBloc(
+              peopleApi: context.read<PeopleApi>(),
+              authGateway: context.read<AuthGateway>(),
+            )..add(TrainingDetailRequested(id)),
+            child: TrainingFormScreen(trainingRecordId: id),
           );
         },
       ),
