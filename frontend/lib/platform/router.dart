@@ -520,8 +520,9 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
       // No gate of its own either: reading a Training record is a platform-wide
       // read for every active Account (ADR-0009), and the server alone decides
       // whether a draft is visible (404 for a caller who could not send it, which
-      // the form renders as its failure state). A form that refused a reader
-      // would be a second, stricter rule for the record's own Screen.
+      // the form renders as its missing state, "No such Training record"). A
+      // form that refused a reader would be a second, stricter rule for the
+      // record's own Screen.
       GoRoute(
         path: '${Routes.training}/:id/form',
         builder: (context, state) {

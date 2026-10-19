@@ -16,8 +16,13 @@ import 'package:lean_platform/platform/shell.dart';
 
 import 'harness.dart';
 
-FakeWire _wire(List<Map<String, dynamic>> records, {int trainingStatus = 200}) => FakeWire(
-      role: Roles.admin,
+FakeWire _wire(
+  List<Map<String, dynamic>> records, {
+  int trainingStatus = 200,
+  String role = Roles.admin,
+}) =>
+    FakeWire(
+      role: role,
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       orgUnits: {
         null: [orgUnitJson('10', 'Assembly')],
@@ -264,21 +269,50 @@ void main() {
       expect(find.text('X'), findsNWidgets(2));
     });
 
-    testWidgets('a draft and a partly answered record both print in full', (tester) async {
+    testWidgets('a draft prints in full, with every Signature cell empty', (tester) async {
+      // A draft has never been sent, so no Trainee has answered.
       await _open(
         tester,
         _wire([
           _record(status: 'draft', trainees: [
             traineeJson('t1', '1', 'E-1', 'Alice Nguyen'),
-            traineeJson('t2', '2', 'E-2', 'Bao Tran', answer: 'confirmed'),
+            traineeJson('t2', '2', 'E-2', 'Bao Tran'),
           ]),
         ]),
         Routes.trainingForm('1'),
       );
 
       expect(find.byKey(TrainingFormScreen.loadedKey), findsOneWidget);
-      expect(find.byKey(TrainingFormScreen.traineeRowKey('t1')), findsOneWidget);
-      expect(find.byKey(TrainingFormScreen.traineeRowKey('t2')), findsOneWidget);
+      for (final id in const ['t1', 't2']) {
+        expect(find.byKey(TrainingFormScreen.traineeRowKey(id)), findsOneWidget);
+        expect(
+          find.descendant(of: find.byKey(TrainingFormScreen.signatureCellKey(id)), matching: find.byType(Text)),
+          findsNothing,
+        );
+      }
+    });
+
+    testWidgets('a sent, partly answered record prints in full', (tester) async {
+      await _open(
+        tester,
+        _wire([
+          _record(trainees: [
+            traineeJson('t1', '1', 'E-1', 'Alice Nguyen', answer: 'confirmed', answeredAt: '2026-05-06T09:30:00.000Z'),
+            traineeJson('t2', '2', 'E-2', 'Bao Tran', answer: 'declined', answeredAt: '2026-05-07T09:30:00.000Z'),
+            traineeJson('t3', '3', 'E-3', 'Cam Le'),
+          ]),
+        ]),
+        Routes.trainingForm('1'),
+      );
+
+      expect(find.byKey(TrainingFormScreen.loadedKey), findsOneWidget);
+      for (final id in const ['t1', 't2', 't3']) {
+        expect(find.byKey(TrainingFormScreen.traineeRowKey(id)), findsOneWidget);
+      }
+      Finder cell(String id) => find.byKey(TrainingFormScreen.signatureCellKey(id));
+      expect(find.descendant(of: cell('t1'), matching: find.text('2026-05-06')), findsOneWidget);
+      expect(find.descendant(of: cell('t2'), matching: find.text('Declined 2026-05-07')), findsOneWidget);
+      expect(find.descendant(of: cell('t3'), matching: find.byType(Text)), findsNothing);
     });
 
     testWidgets('the Human Resources cell is blank and no Account name is printed', (tester) async {
@@ -354,15 +388,29 @@ void main() {
   });
 
   group('reaching it', () {
-    testWidgets('from the record\'s own Screen, for any reader', (tester) async {
-      final wire = _wire([_record()]);
+    Future<void> reachFromRecordScreen(WidgetTester tester, String role) async {
+      final wire = _wire([_record()], role: role);
       await _open(tester, wire, '${Routes.training}/1');
       expect(find.byKey(TrainingFormScreen.loadedKey), findsNothing);
+      final before = wire.requests.length;
 
       await tapIn(tester, find.byKey(TrainingDetailScreen.formKey));
 
       expect(find.byKey(TrainingFormScreen.loadedKey), findsOneWidget);
       expect(find.byKey(PlatformShell.sidebarKey), findsNothing);
+      expect(wire.requests.sublist(before), ['GET /api/people/training/1']);
+    }
+
+    testWidgets('from the record\'s own Screen, as an administrator', (tester) async {
+      await reachFromRecordScreen(tester, Roles.admin);
+    });
+
+    // Operator is the lowest role and is admitted: the Training destination is
+    // offered to every approved Account (destinations.dart), with no redirect of
+    // its own. A separate test, as two pumpApp calls would share one AccountBloc.
+    testWidgets('from the record\'s own Screen, as an operator with no elevated role',
+        (tester) async {
+      await reachFromRecordScreen(tester, Roles.operator);
     });
 
     testWidgets('from a register row, asking the server for nothing but the record', (tester) async {
