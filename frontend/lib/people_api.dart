@@ -1515,8 +1515,9 @@ class PeopleApi {
   /// `GET /api/people/training`), newest first. [orgUnitId] narrows to that
   /// Org Unit and everything beneath it (the server does the "beneath");
   /// [from]/[to] narrow by the day the training was given. The server shows a
-  /// draft only to a caller who could send it.
-  Future<List<TrainingRecord>> fetchTrainingRecords(
+  /// draft only to a caller who could send it, and caps the list (ADR-0026):
+  /// [TrainingRegister.truncated] says so.
+  Future<TrainingRegister> fetchTrainingRecords(
     String accessToken, {
     String? orgUnitId,
     String? from,
@@ -1535,10 +1536,13 @@ class PeopleApi {
     );
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return [
-        for (final record in body['trainingRecords'] as List<dynamic>)
-          TrainingRecord.fromJson(record as Map<String, dynamic>),
-      ];
+      return TrainingRegister(
+        records: [
+          for (final record in body['trainingRecords'] as List<dynamic>)
+            TrainingRecord.fromJson(record as Map<String, dynamic>),
+        ],
+        truncated: body['truncated'] == true,
+      );
     } catch (error) {
       throw PeopleApiException('The API answered with something this app could not read: $error');
     }

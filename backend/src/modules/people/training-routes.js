@@ -289,13 +289,22 @@ router.get('/training', authenticate, requireActive, async (req, res, next) => {
       orgUnitPath = orgUnit.path;
     }
 
-    const trainingRecords = await training.listTrainingRecords({
+    let siteId = null;
+    if (req.query.siteId !== undefined) {
+      if (parseId(req.query.siteId) === null) {
+        throw httpError(400, 'siteId must be a valid Site id');
+      }
+      siteId = (await plant.getSite(req.query.siteId)).id; // 404s.
+    }
+
+    const { trainingRecords, truncated } = await training.listTrainingRecords({
       viewer: { accountId: req.account.id, isAdmin: authorization.isAdmin(req.account) },
+      siteId,
       orgUnitPath,
       from,
       to
     });
-    return res.json({ trainingRecords });
+    return res.json({ trainingRecords, truncated });
   } catch (error) {
     return handleError(error, res, next);
   }

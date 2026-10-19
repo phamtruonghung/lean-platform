@@ -95,6 +95,16 @@ class TrainingToConfirm {
       );
 }
 
+/// The register's answer: the records and whether the server capped the list
+/// (ADR-0026) — said on screen rather than inferred from a list that happens
+/// to end.
+class TrainingRegister {
+  const TrainingRegister({required this.records, required this.truncated});
+
+  final List<TrainingRecord> records;
+  final bool truncated;
+}
+
 class TrainingRecord {
   const TrainingRecord({
     required this.id,

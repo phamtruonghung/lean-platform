@@ -2353,6 +2353,7 @@ class FakeWire {
     this.leaveRequestWriteMessage = 'That leave request could not be saved.',
     List<Map<String, dynamic>>? trainingRecords,
     this.trainingStatus = 200,
+    this.trainingTruncated = false,
     this.trainingWriteStatus = 201,
     this.trainingWriteMessage = 'That Training record could not be saved.',
     this.recordWriteStatus = 200,
@@ -4182,6 +4183,9 @@ class FakeWire {
   /// A successful `POST` puts the new draft at the head of it.
   List<Map<String, dynamic>> trainingRecords;
   int trainingStatus;
+
+  /// Whether the register read says it was capped (`truncated`).
+  bool trainingTruncated;
 
   /// The status (and `{message}`) the Training record `POST` answers with; 201
   /// means the write succeeds.
@@ -8376,7 +8380,10 @@ class FakeWire {
                   trainingStatus,
                 );
               }
-              return http.Response(jsonEncode({'trainingRecords': trainingRecords}), 200);
+              return http.Response(
+                jsonEncode({'trainingRecords': trainingRecords, 'truncated': trainingTruncated}),
+                200,
+              );
             }
             final id = path.substring('/api/people/training/'.length);
             for (final row in trainingRecords) {

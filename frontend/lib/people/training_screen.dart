@@ -45,6 +45,7 @@ class TrainingScreen extends StatelessWidget {
 
   static const ValueKey<String> raiseKey = ValueKey<String>('training-raise');
   static const ValueKey<String> emptyRaiseKey = ValueKey<String>('training-empty-raise');
+  static const ValueKey<String> truncatedKey = ValueKey<String>('training-truncated');
   static const ValueKey<String> emptyKey = ValueKey<String>('training-empty');
   static const ValueKey<String> failureKey = ValueKey<String>('training-failure');
   static const ValueKey<String> retryKey = ValueKey<String>('training-retry');
@@ -205,6 +206,17 @@ class _RegisterBodyState extends State<_RegisterBody> {
                 ],
               ),
               const SizedBox(height: Spacing.lg),
+              // A capped register must not read as the whole of it (ADR-0026).
+              if (state.truncated && state.failure == null && !state.isLoading)
+                Padding(
+                  key: TrainingScreen.truncatedKey,
+                  padding: const EdgeInsets.only(bottom: Spacing.sm),
+                  child: Text(
+                    'There are more Training records than this list shows. Narrow it by Org Unit or '
+                    'by dates to see the rest.',
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
               content,
             ],
           ),

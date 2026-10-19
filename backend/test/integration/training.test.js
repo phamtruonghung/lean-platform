@@ -1273,3 +1273,90 @@ test('discarding refuses in order: unknown record 404, outside the Grants 403 (a
   }
   assert.strictEqual((await call('GET', `/training/${draft.id}`, sender.token)).response.status, 200);
 });
+
+// ---------------------------------------------------------------------------
+// Review findings: a correction cannot erase what sending required, the last
+// Trainee of a sent record stays, and the register is bounded and Site-filterable.
+// ---------------------------------------------------------------------------
+
+test('correcting a sent record without a trainer or an objective is a 409 and changes nothing', async () => {
+  const { record } = await sentRecord([await insertTrainee()]);
+  const noTrainer = await call('PATCH', `/training/${record.id}`, sender.token, { ...RESTATEMENT });
+  assert.strictEqual(noTrainer.response.status, 409);
+  assert.strictEqual(noTrainer.payload.message, 'A Training record needs a trainer before it is sent');
+  const noObjective = await call('PATCH', `/training/${record.id}`, sender.token, {
+    ...RESTATEMENT, trainerEmployeeId: trainer.id, objective: null
+  });
+  assert.strictEqual(noObjective.response.status, 409);
+  assert.strictEqual(noObjective.payload.message, 'A Training record needs an objective before it is sent');
+
+  const read = (await call('GET', `/training/${record.id}`, sender.token)).payload.trainingRecord;
+  assert.strictEqual(read.title, record.title);
+  assert.strictEqual(read.objective, record.objective);
+  assert.strictEqual(read.trainerEmployeeId, record.trainerEmployeeId);
+});
+
+test('a draft may still be corrected to a record without a trainer or objective', async () => {
+  const record = await completeDraft([]);
+  const { response, payload } = await call('PATCH', `/training/${record.id}`, sender.token, { ...RESTATEMENT });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(payload.trainingRecord.objective, 'Restated objective');
+  assert.strictEqual(payload.trainingRecord.trainerEmployeeId, null);
+});
+
+test('removing the last Trainee of a sent record is a 409; of a draft, and not the last of a sent one, is allowed', async () => {
+  const a = await insertTrainee();
+  const b = await insertTrainee();
+  const { record, ids } = await sentRecord([a, b]);
+  const first = await call('DELETE', `/training/${record.id}/trainees/${ids[0]}`, sender.token);
+  assert.strictEqual(first.response.status, 200);
+  const last = await call('DELETE', `/training/${record.id}/trainees/${ids[1]}`, sender.token);
+  assert.strictEqual(last.response.status, 409);
+  const read = (await call('GET', `/training/${record.id}`, sender.token)).payload.trainingRecord;
+  assert.deepStrictEqual(read.trainees.map((t) => t.employeeId), [b.employee.id]);
+  // An unknown Trainee is still a 404, not a 409.
+  assert.strictEqual((await call('DELETE', `/training/${record.id}/trainees/999999999`, sender.token)).response.status, 404);
+
+  const draft = await completeDraft([b.employee]);
+  const draftTraineeId = await traineeRowId(draft.id, b.employee.id);
+  assert.strictEqual((await call('DELETE', `/training/${draft.id}/trainees/${draftTraineeId}`, sender.token)).response.status, 200);
+});
+
+test('the register filters by Site, and an unknown or malformed siteId is a 404 or 400', async () => {
+  const here = (await raise(admin.token, line.id, { title: 'Site filter here' })).payload.trainingRecord;
+  const there = (await raise(admin.token, otherLine.id, { title: 'Site filter there' })).payload.trainingRecord;
+  const ids = (result) => result.payload.trainingRecords.map((r) => r.id);
+
+  const atSite = await call('GET', `/training?siteId=${site.id}`, admin.token);
+  assert.strictEqual(atSite.response.status, 200);
+  assert.ok(ids(atSite).includes(here.id));
+  assert.ok(!ids(atSite).includes(there.id));
+  assert.strictEqual(atSite.payload.truncated, false);
+
+  assert.strictEqual((await call('GET', '/training?siteId=abc', admin.token)).response.status, 400);
+  assert.strictEqual((await call('GET', '/training?siteId=999999999', admin.token)).response.status, 404);
+});
+
+test('the register is capped at 200 and says truncated; a narrower read is not truncated', async () => {
+  const bulkSite = await insertSite();
+  const bulkUnit = await insertOrgUnit(bulkSite.id, { name: 'Bulk Unit' });
+  const { rows } = await pool.query(
+    `INSERT INTO training_records (site_id, org_unit_id, number, title, trained_on, duration_hours)
+     SELECT $1, $2, $3 || '-' || g, 'Bulk ' || g, DATE '2024-01-01' + g, 1
+       FROM generate_series(1, 201) AS g
+     RETURNING id`,
+    [bulkSite.id, bulkUnit.id, `BULK${process.pid}`]
+  );
+  for (const row of rows) insertedRecordIds.push(row.id);
+
+  const capped = await call('GET', `/training?siteId=${bulkSite.id}`, admin.token);
+  assert.strictEqual(capped.response.status, 200);
+  assert.strictEqual(capped.payload.trainingRecords.length, 200);
+  assert.strictEqual(capped.payload.truncated, true);
+  // Newest training first: the oldest of the 201 is the one left out.
+  assert.strictEqual(capped.payload.trainingRecords[0].title, 'Bulk 201');
+
+  const narrowed = await call('GET', `/training?siteId=${bulkSite.id}&from=2024-07-01`, admin.token);
+  assert.strictEqual(narrowed.payload.truncated, false);
+  assert.ok(narrowed.payload.trainingRecords.length < 200);
+});

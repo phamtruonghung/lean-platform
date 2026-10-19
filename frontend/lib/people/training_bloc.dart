@@ -74,6 +74,7 @@ class TrainingState {
     this.from,
     this.to,
     this.records = const [],
+    this.truncated = false,
     this.isLoading = true,
     this.failure,
     this.isRaising = false,
@@ -85,6 +86,10 @@ class TrainingState {
   final String? from;
   final String? to;
   final List<TrainingRecord> records;
+
+  /// The server capped the register (ADR-0026): there are more records than
+  /// [records] holds, and the screen says so.
+  final bool truncated;
   final bool isLoading;
   final String? failure;
 
@@ -106,6 +111,7 @@ class TrainingState {
     String? to,
     bool clearTo = false,
     List<TrainingRecord>? records,
+    bool? truncated,
     bool? isLoading,
     String? failure,
     bool clearFailure = false,
@@ -119,6 +125,7 @@ class TrainingState {
       from: clearFrom ? null : (from ?? this.from),
       to: clearTo ? null : (to ?? this.to),
       records: records ?? this.records,
+      truncated: truncated ?? this.truncated,
       isLoading: isLoading ?? this.isLoading,
       failure: clearFailure ? null : (failure ?? this.failure),
       isRaising: isRaising ?? this.isRaising,
@@ -199,15 +206,15 @@ class TrainingBloc extends Bloc<TrainingEvent, TrainingState> {
 
     emit(state.copyWith(isLoading: true, clearFailure: true));
     try {
-      final records = await _api.fetchTrainingRecords(
+      final register = await _api.fetchTrainingRecords(
         token,
         orgUnitId: state.orgUnitId,
         from: state.from,
         to: state.to,
       );
-      emit(state.copyWith(records: records, isLoading: false));
+      emit(state.copyWith(records: register.records, truncated: register.truncated, isLoading: false));
     } on PeopleApiException catch (error) {
-      emit(state.copyWith(isLoading: false, failure: error.message, records: const []));
+      emit(state.copyWith(isLoading: false, failure: error.message, records: const [], truncated: false));
     }
   }
 }

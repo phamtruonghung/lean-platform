@@ -217,11 +217,34 @@ async function addTrainee(accountId, recordId, employeeId) {
   return getTrainingRecord(recordId);
 }
 
+const LAST_TRAINEE_MESSAGE = 'A sent Training record needs at least one Trainee; add another before removing the last';
+
 // Takes one Trainee off a record, draft or sent, answered or not: the answer
 // goes with the row, and the removal is audited. The row must belong to that
-// record.
+// record. The last Trainee of a
+// sent record cannot go (409): sending requires one, and a sent record is evidence.
 async function removeTrainee(accountId, recordId, traineeId) {
   const removed = await withActor(accountId, async (client) => {
+    // The record row is locked first, so a concurrent removal of the other
+    // Trainee cannot slip between the count and the delete.
+    const { rows: [locked] } = await client.query(
+      'SELECT status FROM training_records WHERE id = $1 FOR UPDATE',
+      [recordId]
+    );
+    if (!locked) throw notFound('Training record');
+    if (locked.status === 'sent') {
+      const { rows: [target] } = await client.query(
+        'SELECT 1 FROM training_trainees WHERE id = $2 AND training_record_id = $1',
+        [recordId, traineeId]
+      );
+      if (target) {
+        const { rows: [{ count }] } = await client.query(
+          'SELECT count(*)::int AS count FROM training_trainees WHERE training_record_id = $1',
+          [recordId]
+        );
+        if (count <= 1) throw httpError(409, LAST_TRAINEE_MESSAGE);
+      }
+    }
     const { rowCount } = await client.query(
       'DELETE FROM training_trainees WHERE id = $2 AND training_record_id = $1',
       [recordId, traineeId]
@@ -310,6 +333,20 @@ async function raiseTrainingRecord(accountId, orgUnitId, facts) {
 // The Trainees' answers are untouched.
 async function correctTrainingRecord(accountId, id, facts) {
   const updated = await withActor(accountId, async (client) => {
+    // Locked first: the status read here is the one the write is judged by.
+    const { rows: [locked] } = await client.query(
+      `SELECT tr.status,
+              (SELECT count(*)::int FROM training_trainees tt WHERE tt.training_record_id = tr.id) AS trainee_count
+         FROM training_records tr WHERE tr.id = $1 FOR UPDATE OF tr`,
+      [id]
+    );
+    if (!locked) return 0;
+    // A sent record must stay as complete as sending required it to be, so a
+    // restatement may not erase the trainer or the objective.
+    if (locked.status === 'sent') {
+      const missing = incompleteness({ ...facts, traineeCount: locked.trainee_count });
+      if (missing) throw httpError(409, missing);
+    }
     const { rowCount } = await client.query(
       `UPDATE training_records
           SET title = $2, trained_on = $3, duration_hours = $4,
@@ -346,11 +383,17 @@ async function discardTrainingRecord(accountId, id) {
   });
 }
 
+// The register is bounded (ADR-0026's rule for a bounded list, as the Action,
+// CAPA and leave registers apply it): past this many rows the answer says
+// `truncated` and the caller narrows by Site, Org Unit or dates.
+const TRAINING_LIST_LIMIT = 200;
+
 // The register, newest training first. `viewer` is { accountId, isAdmin };
 // `orgUnitPath` (an ltree path, resolved by the route) narrows to that Org
 // Unit and everything beneath it; `from`/`to` are inclusive YYYY-MM-DD days
-// on trained_on.
-async function listTrainingRecords({ viewer, orgUnitPath = null, from = null, to = null }) {
+// on trained_on; `siteId` narrows to one Site. Answers { trainingRecords,
+// truncated }.
+async function listTrainingRecords({ viewer, siteId = null, orgUnitPath = null, from = null, to = null }) {
   const params = [viewer.isAdmin, viewer.accountId];
   const conditions = [
     `(tr.status = 'sent'
@@ -363,6 +406,10 @@ async function listTrainingRecords({ viewer, orgUnitPath = null, from = null, to
               AND auo.can_write = TRUE
               AND ou.path <@ granted.path))`
   ];
+  if (siteId !== null) {
+    params.push(siteId);
+    conditions.push(`tr.site_id = $${params.length}`);
+  }
   if (orgUnitPath !== null) {
     params.push(orgUnitPath);
     conditions.push(`ou.path <@ $${params.length}::ltree`);
@@ -378,10 +425,14 @@ async function listTrainingRecords({ viewer, orgUnitPath = null, from = null, to
   const { rows } = await getPool().query(
     `${SELECT_RECORD}
       WHERE ${conditions.join(' AND ')}
-      ORDER BY tr.trained_on DESC, tr.id DESC`,
+      ORDER BY tr.trained_on DESC, tr.id DESC
+      LIMIT ${TRAINING_LIST_LIMIT + 1}`,
     params
   );
-  return rows.map(toTrainingRecord);
+  return {
+    trainingRecords: rows.slice(0, TRAINING_LIST_LIMIT).map(toTrainingRecord),
+    truncated: rows.length > TRAINING_LIST_LIMIT
+  };
 }
 
 // What a record still lacks before it can be sent, in the Module's own words,
