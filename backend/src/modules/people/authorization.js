@@ -209,6 +209,25 @@ async function safetyAuthorityOrgUnitIds({ account, siteId }) {
   return rows.map((row) => row.id);
 }
 
+// Every Org Unit the caller's WRITE Grants reach, resolved in one query, for a
+// caller that would otherwise ask canAct once per row (the PM sweep). Returns
+// null for an administrator ("everywhere", as canAct's own short-circuit), else
+// a Set of Org Unit ids as text — the same text ids orgUnitScopeFor hands back.
+// A read-only Grant contributes nothing, matching canAct's `write: true`.
+async function writeReachOrgUnitIds({ account }) {
+  if (isAdmin(account)) return null;
+  const { rows } = await getPool().query(
+    `SELECT DISTINCT reached.id::text AS id
+       FROM app_user_org_units auo
+       JOIN org_units granted ON granted.id = auo.org_unit_id
+       JOIN org_units reached ON reached.path <@ granted.path
+      WHERE auo.app_user_id = $1
+        AND auo.can_write = TRUE`,
+    [account.id]
+  );
+  return new Set(rows.map((row) => row.id));
+}
+
 // Issue #24: a grant reaches downward only (canAct's `target.path <@
 // granted.path`), so an Account granted a single deep Org Unit is invisible
 // at the Site's root level — none of the Site's roots are at or beneath
@@ -453,6 +472,7 @@ module.exports = {
   canAct,
   canSeeSite,
   safetyAuthorityOrgUnitIds,
+  writeReachOrgUnitIds,
   grantedEntryPointIds,
   orgUnitScopeFor,
   requireAdmin,

@@ -202,7 +202,9 @@ router.patch(
 // the caller's Grants is silently skipped, not refused, the same way a list is
 // filtered down rather than 403'd. `{ workOrders }` carries the raised ones,
 // each with its copied tasks; an empty list is the honest answer when nothing
-// was due or nothing was in scope.
+// was due or nothing was in scope. `failures` lists the schedules whose raise
+// threw (each `{ pmScheduleId, message }`), so a partial success is reported as
+// one rather than as a 500 after some had already committed.
 router.post(
   '/sites/:siteId/pm-schedules/raise',
   people.authenticate,
@@ -211,21 +213,29 @@ router.post(
   async (req, res, next) => {
     try {
       const candidates = await pmSchedules.listDuePmSchedules(req.site.id);
+      // The caller's write reach is resolved once, not asked per candidate.
+      const reach = await people.writeReachOrgUnitIds({ account: req.account });
 
       const workOrders = [];
+      const failures = [];
       for (const candidate of candidates) {
-        const allowed = await people.canAct({
-          account: req.account,
-          orgUnitId: candidate.org_unit_id,
-          write: true
-        });
-        if (!allowed) continue;
+        if (reach !== null && !reach.has(String(candidate.org_unit_id))) continue;
 
-        const raised = await pmSchedules.raiseWorkOrderFromPmSchedule(candidate.id, req.account.id);
-        if (raised) workOrders.push(raised);
+        // Each raise is its own transaction, so one failing must not turn the
+        // response into a 500 after others have committed: it is reported
+        // beside the raised list instead.
+        try {
+          const raised = await pmSchedules.raiseWorkOrderFromPmSchedule(candidate.id, req.account.id);
+          if (raised) workOrders.push(raised);
+        } catch (error) {
+          failures.push({
+            pmScheduleId: String(candidate.id),
+            message: error.status && error.status < 500 ? error.message : 'could not raise this work order'
+          });
+        }
       }
 
-      res.json({ workOrders });
+      res.json({ workOrders, failures });
     } catch (error) {
       handleError(error, res, next);
     }

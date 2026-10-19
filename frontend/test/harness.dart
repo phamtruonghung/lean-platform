@@ -3665,6 +3665,12 @@ class FakeWire {
   Map<String, List<Map<String, dynamic>>> downtime;
   int downtimeStatus;
 
+  /// Whether the Downtime list says the server capped it (ADR-0026).
+  bool downtimeTruncated = false;
+
+  /// Whether the Work orders list says the server capped it (ADR-0026).
+  bool workOrdersTruncated = false;
+
   /// Every downtime read's Site id, in the order it reached the wire.
   final List<String> downtimeSites = [];
 
@@ -6829,7 +6835,7 @@ class FakeWire {
                   for (final event in siteEvents)
                     if (event['endedAt'] == null) event,
                 ];
-          return http.Response(jsonEncode({'downtimeEvents': sent}), 200);
+          return http.Response(jsonEncode({'downtimeEvents': sent, 'truncated': downtimeTruncated}), 200);
         }
         if (request.method == 'POST' && path == '/api/maintenance/downtime') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;
@@ -7431,7 +7437,7 @@ class FakeWire {
                   for (final wo in siteWorkOrders)
                     if (!historyStatuses.contains(wo['status'])) wo,
                 ];
-          return http.Response(jsonEncode({'workOrders': sent}), 200);
+          return http.Response(jsonEncode({'workOrders': sent, 'truncated': workOrdersTruncated}), 200);
         }
         if (request.method == 'POST' &&
             path.startsWith('/api/maintenance/work-orders/') &&

@@ -149,6 +149,7 @@ class WorkOrdersScreen extends StatelessWidget {
   /// each width and reading it, not derived from the column arithmetic.
   static const double narrowBreakpoint = 800;
 
+  static const ValueKey<String> truncatedKey = ValueKey<String>('work-orders-truncated');
   static const ValueKey<String> raiseKey = ValueKey<String>('work-orders-add');
   static const ValueKey<String> siteKey = ValueKey<String>('work-orders-site');
   static const ValueKey<String> filterKey = ValueKey<String>('work-orders-org-unit-filter');
@@ -264,6 +265,7 @@ class WorkOrdersScreen extends StatelessWidget {
         children: [
           _Header(state: state, canRaiseWorkOrder: canRaiseWorkOrder),
           if (state is WorkOrdersLoaded && state.notice != null) _Notice(message: state.notice!),
+          if (state is WorkOrdersLoaded && state.truncated) const _Truncated(),
           Expanded(
             child: switch (state) {
               WorkOrdersLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -550,6 +552,30 @@ class _OrgUnitFilterDialog extends StatelessWidget {
       actions: [
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
       ],
+    );
+  }
+}
+
+/// The list was capped. Said out loud rather than left to be inferred from a
+/// list that happens to end (ADR-0026).
+class _Truncated extends StatelessWidget {
+  const _Truncated();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: AppPageFrame(
+        maxWidth: WorkOrdersScreen.maxWidth,
+        child: Padding(
+          key: WorkOrdersScreen.truncatedKey,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            'There are more Work orders than this list shows. Narrow it by Org Unit, or turn history off, to see the rest.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
+      ),
     );
   }
 }

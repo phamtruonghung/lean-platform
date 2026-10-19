@@ -95,6 +95,7 @@ class DowntimeLoaded extends DowntimeState {
     this.actionFailure,
     this.isReporting = false,
     this.reportFailure,
+    this.truncated = false,
     this.notice,
   });
 
@@ -124,6 +125,9 @@ class DowntimeLoaded extends DowntimeState {
   /// shown verbatim by the dialog, which stays open.
   final String? reportFailure;
 
+  /// The list was capped by the server (ADR-0026) and is not the whole answer.
+  final bool truncated;
+
   /// What the last act had to say for itself. Never the failure of a load:
   /// that is [DowntimeUnavailable].
   final String? notice;
@@ -143,6 +147,7 @@ class DowntimeLoaded extends DowntimeState {
     String? actionFailure,
     bool? isReporting,
     String? reportFailure,
+    bool? truncated,
     String? notice,
   }) =>
       DowntimeLoaded(
@@ -157,6 +162,7 @@ class DowntimeLoaded extends DowntimeState {
         actionFailure: actionFailure,
         isReporting: isReporting ?? this.isReporting,
         reportFailure: reportFailure,
+        truncated: truncated ?? this.truncated,
         notice: notice,
       );
 }
@@ -233,12 +239,17 @@ class DowntimeBloc extends Bloc<DowntimeEventBase, DowntimeState> {
       return;
     }
     try {
-      final events = await _maintenance.fetchDowntimeEvents(token, siteId: siteId);
+      final register = await _maintenance.fetchDowntimeEvents(token, siteId: siteId);
       final settled = state;
       // A late response for a Site the caller has since left is discarded —
       // the same staleness guard `RequestsBloc._readQueue` follows.
       if (settled is! DowntimeLoaded || settled.siteId != siteId) return;
-      emit(settled.copyWith(events: events, isLoadingEvents: false, notice: notice));
+      emit(settled.copyWith(
+        events: register.events,
+        truncated: register.truncated,
+        isLoadingEvents: false,
+        notice: notice,
+      ));
     } on MaintenanceApiException catch (error) {
       final settled = state;
       if (settled is! DowntimeLoaded || settled.siteId != siteId) return;

@@ -337,16 +337,22 @@ function toMovement(row) {
 
 // Newest first, because the most recent movement is the one somebody is
 // chasing; the tie-break on id keeps a batch written in one instant stable.
+const MOVEMENT_LIST_LIMIT = 200; // ADR-0026: LIMIT n+1, `truncated`
+
 async function listMovementsForStore(storeId) {
   const { rows } = await getPool().query(
     `SELECT ${MOVEMENT_COLUMNS}
        FROM stock_movements m
        ${MOVEMENT_FROM}
       WHERE m.store_id = $1
-      ORDER BY m.occurred_at DESC, m.id DESC`,
+      ORDER BY m.occurred_at DESC, m.id DESC
+      LIMIT ${MOVEMENT_LIST_LIMIT + 1}`,
     [storeId]
   );
-  return rows.map(toMovement);
+  return {
+    movements: rows.slice(0, MOVEMENT_LIST_LIMIT).map(toMovement),
+    truncated: rows.length > MOVEMENT_LIST_LIMIT
+  };
 }
 
 // The refusal, built after the failing transaction has rolled back — the same

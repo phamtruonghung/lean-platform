@@ -168,7 +168,9 @@ class MaintenanceApi {
   /// unoffered either way. [orgUnitId] narrows to that Org Unit and
   /// everything beneath it; an unknown one is a 404, surfaced through
   /// [_send] like any other refusal.
-  Future<List<WorkOrder>> fetchWorkOrders(
+  ///
+  /// The list is capped server-side (ADR-0026); `truncated` says it was.
+  Future<({List<WorkOrder> workOrders, bool truncated})> fetchWorkOrders(
     String accessToken, {
     required String siteId,
     String? orgUnitId,
@@ -188,10 +190,13 @@ class MaintenanceApi {
     );
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return [
-        for (final workOrder in body['workOrders'] as List<dynamic>)
-          _workOrderFrom(workOrder as Map<String, dynamic>),
-      ];
+      return (
+        workOrders: [
+          for (final workOrder in body['workOrders'] as List<dynamic>)
+            _workOrderFrom(workOrder as Map<String, dynamic>),
+        ],
+        truncated: body['truncated'] == true,
+      );
     } catch (error) {
       throw MaintenanceApiException('The API answered with something this app could not read: $error');
     }
@@ -486,7 +491,8 @@ class MaintenanceApi {
   /// or open-plus-history when [includeClosed] asks for it
   /// (`GET /api/maintenance/sites/:siteId/downtime`, issue #73). Site-wide and
   /// carrying no Grant filter (ADR-0009).
-  Future<List<DowntimeEvent>> fetchDowntimeEvents(
+  /// The list is capped server-side (ADR-0026); `truncated` says it was.
+  Future<({List<DowntimeEvent> events, bool truncated})> fetchDowntimeEvents(
     String accessToken, {
     required String siteId,
     bool includeClosed = false,
@@ -501,10 +507,13 @@ class MaintenanceApi {
     );
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return [
-        for (final event in body['downtimeEvents'] as List<dynamic>)
-          _downtimeEventFrom(event as Map<String, dynamic>),
-      ];
+      return (
+        events: [
+          for (final event in body['downtimeEvents'] as List<dynamic>)
+            _downtimeEventFrom(event as Map<String, dynamic>),
+        ],
+        truncated: body['truncated'] == true,
+      );
     } catch (error) {
       throw MaintenanceApiException('The API answered with something this app could not read: $error');
     }

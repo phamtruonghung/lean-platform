@@ -251,7 +251,7 @@ router.get(
   requireKnownStore,
   async (req, res, next) => {
     try {
-      res.json({ movements: await inventory.listMovementsForStore(req.store.id) });
+      res.json(await inventory.listMovementsForStore(req.store.id));
     } catch (error) {
       handleError(error, res, next);
     }
