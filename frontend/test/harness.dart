@@ -4219,6 +4219,18 @@ class FakeWire {
   List<Map<String, dynamic>> trainingToConfirm;
   int trainingToConfirmStatus;
 
+  /// The floor door onto the same queue (issue #293): `GET
+  /// /api/maintenance/floor/training/to-confirm` lists
+  /// [floorTrainingToConfirm] and `POST
+  /// /api/maintenance/floor/training/trainees/:id/answer` removes the row it
+  /// answers. Every request is recorded with the device credential, the
+  /// identification and (for an answer) the decoded body.
+  List<Map<String, dynamic>> floorTrainingToConfirm = [];
+  int floorTrainingToConfirmStatus = 200;
+  int floorTrainingAnswerStatus = 200;
+  String floorTrainingAnswerMessage = 'That answer could not be saved.';
+  final List<Map<String, dynamic>> floorTrainingRequests = [];
+
   /// The status (and `{message}`) the send and the answer answer with; 200
   /// means the write succeeds. A send flips the record to `sent`; an answer
   /// writes the answer onto the Trainee row.
@@ -4949,6 +4961,42 @@ class FakeWire {
             jsonEncode({'floor': floor, 'workOrders': floorWorkOrders}),
             200,
           );
+        }
+        if (path == '/api/maintenance/floor/training/to-confirm' && request.method == 'GET') {
+          floorTrainingRequests.add({
+            'request': 'GET $path',
+            'device': request.headers['x-floor-device'],
+            'identification': request.headers['x-technician-identification'],
+          });
+          if (floorTrainingToConfirmStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'Your training is unavailable.'}),
+              floorTrainingToConfirmStatus,
+            );
+          }
+          return http.Response(jsonEncode({'trainingToConfirm': floorTrainingToConfirm}), 200);
+        }
+        final floorAnswerPath =
+            RegExp(r'^/api/maintenance/floor/training/trainees/([^/]+)/answer$').firstMatch(path);
+        if (request.method == 'POST' && floorAnswerPath != null) {
+          final traineeId = floorAnswerPath.group(1)!;
+          floorTrainingRequests.add({
+            'request': 'POST $path',
+            'device': request.headers['x-floor-device'],
+            'identification': request.headers['x-technician-identification'],
+            'body': jsonDecode(request.body),
+          });
+          if (floorTrainingAnswerStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': floorTrainingAnswerMessage}),
+              floorTrainingAnswerStatus,
+            );
+          }
+          floorTrainingToConfirm = [
+            for (final row in floorTrainingToConfirm)
+              if (row['traineeId'] != traineeId) row,
+          ];
+          return http.Response(jsonEncode({'trainingRecord': trainingRecordJson('1')}), 200);
         }
         if (request.method == 'POST' && path == '/api/maintenance/floor/identify') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;

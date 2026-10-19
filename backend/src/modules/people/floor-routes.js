@@ -41,6 +41,9 @@
  *
  * ## What is deliberately NOT here
  *
+ * A Trainee's answer at the device (issue #293) is People's too but lives in
+ * floor-training-routes.js, composed beside this router by index.js.
+ *
  * The floor WRITE surface: a floor write is a POST to the existing
  * `/work-orders/:id/start` and `/complete` routes (issue #63), which is
  * Maintenance's own record. `maintenance/work-order-routes.js` selects the

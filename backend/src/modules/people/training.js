@@ -438,7 +438,7 @@ function requireAnswer(value) {
 async function findTraineeForAnswer(traineeId) {
   if (parseId(traineeId) === null) return null;
   const { rows } = await getPool().query(
-    `SELECT tt.id, tt.employee_id, tt.training_record_id, tr.status
+    `SELECT tt.id, tt.employee_id, tt.training_record_id, tr.status, tr.org_unit_id
        FROM training_trainees tt
        JOIN training_records tr ON tr.id = tt.training_record_id
       WHERE tt.id = $1`,
@@ -449,7 +449,8 @@ async function findTraineeForAnswer(traineeId) {
     id: rows[0].id,
     employeeId: rows[0].employee_id,
     recordId: rows[0].training_record_id,
-    recordStatus: rows[0].status
+    recordStatus: rows[0].status,
+    orgUnitId: rows[0].org_unit_id
   };
 }
 
@@ -474,11 +475,41 @@ async function answerTrainee(accountId, traineeId, answer) {
   return getTrainingRecord(row.training_record_id);
 }
 
+// Writes (or changes) a Trainee's answer through the floor device's door
+// (#293): the same UPDATE as answerTrainee with the other actor column filled.
+// The identified Employee is the actor and there is no Account on this path, so
+// `answered_by_account_id` is cleared and the audit carries no Account (the
+// way Safety's floor writes do). Only ever a sent record.
+async function answerTraineeAtFloor(employeeId, traineeId, answer) {
+  const row = await withActor(null, async (client) => {
+    const { rows } = await client.query(
+      `UPDATE training_trainees tt
+          SET answer = $2, answered_at = now(),
+              answered_by_account_id = NULL, answered_by_employee_id = $3
+         FROM training_records tr
+        WHERE tt.id = $1 AND tr.id = tt.training_record_id AND tr.status = 'sent'
+        RETURNING tt.training_record_id`,
+      [traineeId, answer, employeeId]
+    );
+    return rows[0];
+  });
+  if (!row) throw notFound('Trainee');
+  return getTrainingRecord(row.training_record_id);
+}
+
 // The Employee's own outstanding answers: sent records they are a Trainee on
 // and have not yet answered. Oldest first by when the record was sent (the one
 // that has waited longest leads), then by the day of training, then by row.
-async function listTrainingToConfirm(employeeId) {
+// A floor device passes `orgUnitPath` (its own Org Unit's path) to bound the
+// list to the records its reach covers: that Org Unit and everything beneath.
+async function listTrainingToConfirm(employeeId, { orgUnitPath = null } = {}) {
   if (employeeId === null || employeeId === undefined) return [];
+  const params = [employeeId];
+  let reach = '';
+  if (orgUnitPath !== null) {
+    params.push(orgUnitPath);
+    reach = `AND ou.path <@ $${params.length}::ltree`;
+  }
   const { rows } = await getPool().query(
     `SELECT tt.id AS trainee_id, tr.id, tr.number, tr.title,
             tr.trained_on::text AS trained_on, tr.duration_hours::float8 AS duration_hours,
@@ -488,9 +519,9 @@ async function listTrainingToConfirm(employeeId) {
        JOIN training_records tr ON tr.id = tt.training_record_id
        JOIN org_units ou ON ou.id = tr.org_unit_id
        LEFT JOIN employees e ON e.id = tr.trainer_employee_id
-      WHERE tt.employee_id = $1 AND tt.answer IS NULL AND tr.status = 'sent'
+      WHERE tt.employee_id = $1 AND tt.answer IS NULL AND tr.status = 'sent' ${reach}
       ORDER BY tr.sent_at, tr.trained_on, tt.id`,
-    [employeeId]
+    params
   );
   return rows.map((row) => ({
     traineeId: row.trainee_id,
@@ -512,6 +543,7 @@ module.exports = {
   requireAnswer,
   findTraineeForAnswer,
   answerTrainee,
+  answerTraineeAtFloor,
   listTrainingToConfirm,
   validateRaise,
   findTrainingRecord,

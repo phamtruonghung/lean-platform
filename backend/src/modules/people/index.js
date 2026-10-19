@@ -23,8 +23,9 @@
  * vocabulary a rate is scoped by, and two CRUD surfaces do not earn a Module;
  * see cost-rates.js's own header.
  *
- * `floorRouter` is a second router rather than a sixth file inside `router`,
- * and that is issue #201's one deliberate oddity: floor-routes.js owns the
+ * `floorRouter` (floor-routes.js, plus floor-training-routes.js, issue #293 - a
+ * Trainee's answer at the device) is a second router rather than a sixth file
+ * inside `router`, and that is issue #201's one deliberate oddity: floor-routes.js owns the
  * shared floor device's HTTP surface (ADR-0016), which this Module took over
  * from Maintenance, but its ADDRESS stayed under `/api/maintenance` because
  * that is what deployed devices are pointed at and the frontend is not part
@@ -237,6 +238,7 @@ const leaveRequestRoutes = require('./leave-requests-routes');
 const costRateRoutes = require('./cost-rate-routes');
 const productCostRoutes = require('./product-cost-routes');
 const floorRoutes = require('./floor-routes');
+const floorTrainingRoutes = require('./floor-training-routes');
 const authRoutes = require('./auth-routes');
 const { authenticate, requireActive } = require('./middleware');
 const { canAct, canSeeSite, safetyAuthorityOrgUnitIds } = require('./authorization');
@@ -266,11 +268,18 @@ router.use(leaveRequestRoutes);
 router.use(costRateRoutes);
 router.use(productCostRoutes);
 
+// The floor surface: the device's own routes (floor-routes.js) and a Trainee's
+// answer at the device (floor-training-routes.js, issue #293), one router so
+// src/index.js still mounts a single `floorRouter` at `/api/maintenance`.
+const floorRouter = express.Router();
+floorRouter.use(floorRoutes);
+floorRouter.use(floorTrainingRoutes);
+
 module.exports = {
   router,
   // Mounted at `/api/maintenance` by src/index.js, not at `/api/people` — see
   // the header above. It is a router, not a route file added to `router`.
-  floorRouter: floorRoutes,
+  floorRouter,
   // Mounted at `/api/auth` by src/index.js (issue #268): sign-in is the door
   // every other route's token comes through, not a People resource.
   authRouter: authRoutes,

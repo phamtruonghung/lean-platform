@@ -1740,6 +1740,59 @@ class PeopleApi {
     return _trainingRecordFrom(response.body);
   }
 
+  /// The identified Employee's own outstanding answers at the shared floor
+  /// device (`GET /api/maintenance/floor/training/to-confirm`, issue #293):
+  /// only the records whose Org Unit the device reaches. The device credential
+  /// and the individual identification stand where an Account's bearer token
+  /// stands on [fetchTrainingToConfirm].
+  Future<List<TrainingToConfirm>> fetchFloorTrainingToConfirm(
+    String deviceCredential,
+    String identification,
+  ) async {
+    const path = '/api/maintenance/floor/training/to-confirm';
+    final response = await _send(
+      () => _client.get(
+        Uri.parse(path),
+        headers: {'x-floor-device': deviceCredential, 'x-technician-identification': identification},
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final row in body['trainingToConfirm'] as List<dynamic>)
+          TrainingToConfirm.fromJson(row as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// A Trainee's own answer given at the shared floor device (`POST
+  /// /api/maintenance/floor/training/trainees/:traineeId/answer`, issue #293):
+  /// the same write as [answerTrainee] through the other door.
+  Future<TrainingRecord> answerFloorTrainee(
+    String deviceCredential,
+    String identification,
+    String traineeId,
+    String answer,
+  ) async {
+    final path = '/api/maintenance/floor/training/trainees/$traineeId/answer';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {
+          'x-floor-device': deviceCredential,
+          'x-technician-identification': identification,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({'answer': answer}),
+      ),
+      path,
+    );
+    return _trainingRecordFrom(response.body);
+  }
+
   static TrainingRecord _trainingRecordFrom(String responseBody) {
     try {
       final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
