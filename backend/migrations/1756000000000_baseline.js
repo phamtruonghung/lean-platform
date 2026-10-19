@@ -19,7 +19,11 @@
  *      scopes its counter the same way, so two Sites issue independent runs.
  *      See ADR-0005.
  *   3. There is no `attachments` table. The Platform records text only; see
- *      ADR-0003.
+ *      ADR-0003. One narrow exception has since been made, by ADR-0052 and
+ *      `1802600000000_employee-signatures.js`: a person's own mark, kept as a
+ *      small PNG in `employee_signatures`, the only table with a `bytea`
+ *      column. It is not file storage, and there is still no `attachments`
+ *      table.
  *
  * Everything else is the inherited schema, unchanged in substance. Section
  * comments below are adapted from the migrations they came from: comments

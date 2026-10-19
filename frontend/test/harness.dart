@@ -27,6 +27,7 @@ import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 import 'package:lean_platform/quality/quality_api.dart';
 import 'package:lean_platform/safety/safety_api.dart';
+import 'package:lean_platform/widgets/signature_file_picker.dart';
 
 /// Loads the Platform's own bundled Roboto (`assets/fonts/README.md`,
 /// committed there for Flutter Web's CanvasKit renderer, not for this) into
@@ -4223,6 +4224,19 @@ class FakeWire {
   String traineeWriteMessage;
   final List<(String, Map<String, dynamic>)> traineeWrites = [];
 
+  /// The caller's own Signature (issue #317): `GET /api/people/me/signature`
+  /// answers [mySignature] as `image/png`, or a 404 when it is null; `PUT`
+  /// keeps the image it is sent (and records the decoded body in
+  /// [signatureWrites]); `DELETE` clears it. A status other than 200 makes the
+  /// read, or the write, answer that status with `{message}`.
+  Uint8List? mySignature;
+  int mySignatureStatus = 200;
+  int keepSignatureStatus = 200;
+  String keepSignatureMessage = 'That Signature could not be kept.';
+  int removeSignatureStatus = 200;
+  String removeSignatureMessage = 'That Signature could not be removed.';
+  final List<(String, Map<String, dynamic>)> signatureWrites = [];
+
   /// `GET /api/people/training/to-confirm` (issue #289) — the caller's own
   /// outstanding answers, empty by default. A successful answer removes its
   /// row.
@@ -8328,6 +8342,35 @@ class FakeWire {
             200,
           );
         }
+        // The caller's own Signature (issue #317).
+        if (path == '/api/people/me/signature') {
+          if (request.method == 'GET') {
+            if (mySignatureStatus != 200) {
+              return http.Response(jsonEncode({'message': 'Your Signature is unavailable.'}), mySignatureStatus);
+            }
+            if (mySignature == null) {
+              return http.Response(jsonEncode({'message': 'Signature not found'}), 404);
+            }
+            return http.Response.bytes(mySignature!, 200, headers: {'content-type': 'image/png'});
+          }
+          if (request.method == 'PUT') {
+            final sent = jsonDecode(request.body) as Map<String, dynamic>;
+            signatureWrites.add(('PUT $path', sent));
+            if (keepSignatureStatus != 200) {
+              return http.Response(jsonEncode({'message': keepSignatureMessage}), keepSignatureStatus);
+            }
+            mySignature = base64Decode(sent['image'] as String);
+            return http.Response(jsonEncode({'signature': {'id': '1', 'origin': sent['origin']}}), 200);
+          }
+          if (request.method == 'DELETE') {
+            signatureWrites.add(('DELETE $path', const {}));
+            if (removeSignatureStatus != 200) {
+              return http.Response(jsonEncode({'message': removeSignatureMessage}), removeSignatureStatus);
+            }
+            mySignature = null;
+            return http.Response('', 204);
+          }
+        }
         // /api/people/training (issue #287).
         if (path == '/api/people/training' || path.startsWith('/api/people/training/')) {
           if (request.method == 'GET' && path == '/api/people/training/to-confirm') {
@@ -9972,6 +10015,21 @@ Map<String, dynamic> pillarJson(String code, String name, int sortOrder) => {
       'sortOrder': sortOrder,
     };
 
+/// A [SignatureFilePicker] that answers with whatever the test says the person
+/// chose (null: they chose nothing), and counts how often it was asked.
+class FakeSignatureFilePicker implements SignatureFilePicker {
+  FakeSignatureFilePicker({this.chosen});
+
+  Uint8List? chosen;
+  int asked = 0;
+
+  @override
+  Future<Uint8List?> pickSignatureImage() async {
+    asked += 1;
+    return chosen;
+  }
+}
+
 class FakeAuthGateway implements AuthGateway {
   FakeAuthGateway({String? accessToken}) : _token = accessToken;
 
@@ -10093,6 +10151,7 @@ Future<void> pumpApp(
   required AuthGateway gateway,
   required http.Client client,
   FloorDeviceGateway? floorDeviceGateway,
+  SignatureFilePicker? signatureFilePicker,
   String? initialLocation,
   bool settle = true,
 }) async {
@@ -10111,6 +10170,8 @@ Future<void> pumpApp(
       safetyApi: SafetyApi(client: client),
       // The floor surface's device credential, faked at the same seam.
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
+      // The file input a browser would show, faked: a test says what was chosen.
+      signatureFilePicker: signatureFilePicker ?? FakeSignatureFilePicker(),
       initialLocation: initialLocation,
     ),
   );

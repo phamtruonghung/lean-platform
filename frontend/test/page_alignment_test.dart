@@ -185,6 +185,11 @@ const _pages = <_Page>[
   // title/description half is what this exercises.
   _Page('/training/to-confirm', 'lib/people/training_to_confirm_screen.dart',
       'Training to confirm', 'Training records sent to you'),
+  // The caller's own Signature (issue #317). The audited fixture keeps none,
+  // so the empty state shows and the title/description half is what this
+  // exercises.
+  _Page('/me/signature', 'lib/people/my_signature_screen.dart', 'My signature',
+      'Your own mark'),
 ];
 
 /// Every Screen that is **not** audited, with the reason — so that a Screen this

@@ -7,6 +7,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -1751,6 +1752,48 @@ class PeopleApi {
       path,
     );
     return _trainingRecordFrom(response.body);
+  }
+
+  /// The caller's own current Signature image (`GET /api/people/me/signature`,
+  /// issue #317) as PNG bytes, or null when none is kept — or when the Account
+  /// is linked to no Employee, which the server answers the same way (404).
+  Future<Uint8List?> fetchMySignature(String accessToken) async {
+    const path = '/api/people/me/signature';
+    try {
+      final response = await _send(
+        () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+        path,
+      );
+      return response.bodyBytes;
+    } on PeopleApiException catch (error) {
+      if (error.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  /// Keeps [png] as the caller's own Signature (`PUT /api/people/me/signature`),
+  /// superseding the one kept before it. [origin] is `upload` for a picture
+  /// the person chose and `on_screen` for one drawn on the pad.
+  Future<void> keepMySignature(String accessToken, Uint8List png, {String origin = 'upload'}) async {
+    const path = '/api/people/me/signature';
+    await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'image': base64Encode(png), 'origin': origin}),
+      ),
+      path,
+    );
+  }
+
+  /// Removes the caller's own Signature (`DELETE /api/people/me/signature`):
+  /// the server supersedes it and keeps the row.
+  Future<void> removeMySignature(String accessToken) async {
+    const path = '/api/people/me/signature';
+    await _send(
+      () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
   }
 
   /// The identified Employee's own outstanding answers at the shared floor
