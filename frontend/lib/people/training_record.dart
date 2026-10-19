@@ -4,6 +4,9 @@
 /// `toTrainingRecord` (backend/src/modules/people/training.js) key for key.
 library;
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import '../status_tone.dart';
 
 /// One Trainee on a Training record (issue #288): an Employee who was trained
@@ -16,8 +19,11 @@ class TrainingTrainee {
     required this.employeeName,
     this.answer,
     this.answeredAt,
+    this.answeredOn,
     this.answeredVia,
     this.evaluation,
+    this.signatureAppliedAs,
+    this.hasSignature = false,
   });
 
   /// The Trainee row's own id — what a removal names, not the Employee's.
@@ -33,6 +39,10 @@ class TrainingTrainee {
   /// When the answer was given (an ISO timestamp), null while pending.
   final String? answeredAt;
 
+  /// The Site's local calendar day of the answer, `YYYY-MM-DD`, resolved by the
+  /// server (ADR-0048) - what the printed form prints; null while pending.
+  final String? answeredOn;
+
   /// The door the answer came through — `account` (their own Account) or
   /// `device` (identified at the shared floor device); null while pending.
   final String? answeredVia;
@@ -41,6 +51,14 @@ class TrainingTrainee {
   /// `job_training` (issue #290), a value with a known set; null until the
   /// trainer says so.
   final String? evaluation;
+
+  /// Which Signature the answer carries (issue #318, ADR-0052): `stored` (the
+  /// one the Trainee keeps), `drawn` (a stroke made as they answered) or null
+  /// (none). Never the bytes - those have their own address.
+  final String? signatureAppliedAs;
+
+  /// Whether an image exists at this Trainee's own image address.
+  final bool hasSignature;
 
   bool get hasAnswered => answer != null;
 
@@ -51,9 +69,45 @@ class TrainingTrainee {
         employeeName: json['employeeName'] as String,
         answer: json['answer'] as String?,
         answeredAt: json['answeredAt'] as String?,
+        answeredOn: json['answeredOn'] as String?,
         answeredVia: json['answeredVia'] as String?,
         evaluation: json['evaluation'] as String?,
+        signatureAppliedAs: json['signatureAppliedAs'] as String?,
+        hasSignature: json['hasSignature'] as bool? ?? false,
       );
+}
+
+/// What a Trainee signs their answer with (issue #318): the Signature they
+/// keep, a stroke drawn at that moment, or nothing at all. A `confirmed`
+/// answer may carry either of the first two; a decline carries none.
+sealed class TrainingAnswerSignature {
+  const TrainingAnswerSignature();
+
+  /// The request's `signature` member, or null for none.
+  Map<String, dynamic>? toJson();
+}
+
+class NoAnswerSignature extends TrainingAnswerSignature {
+  const NoAnswerSignature();
+
+  @override
+  Map<String, dynamic>? toJson() => null;
+}
+
+class StoredAnswerSignature extends TrainingAnswerSignature {
+  const StoredAnswerSignature();
+
+  @override
+  Map<String, dynamic>? toJson() => {'use': 'stored'};
+}
+
+class DrawnAnswerSignature extends TrainingAnswerSignature {
+  const DrawnAnswerSignature(this.png);
+
+  final Uint8List png;
+
+  @override
+  Map<String, dynamic>? toJson() => {'image': base64Encode(png)};
 }
 
 /// One row of `GET /api/people/training/to-confirm` (issue #289): a sent

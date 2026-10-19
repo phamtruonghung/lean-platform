@@ -4,6 +4,9 @@
 /// recorded.
 library;
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -44,6 +47,11 @@ Future<void> _open(WidgetTester tester, FakeWire wire, String location, {http.Cl
     initialLocation: location,
   );
 }
+
+/// A real 1 x 1 PNG, so `Image.memory` decodes it.
+final Uint8List _png = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
 
 Map<String, dynamic> _record({
   String id = '1',
@@ -226,12 +234,105 @@ void main() {
       expect(find.descendant(of: pending, matching: find.byType(Text)), findsNothing);
     });
 
+    testWidgets('an applied Signature prints as its image with the day beneath it, in both languages',
+        (tester) async {
+      final wire = _wire([
+        _record(trainees: [
+          traineeJson('t1', '1', 'E-1', 'Alice Nguyen',
+              answer: 'confirmed', answeredAt: '2026-05-06T09:30:00.000Z', signatureAppliedAs: 'stored'),
+          traineeJson('t2', '2', 'E-2', 'Bao Tran',
+              answer: 'confirmed', answeredAt: '2026-05-06T09:30:00.000Z', signatureAppliedAs: 'drawn'),
+          traineeJson('t3', '3', 'E-3', 'Chi Le'),
+        ]),
+      ])
+        ..traineeSignatures['t1'] = _png
+        ..traineeSignatures['t2'] = _png;
+      await _open(tester, wire, Routes.trainingForm('1'));
+      await tester.pumpAndSettle();
+
+      for (final id in ['t1', 't2']) {
+        final cell = find.byKey(TrainingFormScreen.signatureCellKey(id));
+        expect(find.descendant(of: cell, matching: find.byKey(TrainingFormScreen.signatureImageKey(id))),
+            findsOneWidget);
+        expect(find.descendant(of: cell, matching: find.byType(Image)), findsOneWidget);
+        expect(find.descendant(of: cell, matching: find.text('2026-05-06')), findsOneWidget);
+      }
+      expect(wire.traineeSignatureReads, [
+        'GET /api/people/training/trainees/t1/signature',
+        'GET /api/people/training/trainees/t2/signature',
+      ]);
+      // The empty cell asks for nothing, and the column heads stay bilingual.
+      expect(find.byKey(TrainingFormScreen.signatureImageKey('t3')), findsNothing);
+      expect(find.text('Signature'), findsOneWidget);
+      expect(find.text('Ký tên'), findsOneWidget);
+    });
+
+    testWidgets('a decline never prints an image, even if the row holds one', (tester) async {
+      final wire = _wire([
+        _record(trainees: [
+          traineeJson('t1', '1', 'E-1', 'Alice Nguyen',
+              answer: 'declined', answeredAt: '2026-05-07T09:30:00.000Z', answeredOn: '2026-05-07', signatureAppliedAs: 'stored'),
+        ]),
+      ])
+        ..traineeSignatures['t1'] = _png;
+      await _open(tester, wire, Routes.trainingForm('1'));
+      await tester.pumpAndSettle();
+
+      final cell = find.byKey(TrainingFormScreen.signatureCellKey('t1'));
+      expect(find.descendant(of: cell, matching: find.byType(Image)), findsNothing);
+      expect(find.descendant(of: cell, matching: find.text('Declined 2026-05-07')), findsOneWidget);
+      expect(wire.traineeSignatureReads, isEmpty);
+    });
+
+    testWidgets('a cell whose image fails to fetch still prints its date and shows no error',
+        (tester) async {
+      final wire = _wire([
+        _record(trainees: [
+          traineeJson('t1', '1', 'E-1', 'Alice Nguyen',
+              answer: 'confirmed', answeredAt: '2026-05-06T09:30:00.000Z', signatureAppliedAs: 'stored'),
+        ]),
+      ])
+        ..traineeSignatureStatus = 500;
+      await _open(tester, wire, Routes.trainingForm('1'));
+      await tester.pumpAndSettle();
+
+      final cell = find.byKey(TrainingFormScreen.signatureCellKey('t1'));
+      expect(wire.traineeSignatureReads, ['GET /api/people/training/trainees/t1/signature']);
+      expect(find.descendant(of: cell, matching: find.byType(Image)), findsNothing);
+      expect(find.descendant(of: cell, matching: find.text('2026-05-06')), findsOneWidget);
+      expect(find.byKey(TrainingFormScreen.failedKey), findsNothing);
+      expect(find.byKey(TrainingFormScreen.loadedKey), findsOneWidget);
+    });
+
+    testWidgets('the cell prints the Site\'s local day the server resolved, not the UTC day', (tester) async {
+      final wire = _wire([
+        _record(trainees: [
+          traineeJson('t1', '1', 'E-1', 'Alice Nguyen',
+              answer: 'confirmed',
+              answeredAt: '2026-05-06T18:00:00.000Z',
+              answeredOn: '2026-05-07',
+              signatureAppliedAs: 'stored'),
+          traineeJson('t2', '2', 'E-2', 'Bao Tran',
+              answer: 'declined', answeredAt: '2026-05-06T18:00:00.000Z', answeredOn: '2026-05-07'),
+        ]),
+      ])
+        ..traineeSignatures['t1'] = _png;
+      await _open(tester, wire, Routes.trainingForm('1'));
+      await tester.pumpAndSettle();
+
+      final image = find.byKey(TrainingFormScreen.signatureCellKey('t1'));
+      expect(find.descendant(of: image, matching: find.text('2026-05-07')), findsOneWidget);
+      expect(find.descendant(of: image, matching: find.text('2026-05-06')), findsNothing);
+      final declined = find.byKey(TrainingFormScreen.signatureCellKey('t2'));
+      expect(find.descendant(of: declined, matching: find.text('Declined 2026-05-07')), findsOneWidget);
+    });
+
     testWidgets('a decline reads as a decline, never as a signature', (tester) async {
       await _open(
         tester,
         _wire([
           _record(trainees: [
-            traineeJson('t1', '1', 'E-1', 'Alice Nguyen', answer: 'declined', answeredAt: '2026-05-07T09:30:00.000Z'),
+            traineeJson('t1', '1', 'E-1', 'Alice Nguyen', answer: 'declined', answeredAt: '2026-05-07T09:30:00.000Z', answeredOn: '2026-05-07'),
           ]),
         ]),
         Routes.trainingForm('1'),
@@ -298,7 +399,7 @@ void main() {
         _wire([
           _record(trainees: [
             traineeJson('t1', '1', 'E-1', 'Alice Nguyen', answer: 'confirmed', answeredAt: '2026-05-06T09:30:00.000Z'),
-            traineeJson('t2', '2', 'E-2', 'Bao Tran', answer: 'declined', answeredAt: '2026-05-07T09:30:00.000Z'),
+            traineeJson('t2', '2', 'E-2', 'Bao Tran', answer: 'declined', answeredAt: '2026-05-07T09:30:00.000Z', answeredOn: '2026-05-07'),
             traineeJson('t3', '3', 'E-3', 'Cam Le'),
           ]),
         ]),

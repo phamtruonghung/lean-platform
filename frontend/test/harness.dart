@@ -1751,7 +1751,9 @@ Map<String, dynamic> traineeJson(
   String? answer,
   String? answeredAt,
   String? answeredVia,
+  String? answeredOn,
   String? evaluation,
+  String? signatureAppliedAs,
 }) =>
     {
       'id': id,
@@ -1761,8 +1763,11 @@ Map<String, dynamic> traineeJson(
       'addedAt': '2026-05-04T08:00:00.000Z',
       'answer': answer,
       'answeredAt': answeredAt ?? (answer == null ? null : '2026-05-06T09:30:00.000Z'),
+      'answeredOn': answeredOn ?? (answer == null ? null : '2026-05-06'),
       'answeredVia': answeredVia ?? (answer == null ? null : 'account'),
       'evaluation': evaluation,
+      'signatureAppliedAs': signatureAppliedAs,
+      'hasSignature': signatureAppliedAs != null,
     };
 
 /// One row of `GET /api/people/training/to-confirm` (issue #289;
@@ -4267,6 +4272,15 @@ class FakeWire {
   /// answer's request line with its decoded body.
   final List<String> trainingSends = [];
   final List<(String, Map<String, dynamic>)> trainingAnswers = [];
+
+  /// The image applied to a Trainee's answer (issue #318): `GET
+  /// /api/people/training/trainees/:id/signature` answers
+  /// [traineeSignatures] for that Trainee row id as `image/png`, a 404 where
+  /// there is none, and [traineeSignatureStatus] when it is not 200. Every read
+  /// is recorded in [traineeSignatureReads].
+  final Map<String, Uint8List> traineeSignatures = {};
+  int traineeSignatureStatus = 200;
+  final List<String> traineeSignatureReads = [];
 
   /// Every Trainee evaluation's request line
   /// (`PATCH /api/people/training/1/trainees/t1`) with its decoded body
@@ -8410,7 +8424,17 @@ class FakeWire {
               final updated = [
                 for (final t in trainees)
                   if (t['id'] == traineeId)
-                    {...t, 'answer': sent['answer'], 'answeredAt': '2026-05-06T09:30:00.000Z', 'answeredVia': 'account'}
+                    {
+                      ...t,
+                      'answer': sent['answer'],
+                      'answeredAt': '2026-05-06T09:30:00.000Z',
+                      'answeredOn': '2026-05-06',
+                      'answeredVia': 'account',
+                      'signatureAppliedAs': sent['signature'] == null
+                          ? null
+                          : ((sent['signature'] as Map<String, dynamic>).containsKey('use') ? 'stored' : 'drawn'),
+                      'hasSignature': sent['signature'] != null,
+                    }
                   else
                     t,
               ];
@@ -8419,6 +8443,16 @@ class FakeWire {
               break;
             }
             return http.Response(jsonEncode({'trainingRecord': answered ?? trainingRecordJson('0')}), 200);
+          }
+          final signaturePath = RegExp(r'^/api/people/training/trainees/([^/]+)/signature$').firstMatch(path);
+          if (request.method == 'GET' && signaturePath != null) {
+            traineeSignatureReads.add('GET $path');
+            if (traineeSignatureStatus != 200) {
+              return http.Response(jsonEncode({'message': 'Signature unavailable.'}), traineeSignatureStatus);
+            }
+            final image = traineeSignatures[signaturePath.group(1)];
+            if (image == null) return http.Response(jsonEncode({'message': 'Signature not found'}), 404);
+            return http.Response.bytes(image, 200, headers: {'content-type': 'image/png'});
           }
           if (request.method == 'GET') {
             if (path == '/api/people/training') {

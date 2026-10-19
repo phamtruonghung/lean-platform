@@ -42,6 +42,7 @@ import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'org_unit_scope.dart';
+import 'training_answer_dialog.dart';
 import 'training_detail_bloc.dart';
 import 'training_raise_dialog.dart';
 import 'training_record.dart';
@@ -98,6 +99,8 @@ class TrainingDetailScreen extends StatelessWidget {
   static const ValueKey<String> readingKey = ValueKey<String>('training-detail-reading');
   static const ValueKey<String> answerFailureKey = ValueKey<String>('training-detail-answer-failure');
   static ValueKey<String> traineeAnswerKey(String id) => ValueKey<String>('training-detail-trainee-answer-$id');
+  static ValueKey<String> traineeSignatureKey(String id) =>
+      ValueKey<String>('training-detail-trainee-signature-$id');
   static const ValueKey<String> evaluationFailureKey = ValueKey<String>('training-detail-evaluation-failure');
   static ValueKey<String> evaluationKey(String id) => ValueKey<String>('training-detail-evaluation-$id');
   static ValueKey<String> evaluationChoiceKey(String id, String evaluation) =>
@@ -361,6 +364,14 @@ class _Loaded extends StatelessWidget {
                           _answerOf(trainee),
                           key: TrainingDetailScreen.traineeAnswerKey(trainee.id),
                         ),
+                      if (!record.isDraft && trainee.signatureAppliedAs != null)
+                        Text(
+                          switch (trainee.signatureAppliedAs) {
+                            'stored' => 'Signed with their kept Signature',
+                            _ => 'Signed with a Signature drawn as they answered',
+                          },
+                          key: TrainingDetailScreen.traineeSignatureKey(trainee.id),
+                        ),
                       if (canSend)
                         _EvaluationPicker(trainee: trainee, isWriting: isWriting)
                       else if (trainee.evaluation != null)
@@ -378,9 +389,12 @@ class _Loaded extends StatelessWidget {
                                 key: TrainingDetailScreen.confirmKey(trainee.id),
                                 onPressed: isWriting
                                     ? null
-                                    : () => context
-                                        .read<TrainingDetailBloc>()
-                                        .add(TrainingTraineeAnswered(trainee.id, 'confirmed')),
+                                    : () async {
+                                        final bloc = context.read<TrainingDetailBloc>();
+                                        final signature = await showTrainingAnswerDialog(context);
+                                        if (signature == null) return;
+                                        bloc.add(TrainingTraineeAnswered(trainee.id, 'confirmed', signature: signature));
+                                      },
                                 child: const Text('Confirm'),
                               ),
                               OutlinedButton(
