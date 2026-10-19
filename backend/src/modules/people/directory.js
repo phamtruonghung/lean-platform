@@ -278,8 +278,8 @@ async function listEmployees({ search, orgUnitId, jobRoleId, includeDeparted, li
          SELECT ea.org_unit_id, ea.job_role_id
            FROM employee_assignments ea
           WHERE ea.employee_id = e.id
-            AND ea.effective_from <= CURRENT_DATE
-            AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
+            AND ea.effective_from <= employee_today(ea.employee_id)
+            AND (ea.effective_to IS NULL OR ea.effective_to > employee_today(ea.employee_id))
           LIMIT 1
        ) current_assignment ON TRUE
        LEFT JOIN org_units current_org_unit
@@ -335,8 +335,8 @@ async function getAssignmentHistory(employeeId) {
     `SELECT a.id, a.effective_from, a.effective_to, a.crew_id,
             ou.id AS org_unit_id, ou.code AS org_unit_code, ou.name AS org_unit_name,
             jr.id AS job_role_id, jr.code AS job_role_code, jr.name AS job_role_name,
-            (a.effective_from <= CURRENT_DATE
-             AND (a.effective_to IS NULL OR a.effective_to > CURRENT_DATE)) AS is_current
+            (a.effective_from <= employee_today(a.employee_id)
+             AND (a.effective_to IS NULL OR a.effective_to > employee_today(a.employee_id))) AS is_current
        FROM employee_assignments a
        JOIN org_units ou ON ou.id = a.org_unit_id
        LEFT JOIN job_roles jr ON jr.id = a.job_role_id
@@ -446,8 +446,8 @@ async function listAssigneeCandidates({ orgUnitId } = {}) {
         SELECT ea.org_unit_id
           FROM employee_assignments ea
          WHERE ea.employee_id = e.id
-           AND ea.effective_from <= CURRENT_DATE
-           AND (ea.effective_to IS NULL OR ea.effective_to > CURRENT_DATE)
+           AND ea.effective_from <= employee_today(ea.employee_id)
+           AND (ea.effective_to IS NULL OR ea.effective_to > employee_today(ea.employee_id))
          LIMIT 1
       ) current_assignment ON TRUE
       JOIN org_units resolved_ou
@@ -631,7 +631,7 @@ async function updateEmployee(id, input, accountId) {
   }
 }
 
-// is_active = FALSE, terminated_on = the supplied date or CURRENT_DATE — the
+// is_active = FALSE, terminated_on = the supplied date or the Employee's local date (employee_today) — the
 // two columns updateEmployee above refuses to touch, set together here so
 // "Departed" never exists without a terminated_on to go with it. A
 // terminatedOn before hired_on trips employees_dates_valid, surfaced as a
@@ -657,7 +657,7 @@ async function setEmployeeDeparted(id, { terminatedOn } = {}, accountId) {
       const { rows: [row] } = await client.query(
         `UPDATE employees
             SET is_active = FALSE,
-                terminated_on = COALESCE($1, CURRENT_DATE)
+                terminated_on = COALESCE($1, employee_today($2))
           WHERE id = $2
           RETURNING ${EMPLOYEE_COLUMNS}`,
         [terminatedOn ?? null, id]
@@ -822,8 +822,8 @@ async function createAssignment(employeeId, input, accountId) {
       // YYYY-MM-DD), not JS Date comparison, for the same reason
       // toDateString itself exists (see its own comment).
       const { rows: [{ resolved_effective_from: resolvedEffectiveFrom }] } = await client.query(
-        'SELECT COALESCE($1::date, CURRENT_DATE) AS resolved_effective_from',
-        [effectiveFrom ?? null]
+        'SELECT COALESCE($1::date, employee_today($2)) AS resolved_effective_from',
+        [effectiveFrom ?? null, employeeId]
       );
       const newEffectiveFrom = toDateString(resolvedEffectiveFrom);
 
@@ -856,8 +856,8 @@ async function createAssignment(employeeId, input, accountId) {
         `INSERT INTO employee_assignments (employee_id, org_unit_id, job_role_id, crew_id, effective_from)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, effective_from, effective_to, crew_id,
-                   (effective_from <= CURRENT_DATE
-                    AND (effective_to IS NULL OR effective_to > CURRENT_DATE)) AS is_current`,
+                   (effective_from <= employee_today(employee_id)
+                    AND (effective_to IS NULL OR effective_to > employee_today(employee_id))) AS is_current`,
         [employeeId, parsedOrgUnitId, parsedJobRoleId, parsedCrewId, newEffectiveFrom]
       );
 

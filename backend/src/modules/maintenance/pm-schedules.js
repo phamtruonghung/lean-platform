@@ -81,7 +81,7 @@ const PM_SCHEDULE_COLUMNS = `
   ou.id AS org_unit_id, ou.name AS org_unit_name,
   jp.name AS job_plan_name,
   am.code AS meter_code, am.name AS meter_name, am.meter_type AS meter_type,
-  (s.next_due_on - CURRENT_DATE) AS days_until_due,
+  (s.next_due_on - org_unit_today(a.org_unit_id)) AS days_until_due,
   COALESCE(lr.reading, 0) + am.rollover_offset AS current_meter
 `;
 
@@ -215,7 +215,7 @@ function resolvePriority(value) {
 }
 
 // Optional. Absent means "the interval from today", computed in the INSERT so
-// the database's own CURRENT_DATE is the source of truth rather than the
+// the Site's local date (org_unit_today) is the source of truth rather than the
 // process's clock; present, it must be a real calendar date.
 function resolveNextDueOn(value) {
   if (value === undefined || value === null) return null;
@@ -351,7 +351,7 @@ async function createPmSchedule(
              (code, name, asset_id, job_plan_id, interval_days, asset_meter_id, interval_meter,
               anchor, lead_time_days, priority, next_due_on, next_due_meter)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-                   COALESCE($11::date, CASE WHEN $5::int IS NULL THEN NULL ELSE CURRENT_DATE + $5::int END),
+                   COALESCE($11::date, CASE WHEN $5::int IS NULL THEN NULL ELSE (SELECT org_unit_today(a0.org_unit_id) FROM assets a0 WHERE a0.id = $3) + $5::int END),
                    $12)
            RETURNING *
          )
@@ -437,7 +437,7 @@ async function listDuePmSchedules(siteId) {
         AND (
           (s.interval_days IS NOT NULL
              AND s.next_due_on IS NOT NULL
-             AND s.next_due_on - s.lead_time_days <= CURRENT_DATE)
+             AND s.next_due_on - s.lead_time_days <= org_unit_today(a.org_unit_id))
           OR
           (s.interval_meter IS NOT NULL
              AND s.next_due_meter IS NOT NULL
@@ -483,7 +483,7 @@ async function raiseWorkOrderFromPmSchedule(scheduleId, accountId) {
                 s.interval_meter, s.next_due_meter,
                 (s.interval_days IS NOT NULL
                    AND s.next_due_on IS NOT NULL
-                   AND s.next_due_on - s.lead_time_days <= CURRENT_DATE) AS due_by_date,
+                   AND s.next_due_on - s.lead_time_days <= org_unit_today(a.org_unit_id)) AS due_by_date,
                 (s.interval_meter IS NOT NULL
                    AND s.next_due_meter IS NOT NULL
                    AND acc.accumulated IS NOT NULL

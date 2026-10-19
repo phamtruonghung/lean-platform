@@ -744,7 +744,7 @@ async function hasSettledDays(safetyIncidentId, client = null) {
 const CONCERN_COLUMNS = `
   ai.id, ai.action_no, ai.title, ai.action_type, ai.status, ai.priority,
   to_char(ai.due_date, 'YYYY-MM-DD') AS due_date,
-  (ai.due_date IS NOT NULL AND ai.due_date < CURRENT_DATE) AS is_overdue,
+  (ai.due_date IS NOT NULL AND ai.due_date < org_unit_today(ai.org_unit_id)) AS is_overdue,
   ai.raised_at, ai.org_unit_id, ou.name AS org_unit_name,
   e.display_name AS owner_name`;
 

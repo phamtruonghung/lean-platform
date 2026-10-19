@@ -159,7 +159,7 @@ const COMPLAINT_COLUMNS = `
      AND cc.response_due_at < now()
      AND cc.status NOT IN ('closed', 'rejected')) AS is_overdue,
   CASE WHEN cc.response_due_at IS NOT NULL AND cc.response_due_at < now()
-       THEN (CURRENT_DATE - (cc.response_due_at AT TIME ZONE s.timezone)::date) END AS days_overdue`;
+       THEN (org_unit_today(cc.org_unit_id) - (cc.response_due_at AT TIME ZONE s.timezone)::date) END AS days_overdue`;
 
 // Every join is a foreign key or a NOT NULL column, so a complaint never
 // multiplies into two rows: Customer, Product and Org Unit are required by this
