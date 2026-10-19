@@ -54,7 +54,8 @@ an Employee who holds no Account** — most of a plant can never sign in, and th
 alternative is that the feature reaches only the people who least need it — and
 that door **closes with a 409 the moment the Employee can set their own**, with
 the setting Account recorded on the row so a mark set for somebody is never
-mistaken for a mark somebody uploaded.
+mistaken for a mark somebody uploaded. (ADR-0053 moves that rule into the
+database so a concurrent link cannot slip past it.)
 
 **The shared floor device may apply a stored Signature, and may never write
 one.** A device answers on the frozen `/api/maintenance` prefix for an Employee

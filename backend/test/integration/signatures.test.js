@@ -953,3 +953,101 @@ test('a non-administrator is refused every Employee Signature route', async () =
   assert.strictEqual((await fetch(forEmployee(employeeId), { method: 'DELETE', headers: ownerToken })).status, 403);
   assert.strictEqual((await rowsFor(employeeId)).length, 0);
 });
+
+
+// ---------------------------------------------------------------------------
+// The rule holds in the database (issue #326, ADR-0053).
+// ---------------------------------------------------------------------------
+
+// Waits until some backend other than `exceptPid` is blocked on a lock inside
+// a statement that touches employee_signatures. Polls pg_stat_activity rather
+// than sleeping: the test proceeds only once the write is really waiting.
+async function waitForBlockedSignatureWrite(exceptPid) {
+  const deadline = Date.now() + 10000;
+  while (Date.now() < deadline) {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM pg_stat_activity
+        WHERE wait_event_type = 'Lock' AND pid <> $1 AND pid <> pg_backend_pid()
+          AND query ILIKE '%employee_signatures%'`,
+      [exceptPid]
+    );
+    if (rows.length > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error('the administrator\'s write never blocked on the Employee row lock');
+}
+
+test('an Account linked while the administrator\'s write waits on the Employee row refuses the write with 409', async () => {
+  if (!adminToken) await insertAdmin();
+  const employeeId = await accountlessEmployee();
+  const subject = `sig-race-${process.pid}`;
+
+  // B holds the Employee row lock, as requireLinkableEmployee does before it
+  // links an Account. A's route checks "no Account" (true: B has not linked
+  // yet), then its INSERT waits on B's lock.
+  const b = await pool.connect();
+  try {
+    await b.query('BEGIN');
+    await b.query('SELECT id FROM employees WHERE id = $1 FOR UPDATE', [employeeId]);
+    const { rows: [{ pid }] } = await b.query('SELECT pg_backend_pid() AS pid');
+
+    const pending = adminPut(adminToken, employeeId, { image: makePng(100, 30, 11).toString('base64') });
+    await waitForBlockedSignatureWrite(pid);
+
+    const { rows: [account] } = await b.query(
+      `INSERT INTO app_users (email, display_name, role, external_subject, is_active, employee_id)
+       VALUES ($1, 'Signature Race', 'operator', $2, TRUE, $3) RETURNING id`,
+      [`${subject}@example.com`, subject, employeeId]
+    );
+    insertedAccountIds.push(account.id);
+    await b.query('COMMIT');
+
+    const response = await pending;
+    assert.strictEqual(response.status, 409);
+    assert.match((await response.json()).message, /holds an Account of their own/);
+  } finally {
+    await b.query('ROLLBACK').catch(() => {});
+    b.release();
+  }
+  assert.strictEqual((await rowsFor(employeeId)).length, 0);
+});
+
+test('the database refuses a kept mark with no setter or another setter for an Employee with an Account, and nothing else', async () => {
+  const insert = (employeeId, kept, setBy) => pool.query(
+    `INSERT INTO employee_signatures (employee_id, image, image_bytes, origin, kept, set_by_account_id)
+     VALUES ($1, $2, $3, 'upload', $4, $5)`,
+    [employeeId, makePng(60, 20, 3), makePng(60, 20, 3).length, kept, setBy]
+  );
+  if (!adminToken) await insertAdmin();
+  await assert.rejects(insert(ownerEmployeeId, true, null), { code: '23514' });
+  await assert.rejects(insert(ownerEmployeeId, true, adminAccountId), { code: '23514' });
+  // A stroke drawn for one act is never refused, whoever (or nobody) set it.
+  await insert(ownerEmployeeId, false, null);
+  // The Employee's own Account may keep one; a person with no Account may be set for.
+  await insert(ownerEmployeeId, true, ownerAccountId);
+  await insert(await accountlessEmployee(), true, adminAccountId);
+  // Superseding the current mark is not refused.
+  await pool.query('UPDATE employee_signatures SET superseded_at = now() WHERE employee_id = $1 AND kept', [ownerEmployeeId]);
+});
+
+test('an Employee with an Account keeps, replaces and removes their own Signature', async () => {
+  assert.strictEqual((await putSignature(ownerToken, { image: makePng(100, 30, 12).toString('base64') })).status, 200);
+  assert.strictEqual((await putSignature(ownerToken, { image: makePng(100, 30, 13).toString('base64') })).status, 200);
+  assert.strictEqual(await keptCount(), 1);
+  assert.strictEqual((await deleteSignature(ownerToken)).status, 204);
+});
+
+test('a stroke drawn at the device for an Employee who holds an Account is still recorded as a one-off, never kept', async () => {
+  const a = await sentRecordWithOwner();
+  const floor = await deviceAt(a.orgUnitId);
+  const res = await answerAtFloor(floor.headers, a.traineeId, {
+    answer: 'confirmed',
+    signature: { image: makePng(100, 30, 14).toString('base64') }
+  });
+  assert.strictEqual(res.status, 200);
+  const rows = await rowsFor(ownerEmployeeId);
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].kept, false);
+  assert.strictEqual(rows[0].set_by_account_id, null);
+  assert.strictEqual((await floorTrainee(a.recordId, a.traineeId)).signature_applied_as, 'drawn');
+});
