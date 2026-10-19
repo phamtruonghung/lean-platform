@@ -8,12 +8,14 @@ system — which become **Modules** inside it rather than separate deployments.
 The vocabulary is defined in [`CONTEXT.md`](./CONTEXT.md) and the decisions
 behind the shape of it in [`docs/adr/`](./docs/adr).
 
-Flutter Web frontend, Express API, PostgreSQL. Production ("VIProd") runs the
-API and frontend on LXC CT102, with PostgreSQL self-hosted on LXC CT100 and
-sign-in by the Platform's own passwords ([ADR-0051](./docs/adr/0051-production-data-is-self-hosted-postgres-and-identity-is-local.md)).
-The code also supports a Supabase deployment (Supabase Cloud Postgres and
-Supabase Auth, `AUTH_PASSWORD_MODE=supabase`), which the home LXC 150
-deployment uses. The API runs as a
+Flutter Web frontend, Express API, Supabase Cloud Postgres. Production
+("VIProd") runs the API and frontend on LXC CT102, with its data still on
+Supabase Cloud Postgres and sign-in by the Platform's own passwords
+(`AUTH_PASSWORD_MODE=local`; see
+[ADR-0051](./docs/adr/0051-production-data-is-self-hosted-postgres-and-identity-is-local.md)
+and its correction). Moving the data to a PostgreSQL on LXC CT100 is planned
+(#267) but has not happened. The code also supports Supabase Auth
+(`AUTH_PASSWORD_MODE=supabase`). The API runs as a
 container on a self-hosted LXC behind a reverse proxy; the frontend is served
 from the same hostname, so the browser sees one origin and there is no CORS
 anywhere in this repository.
@@ -183,7 +185,9 @@ Rollback itself never re-runs the migration step, because it never re-invokes
 restores the previous image directly and returns.
 
 **Where production runs.** VIProd: API and frontend on LXC CT102, from
-`deploy/compose.yml`; PostgreSQL on LXC CT100. The deploy gets `DATABASE_URL`
+`deploy/compose.yml`; data on Supabase Cloud Postgres (the live backend's
+`DATABASE_URL` is the Supabase pooler). A PostgreSQL on LXC CT100 also exists
+but is not used by the live API; moving to it is #267. The deploy gets `DATABASE_URL`
 from the repository secret of that name, which `release.yml` passes to
 `deploy/deploy.sh` as an environment variable; the runner does not read a file
 on the box for it. `.env.production` is the gitignored file
@@ -191,15 +195,14 @@ on the box for it. `.env.production` is the gitignored file
 it; whether a copy lives at `/opt/lean-platform/.env.production` on CT102 is
 not recorded (`/opt/lean-platform/` is known to hold `.deployed-tag`). Not
 recorded in this repository: CT100's PostgreSQL major version, its backups,
-and its address.
+and its address (relevant only once data moves there).
 
 **Nightly maintenance runs inside the database, not on the LXC.**
 `sqdcp_maintenance()` — defined in the baseline, scheduled by
 `migrations/1756000000001_schedule-maintenance.js` — creates the next three
 months of partitions for `measurements` and `audit_log`, then refreshes
-`mv_daily_oee`. `pg_cron` runs it at 03:17 UTC every day, inside the database itself, where
-`pg_cron` is installed (Supabase Cloud has it; **pg_cron on CT100: not
-recorded** - check it, see below); there is no CronJob or scheduler process on the LXC, because
+`mv_daily_oee`. `pg_cron` runs it at 03:17 UTC every day, inside the Supabase
+project itself; there is no CronJob or scheduler process on the LXC, because
 none of this depends on the API being up. A fixed UTC time is correct here —
 neither partition creation nor rollup refresh is Site-specific, unlike shift
 and production-day attribution.
@@ -221,13 +224,13 @@ SELECT status, return_message, start_time, end_time
 ```
 
 A run with `status <> 'succeeded'`, or no run at all for last night, means the
-board is stale and partitions may be running out. On CT100 the query only
-works if `pg_cron` is installed there, which is not recorded; if the `cron`
-schema is missing, nothing is scheduling the job and it needs another scheduler.
+board is stale and partitions may be running out. The query
+runs against the live (Supabase) database. If production moves to CT100, check
+there first whether `pg_cron` is installed; if the `cron` schema is missing,
+nothing is scheduling the job and it needs another scheduler.
 
 The migration that schedules this only installs `pg_cron` where
-`pg_available_extensions` says it exists — Supabase Cloud has it, CT100 is
-not recorded, stock
+`pg_available_extensions` says it exists — Supabase Cloud has it, stock
 `postgres:17-alpine` (CI, local `docker compose`) does not — and says so with
 a `RAISE NOTICE` where it skips. CI cannot exercise the schedule itself for
 that reason, so it calls `sqdcp_maintenance()` directly instead (see the
@@ -259,8 +262,8 @@ Images are tagged `sha-<commit>`, never `latest`. A floating tag would make a
 rollback meaningless, because the tag it rolls back to may since have moved.
 
 **The deploy takes its authentication settings from repository variables, not
-from the box.** On VIProd `AUTH_PASSWORD_MODE` is `local` and the `SUPABASE_*`
-variables are still set but unused. `SUPABASE_URL` and `SUPABASE_ANON_KEY` are baked into the
+from the box.** On VIProd `AUTH_PASSWORD_MODE` is `local`; the `SUPABASE_*`
+variables are still set but unused for sign-in. `SUPABASE_URL` and `SUPABASE_ANON_KEY` are baked into the
 frontend at build; `SUPABASE_JWKS_URL` and `SUPABASE_JWT_ISSUER` reach the
 backend at deploy; so does `AUTH_PASSWORD_MODE`, which picks the door:
 `supabase` verifies a Supabase JWT, `local` keeps passwords in the
@@ -277,16 +280,28 @@ door would need this made per-target (a GitHub environment, say) first.
 **The first administrator's password.** In `local` mode nobody can sign in
 until an Account has a password, and the route that sets one (#270) needs a
 signed-in administrator, so the first one is set by hand, once, by a person
-at the deployment's database. On VIProd that is CT100's PostgreSQL, so
-`DATABASE_URL` must be CT100's connection string (the same value as the
-repository secret `DATABASE_URL`), and the script must run from a machine
-that can reach CT100:
+at the deployment's database. **The script must run against the database
+the LIVE backend uses**, or the password lands somewhere nothing reads. To
+find it, on CT102:
 
 ```sh
-export DATABASE_URL=postgresql://...   # CT100's Postgres on VIProd
+docker exec lean-platform-backend-1 printenv DATABASE_URL
+```
+
+On VIProd today that is the Supabase pooler
+(`aws-0-ap-southeast-2.pooler.supabase.com:5432`), which comes from the
+repository secret `DATABASE_URL`. Use that value:
+
+```sh
+export DATABASE_URL=postgresql://...   # the value printed above
 read -s -p 'New password: ' PW && printf '%s' "$PW" | node dev/set-a-password.mjs admin@example.com
 unset PW
 ```
+
+**Warning:** `/opt/lean-platform/.env` on CT102 points at the PostgreSQL on
+CT100, which is NOT the live database. Reading `DATABASE_URL` from that file
+instead of from the running container once locked the administrator out: the
+password was set in a database the API never reads.
 
 The password is read from stdin only and stored as temporary
 (`must_change_password`); #270's change flow replaces it afterwards. The script
@@ -307,10 +322,9 @@ script prints a warning in that case.
 the command above. It must still be enabled and the password must match. Its
 identity is `local-account:<id>`, assigned at first sign-in.
 
-First-time setup of a **Supabase** deployment — Supabase, DNS, Docker,
-certificates and the runner — is walked through by `scripts/setup-deployment.sh`.
-It has no stage for self-hosted PostgreSQL or local passwords; VIProd's CT100
-database setup is not scripted in this repository.
+First-time setup — Supabase, DNS, Docker, certificates and the runner — is
+walked through by `scripts/setup-deployment.sh`. It has no stage for local
+passwords (`AUTH_PASSWORD_MODE=local`) or for a self-hosted PostgreSQL.
 
 ## Modules
 
@@ -327,7 +341,8 @@ must not depend on what is built on it.
 ## Authentication
 
 Two doors, picked by `AUTH_PASSWORD_MODE` (ADR-0051). Production (VIProd) runs
-`local`: the Platform keeps its own passwords in PostgreSQL on CT100
+`local`: the Platform keeps its own passwords in the production database
+(Supabase Cloud Postgres today)
 (`POST /api/auth/login`, ADR-0022, ADR-0045) and the paragraphs on Supabase
 below do not apply to it. In `supabase` mode (the default, used by the home
 LXC 150 deployment) Supabase Auth is the identity provider (ADR-0002); this

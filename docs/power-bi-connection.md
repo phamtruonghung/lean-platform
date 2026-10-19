@@ -9,12 +9,12 @@ role exists at all rather than a per-table policy for Power BI.
 
 ## Which database this describes
 
-Everything below describes a **Supabase** deployment (the session pooler,
-Supavisor usernames). Production (VIProd) is self-hosted PostgreSQL on LXC
-CT100 (ADR-0051), which has no pooler: there, `powerbi_reader` connects to
-CT100's Postgres directly. CT100's host, port and whether Power BI can reach
-it: not recorded. The role, its read-only grants and the password rule below
-apply to both.
+Everything below describes the **Supabase** database (the session pooler,
+Supavisor usernames), which is where production data still lives (ADR-0051's
+correction). A PostgreSQL database also exists on LXC CT100 but the live API
+does not use it; if production data moves there (#267), it has no pooler and
+`powerbi_reader` would connect to it directly. CT100's host, port and whether
+Power BI can reach it: not recorded.
 
 ## Connection string
 

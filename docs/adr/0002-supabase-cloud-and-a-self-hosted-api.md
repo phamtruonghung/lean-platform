@@ -1,5 +1,5 @@
 ---
-status: superseded in part by ADR-0051
+status: superseded in part by ADR-0051 (identity only; data still on Supabase Cloud)
 ---
 
 # Supabase Cloud for data, our own LXC for the API

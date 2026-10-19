@@ -6,6 +6,9 @@ status: accepted
 
 Date: 2026-10-19
 
+> **Corrected 2026-10-19:** production data is still on Supabase Cloud
+> Postgres; only identity moved. See "Correction" at the end.
+
 Partly supersedes ADR-0002, which put Postgres and authentication in Supabase
 Cloud. That is no longer how production runs, and the docs saying so misled an
 operator.
@@ -60,3 +63,31 @@ Confirm them on CT100 and amend this ADR or the docs that point at it.
 Migrations are unchanged and remain immutable history; several migration
 comments still say "Supabase Cloud" and describe the world as it was when they
 were written. They are not edited.
+
+## Correction, 2026-10-19
+
+The title and the sections above overstated one half of this decision. An
+operator inspecting the live production box (CT102) found that the running
+backend container `lean-platform-backend-1` has `DATABASE_URL` pointing at the
+Supabase pooler `aws-0-ap-southeast-2.pooler.supabase.com:5432` (project
+`ntpazizayhlrjoiwpubg`). The value comes from the GitHub Actions secret
+`DATABASE_URL`, passed through `release.yml` into `deploy.sh`.
+
+- **Identity is local passwords: true.** `AUTH_PASSWORD_MODE=local`, using the
+  Platform's own passwords, not Supabase Auth. This part stands, and so does
+  the partial supersession of ADR-0002 for identity.
+- **Production data is still on Supabase Cloud Postgres.** The statements
+  above that production's PostgreSQL is on CT100, and that CT100 is the
+  identity store, do not describe the current state. A PostgreSQL database
+  also exists on CT100 and `/opt/lean-platform/.env` on CT102 refers to it, but
+  the live API does not use it. Moving production data to CT100 is the intent
+  of issue #267; it has not happened. ADR-0002 therefore still holds for data.
+- **What switching would take:** a data migration into CT100's database, the
+  `DATABASE_URL` secret pointed at CT100, then a redeploy. None of these has
+  been done. Until they are, the "Not recorded" list above is about a database
+  nothing reads.
+
+Because this ADR was wrong, the docs edited alongside it were corrected the
+same day; the first-administrator runbook in the README now says to take
+`DATABASE_URL` from the running container, since a password set in the CT100
+database is invisible to the live API.
