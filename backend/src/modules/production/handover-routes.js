@@ -7,10 +7,11 @@
  * `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
  * about the handover itself is handovers.js's business.
  *
- * Who may act: any Account whose edit Grant reaches the Section may open or
- * submit a draft (ADR-0054 — Team Leader is a Job role, not an account role,
- * so scope is the gate), and reading a handover or a Section's day needs a Grant of either
- * level reaching it. `write: true` is spelled out on both writes because it
+ * Who may act: any Account whose edit Grant reaches the Section may open,
+ * write the lines of, or submit a draft (ADR-0054 — Team Leader is a Job role,
+ * not an account role, so scope is the gate), and reading a handover, a
+ * Section's day or its Assets needs a Grant of either level reaching it.
+ * `write: true` is spelled out on every write because it
  * defaults to FALSE, and a write that forgot it would be authorised by any read
  * Grant with no error anywhere to notice.
  *
@@ -108,7 +109,8 @@ router.get(
 
 // Submitting a draft: seals it and writes its snapshot once (issue #334).
 // Existence, then scope with `write: true`, then the service's own refusals —
-// not a draft (409), a shift instance that no longer resolves (404).
+// not a draft (409), lines missing or incomplete (409, issue #335), a shift
+// instance that no longer resolves (404).
 router.post(
   '/handovers/:id/submit',
   people.authenticate,
@@ -122,6 +124,121 @@ router.post(
 
       const handover = await handovers.submitHandover({ id: found.id, account: req.account });
       res.json({ handover });
+    } catch (error) {
+      handleHandoverError(error, res, next);
+    }
+  }
+);
+
+// A Machine status line body's shape: which fields were sent and whether each
+// is the right kind of value. Whether the state and the abnormality type are
+// in their sets, and whether a note is owed, is handovers.js's domain check.
+function optionalString(body, field) {
+  const value = body[field];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string') throw httpError(400, `${field} must be a string`);
+  return value;
+}
+
+function optionalId(body, field) {
+  const value = body[field];
+  if (value === undefined || value === null) return null;
+  const id = parseId(value);
+  if (id === null) throw httpError(400, `${field} must be a valid id`);
+  return id;
+}
+
+function parseMachineLine(body) {
+  if (typeof body.state !== 'string') throw httpError(400, 'state is required');
+  if (body.walked !== undefined && typeof body.walked !== 'boolean') {
+    throw httpError(400, 'walked must be true or false');
+  }
+  return {
+    state: body.state,
+    abnormalityType: optionalString(body, 'abnormalityType'),
+    note: optionalString(body, 'note'),
+    downtimeEventId: optionalId(body, 'downtimeEventId'),
+    qualityIssueId: optionalId(body, 'qualityIssueId'),
+    workOrderId: optionalId(body, 'workOrderId'),
+    watchNote: optionalString(body, 'watchNote'),
+    walked: body.walked ?? false
+  };
+}
+
+// Submit's completeness refusal carries the assets it is missing beside the
+// message. Answered here rather than by handleError so this Module's errors.js
+// stays byte-similar to its siblings (ADR-0006's seam).
+function handleHandoverError(error, res, next) {
+  if (error.code === 'INCOMPLETE_HANDOVER' && error.details) {
+    return res.status(error.status).json({ message: error.message, code: error.code, ...error.details });
+  }
+  return handleError(error, res, next);
+}
+
+// One Asset's Machine status line on a draft (issue #335): written whole, and
+// answered with the whole handover. Existence of the handover, then scope with
+// `write: true`; the line's own refusals — not a draft, an unknown or
+// out-of-section Asset, a missing note, a reference from elsewhere — are the
+// service's.
+router.put(
+  '/handovers/:id/machine-lines/:assetId',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const found = await handovers.findHandover(req.params.id);
+      if (!found) throw notFound('Shift handover');
+
+      await requireScope(req.account, found.orgUnitId, { write: true });
+
+      const assetId = parseId(req.params.assetId);
+      if (assetId === null) throw notFound('Asset');
+      const line = parseMachineLine(req.body ?? {});
+
+      const handover = await handovers.putMachineLine({ id: found.id, assetId, line, account: req.account });
+      res.json({ handover });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+router.delete(
+  '/handovers/:id/machine-lines/:assetId',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const found = await handovers.findHandover(req.params.id);
+      if (!found) throw notFound('Shift handover');
+
+      await requireScope(req.account, found.orgUnitId, { write: true });
+
+      const assetId = parseId(req.params.assetId);
+      if (assetId === null) throw notFound('Machine status line');
+
+      const handover = await handovers.deleteMachineLine({ id: found.id, assetId, account: req.account });
+      res.json({ handover });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// The Section's active Assets — the machines a handover owes a line for. The
+// same Grant rule as the Section's day.
+router.get(
+  '/sections/:orgUnitId/assets',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const section = await handovers.findOrgUnit(req.params.orgUnitId);
+      if (!section) throw notFound('Org Unit');
+
+      await requireScope(req.account, section.id, { write: false });
+
+      res.json(await handovers.listSectionAssets(section));
     } catch (error) {
       handleError(error, res, next);
     }

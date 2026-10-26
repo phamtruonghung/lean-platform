@@ -54,6 +54,7 @@ let outsider; // edit Grant on the other section only
 let assetA; // the section's two Assets, both in its Cutting area
 let assetB;
 let otherSectionAsset;
+let cuttingArea; // the section's area the two Assets sit in
 
 let codeCounter = 0;
 function uniqueCode(prefix) {
@@ -96,10 +97,11 @@ async function insertOrgUnit(parentId, unitType, name) {
   return orgUnit;
 }
 
-async function insertAsset(orgUnitId) {
+async function insertAsset(orgUnitId, { code = uniqueCode('HOAS'), isActive = true } = {}) {
   const { rows: [asset] } = await pool.query(
-    `INSERT INTO assets (org_unit_id, code, name) VALUES ($1, $2, 'Handover Test Machine') RETURNING id`,
-    [orgUnitId, uniqueCode('HOAS')]
+    `INSERT INTO assets (org_unit_id, code, name, is_active)
+     VALUES ($1, $2, 'Handover Test Machine', $3) RETURNING id, code, name`,
+    [orgUnitId, code, isActive]
   );
   insertedAssetIds.push(asset.id);
   return asset;
@@ -222,6 +224,36 @@ async function openDraft(shiftInstanceId) {
   return opened.body.handover;
 }
 
+async function putLine(token, handoverId, assetId, body) {
+  return json(
+    await fetch(`${base}/api/production/handovers/${handoverId}/machine-lines/${assetId}`, {
+      method: 'PUT',
+      headers: { ...token, 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+  );
+}
+
+async function deleteLine(token, handoverId, assetId) {
+  return json(
+    await fetch(`${base}/api/production/handovers/${handoverId}/machine-lines/${assetId}`, {
+      method: 'DELETE',
+      headers: token
+    })
+  );
+}
+
+// Every active Asset the Section lists gets a normal-running line, so submit's
+// completeness rule (issue #335) is met and a test can reach what it is about.
+async function fillRunningLines(handoverId) {
+  const listed = await get(teamLeader.token, `/sections/${section.id}/assets`);
+  assert.strictEqual(listed.status, 200, JSON.stringify(listed.body));
+  for (const asset of listed.body.assets) {
+    const written = await putLine(teamLeader.token, handoverId, asset.id, { state: 'running' });
+    assert.strictEqual(written.status, 200, JSON.stringify(written.body));
+  }
+}
+
 // The snapshot's ratios are stored at six places (NUMERIC(12,6)).
 function round6(value) {
   return Math.round(value * 1e6) / 1e6;
@@ -254,9 +286,9 @@ test.before(async () => {
 
   department = await insertOrgUnit(null, 'department', 'Handover Department');
   section = await insertOrgUnit(department.id, 'section', 'Self-Closing');
-  const area = await insertOrgUnit(section.id, 'area', 'Cutting');
-  assetA = await insertAsset(area.id);
-  assetB = await insertAsset(area.id);
+  cuttingArea = await insertOrgUnit(section.id, 'area', 'Cutting');
+  assetA = await insertAsset(cuttingArea.id);
+  assetB = await insertAsset(cuttingArea.id);
   otherSection = await insertOrgUnit(department.id, 'section', 'TX');
   otherSectionAsset = await insertAsset(otherSection.id);
 
@@ -279,6 +311,12 @@ test.before(async () => {
 });
 
 test.after(async () => {
+  // Lines reference downtime events and quality issues, so they go first.
+  await pool.query(
+    `DELETE FROM shift_handover_machine_lines
+      WHERE handover_id IN (SELECT id FROM shift_handovers WHERE org_unit_id = ANY($1))`,
+    [insertedOrgUnitIds]
+  );
   await pool.query('DELETE FROM downtime_events WHERE asset_id = ANY($1)', [insertedAssetIds]);
   await pool.query('DELETE FROM quality_issues WHERE shift_instance_id = ANY($1)', [insertedShiftInstanceIds]);
   await pool.query('DELETE FROM safety_incidents WHERE shift_instance_id = ANY($1)', [insertedShiftInstanceIds]);
@@ -537,6 +575,7 @@ test('submit seals the handover with every snapshot number, OEE rolled up from s
   );
 
   const draft = await openDraft(snapshotShift.id);
+  await fillRunningLines(draft.id);
   const response = await submit(teamLeader.token, draft.id);
   const submitted = await json(response);
   assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
@@ -647,6 +686,7 @@ test('a shift with no production counts stores null quantities and OEE, and says
     section.id, definition.id, '2026-05-01T23:00:00Z', '2026-05-02T07:00:00Z', '2026-05-02'
   );
   const draft = await openDraft(uncounted.id);
+  await fillRunningLines(draft.id);
 
   const submitted = await json(await submit(teamLeader.token, draft.id));
   assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
@@ -694,6 +734,7 @@ test('submit records late after 30 minutes without refusing, and refuses a secon
   );
 
   const lateDraft = await openDraft(lateShift.id);
+  await fillRunningLines(lateDraft.id);
   const late = await json(await submit(teamLeader.token, lateDraft.id));
   assert.strictEqual(late.status, 200, JSON.stringify(late.body));
   assert.strictEqual(late.body.handover.status, 'submitted');
@@ -704,6 +745,7 @@ test('submit records late after 30 minutes without refusing, and refuses a secon
   assert.strictEqual(again.body.code, 'HANDOVER_NOT_DRAFT');
 
   const onTimeDraft = await openDraft(onTimeShift.id);
+  await fillRunningLines(onTimeDraft.id);
 
   const outside = await json(await submit(outsider.token, onTimeDraft.id));
   assert.strictEqual(outside.status, 403);
@@ -739,6 +781,7 @@ test('a performance far above 1 is sealed as the view reports it, neither refuse
     count: { good: 100, reject: 0, rework: 0 }
   });
   const draft = await openDraft(suspect.id);
+  await fillRunningLines(draft.id);
 
   const submitted = await json(await submit(teamLeader.token, draft.id));
   assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
@@ -770,6 +813,7 @@ test('a submit that fails leaves the draft exactly as it was', async () => {
     count: { good: 100, reject: 0, rework: 0 }
   });
   const draft = await openDraft(failing.id);
+  await fillRunningLines(draft.id);
 
   const response = await submit(teamLeader.token, draft.id);
   assert.notStrictEqual(response.status, 200);
@@ -785,4 +829,290 @@ test('a submit that fails leaves the draft exactly as it was', async () => {
   for (const [field, value] of Object.entries(handover.snapshot)) {
     assert.strictEqual(value, null, `${field} should still be null on the draft`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Machine status lines and submit's completeness rule (issue #335).
+//
+// Each test opens its own draft on a shift instance in April 2026, before
+// every stop the snapshot tests wrote: downtime events on one Asset may not
+// overlap, and Asset A's last snapshot stop is still open.
+// ---------------------------------------------------------------------------
+
+// The nth April shift runs 23:00Z on the (9 + n)th to 07:00Z the next day,
+// which is its production date.
+let aprilDay = 9;
+function april(day, time) {
+  return `2026-04-${String(day).padStart(2, '0')}T${time}:00Z`;
+}
+async function aprilShift(name) {
+  aprilDay += 1;
+  const definition = await insertShiftDefinition('06:00', name);
+  return insertShiftInstance(
+    section.id, definition.id, april(aprilDay, '23:00'), april(aprilDay + 1, '07:00'),
+    april(aprilDay + 1, '00:00').slice(0, 10)
+  );
+}
+
+// A stop at a time of the test's choosing, stamped with the shift instance the
+// test names rather than the one the baseline's trigger would infer.
+async function insertStop(assetId, shiftInstanceId, startedAt, endedAt) {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO downtime_events (asset_id, shift_instance_id, started_at, ended_at)
+     VALUES ($1, $2, $3, $4) RETURNING id`,
+    [assetId, shiftInstanceId, startedAt, endedAt]
+  );
+  return row;
+}
+
+async function insertQualityIssue(assetId, shiftInstanceId) {
+  const product = await insertProduct(20);
+  const { rows: [defectCode] } = await pool.query(
+    `INSERT INTO defect_codes (code, name) VALUES ($1, 'Handover Test Defect') RETURNING id`,
+    [uniqueCode('HODC')]
+  );
+  insertedDefectCodeIds.push(defectCode.id);
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO quality_issues
+       (org_unit_id, asset_id, product_id, defect_code_id, detection_point, quantity_affected,
+        uom_code, shift_instance_id)
+     VALUES ($1, $2, $3, $4, 'in_process', 5, 'EA', $5)
+     RETURNING id`,
+    [section.id, assetId, product.id, defectCode.id, shiftInstanceId]
+  );
+  return row;
+}
+
+test('a draft gains, replaces and loses a machine status line, and once submitted every line write is 409', async () => {
+  const shift = await aprilShift('Lines shift');
+  const draft = await openDraft(shift.id);
+
+  const written = await putLine(teamLeader.token, draft.id, assetA.id, {
+    state: 'running', watchNote: 'Watch the guide rail', walked: true
+  });
+  assert.strictEqual(written.status, 200, JSON.stringify(written.body));
+  assert.strictEqual(written.body.handover.id, draft.id);
+  assert.strictEqual(written.body.handover.machineLines.length, 1);
+  const line = written.body.handover.machineLines[0];
+  assert.strictEqual(line.assetId, assetA.id);
+  assert.strictEqual(line.assetCode, assetA.code);
+  assert.strictEqual(line.orgUnitId, cuttingArea.id);
+  assert.strictEqual(line.orgUnitName, 'Cutting');
+  assert.strictEqual(line.state, 'running');
+  assert.strictEqual(line.watchNote, 'Watch the guide rail');
+  assert.strictEqual(line.walked, true);
+  assert.strictEqual(line.note, null);
+
+  // The same Asset again replaces its line whole: one line, walked back to its
+  // default, the watch note cleared.
+  const replaced = await putLine(teamLeader.token, draft.id, assetA.id, {
+    state: 'idle', note: 'No material from the slitter'
+  });
+  assert.strictEqual(replaced.status, 200, JSON.stringify(replaced.body));
+  assert.strictEqual(replaced.body.handover.machineLines.length, 1);
+  assert.strictEqual(replaced.body.handover.machineLines[0].id, line.id);
+  assert.strictEqual(replaced.body.handover.machineLines[0].state, 'idle');
+  assert.strictEqual(replaced.body.handover.machineLines[0].note, 'No material from the slitter');
+  assert.strictEqual(replaced.body.handover.machineLines[0].walked, false);
+  assert.strictEqual(replaced.body.handover.machineLines[0].watchNote, null);
+
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.strictEqual(read.status, 200, JSON.stringify(read.body));
+  assert.deepStrictEqual(read.body.handover.machineLines, replaced.body.handover.machineLines);
+
+  const removed = await deleteLine(teamLeader.token, draft.id, assetA.id);
+  assert.strictEqual(removed.status, 200, JSON.stringify(removed.body));
+  assert.deepStrictEqual(removed.body.handover.machineLines, []);
+  const removedAgain = await deleteLine(teamLeader.token, draft.id, assetA.id);
+  assert.strictEqual(removedAgain.status, 404);
+
+  // Scope before the draft check: an outsider is 403, a read Grant too.
+  const outside = await putLine(outsider.token, draft.id, assetA.id, { state: 'running' });
+  assert.strictEqual(outside.status, 403);
+  const reader = await insertAccount({ grants: [{ orgUnitId: section.id, write: false }] });
+  const readOnly = await putLine(reader.token, draft.id, assetA.id, { state: 'running' });
+  assert.strictEqual(readOnly.status, 403);
+  const unknownHandover = await putLine(teamLeader.token, '999999999999', assetA.id, { state: 'running' });
+  assert.strictEqual(unknownHandover.status, 404);
+
+  await fillRunningLines(draft.id);
+  const submitted = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+  assert.strictEqual(submitted.body.handover.machineLines.length, 2);
+
+  const afterPut = await putLine(teamLeader.token, draft.id, assetA.id, { state: 'running' });
+  assert.strictEqual(afterPut.status, 409);
+  assert.strictEqual(afterPut.body.code, 'HANDOVER_NOT_DRAFT');
+  const afterNewAsset = await putLine(teamLeader.token, draft.id, assetB.id, { state: 'down', note: 'Late stop' });
+  assert.strictEqual(afterNewAsset.status, 409);
+  const afterDelete = await deleteLine(teamLeader.token, draft.id, assetA.id);
+  assert.strictEqual(afterDelete.status, 409);
+  assert.strictEqual(afterDelete.body.code, 'HANDOVER_NOT_DRAFT');
+});
+
+test('a machine not running normally needs a note when written and a reference before submit', async () => {
+  const shift = await aprilShift('Down shift');
+  const draft = await openDraft(shift.id);
+  await fillRunningLines(draft.id);
+
+  const noNote = await putLine(teamLeader.token, draft.id, assetA.id, { state: 'down' });
+  assert.strictEqual(noNote.status, 400);
+  assert.strictEqual(noNote.body.code, 'NOTE_REQUIRED');
+  assert.match(noNote.body.message, new RegExp(assetA.code));
+  const blankNote = await putLine(teamLeader.token, draft.id, assetA.id, { state: 'maintenance', note: '   ' });
+  assert.strictEqual(blankNote.status, 400);
+  assert.strictEqual(blankNote.body.code, 'NOTE_REQUIRED');
+  const abnormalNoNote = await putLine(teamLeader.token, draft.id, assetA.id, {
+    state: 'running', abnormalityType: 'minor_flaw'
+  });
+  assert.strictEqual(abnormalNoNote.status, 400);
+  assert.strictEqual(abnormalNoNote.body.code, 'NOTE_REQUIRED');
+
+  const badState = await putLine(teamLeader.token, draft.id, assetA.id, { state: 'broken', note: 'x' });
+  assert.strictEqual(badState.status, 400);
+  assert.match(badState.body.message, /state must be one of/);
+  const badType = await putLine(teamLeader.token, draft.id, assetA.id, {
+    state: 'running', abnormalityType: 'rust', note: 'Rust on the frame'
+  });
+  assert.strictEqual(badType.status, 400);
+  assert.match(badType.body.message, /abnormalityType must be one of/);
+
+  // A note and no reference is a fine draft, and not yet a submittable one.
+  const down = await putLine(teamLeader.token, draft.id, assetA.id, {
+    state: 'down', note: 'Spindle bearing running hot', abnormalityType: 'minor_flaw'
+  });
+  assert.strictEqual(down.status, 200, JSON.stringify(down.body));
+
+  const refused = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(refused.status, 409);
+  assert.strictEqual(refused.body.code, 'INCOMPLETE_HANDOVER');
+  assert.match(refused.body.message, new RegExp(assetA.code));
+  assert.deepStrictEqual(refused.body.missingAssets, []);
+  assert.deepStrictEqual(refused.body.incompleteLines, [
+    { id: assetA.id, code: assetA.code, name: assetA.name, missing: ['reference'] }
+  ]);
+  const stillDraft = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.strictEqual(stillDraft.body.handover.status, 'draft');
+
+  const stop = await insertStop(assetA.id, shift.id, april(aprilDay + 1, '00:00'), april(aprilDay + 1, '01:00'));
+  const referenced = await putLine(teamLeader.token, draft.id, assetA.id, {
+    state: 'down', note: 'Spindle bearing running hot', downtimeEventId: stop.id
+  });
+  assert.strictEqual(referenced.status, 200, JSON.stringify(referenced.body));
+  const lineA = referenced.body.handover.machineLines.find((line) => line.assetId === assetA.id);
+  assert.strictEqual(lineA.downtimeEventId, stop.id);
+
+  const submitted = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+  assert.strictEqual(submitted.body.handover.status, 'submitted');
+});
+
+test('submit is refused while an active Asset has no line, naming it, and succeeds once it has one', async () => {
+  // A retired machine in the section owes no line.
+  await insertAsset(cuttingArea.id, { isActive: false });
+
+  const shift = await aprilShift('Missing shift');
+  const draft = await openDraft(shift.id);
+  await fillRunningLines(draft.id);
+  const removed = await deleteLine(teamLeader.token, draft.id, assetB.id);
+  assert.strictEqual(removed.status, 200, JSON.stringify(removed.body));
+
+  const refused = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(refused.status, 409);
+  assert.strictEqual(refused.body.code, 'INCOMPLETE_HANDOVER');
+  assert.deepStrictEqual(refused.body.missingAssets, [
+    { id: assetB.id, code: assetB.code, name: assetB.name }
+  ]);
+  assert.deepStrictEqual(refused.body.incompleteLines, []);
+  assert.match(refused.body.message, new RegExp(assetB.code));
+
+  const added = await putLine(teamLeader.token, draft.id, assetB.id, { state: 'running_manual', walked: true });
+  assert.strictEqual(added.status, 200, JSON.stringify(added.body));
+
+  const submitted = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+});
+
+test('an Asset outside the Section, an unknown Asset and a reference from elsewhere are refused', async () => {
+  const shift = await aprilShift('Refusal shift');
+  const draft = await openDraft(shift.id);
+
+  const outsideSection = await putLine(teamLeader.token, draft.id, otherSectionAsset.id, { state: 'running' });
+  assert.strictEqual(outsideSection.status, 400);
+  assert.strictEqual(outsideSection.body.code, 'ASSET_NOT_IN_SECTION');
+  const unknownAsset = await putLine(teamLeader.token, draft.id, '999999999999', { state: 'running' });
+  assert.strictEqual(unknownAsset.status, 404);
+  const unknownLine = await deleteLine(teamLeader.token, draft.id, assetB.id);
+  assert.strictEqual(unknownLine.status, 404);
+
+  const down = { state: 'down', note: 'Jammed feeder' };
+
+  // A stop of Asset A, but stamped with another shift instance.
+  const otherShiftStop = await insertStop(assetA.id, dayShift.id, april(aprilDay + 1, '00:00'), april(aprilDay + 1, '00:30'));
+  const otherShift = await putLine(teamLeader.token, draft.id, assetA.id, { ...down, downtimeEventId: otherShiftStop.id });
+  assert.strictEqual(otherShift.status, 400);
+  assert.strictEqual(otherShift.body.code, 'REFERENCE_OUTSIDE_HANDOVER');
+
+  // This shift's stop, but on Asset B.
+  const otherAssetStop = await insertStop(assetB.id, shift.id, april(aprilDay + 1, '00:00'), april(aprilDay + 1, '00:30'));
+  const otherAsset = await putLine(teamLeader.token, draft.id, assetA.id, { ...down, downtimeEventId: otherAssetStop.id });
+  assert.strictEqual(otherAsset.status, 400);
+  assert.strictEqual(otherAsset.body.code, 'REFERENCE_OUTSIDE_HANDOVER');
+
+  const noAssetIssue = await insertQualityIssue(null, shift.id);
+  const noAsset = await putLine(teamLeader.token, draft.id, assetA.id, { ...down, qualityIssueId: noAssetIssue.id });
+  assert.strictEqual(noAsset.status, 400);
+  assert.strictEqual(noAsset.body.code, 'REFERENCE_OUTSIDE_HANDOVER');
+  const assetBIssue = await insertQualityIssue(assetB.id, shift.id);
+  const wrongIssue = await putLine(teamLeader.token, draft.id, assetA.id, { ...down, qualityIssueId: assetBIssue.id });
+  assert.strictEqual(wrongIssue.status, 400);
+
+  for (const field of ['downtimeEventId', 'qualityIssueId', 'workOrderId']) {
+    const missing = await putLine(teamLeader.token, draft.id, assetA.id, { ...down, [field]: '999999999999' });
+    assert.strictEqual(missing.status, 404, `${field}: ${JSON.stringify(missing.body)}`);
+  }
+  const malformed = await putLine(teamLeader.token, draft.id, assetA.id, { ...down, workOrderId: 'WO-1' });
+  assert.strictEqual(malformed.status, 400);
+
+  // Nothing refused was written.
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.deepStrictEqual(read.body.handover.machineLines, []);
+
+  const assetAIssue = await insertQualityIssue(assetA.id, shift.id);
+  const right = await putLine(teamLeader.token, draft.id, assetA.id, { ...down, qualityIssueId: assetAIssue.id });
+  assert.strictEqual(right.status, 200, JSON.stringify(right.body));
+  assert.strictEqual(right.body.handover.machineLines[0].qualityIssueId, assetAIssue.id);
+});
+
+test('the Section\'s Assets are its active subtree only, ordered by code', async () => {
+  // One at the section itself and one in a second area, coded to sort first
+  // and last; a retired one and the other section's never appear.
+  const packing = await insertOrgUnit(section.id, 'area', 'Packing');
+  const first = await insertAsset(section.id, { code: `AAA${process.pid}` });
+  const last = await insertAsset(packing.id, { code: `ZZZ${process.pid}` });
+  const retired = await insertAsset(packing.id, { isActive: false });
+
+  const listed = await get(teamLeader.token, `/sections/${section.id}/assets`);
+  assert.strictEqual(listed.status, 200, JSON.stringify(listed.body));
+  assert.deepStrictEqual(listed.body.section, { id: section.id, code: section.code, name: 'Self-Closing' });
+  const { assets } = listed.body;
+  const middle = [assetA, assetB].sort((x, y) => (x.code < y.code ? -1 : 1));
+  assert.deepStrictEqual(assets.map((asset) => asset.id), [first.id, ...middle.map((a) => a.id), last.id]);
+  assert.deepStrictEqual(assets[0], {
+    id: first.id, code: first.code, name: 'Handover Test Machine', orgUnitId: section.id, orgUnitName: 'Self-Closing'
+  });
+  assert.strictEqual(assets.at(-1).orgUnitName, 'Packing');
+  assert.ok(!assets.some((asset) => asset.id === retired.id || asset.id === otherSectionAsset.id));
+
+  // A read Grant on the section is enough; no Grant, a non-section and an
+  // unknown Org Unit are refused.
+  const reader = await insertAccount({ grants: [{ orgUnitId: section.id, write: false }] });
+  assert.strictEqual((await get(reader.token, `/sections/${section.id}/assets`)).status, 200);
+  const outside = await get(outsider.token, `/sections/${section.id}/assets`);
+  assert.strictEqual(outside.status, 403);
+  const notSection = await get(teamLeader.token, `/sections/${department.id}/assets`);
+  assert.strictEqual(notSection.status, 400);
+  assert.strictEqual(notSection.body.code, 'NOT_A_SECTION');
+  const unknown = await get(teamLeader.token, '/sections/999999999999/assets');
+  assert.strictEqual(unknown.status, 404);
 });
