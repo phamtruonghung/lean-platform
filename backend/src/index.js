@@ -23,6 +23,7 @@ const maintenance = require('./modules/maintenance');
 const actions = require('./modules/actions');
 const quality = require('./modules/quality');
 const safety = require('./modules/safety');
+const production = require('./modules/production');
 
 const app = express();
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
@@ -119,6 +120,10 @@ app.use('/api/quality', quality.router);
 // same reasoning `/api/quality`'s own comment gives, and it is mounted here,
 // where the application composes its Modules, for the same reason.
 app.use('/api/safety', safety.router);
+// The Production Module's own prefix (issue #333, ADR-0054): the Shift
+// handover a Section records at the end of each shift instance, mounted here
+// for the same reason as the two above.
+app.use('/api/production', production.router);
 
 // An unknown path under /api answers in JSON. Express's default 404 is an HTML
 // page, which a client that asked for JSON cannot parse — so a typo in a URL
