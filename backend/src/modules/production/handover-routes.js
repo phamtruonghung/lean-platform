@@ -110,8 +110,9 @@ router.get(
 // Submitting a draft: seals it and writes its snapshot once (issue #334).
 // Existence, then scope with `write: true`, then the service's own refusals —
 // not a draft (409), lines missing or incomplete (409, issue #335), the change
-// point block unanswered (409, issue #336), a shift instance that no longer
-// resolves (404).
+// point block unanswered (409, issue #336), an open Action of the Section with
+// no disposition (409, issue #337), a shift instance that no longer resolves
+// (404).
 router.post(
   '/handovers/:id/submit',
   people.authenticate,
@@ -321,6 +322,69 @@ router.delete(
       if (changePointId === null) throw notFound('Change point');
 
       const handover = await handovers.deleteChangePoint({ id: found.id, changePointId, account: req.account });
+      res.json({ handover });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// A Carried action body's shape. Whether the disposition is one of the three,
+// and whether it carries the owner or the closure note it owes, is
+// handovers.js's check.
+function parseActionLink(body) {
+  const actionId = parseId(body.actionId);
+  if (actionId === null) throw httpError(400, 'actionId must be a valid Action id');
+  return {
+    actionId,
+    disposition: optionalString(body, 'disposition'),
+    ownerEmployeeId: optionalId(body, 'ownerEmployeeId'),
+    closureNote: optionalString(body, 'closureNote')
+  };
+}
+
+// One of the Section's open Actions linked to a draft with its disposition
+// (issue #337), answered 201 with the whole handover. Existence of the
+// handover, then scope with `write: true`; the link's own refusals — not a
+// draft, a disposition outside the three, a missing owner or closure note, an
+// unknown or out-of-section or finished Action, an unknown owner, the same
+// Action twice — are the service's.
+router.post(
+  '/handovers/:id/actions',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const found = await handovers.findHandover(req.params.id);
+      if (!found) throw notFound('Shift handover');
+
+      await requireScope(req.account, found.orgUnitId, { write: true });
+
+      const link = parseActionLink(req.body ?? {});
+
+      const handover = await handovers.linkAction({ id: found.id, link, account: req.account });
+      res.status(201).json({ handover });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+router.delete(
+  '/handovers/:id/actions/:linkId',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const found = await handovers.findHandover(req.params.id);
+      if (!found) throw notFound('Shift handover');
+
+      await requireScope(req.account, found.orgUnitId, { write: true });
+
+      const linkId = parseId(req.params.linkId);
+      if (linkId === null) throw notFound('Handover action');
+
+      const handover = await handovers.unlinkAction({ id: found.id, linkId, account: req.account });
       res.json({ handover });
     } catch (error) {
       handleError(error, res, next);
