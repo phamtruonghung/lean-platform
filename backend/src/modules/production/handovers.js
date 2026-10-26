@@ -10,10 +10,12 @@
  *
  * Submit (issue #334) seals a draft and writes its snapshot once; see
  * submitHandover below. Machine status lines (issue #335) are written to a
- * draft one Asset at a time and checked for completeness at submit. What is
- * still not done, each on its own later ticket: change points, actions,
- * acknowledge, amend. A handover therefore reads back with its machine lines
- * and two empty line lists.
+ * draft one Asset at a time and checked for completeness at submit. Change
+ * points (issue #336) are added to and removed from a draft one at a time, and
+ * submit asks that the 4M block be answered — at least one change point, or
+ * "none this shift" declared. What is still not done, each on its own later
+ * ticket: actions, acknowledge, amend. A handover therefore reads back with
+ * its machine lines, its change points and an empty action list.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -454,7 +456,19 @@ async function requireComplete(client, handover) {
       ]
     }));
 
-  if (missingAssets.length === 0 && incompleteLines.length === 0) return;
+  // The 4M block (issue #336) is answered by a change point or by "none this
+  // shift"; with neither, it was skipped, not found empty.
+  const { rows: [block] } = await client.query(
+    `SELECT h.change_points_none,
+            EXISTS (SELECT 1 FROM shift_handover_change_points cp WHERE cp.handover_id = h.id)
+              AS has_change_points
+       FROM shift_handovers h
+      WHERE h.id = $1`,
+    [handover.id]
+  );
+  const unansweredBlocks = block.change_points_none || block.has_change_points ? [] : ['changePoints'];
+
+  if (missingAssets.length === 0 && incompleteLines.length === 0 && unansweredBlocks.length === 0) return;
 
   const parts = [];
   if (missingAssets.length > 0) {
@@ -465,8 +479,14 @@ async function requireComplete(client, handover) {
       incompleteLines.map((line) => `${line.code} is missing its ${line.missing.join(' and ')}`).join('; ')
     );
   }
+  if (unansweredBlocks.length > 0) {
+    parts.push(
+      'changePoints is unanswered: there is no change point and none-this-shift is not declared — ' +
+      'add a change point, or declare none (changePointsNone)'
+    );
+  }
   const error = httpError(409, `This handover cannot be submitted: ${parts.join('; ')}`, 'INCOMPLETE_HANDOVER');
-  error.details = { missingAssets, incompleteLines };
+  error.details = { missingAssets, incompleteLines, unansweredBlocks };
   throw error;
 }
 
@@ -659,6 +679,113 @@ async function deleteMachineLine({ id, assetId, account }) {
   return getHandoverDetail(id);
 }
 
+// The 4M dimensions, in the order the read groups them: the CHECK constraint
+// on `shift_handover_change_points`, mirrored so a bad value is a 400 naming
+// the set.
+const CHANGE_POINT_DIMENSIONS = ['man', 'machine', 'material', 'method'];
+
+const CHANGE_POINT_COLUMNS = `
+  cp.id, cp.dimension, cp.description, cp.watch_note,
+  cp.employee_id, e.display_name AS employee_name,
+  cp.watch_result, cp.watch_result_note
+`;
+
+function toChangePoint(row) {
+  return {
+    id: row.id,
+    dimension: row.dimension,
+    description: row.description,
+    watchNote: row.watch_note,
+    employeeId: row.employee_id,
+    employeeName: row.employee_name ?? null,
+    watchResult: row.watch_result,
+    watchResultNote: row.watch_result_note
+  };
+}
+
+// Every dimension present, in the fixed order, so an empty one reads as an
+// empty list rather than a missing key.
+function groupChangePoints(rows) {
+  const grouped = Object.fromEntries(CHANGE_POINT_DIMENSIONS.map((dimension) => [dimension, []]));
+  for (const row of rows) grouped[row.dimension].push(toChangePoint(row));
+  return grouped;
+}
+
+// Adding one change point to a draft. Any number per dimension: two material
+// lots in one shift is a real shift. The watch is required at the moment of
+// writing, unlike a machine line's reference — the person who saw the change
+// is the one who knows what it might harm, and a change point with no watch is
+// a note, not a change point (docs/research/shift-handover.md §2). The watch's
+// result is the incoming shift's to record, at acknowledgement, not here.
+async function addChangePoint({ id, changePoint, account }) {
+  await withActor(account.id, async (client) => {
+    const handover = await lockDraft(client, id);
+
+    if (!CHANGE_POINT_DIMENSIONS.includes(changePoint.dimension)) {
+      throw httpError(400, `dimension must be one of: ${CHANGE_POINT_DIMENSIONS.join(', ')}`);
+    }
+    const description = blankToNull(changePoint.description);
+    if (description === null) {
+      throw httpError(400, 'description is required: say what is different for the incoming shift');
+    }
+    const watchNote = blankToNull(changePoint.watchNote);
+    if (watchNote === null) {
+      throw httpError(
+        400,
+        'watchNote is required: say what the incoming shift must watch for — a change point with no watch is a note, not a change point',
+        'WATCH_REQUIRED'
+      );
+    }
+
+    if (changePoint.employeeId !== null) {
+      const { rows: [employee] } = await client.query(
+        'SELECT id FROM employees WHERE id = $1',
+        [changePoint.employeeId]
+      );
+      if (!employee) throw notFound('Employee');
+    }
+
+    await client.query(
+      `INSERT INTO shift_handover_change_points (handover_id, dimension, description, watch_note, employee_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [handover.id, changePoint.dimension, description, watchNote, changePoint.employeeId]
+    );
+  });
+
+  return getHandoverDetail(id);
+}
+
+// Removing one change point from a draft; 404 when it is not this handover's.
+async function deleteChangePoint({ id, changePointId, account }) {
+  await withActor(account.id, async (client) => {
+    const handover = await lockDraft(client, id);
+    const { rowCount } = await client.query(
+      'DELETE FROM shift_handover_change_points WHERE handover_id = $1 AND id = $2',
+      [handover.id, changePointId]
+    );
+    if (rowCount === 0) throw notFound('Change point');
+  });
+
+  return getHandoverDetail(id);
+}
+
+// Writing a draft's own header fields. The route has already decided which
+// fields were sent and that each is the right kind of value; a field left out
+// is left as it is.
+async function updateHandover({ id, fields, account }) {
+  await withActor(account.id, async (client) => {
+    const handover = await lockDraft(client, id);
+    if (fields.changePointsNone !== undefined) {
+      await client.query(
+        'UPDATE shift_handovers SET change_points_none = $2 WHERE id = $1',
+        [handover.id, fields.changePointsNone]
+      );
+    }
+  });
+
+  return getHandoverDetail(id);
+}
+
 // A Section's active Assets, the machines a handover owes a line for.
 async function listSectionAssets(section) {
   requireSection(section);
@@ -677,12 +804,13 @@ async function listSectionAssets(section) {
 
 // One handover as the detail Screen reads it: the record, its Section and
 // shift instance, and its three line lists — machine lines ordered by Asset
-// code, change points and actions empty until the slices that write them.
+// code, change points grouped by dimension in insertion order, actions empty
+// until the slice that writes them.
 async function getHandoverDetail(id) {
   const handover = await findHandover(id);
   if (!handover) throw notFound('Shift handover');
 
-  const [{ rows: [section] }, shiftInstance, { rows: lineRows }] = await Promise.all([
+  const [{ rows: [section] }, shiftInstance, { rows: lineRows }, { rows: changePointRows }] = await Promise.all([
     getPool().query('SELECT id, code, name FROM org_units WHERE id = $1', [handover.orgUnitId]),
     findShiftInstance(handover.shiftInstanceId),
     getPool().query(
@@ -692,6 +820,14 @@ async function getHandoverDetail(id) {
          JOIN org_units au ON au.id = a.org_unit_id
         WHERE ml.handover_id = $1
         ORDER BY a.code, a.id`,
+      [handover.id]
+    ),
+    getPool().query(
+      `SELECT ${CHANGE_POINT_COLUMNS}
+         FROM shift_handover_change_points cp
+         LEFT JOIN employees e ON e.id = cp.employee_id
+        WHERE cp.handover_id = $1
+        ORDER BY cp.id`,
       [handover.id]
     )
   ]);
@@ -707,7 +843,7 @@ async function getHandoverDetail(id) {
       status: shiftInstance.status
     },
     machineLines: lineRows.map(toMachineLine),
-    changePoints: [],
+    changePoints: groupChangePoints(changePointRows),
     actions: []
   };
 }
@@ -767,6 +903,9 @@ module.exports = {
   submitHandover,
   putMachineLine,
   deleteMachineLine,
+  addChangePoint,
+  deleteChangePoint,
+  updateHandover,
   getHandoverDetail,
   getSectionDay,
   listSectionAssets

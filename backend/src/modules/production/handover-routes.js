@@ -8,8 +8,8 @@
  * about the handover itself is handovers.js's business.
  *
  * Who may act: any Account whose edit Grant reaches the Section may open,
- * write the lines of, or submit a draft (ADR-0054 — Team Leader is a Job role,
- * not an account role, so scope is the gate), and reading a handover, a
+ * write the lines and header of, or submit a draft (ADR-0054 — Team Leader is
+ * a Job role, not an account role, so scope is the gate), and reading a handover, a
  * Section's day or its Assets needs a Grant of either level reaching it.
  * `write: true` is spelled out on every write because it
  * defaults to FALSE, and a write that forgot it would be authorised by any read
@@ -109,8 +109,9 @@ router.get(
 
 // Submitting a draft: seals it and writes its snapshot once (issue #334).
 // Existence, then scope with `write: true`, then the service's own refusals —
-// not a draft (409), lines missing or incomplete (409, issue #335), a shift
-// instance that no longer resolves (404).
+// not a draft (409), lines missing or incomplete (409, issue #335), the change
+// point block unanswered (409, issue #336), a shift instance that no longer
+// resolves (404).
 router.post(
   '/handovers/:id/submit',
   people.authenticate,
@@ -218,6 +219,108 @@ router.delete(
       if (assetId === null) throw notFound('Machine status line');
 
       const handover = await handovers.deleteMachineLine({ id: found.id, assetId, account: req.account });
+      res.json({ handover });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// The header fields a draft's PATCH may carry, each with its shape check.
+// This slice (issue #336) owns `changePointsNone`; the acknowledgement's
+// evidence fields join this list on their own ticket.
+const HEADER_FIELDS = {
+  changePointsNone: (value) => {
+    if (typeof value !== 'boolean') throw httpError(400, 'changePointsNone must be true or false');
+    return value;
+  }
+};
+
+function parseHeaderFields(body) {
+  const fields = {};
+  for (const [field, parse] of Object.entries(HEADER_FIELDS)) {
+    if (body[field] !== undefined) fields[field] = parse(body[field]);
+  }
+  if (Object.keys(fields).length === 0) {
+    throw httpError(400, `Send at least one of: ${Object.keys(HEADER_FIELDS).join(', ')}`);
+  }
+  return fields;
+}
+
+// A draft's header fields (issue #336): existence, scope with `write: true`,
+// the body's shape, then the service's not-a-draft refusal.
+router.patch(
+  '/handovers/:id',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const found = await handovers.findHandover(req.params.id);
+      if (!found) throw notFound('Shift handover');
+
+      await requireScope(req.account, found.orgUnitId, { write: true });
+
+      const fields = parseHeaderFields(req.body ?? {});
+
+      const handover = await handovers.updateHandover({ id: found.id, fields, account: req.account });
+      res.json({ handover });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// A change point body's shape. Whether the dimension is one of the 4M, and
+// whether the description and the watch are blank, is handovers.js's check.
+function parseChangePoint(body) {
+  return {
+    dimension: optionalString(body, 'dimension'),
+    description: optionalString(body, 'description'),
+    watchNote: optionalString(body, 'watchNote'),
+    employeeId: optionalId(body, 'employeeId')
+  };
+}
+
+// One change point added to a draft (issue #336), answered 201 with the whole
+// handover. Existence of the handover, then scope with `write: true`; the
+// change point's own refusals — not a draft, a dimension outside the 4M, a
+// blank description or watch, an unknown Employee — are the service's.
+router.post(
+  '/handovers/:id/change-points',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const found = await handovers.findHandover(req.params.id);
+      if (!found) throw notFound('Shift handover');
+
+      await requireScope(req.account, found.orgUnitId, { write: true });
+
+      const changePoint = parseChangePoint(req.body ?? {});
+
+      const handover = await handovers.addChangePoint({ id: found.id, changePoint, account: req.account });
+      res.status(201).json({ handover });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+router.delete(
+  '/handovers/:id/change-points/:changePointId',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const found = await handovers.findHandover(req.params.id);
+      if (!found) throw notFound('Shift handover');
+
+      await requireScope(req.account, found.orgUnitId, { write: true });
+
+      const changePointId = parseId(req.params.changePointId);
+      if (changePointId === null) throw notFound('Change point');
+
+      const handover = await handovers.deleteChangePoint({ id: found.id, changePointId, account: req.account });
       res.json({ handover });
     } catch (error) {
       handleError(error, res, next);
