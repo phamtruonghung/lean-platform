@@ -104,6 +104,7 @@ abstract final class DestinationGroupNames {
   static const String quality = 'Quality';
   static const String actions = 'Actions';
   static const String safety = 'Safety';
+  static const String production = 'Production';
   static const String insights = 'Insights';
   static const String administration = 'Administration';
 
@@ -113,6 +114,7 @@ abstract final class DestinationGroupNames {
     actions,
     quality,
     safety,
+    production,
     insights,
     administration,
   ];
@@ -593,6 +595,25 @@ const List<Destination> platformDestinations = [
     path: Routes.bodyParts,
     roles: {Roles.admin},
     group: DestinationGroupNames.safety,
+  ),
+  // The Production Module's Destination (issue #339, spec #332): the Shift
+  // handover a Section's Team Leaders sign at each shift boundary. One entry,
+  // at the Section chooser, because both of the Module's Screens are reached
+  // through a Section — its board (`/production/sections/:id/board`) and one
+  // shift's handover beneath it — and every address under
+  // `/production/sections` lights this entry (`selectedDestinationPath`).
+  //
+  // Offered to every approved Account, no `roles` set: Team Leader is a Job
+  // role, not an account role (ADR-0054), so the server's Grant check on the
+  // Section is the only gate, and a role here would hide a door the routes
+  // open to whoever holds the Section. Filed after Safety, beside the other
+  // Modules that file behind Actions, so ADR-0032's placement of Actions
+  // straight after Maintenance stays as it was.
+  Destination(
+    label: 'Shift handovers',
+    icon: Icons.swap_horiz_outlined,
+    path: Routes.production,
+    group: DestinationGroupNames.production,
   ),
   // Approvals and Accounts administer the Platform itself — who may sign in,
   // and what they may reach — rather than the plant's workforce, so they sit

@@ -26,6 +26,7 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 import 'package:lean_platform/quality/quality_api.dart';
+import 'package:lean_platform/production/production_api.dart';
 import 'package:lean_platform/safety/safety_api.dart';
 import 'package:lean_platform/widgets/signature_file_picker.dart';
 
@@ -2545,6 +2546,13 @@ class FakeWire {
     this.effectivenessStatus = 200,
     this.effectivenessMessage =
         "recording a CAPA's effectiveness check needs Quality authority at its Org Unit",
+    // The Production Module's Shift handover (issue #339).
+    Map<String, Map<String, dynamic>>? sectionDays,
+    Map<String, List<Map<String, dynamic>>>? sectionAssets,
+    Map<String, Map<String, dynamic>>? handovers,
+    this.submitHandoverStatus = 200,
+    this.submitHandoverRefusal,
+    this.acknowledgedLatencyMinutes = 95,
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -2622,7 +2630,205 @@ class FakeWire {
         bodyParts = bodyParts ?? [],
         safetyIncidents = safetyIncidents ?? {},
         safetyObservations = safetyObservations ?? {},
-        capas = capas ?? {};
+        capas = capas ?? {},
+        sectionDays = sectionDays ?? {},
+        sectionAssets = sectionAssets ?? {},
+        handovers = handovers ?? {};
+
+  /// `GET /api/production/sections/:orgUnitId/handovers` (issue #339) — a
+  /// Section's production day, keyed by the Section's id, as
+  /// [sectionDayJson] builds it. The fake answers the scripted day whatever
+  /// `?date=` asked for; every read is in [productionReads] for a test to
+  /// assert the day it asked for.
+  final Map<String, Map<String, dynamic>> sectionDays;
+
+  /// `GET /api/production/sections/:orgUnitId/assets` — a Section's active
+  /// Assets, keyed by the Section's id.
+  final Map<String, List<Map<String, dynamic>>> sectionAssets;
+
+  /// Every Shift handover the fake holds, keyed by id, as
+  /// [shiftHandoverJson] builds it. Each write changes the record and answers
+  /// it whole, the way the real routes do.
+  final Map<String, Map<String, dynamic>> handovers;
+
+  /// `POST /api/production/handovers/:id/submit` — a status other than 200
+  /// answers [submitHandoverRefusal] as the body (submit's
+  /// `INCOMPLETE_HANDOVER` refusal, with its named gaps).
+  int submitHandoverStatus;
+  Map<String, dynamic>? submitHandoverRefusal;
+
+  /// The latency the server would report once a handover is acknowledged —
+  /// minutes from the shift's own start, which the fake does not compute.
+  num acknowledgedLatencyMinutes;
+
+  /// Every Production read that reached the wire.
+  final List<Uri> productionReads = [];
+
+  /// Every Production write that reached the wire: method, path, decoded body
+  /// (null for a DELETE) — so a test asserts what was sent, and what was not.
+  final List<(String, String, Map<String, dynamic>?)> productionWrites = [];
+
+  int _productionSequence = 0;
+
+  Map<String, dynamic>? _shiftOf(String handoverId) {
+    for (final day in sectionDays.values) {
+      for (final shift in day['shifts'] as List<dynamic>) {
+        final handover = (shift as Map<String, dynamic>)['handover'] as Map<String, dynamic>?;
+        if (handover != null && handover['id'] == handoverId) return shift;
+      }
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _assetOf(String orgUnitId, String assetId) {
+    for (final asset in sectionAssets[orgUnitId] ?? const <Map<String, dynamic>>[]) {
+      if (asset['id'] == assetId) return asset;
+    }
+    return null;
+  }
+
+  /// The Production Module's routes (issue #339), or null for any other path.
+  http.Response? _production(http.Request request) {
+    final path = request.url.path;
+    const base = '/api/production';
+    if (!path.startsWith('$base/')) return null;
+    final segments = path.substring(base.length + 1).split('/');
+    final method = request.method;
+    Map<String, dynamic>? body;
+    if (method != 'GET' && request.body.isNotEmpty) {
+      body = jsonDecode(request.body) as Map<String, dynamic>;
+    }
+    http.Response answer(Map<String, dynamic> handover, [int status = 200]) =>
+        http.Response(jsonEncode({'handover': handover}), status);
+
+    if (method == 'GET') {
+      productionReads.add(request.url);
+      if (segments.length == 3 && segments[0] == 'sections' && segments[2] == 'handovers') {
+        final day = sectionDays[segments[1]];
+        if (day == null) return http.Response(jsonEncode({'message': 'Org Unit not found'}), 404);
+        return http.Response(jsonEncode(day), 200);
+      }
+      if (segments.length == 3 && segments[0] == 'sections' && segments[2] == 'assets') {
+        return http.Response(
+          jsonEncode({
+            'section': {'id': segments[1]},
+            'assets': sectionAssets[segments[1]] ?? const [],
+          }),
+          200,
+        );
+      }
+      if (segments.length == 2 && segments[0] == 'handovers') {
+        final handover = handovers[segments[1]];
+        if (handover == null) return http.Response(jsonEncode({'message': 'Shift handover not found'}), 404);
+        return answer(handover);
+      }
+      return http.Response('{}', 404);
+    }
+
+    productionWrites.add((method, path, body));
+
+    if (method == 'POST' && segments.length == 1 && segments[0] == 'handovers') {
+      final orgUnitId = body!['orgUnitId'] as String;
+      final shiftInstanceId = body['shiftInstanceId'] as String;
+      final id = 'h${++_productionSequence}';
+      final handover = shiftHandoverJson(id, orgUnitId: orgUnitId, shiftInstanceId: shiftInstanceId);
+      handovers[id] = handover;
+      return answer(handover, 201);
+    }
+
+    if (segments.length < 2 || segments[0] != 'handovers') return http.Response('{}', 404);
+    final handover = handovers[segments[1]];
+    if (handover == null) return http.Response(jsonEncode({'message': 'Shift handover not found'}), 404);
+    final rest = segments.sublist(2);
+
+    if (method == 'PATCH' && rest.isEmpty) {
+      handover.addAll(body!);
+      return answer(handover);
+    }
+    if (method == 'PUT' && rest.length == 2 && rest[0] == 'machine-lines') {
+      final asset = _assetOf(handover['orgUnitId'] as String, rest[1]) ?? {'id': rest[1], 'code': '', 'name': ''};
+      final lines = (handover['machineLines'] as List<dynamic>)
+        ..removeWhere((line) => (line as Map<String, dynamic>)['assetId'] == rest[1]);
+      lines.add({
+        'id': 'ml${++_productionSequence}',
+        'assetId': rest[1],
+        'assetCode': asset['code'],
+        'assetName': asset['name'],
+        ...body!,
+      });
+      return answer(handover);
+    }
+    if (method == 'POST' && rest.length == 1 && rest[0] == 'change-points') {
+      final dimension = body!['dimension'] as String;
+      final grouped = handover['changePoints'] as Map<String, dynamic>;
+      (grouped[dimension] as List<dynamic>).add(
+        changePointJson(
+          'cp${++_productionSequence}',
+          dimension: dimension,
+          description: body['description'] as String,
+          watchNote: body['watchNote'] as String,
+        ),
+      );
+      return answer(handover, 201);
+    }
+    if (method == 'DELETE' && rest.length == 2 && rest[0] == 'change-points') {
+      for (final group in (handover['changePoints'] as Map<String, dynamic>).values) {
+        (group as List<dynamic>).removeWhere((point) => (point as Map<String, dynamic>)['id'] == rest[1]);
+      }
+      return answer(handover);
+    }
+    if (method == 'POST' && rest.length == 1 && rest[0] == 'actions') {
+      final open = handover['openActions'] as List<dynamic>;
+      final action = open.cast<Map<String, dynamic>>().firstWhere((each) => each['id'] == body!['actionId']);
+      open.remove(action);
+      (handover['actions'] as List<dynamic>).add({
+        'id': 'l${++_productionSequence}',
+        'disposition': body!['disposition'],
+        'ownerEmployeeId': body['ownerEmployeeId'],
+        'ownerName': null,
+        'closureNote': body['closureNote'],
+        'ageShifts': body['disposition'] == 'closed' ? 0 : 1,
+        'action': action,
+      });
+      return answer(handover, 201);
+    }
+    if (method == 'POST' && rest.length == 1 && rest[0] == 'submit') {
+      if (submitHandoverStatus != 200) {
+        return http.Response(jsonEncode(submitHandoverRefusal ?? const {}), submitHandoverStatus);
+      }
+      handover['status'] = 'submitted';
+      handover['submittedAt'] = '2026-05-06T07:05:00Z';
+      return answer(handover);
+    }
+    if (method == 'POST' && rest.length == 1 && rest[0] == 'acknowledge') {
+      handover['status'] = 'acknowledged';
+      handover['acknowledgedAt'] = '2026-05-06T08:35:00Z';
+      handover['acknowledgementNote'] = body!['note'];
+      for (final result in body['changePointResults'] as List<dynamic>) {
+        final answered = result as Map<String, dynamic>;
+        for (final group in (handover['changePoints'] as Map<String, dynamic>).values) {
+          for (final point in (group as List<dynamic>).cast<Map<String, dynamic>>()) {
+            if (point['id'] == answered['changePointId']) {
+              point['watchResult'] = answered['result'];
+              point['watchResultNote'] = answered['note'];
+            }
+          }
+        }
+      }
+      // The day the board reads again: the live handover acknowledged, its
+      // latency the server's, and the unacknowledged exception gone.
+      final shift = _shiftOf(handover['id'] as String);
+      if (shift != null) {
+        final summary = shift['handover'] as Map<String, dynamic>;
+        summary['status'] = 'acknowledged';
+        summary['acknowledgedAt'] = handover['acknowledgedAt'];
+        shift['acknowledgementLatencyMinutes'] = acknowledgedLatencyMinutes;
+        (shift['exceptions'] as List<dynamic>).remove('unacknowledged');
+      }
+      return answer(handover);
+    }
+    return http.Response('{}', 404);
+  }
 
   /// `GET /api/quality/products` (issue #203) — the Product catalogue.
   List<Map<String, dynamic>> products;
@@ -9849,9 +10055,146 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'action': action}), 200);
         }
+        final production = _production(request);
+        if (production != null) return production;
         return http.Response('{}', 404);
       });
 }
+
+/// One Shift handover as `GET /api/production/handovers/:id` sends it
+/// (issue #339) — the client-side counterpart of the backend's own
+/// `getHandoverDetail`. A draft by default: no snapshot numbers, no lines.
+Map<String, dynamic> shiftHandoverJson(
+  String id, {
+  required String orgUnitId,
+  required String shiftInstanceId,
+  String status = 'draft',
+  String sectionName = 'Self-Closing',
+  String productionDate = '2026-05-05',
+  bool? late,
+  String? authorDisplayName,
+  bool changePointsNone = false,
+  Map<String, dynamic> snapshot = const {},
+  List<Map<String, dynamic>> snapshotGaps = const [],
+  List<Map<String, dynamic>> machineLines = const [],
+  Map<String, List<Map<String, dynamic>>> changePoints = const {},
+  List<Map<String, dynamic>> actions = const [],
+  List<Map<String, dynamic>> openActions = const [],
+}) =>
+    {
+      'id': id,
+      'handoverNo': 'HO-$id',
+      'orgUnitId': orgUnitId,
+      'shiftInstanceId': shiftInstanceId,
+      'productionDate': productionDate,
+      'status': status,
+      'version': 1,
+      'late': late,
+      'authorDisplayName': authorDisplayName,
+      'submittedAt': status == 'draft' ? null : '2026-05-06T07:05:00Z',
+      'acknowledgedAt': status == 'acknowledged' ? '2026-05-06T08:35:00Z' : null,
+      'acknowledgementNote': null,
+      'jointWalkDone': false,
+      'criticalItems': null,
+      'deviationReason': null,
+      'changePointsNone': changePointsNone,
+      'snapshot': {
+        for (final field in const [
+          'oee', 'availability', 'performance', 'quality', 'plannedProductionMinutes', 'runMinutes',
+          'unplannedDowntimeMinutes', 'goodQuantity', 'rejectQuantity', 'reworkQuantity',
+          'openStopCount', 'openQualityIssueCount', 'safetyEventCount',
+        ])
+          field: snapshot[field],
+      },
+      'snapshotGaps': [...snapshotGaps],
+      'section': {'id': orgUnitId, 'code': 'SC', 'name': sectionName},
+      'shiftInstance': {
+        'id': shiftInstanceId,
+        'productionDate': productionDate,
+        'startsAt': '2026-05-05T23:00:00Z',
+        'endsAt': '2026-05-06T07:00:00Z',
+        'status': 'closed',
+      },
+      'machineLines': [...machineLines],
+      'changePoints': {
+        for (final dimension in const ['man', 'machine', 'material', 'method'])
+          dimension: [...?changePoints[dimension]],
+      },
+      'actions': [...actions],
+      'openActions': [...openActions],
+    };
+
+/// One Change point as a handover's `changePoints` group carries it.
+Map<String, dynamic> changePointJson(
+  String id, {
+  required String dimension,
+  required String description,
+  required String watchNote,
+}) =>
+    {
+      'id': id,
+      'dimension': dimension,
+      'description': description,
+      'watchNote': watchNote,
+      'employeeId': null,
+      'employeeName': null,
+      'watchResult': null,
+      'watchResultNote': null,
+      'watchAnsweredByAccountId': null,
+      'watchAnsweredAt': null,
+    };
+
+/// One of a Section's open Actions, as a draft's `openActions` carries it.
+Map<String, dynamic> handoverOpenActionJson(String id, String actionNo, String title) => {
+      'id': id,
+      'actionNo': actionNo,
+      'title': title,
+      'status': 'open',
+      'type': 'measure',
+      'ownerEmployeeId': null,
+      'ownerName': null,
+      'dueDate': null,
+      'pdcaPhase': null,
+      'lastCheckOutcome': null,
+    };
+
+/// One active Asset of a Section, as `GET .../sections/:id/assets` sends it.
+Map<String, dynamic> sectionAssetJson(String id, String code, String name) =>
+    {'id': id, 'code': code, 'name': name, 'orgUnitId': '30', 'orgUnitName': 'Cutting'};
+
+/// One shift instance of a Section's day, as `getSectionDay` sends it.
+Map<String, dynamic> sectionShiftJson(
+  String shiftInstanceId, {
+  String startsAt = '2026-05-05T23:00:00Z',
+  String endsAt = '2026-05-06T07:00:00Z',
+  Map<String, dynamic>? handover,
+  bool? late,
+  num? acknowledgementLatencyMinutes,
+  List<String> exceptions = const [],
+}) =>
+    {
+      'shiftInstanceId': shiftInstanceId,
+      'startsAt': startsAt,
+      'endsAt': endsAt,
+      'status': 'closed',
+      'handover': handover,
+      'late': late,
+      'acknowledgementLatencyMinutes': acknowledgementLatencyMinutes,
+      'exceptions': [...exceptions],
+    };
+
+/// A Section's production day, as `GET .../sections/:id/handovers` sends it.
+Map<String, dynamic> sectionDayJson(
+  String orgUnitId, {
+  String name = 'Self-Closing',
+  String productionDate = '2026-05-05',
+  required List<Map<String, dynamic>> shifts,
+}) =>
+    {
+      'section': {'id': orgUnitId, 'code': 'SC', 'name': name},
+      'productionDate': productionDate,
+      'shifts': shifts,
+    };
 
 /// One Action as `/api/actions` sends it (issue #176) — the client-side
 /// counterpart of the backend's own `toAction`.
@@ -10274,6 +10617,8 @@ Future<void> pumpApp(
       qualityApi: QualityApi(client: client),
       // The Safety Module's own client over the same faked wire (issue #226).
       safetyApi: SafetyApi(client: client),
+      // The Production Module's own client over the same faked wire (issue #339).
+      productionApi: ProductionApi(client: client),
       // The floor surface's device credential, faked at the same seam.
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       // The file input a browser would show, faked: a test says what was chosen.

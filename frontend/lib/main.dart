@@ -30,6 +30,7 @@ import 'platform/local_auth_gateway.dart';
 import 'platform/platform_app.dart';
 import 'platform/sign_out_on_unauthorized.dart';
 import 'quality/quality_api.dart';
+import 'production/production_api.dart';
 import 'safety/safety_api.dart';
 import 'supabase_config.dart';
 
@@ -64,6 +65,7 @@ Future<void> main() async {
       actionsApi: ActionsApi(client: apiClient),
       qualityApi: QualityApi(client: apiClient),
       safetyApi: SafetyApi(client: apiClient),
+      productionApi: ProductionApi(client: apiClient),
       floorDeviceGateway: const ConfiguredFloorDeviceGateway(),
     ),
   );
