@@ -37,11 +37,20 @@ date a clock happened to show at the time.
 _Avoid_: Calendar day, date, 24-hour period
 
 **Org Unit**:
-A node in a Site's hierarchy — area, department, line, cell or work centre.
-Org Units form a tree, so "everything under Line 3" is a single question. What a
-KPI is measured against, what a person is granted access to, and where an Asset
-sits are all Org Units.
+A node in a Site's hierarchy — area, department, section, line, cell or work
+centre. Org Units form a tree, so "everything under Line 3" is a single question.
+What a KPI is measured against, what a person is granted access to, and where an
+Asset sits are all Org Units.
 _Avoid_: Department (that is one kind of Org Unit), team, group, node
+
+**Section**:
+The Org Unit that hands a shift over: a level between a department and an area,
+so Cutting, Shaping, Raschel and Warping sit beneath one as areas. SC
+(Self-Closing) and TX are sections. A Section is where a Shift handover is
+recorded, which is why the word names a level of the tree and not any group of
+people who happen to work together.
+_Avoid_: Team, group, sub-department, shop floor (the plant's word in speech,
+not the model's)
 
 **Entry point**:
 The topmost Org Unit an Account is granted in a Site — where its own scope
@@ -495,6 +504,51 @@ may be several cycles long with every one of them kept.
 _Avoid_: Step (a step is what a Job plan and a Work order are made of), stage,
 status (the Action's own status is the schema's five words, and it is not one of
 these), PDCA stage
+
+### Production
+
+**Shift handover**:
+The record a Section's outgoing Team Leader completes at the end of a shift
+instance and the incoming Team Leader acknowledges: one line per machine, the
+numbers the shift closed on, the abnormalities and change points the next shift
+inherits, and the actions carried forward. One per Section per shift instance,
+and it is the transfer of responsibility rather than a report about the shift.
+_Avoid_: Shift report (a report is a read of the shift, not a transfer of
+responsibility), shift log, handover sheet, turnover, briefing, end-of-shift
+checklist
+
+**Machine status line**:
+One line of a Shift handover for one Asset in the Section: the state it was left
+in, the reason when that state is not normal running, and what the incoming shift
+must watch. Every active Asset in the Section has one, which is what makes "the
+machine nobody mentioned" impossible.
+_Avoid_: Machine check, equipment row, asset entry, checklist item
+
+**Change point**:
+A condition the incoming shift will meet that differs from what the outgoing
+shift had — a different person, machine setting, material lot or method —
+recorded because a change in any of the four can worsen safety, quality, speed or
+cost, and because the watch it triggers is the handover's job to start. Distinct
+from an abnormality: a change point is expected and watched, an abnormality is
+found and fixed.
+_Avoid_: Variance, deviation (an abnormality is the deviation), variation
+
+**Handover acknowledgement**:
+The incoming Team Leader's own act of accepting the Section and the shift,
+recorded with who and when, and never inferred from the handover having been
+submitted. Until it happens the handover is unacknowledged, and it stays visible
+on the board rather than being counted as received.
+_Avoid_: Sign-off, acceptance (in prose it is fine; the record is the
+acknowledgement), confirmation (an Attendance sheet is confirmed, a handover is
+acknowledged)
+
+**Carried action**:
+An Action a Shift handover hands to the next shift, which every following
+handover must disposition — carried, reassigned, or closed with the evidence that
+closed it — rather than retype. Its age is counted in shifts, which is what
+separates a countermeasure still being worked from one that has been pasted
+along for a fortnight.
+_Avoid_: Follow-up, pending item, open issue, outstanding task
 
 ### The numbers
 
