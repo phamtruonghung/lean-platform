@@ -75,7 +75,13 @@ const kpiRegistry = {
   // the confirmed ones — people/kpi-registry.js argues the two entries, the
   // codes it deliberately leaves unclaimed, and why these two use the board's
   // own period where the injury rates above use a rolling window.
-  ...people.kpiRegistry
+  ...people.kpiRegistry,
+  // Production's own (issue #340, ADR-0054): the share of a section's ended
+  // shifts whose handover the incoming Team Leader acknowledged, and the
+  // median minutes that acknowledgement took — production/kpi-registry.js
+  // argues both, and why they are read live while a handover's own snapshot
+  // is frozen.
+  ...production.kpiRegistry
 };
 
 // ---------------------------------------------------------------------------
