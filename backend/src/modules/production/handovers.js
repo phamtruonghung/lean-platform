@@ -13,9 +13,16 @@
  * draft one Asset at a time and checked for completeness at submit. Change
  * points (issue #336) are added to and removed from a draft one at a time, and
  * submit asks that the 4M block be answered — at least one change point, or
- * "none this shift" declared. What is still not done, each on its own later
- * ticket: actions, acknowledge, amend. A handover therefore reads back with
- * its machine lines, its change points and an empty action list.
+ * "none this shift" declared. Carried actions (issue #337) link the Section's
+ * open Actions to a draft one at a time, each with its disposition, and submit
+ * asks that every one of them be dispositioned. What is still not done, each
+ * on its own later ticket: acknowledge, amend.
+ *
+ * Nothing here writes to `action_items` or `action_phases`. A handover records
+ * what it decided about an Action — carried, reassigned, closed with the
+ * evidence — and the read joins the Action's live row beside it; closing the
+ * Action, moving its phase or changing its owner is the Actions Module's own
+ * act on its own Screen (ADR-0006, ADR-0033).
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -468,7 +475,21 @@ async function requireComplete(client, handover) {
   );
   const unansweredBlocks = block.change_points_none || block.has_change_points ? [] : ['changePoints'];
 
-  if (missingAssets.length === 0 && incompleteLines.length === 0 && unansweredBlocks.length === 0) return;
+  // Every open Action of the Section (issue #337), asked of the Action log as
+  // it stands at submit — not the set that existed when the draft was opened.
+  // An Action raised mid-shift is exactly the one the incoming shift has not
+  // heard of, so it must not slip past the handover unanswered.
+  const { rows: undispositionedActions } = await client.query(
+    `SELECT ai.id, ai.action_no AS "actionNo", ai.title
+       FROM (${SECTION_OPEN_ACTIONS_SQL}) ai
+      ORDER BY ai.action_no, ai.id`,
+    [handover.org_unit_id, handover.id]
+  );
+
+  if (
+    missingAssets.length === 0 && incompleteLines.length === 0 &&
+    unansweredBlocks.length === 0 && undispositionedActions.length === 0
+  ) return;
 
   const parts = [];
   if (missingAssets.length > 0) {
@@ -485,8 +506,13 @@ async function requireComplete(client, handover) {
       'add a change point, or declare none (changePointsNone)'
     );
   }
+  if (undispositionedActions.length > 0) {
+    parts.push(
+      `no disposition for open action ${undispositionedActions.map((action) => action.actionNo).join(', ')}`
+    );
+  }
   const error = httpError(409, `This handover cannot be submitted: ${parts.join('; ')}`, 'INCOMPLETE_HANDOVER');
-  error.details = { missingAssets, incompleteLines, unansweredBlocks };
+  error.details = { missingAssets, incompleteLines, unansweredBlocks, undispositionedActions };
   throw error;
 }
 
@@ -769,6 +795,219 @@ async function deleteChangePoint({ id, changePointId, account }) {
   return getHandoverDetail(id);
 }
 
+// A Carried action's disposition: the CHECK constraint on
+// `shift_handover_actions`, mirrored so a bad value is a 400 naming the set.
+const DISPOSITIONS = ['carried', 'reassigned', 'closed'];
+
+// The Action statuses a handover owes a disposition for. `blocked` is not
+// among them: a blocked Action is waiting on something outside the shift, and
+// `done` and `cancelled` are finished.
+const OPEN_ACTION_STATUSES = ['open', 'in_progress'];
+
+// The Section's ($1) open Actions not yet linked in the handover ($2): every
+// Action whose Org Unit sits in the Section's subtree, by `org_units.path`.
+// Read by the draft's form as its candidates and by submit as what is left.
+const SECTION_OPEN_ACTIONS_SQL = `
+  SELECT ai.id, ai.action_no, ai.title
+    FROM action_items ai
+    JOIN org_units au ON au.id = ai.org_unit_id
+    JOIN org_units section ON section.id = $1
+   WHERE ai.status IN ('open', 'in_progress')
+     AND au.path <@ section.path
+     AND NOT EXISTS (
+           SELECT 1 FROM shift_handover_actions l
+            WHERE l.handover_id = $2 AND l.action_id = ai.id)
+`;
+
+// The Action's own fields as the Action log holds them now — its live status,
+// owner and due date, the phase it is waiting on and what its latest Check
+// found (ADR-0033) — so a handover's link and the log are never read as two
+// truths. Read by ordinary SQL against the shared schema (ADR-0006).
+const ACTION_COLUMNS = `
+  ai.id AS action_id, ai.action_no, ai.title, ai.status AS action_status,
+  ai.action_type, ai.owner_employee_id AS action_owner_employee_id,
+  ae.display_name AS action_owner_name,
+  to_char(ai.due_date, 'YYYY-MM-DD') AS action_due_date,
+  op.phase AS pdca_phase, lc.outcome AS last_check_outcome
+`;
+
+const ACTION_JOINS = `
+  LEFT JOIN employees ae ON ae.id = ai.owner_employee_id
+  LEFT JOIN LATERAL (
+    SELECT p.phase FROM action_phases p
+     WHERE p.action_item_id = ai.id AND p.completed_at IS NULL
+     ORDER BY p.cycle
+     LIMIT 1
+  ) op ON TRUE
+  LEFT JOIN LATERAL (
+    SELECT p.outcome FROM action_phases p
+     WHERE p.action_item_id = ai.id AND p.phase = 'check' AND p.completed_at IS NOT NULL
+     ORDER BY p.cycle DESC
+     LIMIT 1
+  ) lc ON TRUE
+`;
+
+// A link's age in shifts, derived on every read and never stored. Counting
+// back from this handover through the Section's earlier sealed handovers
+// (submitted or acknowledged, live versions only, by `shift_instances.starts_at`),
+// the run is unbroken while each carried the same Action: a `carried` link
+// extends it, a `reassigned` one is where it began (a reassignment starts the
+// Action's run afresh under its new owner, so it counts and stops the count),
+// and a `closed` link or a handover that did not link the Action at all breaks
+// it. This handover counts 1 for itself whatever its status — a draft's own
+// link included — except that a link it closes is 0 and one it reassigns is 1.
+const ACTION_AGE_SQL = `
+  CASE l.disposition
+    WHEN 'closed' THEN 0
+    WHEN 'reassigned' THEN 1
+    ELSE 1 + LEAST(COALESCE(run.first_stop - 1, run.n), COALESCE(run.first_reassigned, run.n))
+  END AS age_shifts
+`;
+
+const ACTION_AGE_JOIN = `
+  LEFT JOIN LATERAL (
+    SELECT count(*) AS n,
+           min(prior.rn) FILTER (WHERE prior.disposition IS NULL OR prior.disposition = 'closed')
+             AS first_stop,
+           min(prior.rn) FILTER (WHERE prior.disposition = 'reassigned') AS first_reassigned
+      FROM (
+        SELECT row_number() OVER (ORDER BY psi.starts_at DESC, ph.id DESC) AS rn, pl.disposition
+          FROM shift_handovers ph
+          JOIN shift_instances psi ON psi.id = ph.shift_instance_id
+          LEFT JOIN shift_handover_actions pl ON pl.handover_id = ph.id AND pl.action_id = l.action_id
+         WHERE ph.org_unit_id = h.org_unit_id
+           AND ph.status IN ('submitted', 'acknowledged')
+           AND ph.superseded_at IS NULL
+           AND psi.starts_at < hsi.starts_at
+      ) prior
+  ) run ON TRUE
+`;
+
+function toAction(row) {
+  return {
+    id: row.action_id,
+    actionNo: row.action_no,
+    title: row.title,
+    status: row.action_status,
+    type: row.action_type,
+    ownerEmployeeId: row.action_owner_employee_id,
+    ownerName: row.action_owner_name ?? null,
+    dueDate: row.action_due_date,
+    pdcaPhase: row.pdca_phase ?? null,
+    lastCheckOutcome: row.last_check_outcome ?? null
+  };
+}
+
+// The link and the Action side by side: the link's own owner (the one a
+// reassignment named) beside the Action's live owner, which only the Actions
+// Module changes.
+function toHandoverAction(row) {
+  return {
+    id: row.id,
+    disposition: row.disposition,
+    ownerEmployeeId: row.owner_employee_id,
+    ownerName: row.owner_name ?? null,
+    closureNote: row.closure_note,
+    ageShifts: Number(row.age_shifts),
+    action: toAction(row)
+  };
+}
+
+// Linking one of the Section's open Actions to a draft with its disposition.
+// Each disposition owes its own evidence at the moment it is written, because
+// the person dispositioning is the one who knows: a reassignment names the new
+// owner, a closure says what closed it — "closed" with no evidence is the
+// pasted-forward action this record exists to catch. A field that means
+// nothing for the disposition chosen is refused rather than stored silently.
+async function linkAction({ id, link, account }) {
+  await withActor(account.id, async (client) => {
+    const handover = await lockDraft(client, id);
+
+    if (!DISPOSITIONS.includes(link.disposition)) {
+      throw httpError(400, `disposition must be one of: ${DISPOSITIONS.join(', ')}`);
+    }
+    if (link.disposition === 'reassigned' && link.ownerEmployeeId === null) {
+      throw httpError(
+        400, 'ownerEmployeeId is required: a reassigned action names who now owns it', 'OWNER_REQUIRED'
+      );
+    }
+    if (link.disposition !== 'reassigned' && link.ownerEmployeeId !== null) {
+      throw httpError(400, 'ownerEmployeeId is only for a reassigned action');
+    }
+    const closureNote = blankToNull(link.closureNote);
+    if (link.disposition === 'closed' && closureNote === null) {
+      throw httpError(
+        400,
+        'closureNote is required: say what closed this action — the evidence is the point',
+        'CLOSURE_NOTE_REQUIRED'
+      );
+    }
+    if (link.disposition !== 'closed' && closureNote !== null) {
+      throw httpError(400, 'closureNote is only for a closed action');
+    }
+
+    const { rows: [action] } = await client.query(
+      `SELECT ai.id, ai.action_no, ai.status, au.path <@ section.path AS in_section
+         FROM action_items ai
+         JOIN org_units au ON au.id = ai.org_unit_id
+         JOIN org_units section ON section.id = $2
+        WHERE ai.id = $1`,
+      [link.actionId, handover.org_unit_id]
+    );
+    if (!action) throw notFound('Action');
+    if (!action.in_section) {
+      throw httpError(400, `Action ${action.action_no} is not in this handover's section`, 'ACTION_NOT_IN_SECTION');
+    }
+    if (!OPEN_ACTION_STATUSES.includes(action.status)) {
+      throw httpError(
+        400,
+        `Action ${action.action_no} is ${action.status}: only an open or in-progress action is handed over`,
+        'ACTION_NOT_OPEN'
+      );
+    }
+
+    if (link.ownerEmployeeId !== null) {
+      const { rows: [employee] } = await client.query(
+        'SELECT id FROM employees WHERE id = $1',
+        [link.ownerEmployeeId]
+      );
+      if (!employee) throw notFound('Employee');
+    }
+
+    try {
+      await client.query(
+        `INSERT INTO shift_handover_actions (handover_id, action_id, disposition, owner_employee_id, closure_note)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [handover.id, action.id, link.disposition, link.ownerEmployeeId, closureNote]
+      );
+    } catch (error) {
+      if (error.code === '23505' && error.constraint === 'shift_handover_actions_action_unique') {
+        throw httpError(
+          409, `Action ${action.action_no} is already in this handover`, 'ACTION_ALREADY_LINKED'
+        );
+      }
+      throw error;
+    }
+  });
+
+  return getHandoverDetail(id);
+}
+
+// Removing one Action's link from a draft; 404 when it is not this handover's.
+// The Action itself is untouched — only the handover's word about it goes.
+async function unlinkAction({ id, linkId, account }) {
+  await withActor(account.id, async (client) => {
+    const handover = await lockDraft(client, id);
+    const { rowCount } = await client.query(
+      'DELETE FROM shift_handover_actions WHERE handover_id = $1 AND id = $2',
+      [handover.id, linkId]
+    );
+    if (rowCount === 0) throw notFound('Handover action');
+  });
+
+  return getHandoverDetail(id);
+}
+
 // Writing a draft's own header fields. The route has already decided which
 // fields were sent and that each is the right kind of value; a field left out
 // is left as it is.
@@ -804,13 +1043,18 @@ async function listSectionAssets(section) {
 
 // One handover as the detail Screen reads it: the record, its Section and
 // shift instance, and its three line lists — machine lines ordered by Asset
-// code, change points grouped by dimension in insertion order, actions empty
-// until the slice that writes them.
+// code, change points grouped by dimension in insertion order, actions in the
+// order they were linked — and, on a draft, `openActions`: the Section's open
+// Actions it has not yet linked, the candidates its form offers. A sealed
+// handover offers none; what it decided is its `actions`.
 async function getHandoverDetail(id) {
   const handover = await findHandover(id);
   if (!handover) throw notFound('Shift handover');
 
-  const [{ rows: [section] }, shiftInstance, { rows: lineRows }, { rows: changePointRows }] = await Promise.all([
+  const [
+    { rows: [section] }, shiftInstance, { rows: lineRows }, { rows: changePointRows },
+    { rows: actionRows }, { rows: openActionRows }
+  ] = await Promise.all([
     getPool().query('SELECT id, code, name FROM org_units WHERE id = $1', [handover.orgUnitId]),
     findShiftInstance(handover.shiftInstanceId),
     getPool().query(
@@ -829,7 +1073,31 @@ async function getHandoverDetail(id) {
         WHERE cp.handover_id = $1
         ORDER BY cp.id`,
       [handover.id]
-    )
+    ),
+    getPool().query(
+      `SELECT l.id, l.disposition, l.owner_employee_id, le.display_name AS owner_name, l.closure_note,
+              ${ACTION_COLUMNS}, ${ACTION_AGE_SQL}
+         FROM shift_handover_actions l
+         JOIN shift_handovers h ON h.id = l.handover_id
+         JOIN shift_instances hsi ON hsi.id = h.shift_instance_id
+         JOIN action_items ai ON ai.id = l.action_id
+         LEFT JOIN employees le ON le.id = l.owner_employee_id
+         ${ACTION_JOINS}
+         ${ACTION_AGE_JOIN}
+        WHERE l.handover_id = $1
+        ORDER BY l.id`,
+      [handover.id]
+    ),
+    handover.status === 'draft'
+      ? getPool().query(
+        `SELECT ${ACTION_COLUMNS}
+           FROM (${SECTION_OPEN_ACTIONS_SQL}) candidate
+           JOIN action_items ai ON ai.id = candidate.id
+           ${ACTION_JOINS}
+          ORDER BY ai.due_date NULLS LAST, ai.action_no, ai.id`,
+        [handover.orgUnitId, handover.id]
+      )
+      : { rows: [] }
   ]);
 
   return {
@@ -844,7 +1112,8 @@ async function getHandoverDetail(id) {
     },
     machineLines: lineRows.map(toMachineLine),
     changePoints: groupChangePoints(changePointRows),
-    actions: []
+    actions: actionRows.map(toHandoverAction),
+    openActions: openActionRows.map(toAction)
   };
 }
 
@@ -905,6 +1174,8 @@ module.exports = {
   deleteMachineLine,
   addChangePoint,
   deleteChangePoint,
+  linkAction,
+  unlinkAction,
   updateHandover,
   getHandoverDetail,
   getSectionDay,

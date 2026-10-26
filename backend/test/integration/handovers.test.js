@@ -41,6 +41,7 @@ const insertedDowntimeReasonIds = [];
 const insertedProductIds = [];
 const insertedDefectCodeIds = [];
 const insertedEmployeeIds = [];
+const insertedActionIds = [];
 
 // The plant this file builds, filled in by test.before().
 let site;
@@ -370,6 +371,8 @@ test.after(async () => {
   await pool.query('DELETE FROM production_runs WHERE product_id = ANY($1)', [insertedProductIds]);
   // Change points cascade with their handover, and name Employees.
   await pool.query('DELETE FROM shift_handovers WHERE org_unit_id = ANY($1)', [insertedOrgUnitIds]);
+  // Action links cascaded with their handover; phases cascade with their Action.
+  await pool.query('DELETE FROM action_items WHERE id = ANY($1)', [insertedActionIds]);
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM product_cycle_times WHERE product_id = ANY($1)', [insertedProductIds]);
   await pool.query('DELETE FROM products WHERE id = ANY($1)', [insertedProductIds]);
@@ -1380,4 +1383,353 @@ test('once submitted, adding a change point, removing one and patching the heade
   const read = await get(teamLeader.token, `/handovers/${draft.id}`);
   assert.strictEqual(read.body.handover.changePointsNone, false);
   assert.deepStrictEqual(read.body.handover.changePoints.material, [point]);
+});
+
+// --- Carried actions (issue #337) -------------------------------------------
+//
+// Each test below opens its handovers on a Section of its own, with no Assets
+// (so no machine line is owed) and its own Actions: an open Action left in a
+// shared Section would hold every other test's submit at 409.
+
+const NOT_OPEN_ACTION_STATUSES = ['done', 'cancelled', 'blocked'];
+
+let actionShiftCounter = 0;
+
+async function actionSection(name) {
+  return insertOrgUnit(department.id, 'section', name);
+}
+
+// One shift instance after another, eight hours apart, on the Section named.
+async function actionShift(sectionId) {
+  const startsAt = new Date(Date.parse('2026-06-01T23:00:00Z') + actionShiftCounter * 8 * 3600 * 1000);
+  actionShiftCounter += 1;
+  const endsAt = new Date(startsAt.getTime() + 8 * 3600 * 1000);
+  const definition = await insertShiftDefinition('06:00', 'Action shift');
+  return insertShiftInstance(
+    sectionId, definition.id, startsAt.toISOString(), endsAt.toISOString(),
+    endsAt.toISOString().slice(0, 10)
+  );
+}
+
+async function openActionDraft(sectionId) {
+  const shift = await actionShift(sectionId);
+  const opened = await openHandover(teamLeader.token, { orgUnitId: sectionId, shiftInstanceId: shift.id });
+  assert.strictEqual(opened.status, 201, JSON.stringify(opened.body));
+  return opened.body.handover;
+}
+
+// Directly inserted: the raise path is the Actions Module's own, tested there.
+async function insertAction(orgUnitId, {
+  title = 'Seam wander on line 2', actionType = 'countermeasure', status = 'open',
+  ownerEmployeeId = null, dueDate = null
+} = {}) {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO action_items
+       (action_no, org_unit_id, title, action_type, status, owner_employee_id, due_date, completed_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::date, CASE WHEN $5 IN ('done', 'cancelled') THEN now() END)
+     RETURNING id, action_no, title, status`,
+    [uniqueCode('AC-HO'), orgUnitId, title, actionType, status, ownerEmployeeId, dueDate]
+  );
+  insertedActionIds.push(row.id);
+  return row;
+}
+
+async function insertPhase(actionId, cycle, phase, { completed = false, outcome = null } = {}) {
+  await pool.query(
+    `INSERT INTO action_phases (action_item_id, cycle, phase, completed_at, outcome)
+     VALUES ($1, $2, $3, CASE WHEN $4 THEN now() END, $5)`,
+    [actionId, cycle, phase, completed, outcome]
+  );
+}
+
+async function linkAction(token, handoverId, body) {
+  return json(
+    await fetch(`${base}/api/production/handovers/${handoverId}/actions`, {
+      method: 'POST',
+      headers: { ...token, 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+  );
+}
+
+async function unlinkAction(token, handoverId, linkId) {
+  return json(
+    await fetch(`${base}/api/production/handovers/${handoverId}/actions/${linkId}`, {
+      method: 'DELETE',
+      headers: token
+    })
+  );
+}
+
+// The 4M block declared none, then submitted: an asset-less Section owes
+// nothing else but its Actions.
+async function submitActionDraft(handoverId) {
+  const declared = await patchHandover(teamLeader.token, handoverId, { changePointsNone: true });
+  assert.strictEqual(declared.status, 200, JSON.stringify(declared.body));
+  return json(await submit(teamLeader.token, handoverId));
+}
+
+test('a draft links one of the Section\'s open Actions and reads it back beside the Action\'s live fields', async () => {
+  const actions = await actionSection('Actions read');
+  const area = await insertOrgUnit(actions.id, 'area', 'Sewing');
+  const owner = await insertEmployee();
+  const action = await insertAction(area.id, {
+    title: 'Guide rail worn', status: 'in_progress', ownerEmployeeId: owner.id, dueDate: '2026-06-10'
+  });
+  // Round one's Check found it effective; the Act is what it waits on.
+  await insertPhase(action.id, 1, 'plan', { completed: true });
+  await insertPhase(action.id, 1, 'do', { completed: true });
+  await insertPhase(action.id, 1, 'check', { completed: true, outcome: 'effective' });
+  await insertPhase(action.id, 1, 'act');
+  const other = await insertAction(actions.id, { title: 'Label printer jams' });
+  await insertAction(actions.id, { title: 'Blocked on a spare', status: 'blocked' });
+
+  const draft = await openActionDraft(actions.id);
+  assert.deepStrictEqual(draft.actions, []);
+  assert.deepStrictEqual(
+    draft.openActions.map((candidate) => candidate.id),
+    [action.id, other.id],
+    'open and in-progress Actions of the subtree, due first; a blocked one is not owed'
+  );
+
+  const linked = await linkAction(teamLeader.token, draft.id, { actionId: action.id, disposition: 'carried' });
+  assert.strictEqual(linked.status, 201, JSON.stringify(linked.body));
+  const [link] = linked.body.handover.actions;
+  assert.deepStrictEqual(link, {
+    id: link.id,
+    disposition: 'carried',
+    ownerEmployeeId: null,
+    ownerName: null,
+    closureNote: null,
+    ageShifts: 1,
+    action: {
+      id: action.id,
+      actionNo: action.action_no,
+      title: 'Guide rail worn',
+      status: 'in_progress',
+      type: 'countermeasure',
+      ownerEmployeeId: owner.id,
+      ownerName: owner.display_name,
+      dueDate: '2026-06-10',
+      pdcaPhase: 'act',
+      lastCheckOutcome: 'effective'
+    }
+  });
+  assert.deepStrictEqual(linked.body.handover.openActions.map((candidate) => candidate.id), [other.id]);
+
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.deepStrictEqual(read.body.handover.actions, [link]);
+
+  const duplicate = await linkAction(teamLeader.token, draft.id, { actionId: action.id, disposition: 'carried' });
+  assert.strictEqual(duplicate.status, 409, JSON.stringify(duplicate.body));
+  assert.strictEqual(duplicate.body.code, 'ACTION_ALREADY_LINKED');
+
+  const unknown = await linkAction(teamLeader.token, draft.id, { actionId: '999999999999', disposition: 'carried' });
+  assert.strictEqual(unknown.status, 404, JSON.stringify(unknown.body));
+  const malformed = await linkAction(teamLeader.token, draft.id, { actionId: 'AC-1', disposition: 'carried' });
+  assert.strictEqual(malformed.status, 400);
+
+  const elsewhere = await insertAction(otherSection.id, { title: 'Another section\'s action' });
+  const outside = await linkAction(teamLeader.token, draft.id, { actionId: elsewhere.id, disposition: 'carried' });
+  assert.strictEqual(outside.status, 400, JSON.stringify(outside.body));
+  assert.strictEqual(outside.body.code, 'ACTION_NOT_IN_SECTION');
+
+  for (const status of NOT_OPEN_ACTION_STATUSES) {
+    const finished = await insertAction(actions.id, { title: `A ${status} action`, status });
+    const refused = await linkAction(teamLeader.token, draft.id, { actionId: finished.id, disposition: 'carried' });
+    assert.strictEqual(refused.status, 400, `${status}: ${JSON.stringify(refused.body)}`);
+    assert.strictEqual(refused.body.code, 'ACTION_NOT_OPEN');
+  }
+
+  for (const disposition of [undefined, 'parked', 'CARRIED']) {
+    const bad = await linkAction(teamLeader.token, draft.id, { actionId: other.id, disposition });
+    assert.strictEqual(bad.status, 400, JSON.stringify(bad.body));
+    assert.match(bad.body.message, /disposition must be one of: carried, reassigned, closed/);
+  }
+
+  const outsiderLink = await linkAction(outsider.token, draft.id, { actionId: other.id, disposition: 'carried' });
+  assert.strictEqual(outsiderLink.status, 403);
+  const reader = await insertAccount({ grants: [{ orgUnitId: actions.id, write: false }] });
+  assert.strictEqual(
+    (await linkAction(reader.token, draft.id, { actionId: other.id, disposition: 'carried' })).status, 403
+  );
+
+  const after = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.deepStrictEqual(after.body.handover.actions, [link], 'nothing refused was linked');
+});
+
+test('a reassignment names a known owner and a closure carries its evidence, and neither touches the Action', async () => {
+  const actions = await actionSection('Actions dispositions');
+  const firstOwner = await insertEmployee();
+  const newOwner = await insertEmployee();
+  const toReassign = await insertAction(actions.id, { title: 'Reassign me', ownerEmployeeId: firstOwner.id });
+  const toClose = await insertAction(actions.id, { title: 'Close me', ownerEmployeeId: firstOwner.id });
+  const draft = await openActionDraft(actions.id);
+
+  const noOwner = await linkAction(teamLeader.token, draft.id, { actionId: toReassign.id, disposition: 'reassigned' });
+  assert.strictEqual(noOwner.status, 400, JSON.stringify(noOwner.body));
+  assert.strictEqual(noOwner.body.code, 'OWNER_REQUIRED');
+  const unknownOwner = await linkAction(teamLeader.token, draft.id, {
+    actionId: toReassign.id, disposition: 'reassigned', ownerEmployeeId: '999999999999'
+  });
+  assert.strictEqual(unknownOwner.status, 404, JSON.stringify(unknownOwner.body));
+  const ownerOnCarry = await linkAction(teamLeader.token, draft.id, {
+    actionId: toReassign.id, disposition: 'carried', ownerEmployeeId: newOwner.id
+  });
+  assert.strictEqual(ownerOnCarry.status, 400, JSON.stringify(ownerOnCarry.body));
+
+  for (const closureNote of [undefined, '   ']) {
+    const noEvidence = await linkAction(teamLeader.token, draft.id, {
+      actionId: toClose.id, disposition: 'closed', closureNote
+    });
+    assert.strictEqual(noEvidence.status, 400, JSON.stringify(noEvidence.body));
+    assert.strictEqual(noEvidence.body.code, 'CLOSURE_NOTE_REQUIRED');
+  }
+  const noteOnCarry = await linkAction(teamLeader.token, draft.id, {
+    actionId: toClose.id, disposition: 'carried', closureNote: 'Not closed'
+  });
+  assert.strictEqual(noteOnCarry.status, 400, JSON.stringify(noteOnCarry.body));
+
+  const reassigned = await linkAction(teamLeader.token, draft.id, {
+    actionId: toReassign.id, disposition: 'reassigned', ownerEmployeeId: newOwner.id
+  });
+  assert.strictEqual(reassigned.status, 201, JSON.stringify(reassigned.body));
+  const closed = await linkAction(teamLeader.token, draft.id, {
+    actionId: toClose.id, disposition: 'closed', closureNote: '  Rail replaced, 50 seams checked straight  '
+  });
+  assert.strictEqual(closed.status, 201, JSON.stringify(closed.body));
+
+  const [reassignLink, closeLink] = closed.body.handover.actions;
+  assert.strictEqual(reassignLink.disposition, 'reassigned');
+  assert.strictEqual(reassignLink.ownerEmployeeId, newOwner.id);
+  assert.strictEqual(reassignLink.ownerName, newOwner.display_name);
+  assert.strictEqual(reassignLink.ageShifts, 1);
+  // The Action's own owner is still the log's: only the Actions Module moves it.
+  assert.strictEqual(reassignLink.action.ownerEmployeeId, firstOwner.id);
+  assert.strictEqual(closeLink.disposition, 'closed');
+  assert.strictEqual(closeLink.closureNote, 'Rail replaced, 50 seams checked straight');
+  assert.strictEqual(closeLink.ageShifts, 0);
+  assert.strictEqual(closeLink.action.status, 'open', 'the read shows the Action\'s live status');
+  assert.deepStrictEqual(closed.body.handover.openActions, []);
+
+  const { rows } = await pool.query(
+    'SELECT id, status, owner_employee_id, closure_note FROM action_items WHERE id = ANY($1) ORDER BY id',
+    [[toReassign.id, toClose.id]]
+  );
+  assert.deepStrictEqual(rows, [
+    { id: toReassign.id, status: 'open', owner_employee_id: firstOwner.id, closure_note: null },
+    { id: toClose.id, status: 'open', owner_employee_id: firstOwner.id, closure_note: null }
+  ]);
+});
+
+test('submit is refused while an open Action of the Section has no disposition, one raised mid-shift included', async () => {
+  const actions = await actionSection('Actions submit');
+  const early = await insertAction(actions.id, { title: 'There when the draft opened' });
+  const draft = await openActionDraft(actions.id);
+  assert.deepStrictEqual(draft.openActions.map((candidate) => candidate.id), [early.id]);
+
+  const linked = await linkAction(teamLeader.token, draft.id, { actionId: early.id, disposition: 'carried' });
+  assert.strictEqual(linked.status, 201, JSON.stringify(linked.body));
+  // Raised after the draft opened, in the Section's subtree.
+  const area = await insertOrgUnit(actions.id, 'area', 'Packing');
+  const late = await insertAction(area.id, { title: 'Raised mid-shift' });
+
+  const refused = await submitActionDraft(draft.id);
+  assert.strictEqual(refused.status, 409, JSON.stringify(refused.body));
+  assert.strictEqual(refused.body.code, 'INCOMPLETE_HANDOVER');
+  assert.deepStrictEqual(refused.body.undispositionedActions, [
+    { id: late.id, actionNo: late.action_no, title: 'Raised mid-shift' }
+  ]);
+  assert.deepStrictEqual(refused.body.missingAssets, []);
+  assert.deepStrictEqual(refused.body.unansweredBlocks, []);
+  assert.match(refused.body.message, new RegExp(`no disposition for open action ${late.action_no}`));
+
+  const dispositioned = await linkAction(teamLeader.token, draft.id, { actionId: late.id, disposition: 'carried' });
+  assert.strictEqual(dispositioned.status, 201, JSON.stringify(dispositioned.body));
+  const submitted = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+  assert.strictEqual(submitted.body.handover.status, 'submitted');
+  assert.deepStrictEqual(
+    submitted.body.handover.actions.map((link) => link.action.id),
+    [early.id, late.id]
+  );
+  assert.deepStrictEqual(submitted.body.handover.openActions, [], 'a sealed handover offers no candidates');
+});
+
+test('age in shifts counts the unbroken run of handovers that carried the Action, and a reassignment restarts it', async () => {
+  const actions = await actionSection('Actions age');
+  const newOwner = await insertEmployee();
+  const action = await insertAction(actions.id, { title: 'Thread breaks on head 3' });
+
+  const ages = [];
+  async function handOver(body) {
+    const draft = await openActionDraft(actions.id);
+    const linked = await linkAction(teamLeader.token, draft.id, { actionId: action.id, ...body });
+    assert.strictEqual(linked.status, 201, JSON.stringify(linked.body));
+    const draftAge = linked.body.handover.actions[0].ageShifts;
+    const submitted = await submitActionDraft(draft.id);
+    assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+    assert.strictEqual(submitted.body.handover.actions[0].ageShifts, draftAge, 'sealing does not move the age');
+    ages.push(draftAge);
+    return submitted.body.handover;
+  }
+
+  await handOver({ disposition: 'carried' });
+  await handOver({ disposition: 'carried' });
+  const third = await handOver({ disposition: 'carried' });
+  await handOver({ disposition: 'reassigned', ownerEmployeeId: newOwner.id });
+  await handOver({ disposition: 'carried' });
+  assert.deepStrictEqual(ages, [1, 2, 3, 1, 2]);
+
+  // Read again later, the third still counts 3: the run behind it is fixed.
+  const reread = await get(teamLeader.token, `/handovers/${third.id}`);
+  assert.strictEqual(reread.body.handover.actions[0].ageShifts, 3);
+
+  // A closed link breaks the run: the next handover that carries it counts afresh.
+  const gap = await openActionDraft(actions.id);
+  const closed = await linkAction(teamLeader.token, gap.id, {
+    actionId: action.id, disposition: 'closed', closureNote: 'Tension spring replaced'
+  });
+  assert.strictEqual(closed.body.handover.actions[0].ageShifts, 0);
+  assert.strictEqual((await submitActionDraft(gap.id)).status, 200);
+  const afterClose = await openActionDraft(actions.id);
+  const carriedAgain = await linkAction(teamLeader.token, afterClose.id, { actionId: action.id, disposition: 'carried' });
+  assert.strictEqual(carriedAgain.body.handover.actions[0].ageShifts, 1);
+});
+
+test('a link is removed from its own draft only, and once submitted linking and removing are 409', async () => {
+  const actions = await actionSection('Actions sealed');
+  const action = await insertAction(actions.id, { title: 'Oil leak under head 1' });
+  const draft = await openActionDraft(actions.id);
+  const other = await openActionDraft(actions.id);
+
+  const linked = await linkAction(teamLeader.token, draft.id, { actionId: action.id, disposition: 'carried' });
+  assert.strictEqual(linked.status, 201, JSON.stringify(linked.body));
+  const [link] = linked.body.handover.actions;
+
+  const fromElsewhere = await unlinkAction(teamLeader.token, other.id, link.id);
+  assert.strictEqual(fromElsewhere.status, 404, JSON.stringify(fromElsewhere.body));
+  assert.strictEqual((await unlinkAction(teamLeader.token, draft.id, 'abc')).status, 404);
+  assert.strictEqual((await unlinkAction(outsider.token, draft.id, link.id)).status, 403);
+
+  const removed = await unlinkAction(teamLeader.token, draft.id, link.id);
+  assert.strictEqual(removed.status, 200, JSON.stringify(removed.body));
+  assert.deepStrictEqual(removed.body.handover.actions, []);
+  assert.deepStrictEqual(removed.body.handover.openActions.map((candidate) => candidate.id), [action.id]);
+  assert.strictEqual((await unlinkAction(teamLeader.token, draft.id, link.id)).status, 404);
+
+  const relinked = await linkAction(teamLeader.token, draft.id, { actionId: action.id, disposition: 'carried' });
+  assert.strictEqual(relinked.status, 201, JSON.stringify(relinked.body));
+  const [sealedLink] = relinked.body.handover.actions;
+  assert.strictEqual((await submitActionDraft(draft.id)).status, 200);
+
+  const afterLink = await linkAction(teamLeader.token, draft.id, { actionId: action.id, disposition: 'carried' });
+  assert.strictEqual(afterLink.status, 409, JSON.stringify(afterLink.body));
+  assert.strictEqual(afterLink.body.code, 'HANDOVER_NOT_DRAFT');
+  const afterUnlink = await unlinkAction(teamLeader.token, draft.id, sealedLink.id);
+  assert.strictEqual(afterUnlink.status, 409, JSON.stringify(afterUnlink.body));
+  assert.strictEqual(afterUnlink.body.code, 'HANDOVER_NOT_DRAFT');
+
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.deepStrictEqual(read.body.handover.actions, [sealedLink]);
 });
