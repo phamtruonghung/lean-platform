@@ -8,12 +8,13 @@
  * caller may act at the Section is handover-routes.js's question, asked of
  * People's entry point before anything here is called.
  *
- * What this slice does not do yet, each on its own later ticket: write lines,
- * submit (and so compute the snapshot), acknowledge, amend. A draft opened here
- * therefore always reads back with three empty line lists and no snapshot.
+ * Submit (issue #334) seals a draft and writes its snapshot once; see
+ * submitHandover below. What is still not done, each on its own later ticket:
+ * write lines, acknowledge, amend. A handover therefore always reads back with
+ * three empty line lists.
  */
 
-const { getPool } = require('../../platform/db');
+const { getPool, withActor } = require('../../platform/db');
 const { httpError, notFound, parseId } = require('./errors');
 
 // The Org Unit level a Shift handover is recorded at (CONTEXT.md's Section).
@@ -45,6 +46,33 @@ const HANDOVER_FROM = `
 
 function toNumber(value) {
   return value === null || value === undefined ? null : Number(value);
+}
+
+// Why a sealed snapshot holds a null where a reader might expect a number. It
+// reads the stored columns only — it labels the nulls submit wrote, it does not
+// recompute anything — and each null has exactly one cause, so the label is
+// fixed by the record. A draft has no snapshot and so no gaps.
+const MINUTE_FIELDS = ['plannedProductionMinutes', 'runMinutes', 'unplannedDowntimeMinutes'];
+const COUNT_FIELDS = ['goodQuantity', 'rejectQuantity', 'reworkQuantity', 'performance', 'quality'];
+
+function toSnapshotGaps(row) {
+  if (row.submitted_at === null || row.submitted_at === undefined) return [];
+  const gaps = [];
+  const add = (fields, reason) => {
+    for (const field of fields) gaps.push({ field, reason });
+  };
+  if (row.run_minutes === null) {
+    add([...MINUTE_FIELDS, 'availability', 'performance', 'oee'], 'no assets in the section');
+  } else {
+    if (Number(row.planned_production_minutes) === 0) add(['availability', 'oee'], 'no planned production minutes');
+    if (Number(row.run_minutes) === 0) add(['performance', 'oee'], 'no run minutes');
+  }
+  if (row.good_quantity === null) {
+    add([...COUNT_FIELDS, 'oee'], 'no production counts');
+  } else if (row.quality === null) {
+    add(['quality', 'oee'], 'no counted quantity');
+  }
+  return gaps;
 }
 
 function toHandover(row) {
@@ -93,6 +121,7 @@ function toHandover(row) {
       openQualityIssueCount: row.open_quality_issue_count,
       safetyEventCount: row.safety_event_count
     },
+    snapshotGaps: toSnapshotGaps(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -204,6 +233,178 @@ async function openHandover({ section, shiftInstance }) {
   return getHandoverDetail(id);
 }
 
+// The snapshot submit writes, as one statement over the shift instance ($2)
+// and the Section ($3). Each CTE is one block of the paper form's numbers.
+//
+// `oee_sum` is the roll-up, not an average of ratios: minutes and quantities
+// are summed over the Section's `v_shift_oee` rows first and the ratios taken
+// once, with a zero denominator leaving that factor (and so OEE) NULL.
+//
+// `counted` asks `production_counts` directly whether the shift counted
+// anything on the Section's assets. `v_shift_oee` reports a shift with no
+// counts as 0 good of 0 — and 0 theoretical minutes — which is "nobody
+// counted", not "made nothing", so without counts the quantities, performance,
+// quality and OEE are stored NULL.
+//
+// `stops` attributes downtime exactly as `v_shift_downtime` does — any event
+// on an Org Unit in the Section's subtree whose span overlaps the shift
+// window, clipped to it, an open stop running to `ends_at` — so the top loss
+// and the unclassified minutes are cut from the same minutes OEE was.
+// `downtime_events.shift_instance_id` is not used: it names the shift a stop
+// started in, and a stop carried over from the previous shift is still this
+// shift's loss and this shift's open stop.
+const SNAPSHOT_SQL = `
+  WITH si AS (
+    SELECT si.id, si.starts_at, si.ends_at, section.path
+      FROM shift_instances si, org_units section
+     WHERE si.id = $2 AND section.id = $3
+  ),
+  oee_sum AS (
+    SELECT sum(v.planned_production_minutes) AS planned_production_minutes,
+           sum(v.run_minutes) AS run_minutes,
+           sum(v.unplanned_downtime_minutes) AS unplanned_downtime_minutes,
+           sum(v.theoretical_minutes) AS theoretical_minutes,
+           sum(v.good_quantity) AS good_quantity,
+           sum(v.reject_quantity) AS reject_quantity,
+           sum(v.rework_quantity) AS rework_quantity,
+           sum(v.total_quantity) AS total_quantity
+      FROM si
+      JOIN v_shift_oee v ON v.shift_instance_id = si.id
+      JOIN assets a ON a.id = v.asset_id
+      JOIN org_units au ON au.id = a.org_unit_id AND au.path <@ si.path
+  ),
+  counted AS (
+    SELECT EXISTS (
+      SELECT 1
+        FROM si
+        JOIN production_counts pc ON pc.shift_instance_id = si.id
+        JOIN assets a ON a.id = pc.asset_id
+        JOIN org_units au ON au.id = a.org_unit_id AND au.path <@ si.path
+    ) AS has_counts
+  ),
+  ratios AS (
+    SELECT o.*, c.has_counts AS counted,
+           CASE WHEN o.planned_production_minutes > 0
+                THEN o.run_minutes / o.planned_production_minutes END AS availability,
+           CASE WHEN c.has_counts AND o.run_minutes > 0
+                THEN o.theoretical_minutes / o.run_minutes END AS performance,
+           CASE WHEN c.has_counts AND o.total_quantity > 0
+                THEN o.good_quantity / o.total_quantity END AS quality
+      FROM oee_sum o, counted c
+  ),
+  stops AS (
+    SELECT de.downtime_reason_id, de.ended_at,
+           EXTRACT(epoch FROM LEAST(COALESCE(de.ended_at, si.ends_at), si.ends_at)
+                              - GREATEST(de.started_at, si.starts_at)) / 60.0 AS minutes
+      FROM si
+      JOIN downtime_events de
+        ON tstzrange(de.started_at, COALESCE(de.ended_at, now()), '[)')
+           && tstzrange(si.starts_at, si.ends_at, '[)')
+      JOIN org_units deu ON deu.id = de.org_unit_id AND deu.path <@ si.path
+  ),
+  -- The top loss is the classified reason with the most minutes; unclassified
+  -- minutes have their own two columns. On a tie the earlier reason id wins:
+  -- an arbitrary but stable answer, because a "top loss" that changed between
+  -- two reads of the same rows would be worse than one that is merely
+  -- arbitrary.
+  top_loss AS (
+    SELECT downtime_reason_id, sum(minutes) AS minutes
+      FROM stops
+     WHERE downtime_reason_id IS NOT NULL
+     GROUP BY downtime_reason_id
+     ORDER BY sum(minutes) DESC, downtime_reason_id
+     LIMIT 1
+  )
+  SELECT r.planned_production_minutes,
+         r.run_minutes,
+         r.unplanned_downtime_minutes,
+         CASE WHEN r.counted THEN r.good_quantity END AS good_quantity,
+         CASE WHEN r.counted THEN r.reject_quantity END AS reject_quantity,
+         CASE WHEN r.counted THEN r.rework_quantity END AS rework_quantity,
+         r.availability, r.performance, r.quality,
+         r.availability * r.performance * r.quality AS oee,
+         -- The view's own rule, over the summed minutes.
+         r.run_minutes > 0 AND r.theoretical_minutes > r.run_minutes AS performance_suspect,
+         (SELECT sum(pr.planned_quantity) FROM production_runs pr WHERE pr.shift_instance_id = $2)
+           AS planned_quantity,
+         (SELECT downtime_reason_id FROM top_loss) AS top_loss_reason_id,
+         (SELECT minutes FROM top_loss) AS top_loss_minutes,
+         (SELECT COALESCE(sum(minutes), 0) FROM stops WHERE downtime_reason_id IS NULL)
+           AS unclassified_downtime_minutes,
+         (SELECT count(*) FROM stops WHERE downtime_reason_id IS NULL) AS unclassified_stop_count,
+         (SELECT count(*) FROM stops WHERE ended_at IS NULL) AS open_stop_count,
+         (SELECT count(*) FROM quality_issues qi
+           WHERE qi.shift_instance_id = $2 AND qi.status IN ('open', 'contained'))
+           AS open_quality_issue_count,
+         (SELECT count(*) FROM safety_incidents sinc WHERE sinc.shift_instance_id = $2)
+           + (SELECT count(*) FROM safety_observations so WHERE so.shift_instance_id = $2)
+           AS safety_event_count,
+         now() > (SELECT ends_at FROM si) + interval '30 minutes' AS late
+    FROM ratios r
+`;
+
+// Submitting a draft: the snapshot is computed once and written with the
+// author, the time and the late flag in the same UPDATE, inside a transaction
+// that holds the handover's row lock from the status check to the write — so
+// a second submit racing this one waits, then reads 'submitted' and is
+// refused, and a submit that fails anywhere leaves the draft exactly as it
+// was. Nothing recomputes these columns afterwards (ADR-0054): not a trigger,
+// not a read, not a refresh. `now()` is the database's clock and is fixed for
+// the transaction, so `submitted_at` and `late` agree with each other.
+//
+// Late is recorded, never refused: a handover written 40 minutes after the
+// shift is still the handover.
+async function submitHandover({ id, account }) {
+  await withActor(account.id, async (client) => {
+    const { rows: [handover] } = await client.query(
+      'SELECT id, status, org_unit_id, shift_instance_id FROM shift_handovers WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (!handover) throw notFound('Shift handover');
+    if (handover.status !== 'draft') {
+      throw httpError(409, `This handover is ${handover.status}, not a draft`, 'HANDOVER_NOT_DRAFT');
+    }
+
+    const { rows: [shiftInstance] } = await client.query(
+      'SELECT id FROM shift_instances WHERE id = $1',
+      [handover.shift_instance_id]
+    );
+    if (!shiftInstance) throw notFound('Shift instance');
+
+    await client.query(
+      `UPDATE shift_handovers h
+          SET status = 'submitted',
+              submitted_at = now(),
+              submitted_by_account_id = $4,
+              late = s.late,
+              oee = s.oee,
+              availability = s.availability,
+              performance = s.performance,
+              quality = s.quality,
+              planned_production_minutes = s.planned_production_minutes,
+              run_minutes = s.run_minutes,
+              unplanned_downtime_minutes = s.unplanned_downtime_minutes,
+              top_loss_reason_id = s.top_loss_reason_id,
+              top_loss_minutes = s.top_loss_minutes,
+              unclassified_downtime_minutes = s.unclassified_downtime_minutes,
+              unclassified_stop_count = s.unclassified_stop_count,
+              good_quantity = s.good_quantity,
+              reject_quantity = s.reject_quantity,
+              rework_quantity = s.rework_quantity,
+              planned_quantity = s.planned_quantity,
+              performance_suspect = s.performance_suspect,
+              open_stop_count = s.open_stop_count,
+              open_quality_issue_count = s.open_quality_issue_count,
+              safety_event_count = s.safety_event_count
+         FROM (${SNAPSHOT_SQL}) s
+        WHERE h.id = $1`,
+      [handover.id, handover.shift_instance_id, handover.org_unit_id, account.id]
+    );
+  });
+
+  return getHandoverDetail(id);
+}
+
 // One handover as the detail Screen reads it: the record, its Section and
 // shift instance, and its three line lists (empty until the slice that writes
 // them).
@@ -284,6 +485,7 @@ module.exports = {
   findShiftInstance,
   findHandover,
   openHandover,
+  submitHandover,
   getHandoverDetail,
   getSectionDay
 };
