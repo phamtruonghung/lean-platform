@@ -9,9 +9,11 @@
  * People's entry point before anything here is called.
  *
  * Submit (issue #334) seals a draft and writes its snapshot once; see
- * submitHandover below. What is still not done, each on its own later ticket:
- * write lines, acknowledge, amend. A handover therefore always reads back with
- * three empty line lists.
+ * submitHandover below. Machine status lines (issue #335) are written to a
+ * draft one Asset at a time and checked for completeness at submit. What is
+ * still not done, each on its own later ticket: change points, actions,
+ * acknowledge, amend. A handover therefore reads back with its machine lines
+ * and two empty line lists.
  */
 
 const { getPool, withActor } = require('../../platform/db');
@@ -179,6 +181,48 @@ async function findHandover(id) {
   return rows[0] ? toHandover(rows[0]) : null;
 }
 
+// A Machine status line's state and abnormality type: the CHECK constraints on
+// `shift_handover_machine_lines`, mirrored so a bad value is a 400 naming the
+// set rather than a raw constraint violation. The seven abnormality types are
+// TPM's (docs/research/shift-handover.md §2).
+const MACHINE_STATES = [
+  'running', 'running_manual', 'idle', 'down', 'maintenance', 'cleaning', 'changeover', 'isolated'
+];
+const NORMAL_RUNNING_STATES = ['running', 'running_manual'];
+const ABNORMALITY_TYPES = [
+  'minor_flaw', 'unfulfilled_basic_condition', 'inaccessible_place', 'contamination_source',
+  'quality_defect_source', 'unnecessary_item', 'unsafe_place'
+];
+
+const MACHINE_LINE_COLUMNS = `
+  ml.id, ml.asset_id, a.code AS asset_code, a.name AS asset_name,
+  a.org_unit_id AS asset_org_unit_id, au.name AS asset_org_unit_name,
+  ml.state, ml.abnormality_type, ml.note,
+  ml.downtime_event_id, ml.quality_issue_id, ml.work_order_id,
+  ml.watch_note, ml.walked, ml.created_at, ml.updated_at
+`;
+
+function toMachineLine(row) {
+  return {
+    id: row.id,
+    assetId: row.asset_id,
+    assetCode: row.asset_code,
+    assetName: row.asset_name,
+    orgUnitId: row.asset_org_unit_id,
+    orgUnitName: row.asset_org_unit_name,
+    state: row.state,
+    abnormalityType: row.abnormality_type,
+    note: row.note,
+    downtimeEventId: row.downtime_event_id,
+    qualityIssueId: row.quality_issue_id,
+    workOrderId: row.work_order_id,
+    watchNote: row.watch_note,
+    walked: row.walked,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
 function requireSection(orgUnit) {
   if (orgUnit.unitType !== SECTION_UNIT_TYPE) {
     throw httpError(
@@ -343,6 +387,89 @@ const SNAPSHOT_SQL = `
     FROM ratios r
 `;
 
+// The handover's row, locked for the rest of the transaction, refused unless
+// it is still a draft. Every write to a draft and its lines takes this lock
+// first, so a line written while a submit is running waits for the submit,
+// then reads 'submitted' and is refused — a sealed handover never gains a line.
+async function lockDraft(client, id) {
+  const { rows: [handover] } = await client.query(
+    'SELECT id, status, org_unit_id, shift_instance_id FROM shift_handovers WHERE id = $1 FOR UPDATE',
+    [id]
+  );
+  if (!handover) throw notFound('Shift handover');
+  if (handover.status !== 'draft') {
+    throw httpError(409, `This handover is ${handover.status}, not a draft`, 'HANDOVER_NOT_DRAFT');
+  }
+  return handover;
+}
+
+// The Section's active Assets: every Asset whose Org Unit sits in the
+// Section's subtree ($1), by `org_units.path`.
+const SECTION_ASSETS_SQL = `
+  SELECT a.id, a.code, a.name, a.org_unit_id, au.name AS org_unit_name
+    FROM assets a
+    JOIN org_units au ON au.id = a.org_unit_id
+    JOIN org_units section ON section.id = $1
+   WHERE a.is_active AND au.path <@ section.path
+`;
+
+// Submit's completeness rules (issue #335, ADR-0054): every active Asset in
+// the Section has a Machine status line, and every line that is not normal
+// running carries a note and a reference to the record that explains it. A
+// draft is filled progressively, so the reference is asked for here and not
+// when the line is written. The refusal lists everything missing at once, so
+// one round trip tells the Team Leader the whole of what is left.
+async function requireComplete(client, handover) {
+  const { rows: missingAssets } = await client.query(
+    `SELECT s.id, s.code, s.name
+       FROM (${SECTION_ASSETS_SQL}) s
+      WHERE NOT EXISTS (
+              SELECT 1 FROM shift_handover_machine_lines ml
+               WHERE ml.handover_id = $2 AND ml.asset_id = s.id)
+      ORDER BY s.code, s.id`,
+    [handover.org_unit_id, handover.id]
+  );
+
+  const { rows: lineRows } = await client.query(
+    `SELECT a.id, a.code, a.name,
+            ml.note IS NULL OR btrim(ml.note) = '' AS missing_note,
+            ml.downtime_event_id IS NULL AND ml.quality_issue_id IS NULL
+              AND ml.work_order_id IS NULL AS missing_reference
+       FROM shift_handover_machine_lines ml
+       JOIN assets a ON a.id = ml.asset_id
+      WHERE ml.handover_id = $1
+        AND ml.state <> ALL($2::text[])
+      ORDER BY a.code, a.id`,
+    [handover.id, NORMAL_RUNNING_STATES]
+  );
+  const incompleteLines = lineRows
+    .filter((row) => row.missing_note || row.missing_reference)
+    .map((row) => ({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      missing: [
+        ...(row.missing_note ? ['note'] : []),
+        ...(row.missing_reference ? ['reference'] : [])
+      ]
+    }));
+
+  if (missingAssets.length === 0 && incompleteLines.length === 0) return;
+
+  const parts = [];
+  if (missingAssets.length > 0) {
+    parts.push(`no machine status line for ${missingAssets.map((asset) => asset.code).join(', ')}`);
+  }
+  if (incompleteLines.length > 0) {
+    parts.push(
+      incompleteLines.map((line) => `${line.code} is missing its ${line.missing.join(' and ')}`).join('; ')
+    );
+  }
+  const error = httpError(409, `This handover cannot be submitted: ${parts.join('; ')}`, 'INCOMPLETE_HANDOVER');
+  error.details = { missingAssets, incompleteLines };
+  throw error;
+}
+
 // Submitting a draft: the snapshot is computed once and written with the
 // author, the time and the late flag in the same UPDATE, inside a transaction
 // that holds the handover's row lock from the status check to the write — so
@@ -356,14 +483,8 @@ const SNAPSHOT_SQL = `
 // shift is still the handover.
 async function submitHandover({ id, account }) {
   await withActor(account.id, async (client) => {
-    const { rows: [handover] } = await client.query(
-      'SELECT id, status, org_unit_id, shift_instance_id FROM shift_handovers WHERE id = $1 FOR UPDATE',
-      [id]
-    );
-    if (!handover) throw notFound('Shift handover');
-    if (handover.status !== 'draft') {
-      throw httpError(409, `This handover is ${handover.status}, not a draft`, 'HANDOVER_NOT_DRAFT');
-    }
+    const handover = await lockDraft(client, id);
+    await requireComplete(client, handover);
 
     const { rows: [shiftInstance] } = await client.query(
       'SELECT id FROM shift_instances WHERE id = $1',
@@ -405,16 +526,174 @@ async function submitHandover({ id, account }) {
   return getHandoverDetail(id);
 }
 
+// A blank note is no note: stored NULL, so "is there a note" has one answer.
+function blankToNull(value) {
+  if (value === undefined || value === null) return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+// A referenced record must explain *this* machine on *this* shift: a downtime
+// event of the line's Asset in the handover's shift instance, a quality issue
+// raised against the line's Asset (one with no Asset explains no machine), a
+// Work order that exists. Linked by id, never copied (ADR-0054).
+async function requireReferences(client, { handover, asset, line }) {
+  const outside = (message) => httpError(400, message, 'REFERENCE_OUTSIDE_HANDOVER');
+
+  if (line.downtimeEventId !== null) {
+    const { rows: [event] } = await client.query(
+      'SELECT asset_id, shift_instance_id FROM downtime_events WHERE id = $1',
+      [line.downtimeEventId]
+    );
+    if (!event) throw notFound('Downtime event');
+    if (event.asset_id !== asset.id) {
+      throw outside(`That downtime event is on another Asset, not ${asset.code}`);
+    }
+    if (event.shift_instance_id !== handover.shift_instance_id) {
+      throw outside('That downtime event belongs to another shift instance, not this handover\'s');
+    }
+  }
+
+  if (line.qualityIssueId !== null) {
+    const { rows: [issue] } = await client.query(
+      'SELECT asset_id FROM quality_issues WHERE id = $1',
+      [line.qualityIssueId]
+    );
+    if (!issue) throw notFound('Quality issue');
+    if (issue.asset_id === null) {
+      throw outside(`That quality issue names no Asset, so it cannot explain ${asset.code}`);
+    }
+    if (issue.asset_id !== asset.id) {
+      throw outside(`That quality issue is on another Asset, not ${asset.code}`);
+    }
+  }
+
+  if (line.workOrderId !== null) {
+    const { rows: [workOrder] } = await client.query(
+      'SELECT id FROM work_orders WHERE id = $1',
+      [line.workOrderId]
+    );
+    if (!workOrder) throw notFound('Work order');
+  }
+}
+
+// Writing one Asset's Machine status line on a draft: the whole line, replaced
+// (a field left out is cleared). The route has checked the body's shape and
+// the caller's scope; what is checked here is the line against the handover.
+// A note is required the moment the state is not normal running — the only
+// person who knows why is the one writing the line — but the reference is
+// asked for at submit, because the downtime event or Work order may not have
+// been raised yet when the line is first filled in.
+async function putMachineLine({ id, assetId, line, account }) {
+  await withActor(account.id, async (client) => {
+    const handover = await lockDraft(client, id);
+
+    if (!MACHINE_STATES.includes(line.state)) {
+      throw httpError(400, `state must be one of: ${MACHINE_STATES.join(', ')}`);
+    }
+    if (line.abnormalityType !== null && !ABNORMALITY_TYPES.includes(line.abnormalityType)) {
+      throw httpError(400, `abnormalityType must be one of: ${ABNORMALITY_TYPES.join(', ')}`);
+    }
+
+    const { rows: [asset] } = await client.query(
+      `SELECT a.id, a.code, au.path <@ section.path AS in_section
+         FROM assets a
+         JOIN org_units au ON au.id = a.org_unit_id
+         JOIN org_units section ON section.id = $2
+        WHERE a.id = $1`,
+      [assetId, handover.org_unit_id]
+    );
+    if (!asset) throw notFound('Asset');
+    if (!asset.in_section) {
+      throw httpError(400, `Asset ${asset.code} is not in this handover's section`, 'ASSET_NOT_IN_SECTION');
+    }
+
+    const note = blankToNull(line.note);
+    if (note === null && !NORMAL_RUNNING_STATES.includes(line.state)) {
+      throw httpError(400, `${asset.code} is ${line.state}: a note saying why is required`, 'NOTE_REQUIRED');
+    }
+    if (note === null && line.abnormalityType !== null) {
+      throw httpError(
+        400,
+        `${asset.code} has an abnormality (${line.abnormalityType}): a note describing it is required`,
+        'NOTE_REQUIRED'
+      );
+    }
+
+    await requireReferences(client, { handover, asset, line });
+
+    await client.query(
+      `INSERT INTO shift_handover_machine_lines
+         (handover_id, asset_id, state, abnormality_type, note,
+          downtime_event_id, quality_issue_id, work_order_id, watch_note, walked)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (handover_id, asset_id) DO UPDATE
+         SET state = EXCLUDED.state,
+             abnormality_type = EXCLUDED.abnormality_type,
+             note = EXCLUDED.note,
+             downtime_event_id = EXCLUDED.downtime_event_id,
+             quality_issue_id = EXCLUDED.quality_issue_id,
+             work_order_id = EXCLUDED.work_order_id,
+             watch_note = EXCLUDED.watch_note,
+             walked = EXCLUDED.walked`,
+      [handover.id, asset.id, line.state, line.abnormalityType, note,
+        line.downtimeEventId, line.qualityIssueId, line.workOrderId,
+        blankToNull(line.watchNote), line.walked]
+    );
+  });
+
+  return getHandoverDetail(id);
+}
+
+// Removing one Asset's line from a draft; 404 when that Asset has none.
+async function deleteMachineLine({ id, assetId, account }) {
+  await withActor(account.id, async (client) => {
+    const handover = await lockDraft(client, id);
+    const { rowCount } = await client.query(
+      'DELETE FROM shift_handover_machine_lines WHERE handover_id = $1 AND asset_id = $2',
+      [handover.id, assetId]
+    );
+    if (rowCount === 0) throw notFound('Machine status line');
+  });
+
+  return getHandoverDetail(id);
+}
+
+// A Section's active Assets, the machines a handover owes a line for.
+async function listSectionAssets(section) {
+  requireSection(section);
+  const { rows } = await getPool().query(`${SECTION_ASSETS_SQL} ORDER BY a.code, a.id`, [section.id]);
+  return {
+    section: { id: section.id, code: section.code, name: section.name },
+    assets: rows.map((row) => ({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      orgUnitId: row.org_unit_id,
+      orgUnitName: row.org_unit_name
+    }))
+  };
+}
+
 // One handover as the detail Screen reads it: the record, its Section and
-// shift instance, and its three line lists (empty until the slice that writes
-// them).
+// shift instance, and its three line lists — machine lines ordered by Asset
+// code, change points and actions empty until the slices that write them.
 async function getHandoverDetail(id) {
   const handover = await findHandover(id);
   if (!handover) throw notFound('Shift handover');
 
-  const [{ rows: [section] }, shiftInstance] = await Promise.all([
+  const [{ rows: [section] }, shiftInstance, { rows: lineRows }] = await Promise.all([
     getPool().query('SELECT id, code, name FROM org_units WHERE id = $1', [handover.orgUnitId]),
-    findShiftInstance(handover.shiftInstanceId)
+    findShiftInstance(handover.shiftInstanceId),
+    getPool().query(
+      `SELECT ${MACHINE_LINE_COLUMNS}
+         FROM shift_handover_machine_lines ml
+         JOIN assets a ON a.id = ml.asset_id
+         JOIN org_units au ON au.id = a.org_unit_id
+        WHERE ml.handover_id = $1
+        ORDER BY a.code, a.id`,
+      [handover.id]
+    )
   ]);
 
   return {
@@ -427,7 +706,7 @@ async function getHandoverDetail(id) {
       endsAt: shiftInstance.endsAt,
       status: shiftInstance.status
     },
-    machineLines: [],
+    machineLines: lineRows.map(toMachineLine),
     changePoints: [],
     actions: []
   };
@@ -486,6 +765,9 @@ module.exports = {
   findHandover,
   openHandover,
   submitHandover,
+  putMachineLine,
+  deleteMachineLine,
   getHandoverDetail,
-  getSectionDay
+  getSectionDay,
+  listSectionAssets
 };
