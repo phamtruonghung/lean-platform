@@ -147,6 +147,12 @@ import '../quality/quality_api.dart';
 import '../safety/body_parts_bloc.dart';
 import '../safety/body_parts_screen.dart';
 import '../safety/incident_classify_dialog.dart';
+import '../production/handover_acknowledge_dialog.dart';
+import '../production/production_api.dart';
+import '../production/section_board_bloc.dart';
+import '../production/section_board_screen.dart';
+import '../production/shift_handover_bloc.dart';
+import '../production/shift_handover_screen.dart';
 import '../safety/incident_close_dialog.dart';
 import '../safety/incident_days_dialog.dart';
 import '../safety/incident_detail_bloc.dart';
@@ -323,6 +329,26 @@ abstract final class Routes {
   /// **outside the Shell** so that printing it prints the report rather than
   /// the navigation around it — see `buildRouter`.
   static String capaReport(String capaId) => '$capas/$capaId/report';
+
+  /// The Production Module's Destination (issue #339): the Section chooser,
+  /// and beneath it each Section's board and one shift's handover. The board
+  /// and the handover carry the production day they were reached for as
+  /// `?date=`, so a day other than the Site's today reads the same day back.
+  static const String production = '/production/sections';
+
+  static String _withDate(String path, String? date) => date == null ? path : '$path?date=$date';
+
+  /// A Section's production day.
+  static String sectionBoard(String orgUnitId, {String? date}) =>
+      _withDate('$production/$orgUnitId/board', date);
+
+  /// The incoming Team Leader's acknowledgement, a dialog over the board.
+  static String handoverAcknowledge(String orgUnitId, String handoverId, {String? date}) =>
+      _withDate('$production/$orgUnitId/board/acknowledge/$handoverId', date);
+
+  /// One shift instance's handover at a Section: opened, or resumed.
+  static String shiftHandover(String orgUnitId, String shiftInstanceId, {String? date}) =>
+      _withDate('$production/$orgUnitId/handover/$shiftInstanceId', date);
 
   /// The shared floor device's own Screen (issue #77, ADR-0016). Its own
   /// address, deliberately outside the Shell and never offered as a
@@ -1874,6 +1900,67 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 ],
               ),
             ],
+          ),
+          // The Production Module (issue #339, spec #332). The Destination's
+          // own address is the Section chooser; a Section's board and one
+          // shift's handover are reached through it. Offered to every admitted
+          // Account: the server's Grant check on the Section is the gate.
+          GoRoute(
+            path: Routes.production,
+            builder: (context, state) => const SectionBoardScreen(),
+          ),
+          // A Section's day and the acknowledgement dialog over it — a
+          // `ShellRoute` of its own so `SectionBoardBloc` is shared by the
+          // board and the dialog, and keyed on the Section and the day in the
+          // address so moving to another day builds a fresh one (issue #183).
+          ShellRoute(
+            builder: (context, state, child) {
+              final orgUnitId = state.pathParameters['orgUnitId']!;
+              final date = state.uri.queryParameters['date'];
+              return BlocProvider<SectionBoardBloc>(
+                key: ValueKey<String>('$orgUnitId|${date ?? ''}'),
+                create: (context) => SectionBoardBloc(
+                  productionApi: context.read<ProductionApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(SectionBoardStarted(orgUnitId: orgUnitId, date: date)),
+                child: child,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: '${Routes.production}/:orgUnitId/board',
+                builder: (context, state) => SectionBoardScreen(
+                  orgUnitId: state.pathParameters['orgUnitId']!,
+                  date: state.uri.queryParameters['date'],
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'acknowledge/:handoverId',
+                    pageBuilder: (context, state) => DialogPage<void>(
+                      key: state.pageKey,
+                      builder: (dialogContext) =>
+                          HandoverAcknowledgeDialog(handoverId: state.pathParameters['handoverId']!),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '${Routes.production}/:orgUnitId/handover/:shiftInstanceId',
+            builder: (context, state) {
+              final orgUnitId = state.pathParameters['orgUnitId']!;
+              final shiftInstanceId = state.pathParameters['shiftInstanceId']!;
+              final date = state.uri.queryParameters['date'];
+              return BlocProvider<ShiftHandoverBloc>(
+                key: ValueKey<String>('$orgUnitId|$shiftInstanceId'),
+                create: (context) => ShiftHandoverBloc(
+                  productionApi: context.read<ProductionApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(ShiftHandoverStarted(orgUnitId: orgUnitId, shiftInstanceId: shiftInstanceId, date: date)),
+                child: ShiftHandoverScreen(orgUnitId: orgUnitId, shiftInstanceId: shiftInstanceId, date: date),
+              );
+            },
           ),
           // Safety incidents (issue #226) — a `ShellRoute` of its own, for the
           // same reason Non-conformances has one: `SafetyIncidentsBloc` is

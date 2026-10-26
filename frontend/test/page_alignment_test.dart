@@ -233,6 +233,11 @@ const _excluded = <String, String>{
       'reached by shift instance id; its rows are plain list items, not the audited card-row shape',
   'lib/people/attendance_picker_screen.dart':
       'a chooser (an Org Unit tree and a date field), not a browsable register of card rows',
+  'lib/production/section_board_screen.dart':
+      "reached by Section id; its title is the Section's own name, and at the Destination it is an "
+          'Org Unit chooser, not a register of card rows',
+  'lib/production/shift_handover_screen.dart':
+      "reached by Section and shift instance; its title is the Section's own handover, not a page heading",
 };
 
 /// One wire for every page in the table: each Screen finds the collection it

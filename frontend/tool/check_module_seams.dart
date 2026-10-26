@@ -10,7 +10,7 @@
 // are the wiring layer (like backend `src/index.js`) and may import anything.
 import 'dart:io';
 
-const modules = {'people', 'maintenance', 'quality', 'safety', 'actions'};
+const modules = {'people', 'maintenance', 'quality', 'safety', 'actions', 'production'};
 
 final directive =
     RegExp(r'''^\s*(?:import|export)\s+['"]([^'"]+)['"]''', multiLine: true);
