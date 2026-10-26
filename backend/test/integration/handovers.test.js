@@ -222,8 +222,9 @@ async function openDraft(shiftInstanceId) {
   return opened.body.handover;
 }
 
-function round4(value) {
-  return Math.round(value * 10000) / 10000;
+// The snapshot's ratios are stored at six places (NUMERIC(12,6)).
+function round6(value) {
+  return Math.round(value * 1e6) / 1e6;
 }
 
 test.before(async () => {
@@ -562,10 +563,10 @@ test('submit seals the handover with every snapshot number, OEE rolled up from s
   assert.strictEqual(read.status, 200, JSON.stringify(read.body));
   assert.deepStrictEqual(read.body.handover.snapshot, snapshotHandover.snapshot);
   assert.deepStrictEqual(read.body.handover.snapshot, {
-    oee: round4(availability * performance * quality),
-    availability: round4(availability),
-    performance: round4(performance),
-    quality: round4(quality),
+    oee: round6(availability * performance * quality),
+    availability: round6(availability),
+    performance: round6(performance),
+    quality: round6(quality),
     plannedProductionMinutes: plannedMinutes,
     runMinutes,
     unplannedDowntimeMinutes: 125,
@@ -592,7 +593,7 @@ test('submit seals the handover with every snapshot number, OEE rolled up from s
   );
   assert.strictEqual(perAsset.length, 2);
   const averageOfRatios = perAsset.reduce((sum, row) => sum + Number(row.oee), 0) / perAsset.length;
-  assert.notStrictEqual(round4(averageOfRatios), read.body.handover.snapshot.oee);
+  assert.notStrictEqual(round6(averageOfRatios), read.body.handover.snapshot.oee);
 });
 
 test('the snapshot does not move when the shift\'s downtime and counts change after submit', async () => {
@@ -634,8 +635,8 @@ test('the snapshot does not move when the shift\'s downtime and counts change af
   const liveOee = (Number(live.run_minutes) / Number(live.planned))
     * (Number(live.theoretical) / Number(live.run_minutes))
     * (Number(live.good) / Number(live.total));
-  assert.strictEqual(round4(liveOee), round4((760 / 900) * (1700 / 1830)));
-  assert.notStrictEqual(round4(liveOee), snapshot.oee);
+  assert.strictEqual(round6(liveOee), round6((760 / 900) * (1700 / 1830)));
+  assert.notStrictEqual(round6(liveOee), snapshot.oee);
 });
 
 test('a shift with no production counts stores null quantities and OEE, and says why', async () => {
@@ -722,15 +723,47 @@ test('submit records late after 30 minutes without refusing, and refuses a secon
   assert.strictEqual(unknown.status, 404);
 });
 
+test('a performance far above 1 is sealed as the view reports it, neither refused nor clamped', async () => {
+  // Before the snapshot shift, so its still-open stop does not reach in: no
+  // downtime, 900 run minutes over the two Assets. 100 pieces at 810,000 s is
+  // 1,350,000 theoretical minutes — performance 1500, past the 999.9999 the
+  // ratio columns held before they were widened.
+  const definition = await insertShiftDefinition('06:00', 'Suspect shift');
+  const suspect = await insertShiftInstance(
+    section.id, definition.id, '2026-04-29T23:00:00Z', '2026-04-30T07:00:00Z', '2026-04-30'
+  );
+  const product = await insertProduct(810000);
+  await insertRunWithCount({
+    shiftInstanceId: suspect.id, assetId: assetA.id, productId: product.id, plannedQuantity: 100,
+    startedAt: '2026-04-29T23:00:00Z', endedAt: '2026-04-30T07:00:00Z',
+    count: { good: 100, reject: 0, rework: 0 }
+  });
+  const draft = await openDraft(suspect.id);
+
+  const submitted = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.strictEqual(read.status, 200, JSON.stringify(read.body));
+  const { snapshot } = read.body.handover;
+  assert.strictEqual(snapshot.runMinutes, 900);
+  assert.strictEqual(snapshot.availability, 1);
+  assert.strictEqual(snapshot.performance, 1500);
+  assert.strictEqual(snapshot.quality, 1);
+  assert.strictEqual(snapshot.oee, 1500);
+  assert.strictEqual(snapshot.performanceSuspect, true);
+});
+
 test('a submit that fails leaves the draft exactly as it was', async () => {
-  // A cycle time of a million seconds a piece makes performance about 3,700 —
-  // more than the snapshot's NUMERIC(7,4) can hold — so the UPDATE that seals
-  // the handover fails in the database after the status check has passed.
+  // A cycle time of a thousand million seconds a piece makes performance
+  // millions — more than even the widened NUMERIC(12,6) can hold — so the
+  // UPDATE that seals the handover fails in the database after the status
+  // check has passed.
   const definition = await insertShiftDefinition('06:00', 'Failing shift');
   const failing = await insertShiftInstance(
     section.id, definition.id, '2026-05-08T23:00:00Z', '2026-05-09T07:00:00Z', '2026-05-09'
   );
-  const product = await insertProduct(1000000);
+  const product = await insertProduct(1000000000);
   await insertRunWithCount({
     shiftInstanceId: failing.id, assetId: assetA.id, productId: product.id, plannedQuantity: 100,
     startedAt: '2026-05-08T23:00:00Z', endedAt: '2026-05-09T07:00:00Z',
