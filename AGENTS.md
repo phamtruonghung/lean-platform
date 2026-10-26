@@ -28,8 +28,12 @@ lean-platform/
 ├── docs/adr/                numbered decision records, 0001 upward
 ├── backend/                 Express API
 │   ├── src/platform/        shared foundation: db, tokens, logging, health — owns no domain, depends on no Module
-│   ├── src/modules/people/  Accounts, Approval, Sites, Org Units, the Employee directory, job roles, skills
-│   ├── src/modules/maintenance/  Assets and Work orders
+│   ├── src/modules/people/        Accounts, Approval, Sites, Org Units, the Employee directory, job roles, skills
+│   ├── src/modules/maintenance/   Assets, Work orders, Requests, breakdowns and the tier board
+│   ├── src/modules/production/    Shift handovers: the record a Section's Team Leaders sign at the shift boundary
+│   ├── src/modules/actions/       The action log — Concerns, CAPAs and their PDCA phases
+│   ├── src/modules/quality/       Products, defect codes, non-conformances, complaints, supplier NCRs
+│   ├── src/modules/safety/        Safety incidents and observations
 │   ├── migrations/          node-pg-migrate, forward-only (see section 4)
 │   ├── scripts/             check-module-boundaries.js, check-syntax.js, lib/
 │   └── test/                unit tests (test/*.test.js) and test/integration/
@@ -38,6 +42,10 @@ lean-platform/
 │       ├── platform/         Shell, router, theme, DI — the client's own foundation layer
 │       ├── people/            People Module's Screens, Blocs, entry point
 │       ├── maintenance/       Maintenance Module's Screens, Blocs, entry point
+│       ├── production/        Production Module's Screens and Blocs — the Shift handover and the Section board
+│       ├── actions/           Actions Module's Screens and Blocs
+│       ├── quality/           Quality Module's Screens and Blocs
+│       ├── safety/            Safety Module's Screens and Blocs
 │       └── auth/              sign-in, awaiting-Approval
 ├── dev/                      local-only edge router config used by docker compose
 ├── scripts/                   review.sh, setup-deployment.sh (repo root, distinct from backend/scripts)

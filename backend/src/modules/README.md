@@ -1,8 +1,10 @@
 # Modules
 
 A **Module** is a functional area of the Platform that records real work and
-produces the measurements KPIs are calculated from: People, then Maintenance,
-then the Tier Board.
+produces the measurements KPIs are calculated from: People, Maintenance,
+Actions, Quality, Safety and Production. Production owns the Shift handover a
+Section's Team Leaders sign (ADR-0054) and contributes the two handover numbers
+to the tier board.
 
 Modules are **code seams, not data seams** (ADR-0006). They share one schema and
 one process. A Module owns its routes and its services, and never reaches into
