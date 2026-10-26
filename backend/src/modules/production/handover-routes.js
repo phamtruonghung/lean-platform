@@ -7,10 +7,10 @@
  * `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
  * about the handover itself is handovers.js's business.
  *
- * Who may act: any Account whose edit Grant reaches the Section may open a
- * draft (ADR-0054 — Team Leader is a Job role, not an account role, so scope is
- * the gate), and reading a handover or a Section's day needs a Grant of either
- * level reaching it. `write: true` is spelled out on the open because it
+ * Who may act: any Account whose edit Grant reaches the Section may open or
+ * submit a draft (ADR-0054 — Team Leader is a Job role, not an account role,
+ * so scope is the gate), and reading a handover or a Section's day needs a Grant of either
+ * level reaching it. `write: true` is spelled out on both writes because it
  * defaults to FALSE, and a write that forgot it would be authorised by any read
  * Grant with no error anywhere to notice.
  *
@@ -99,6 +99,28 @@ router.get(
       await requireScope(req.account, found.orgUnitId, { write: false });
 
       const handover = await handovers.getHandoverDetail(found.id);
+      res.json({ handover });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
+
+// Submitting a draft: seals it and writes its snapshot once (issue #334).
+// Existence, then scope with `write: true`, then the service's own refusals —
+// not a draft (409), a shift instance that no longer resolves (404).
+router.post(
+  '/handovers/:id/submit',
+  people.authenticate,
+  people.requireActive,
+  async (req, res, next) => {
+    try {
+      const found = await handovers.findHandover(req.params.id);
+      if (!found) throw notFound('Shift handover');
+
+      await requireScope(req.account, found.orgUnitId, { write: true });
+
+      const handover = await handovers.submitHandover({ id: found.id, account: req.account });
       res.json({ handover });
     } catch (error) {
       handleError(error, res, next);
