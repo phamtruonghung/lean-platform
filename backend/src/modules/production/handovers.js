@@ -15,8 +15,13 @@
  * submit asks that the 4M block be answered — at least one change point, or
  * "none this shift" declared. Carried actions (issue #337) link the Section's
  * open Actions to a draft one at a time, each with its disposition, and submit
- * asks that every one of them be dispositioned. What is still not done, each
- * on its own later ticket: acknowledge, amend.
+ * asks that every one of them be dispositioned. Acknowledgement and amendment
+ * (issue #338) are the second act: the incoming Team Leader acknowledges a
+ * submitted handover and answers its change points' watches, and a correction
+ * to a sealed handover is a new version that copies the old one whole, never an
+ * edit in place. A Section's day reports what has gone wrong at each shift
+ * boundary as a list of exceptions; nothing expires, escalates or
+ * acknowledges itself.
  *
  * Nothing here writes to `action_items` or `action_phases`. A handover records
  * what it decided about an Action — carried, reassigned, closed with the
@@ -34,8 +39,8 @@ const SECTION_UNIT_TYPE = 'section';
 const HANDOVER_COLUMNS = `
   h.id, h.handover_no, h.site_id, h.org_unit_id, h.shift_instance_id,
   to_char(h.production_date, 'YYYY-MM-DD') AS production_date,
-  h.status, h.version, h.supersedes_id, h.superseded_at,
-  h.submitted_at, h.submitted_by_account_id, author.display_name AS author_display_name,
+  h.status, h.version, h.supersedes_id, h.superseded_at, h.superseded_by_account_id,
+  h.amendment_reason, h.submitted_at, h.submitted_by_account_id, author.display_name AS author_display_name,
   h.acknowledged_at, h.acknowledged_by_account_id, h.acknowledgement_note,
   h.late, h.joint_walk_done, h.critical_items, h.deviation_reason, h.change_points_none,
   h.oee, h.availability, h.performance, h.quality,
@@ -98,6 +103,8 @@ function toHandover(row) {
     version: row.version,
     supersedesId: row.supersedes_id,
     supersededAt: row.superseded_at,
+    supersededByAccountId: row.superseded_by_account_id,
+    amendmentReason: row.amendment_reason,
     submittedAt: row.submitted_at,
     submittedByAccountId: row.submitted_by_account_id,
     authorDisplayName: row.author_display_name ?? null,
@@ -713,7 +720,7 @@ const CHANGE_POINT_DIMENSIONS = ['man', 'machine', 'material', 'method'];
 const CHANGE_POINT_COLUMNS = `
   cp.id, cp.dimension, cp.description, cp.watch_note,
   cp.employee_id, e.display_name AS employee_name,
-  cp.watch_result, cp.watch_result_note
+  cp.watch_result, cp.watch_result_note, cp.watch_answered_by_account_id, cp.watch_answered_at
 `;
 
 function toChangePoint(row) {
@@ -725,7 +732,9 @@ function toChangePoint(row) {
     employeeId: row.employee_id,
     employeeName: row.employee_name ?? null,
     watchResult: row.watch_result,
-    watchResultNote: row.watch_result_note
+    watchResultNote: row.watch_result_note,
+    watchAnsweredByAccountId: row.watch_answered_by_account_id,
+    watchAnsweredAt: row.watch_answered_at
   };
 }
 
@@ -1008,21 +1017,281 @@ async function unlinkAction({ id, linkId, account }) {
   return getHandoverDetail(id);
 }
 
+// Why a handover did not go the standard way: the CHECK constraint on
+// `shift_handovers.deviation_reason`, mirrored so a bad value is a 400 naming
+// the set.
+const DEVIATION_REASONS = ['none', 'late', 'partial', 'no_incoming_team_leader'];
+
+// The critical items are a short list said aloud at the walk, not a log.
+const CRITICAL_ITEMS_MAX_LENGTH = 2000;
+
+// The header fields and the columns they are stored in.
+const HEADER_COLUMNS = {
+  jointWalkDone: 'joint_walk_done',
+  criticalItems: 'critical_items',
+  deviationReason: 'deviation_reason',
+  changePointsNone: 'change_points_none'
+};
+
+// The header fields' own domain checks, after the route has checked each is
+// the right kind of value. A blank critical-items text is stored NULL.
+function checkHeaderFields(fields) {
+  const checked = { ...fields };
+  if (checked.deviationReason !== undefined && !DEVIATION_REASONS.includes(checked.deviationReason)) {
+    throw httpError(400, `deviationReason must be one of: ${DEVIATION_REASONS.join(', ')}`);
+  }
+  if (checked.criticalItems !== undefined) {
+    checked.criticalItems = blankToNull(checked.criticalItems);
+    if (checked.criticalItems !== null && checked.criticalItems.length > CRITICAL_ITEMS_MAX_LENGTH) {
+      throw httpError(
+        400,
+        `criticalItems is ${checked.criticalItems.length} characters; keep it to ${CRITICAL_ITEMS_MAX_LENGTH}`
+      );
+    }
+  }
+  return checked;
+}
+
+// One UPDATE setting each header field that was sent; nothing when none was.
+async function writeHeaderFields(client, handoverId, fields) {
+  const entries = Object.entries(fields).filter(([field]) => HEADER_COLUMNS[field] !== undefined);
+  if (entries.length === 0) return;
+  const assignments = entries.map(([field], index) => `${HEADER_COLUMNS[field]} = $${index + 2}`);
+  await client.query(
+    `UPDATE shift_handovers SET ${assignments.join(', ')} WHERE id = $1`,
+    [handoverId, ...entries.map(([, value]) => value)]
+  );
+}
+
 // Writing a draft's own header fields. The route has already decided which
 // fields were sent and that each is the right kind of value; a field left out
 // is left as it is.
 async function updateHandover({ id, fields, account }) {
+  const checked = checkHeaderFields(fields);
   await withActor(account.id, async (client) => {
     const handover = await lockDraft(client, id);
-    if (fields.changePointsNone !== undefined) {
+    await writeHeaderFields(client, handover.id, checked);
+  });
+
+  return getHandoverDetail(id);
+}
+
+// The handover's row, locked for the rest of the transaction, refused unless
+// it is sealed and still the live version. Acknowledgement and amendment both
+// take this lock first, so one racing the other waits and then reads what the
+// first wrote: an acknowledgement after an amendment finds its version
+// superseded, an amendment after an acknowledgement copies a version that was
+// acknowledged.
+async function lockSealedLive(client, id, { draftMessage }) {
+  const { rows: [handover] } = await client.query(
+    `SELECT id, status, version, org_unit_id, shift_instance_id, superseded_at, submitted_by_account_id
+       FROM shift_handovers WHERE id = $1 FOR UPDATE`,
+    [id]
+  );
+  if (!handover) throw notFound('Shift handover');
+  if (handover.status === 'draft') throw httpError(409, draftMessage, 'HANDOVER_NOT_SUBMITTED');
+  if (handover.superseded_at !== null) {
+    throw httpError(
+      409,
+      'This version of the handover has been superseded by an amendment; act on the live version',
+      'HANDOVER_SUPERSEDED'
+    );
+  }
+  return handover;
+}
+
+// A change point's watch result, as the incoming shift found it: the CHECK
+// constraint on `shift_handover_change_points.watch_result`, mirrored.
+const WATCH_RESULTS = ['ok', 'concern', 'not_run'];
+
+// The incoming Team Leader's acknowledgement (CONTEXT.md's Handover
+// acknowledgement): who, when, an optional note, and what each watched change
+// point showed — one transaction, under the handover's row lock, so a second
+// acknowledgement waits and then finds this one. The author may not
+// acknowledge their own handover (docs/research/shift-handover.md §5, rule 2):
+// the check is the record's against itself, the version's own author.
+// A change point left out of `changePointResults` is left unanswered; the
+// acknowledgement does not invent a result for it.
+async function acknowledgeHandover({ id, account, note, changePointResults }) {
+  for (const answer of changePointResults) {
+    if (!WATCH_RESULTS.includes(answer.result)) {
+      throw httpError(400, `result must be one of: ${WATCH_RESULTS.join(', ')}`);
+    }
+  }
+  const answeredIds = changePointResults.map((answer) => answer.changePointId);
+  if (new Set(answeredIds).size !== answeredIds.length) {
+    throw httpError(400, 'Each change point is answered once');
+  }
+
+  await withActor(account.id, async (client) => {
+    const handover = await lockSealedLive(client, id, {
+      draftMessage: 'This handover is a draft: it is acknowledged once it has been submitted'
+    });
+    if (handover.status === 'acknowledged') {
+      throw httpError(409, 'This handover has already been acknowledged', 'HANDOVER_ALREADY_ACKNOWLEDGED');
+    }
+    if (String(handover.submitted_by_account_id) === String(account.id)) {
+      throw httpError(
+        409,
+        'The author of a handover cannot acknowledge it: the incoming Team Leader does',
+        'AUTHOR_CANNOT_ACKNOWLEDGE'
+      );
+    }
+
+    if (answeredIds.length > 0) {
+      const { rows } = await client.query(
+        'SELECT id FROM shift_handover_change_points WHERE handover_id = $1 AND id = ANY($2::bigint[])',
+        [handover.id, answeredIds]
+      );
+      if (rows.length !== answeredIds.length) throw notFound('Change point');
+    }
+
+    await client.query(
+      `UPDATE shift_handovers
+          SET status = 'acknowledged',
+              acknowledged_at = now(),
+              acknowledged_by_account_id = $2,
+              acknowledgement_note = $3
+        WHERE id = $1`,
+      [handover.id, account.id, blankToNull(note)]
+    );
+    for (const answer of changePointResults) {
       await client.query(
-        'UPDATE shift_handovers SET change_points_none = $2 WHERE id = $1',
-        [handover.id, fields.changePointsNone]
+        `UPDATE shift_handover_change_points
+            SET watch_result = $3,
+                watch_result_note = $4,
+                watch_answered_by_account_id = $5,
+                watch_answered_at = now()
+          WHERE handover_id = $1 AND id = $2`,
+        [handover.id, answer.changePointId, answer.result, blankToNull(answer.note), account.id]
       );
     }
   });
 
   return getHandoverDetail(id);
+}
+
+// The columns an amendment copies from the version it replaces, unchanged:
+// the pair, the day, the late flag and every snapshot number. `late` is the
+// original handover's — it says when the shift was handed over, and a
+// correction written later does not make the handover itself later. The
+// snapshot is copied, not recomputed: it is the record of what the outgoing
+// Team Leader showed (ADR-0054's "the record freezes the numbers it showed").
+const AMENDMENT_COPIED_COLUMNS = [
+  'site_id', 'org_unit_id', 'shift_instance_id', 'production_date', 'late',
+  'joint_walk_done', 'critical_items', 'deviation_reason', 'change_points_none',
+  'oee', 'availability', 'performance', 'quality',
+  'planned_production_minutes', 'run_minutes', 'unplanned_downtime_minutes',
+  'top_loss_reason_id', 'top_loss_minutes',
+  'unclassified_downtime_minutes', 'unclassified_stop_count',
+  'good_quantity', 'reject_quantity', 'rework_quantity', 'planned_quantity',
+  'performance_suspect', 'open_stop_count', 'open_quality_issue_count', 'safety_event_count'
+];
+
+// An amendment (docs/research/shift-handover.md §5, rule 7): a new version of
+// a sealed, live handover, written in one transaction under the old version's
+// row lock. The old row is stamped superseded first — the live-pair index
+// allows one live row, so the order is the constraint's, not a preference —
+// then the new row copies every content field and the snapshot unchanged,
+// takes the next version, names the one it replaces and the reason, and is
+// submitted by the caller now. Its machine lines, change points and action
+// links are copied beside it. The new version is unacknowledged: it is a
+// different record from the one the incoming Team Leader accepted, so it is
+// theirs to acknowledge again, and its change points' watch results are left
+// for that acknowledgement to answer.
+//
+// What an amendment may change in this slice is the header — the joint walk,
+// the critical items, the deviation reason, "no change points this shift".
+// Correcting a machine line, a change point or an action link is not part of
+// an amendment yet: the lines are copied exactly, and a line-level correction
+// is its own later ticket.
+async function amendHandover({ id, account, reason, fields }) {
+  const amendmentReason = blankToNull(reason);
+  if (amendmentReason === null) {
+    throw httpError(400, 'reason is required: say what this amendment corrects', 'REASON_REQUIRED');
+  }
+  const checked = checkHeaderFields(fields);
+
+  const newId = await withActor(account.id, async (client) => {
+    const previous = await lockSealedLive(client, id, {
+      draftMessage: 'This handover is a draft: edit it, or submit it first — only a sealed handover is amended'
+    });
+
+    await client.query(
+      `UPDATE shift_handovers
+          SET superseded_at = now(), superseded_by_account_id = $2
+        WHERE id = $1`,
+      [previous.id, account.id]
+    );
+
+    const copied = AMENDMENT_COPIED_COLUMNS.join(', ');
+    const { rows: [inserted] } = await client.query(
+      `INSERT INTO shift_handovers
+         (${copied}, status, version, supersedes_id, amendment_reason,
+          submitted_at, submitted_by_account_id)
+       SELECT ${copied}, 'submitted', version + 1, id, $2, now(), $3
+         FROM shift_handovers
+        WHERE id = $1
+       RETURNING id`,
+      [previous.id, amendmentReason, account.id]
+    );
+
+    await writeHeaderFields(client, inserted.id, checked);
+
+    await client.query(
+      `INSERT INTO shift_handover_machine_lines
+         (handover_id, asset_id, state, abnormality_type, note,
+          downtime_event_id, quality_issue_id, work_order_id, watch_note, walked)
+       SELECT $2, asset_id, state, abnormality_type, note,
+              downtime_event_id, quality_issue_id, work_order_id, watch_note, walked
+         FROM shift_handover_machine_lines
+        WHERE handover_id = $1
+        ORDER BY id`,
+      [previous.id, inserted.id]
+    );
+    await client.query(
+      `INSERT INTO shift_handover_change_points (handover_id, dimension, description, watch_note, employee_id)
+       SELECT $2, dimension, description, watch_note, employee_id
+         FROM shift_handover_change_points
+        WHERE handover_id = $1
+        ORDER BY id`,
+      [previous.id, inserted.id]
+    );
+    await client.query(
+      `INSERT INTO shift_handover_actions (handover_id, action_id, disposition, owner_employee_id, closure_note)
+       SELECT $2, action_id, disposition, owner_employee_id, closure_note
+         FROM shift_handover_actions
+        WHERE handover_id = $1
+        ORDER BY id`,
+      [previous.id, inserted.id]
+    );
+
+    return inserted.id;
+  });
+
+  return getHandoverDetail(newId);
+}
+
+// Every version of a handover's pair — the Section and shift instance it
+// belongs to — newest first, each with its author and the reason it gave.
+async function listVersions(handover) {
+  const { rows } = await getPool().query(
+    `SELECT h.id, h.version, h.status, h.submitted_at, h.acknowledged_at,
+            author.display_name AS author_display_name, h.amendment_reason
+       FROM ${HANDOVER_FROM}
+      WHERE h.org_unit_id = $1 AND h.shift_instance_id = $2
+      ORDER BY h.version DESC`,
+    [handover.orgUnitId, handover.shiftInstanceId]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    version: row.version,
+    status: row.status,
+    submittedAt: row.submitted_at,
+    acknowledgedAt: row.acknowledged_at,
+    authorName: row.author_display_name ?? null,
+    amendmentReason: row.amendment_reason
+  }));
 }
 
 // A Section's active Assets, the machines a handover owes a line for.
@@ -1117,10 +1386,41 @@ async function getHandoverDetail(id) {
   };
 }
 
+// How long after its shift ended a submitted handover may stay unacknowledged
+// before the Section's day reports it — the same 30 minutes `late` uses.
+const ACKNOWLEDGEMENT_GRACE = "interval '30 minutes'";
+
+// A shift boundary's exceptions, in a fixed order, from what the queries below
+// read against the database's clock. Nothing here changes a record: an
+// exception stays on the list until a person acts (rule 8 of
+// docs/research/shift-handover.md §5).
+//   no_handover — the shift instance has ended and has no live handover.
+//   unacknowledged — a submitted handover is still unacknowledged 30 minutes
+//     after the shift ended.
+//   amended_after_acknowledgement — the live version replaces an earlier one
+//     of the pair that had been acknowledged, so what the incoming Team Leader
+//     accepted is not what the record now says.
+function toExceptions(shiftRow, handoverRow) {
+  const exceptions = [];
+  if (!handoverRow && shiftRow.ended) exceptions.push('no_handover');
+  if (handoverRow && handoverRow.status === 'submitted' && shiftRow.acknowledgement_overdue) {
+    exceptions.push('unacknowledged');
+  }
+  if (handoverRow && handoverRow.amended_after_acknowledgement) {
+    exceptions.push('amended_after_acknowledgement');
+  }
+  return exceptions;
+}
+
 // A Section's production day: every shift instance of that day, earliest
 // first, each beside its live handover or `null`. The absence is reported, not
 // filled (ADR-0054's "derived, never a fake row"). Without a date, the day is
 // the Site's own calendar day now, read through the baseline's `plant_date`.
+//
+// Each shift also carries the live handover's `late`, its acknowledgement
+// latency — minutes from the shift instance's own start to the
+// acknowledgement, the plant's calendar rather than the submit time — and its
+// exceptions (see toExceptions).
 async function getSectionDay(section, date) {
   requireSection(section);
 
@@ -1134,7 +1434,9 @@ async function getSectionDay(section, date) {
   }
 
   const { rows: shiftRows } = await getPool().query(
-    `SELECT ${SHIFT_INSTANCE_COLUMNS}
+    `SELECT ${SHIFT_INSTANCE_COLUMNS},
+            si.ends_at < now() AS ended,
+            now() > si.ends_at + ${ACKNOWLEDGEMENT_GRACE} AS acknowledgement_overdue
        FROM shift_instances si
       WHERE si.org_unit_id = $1 AND si.production_date = $2::date
       ORDER BY si.starts_at, si.id`,
@@ -1142,25 +1444,40 @@ async function getSectionDay(section, date) {
   );
 
   const { rows: handoverRows } = await getPool().query(
-    `SELECT ${HANDOVER_COLUMNS}
+    `SELECT ${HANDOVER_COLUMNS},
+            EXTRACT(epoch FROM h.acknowledged_at - hsi.starts_at) / 60.0 AS acknowledgement_latency_minutes,
+            EXISTS (
+              SELECT 1 FROM shift_handovers earlier
+               WHERE earlier.org_unit_id = h.org_unit_id
+                 AND earlier.shift_instance_id = h.shift_instance_id
+                 AND earlier.version < h.version
+                 AND earlier.acknowledged_at IS NOT NULL
+            ) AS amended_after_acknowledgement
        FROM ${HANDOVER_FROM}
+       JOIN shift_instances hsi ON hsi.id = h.shift_instance_id
       WHERE h.org_unit_id = $1
         AND h.superseded_at IS NULL
         AND h.shift_instance_id = ANY($2::bigint[])`,
     [section.id, shiftRows.map((row) => row.id)]
   );
-  const liveByShift = new Map(handoverRows.map((row) => [row.shift_instance_id, toHandover(row)]));
+  const liveByShift = new Map(handoverRows.map((row) => [row.shift_instance_id, row]));
 
   return {
     section: { id: section.id, code: section.code, name: section.name },
     productionDate,
-    shifts: shiftRows.map((row) => ({
-      shiftInstanceId: row.id,
-      startsAt: row.starts_at,
-      endsAt: row.ends_at,
-      status: row.status,
-      handover: liveByShift.get(row.id) ?? null
-    }))
+    shifts: shiftRows.map((row) => {
+      const live = liveByShift.get(row.id) ?? null;
+      return {
+        shiftInstanceId: row.id,
+        startsAt: row.starts_at,
+        endsAt: row.ends_at,
+        status: row.status,
+        handover: live ? toHandover(live) : null,
+        late: live ? live.late : null,
+        acknowledgementLatencyMinutes: live ? toNumber(live.acknowledgement_latency_minutes) : null,
+        exceptions: toExceptions(row, live)
+      };
+    })
   };
 }
 
@@ -1177,6 +1494,9 @@ module.exports = {
   linkAction,
   unlinkAction,
   updateHandover,
+  acknowledgeHandover,
+  amendHandover,
+  listVersions,
   getHandoverDetail,
   getSectionDay,
   listSectionAssets

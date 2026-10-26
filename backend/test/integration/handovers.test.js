@@ -1213,7 +1213,8 @@ test('a draft gains change points grouped man, machine, material, method, two of
   assert.strictEqual(changePoints.man.length, 1);
   const [man] = changePoints.man;
   assert.deepStrictEqual(Object.keys(man).sort(), [
-    'description', 'dimension', 'employeeId', 'employeeName', 'id', 'watchNote', 'watchResult', 'watchResultNote'
+    'description', 'dimension', 'employeeId', 'employeeName', 'id',
+    'watchAnsweredAt', 'watchAnsweredByAccountId', 'watchNote', 'watchResult', 'watchResultNote'
   ]);
   assert.strictEqual(man.dimension, 'man');
   assert.strictEqual(man.description, 'Relief operator on the cutter');
@@ -1732,4 +1733,422 @@ test('a link is removed from its own draft only, and once submitted linking and 
 
   const read = await get(teamLeader.token, `/handovers/${draft.id}`);
   assert.deepStrictEqual(read.body.handover.actions, [sealedLink]);
+});
+
+// --- Acknowledgement, amendment and the Section's exceptions (issue #338) ---
+//
+// Each test builds a Section of its own, timed against the database's clock:
+// the exceptions and the acknowledgement latency are read against `now()`.
+
+async function postJson(token, path, body) {
+  return json(
+    await fetch(`${base}/api/production${path}`, {
+      method: 'POST',
+      headers: { ...token, 'content-type': 'application/json' },
+      body: JSON.stringify(body ?? {})
+    })
+  );
+}
+
+async function acknowledge(token, handoverId, body) {
+  return postJson(token, `/handovers/${handoverId}/acknowledge`, body);
+}
+
+async function amend(token, handoverId, body) {
+  return postJson(token, `/handovers/${handoverId}/amendments`, body);
+}
+
+// An Account with an edit Grant on the department, named so a read can tell
+// it from the author.
+async function insertNamedAccount(displayName) {
+  const account = await insertAccount({ grants: [{ orgUnitId: department.id }] });
+  await pool.query('UPDATE app_users SET display_name = $2 WHERE id = $1', [account.id, displayName]);
+  return account;
+}
+
+// A shift instance on the Section, its start and end given as offsets in
+// minutes from the database's now.
+async function clockShift(sectionId, startOffset, endOffset, productionDate) {
+  const { rows: [clock] } = await pool.query(
+    `SELECT now() + make_interval(mins => $1) AS starts_at, now() + make_interval(mins => $2) AS ends_at`,
+    [startOffset, endOffset]
+  );
+  const definition = await insertShiftDefinition('06:00', 'Clock shift');
+  const shift = await insertShiftInstance(sectionId, definition.id, clock.starts_at, clock.ends_at, productionDate);
+  return { ...shift, startsAt: clock.starts_at, endsAt: clock.ends_at };
+}
+
+async function sectionDay(sectionId, date) {
+  const day = await get(teamLeader.token, `/sections/${sectionId}/handovers?date=${date}`);
+  assert.strictEqual(day.status, 200, JSON.stringify(day.body));
+  return day.body.shifts;
+}
+
+// A sealed handover with one of everything an amendment copies: a machine line
+// on the Section's one Asset, a change point, a carried Action, and a snapshot
+// of real numbers. The shift ran from ten hours ago to two hours ago; one
+// 30-minute breakdown, 400 good and 20 rejects at 30 s against 500 planned.
+async function sealedHandover(name, productionDate) {
+  const ownSection = await insertOrgUnit(department.id, 'section', name);
+  const asset = await insertAsset(ownSection.id);
+  const shift = await clockShift(ownSection.id, -600, -120, productionDate);
+  const startsAt = new Date(shift.startsAt).getTime();
+  const at = (offset) => new Date(startsAt + offset * 60000).toISOString();
+
+  const reason = await insertDowntimeReason('BRK', 'breakdown');
+  await insertDowntimeEvent(asset.id, reason.id, at(60), at(90));
+  const product = await insertProduct(30);
+  await insertRunWithCount({
+    shiftInstanceId: shift.id, assetId: asset.id, productId: product.id, plannedQuantity: 500,
+    startedAt: at(0), endedAt: at(480), count: { good: 400, reject: 20, rework: 0 }
+  });
+  const action = await insertAction(ownSection.id, { title: 'Blade guard loose' });
+
+  const opened = await openHandover(teamLeader.token, { orgUnitId: ownSection.id, shiftInstanceId: shift.id });
+  assert.strictEqual(opened.status, 201, JSON.stringify(opened.body));
+  const draftId = opened.body.handover.id;
+  assert.strictEqual((await putLine(teamLeader.token, draftId, asset.id, {
+    state: 'running', watchNote: 'Blade guard', walked: true
+  })).status, 200);
+  assert.strictEqual((await addChangePoint(teamLeader.token, draftId, {
+    dimension: 'man', description: 'Relief operator on the cutter', watchNote: 'First changeover'
+  })).status, 201);
+  assert.strictEqual((await linkAction(teamLeader.token, draftId, {
+    actionId: action.id, disposition: 'carried'
+  })).status, 201);
+  assert.strictEqual((await patchHandover(teamLeader.token, draftId, {
+    jointWalkDone: true, criticalItems: 'Guard on C1 is taped', deviationReason: 'none'
+  })).status, 200);
+
+  const submitted = await json(await submit(teamLeader.token, draftId));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+  return { section: ownSection, asset, shift, action, reason, handover: submitted.body.handover };
+}
+
+test('a draft takes the evidence fields, and a wrong type, an unknown reason or an over-long text is 400', async () => {
+  const draft = await openDraft((await aprilShift('Evidence shift')).id);
+
+  const written = await patchHandover(teamLeader.token, draft.id, {
+    jointWalkDone: true, criticalItems: '  Guard on C1 is taped  ', deviationReason: 'partial', colour: 'blue'
+  });
+  assert.strictEqual(written.status, 200, JSON.stringify(written.body));
+  assert.strictEqual(written.body.handover.jointWalkDone, true);
+  assert.strictEqual(written.body.handover.criticalItems, 'Guard on C1 is taped');
+  assert.strictEqual(written.body.handover.deviationReason, 'partial');
+  assert.strictEqual(written.body.handover.changePointsNone, false, 'a field left out is left as it is');
+
+  const atCap = await patchHandover(teamLeader.token, draft.id, { criticalItems: 'x'.repeat(2000) });
+  assert.strictEqual(atCap.status, 200, JSON.stringify(atCap.body));
+  const overCap = await patchHandover(teamLeader.token, draft.id, { criticalItems: 'x'.repeat(2001) });
+  assert.strictEqual(overCap.status, 400, JSON.stringify(overCap.body));
+  assert.match(overCap.body.message, /2000/);
+
+  for (const body of [
+    { jointWalkDone: 'yes' }, { criticalItems: 42 }, { deviationReason: 3 },
+    { deviationReason: 'tired' }, { colour: 'blue' }
+  ]) {
+    const bad = await patchHandover(teamLeader.token, draft.id, body);
+    assert.strictEqual(bad.status, 400, `${JSON.stringify(body)}: ${JSON.stringify(bad.body)}`);
+  }
+  const badReason = await patchHandover(teamLeader.token, draft.id, { deviationReason: 'tired' });
+  assert.match(badReason.body.message, /deviationReason must be one of: none, late, partial, no_incoming_team_leader/);
+
+  const cleared = await patchHandover(teamLeader.token, draft.id, { criticalItems: null, deviationReason: 'no_incoming_team_leader' });
+  assert.strictEqual(cleared.status, 200, JSON.stringify(cleared.body));
+  assert.strictEqual(cleared.body.handover.criticalItems, null);
+  assert.strictEqual(cleared.body.handover.deviationReason, 'no_incoming_team_leader');
+});
+
+test('acknowledgement refuses a draft, the author, an outsider, a read Grant and a second acknowledgement', async () => {
+  const ownSection = await insertOrgUnit(department.id, 'section', 'Ack refusals');
+  const incoming = await insertNamedAccount('Incoming Team Leader');
+  const shift = await clockShift(ownSection.id, -600, -120, '2026-07-01');
+  const opened = await openHandover(teamLeader.token, { orgUnitId: ownSection.id, shiftInstanceId: shift.id });
+  assert.strictEqual(opened.status, 201, JSON.stringify(opened.body));
+  const id = opened.body.handover.id;
+
+  const draft = await acknowledge(incoming.token, id);
+  assert.strictEqual(draft.status, 409, JSON.stringify(draft.body));
+  assert.strictEqual(draft.body.code, 'HANDOVER_NOT_SUBMITTED');
+
+  await patchHandover(teamLeader.token, id, { changePointsNone: true });
+  assert.strictEqual((await submit(teamLeader.token, id)).status, 200);
+
+  const own = await acknowledge(teamLeader.token, id);
+  assert.strictEqual(own.status, 409, JSON.stringify(own.body));
+  assert.strictEqual(own.body.code, 'AUTHOR_CANNOT_ACKNOWLEDGE');
+
+  const outside = await acknowledge(outsider.token, id);
+  assert.strictEqual(outside.status, 403);
+  assert.strictEqual(outside.body.code, 'OUTSIDE_GRANTED_ORG_UNITS');
+  const reader = await insertAccount({ grants: [{ orgUnitId: ownSection.id, write: false }] });
+  assert.strictEqual((await acknowledge(reader.token, id)).status, 403);
+  assert.strictEqual((await acknowledge(incoming.token, '999999999999')).status, 404);
+
+  const first = await acknowledge(incoming.token, id, { note: 'Walked it with the outgoing TL' });
+  assert.strictEqual(first.status, 200, JSON.stringify(first.body));
+  const twice = await acknowledge(incoming.token, id);
+  assert.strictEqual(twice.status, 409, JSON.stringify(twice.body));
+  assert.strictEqual(twice.body.code, 'HANDOVER_ALREADY_ACKNOWLEDGED');
+});
+
+test('acknowledgement records who and when and each watch result, and the shift leaves the exception list', async () => {
+  const sealed = await sealedHandover('Ack records', '2026-07-02');
+  const incoming = await insertNamedAccount('Incoming Team Leader');
+  const id = sealed.handover.id;
+  const [point] = sealed.handover.changePoints.man;
+
+  let [shift] = await sectionDay(sealed.section.id, '2026-07-02');
+  assert.deepStrictEqual(shift.exceptions, ['unacknowledged'], 'submitted, and the shift ended two hours ago');
+  assert.strictEqual(shift.acknowledgementLatencyMinutes, null);
+  assert.strictEqual(shift.late, true);
+
+  // Refusals inside the body: a result outside the set, another handover's
+  // change point, a malformed id. None of them writes anything.
+  const other = await sealedHandover('Ack records other', '2026-07-02');
+  const [otherPoint] = other.handover.changePoints.man;
+  const badResult = await acknowledge(incoming.token, id, { changePointResults: [{ changePointId: point.id, result: 'fine' }] });
+  assert.strictEqual(badResult.status, 400, JSON.stringify(badResult.body));
+  assert.match(badResult.body.message, /result must be one of: ok, concern, not_run/);
+  const elsewhere = await acknowledge(incoming.token, id, { changePointResults: [{ changePointId: otherPoint.id, result: 'ok' }] });
+  assert.strictEqual(elsewhere.status, 404, JSON.stringify(elsewhere.body));
+  const malformed = await acknowledge(incoming.token, id, { changePointResults: [{ changePointId: 'CP-1', result: 'ok' }] });
+  assert.strictEqual(malformed.status, 400);
+  assert.strictEqual((await acknowledge(incoming.token, id, { changePointResults: 'ok' })).status, 400);
+  const unchanged = await get(teamLeader.token, `/handovers/${id}`);
+  assert.strictEqual(unchanged.body.handover.status, 'submitted');
+  assert.strictEqual(unchanged.body.handover.changePoints.man[0].watchResult, null);
+
+  const acknowledged = await acknowledge(incoming.token, id, {
+    note: '  Walked C1 together  ',
+    changePointResults: [{ changePointId: point.id, result: 'concern', note: 'Changeover took 40 minutes' }]
+  });
+  assert.strictEqual(acknowledged.status, 200, JSON.stringify(acknowledged.body));
+  const handover = acknowledged.body.handover;
+  assert.strictEqual(handover.status, 'acknowledged');
+  assert.strictEqual(handover.acknowledgedByAccountId, incoming.id);
+  assert.ok(handover.acknowledgedAt);
+  assert.strictEqual(handover.acknowledgementNote, 'Walked C1 together');
+  const [answered] = handover.changePoints.man;
+  assert.strictEqual(answered.watchResult, 'concern');
+  assert.strictEqual(answered.watchResultNote, 'Changeover took 40 minutes');
+  assert.strictEqual(answered.watchAnsweredByAccountId, incoming.id);
+  assert.strictEqual(answered.watchAnsweredAt, handover.acknowledgedAt, 'one transaction, one clock');
+
+  const read = await get(teamLeader.token, `/handovers/${id}`);
+  assert.deepStrictEqual(read.body.handover.changePoints, handover.changePoints);
+
+  [shift] = await sectionDay(sealed.section.id, '2026-07-02');
+  assert.deepStrictEqual(shift.exceptions, []);
+  // Measured from the shift instance's start, not from the submit.
+  const fromStart = (Date.parse(handover.acknowledgedAt) - new Date(sealed.shift.startsAt).getTime()) / 60000;
+  const fromSubmit = (Date.parse(handover.acknowledgedAt) - Date.parse(handover.submittedAt)) / 60000;
+  assert.ok(Math.abs(shift.acknowledgementLatencyMinutes - fromStart) < 0.01,
+    `${shift.acknowledgementLatencyMinutes} vs ${fromStart}`);
+  assert.ok(shift.acknowledgementLatencyMinutes > 595, 'ten hours after the shift started');
+  assert.ok(Math.abs(shift.acknowledgementLatencyMinutes - fromSubmit) > 500);
+});
+
+test('an amendment is version 2 with the snapshot, lines and links copied, and version 1 stays readable', async () => {
+  const sealed = await sealedHandover('Amendment', '2026-07-03');
+  const incoming = await insertNamedAccount('Incoming Team Leader');
+  const amender = await insertNamedAccount('Amending Team Leader');
+  const v1 = sealed.handover;
+
+  // The snapshot as submit sealed it: one Asset, 450 planned minutes, a
+  // 30-minute breakdown, 420 good-or-reject pieces at 30 s.
+  const availability = 420 / 450;
+  const performance = (420 * 30 / 60) / 420;
+  const quality = 400 / 420;
+  const expectedSnapshot = {
+    oee: round6(availability * performance * quality),
+    availability: round6(availability),
+    performance: round6(performance),
+    quality: round6(quality),
+    plannedProductionMinutes: 450,
+    runMinutes: 420,
+    unplannedDowntimeMinutes: 30,
+    topLossReasonId: sealed.reason.id,
+    topLossMinutes: 30,
+    unclassifiedDowntimeMinutes: 0,
+    unclassifiedStopCount: 0,
+    goodQuantity: 400,
+    rejectQuantity: 20,
+    reworkQuantity: 0,
+    plannedQuantity: 500,
+    performanceSuspect: false,
+    openStopCount: 0,
+    openQualityIssueCount: 0,
+    safetyEventCount: 0
+  };
+  assert.deepStrictEqual(v1.snapshot, expectedSnapshot);
+
+  const acknowledged = await acknowledge(incoming.token, v1.id, {
+    changePointResults: [{ changePointId: v1.changePoints.man[0].id, result: 'ok' }]
+  });
+  assert.strictEqual(acknowledged.status, 200, JSON.stringify(acknowledged.body));
+
+  // More counts after the fact: an amendment copies the sealed numbers, it
+  // does not recompute them.
+  const product = await insertProduct(30);
+  const startsAt = new Date(sealed.shift.startsAt).toISOString();
+  await insertRunWithCount({
+    shiftInstanceId: sealed.shift.id, assetId: sealed.asset.id, productId: product.id, plannedQuantity: 100,
+    startedAt: startsAt, endedAt: new Date(sealed.shift.endsAt).toISOString(), count: { good: 0, reject: 90, rework: 0 }
+  });
+
+  const amended = await amend(amender.token, v1.id, {
+    reason: '  Critical items missed the taped guard on C2  ',
+    criticalItems: 'Guards on C1 and C2 are taped',
+    deviationReason: 'partial'
+  });
+  assert.strictEqual(amended.status, 201, JSON.stringify(amended.body));
+  const v2 = amended.body.handover;
+  assert.notStrictEqual(v2.id, v1.id);
+  assert.strictEqual(v2.version, 2);
+  assert.strictEqual(v2.supersedesId, v1.id);
+  assert.strictEqual(v2.amendmentReason, 'Critical items missed the taped guard on C2');
+  assert.strictEqual(v2.status, 'submitted');
+  assert.strictEqual(v2.submittedByAccountId, amender.id);
+  assert.strictEqual(v2.authorDisplayName, 'Amending Team Leader');
+  assert.strictEqual(v2.acknowledgedAt, null, 'a new version is acknowledged afresh');
+  assert.strictEqual(v2.criticalItems, 'Guards on C1 and C2 are taped');
+  assert.strictEqual(v2.deviationReason, 'partial');
+  assert.strictEqual(v2.jointWalkDone, true, 'a field the amendment did not send is copied');
+  assert.strictEqual(v2.late, v1.late);
+  assert.strictEqual(v2.productionDate, v1.productionDate);
+  assert.strictEqual(v2.shiftInstanceId, v1.shiftInstanceId);
+  assert.deepStrictEqual(v2.snapshot, expectedSnapshot);
+  assert.deepStrictEqual(v2.snapshotGaps, v1.snapshotGaps);
+
+  const lineFields = ({ id, createdAt, updatedAt, ...rest }) => rest;
+  assert.deepStrictEqual(v2.machineLines.map(lineFields), v1.machineLines.map(lineFields));
+  assert.notStrictEqual(v2.machineLines[0].id, v1.machineLines[0].id);
+  assert.deepStrictEqual(
+    v2.changePoints.man.map(({ dimension, description, watchNote, employeeId }) => ({ dimension, description, watchNote, employeeId })),
+    v1.changePoints.man.map(({ dimension, description, watchNote, employeeId }) => ({ dimension, description, watchNote, employeeId }))
+  );
+  assert.strictEqual(v2.changePoints.man[0].watchResult, null, 'the watch is answered by the next acknowledgement');
+  assert.deepStrictEqual(
+    v2.actions.map((link) => [link.action.id, link.disposition]),
+    [[sealed.action.id, 'carried']]
+  );
+
+  // Version 1, at its own address, as it was acknowledged — now superseded.
+  const old = await get(teamLeader.token, `/handovers/${v1.id}`);
+  assert.strictEqual(old.status, 200, JSON.stringify(old.body));
+  assert.strictEqual(old.body.handover.version, 1);
+  assert.strictEqual(old.body.handover.status, 'acknowledged');
+  assert.strictEqual(old.body.handover.criticalItems, 'Guard on C1 is taped');
+  assert.ok(old.body.handover.supersededAt);
+  assert.strictEqual(old.body.handover.supersededByAccountId, amender.id);
+  assert.strictEqual(old.body.handover.changePoints.man[0].watchResult, 'ok');
+  assert.deepStrictEqual(old.body.handover.snapshot, expectedSnapshot);
+
+  const [shift] = await sectionDay(sealed.section.id, '2026-07-03');
+  assert.strictEqual(shift.handover.id, v2.id, 'the day reads the live version');
+  assert.deepStrictEqual(shift.exceptions, ['unacknowledged', 'amended_after_acknowledgement']);
+  assert.strictEqual(shift.acknowledgementLatencyMinutes, null);
+
+  // A superseded version is neither acknowledged nor amended again.
+  const ackOld = await acknowledge(incoming.token, v1.id);
+  assert.strictEqual(ackOld.status, 409, JSON.stringify(ackOld.body));
+  assert.strictEqual(ackOld.body.code, 'HANDOVER_SUPERSEDED');
+  const amendOld = await amend(amender.token, v1.id, { reason: 'Again' });
+  assert.strictEqual(amendOld.status, 409, JSON.stringify(amendOld.body));
+  assert.strictEqual(amendOld.body.code, 'HANDOVER_SUPERSEDED');
+
+  // Versions, newest first, from either version's address.
+  for (const address of [v1.id, v2.id]) {
+    const versions = await get(teamLeader.token, `/handovers/${address}/versions`);
+    assert.strictEqual(versions.status, 200, JSON.stringify(versions.body));
+    assert.deepStrictEqual(versions.body.versions.map((version) => ({
+      id: version.id, version: version.version, status: version.status,
+      authorName: version.authorName, amendmentReason: version.amendmentReason
+    })), [
+      { id: v2.id, version: 2, status: 'submitted', authorName: 'Amending Team Leader',
+        amendmentReason: 'Critical items missed the taped guard on C2' },
+      { id: v1.id, version: 1, status: 'acknowledged', authorName: 'Handover Test Account', amendmentReason: null }
+    ]);
+    assert.ok(versions.body.versions[0].submittedAt);
+    assert.strictEqual(versions.body.versions[0].acknowledgedAt, null);
+    assert.ok(versions.body.versions[1].acknowledgedAt);
+  }
+  assert.strictEqual((await get(outsider.token, `/handovers/${v1.id}/versions`)).status, 403);
+  assert.strictEqual((await get(teamLeader.token, '/handovers/999999999999/versions')).status, 404);
+
+  // The amender wrote version 2, so the amender cannot acknowledge it; the
+  // incoming Team Leader can, and the day's exceptions narrow to the amendment.
+  const ownAmendment = await acknowledge(amender.token, v2.id);
+  assert.strictEqual(ownAmendment.body.code, 'AUTHOR_CANNOT_ACKNOWLEDGE');
+  assert.strictEqual((await acknowledge(incoming.token, v2.id)).status, 200);
+  const [after] = await sectionDay(sealed.section.id, '2026-07-03');
+  assert.deepStrictEqual(after.exceptions, ['amended_after_acknowledgement']);
+});
+
+test('an amendment is refused for a draft, without a reason, and for an outsider', async () => {
+  const ownSection = await insertOrgUnit(department.id, 'section', 'Amendment refusals');
+  const shift = await clockShift(ownSection.id, -600, -120, '2026-07-04');
+  const opened = await openHandover(teamLeader.token, { orgUnitId: ownSection.id, shiftInstanceId: shift.id });
+  const id = opened.body.handover.id;
+
+  const draft = await amend(teamLeader.token, id, { reason: 'Too early' });
+  assert.strictEqual(draft.status, 409, JSON.stringify(draft.body));
+  assert.strictEqual(draft.body.code, 'HANDOVER_NOT_SUBMITTED');
+  assert.match(draft.body.message, /submit it first/);
+
+  await patchHandover(teamLeader.token, id, { changePointsNone: true });
+  assert.strictEqual((await submit(teamLeader.token, id)).status, 200);
+
+  for (const body of [{}, { reason: '   ' }, { reason: 7 }]) {
+    const blank = await amend(teamLeader.token, id, body);
+    assert.strictEqual(blank.status, 400, `${JSON.stringify(body)}: ${JSON.stringify(blank.body)}`);
+    assert.strictEqual(blank.body.code, 'REASON_REQUIRED');
+  }
+  const badField = await amend(teamLeader.token, id, { reason: 'Fix', deviationReason: 'tired' });
+  assert.strictEqual(badField.status, 400);
+  const outside = await amend(outsider.token, id, { reason: 'Not mine' });
+  assert.strictEqual(outside.status, 403);
+  assert.strictEqual(outside.body.code, 'OUTSIDE_GRANTED_ORG_UNITS');
+  assert.strictEqual((await amend(teamLeader.token, '999999999999', { reason: 'x' })).status, 404);
+
+  const versions = await get(teamLeader.token, `/handovers/${id}/versions`);
+  assert.strictEqual(versions.body.versions.length, 1, 'nothing refused wrote a version');
+});
+
+test('the Section\'s day shows no_handover for an ended shift and unacknowledged only past 30 minutes', async () => {
+  const ownSection = await insertOrgUnit(department.id, 'section', 'Exceptions');
+  const date = '2026-07-05';
+  // A Section's shift instances may not overlap, so these four run one after
+  // another.
+  const ended = await clockShift(ownSection.id, -200, -120, date);
+  const overdue = await clockShift(ownSection.id, -100, -31, date);
+  const recent = await clockShift(ownSection.id, -30, -10, date);
+  const future = await clockShift(ownSection.id, 60, 540, date);
+
+  for (const shift of [overdue, recent]) {
+    const opened = await openHandover(teamLeader.token, { orgUnitId: ownSection.id, shiftInstanceId: shift.id });
+    assert.strictEqual(opened.status, 201, JSON.stringify(opened.body));
+    await patchHandover(teamLeader.token, opened.body.handover.id, { changePointsNone: true });
+    assert.strictEqual((await submit(teamLeader.token, opened.body.handover.id)).status, 200);
+  }
+
+  const shifts = await sectionDay(ownSection.id, date);
+  assert.deepStrictEqual(shifts.map((shift) => shift.shiftInstanceId), [ended.id, overdue.id, recent.id, future.id]);
+  const byId = Object.fromEntries(shifts.map((shift) => [shift.shiftInstanceId, shift]));
+
+  assert.deepStrictEqual(byId[ended.id].exceptions, ['no_handover']);
+  assert.strictEqual(byId[ended.id].handover, null);
+  assert.strictEqual(byId[ended.id].late, null);
+  assert.strictEqual(byId[ended.id].acknowledgementLatencyMinutes, null);
+
+  assert.deepStrictEqual(byId[overdue.id].exceptions, ['unacknowledged']);
+  assert.strictEqual(byId[overdue.id].late, true);
+  assert.deepStrictEqual(byId[recent.id].exceptions, [], 'ten minutes after the shift is not yet overdue');
+  assert.strictEqual(byId[recent.id].late, false);
+  assert.deepStrictEqual(byId[future.id].exceptions, [], 'a shift that has not ended owes nothing yet');
+
+  // Nothing resolves itself: read again, the exceptions are the same.
+  const again = await sectionDay(ownSection.id, date);
+  assert.deepStrictEqual(again.map((shift) => shift.exceptions), shifts.map((shift) => shift.exceptions));
 });
