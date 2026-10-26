@@ -40,6 +40,7 @@ const insertedShiftInstanceIds = [];
 const insertedDowntimeReasonIds = [];
 const insertedProductIds = [];
 const insertedDefectCodeIds = [];
+const insertedEmployeeIds = [];
 
 // The plant this file builds, filled in by test.before().
 let site;
@@ -243,15 +244,59 @@ async function deleteLine(token, handoverId, assetId) {
   );
 }
 
-// Every active Asset the Section lists gets a normal-running line, so submit's
-// completeness rule (issue #335) is met and a test can reach what it is about.
-async function fillRunningLines(handoverId) {
+async function patchHandover(token, handoverId, body) {
+  return json(
+    await fetch(`${base}/api/production/handovers/${handoverId}`, {
+      method: 'PATCH',
+      headers: { ...token, 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+  );
+}
+
+async function addChangePoint(token, handoverId, body) {
+  return json(
+    await fetch(`${base}/api/production/handovers/${handoverId}/change-points`, {
+      method: 'POST',
+      headers: { ...token, 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+  );
+}
+
+async function deleteChangePoint(token, handoverId, changePointId) {
+  return json(
+    await fetch(`${base}/api/production/handovers/${handoverId}/change-points/${changePointId}`, {
+      method: 'DELETE',
+      headers: token
+    })
+  );
+}
+
+// Every active Asset the Section lists gets a normal-running line, and the
+// change point block is declared none this shift, so submit's completeness
+// rules (issues #335 and #336) are met and a test can reach what it is about.
+async function fillRunningLines(handoverId, { declareNoChangePoints = true } = {}) {
   const listed = await get(teamLeader.token, `/sections/${section.id}/assets`);
   assert.strictEqual(listed.status, 200, JSON.stringify(listed.body));
   for (const asset of listed.body.assets) {
     const written = await putLine(teamLeader.token, handoverId, asset.id, { state: 'running' });
     assert.strictEqual(written.status, 200, JSON.stringify(written.body));
   }
+  if (declareNoChangePoints) {
+    const declared = await patchHandover(teamLeader.token, handoverId, { changePointsNone: true });
+    assert.strictEqual(declared.status, 200, JSON.stringify(declared.body));
+  }
+}
+
+async function insertEmployee() {
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO employees (employee_no, first_name, last_name, is_active)
+     VALUES ($1, 'Lan', 'Nguyen', TRUE) RETURNING id, display_name`,
+    [uniqueCode('HOEMP')]
+  );
+  insertedEmployeeIds.push(row.id);
+  return row;
 }
 
 // The snapshot's ratios are stored at six places (NUMERIC(12,6)).
@@ -323,7 +368,9 @@ test.after(async () => {
   await pool.query('DELETE FROM safety_observations WHERE shift_instance_id = ANY($1)', [insertedShiftInstanceIds]);
   await pool.query('DELETE FROM production_counts WHERE asset_id = ANY($1)', [insertedAssetIds]);
   await pool.query('DELETE FROM production_runs WHERE product_id = ANY($1)', [insertedProductIds]);
+  // Change points cascade with their handover, and name Employees.
   await pool.query('DELETE FROM shift_handovers WHERE org_unit_id = ANY($1)', [insertedOrgUnitIds]);
+  await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
   await pool.query('DELETE FROM product_cycle_times WHERE product_id = ANY($1)', [insertedProductIds]);
   await pool.query('DELETE FROM products WHERE id = ANY($1)', [insertedProductIds]);
   await pool.query('DELETE FROM defect_codes WHERE id = ANY($1)', [insertedDefectCodeIds]);
@@ -365,7 +412,7 @@ test('a Team Leader opens a draft handover and reads it back with its number and
   assert.strictEqual(new Date(handover.shiftInstance.startsAt).toISOString(), '2026-05-03T23:00:00.000Z');
   assert.strictEqual(new Date(handover.shiftInstance.endsAt).toISOString(), '2026-05-04T07:00:00.000Z');
   assert.deepStrictEqual(handover.machineLines, []);
-  assert.deepStrictEqual(handover.changePoints, []);
+  assert.deepStrictEqual(handover.changePoints, { man: [], machine: [], material: [], method: [] });
   assert.deepStrictEqual(handover.actions, []);
   // A draft has no author yet and no frozen numbers.
   assert.strictEqual(handover.authorDisplayName, null);
@@ -1115,4 +1162,222 @@ test('the Section\'s Assets are its active subtree only, ordered by code', async
   assert.strictEqual(notSection.body.code, 'NOT_A_SECTION');
   const unknown = await get(teamLeader.token, '/sections/999999999999/assets');
   assert.strictEqual(unknown.status, 404);
+});
+
+// ---------------------------------------------------------------------------
+// Change points and the 4M block's answer (issue #336).
+//
+// Each test opens its own draft on an April shift instance of its own.
+// ---------------------------------------------------------------------------
+
+const NO_CHANGE_POINTS = { man: [], machine: [], material: [], method: [] };
+
+test('a draft gains change points grouped man, machine, material, method, two of one dimension in insertion order', async () => {
+  const shift = await aprilShift('Change point shift');
+  const draft = await openDraft(shift.id);
+  const operator = await insertEmployee();
+
+  // Written out of 4M order, and two material lots in one shift.
+  const firstLot = await addChangePoint(teamLeader.token, draft.id, {
+    dimension: 'material', description: 'Fabric lot 2611-A on the cutter', watchNote: 'Check the first ten for shade'
+  });
+  assert.strictEqual(firstLot.status, 201, JSON.stringify(firstLot.body));
+  assert.strictEqual(firstLot.body.handover.id, draft.id);
+
+  const person = await addChangePoint(teamLeader.token, draft.id, {
+    dimension: 'man',
+    description: 'Relief operator on the cutter',
+    watchNote: 'Watch the first changeover',
+    employeeId: operator.id
+  });
+  assert.strictEqual(person.status, 201, JSON.stringify(person.body));
+  const secondLot = await addChangePoint(teamLeader.token, draft.id, {
+    dimension: 'material', description: 'Fabric lot 2611-B from 10:00', watchNote: 'Shade again at the lot change'
+  });
+  assert.strictEqual(secondLot.status, 201, JSON.stringify(secondLot.body));
+  const method = await addChangePoint(teamLeader.token, draft.id, {
+    dimension: 'method', description: '  New stacking sheet, rev C  ', watchNote: '  Stack height under 40  '
+  });
+  assert.strictEqual(method.status, 201, JSON.stringify(method.body));
+
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.strictEqual(read.status, 200, JSON.stringify(read.body));
+  const { changePoints } = read.body.handover;
+  assert.deepStrictEqual(Object.keys(changePoints), ['man', 'machine', 'material', 'method']);
+  assert.deepStrictEqual(changePoints.machine, []);
+
+  // A man change point reads back the Employee as the Directory names them.
+  assert.strictEqual(changePoints.man.length, 1);
+  const [man] = changePoints.man;
+  assert.deepStrictEqual(Object.keys(man).sort(), [
+    'description', 'dimension', 'employeeId', 'employeeName', 'id', 'watchNote', 'watchResult', 'watchResultNote'
+  ]);
+  assert.strictEqual(man.dimension, 'man');
+  assert.strictEqual(man.description, 'Relief operator on the cutter');
+  assert.strictEqual(man.watchNote, 'Watch the first changeover');
+  assert.strictEqual(man.employeeId, operator.id);
+  assert.strictEqual(man.employeeName, operator.display_name);
+  // The watch's result is the incoming shift's to record, not the writer's.
+  assert.strictEqual(man.watchResult, null);
+  assert.strictEqual(man.watchResultNote, null);
+
+  assert.deepStrictEqual(
+    changePoints.material.map((point) => point.description),
+    ['Fabric lot 2611-A on the cutter', 'Fabric lot 2611-B from 10:00']
+  );
+  assert.strictEqual(changePoints.material[0].employeeId, null);
+  assert.strictEqual(changePoints.material[0].employeeName, null);
+  assert.strictEqual(changePoints.method[0].description, 'New stacking sheet, rev C');
+  assert.strictEqual(changePoints.method[0].watchNote, 'Stack height under 40');
+
+  // The 201 carries the same handover the read does.
+  assert.deepStrictEqual(method.body.handover.changePoints, changePoints);
+});
+
+test('a change point is refused without a watch, outside the 4M, without a description, or naming an unknown Employee', async () => {
+  const shift = await aprilShift('Refused change point shift');
+  const draft = await openDraft(shift.id);
+  const valid = { dimension: 'machine', description: 'New blade fitted on the cutter', watchNote: 'Edge fray' };
+
+  for (const watchNote of [undefined, '', '   ']) {
+    const noWatch = await addChangePoint(teamLeader.token, draft.id, { ...valid, watchNote });
+    assert.strictEqual(noWatch.status, 400, JSON.stringify(noWatch.body));
+    assert.strictEqual(noWatch.body.code, 'WATCH_REQUIRED');
+    assert.match(noWatch.body.message, /watchNote is required/);
+    assert.match(noWatch.body.message, /watch for/);
+  }
+
+  const badDimension = await addChangePoint(teamLeader.token, draft.id, { ...valid, dimension: 'measurement' });
+  assert.strictEqual(badDimension.status, 400);
+  assert.match(badDimension.body.message, /dimension must be one of: man, machine, material, method/);
+  const noDimension = await addChangePoint(teamLeader.token, draft.id, { ...valid, dimension: undefined });
+  assert.strictEqual(noDimension.status, 400);
+
+  for (const description of [undefined, '  ']) {
+    const noDescription = await addChangePoint(teamLeader.token, draft.id, { ...valid, description });
+    assert.strictEqual(noDescription.status, 400, JSON.stringify(noDescription.body));
+    assert.match(noDescription.body.message, /description is required/);
+  }
+
+  const unknownEmployee = await addChangePoint(teamLeader.token, draft.id, {
+    ...valid, dimension: 'man', employeeId: '999999999999'
+  });
+  assert.strictEqual(unknownEmployee.status, 404, JSON.stringify(unknownEmployee.body));
+  const malformedEmployee = await addChangePoint(teamLeader.token, draft.id, { ...valid, employeeId: 'Lan' });
+  assert.strictEqual(malformedEmployee.status, 400);
+
+  // Existence, then scope: unknown handover 404, outsider and read Grant 403.
+  const unknownHandover = await addChangePoint(teamLeader.token, '999999999999', valid);
+  assert.strictEqual(unknownHandover.status, 404);
+  const outside = await addChangePoint(outsider.token, draft.id, valid);
+  assert.strictEqual(outside.status, 403);
+  assert.strictEqual(outside.body.code, 'OUTSIDE_GRANTED_ORG_UNITS');
+  const reader = await insertAccount({ grants: [{ orgUnitId: section.id, write: false }] });
+  const readOnly = await addChangePoint(reader.token, draft.id, valid);
+  assert.strictEqual(readOnly.status, 403);
+  assert.strictEqual((await patchHandover(reader.token, draft.id, { changePointsNone: true })).status, 403);
+
+  // Nothing refused was written.
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.deepStrictEqual(read.body.handover.changePoints, NO_CHANGE_POINTS);
+});
+
+test('a change point is removed from its own draft, and another handover\'s is a 404', async () => {
+  const draft = await openDraft((await aprilShift('Own change point shift')).id);
+  const other = await openDraft((await aprilShift('Other change point shift')).id);
+
+  const added = await addChangePoint(teamLeader.token, draft.id, {
+    dimension: 'machine', description: 'Feed speed raised to 14 m/min', watchNote: 'Seam wander'
+  });
+  assert.strictEqual(added.status, 201, JSON.stringify(added.body));
+  const [point] = added.body.handover.changePoints.machine;
+
+  const fromElsewhere = await deleteChangePoint(teamLeader.token, other.id, point.id);
+  assert.strictEqual(fromElsewhere.status, 404, JSON.stringify(fromElsewhere.body));
+  const malformed = await deleteChangePoint(teamLeader.token, draft.id, 'abc');
+  assert.strictEqual(malformed.status, 404);
+  const outside = await deleteChangePoint(outsider.token, draft.id, point.id);
+  assert.strictEqual(outside.status, 403);
+
+  const removed = await deleteChangePoint(teamLeader.token, draft.id, point.id);
+  assert.strictEqual(removed.status, 200, JSON.stringify(removed.body));
+  assert.deepStrictEqual(removed.body.handover.changePoints, NO_CHANGE_POINTS);
+  const removedAgain = await deleteChangePoint(teamLeader.token, draft.id, point.id);
+  assert.strictEqual(removedAgain.status, 404);
+});
+
+test('submit is refused while the change point block is unanswered, naming it; declaring none or adding one lets it through', async () => {
+  const draft = await openDraft((await aprilShift('Unanswered shift')).id);
+  await fillRunningLines(draft.id, { declareNoChangePoints: false });
+  assert.strictEqual(draft.changePointsNone, false);
+
+  const refused = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(refused.status, 409, JSON.stringify(refused.body));
+  assert.strictEqual(refused.body.code, 'INCOMPLETE_HANDOVER');
+  assert.deepStrictEqual(refused.body.unansweredBlocks, ['changePoints']);
+  assert.deepStrictEqual(refused.body.missingAssets, []);
+  assert.deepStrictEqual(refused.body.incompleteLines, []);
+  assert.match(refused.body.message, /changePoints is unanswered/);
+  assert.match(refused.body.message, /add a change point, or declare none/);
+
+  // The header's one field this slice owns: a boolean, and only a boolean.
+  for (const changePointsNone of ['yes', 1, null]) {
+    const bad = await patchHandover(teamLeader.token, draft.id, { changePointsNone });
+    assert.strictEqual(bad.status, 400, JSON.stringify(bad.body));
+  }
+  assert.strictEqual((await patchHandover(teamLeader.token, draft.id, {})).status, 400);
+
+  // Declared, then withdrawn: unanswered again.
+  const declared = await patchHandover(teamLeader.token, draft.id, { changePointsNone: true });
+  assert.strictEqual(declared.status, 200, JSON.stringify(declared.body));
+  assert.strictEqual(declared.body.handover.changePointsNone, true);
+  const withdrawn = await patchHandover(teamLeader.token, draft.id, { changePointsNone: false });
+  assert.strictEqual(withdrawn.body.handover.changePointsNone, false);
+  assert.strictEqual((await submit(teamLeader.token, draft.id)).status, 409);
+
+  await patchHandover(teamLeader.token, draft.id, { changePointsNone: true });
+  const submitted = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+  assert.strictEqual(submitted.body.handover.changePointsNone, true);
+  assert.deepStrictEqual(submitted.body.handover.changePoints, NO_CHANGE_POINTS);
+
+  // One change point answers the block without declaring anything.
+  const answered = await openDraft((await aprilShift('Answered shift')).id);
+  await fillRunningLines(answered.id, { declareNoChangePoints: false });
+  const added = await addChangePoint(teamLeader.token, answered.id, {
+    dimension: 'man', description: 'New starter on packing', watchNote: 'Carton count every hour'
+  });
+  assert.strictEqual(added.status, 201, JSON.stringify(added.body));
+  const answeredSubmit = await json(await submit(teamLeader.token, answered.id));
+  assert.strictEqual(answeredSubmit.status, 200, JSON.stringify(answeredSubmit.body));
+  assert.strictEqual(answeredSubmit.body.handover.changePointsNone, false);
+  assert.strictEqual(answeredSubmit.body.handover.changePoints.man.length, 1);
+});
+
+test('once submitted, adding a change point, removing one and patching the header are 409', async () => {
+  const draft = await openDraft((await aprilShift('Sealed change point shift')).id);
+  await fillRunningLines(draft.id, { declareNoChangePoints: false });
+  const added = await addChangePoint(teamLeader.token, draft.id, {
+    dimension: 'material', description: 'Thread cone from a new supplier', watchNote: 'Thread breaks'
+  });
+  assert.strictEqual(added.status, 201, JSON.stringify(added.body));
+  const [point] = added.body.handover.changePoints.material;
+  const submitted = await json(await submit(teamLeader.token, draft.id));
+  assert.strictEqual(submitted.status, 200, JSON.stringify(submitted.body));
+
+  const afterAdd = await addChangePoint(teamLeader.token, draft.id, {
+    dimension: 'method', description: 'Late method change', watchNote: 'Anything'
+  });
+  assert.strictEqual(afterAdd.status, 409);
+  assert.strictEqual(afterAdd.body.code, 'HANDOVER_NOT_DRAFT');
+  const afterDelete = await deleteChangePoint(teamLeader.token, draft.id, point.id);
+  assert.strictEqual(afterDelete.status, 409);
+  assert.strictEqual(afterDelete.body.code, 'HANDOVER_NOT_DRAFT');
+  const afterPatch = await patchHandover(teamLeader.token, draft.id, { changePointsNone: true });
+  assert.strictEqual(afterPatch.status, 409);
+  assert.strictEqual(afterPatch.body.code, 'HANDOVER_NOT_DRAFT');
+
+  const read = await get(teamLeader.token, `/handovers/${draft.id}`);
+  assert.strictEqual(read.body.handover.changePointsNone, false);
+  assert.deepStrictEqual(read.body.handover.changePoints.material, [point]);
 });
