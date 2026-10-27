@@ -46,6 +46,27 @@
  * an existing Assignment for such an Employee is never compared on
  * effective_from, so a re-run stays at zero changes on any day.
  *
+ * ## The Self-Closing section's machines and shifts (issue #341, part of #332)
+ *
+ * After the tree, the same run loads what the Production Module's handover
+ * form and board read: the Site's shift pattern, the Cutting MTU line's
+ * machines as Assets, and the Section's shift calendar.
+ *
+ *   Shifts      A 06:00, B 14:00, C 22:00, 480 minutes, no break, day_offset 0 -
+ *               written ONLY when the Site has no shift definition at all. An
+ *               existing pattern is read, reported and never touched.
+ *   Assets      the 17 machines of the plant `mtu` database's public.machines,
+ *               one per row, code = name = the machine's name, at SC-CUTTING-MTU
+ *               (looked up by code). Keyed by code: a re-run inserts nothing and
+ *               repairs a drifted name; it never moves or re-activates a machine.
+ *   Calendar    generate_shift_instances for the SC section only (not its
+ *               areas), from seven days back to sixty ahead.
+ *
+ * Cutting SC, Raschel, Shaping, Warping and every TX area have NO machine
+ * master anywhere: nothing is loaded for them and none is invented. The run
+ * says so. `--skip-people` stops after this plant data (tree, shifts, assets,
+ * calendar) without loading Job roles, Employees or Accounts.
+ *
  * ## Re-running
  *
  * Every table is matched on its natural key (sites.code, (site_id, code) on
@@ -72,6 +93,7 @@ const pg = backendRequire('pg');
 
 const CSV_PATH = path.join(here, '..', 'docs', 'Employee_Master_Consolidated.csv');
 const DRY_RUN = process.argv.includes('--dry-run');
+const SKIP_PEOPLE = process.argv.includes('--skip-people');
 const DEFAULT_PASSWORD = '12345678';
 
 const SITE = { code: 'RLVN', name: 'Relats Vietnam', timezone: 'Asia/Ho_Chi_Minh', country_code: 'VN' };
@@ -96,6 +118,17 @@ const AREA_SECTION = {
   'Reeling': 'TX',
   'Cutting VSC': 'TX'
 };
+
+// The plant `mtu` database's public.machines: 17 rows, all active. Cutting MTU only.
+const MTU_MACHINES = ['MTU40', 'MTU47', 'MTU17', 'MTU16', 'MTU28', 'MTU29', 'MTU23', 'MTU21', 'MTU22', 'MTU24', 'MTU25', 'MTU26', 'MTU27', 'MTU44', 'MTU34', 'MTU37', 'MTU45'];
+const MACHINE_UNIT = 'SC-CUTTING-MTU';
+const MACHINE_SECTION = 'SC';
+const SHIFT_PATTERN = [
+  { code: 'A', name: 'Shift A', start_time: '06:00', sort_order: 1 },
+  { code: 'B', name: 'Shift B', start_time: '14:00', sort_order: 2 },
+  { code: 'C', name: 'Shift C', start_time: '22:00', sort_order: 3 }
+];
+const NO_MACHINE_MASTER = ['Cutting SC', 'Raschel', 'Shaping', 'Warping', 'every TX area'];
 
 // These Area / Process values are not areas: the person sits at their Section.
 const SECTION_LEVEL_AREAS = { 'Production Team Leader': 'Leader', 'Production Shift Supervisor': 'Shift sup' };
@@ -316,6 +349,65 @@ async function loadTree(client, rows) {
   return { siteId, departmentId, unitIds: { ...sectionIds, ...areaIds } };
 }
 
+async function lookupUnit(client, siteId, code) {
+  const { rows: [unit] } = await client.query('SELECT id::text AS id FROM org_units WHERE site_id = $1 AND code = $2', [siteId, code]);
+  if (!unit && DRY_RUN) return null;
+  if (!unit) fail(`Org Unit ${code} is not loaded at this Site; the tree load has to run first.`);
+  return unit.id;
+}
+
+// Writes the pattern only when the Site has no definition at all.
+async function loadShiftPattern(client, siteId) {
+  const { rows: existing } = await client.query(
+    'SELECT code, to_char(start_time, \'HH24:MI\') AS start_time, duration_minutes, break_minutes, day_offset, is_active FROM shift_definitions WHERE site_id = $1 ORDER BY sort_order, code',
+    [siteId]
+  );
+  if (existing.length > 0) {
+    console.log(`  Site already has ${existing.length} shift definition(s); left untouched:`);
+    for (const d of existing) console.log(`    ${d.code} ${d.start_time} ${d.duration_minutes}min break ${d.break_minutes} day_offset ${d.day_offset}${d.is_active ? '' : ' (inactive)'}`);
+    for (let i = 0; i < existing.length; i += 1) tally('shift_definitions', 'unchanged');
+    return;
+  }
+  for (const shift of SHIFT_PATTERN) {
+    await client.query(
+      `INSERT INTO shift_definitions (site_id, code, name, start_time, duration_minutes, break_minutes, day_offset, sort_order, is_active)
+       VALUES ($1, $2, $3, $4, 480, 0, 0, $5, TRUE)
+       ON CONFLICT ON CONSTRAINT shift_definitions_code_unique DO NOTHING`,
+      [siteId, shift.code, shift.name, shift.start_time, shift.sort_order]
+    );
+    tally('shift_definitions', 'created');
+    planned.push(`create  shift_definitions ${shift.code} ${shift.start_time}`);
+  }
+}
+
+async function loadMachines(client, siteId) {
+  const orgUnitId = await lookupUnit(client, siteId, MACHINE_UNIT);
+  for (const name of MTU_MACHINES) {
+    await sync(client, 'assets', {
+      key: { code: name },
+      values: { name },
+      insertOnly: { org_unit_id: orgUnitId, asset_type: 'machine', is_active: true },
+      label: `${name} at ${MACHINE_UNIT}`
+    });
+  }
+}
+
+// Generates the SC section's calendar. A dry run cannot call the function (it
+// writes), so it only says what it would do.
+async function loadCalendar(client, siteId) {
+  const sectionId = await lookupUnit(client, siteId, MACHINE_SECTION);
+  if (DRY_RUN || sectionId === null) {
+    console.log(`  dry run: would generate ${MACHINE_SECTION} shift instances, 7 days back to 60 ahead`);
+    return 0;
+  }
+  const { rows: [{ made }] } = await client.query(
+    `SELECT generate_shift_instances($1::bigint, current_date - 7, current_date + 60) AS made`,
+    [sectionId]
+  );
+  console.log(`  ${MACHINE_SECTION}: ${made} shift instance(s) created`);
+  return made;
+}
+
 async function loadJobRoles(client, rows) {
   const ids = {};
   for (const position of Object.keys(POSITIONS)) {
@@ -389,20 +481,22 @@ async function loadAccounts(client, rows, { departmentId, unitIds, employeeIds }
 // Report
 // ---------------------------------------------------------------------------
 
-function printReport(rows) {
+function printReport(rows, { people }) {
   if (DRY_RUN) {
     console.log('\n== What a real run would change');
     for (const line of planned) console.log(`  ${line}`);
     if (planned.length === 0) console.log('  nothing');
   }
 
-  const tables = ['sites', 'org_units', 'job_roles', 'employees', 'employee_assignments', 'app_users', 'account_credentials', 'app_user_org_units'];
+  const tables = ['sites', 'org_units', 'shift_definitions', 'assets', ...(people ? ['job_roles', 'employees', 'employee_assignments', 'app_users', 'account_credentials', 'app_user_org_units'] : [])];
   console.log(`\n== ${DRY_RUN ? 'Dry run, nothing written: would be' : 'Counts'}`);
   console.log(`  ${'table'.padEnd(22)} ${'created'.padStart(8)} ${'updated'.padStart(8)} ${'unchanged'.padStart(10)}`);
   for (const table of tables) {
     const c = counts[table] ?? { created: 0, updated: 0, unchanged: 0 };
     console.log(`  ${table.padEnd(22)} ${String(c.created).padStart(8)} ${String(c.updated).padStart(8)} ${String(c.unchanged).padStart(10)}`);
   }
+
+  if (!people) return;
 
   const undated = rows.filter((row) => row.hiredOn === null);
   console.log(`\n== Placed as of the load date, hire date unknown (${undated.length})`);
@@ -430,17 +524,31 @@ async function main() {
 
   try {
     const tree = await phase(pool, 'Site and org tree', (client) => loadTree(client, rows));
+    await phase(pool, 'Shift pattern', (client) => loadShiftPattern(client, tree.siteId));
+    await phase(pool, 'Machines (Assets)', (client) => loadMachines(client, tree.siteId));
+    await phase(pool, 'Shift calendar', (client) => loadCalendar(client, tree.siteId));
+    console.log(`\n== No machine master exists for: ${NO_MACHINE_MASTER.join(', ')}. Nothing was loaded or invented for them.`);
+    if (SKIP_PEOPLE) {
+      console.log('\n== --skip-people: Job roles, Employees, Assignments and Accounts not loaded');
+      printReport(rows, { people: false });
+      return;
+    }
     const jobRoleIds = await phase(pool, 'Job roles', (client) => loadJobRoles(client, rows));
     const employeeIds = await phase(pool, 'Employees', (client) => loadEmployees(client, rows));
     await phase(pool, 'Assignments', (client) => loadAssignments(client, rows, { ...tree, jobRoleIds, employeeIds }));
     await phase(pool, 'Accounts, credentials and grants', (client) => loadAccounts(client, rows, { ...tree, employeeIds }));
-    printReport(rows);
+    printReport(rows, { people: true });
   } finally {
     if (pool) await pool.end();
   }
 }
 
-main().catch((error) => {
-  console.error(`\nFAILED: ${error.message}`);
-  process.exit(1);
-});
+export { loadTree, loadShiftPattern, loadMachines, loadCalendar, readRows, counts, MTU_MACHINES };
+
+// Importing this file (the integration test does) must not run the load.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(`\nFAILED: ${error.message}`);
+    process.exit(1);
+  });
+}
