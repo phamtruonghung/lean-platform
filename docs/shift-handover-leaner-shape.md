@@ -2,9 +2,9 @@
 
 **Status:** design note (a recommendation, not a decision). The shape proposed
 here needs a product decision before anything is built; it is tracked in the
-companion GitHub issue ("Leaner shift-handover form: note first, derive the
-machine context, don't pick it"). The decision that follows should be recorded
-as an ADR.
+companion GitHub issue (#355, "Leaner shift-handover form: note first, derive
+the machine context, don't pick it"). The decision that follows should be
+recorded as an ADR.
 
 ## The problem
 
