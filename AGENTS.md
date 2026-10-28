@@ -355,6 +355,24 @@ domain logic from its routing in a fixed pattern — see `assets.js` /
 
 ## 8. Workflow
 
+**Start from `main` before you read anything.** A worktree or checkout forked
+from a stale base is the one failure mode that produces confident nonsense:
+"this file does not exist" and "we have no such feature" are true statements
+about the wrong tree, and a green CI on such a branch has compiled code your
+change does not touch. So, before any work in this repo:
+
+```bash
+git fetch origin
+git rev-list --count HEAD..origin/main   # must print 0
+```
+
+If it does not print `0`, bring your base up to date — `git merge --ff-only
+origin/main` when you have no commits of your own yet, or rebase your own
+commits onto `origin/main` when you do — before reading or changing anything.
+To prove a path you are about to cite actually resolves in *your* tree, and
+not merely on `main`, use `git cat-file -e HEAD:<path>`: it exits 0 only when
+that path exists in the commit you are standing on.
+
 **Branch naming**, taken from actual branches in this repo:
 `<type>/<kebab-case-description>`, where `<type>` is one of `feat`, `fix`,
 `chore`, `docs`, or (rarely) `revert` — e.g. `feat/raise-a-work-order`,
