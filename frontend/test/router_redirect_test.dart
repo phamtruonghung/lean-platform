@@ -9,6 +9,7 @@ import 'package:lean_platform/auth/awaiting_approval_screen.dart';
 import 'package:lean_platform/auth/sign_in_screen.dart';
 import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/actions/actions_api.dart';
+import 'package:lean_platform/kpi/kpi_api.dart';
 import 'package:lean_platform/maintenance/maintenance_api.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/change_password_screen.dart';
@@ -123,6 +124,8 @@ void main() {
         safetyApi: SafetyApi(client: meClient(() => activeBody)),
         // The Production Module's own client (issue #339) — same reasoning.
         productionApi: ProductionApi(client: meClient(() => activeBody)),
+        // The KPI Module's own client (ADR-0055) — same reasoning.
+        kpiApi: KpiApi(client: meClient(() => activeBody)),
         initialLocation: '/',
       ),
     );

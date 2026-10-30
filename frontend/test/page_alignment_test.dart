@@ -101,6 +101,14 @@ const _pages = <_Page>[
   _Page('/actions', 'lib/actions/actions_screen.dart', 'Actions', ''),
   _Page('/tier-board', 'lib/maintenance/tier_board_screen.dart', 'Tier board', ''),
   _Page('/skill-coverage', 'lib/people/skill_coverage_screen.dart', 'Skill coverage', ''),
+  // The KPI Module's three Screens (ADR-0055). Reached from Insights and from a
+  // catalogue row; each sets its title and rows in the usual frame. The Review's
+  // title names its day, which is the fixture's `review_date`, and the Targets'
+  // is the KPI's own code and title.
+  _Page('/kpi', 'lib/kpi/kpi_catalogue_screen.dart', 'KPI catalogue', 'The KPIs of the MTU line'),
+  _Page('/kpi/review', 'lib/kpi/kpi_review_screen.dart', 'KPI Review for 2026-10-30', 'Judge each KPI'),
+  _Page('/kpi/1/targets', 'lib/kpi/kpi_targets_screen.dart', 'OEE · Overall equipment effectiveness',
+      'KPI Targets'),
   // The Quality Module's two catalogues (issue #203). Defect codes is a tree,
   // so its rows indent by depth one level at a time — the first row is a root
   // at the card's own padding, which is why the default bound holds here where
@@ -278,6 +286,17 @@ FakeWire _wire() => FakeWire(
       actions: {
         '1': [actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose')],
       },
+      // One KPI (ADR-0055), so the KPI catalogue, Review and Targets pages render
+      // their rows rather than an empty state and the row assertions actually run.
+      kpis: [_kpi],
+      kpiTargets: {
+        1: kpiTargetsJson(
+          _kpi,
+          current: [kpiCurrentTargetJson('Daily', 85)],
+          history: [kpiHistoryEntryJson(1, 'Daily', '2026-01-01', 85)],
+        ),
+      },
+      kpiReviewRows: [kpiReviewRowJson(1, 'Overall equipment effectiveness', unit: '%', target: 85)],
       // The Quality Module's two catalogues (issue #203), so both pages render
       // their card rather than an empty state and the row assertion actually
       // runs.
@@ -336,6 +355,9 @@ FakeWire _wire() => FakeWire(
         workedMinutes: 450,
       ),
     );
+
+/// The one KPI behind the three KPI pages' rows.
+final Map<String, dynamic> _kpi = kpiCatalogueRowJson(1, 'OEE', 'Overall equipment effectiveness', unit: '%');
 
 void main() {
   for (final page in _pages) {

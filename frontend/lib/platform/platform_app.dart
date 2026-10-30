@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../kpi/kpi_api.dart';
 import '../maintenance/maintenance_api.dart';
 import '../actions/actions_api.dart';
 import '../people_api.dart';
@@ -26,6 +27,7 @@ class PlatformApp extends StatefulWidget {
     required this.qualityApi,
     required this.safetyApi,
     required this.productionApi,
+    required this.kpiApi,
     this.floorDeviceGateway = const ConfiguredFloorDeviceGateway(),
     this.signatureFilePicker,
     this.initialLocation,
@@ -48,6 +50,11 @@ class PlatformApp extends StatefulWidget {
   /// The Production Module's own client (issue #339) — the Shift handover —
   /// a Module of its own for the same reason [qualityApi] is.
   final ProductionApi productionApi;
+
+  /// The KPI Module's own client (ADR-0055) — the MTU catalogue, its Targets
+  /// and the daily KPI Review — a Module of its own for the same reason
+  /// [qualityApi] is.
+  final KpiApi kpiApi;
 
   /// The shared floor device's own credential, if this build was provisioned
   /// with one (issue #77). A build with none still serves the surface; it shows
@@ -101,6 +108,7 @@ class _PlatformAppState extends State<PlatformApp> {
         RepositoryProvider<QualityApi>.value(value: widget.qualityApi),
         RepositoryProvider<SafetyApi>.value(value: widget.safetyApi),
         RepositoryProvider<ProductionApi>.value(value: widget.productionApi),
+        RepositoryProvider<KpiApi>.value(value: widget.kpiApi),
         RepositoryProvider<FloorDeviceGateway>.value(value: widget.floorDeviceGateway),
         RepositoryProvider<SignatureFilePicker>.value(value: _signatureFilePicker),
       ],
