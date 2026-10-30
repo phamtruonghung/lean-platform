@@ -33,7 +33,8 @@ DELETE, and the tables refuse them for every role anyway. So every write in the
 Module is a plain INSERT, never an upsert; a correction is another row for the
 same KPI, grain and date, and the database's own views pick the newest. The
 Module follows that grain rather than fighting it: saving the same day's Review
-twice is a 201, and a Target repeated with the same value is the only 409.
+twice is a 201, while a repeated KPI name and a Target repeated with the same KPI,
+grain, date and value are each a 409.
 
 **The catalogue is optional.** With `MTU_DATABASE_URL` unset, every `/api/kpi/*`
 route answers `503 { "error": "kpi_catalogue_unavailable" }` — after
