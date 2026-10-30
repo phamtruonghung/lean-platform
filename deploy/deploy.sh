@@ -57,6 +57,7 @@ PULL=1
 
 command -v docker >/dev/null 2>&1 || die "docker is not installed"
 [[ -n "${DATABASE_URL:-}" ]] || die "DATABASE_URL is not set (see .env.production)"
+[[ -n "${MTU_DATABASE_URL:-}" ]] || die "MTU_DATABASE_URL is not set (see .env.production)"
 
 # COMPOSE_PROJECT_NAME is pinned rather than left to default. Compose otherwise
 # names the project after the directory it runs from, so a deploy driven from a
