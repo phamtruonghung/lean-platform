@@ -153,6 +153,11 @@ jobs:
       - name: Deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # A second database, reached by a read-and-append role, so a leaked
+          # app token buys at most a bad Target or review row - both visible in
+          # the history views - never a rewrite of history. deploy.sh dies
+          # without it, as a runner deploy does not read /opt/lean-platform/.env.
+          MTU_DATABASE_URL: ${{ secrets.MTU_DATABASE_URL }}
           # The API verifies Supabase-issued session tokens against the
           # project's own JWKS, and checks that the token was issued by this
           # project for this project's users. Both are public endpoints, so they

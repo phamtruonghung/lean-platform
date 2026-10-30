@@ -193,6 +193,19 @@ not recorded (`/opt/lean-platform/` is known to hold `.deployed-tag`). Not
 recorded in this repository: CT100's PostgreSQL major version, its backups,
 and its address.
 
+The deploy also needs `MTU_DATABASE_URL`, the second connection string (the
+KPI Module, ADR-0055). It is a repository secret of the same name, passed by
+`release.yml` alongside `DATABASE_URL`. It names database `mtu` on CT100 as
+role `lean_app`, which may SELECT the catalogue and INSERT Targets and reviews
+only: no UPDATE and no DELETE, so a compromised application token cannot
+rewrite history, and the worst it buys is a bad Target or review row, both
+visible in the history views. The secret's own copy on CT100 is
+`/root/.mtu-kpi/lean_app.env` (mode 600). `deploy.sh` refuses to run without
+it and `deploy/compose.yml` requires it. When it is missing from a running
+API, the API still boots and everything else is unaffected: `/api/kpi/*`
+answers 503 with error `kpi_catalogue_unavailable`, and `GET /api/health`
+reports `kpi_catalogue: "unconfigured"`.
+
 **Nightly maintenance runs inside the database, not on the LXC.**
 `sqdcp_maintenance()` — defined in the baseline, scheduled by
 `migrations/1756000000001_schedule-maintenance.js` — creates the next three

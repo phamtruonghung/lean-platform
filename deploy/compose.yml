@@ -16,6 +16,12 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      # The MTU KPI catalogue's second database (ADR-0055), reached as the role
+      # lean_app: it reads the catalogue and appends, with no UPDATE or DELETE.
+      # Required here exactly as DATABASE_URL is; the API itself still boots
+      # without it (the KPI routes answer 503), so the requirement is the
+      # deploy's, not the application's.
+      MTU_DATABASE_URL: ${MTU_DATABASE_URL:?set MTU_DATABASE_URL}
       BACKEND_PORT: 8000
       # Supplied by the Release workflow from repository variables at deploy
       # time. The API verifies Supabase-issued session tokens against the

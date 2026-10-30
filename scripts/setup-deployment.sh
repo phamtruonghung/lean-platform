@@ -218,6 +218,16 @@ write_env DATABASE_URL "$DATABASE_URL"
 # against once the schema baseline lands.
 set_secret DATABASE_URL "$DATABASE_URL"
 
+step "Next, the MTU KPI catalogue's own connection string (ADR-0055)."
+say "It is database mtu on the plant's PostgreSQL, as role lean_app, which can"
+say "read and append only. deploy/deploy.sh refuses to run without it, so a"
+say "fresh setup cannot deploy until this is set."
+ask_secret MTU_DATABASE_URL "Paste the MTU KPI catalogue connection string:"
+write_env MTU_DATABASE_URL "$MTU_DATABASE_URL"
+# The deploy passes this to the API as a second database. The deploy requires
+# it; the API itself still boots without it, and only /api/kpi/* answers 503.
+set_secret MTU_DATABASE_URL "$MTU_DATABASE_URL"
+
 # ── 2 ─────────────────────────────────────────────────────────────────────
 stage "Supabase: API keys"
 say "Three values from one page. The API needs the service role key; the"
