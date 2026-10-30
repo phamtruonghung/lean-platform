@@ -15,6 +15,7 @@
 
 const express = require('express');
 const { getPool } = require('./db');
+const { isMtuConfigured } = require('./mtu-db');
 const { log } = require('./log');
 const { isShuttingDown } = require('./lifecycle');
 
@@ -57,7 +58,16 @@ function mount(app) {
   api.get('/health', async (_req, res) => {
     try {
       const answer = await askDatabase();
-      return res.json({ status: 'ok', database: 'connected', answer });
+      // Whether the MTU KPI catalogue (ADR-0055) is set up here, and nothing
+      // more: it is reported, never probed, and it is deliberately absent from
+      // /healthz and /readyz — readiness is about the Platform's own database,
+      // and an unconfigured catalogue must not take an instance out of rotation.
+      return res.json({
+        status: 'ok',
+        database: 'connected',
+        answer,
+        kpi_catalogue: isMtuConfigured() ? 'configured' : 'unconfigured'
+      });
     } catch (error) {
       log('error', 'api health check failed', { err: error.message });
       return res.status(503).json({ status: 'error', database: 'unavailable' });

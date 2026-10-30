@@ -324,6 +324,15 @@ Module's internals — it calls that Module's service.
 Modules stand on lives in `src/platform` and is not a Module; the foundation
 must not depend on what is built on it.
 
+One Module reaches past the one-database rule on purpose. The KPI catalogue
+Module (`src/modules/kpi`) manages the MTU line's KPIs, their Targets and the
+daily Review, which live in a second PostgreSQL database, `mtu`, shared with
+Power BI. The Platform connects to it through its own pool
+(`src/platform/mtu-db.js`, `MTU_DATABASE_URL`) as a role that can read it and
+append to it; with the variable unset, `/api/kpi/*` answers 503 and the rest of
+the API is unaffected
+([ADR-0055](./docs/adr/0055-a-second-database-for-the-mtu-kpi-catalogue.md)).
+
 ## Authentication
 
 Two doors, picked by `AUTH_PASSWORD_MODE` (ADR-0051). Production (VIProd) runs

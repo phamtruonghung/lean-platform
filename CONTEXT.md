@@ -564,6 +564,22 @@ record. Maintenance work yields MTBF under Delivery and parts cost under Cost �
 which Module produced a KPI and which Pillar it reports under are independent.
 _Avoid_: Metric, measure, indicator, stat
 
+**KPI Target**:
+What a KPI of the MTU catalogue is measured against, per grain — Daily, Weekly
+or Monthly — in force from a date until the next entry for that KPI and grain.
+Append-only, so a past period keeps the Target it was judged against; a typo is
+corrected by a new entry for the same date, and the latest entry decides. Not the
+Platform's own tier-board targets, which are a different set of numbers
+(ADR-0055).
+_Avoid_: scorecard, goal, quota, threshold, budget
+
+**KPI Review**:
+The daily human judgement of one KPI of the MTU catalogue: met, missed or not
+measured, with the number the reviewer read off the chart and a note, which is
+required when it was missed. Append-only, so a correction is a second Review for
+the same day and the latest decides.
+_Avoid_: check-in, hit/miss, score, rating, assessment
+
 ### The interface
 
 **Screen**:
