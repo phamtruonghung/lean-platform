@@ -165,7 +165,9 @@ class KpiCatalogue {
       );
 }
 
-/// A Target in force today, as `GET /api/kpi/targets`' `current` lists it.
+/// A Target in force today, as `GET /api/kpi/targets`' `current` lists it. A
+/// grain with no Target is not listed: the route sends it with a null `target`
+/// and [fromJsonOrNull] drops it.
 class KpiCurrentTarget {
   const KpiCurrentTarget({required this.grain, required this.validFrom, required this.target});
 
@@ -178,6 +180,10 @@ class KpiCurrentTarget {
         validFrom: json['valid_from'] as String? ?? '',
         target: (json['target'] as num?)?.toDouble() ?? 0,
       );
+
+  /// Null when the grain has no Target (`target` is null).
+  static KpiCurrentTarget? fromJsonOrNull(Map<String, dynamic> json) =>
+      json['target'] == null ? null : KpiCurrentTarget.fromJson(json);
 }
 
 /// One entry of a KPI's Target history. [target] is null for a "no target
@@ -231,7 +237,7 @@ class KpiTargets {
         kpi: KpiSummary.fromJson(json['kpi'] as Map<String, dynamic>),
         current: [
           for (final entry in json['current'] as List<dynamic>? ?? const [])
-            KpiCurrentTarget.fromJson(entry as Map<String, dynamic>),
+            ?KpiCurrentTarget.fromJsonOrNull(entry as Map<String, dynamic>),
         ],
         history: [
           for (final entry in json['history'] as List<dynamic>? ?? const [])

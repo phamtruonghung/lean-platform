@@ -10912,8 +10912,9 @@ Map<String, dynamic> kpiReviewStateJson(
     {'status': status, 'observed': observed, 'note': note, 'app_user': appUser, 'entered_at': enteredAt};
 
 /// One entry of `GET /api/kpi/targets`' `current` — mirrors `listTargets`
-/// (catalogue.js): `{grain, valid_from, target}`.
-Map<String, dynamic> kpiCurrentTargetJson(String grain, num target, {String validFrom = '2026-01-01'}) =>
+/// (catalogue.js): `{grain, valid_from, target}`. A grain with no Target is
+/// sent with a null [target] and a null [validFrom].
+Map<String, dynamic> kpiCurrentTargetJson(String grain, num? target, {String? validFrom = '2026-01-01'}) =>
     {'grain': grain, 'valid_from': validFrom, 'target': target};
 
 /// One entry of `GET /api/kpi/targets`' `history` — mirrors `listTargets`

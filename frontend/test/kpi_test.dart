@@ -162,6 +162,42 @@ void main() {
     expect(targetReads.single.queryParameters, {'site_id': '1', 'kpi_id': '3'});
   });
 
+  testWidgets('a KPI with no Target in any grain says none is in force', (tester) async {
+    final wire = _wire();
+    wire.kpiTargets[2] = kpiTargetsJson(
+      _scrap,
+      current: [
+        for (final grain in ['Daily', 'Weekly', 'Monthly']) kpiCurrentTargetJson(grain, null, validFrom: null),
+      ],
+    );
+    await _open(tester, wire, Routes.kpiTargets(2));
+
+    expect(find.byType(KpiTargetsScreen), findsOneWidget);
+    expect(find.text('No Target is in force today.'), findsOneWidget);
+    expect(find.textContaining('0.0'), findsNothing);
+    for (final grain in ['Daily', 'Weekly', 'Monthly']) {
+      expect(find.byKey(KpiTargetsScreen.currentRowKey(grain)), findsNothing, reason: grain);
+    }
+  });
+
+  testWidgets('a grain with no Target is not listed beside one that has a Target', (tester) async {
+    final wire = _wire();
+    wire.kpiTargets[3] = kpiTargetsJson(
+      _mttr,
+      current: [
+        kpiCurrentTargetJson('Daily', null, validFrom: null),
+        kpiCurrentTargetJson('Weekly', 45, validFrom: '2026-02-01'),
+      ],
+    );
+    await _open(tester, wire, Routes.kpiTargets(3));
+
+    expect(find.text('Weekly: < 45 min (from 2026-02-01)'), findsOneWidget);
+    expect(find.byKey(KpiTargetsScreen.currentRowKey('Weekly')), findsOneWidget);
+    expect(find.byKey(KpiTargetsScreen.currentRowKey('Daily')), findsNothing);
+    expect(find.textContaining('Daily:'), findsNothing);
+    expect(find.text('No Target is in force today.'), findsNothing);
+  });
+
   testWidgets('Add KPI validates and posts the exact body', (tester) async {
     final wire = _wire(kpis: []);
     await _open(tester, wire, Routes.kpi);
