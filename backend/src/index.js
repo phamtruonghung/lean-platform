@@ -15,6 +15,7 @@ require('dotenv').config();
 
 const express = require('express');
 const { closePool } = require('./platform/db');
+const { closeMtuPool } = require('./platform/mtu-db');
 const { log } = require('./platform/log');
 const health = require('./platform/health');
 const lifecycle = require('./platform/lifecycle');
@@ -24,6 +25,7 @@ const actions = require('./modules/actions');
 const quality = require('./modules/quality');
 const safety = require('./modules/safety');
 const production = require('./modules/production');
+const kpi = require('./modules/kpi');
 
 const app = express();
 const port = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
@@ -130,6 +132,13 @@ app.use('/api/safety', safety.router);
 // handover a Section records at the end of each shift instance, mounted here
 // for the same reason as the two above.
 app.use('/api/production', production.router);
+// The KPI catalogue Module's own prefix (ADR-0055): the MTU line's KPIs, their
+// Targets and the daily Review, which live in a second database (`mtu`, schema
+// `kpi`) the Platform reaches through platform/mtu-db.js. Mounted here, where
+// the application composes its Modules, for the same reason as the four above;
+// with no MTU_DATABASE_URL every route under it answers 503 and nothing else
+// is affected.
+app.use('/api/kpi', kpi.router);
 
 // An unknown path under /api answers in JSON. Express's default 404 is an HTML
 // page, which a client that asked for JSON cannot parse — so a typo in a URL
@@ -172,6 +181,13 @@ function shutdown(signal) {
       await closePool();
     } catch (error) {
       log('error', 'failed to close cleanly', { err: error.message });
+    }
+    // Its own try/catch: a failure to close one pool must still let the other
+    // close.
+    try {
+      await closeMtuPool();
+    } catch (error) {
+      log('error', 'failed to close the mtu pool cleanly', { err: error.message });
     }
     process.exit(0);
   });

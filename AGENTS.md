@@ -31,6 +31,7 @@ lean-platform/
 │   ├── src/modules/people/        Accounts, Approval, Sites, Org Units, the Employee directory, job roles, skills
 │   ├── src/modules/maintenance/   Assets, Work orders, Requests, breakdowns and the tier board
 │   ├── src/modules/production/    Shift handovers: the record a Section's Team Leaders sign at the shift boundary
+│   ├── src/modules/kpi/           The MTU KPI catalogue: KPIs, Targets and the daily Review, kept in a second database (ADR-0055)
 │   ├── src/modules/actions/       The action log — Concerns, CAPAs and their PDCA phases
 │   ├── src/modules/quality/       Products, defect codes, non-conformances, complaints, supplier NCRs
 │   ├── src/modules/safety/        Safety incidents and observations
