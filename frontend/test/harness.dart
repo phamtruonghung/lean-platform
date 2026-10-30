@@ -26,6 +26,7 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 import 'package:lean_platform/quality/quality_api.dart';
+import 'package:lean_platform/kpi/kpi_api.dart';
 import 'package:lean_platform/production/production_api.dart';
 import 'package:lean_platform/safety/safety_api.dart';
 import 'package:lean_platform/widgets/signature_file_picker.dart';
@@ -2553,6 +2554,21 @@ class FakeWire {
     this.submitHandoverStatus = 200,
     this.submitHandoverRefusal,
     this.acknowledgedLatencyMinutes = 95,
+    // The KPI Module (ADR-0055).
+    List<Map<String, dynamic>>? kpis,
+    Map<int, Map<String, dynamic>>? kpiTargets,
+    List<Map<String, dynamic>>? kpiReviewRows,
+    this.kpiReviewDate,
+    this.kpiCatalogueStatus = 200,
+    this.kpiCatalogueMessage = 'The KPI catalogue could not be read.',
+    this.kpiTargetsStatus = 200,
+    this.kpiAddKpiStatus = 201,
+    this.kpiAddKpiMessage = 'A KPI with that name already exists',
+    this.kpiAddTargetStatus = 201,
+    this.kpiAddTargetMessage = 'That Target is already recorded for this KPI, grain and date',
+    this.kpiReviewStatus = 200,
+    this.kpiSaveReviewStatus = 201,
+    this.kpiSaveReviewMessage = 'A note of at least 10 characters is required',
   })  : queue = queue ?? [],
         assets = assets ?? {},
         actions = actions ?? {},
@@ -2633,7 +2649,136 @@ class FakeWire {
         capas = capas ?? {},
         sectionDays = sectionDays ?? {},
         sectionAssets = sectionAssets ?? {},
-        handovers = handovers ?? {};
+        handovers = handovers ?? {},
+        kpis = kpis ?? [],
+        kpiTargets = kpiTargets ?? {},
+        kpiReviewRows = kpiReviewRows ?? [];
+
+  /// `GET /api/kpi/catalogue` (ADR-0055) — the catalogue's rows as
+  /// [kpiCatalogueRowJson] builds them. A successful `POST /api/kpi/catalogue`
+  /// appends the KPI it was sent, so the Screen's re-read shows it.
+  final List<Map<String, dynamic>> kpis;
+
+  /// `GET /api/kpi/targets`, keyed by `kpi_id`, as [kpiTargetsJson] builds
+  /// them. An unknown KPI is a 404 `KPI not found`, as the route sends.
+  final Map<int, Map<String, dynamic>> kpiTargets;
+
+  /// `GET /api/kpi/review` — the day's rows as [kpiReviewRowJson] builds them.
+  /// A successful `POST /api/kpi/review` writes its entries into them (with
+  /// `app_user` [kpiFakeAppUser]), so the Screen's re-read shows what was saved.
+  final List<Map<String, dynamic>> kpiReviewRows;
+
+  /// The Site's today as the server would report it (`review_date` of a read
+  /// that carried no `date`). `'2026-10-30'` when null. A read that carried a
+  /// `date` answers that date back, as the routes do.
+  String? kpiReviewDate;
+
+  int kpiCatalogueStatus;
+  String kpiCatalogueMessage;
+  int kpiTargetsStatus;
+  int kpiAddKpiStatus;
+  String kpiAddKpiMessage;
+  int kpiAddTargetStatus;
+  String kpiAddTargetMessage;
+  int kpiReviewStatus;
+  int kpiSaveReviewStatus;
+  String kpiSaveReviewMessage;
+
+  /// The name the fake server writes as `app_user` on a saved Review — the
+  /// real one writes the signed-in Account's display name.
+  static const String kpiFakeAppUser = 'A B';
+
+  /// Every KPI read's full URI, in the order it reached the wire (the
+  /// recorded `requests` list carries the path and not the query).
+  final List<Uri> kpiReads = [];
+
+  /// The decoded body of every `POST /api/kpi/catalogue` that reached the wire.
+  final List<Map<String, dynamic>> kpiPosts = [];
+
+  /// The decoded body of every `POST /api/kpi/targets`.
+  final List<Map<String, dynamic>> targetPosts = [];
+
+  /// The decoded body of every `POST /api/kpi/review` — it carries the day as
+  /// `date`, so a test can assert which day a save was for.
+  final List<Map<String, dynamic>> reviewPosts = [];
+
+  int _kpiSequence = 100;
+
+  /// The KPI Module's routes (ADR-0055), or null for any other path.
+  http.Response? _kpi(http.Request request) {
+    final path = request.url.path;
+    if (!path.startsWith('/api/kpi/')) return null;
+    http.Response refusal(int status, String message) =>
+        http.Response(jsonEncode({'message': message}), status);
+
+    if (request.method == 'GET') {
+      kpiReads.add(request.url);
+      final query = request.url.queryParameters;
+      final date = query['date'] ?? kpiReviewDate ?? '2026-10-30';
+      if (path == '/api/kpi/catalogue') {
+        if (kpiCatalogueStatus != 200) return refusal(kpiCatalogueStatus, kpiCatalogueMessage);
+        return http.Response(
+          jsonEncode({'site_id': int.tryParse(query['site_id'] ?? ''), 'review_date': date, 'kpis': kpis}),
+          200,
+        );
+      }
+      if (path == '/api/kpi/targets') {
+        if (kpiTargetsStatus != 200) return refusal(kpiTargetsStatus, 'The Targets are unavailable.');
+        final targets = kpiTargets[int.tryParse(query['kpi_id'] ?? '')];
+        if (targets == null) return refusal(404, 'KPI not found');
+        return http.Response(jsonEncode(targets), 200);
+      }
+      if (path == '/api/kpi/review') {
+        if (kpiReviewStatus != 200) return refusal(kpiReviewStatus, 'The KPI Review is unavailable.');
+        return http.Response(jsonEncode({'review_date': date, 'rows': kpiReviewRows}), 200);
+      }
+      return http.Response('{}', 404);
+    }
+
+    final body = jsonDecode(request.body) as Map<String, dynamic>;
+    if (path == '/api/kpi/catalogue') {
+      kpiPosts.add(body);
+      if (kpiAddKpiStatus != 201) return refusal(kpiAddKpiStatus, kpiAddKpiMessage);
+      final kpiId = _kpiSequence++;
+      kpis.add(
+        kpiCatalogueRowJson(
+          kpiId,
+          body['kpi'] as String,
+          body['title'] as String,
+          unit: body['unit'] as String? ?? '',
+          direction: body['direction'] as String,
+          decimals: body['decimals'] as int,
+          valueMeasure: body['value_measure'] as String?,
+        ),
+      );
+      return http.Response(jsonEncode({'kpi_id': kpiId}), 201);
+    }
+    if (path == '/api/kpi/targets') {
+      targetPosts.add(body);
+      if (kpiAddTargetStatus != 201) return refusal(kpiAddTargetStatus, kpiAddTargetMessage);
+      return http.Response(jsonEncode({'target_id': _kpiSequence++}), 201);
+    }
+    if (path == '/api/kpi/review') {
+      reviewPosts.add(body);
+      if (kpiSaveReviewStatus != 201) return refusal(kpiSaveReviewStatus, kpiSaveReviewMessage);
+      final entries = body['entries'] as List<dynamic>;
+      for (final raw in entries) {
+        final entry = raw as Map<String, dynamic>;
+        final index = kpiReviewRows.indexWhere((row) => row['kpi_id'] == entry['kpi_id']);
+        if (index == -1) continue;
+        kpiReviewRows[index] = {
+          ...kpiReviewRows[index],
+          'status': entry['status'],
+          'observed': entry['observed'],
+          'note': entry['note'],
+          'app_user': kpiFakeAppUser,
+          'entered_at': '${body['date']}T08:12:00.000Z',
+        };
+      }
+      return http.Response(jsonEncode({'saved': entries.length, 'review_date': body['date']}), 201);
+    }
+    return http.Response('{}', 404);
+  }
 
   /// `GET /api/production/sections/:orgUnitId/handovers` (issue #339) — a
   /// Section's production day, keyed by the Section's id, as
@@ -10055,6 +10200,8 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'action': action}), 200);
         }
+        final kpi = _kpi(request);
+        if (kpi != null) return kpi;
         final production = _production(request);
         if (production != null) return production;
         return http.Response('{}', 404);
@@ -10619,6 +10766,8 @@ Future<void> pumpApp(
       safetyApi: SafetyApi(client: client),
       // The Production Module's own client over the same faked wire (issue #339).
       productionApi: ProductionApi(client: client),
+      // The KPI Module's own client over the same faked wire (ADR-0055).
+      kpiApi: KpiApi(client: client),
       // The floor surface's device credential, faked at the same seam.
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       // The file input a browser would show, faked: a test says what was chosen.
@@ -10711,3 +10860,131 @@ Future<void> pickDate(WidgetTester tester, Key fieldKey, DateTime date) async {
   await tester.tap(find.text('OK'));
   await tester.pumpAndSettle();
 }
+
+/// One KPI of the catalogue as `GET /api/kpi/catalogue` sends it (ADR-0055) —
+/// mirrors `listCatalogue` (backend/src/modules/kpi/catalogue.js) key for key.
+/// [daily], [weekly] and [monthly] are [kpiTargetEntryJson]s, or null where no
+/// Target is in force (which is also how "no target" is sent); [review] is a
+/// [kpiReviewStateJson] or null for "not reviewed".
+Map<String, dynamic> kpiCatalogueRowJson(
+  int kpiId,
+  String kpi,
+  String title, {
+  String unit = '',
+  String direction = '>=',
+  int decimals = 0,
+  String? valueMeasure,
+  Map<String, dynamic>? daily,
+  Map<String, dynamic>? weekly,
+  Map<String, dynamic>? monthly,
+  Map<String, dynamic>? review,
+}) =>
+    {
+      'kpi_id': kpiId,
+      'kpi': kpi,
+      'title': title,
+      'unit': unit,
+      'direction': direction,
+      'decimals': decimals,
+      'value_measure': valueMeasure,
+      'targets': {'Daily': daily, 'Weekly': weekly, 'Monthly': monthly},
+      'review': review,
+    };
+
+/// A Target in force as the catalogue's `targets.<grain>` sends it — mirrors
+/// `targetOrNull` (catalogue.js): `{valid_from, target, note}`.
+Map<String, dynamic> kpiTargetEntryJson({
+  String validFrom = '2026-01-01',
+  required num target,
+  String? note,
+}) =>
+    {'valid_from': validFrom, 'target': target, 'note': note};
+
+/// The catalogue row's `review` object — mirrors `listCatalogue`:
+/// `{status, observed, note, app_user, entered_at}`.
+Map<String, dynamic> kpiReviewStateJson(
+  String status, {
+  num? observed,
+  String? note,
+  String appUser = 'A B',
+  String enteredAt = '2026-10-30T08:12:00.000Z',
+}) =>
+    {'status': status, 'observed': observed, 'note': note, 'app_user': appUser, 'entered_at': enteredAt};
+
+/// One entry of `GET /api/kpi/targets`' `current` — mirrors `listTargets`
+/// (catalogue.js): `{grain, valid_from, target}`.
+Map<String, dynamic> kpiCurrentTargetJson(String grain, num target, {String validFrom = '2026-01-01'}) =>
+    {'grain': grain, 'valid_from': validFrom, 'target': target};
+
+/// One entry of `GET /api/kpi/targets`' `history` — mirrors `listTargets`
+/// (catalogue.js) key for key. [target] null is a "no target from that date
+/// on" entry.
+Map<String, dynamic> kpiHistoryEntryJson(
+  int targetId,
+  String grain,
+  String validFrom,
+  num? target, {
+  String? note,
+  String appUser = 'A B',
+  String enteredAt = '2026-10-30T08:12:00.000Z',
+  String enteredBy = 'lean_app',
+  bool isEffective = true,
+}) =>
+    {
+      'target_id': targetId,
+      'grain': grain,
+      'valid_from': validFrom,
+      'target': target,
+      'note': note,
+      'app_user': appUser,
+      'entered_at': enteredAt,
+      'entered_by': enteredBy,
+      'is_effective': isEffective,
+    };
+
+/// `GET /api/kpi/targets` as the route sends it (ADR-0055): the KPI (the
+/// seven fields of a catalogue row, without its Targets and review), what is in
+/// force today and the history. Build [kpi] with [kpiCatalogueRowJson]; its
+/// `targets` and `review` keys are dropped here, as the route does not send them.
+Map<String, dynamic> kpiTargetsJson(
+  Map<String, dynamic> kpi, {
+  List<Map<String, dynamic>> current = const [],
+  List<Map<String, dynamic>> history = const [],
+}) =>
+    {
+      'kpi': {
+        for (final key in ['kpi_id', 'kpi', 'title', 'unit', 'direction', 'decimals', 'value_measure'])
+          key: kpi[key],
+      },
+      'current': current,
+      'history': history,
+    };
+
+/// One row of `GET /api/kpi/review` — mirrors `listReview`
+/// (backend/src/modules/kpi/review.js) key for key. [target] is the Daily
+/// Target in force on the day (null when there was none); [status] is null,
+/// `met`, `missed` or `not_measured`.
+Map<String, dynamic> kpiReviewRowJson(
+  int kpiId,
+  String title, {
+  String unit = '',
+  String direction = '>=',
+  num? target,
+  String? status,
+  num? observed,
+  String? note,
+  String? appUser,
+  String? enteredAt,
+}) =>
+    {
+      'kpi_id': kpiId,
+      'title': title,
+      'unit': unit,
+      'direction': direction,
+      'target': target,
+      'status': status,
+      'observed': observed,
+      'note': note,
+      'app_user': appUser,
+      'entered_at': enteredAt,
+    };

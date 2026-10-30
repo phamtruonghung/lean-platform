@@ -39,6 +39,21 @@ abstract final class ModuleRoles {
     Roles.manager,
     Roles.admin,
   };
+
+  /// The KPI Module (ADR-0055): the MTU line's catalogue, Targets and daily KPI
+  /// Review. Deliberately not offered to `operator`, and deliberately not
+  /// admin-only: the server asks `canAct` about the **Site's root Org Unit**,
+  /// and a Grant reaches downward only, so an operator's line- or
+  /// section-scoped Grants would be refused, while a supervisor, engineer or
+  /// manager may hold the Site root. The server's own 403 stays the real gate;
+  /// this set only keeps a door the routes would refuse out of the sidebar —
+  /// the reasoning [maintenance] records.
+  static const Set<String> kpi = {
+    Roles.supervisor,
+    Roles.engineer,
+    Roles.manager,
+    Roles.admin,
+  };
 }
 
 /// One entry in the Shell's sidebar.
@@ -414,6 +429,25 @@ const List<Destination> platformDestinations = [
     icon: Icons.query_stats_outlined,
     path: Routes.skillCoverage,
     roles: {Roles.admin},
+    group: DestinationGroupNames.insights,
+  ),
+  // The KPI Module (ADR-0055): the MTU line's KPI catalogue and its daily KPI
+  // Review, both filed under Insights — reads about how the plant is being run.
+  // One KPI's Targets are reached from a catalogue row at
+  // `/kpi/:kpiId/targets` and are not a Destination (they need a `kpiId`);
+  // `selectedDestinationPath` lights `/kpi` for them.
+  Destination(
+    label: 'KPI catalogue',
+    icon: Icons.insights_outlined,
+    path: Routes.kpi,
+    roles: ModuleRoles.kpi,
+    group: DestinationGroupNames.insights,
+  ),
+  Destination(
+    label: 'KPI review',
+    icon: Icons.fact_check_outlined,
+    path: Routes.kpiReview,
+    roles: ModuleRoles.kpi,
     group: DestinationGroupNames.insights,
   ),
   // Actions (issue #176) — the action log, and the first Destination behind a

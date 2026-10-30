@@ -20,6 +20,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'kpi/kpi_api.dart';
 import 'maintenance/maintenance_api.dart';
 import 'actions/actions_api.dart';
 import 'people_api.dart';
@@ -66,6 +67,7 @@ Future<void> main() async {
       qualityApi: QualityApi(client: apiClient),
       safetyApi: SafetyApi(client: apiClient),
       productionApi: ProductionApi(client: apiClient),
+      kpiApi: KpiApi(client: apiClient),
       floorDeviceGateway: const ConfiguredFloorDeviceGateway(),
     ),
   );

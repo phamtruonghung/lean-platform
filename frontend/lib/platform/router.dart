@@ -104,6 +104,13 @@ import '../people/skills_bloc.dart';
 import '../people/skills_screen.dart';
 import '../people/worked_hours_bloc.dart';
 import '../people/worked_hours_screen.dart';
+import '../kpi/kpi_api.dart';
+import '../kpi/kpi_catalogue_bloc.dart';
+import '../kpi/kpi_catalogue_screen.dart';
+import '../kpi/kpi_review_bloc.dart';
+import '../kpi/kpi_review_screen.dart';
+import '../kpi/kpi_targets_bloc.dart';
+import '../kpi/kpi_targets_screen.dart';
 import '../people_api.dart';
 import '../quality/complaint_detail_bloc.dart';
 import '../quality/complaint_detail_screen.dart';
@@ -335,6 +342,20 @@ abstract final class Routes {
   /// and the handover carry the production day they were reached for as
   /// `?date=`, so a day other than the Site's today reads the same day back.
   static const String production = '/production/sections';
+
+  /// The KPI Module's Destinations (ADR-0055): the catalogue, and the daily
+  /// KPI Review. One KPI's Targets are reached from a catalogue row and are not
+  /// a Destination of their own — they need a `kpiId`. `selectedDestinationPath`
+  /// lights the most specific match, so `/kpi/review` lights itself and
+  /// `/kpi/:id/targets` lights [kpi].
+  static const String kpi = '/kpi';
+  static const String kpiReview = '/kpi/review';
+
+  /// One KPI's Targets. The catalogue passes the Site it was showing as
+  /// `?site_id=`, so a Site other than the first is still the one the Targets
+  /// open on.
+  static String kpiTargets(int kpiId, {String? siteId}) =>
+      '$kpi/$kpiId/targets${siteId == null ? '' : '?site_id=$siteId'}';
 
   static String _withDate(String path, String? date) => date == null ? path : '$path?date=$date';
 
@@ -2454,6 +2475,64 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const SkillCoverageStarted()),
                 child: const SkillCoverageScreen(),
+              );
+            },
+          ),
+          // The KPI Module (ADR-0055): the catalogue, its Targets and the daily
+          // KPI Review, over the MTU line's second database. Offered through
+          // `ModuleRoles.kpi`, but no role check here: the router's `redirect`
+          // already admits only an approved Account, and the server's Grant
+          // check on the Site's root Org Unit is the real gate. `/kpi/review`
+          // is declared before `/kpi/:kpiId/targets` (they differ in segment
+          // count today; the order costs nothing). Each Screen's Bloc is keyed
+          // on the address so moving to another KPI or Site builds a fresh one.
+          GoRoute(
+            path: Routes.kpi,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<KpiCatalogueBloc>(
+                key: ValueKey<String>(state.uri.toString()),
+                create: (context) => KpiCatalogueBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  kpiApi: context.read<KpiApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const KpiCatalogueStarted()),
+                child: KpiCatalogueScreen(canWrite: account.account.orgUnitScope.canWriteSomewhere),
+              );
+            },
+          ),
+          GoRoute(
+            path: Routes.kpiReview,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<KpiReviewBloc>(
+                key: ValueKey<String>(state.uri.toString()),
+                create: (context) => KpiReviewBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  kpiApi: context.read<KpiApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const KpiReviewStarted()),
+                child: KpiReviewScreen(canWrite: account.account.orgUnitScope.canWriteSomewhere),
+              );
+            },
+          ),
+          GoRoute(
+            path: '${Routes.kpi}/:kpiId/targets',
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              final kpiId = int.tryParse(state.pathParameters['kpiId']!);
+              if (kpiId == null) return NotFoundScreen(location: state.uri.toString());
+              return BlocProvider<KpiTargetsBloc>(
+                key: ValueKey<String>(state.uri.toString()),
+                create: (context) => KpiTargetsBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  kpiApi: context.read<KpiApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(KpiTargetsStarted(kpiId: kpiId, siteId: state.uri.queryParameters['site_id'])),
+                child: KpiTargetsScreen(kpiId: kpiId, canWrite: account.account.orgUnitScope.canWriteSomewhere),
               );
             },
           ),
