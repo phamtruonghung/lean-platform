@@ -10,7 +10,8 @@
 ///   cancelling it leaves the judgement and the note as they were, and a
 ///   cancelled popup can never leave an invalid Missed draft behind.
 /// - A cell with a note shows a note icon that opens it read-only, with an Edit
-///   button when the judgement is Missed and the caller may write.
+///   button when the judgement is Missed and the caller may write. Under any
+///   other judgement the note stays readable and the popup says Save clears it.
 /// - A cell with a saved Review shows it in place — `Met · A B · 2026-10-30
 ///   08:12` — as the server holds it (`app_user`, `entered_at`).
 /// - **Save** posts every changed KPI in one request; it is disabled when
@@ -48,7 +49,15 @@ class KpiReviewScreen extends StatelessWidget {
   /// read-only; the server is still the gate on a save.
   final bool canWrite;
 
-  static const double maxWidth = AppLayout.pageWidth;
+  /// This Screen names its own width because it is a tiled matrix of up to four
+  /// cells, and [AppPageFrame] leaves a Screen that lays out a wide table or a
+  /// board to pass its own. The number is arithmetic: the sidebar is 260 and the
+  /// list pads 32, so a 1100px frame (the registers' width) would leave 1068 of
+  /// content, under the 1080 a fourth column needs. 1200 leaves 1168 at the
+  /// widest window, and four across starts at a 1372px window with cells of 261
+  /// (283 at the widest), which is what a cell's title, Daily Target, three
+  /// judgement icons, note icon and saved line need at `bodyMedium`.
+  static const double maxWidth = 1200;
 
   /// The earliest day the picker offers.
   static final DateTime firstReviewDate = DateTime(2020, 1, 1);
@@ -91,12 +100,16 @@ class KpiReviewScreen extends StatelessWidget {
   static ValueKey<String> noteReadDialogKey(int kpiId) => ValueKey<String>('kpi-review-note-read-$kpiId');
   static ValueKey<String> noteEditKey(int kpiId) => ValueKey<String>('kpi-review-note-edit-$kpiId');
   static ValueKey<String> noteCloseKey(int kpiId) => ValueKey<String>('kpi-review-note-close-$kpiId');
+  static ValueKey<String> noteClearsKey(int kpiId) => ValueKey<String>('kpi-review-note-clears-$kpiId');
   static ValueKey<String> noTargetHintKey(int kpiId) => ValueKey<String>('kpi-review-no-target-$kpiId');
 
   /// The cell's saved state in place, e.g. `Met · A B · 2026-10-30 08:12`.
   static ValueKey<String> savedStateKey(int kpiId) => ValueKey<String>('kpi-review-saved-state-$kpiId');
 
   static const String noTargetHint = 'No target — set one first';
+
+  /// What the read-only popup says of a note the judgement on screen will drop.
+  static const String clearsNoteText = 'Saving this KPI as Met or Not measured clears this note';
 
   @override
   Widget build(BuildContext context) {
@@ -199,8 +212,8 @@ class _LoadedState extends State<_Loaded> {
   }
 
   /// Asks for the note and only then drafts Missed. Every way out but confirm
-  /// (Cancel, Escape, a browser back) answers null and leaves [_drafts] alone,
-  /// so there is nothing to restore.
+  /// (Cancel, a browser back) answers null and leaves [_drafts] alone, so there
+  /// is nothing to restore.
   Future<void> _writeNote(ReviewRow row) async {
     final review = widget.state.review;
     final note = await showDialog<String>(
@@ -219,6 +232,7 @@ class _LoadedState extends State<_Loaded> {
       builder: (_) => _ReadNoteDialog(
         row: row,
         note: _noteOf(row).trim(),
+        status: status,
         canEdit: _enabled && status == ReviewStatus.missed,
       ),
     );
@@ -600,10 +614,13 @@ class _NoteDialogState extends State<_NoteDialog> {
 
 /// A note, read-only. Answers true when the person asked to edit it.
 class _ReadNoteDialog extends StatelessWidget {
-  const _ReadNoteDialog({required this.row, required this.note, required this.canEdit});
+  const _ReadNoteDialog({required this.row, required this.note, required this.status, required this.canEdit});
 
   final ReviewRow row;
   final String note;
+
+  /// The draft judgement, else the saved one; null when neither exists.
+  final String? status;
   final bool canEdit;
 
   @override
@@ -633,6 +650,10 @@ class _ReadNoteDialog extends StatelessWidget {
             if (author.isNotEmpty) ...[
               const SizedBox(height: Spacing.sm),
               Text(author, style: muted),
+            ],
+            if (status != ReviewStatus.missed) ...[
+              const SizedBox(height: Spacing.sm),
+              Text(KpiReviewScreen.clearsNoteText, key: KpiReviewScreen.noteClearsKey(row.kpiId), style: muted),
             ],
           ],
         ),
