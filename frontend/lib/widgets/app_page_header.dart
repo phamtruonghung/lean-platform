@@ -16,11 +16,14 @@
 /// title's own left edge.
 ///
 /// **Actions wrap by the box, not the window.** When the box this header is
-/// given is narrower than [wrapBreakpoint], the actions drop under the title
-/// instead of squeezing it. That is read off a `LayoutBuilder`, never
-/// `MediaQuery`: a Screen renders inside the Shell's content area, and the
-/// window is the wrong width to ask about (the lesson of
-/// `WorkOrdersScreen.narrowBreakpoint`).
+/// given is narrower than [wrapBreakpoint], scaled by the reader's text size,
+/// the actions drop under the title instead of squeezing it. The width is read
+/// off a `LayoutBuilder`, never `MediaQuery`: a Screen renders inside the
+/// Shell's content area, and the window is the wrong width to ask about (the
+/// lesson of `WorkOrdersScreen.narrowBreakpoint`). `MediaQuery` supplies only
+/// the text scale: the actions row grows with it and the box does not, so at a
+/// larger text size the same box needs the wrap sooner (WCAG 1.4.4, Resize
+/// Text).
 ///
 /// **[below]** is the Screen's filter row (site dropdown, chips, toggles). It
 /// sits under the hairline, [Spacing.md] beneath it, so every Screen spaces its
@@ -44,7 +47,7 @@ class AppPageHeader extends StatelessWidget {
   final String? description;
 
   /// Buttons for the row's far end. Wrapped under the title when the box is
-  /// narrower than [wrapBreakpoint].
+  /// narrower than [wrapBreakpoint] at the reader's text scale.
   final List<Widget> actions;
 
   /// A filter row beneath the hairline.
@@ -53,7 +56,10 @@ class AppPageHeader extends StatelessWidget {
   /// The widest a description may run, however wide the box.
   static const double descriptionMeasure = 640;
 
-  /// Below this box width the actions wrap under the title.
+  /// Below this box width, at a text scale of 1, the actions wrap under the
+  /// title. The breakpoint is multiplied by the reader's text-scale factor
+  /// (never reduced below 1): the actions row grows with the scale and the box
+  /// does not (WCAG 1.4.4).
   static const double wrapBreakpoint = 560;
 
   static const ValueKey<String> titleKey = ValueKey<String>('app-page-header-title');
@@ -100,7 +106,9 @@ class AppPageHeader extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             if (actions.isEmpty) return titleBlock;
-            final wrapped = constraints.maxWidth < wrapBreakpoint;
+            final textScale = MediaQuery.textScalerOf(context).scale(1);
+            final breakpoint = wrapBreakpoint * (textScale < 1 ? 1 : textScale);
+            final wrapped = constraints.maxWidth < breakpoint;
             if (wrapped) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -53,6 +53,10 @@ void main() {
       expect((theme.cardTheme.shape as RoundedRectangleBorder).side.color,
           const Color(0xFFDBEAFE));
       expect(theme.inputDecorationTheme.fillColor, const Color(0xFFFFFFFF));
+      // The Card's fill is pinned directly: the only other guard is three
+      // light-palette goldens.
+      expect(theme.cardTheme.color, AppPalette.light.card);
+      expect(theme.cardTheme.color, const Color(0xFFFFFFFF));
       expect(theme.colorScheme.onSurface, const Color(0xFF1E3A8A));
       expect(theme.colorScheme.onSurfaceVariant, const Color(0xFF475569));
       expect(theme.colorScheme.primary, const Color(0xFF1E40AF));
@@ -67,6 +71,10 @@ void main() {
       expect((theme.cardTheme.shape as RoundedRectangleBorder).side.color,
           const Color(0xFF6B7D96));
       expect(theme.inputDecorationTheme.fillColor, const Color(0xFF1E293B));
+      // The Card's fill is pinned directly: dark maps surfaceContainerLow to
+      // the same primitive, so a dark cardTheme break would otherwise be silent.
+      expect(theme.cardTheme.color, AppPalette.dark.card);
+      expect(theme.cardTheme.color, const Color(0xFF1E293B));
       expect(theme.colorScheme.onSurface, const Color(0xFFF1F5F9));
       expect(theme.colorScheme.onSurfaceVariant, const Color(0xFFCBD5E1));
       expect(theme.colorScheme.primary, const Color(0xFF93C5FD));
