@@ -15,6 +15,8 @@ import 'package:lean_platform/kpi/kpi_targets_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/widgets/app_date_field.dart';
+import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
 import 'harness.dart';
 
 const String _outside = "Outside the caller's granted Org Units";
@@ -54,6 +56,7 @@ FakeWire _wire({
   List<Map<String, dynamic>>? kpis,
   List<Map<String, dynamic>>? reviewRows,
   String role = Roles.admin,
+  List<Map<String, dynamic>>? sites,
   Map<String, dynamic>? orgUnitScope,
   int addKpiStatus = 201,
   String addKpiMessage = 'A KPI with that name already exists',
@@ -61,7 +64,7 @@ FakeWire _wire({
     FakeWire(
       role: role,
       orgUnitScope: orgUnitScope,
-      sites: [siteJson('1', 'MTU', 'MTU plant')],
+      sites: sites ?? [siteJson('1', 'MTU', 'MTU plant')],
       kpis: kpis ?? [_oee, _scrap, _mttr],
       kpiTargets: {
         3: kpiTargetsJson(
@@ -83,10 +86,15 @@ FakeWire _wire({
       kpiAddKpiMessage: addKpiMessage,
     );
 
-Future<void> _open(WidgetTester tester, FakeWire wire, String location) async {
+Future<void> _open(
+  WidgetTester tester,
+  FakeWire wire,
+  String location, {
+  Size size = const Size(1200, 1600),
+}) async {
   // Tall enough that nothing in a Screen is below the fold of a lazy list.
   tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = const Size(1200, 1600);
+  tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   await pumpApp(
     tester,
@@ -442,4 +450,245 @@ void main() {
     expect(find.byType(KpiTargetsScreen), findsOneWidget);
     expect(find.byKey(KpiTargetsScreen.changeTargetKey), findsNothing);
   });
+
+  const catalogueColumns = ['KPI', 'Unit', 'Direction', 'Daily', 'Weekly', 'Monthly', 'Today'];
+  const reviewColumns = ['KPI', 'Daily target', 'Judgement', 'Note', 'Saved'];
+
+  List<String> headerLabels(WidgetTester tester, Key headerRowKey) => [
+        for (final text in tester.widgetList<Text>(
+          find.descendant(of: find.byKey(headerRowKey), matching: find.byType(Text)),
+        ))
+          text.data!,
+      ];
+
+  testWidgets('the catalogue matrix labels its columns, in order', (tester) async {
+    await _open(tester, _wire(), Routes.kpi);
+    expect(headerLabels(tester, KpiCatalogueScreen.headerRowKey), catalogueColumns);
+  });
+
+  testWidgets('the review matrix labels its columns, in order', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview);
+    expect(headerLabels(tester, KpiReviewScreen.headerRowKey), reviewColumns);
+  });
+
+  testWidgets('a header label and its cells start at the same x, on /kpi', (tester) async {
+    await _open(tester, _wire(), Routes.kpi);
+    for (final column in catalogueColumns) {
+      final header = tester.getTopLeft(
+        find.descendant(
+          of: find.byKey(KpiCatalogueScreen.columnHeaderKey(column)),
+          matching: find.byType(Text),
+        ),
+      );
+      final cell = tester.getTopLeft(find.byKey(KpiCatalogueScreen.cellKey(1, column)));
+      // Equality, not "a row renders": a header that drifts from its column renders fine.
+      expect((header.dx - cell.dx).abs(), lessThan(1.0), reason: '$column header ${header.dx} cell ${cell.dx}');
+    }
+  });
+
+  testWidgets('a header label and its cells start at the same x, on /kpi/review', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview);
+    for (final column in reviewColumns) {
+      final header = tester.getTopLeft(
+        find.descendant(
+          of: find.byKey(KpiReviewScreen.columnHeaderKey(column)),
+          matching: find.byType(Text),
+        ),
+      );
+      final cell = tester.getTopLeft(find.byKey(KpiReviewScreen.cellKey(1, column)));
+      // Equality, not "a row renders": a header that drifts from its column renders fine.
+      expect((header.dx - cell.dx).abs(), lessThan(1.0), reason: '$column header ${header.dx} cell ${cell.dx}');
+    }
+  });
+
+  testWidgets('the catalogue filter folds diacritics and clears', (tester) async {
+    final hs = kpiCatalogueRowJson(4, 'HS', 'Hiệu suất');
+    final wire = _wire(kpis: [_oee, _scrap, _mttr, hs]);
+    await _open(tester, wire, Routes.kpi);
+    expect(find.byKey(KpiCatalogueScreen.filterCountKey), findsNothing);
+
+    await tester.enterText(find.byKey(KpiCatalogueScreen.filterFieldKey), 'hieu suat');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(KpiCatalogueScreen.rowKey(4)), findsOneWidget);
+    for (final id in [1, 2, 3]) {
+      expect(find.byKey(KpiCatalogueScreen.rowKey(id)), findsNothing, reason: 'KPI $id');
+    }
+    expect(find.text(AppFilterField.countLabel(1, 4)), findsOneWidget);
+
+    // By code, case-insensitively.
+    await tester.enterText(find.byKey(KpiCatalogueScreen.filterFieldKey), 'oee');
+    await tester.pumpAndSettle();
+    expect(find.byKey(KpiCatalogueScreen.rowKey(1)), findsOneWidget);
+    expect(find.byKey(KpiCatalogueScreen.rowKey(4)), findsNothing);
+
+    await tester.enterText(find.byKey(KpiCatalogueScreen.filterFieldKey), 'hieu suat');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(KpiCatalogueScreen.filterClearKey));
+    for (final id in [1, 2, 3, 4]) {
+      expect(find.byKey(KpiCatalogueScreen.rowKey(id)), findsOneWidget, reason: 'KPI $id');
+    }
+    expect(find.byKey(KpiCatalogueScreen.filterCountKey), findsNothing);
+    // The filter is the client's: it asked the server for nothing more.
+    expect(wire.kpiReads, hasLength(1));
+  });
+
+  testWidgets('typing in the filter keeps the caret at the end of the term', (tester) async {
+    await _open(tester, _wire(), Routes.kpi);
+    final field = find.byKey(KpiCatalogueScreen.filterFieldKey);
+
+    await tester.enterText(field, 'hie');
+    await tester.pump();
+    await tester.enterText(field, 'hieu');
+    await tester.pump();
+
+    final controller = tester.widget<TextField>(field).controller!;
+    expect(controller.text, 'hieu');
+    expect(controller.selection, const TextSelection.collapsed(offset: 4));
+  });
+
+  testWidgets('a term matching nothing is the none-matched state, on /kpi', (tester) async {
+    await _open(tester, _wire(), Routes.kpi);
+    await tester.enterText(find.byKey(KpiCatalogueScreen.filterFieldKey), 'zzqx');
+    await tester.pumpAndSettle();
+    final empty = tester.widget<PlatformEmptyState>(find.byKey(KpiCatalogueScreen.noMatchKey));
+    expect(empty.variant, EmptyStateVariant.noneMatched);
+    expect(empty.message, contains('"zzqx"'));
+    expect(find.byKey(KpiCatalogueScreen.emptyKey), findsNothing);
+  });
+
+  testWidgets('a term matching nothing is the none-matched state, on /kpi/review', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview);
+    await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'zzqx');
+    await tester.pumpAndSettle();
+    final empty = tester.widget<PlatformEmptyState>(find.byKey(KpiReviewScreen.noMatchKey));
+    expect(empty.variant, EmptyStateVariant.noneMatched);
+    expect(empty.message, contains('"zzqx"'));
+    expect(find.byKey(KpiReviewScreen.emptyKey), findsNothing);
+  });
+
+  testWidgets('a changed row the filter hides is still saved', (tester) async {
+    final wire = _wire();
+    await _open(tester, wire, Routes.kpiReview);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
+    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'broken seal on line');
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'scrap');
+    await tester.pumpAndSettle();
+    expect(find.byKey(KpiReviewScreen.rowKey(1)), findsNothing);
+    expect(find.byKey(KpiReviewScreen.rowKey(2)), findsOneWidget);
+    expect(find.text('1 changed KPI is hidden by the search.'), findsOneWidget);
+    expect(_enabled(tester, KpiReviewScreen.saveKey), isTrue);
+
+    // The draft survived: clearing the term shows the edit, not the server's value.
+    await tapIn(tester, find.byKey(KpiReviewScreen.filterClearKey));
+    expect(find.byKey(KpiReviewScreen.hiddenChangesKey), findsNothing);
+    expect(tester.widget<ChoiceChip>(find.byKey(KpiReviewScreen.statusKey(1, 'missed'))).selected, isTrue);
+    expect(tester.widget<TextField>(find.byKey(KpiReviewScreen.noteKey(1))).controller!.text, 'broken seal on line');
+
+    await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'scrap');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(KpiReviewScreen.saveKey));
+    expect(wire.reviewPosts.single['entries'], [
+      {'kpi_id': 1, 'status': 'missed', 'observed': null, 'note': 'broken seal on line'},
+    ]);
+  });
+
+  final twoSites = [siteJson('1', 'MTU', 'MTU plant'), siteJson('2', 'DN', 'Da Nang')];
+
+  String filterText(WidgetTester tester, Key fieldKey) => tester.widget<TextField>(find.byKey(fieldKey)).controller!.text;
+
+  testWidgets('the review filter term survives a day change', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview);
+    await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'scrap');
+    await tester.pumpAndSettle();
+
+    await pickDate(tester, KpiReviewScreen.dateKey, DateTime(2026, 10, 29));
+
+    expect(find.text('KPI Review for 2026-10-29'), findsOneWidget);
+    expect(filterText(tester, KpiReviewScreen.filterFieldKey), 'scrap');
+    expect(find.byKey(KpiReviewScreen.rowKey(2)), findsOneWidget);
+    expect(find.byKey(KpiReviewScreen.rowKey(1)), findsNothing);
+    expect(find.text(AppFilterField.countLabel(1, 3)), findsOneWidget);
+  });
+
+  testWidgets('a Site change clears the review filter term', (tester) async {
+    await _open(tester, _wire(sites: twoSites), Routes.kpiReview);
+    await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'scrap');
+    await tester.pumpAndSettle();
+    expect(find.byKey(KpiReviewScreen.rowKey(1)), findsNothing);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.siteKey));
+    await tapIn(tester, find.text('Da Nang').last);
+
+    expect(filterText(tester, KpiReviewScreen.filterFieldKey), isEmpty);
+    for (final id in [1, 2, 3]) {
+      expect(find.byKey(KpiReviewScreen.rowKey(id)), findsOneWidget, reason: 'KPI $id');
+    }
+    expect(find.byKey(KpiReviewScreen.filterCountKey), findsNothing);
+  });
+
+  testWidgets('a Site change clears the catalogue filter term', (tester) async {
+    await _open(tester, _wire(sites: twoSites), Routes.kpi);
+    await tester.enterText(find.byKey(KpiCatalogueScreen.filterFieldKey), 'scrap');
+    await tester.pumpAndSettle();
+    expect(find.byKey(KpiCatalogueScreen.rowKey(1)), findsNothing);
+
+    await tapIn(tester, find.byKey(KpiCatalogueScreen.siteKey));
+    await tapIn(tester, find.text('Da Nang').last);
+
+    expect(filterText(tester, KpiCatalogueScreen.filterFieldKey), isEmpty);
+    for (final id in [1, 2, 3]) {
+      expect(find.byKey(KpiCatalogueScreen.rowKey(id)), findsOneWidget, reason: 'KPI $id');
+    }
+    expect(find.byKey(KpiCatalogueScreen.filterCountKey), findsNothing);
+  });
+
+  testWidgets('a hidden changed row with a too-short note keeps Save disabled', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview);
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
+    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'short');
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'scrap');
+    await tester.pumpAndSettle();
+    expect(find.text('1 changed KPI is hidden by the search.'), findsOneWidget);
+    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.filterClearKey));
+    expect(find.textContaining('at least 10 characters'), findsOneWidget);
+    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
+  });
+
+  testWidgets('an uppercase diacritic term folds', (tester) async {
+    final hs = kpiCatalogueRowJson(4, 'HS', 'Hiệu suất');
+    await _open(tester, _wire(kpis: [_oee, _scrap, _mttr, hs]), Routes.kpi);
+
+    await tester.enterText(find.byKey(KpiCatalogueScreen.filterFieldKey), 'HIỆU SUẤT');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(KpiCatalogueScreen.rowKey(4)), findsOneWidget);
+    for (final id in [1, 2, 3]) {
+      expect(find.byKey(KpiCatalogueScreen.rowKey(id)), findsNothing, reason: 'KPI $id');
+    }
+  });
+
+  for (final size in [const Size(1366, 768), const Size(700, 768)]) {
+    testWidgets('/kpi renders without overflow at ${size.width.toInt()}px', (tester) async {
+      await _open(tester, _wire(), Routes.kpi, size: size);
+      expect(find.byKey(KpiCatalogueScreen.headerRowKey), findsOneWidget);
+      expect(find.byKey(KpiCatalogueScreen.rowKey(1)), findsOneWidget);
+    });
+
+    testWidgets('/kpi/review renders without overflow at ${size.width.toInt()}px', (tester) async {
+      await _open(tester, _wire(), Routes.kpiReview, size: size);
+      expect(find.byKey(KpiReviewScreen.headerRowKey), findsOneWidget);
+      expect(find.byKey(KpiReviewScreen.rowKey(1)), findsOneWidget);
+      // The widest row: Missed reveals the note field and its inline error.
+      await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
+      expect(find.byKey(KpiReviewScreen.noteKey(1)), findsOneWidget);
+    });
+  }
 }

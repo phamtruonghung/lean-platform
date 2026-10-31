@@ -28,11 +28,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_filter_field.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import 'kpi_catalogue.dart';
+import 'kpi_matrix.dart';
 import 'kpi_review_bloc.dart';
 
 class KpiReviewScreen extends StatelessWidget {
@@ -61,6 +64,23 @@ class KpiReviewScreen extends StatelessWidget {
   static const ValueKey<String> emptyKey = ValueKey<String>('kpi-review-empty');
   static const ValueKey<String> headingKey = ValueKey<String>('kpi-review-heading');
   static ValueKey<String> rowKey(int kpiId) => ValueKey<String>('kpi-review-row-$kpiId');
+
+  static const ValueKey<String> headerRowKey = ValueKey<String>('kpi-review-header');
+  static const ValueKey<String> noMatchKey = ValueKey<String>('kpi-review-no-match');
+
+  /// The sentence naming changed rows the filter hides, beside Save.
+  static const ValueKey<String> hiddenChangesKey = ValueKey<String>('kpi-review-hidden-changes');
+  static const String filterFieldName = 'kpi-review-filter';
+  static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
+  static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
+  static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
+
+  /// The header cell of one column, by its label (`'KPI'`, `'Judgement'`, …).
+  static ValueKey<String> columnHeaderKey(String column) => ValueKey<String>('kpi-review-column-$column');
+
+  /// The body cell of one column of one KPI's row.
+  static ValueKey<String> cellKey(int kpiId, String column) =>
+      ValueKey<String>('kpi-review-cell-$kpiId-$column');
   static ValueKey<String> statusKey(int kpiId, String status) =>
       ValueKey<String>('kpi-review-$kpiId-$status');
   static ValueKey<String> noteKey(int kpiId) => ValueKey<String>('kpi-review-note-$kpiId');
@@ -114,10 +134,16 @@ class _LoadedState extends State<_Loaded> {
   /// because the row tiles are rebuilt on it.
   final Map<int, _Draft> _drafts = {};
 
+  /// What the filter box is narrowing the rows to, `''` when nothing is. It
+  /// survives a day change and is cleared only when the Site changes. It never
+  /// touches [_drafts]: a hidden row's unsaved judgement is still saved.
+  String _term = '';
+
   @override
   void didUpdateWidget(covariant _Loaded oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.state.review, widget.state.review)) _drafts.clear();
+    if (oldWidget.state.siteId != widget.state.siteId) _term = '';
   }
 
   ReviewRow? _rowOf(int kpiId) {
@@ -160,6 +186,15 @@ class _LoadedState extends State<_Loaded> {
     final state = widget.state;
     final review = state.review;
     final changes = _changes;
+    // Filtered here, immediately before the row widgets are built. `changes`
+    // stays over every draft, visible or not.
+    final rows = review?.rows ?? const <ReviewRow>[];
+    final matches = [
+      for (final row in rows)
+        if (kpiMatchesSearch(code: '', title: row.title, term: _term)) row,
+    ];
+    final visibleIds = {for (final row in matches) row.kpiId};
+    final hiddenChanges = changes.where((entry) => !visibleIds.contains(entry.kpiId)).length;
     final canSave = widget.canWrite &&
         !state.isMutating &&
         changes.isNotEmpty &&
@@ -233,23 +268,37 @@ class _LoadedState extends State<_Loaded> {
                 icon: Icons.fact_check_outlined,
               )
             else ...[
-              Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < review.rows.length; i++) ...[
-                      if (i > 0) const Divider(height: 1),
+              AppFilterField(
+                name: KpiReviewScreen.filterFieldName,
+                label: 'Filter KPIs',
+                helperText: 'By title.',
+                term: _term,
+                onChanged: (term) => setState(() => _term = term),
+                shown: matches.length,
+                total: review.rows.length,
+              ),
+              const SizedBox(height: Spacing.lg),
+              if (matches.isEmpty)
+                PlatformEmptyState.noneMatched(
+                  key: KpiReviewScreen.noMatchKey,
+                  title: 'No KPIs match',
+                  message: 'No KPI of the review matches "${_term.trim()}". Try a '
+                      'different title, or clear the filter.',
+                )
+              else
+                AppListCard(
+                  rows: [
+                    MatrixHeaderRow(key: KpiReviewScreen.headerRowKey, columns: _columns),
+                    for (final row in matches)
                       _ReviewRowTile(
-                        key: ObjectKey(review.rows[i]),
-                        row: review.rows[i],
+                        key: ObjectKey(row),
+                        row: row,
+                        draft: _drafts[row.kpiId],
                         enabled: widget.canWrite && !state.isMutating,
                         onChanged: _draft,
                       ),
-                    ],
                   ],
                 ),
-              ),
               const SizedBox(height: Spacing.lg),
               Row(
                 children: [
@@ -261,6 +310,18 @@ class _LoadedState extends State<_Loaded> {
                     child: Text(state.isMutating ? 'Saving…' : 'Save'),
                   ),
                   const SizedBox(width: Spacing.md),
+                  if (hiddenChanges > 0) ...[
+                    Flexible(
+                      child: Text(
+                        hiddenChanges == 1
+                            ? '1 changed KPI is hidden by the search.'
+                            : '$hiddenChanges changed KPIs are hidden by the search.',
+                        key: KpiReviewScreen.hiddenChangesKey,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                    const SizedBox(width: Spacing.md),
+                  ],
                   if (state.savedCount != null)
                     Flexible(
                       child: Text(
@@ -289,10 +350,38 @@ class _LoadedState extends State<_Loaded> {
   }
 }
 
+// Column weights shared by the header and the rows, so they line up.
+const int _kpiFlex = 3;
+const int _targetFlex = 2;
+const int _judgementFlex = 4;
+const int _noteFlex = 4;
+const int _savedFlex = 2;
+
+MatrixColumn _column(int flex, String label) =>
+    MatrixColumn(flex: flex, label: label, headerKey: KpiReviewScreen.columnHeaderKey(label));
+
+final List<MatrixColumn> _columns = [
+  _column(_kpiFlex, 'KPI'),
+  _column(_targetFlex, 'Daily target'),
+  _column(_judgementFlex, 'Judgement'),
+  _column(_noteFlex, 'Note'),
+  _column(_savedFlex, 'Saved'),
+];
+
 class _ReviewRowTile extends StatefulWidget {
-  const _ReviewRowTile({super.key, required this.row, required this.enabled, required this.onChanged});
+  const _ReviewRowTile({
+    super.key,
+    required this.row,
+    required this.draft,
+    required this.enabled,
+    required this.onChanged,
+  });
 
   final ReviewRow row;
+
+  /// What the parent holds for this KPI, if the person has touched it. A tile
+  /// the filter hid loses its `State`, so it seeds from this before the server.
+  final _Draft? draft;
   final bool enabled;
   final void Function(int kpiId, String? status, String note) onChanged;
 
@@ -301,10 +390,11 @@ class _ReviewRowTile extends StatefulWidget {
 }
 
 class _ReviewRowTileState extends State<_ReviewRowTile> {
-  /// Starts on the saved judgement, if any; a row with no review starts with
-  /// nothing selected.
-  late String? _status = widget.row.status;
-  late final TextEditingController _note = TextEditingController(text: widget.row.note ?? '');
+  /// Starts on the person's draft, else the saved judgement, if any; a row with
+  /// neither starts with nothing selected.
+  late String? _status = widget.draft?.status ?? widget.row.status;
+  late final TextEditingController _note =
+      TextEditingController(text: widget.draft?.note ?? widget.row.note ?? '');
 
   @override
   void dispose() {
@@ -331,80 +421,85 @@ class _ReviewRowTileState extends State<_ReviewRowTile> {
             if (row.enteredAt != null) formatEnteredAt(row.enteredAt!),
           ].join(' · ');
     final noteLength = _note.text.trim().length;
+    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    Widget cell(int flex, String column, Widget child) =>
+        matrixCell(flex: flex, key: KpiReviewScreen.cellKey(row.kpiId, column), child: child);
     return Padding(
       key: KpiReviewScreen.rowKey(row.kpiId),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Column(
+      padding: matrixRowPadding,
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(row.title, style: theme.textTheme.bodyLarge),
-                    Text(
-                      targetText ?? 'No target',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    if (target == null)
-                      Text(
-                        KpiReviewScreen.noTargetHint,
-                        key: KpiReviewScreen.noTargetHintKey(row.kpiId),
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                      ),
-                    if (saved != null)
-                      Text(
-                        saved,
-                        key: KpiReviewScreen.savedStateKey(row.kpiId),
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: Spacing.md),
-              Wrap(
-                spacing: Spacing.sm,
-                runSpacing: Spacing.xs,
-                children: [
-                  for (final status in ReviewStatus.all)
-                    ChoiceChip(
-                      key: KpiReviewScreen.statusKey(row.kpiId, status),
-                      label: Text(ReviewStatus.label(status)),
-                      selected: _status == status,
-                      // A KPI with no Target cannot have met one.
-                      onSelected: !widget.enabled || (status == ReviewStatus.met && target == null)
-                          ? null
-                          : (_) => _choose(status),
-                    ),
-                ],
-              ),
-            ],
-          ),
-          if (_status == ReviewStatus.missed) ...[
-            const SizedBox(height: Spacing.md),
-            TextField(
-              key: KpiReviewScreen.noteKey(row.kpiId),
-              controller: _note,
-              enabled: widget.enabled,
-              minLines: 2,
-              maxLines: 4,
-              onChanged: (value) {
-                setState(() {});
-                widget.onChanged(row.kpiId, _status, value);
-              },
-              decoration: InputDecoration(
-                labelText: targetText == null ? 'Why was it missed?' : 'Why was the Target ($targetText) missed?',
-                errorText: noteLength < KpiReviewScreen.minNoteLength
-                    ? 'A note of at least ${KpiReviewScreen.minNoteLength} characters is required '
-                        'when a KPI is missed ($noteLength so far).'
-                    : null,
-                border: const OutlineInputBorder(),
-              ),
+          cell(
+            _kpiFlex,
+            'KPI',
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(row.title, style: theme.textTheme.bodyLarge),
+                if (target == null)
+                  Text(
+                    KpiReviewScreen.noTargetHint,
+                    key: KpiReviewScreen.noTargetHintKey(row.kpiId),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                  ),
+              ],
             ),
-          ],
+          ),
+          cell(_targetFlex, 'Daily target', Text(targetText ?? 'No target', style: muted)),
+          cell(
+            _judgementFlex,
+            'Judgement',
+            Wrap(
+              spacing: Spacing.sm,
+              runSpacing: Spacing.xs,
+              children: [
+                for (final status in ReviewStatus.all)
+                  ChoiceChip(
+                    key: KpiReviewScreen.statusKey(row.kpiId, status),
+                    label: Text(ReviewStatus.label(status)),
+                    selected: _status == status,
+                    // A KPI with no Target cannot have met one.
+                    onSelected: !widget.enabled || (status == ReviewStatus.met && target == null)
+                        ? null
+                        : (_) => _choose(status),
+                  ),
+              ],
+            ),
+          ),
+          cell(
+            _noteFlex,
+            'Note',
+            _status == ReviewStatus.missed
+                ? TextField(
+                    key: KpiReviewScreen.noteKey(row.kpiId),
+                    controller: _note,
+                    enabled: widget.enabled,
+                    minLines: 2,
+                    maxLines: 4,
+                    onChanged: (value) {
+                      setState(() {});
+                      widget.onChanged(row.kpiId, _status, value);
+                    },
+                    decoration: InputDecoration(
+                      labelText:
+                          targetText == null ? 'Why was it missed?' : 'Why was the Target ($targetText) missed?',
+                      errorText: noteLength < KpiReviewScreen.minNoteLength
+                          ? 'A note of at least ${KpiReviewScreen.minNoteLength} characters is required '
+                              'when a KPI is missed ($noteLength so far).'
+                          : null,
+                      border: const OutlineInputBorder(),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          cell(
+            _savedFlex,
+            'Saved',
+            saved == null
+                ? const SizedBox.shrink()
+                : Text(saved, key: KpiReviewScreen.savedStateKey(row.kpiId), style: muted),
+          ),
         ],
       ),
     );

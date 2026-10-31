@@ -2724,6 +2724,8 @@ class FakeWire {
         return http.Response(
           jsonEncode({'site_id': int.tryParse(query['site_id'] ?? ''), 'review_date': date, 'kpis': kpis}),
           200,
+          // UTF-8 as Express sends it: a Vietnamese title is not Latin-1.
+          headers: const {'content-type': 'application/json; charset=utf-8'},
         );
       }
       if (path == '/api/kpi/targets') {
@@ -2736,6 +2738,7 @@ class FakeWire {
         if (kpiReviewStatus != 200) return refusal(kpiReviewStatus, 'The KPI Review is unavailable.');
         return http.Response(jsonEncode({'review_date': date, 'site_today': kpiSiteToday ?? '2026-10-30', 'rows': kpiReviewRows}),
           200,
+          headers: const {'content-type': 'application/json; charset=utf-8'},
         );
       }
       return http.Response('{}', 404);
