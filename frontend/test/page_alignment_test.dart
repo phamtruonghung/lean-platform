@@ -382,9 +382,9 @@ void main() {
       final expected = box.left + page.inset;
 
       // The Screen's own title, not the sidebar's label of the same word: a
-      // title is `headlineSmall` (24px), the rail's label is `bodyMedium`.
+      // title is `headlineSmall` (18px), the rail's label is `bodyMedium`.
       final title = find.byWidgetPredicate(
-        (w) => w is Text && w.data == page.title && w.style?.fontSize == 24,
+        (w) => w is Text && w.data == page.title && w.style?.fontSize == 18,
       );
       expect(title, findsOneWidget, reason: '${page.route} shows no title');
       expect(
