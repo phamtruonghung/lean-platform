@@ -40,7 +40,7 @@ void main() {
 
     final card = tester.getRect(find.byType(Card));
     for (final divider in tester.widgetList<Divider>(find.byType(Divider))) {
-      expect(divider.color, AppColors.edge);
+      expect(divider.color, AppPalette.light.edge);
       expect(divider.thickness, 1);
     }
     // Every row is inside the card's own box — nothing is drawn outside it.

@@ -169,7 +169,7 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
       children: [
         Text(
           'What happened? Everything with a known set is chosen from a fixed list.',
-          style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+          style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
         DropdownButtonFormField<String?>(
@@ -236,7 +236,7 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
         Text(
           'Who is reporting this? Your Employee number and PIN identify you for '
           'this record only — it is filed as your report.',
-          style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+          style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
         TextField(

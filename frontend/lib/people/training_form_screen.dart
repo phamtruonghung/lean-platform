@@ -166,7 +166,7 @@ class _Form extends StatelessWidget {
           key: TrainingFormScreen.loadedKey,
           padding: const EdgeInsets.all(Spacing.xl),
           child: DecoratedBox(
-            decoration: BoxDecoration(color: AppColors.card, border: Border.fromBorderSide(side)),
+            decoration: BoxDecoration(color: AppColors.of(context).card, border: Border.fromBorderSide(side)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -509,12 +509,18 @@ class _SignatureImageState extends State<_SignatureImage> {
       builder: (context, snapshot) {
         final bytes = snapshot.data;
         if (bytes == null) return const SizedBox.shrink();
-        return Image.memory(
-          bytes,
-          key: TrainingFormScreen.signatureImageKey(widget.traineeId),
-          height: 40,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+        // On the Signature's own backdrop: the form is a dark card in the dark
+        // palette, and a Signature's dark ink would be lost on it (issue
+        // #366). Clear in the light palette.
+        return ColoredBox(
+          color: AppColors.of(context).signatureBackdrop,
+          child: Image.memory(
+            bytes,
+            key: TrainingFormScreen.signatureImageKey(widget.traineeId),
+            height: 40,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+          ),
         );
       },
     );

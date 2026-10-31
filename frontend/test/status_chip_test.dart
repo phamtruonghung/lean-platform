@@ -25,8 +25,6 @@
 ///    drops below the floor fails here instead of shipping.
 library;
 
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/downtime_screen.dart';
@@ -38,6 +36,7 @@ import 'package:lean_platform/status_tone.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/status_chip.dart';
 
+import 'contrast.dart';
 import 'harness.dart';
 
 /// Pins the test surface for one test (issue #168).
@@ -142,27 +141,14 @@ Color? _statusFillIn(WidgetTester tester, Finder row) =>
 /// testing decisions ask for, and the one a person's eyes actually make.
 void _expectTone(WidgetTester tester, Finder row, StatusTone tone, {required String label}) {
   final (fill, foreground) = _renderedChipIn(tester, row);
-  expect(fill, AppComponentColors.statusFill(tone), reason: '$label fill');
-  expect(foreground, AppComponentColors.statusForeground(tone), reason: '$label label colour');
-  final ratio = _contrastRatio(foreground!, fill!);
+  expect(fill, AppPalette.light.statusFill(tone), reason: '$label fill');
+  expect(foreground, AppPalette.light.statusForeground(tone), reason: '$label label colour');
+  final ratio = contrastRatio(foreground!, fill!);
   expect(
     ratio,
     greaterThanOrEqualTo(4.5),
     reason: '$label measured ${ratio.toStringAsFixed(2)}:1 as rendered',
   );
-}
-
-/// The relative luminance WCAG's own contrast ratio is built from.
-double _luminance(Color colour) {
-  double channel(double value) =>
-      value <= 0.03928 ? value / 12.92 : math.pow((value + 0.055) / 1.055, 2.4).toDouble();
-  return 0.2126 * channel(colour.r) + 0.7152 * channel(colour.g) + 0.0722 * channel(colour.b);
-}
-
-double _contrastRatio(Color foreground, Color background) {
-  final a = _luminance(foreground);
-  final b = _luminance(background);
-  return (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05);
 }
 
 void main() {
@@ -242,7 +228,7 @@ void main() {
         initialLocation: '/work-orders',
       );
 
-      final warning = AppComponentColors.statusFill(StatusTone.warning);
+      final warning = AppPalette.light.statusFill(StatusTone.warning);
       final fills = [
         _statusFillIn(tester, row('101')),
         _statusFillIn(tester, row('102')),
@@ -285,13 +271,13 @@ void main() {
 
       // `new` is this list's `warning` for the same reason `on_hold` is the
       // Work orders table's: it is the one state waiting on the reader.
-      expect(_statusFillIn(tester, row('101')), AppComponentColors.statusFill(StatusTone.warning));
-      expect(_statusFillIn(tester, row('102')), AppComponentColors.statusFill(StatusTone.info));
-      expect(_statusFillIn(tester, row('103')), AppComponentColors.statusFill(StatusTone.success));
+      expect(_statusFillIn(tester, row('101')), AppPalette.light.statusFill(StatusTone.warning));
+      expect(_statusFillIn(tester, row('102')), AppPalette.light.statusFill(StatusTone.info));
+      expect(_statusFillIn(tester, row('103')), AppPalette.light.statusFill(StatusTone.success));
       // A decline and a duplicate are decisions somebody made, not faults — so
       // neither is painted `danger`.
-      expect(_statusFillIn(tester, row('104')), AppComponentColors.statusFill(StatusTone.neutral));
-      expect(_statusFillIn(tester, row('105')), AppComponentColors.statusFill(StatusTone.neutral));
+      expect(_statusFillIn(tester, row('104')), AppPalette.light.statusFill(StatusTone.neutral));
+      expect(_statusFillIn(tester, row('105')), AppPalette.light.statusFill(StatusTone.neutral));
 
       for (final label in ['New', 'Triaged', 'Accepted', 'Rejected', 'Duplicate']) {
         expect(find.text(label), findsWidgets, reason: '$label should still be readable');
@@ -342,7 +328,7 @@ void main() {
       // this Screen would have been a test that could not fail for the right
       // reason: rows 2 and 3 never render, so it would have failed on the Wire
       // rather than on the vocabulary.
-      expect(_statusFillIn(tester, row('1')), AppComponentColors.statusFill(StatusTone.warning));
+      expect(_statusFillIn(tester, row('1')), AppPalette.light.statusFill(StatusTone.warning));
       expect(find.text('Open'), findsWidgets);
     });
   });
@@ -390,7 +376,7 @@ void main() {
 
       // `danger` is reserved for faults: of these four states, exactly the
       // failed one is painted with it.
-      final danger = AppComponentColors.statusFill(StatusTone.danger);
+      final danger = AppPalette.light.statusFill(StatusTone.danger);
       final fills = [
         _statusFillIn(tester, step('t1')),
         _statusFillIn(tester, step('t2')),
@@ -412,9 +398,9 @@ void main() {
     // drops below the floor is caught even when no surface paints it yet.
     test('the 4.5:1 floor holds for all five tones', () {
       for (final tone in StatusTone.values) {
-        final ratio = _contrastRatio(
-          AppComponentColors.statusForeground(tone),
-          AppComponentColors.statusFill(tone),
+        final ratio = contrastRatio(
+          AppPalette.light.statusForeground(tone),
+          AppPalette.light.statusFill(tone),
         );
         expect(
           ratio,

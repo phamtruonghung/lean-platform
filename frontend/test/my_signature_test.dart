@@ -10,6 +10,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/people/my_signature_screen.dart';
+import 'package:lean_platform/theme.dart';
 
 import 'harness.dart';
 
@@ -49,6 +50,20 @@ void main() {
     expect(find.byKey(MySignatureScreen.drawKey), findsOneWidget);
     expect(find.byKey(MySignatureScreen.removeKey), findsNothing);
     expect(_writes(wire), isEmpty);
+  });
+
+  testWidgets('a Signature that cannot be decoded says so in the ink drawn for its backdrop in dark',
+      (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+    final wire = FakeWire()..mySignature = Uint8List.fromList([1, 2, 3, 4]);
+    await _open(tester, wire);
+    await tester.pumpAndSettle();
+    // The decode failure is reported to FlutterError; it is the point here.
+    tester.takeException();
+
+    final message = tester.widget<Text>(find.text('This Signature could not be shown.'));
+    expect(message.style?.color, AppPalette.dark.onSignatureBackdrop);
   });
 
   testWidgets('with a Signature kept it shows it, with replace and remove controls', (tester) async {

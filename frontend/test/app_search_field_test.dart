@@ -20,6 +20,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_search_field.dart';
 import 'package:lean_platform/widgets/empty_state.dart';
 import 'package:lean_platform/widgets/failure_state.dart';
@@ -62,6 +63,7 @@ class _HarnessState extends State<_Harness> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: buildAppTheme(),
       home: Scaffold(
         body: AppSearchField<_Record>(
           name: 'employee',

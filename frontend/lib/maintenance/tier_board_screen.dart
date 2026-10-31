@@ -269,7 +269,7 @@ class _PillarColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted);
 
     return SizedBox(
       width: 220,
@@ -318,13 +318,13 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted);
 
     return Container(
       key: TierBoardScreen.kpiKey(kpi.code),
       padding: const EdgeInsets.all(Spacing.sm),
       decoration: BoxDecoration(
-        border: Border.all(color: AppComponentColors.cardBorder),
+        border: Border.all(color: AppColors.of(context).cardBorder),
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Column(
@@ -364,9 +364,9 @@ class _StatusIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (IconData icon, Color color) = switch (kpi.status) {
-      BoardKpi.greenStatus => (Icons.check_circle_outline, AppColors.statusSuccess),
-      BoardKpi.amberStatus => (Icons.error_outline, AppColors.statusWarning),
-      BoardKpi.redStatus => (Icons.cancel_outlined, AppColors.statusDanger),
+      BoardKpi.greenStatus => (Icons.check_circle_outline, AppColors.of(context).statusSuccess),
+      BoardKpi.amberStatus => (Icons.error_outline, AppColors.of(context).statusWarning),
+      BoardKpi.redStatus => (Icons.cancel_outlined, AppColors.of(context).statusDanger),
       BoardKpi.noTargetStatus => (Icons.remove_circle_outline, scheme.onSurfaceVariant),
       _ => (Icons.horizontal_rule, scheme.onSurfaceVariant),
     };

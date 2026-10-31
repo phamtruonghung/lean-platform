@@ -483,7 +483,7 @@ class _ActionRow extends StatelessWidget {
                             : 'Due ${action.dueDate}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: action.isOverdue
-                          ? AppColors.statusDanger
+                          ? AppColors.of(context).statusDanger
                           : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),

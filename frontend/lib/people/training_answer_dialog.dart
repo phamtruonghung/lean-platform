@@ -71,7 +71,7 @@ class _TrainingAnswerDialogState extends State<TrainingAnswerDialog> {
 
   Future<void> _submitDrawn() async {
     final navigator = Navigator.of(context);
-    final png = await _pad.toPng();
+    final png = await _pad.toPng(AppColors.of(context).signatureInk);
     if (png == null) return;
     navigator.pop(DrawnAnswerSignature(png));
   }
@@ -100,13 +100,19 @@ class _TrainingAnswerDialogState extends State<TrainingAnswerDialog> {
               Container(
                 height: 90,
                 alignment: Alignment.centerLeft,
-                child: Image.memory(
-                  widget.storedImage!,
-                  key: TrainingAnswerDialog.storedImageKey,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Text(
-                    'This Signature could not be shown.',
-                    style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                // On the Signature's own backdrop, so dark ink is not lost on a
+                // dark surface (issue #366); clear in the light palette.
+                child: ColoredBox(
+                  color: AppColors.of(context).signatureBackdrop,
+                  child: Image.memory(
+                    widget.storedImage!,
+                    key: TrainingAnswerDialog.storedImageKey,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Text(
+                      'This Signature could not be shown.',
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: AppColors.of(context).onSignatureBackdrop),
+                    ),
                   ),
                 ),
               ),

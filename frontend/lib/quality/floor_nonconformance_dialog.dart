@@ -186,7 +186,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
         Text(
           'What was found not to conform? Everything with a known set is chosen '
           'from what this device can see.',
-          style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+          style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
         DropdownButtonFormField<String?>(
@@ -250,7 +250,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Text(
               "Starts at ${DefectSeverity.label(defaultSeverity)} — this Defect code's own severity.",
-              style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+              style: theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted),
             ),
           ),
         const SizedBox(height: Spacing.md),
@@ -293,7 +293,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
         Text(
           'Who found it? Your Employee number and PIN identify you for this record '
           'only — it is filed as your find.',
-          style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+          style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
         TextField(

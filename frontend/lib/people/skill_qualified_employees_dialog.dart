@@ -287,7 +287,7 @@ class _ScopePicker extends StatelessWidget {
         Container(
           height: 180,
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.edge),
+            border: Border.all(color: AppColors.of(context).edge),
             borderRadius: BorderRadius.circular(AppRadius.card),
           ),
           child: DefaultTextStyle.merge(style: theme.textTheme.bodyMedium!, child: body),

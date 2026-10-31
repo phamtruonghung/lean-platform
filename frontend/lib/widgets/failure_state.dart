@@ -53,14 +53,14 @@ class PlatformFailureState extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 48, color: AppColors.textMuted),
+                Icon(icon, size: 48, color: AppColors.of(context).textMuted),
                 const SizedBox(height: Spacing.md),
                 Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
                 const SizedBox(height: Spacing.sm),
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+                  style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
                 ),
                 const SizedBox(height: Spacing.md),
                 FilledButton.tonal(
@@ -134,14 +134,14 @@ class PlatformScopeRefusedState extends StatelessWidget {
                 // a glance, not only in their copy, so a caller who is
                 // pattern-matching the icon before reading the sentence
                 // still tells the two apart.
-                Icon(Icons.lock_outline, size: 48, color: AppColors.statusWarning),
+                Icon(Icons.lock_outline, size: 48, color: AppColors.of(context).statusWarning),
                 const SizedBox(height: Spacing.md),
                 Text('Not visible to you', style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
                 const SizedBox(height: Spacing.sm),
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+                  style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
                 ),
               ],
             ),

@@ -89,7 +89,12 @@ const _account = AccountActive(id: '1', email: 'a@b.c', displayName: 'A B', role
 /// The Shell mounted on a real router over the stand-in destinations — the
 /// same wiring `router.dart` uses, so selecting a destination really is a
 /// change of address.
-Widget _harness({List<Destination> destinations = _testDestinations, VoidCallback? onSignOut}) {
+Widget _harness({
+  List<Destination> destinations = _testDestinations,
+  VoidCallback? onSignOut,
+  bool darkPalette = false,
+  VoidCallback? onToggleDarkPalette,
+}) {
   final router = GoRouter(
     initialLocation: destinations.first.path,
     routes: [
@@ -100,6 +105,8 @@ Widget _harness({List<Destination> destinations = _testDestinations, VoidCallbac
           onDestinationSelected: (destination) => context.go(destination.path),
           account: _account,
           onSignOut: onSignOut ?? () {},
+          darkPalette: darkPalette,
+          onToggleDarkPalette: onToggleDarkPalette ?? () {},
           child: child,
         ),
         routes: [
@@ -379,6 +386,50 @@ void main() {
     expect(router.state.uri.path, '/assets');
   });
 
+  // The Dark palette item in the account menu (issue #366). The Shell is
+  // pumped with no provider: it is handed a value and a callback.
+  group('the Dark palette item in the account menu (#366)', () {
+    testWidgets('is offered, labelled, and pressing it calls the callback', (tester) async {
+      var toggled = 0;
+      await tester.pumpWidget(_harness(onToggleDarkPalette: () => toggled++));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(PlatformShell.accountMenuKey));
+      await tester.pumpAndSettle();
+
+      final item = find.byKey(PlatformShell.themeToggleKey);
+      expect(item, findsOneWidget);
+      expect(find.descendant(of: item, matching: find.text('Dark palette')), findsOneWidget);
+
+      await tester.tap(item);
+      await tester.pumpAndSettle();
+      expect(toggled, 1);
+      // Choosing it is not choosing Change password.
+      expect(find.byType(Dialog), findsNothing);
+    });
+
+    testWidgets('shows a check mark only while the dark palette is on', (tester) async {
+      for (final dark in [false, true]) {
+        await tester.pumpWidget(_harness(darkPalette: dark));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(PlatformShell.accountMenuKey));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: find.byKey(PlatformShell.themeToggleKey),
+            matching: find.byIcon(Icons.check),
+          ),
+          dark ? findsOneWidget : findsNothing,
+          reason: 'darkPalette: $dark',
+        );
+
+        await tester.tapAt(Offset.zero); // dismiss the menu
+        await tester.pumpAndSettle();
+      }
+    });
+  });
+
   // The selected Destination's own mark (issue #168). The golden holds it too,
   // but a golden cannot tell one DecoratedBox from another and says nothing
   // about the rail — and the rail is where this deliberately is NOT drawn
@@ -389,7 +440,7 @@ void main() {
               widget is DecoratedBox &&
               widget.decoration is BoxDecoration &&
               (widget.decoration as BoxDecoration).color ==
-                  AppComponentColors.navSelectedAccent,
+                  AppPalette.light.navSelectedAccent,
         );
 
     testWidgets('is drawn in the selected Destination and nowhere else',

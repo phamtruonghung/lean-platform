@@ -16,6 +16,7 @@ import 'auth_gateway.dart';
 import 'floor_device_gateway.dart';
 import 'router.dart';
 import 'session_error_screen.dart';
+import 'theme_mode_cubit.dart';
 
 class PlatformApp extends StatefulWidget {
   const PlatformApp({
@@ -77,6 +78,12 @@ class _PlatformAppState extends State<PlatformApp> {
   late final AccountBloc _accountBloc;
   late final GoRouter _router;
   late final SignatureFilePicker _signatureFilePicker;
+  late final ThemeModeCubit _themeModeCubit;
+
+  // Built once, not per rebuild: a mode change rebuilds `MaterialApp.router`,
+  // and rebuilding two `ThemeData`s each time would be work for no change.
+  late final ThemeData _lightTheme;
+  late final ThemeData _darkTheme;
 
   @override
   void initState() {
@@ -85,6 +92,9 @@ class _PlatformAppState extends State<PlatformApp> {
     // router on every rebuild and destroy navigation history.
     _signatureFilePicker = widget.signatureFilePicker ?? createSignatureFilePicker();
     _accountBloc = AccountBloc(authGateway: widget.authGateway, peopleApi: widget.peopleApi);
+    _themeModeCubit = ThemeModeCubit();
+    _lightTheme = buildAppTheme();
+    _darkTheme = buildAppTheme(Brightness.dark);
     _router = buildRouter(accountBloc: _accountBloc, initialLocation: widget.initialLocation);
   }
 
@@ -92,6 +102,7 @@ class _PlatformAppState extends State<PlatformApp> {
   void dispose() {
     _router.dispose();
     _accountBloc.close();
+    _themeModeCubit.close();
     super.dispose();
   }
 
@@ -112,27 +123,39 @@ class _PlatformAppState extends State<PlatformApp> {
         RepositoryProvider<FloorDeviceGateway>.value(value: widget.floorDeviceGateway),
         RepositoryProvider<SignatureFilePicker>.value(value: _signatureFilePicker),
       ],
-      child: BlocProvider<AccountBloc>.value(
-        value: _accountBloc,
-        child: MaterialApp.router(
-          title: 'Platform',
-          debugShowCheckedModeBanner: false,
-          theme: buildAppTheme(),
-          routerConfig: _router,
-          builder: (context, child) {
-            final account = context.watch<AccountBloc>().state;
-            // This overlay — not a `/loading` or `/error` route — is why the
-            // redirect table returns null (no redirect) for both of these
-            // states: the caller's real URL stays intact underneath while
-            // this renders on top, and no protected route ever gets built
-            // while the state is unresolved.
-            return switch (account) {
-              AccountResolving() =>
-                const Scaffold(body: Center(child: CircularProgressIndicator())),
-              AccountUnavailable(message: final message) => SessionErrorScreen(message: message),
-              _ => child ?? const SizedBox.shrink(),
-            };
-          },
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AccountBloc>.value(value: _accountBloc),
+          // Which palette the Platform wears (issue #366, ADR-0056). Provided
+          // above `MaterialApp` because the mode is what `MaterialApp` is
+          // built from, and the Shell's account menu reads it.
+          BlocProvider<ThemeModeCubit>.value(value: _themeModeCubit),
+        ],
+        child: BlocBuilder<ThemeModeCubit, ThemeMode>(
+          builder: (context, themeMode) => MaterialApp.router(
+            title: 'Platform',
+            debugShowCheckedModeBanner: false,
+            theme: _lightTheme,
+            darkTheme: _darkTheme,
+            themeMode: themeMode,
+            // A field, so the rebuild a mode change causes keeps navigation
+            // history.
+            routerConfig: _router,
+            builder: (context, child) {
+              final account = context.watch<AccountBloc>().state;
+              // This overlay — not a `/loading` or `/error` route — is why the
+              // redirect table returns null (no redirect) for both of these
+              // states: the caller's real URL stays intact underneath while
+              // this renders on top, and no protected route ever gets built
+              // while the state is unresolved.
+              return switch (account) {
+                AccountResolving() =>
+                  const Scaffold(body: Center(child: CircularProgressIndicator())),
+                AccountUnavailable(message: final message) => SessionErrorScreen(message: message),
+                _ => child ?? const SizedBox.shrink(),
+              };
+            },
+          ),
         ),
       ),
     );

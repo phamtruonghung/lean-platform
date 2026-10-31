@@ -81,7 +81,7 @@ class _BodyState extends State<_Body> {
 
   Future<void> _saveDrawn() async {
     final bloc = context.read<MySignatureBloc>();
-    final png = await _pad.toPng();
+    final png = await _pad.toPng(AppColors.of(context).signatureInk);
     if (png == null) return;
     bloc.add(MySignatureKept(png, 'on_screen'));
     if (!mounted) return;
@@ -130,13 +130,19 @@ class _BodyState extends State<_Body> {
               Container(
                 height: 120,
                 alignment: Alignment.centerLeft,
-                child: Image.memory(
-                  state.image!,
-                  key: MySignatureScreen.imageKey,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Text(
-                    'This Signature could not be shown.',
-                    style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                // On the Signature's own backdrop, so dark ink is not lost on a
+                // dark surface (issue #366); clear in the light palette.
+                child: ColoredBox(
+                  color: AppColors.of(context).signatureBackdrop,
+                  child: Image.memory(
+                    state.image!,
+                    key: MySignatureScreen.imageKey,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Text(
+                      'This Signature could not be shown.',
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: AppColors.of(context).onSignatureBackdrop),
+                    ),
                   ),
                 ),
               ),

@@ -189,6 +189,7 @@ import 'dialog_page.dart';
 import 'floor_device_gateway.dart';
 import 'not_found_screen.dart';
 import 'shell.dart';
+import 'theme_mode_cubit.dart';
 
 abstract final class Routes {
   static const String home = '/';
@@ -614,6 +615,8 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
           // Sealed-state type narrowing, not a per-Screen access check: the
           // redirect below has already decided nobody else reaches here.
           if (account is! AccountApproved) return const SizedBox.shrink();
+          final themeMode = context.watch<ThemeModeCubit>().state;
+          final platformBrightness = MediaQuery.platformBrightnessOf(context);
           return PlatformShell(
             destinations: destinationsFor(role: account.account.role),
             currentLocation: state.uri.path,
@@ -629,6 +632,17 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
             // Supabase directly (issue #38): the Bloc is the only place the
             // session is resolved, so it must also be the only place it ends.
             onSignOut: () => context.read<AccountBloc>().add(const AccountSignOutRequested()),
+            // The palette toggle (issue #366). The Shell is handed a value and
+            // a callback so it needs no provider of its own. The check mark
+            // follows the palette actually on screen, which for
+            // `ThemeMode.system` is the browser's own preference.
+            darkPalette: switch (themeMode) {
+              ThemeMode.dark => true,
+              ThemeMode.light => false,
+              ThemeMode.system => platformBrightness == Brightness.dark,
+            },
+            onToggleDarkPalette: () =>
+                context.read<ThemeModeCubit>().toggle(platformBrightness),
             child: child,
           );
         },

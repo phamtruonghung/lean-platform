@@ -125,7 +125,7 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
       children: [
         Text(
           'Who are you? Your Employee number and PIN show the training waiting on you at this device.',
-          style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+          style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
         TextField(
@@ -195,7 +195,7 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
             Text(
               '${entry.trainedOn} · ${formatTrainingHours(entry.durationHours)} · ${entry.orgUnitName}'
               '${trainer == null ? '' : ' · trained by $trainer'}',
-              style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+              style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.of(context).textMuted),
             ),
             if (objective != null && objective.isNotEmpty) ...[
               const SizedBox(height: Spacing.xs),
