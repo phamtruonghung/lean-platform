@@ -110,6 +110,8 @@ List<_Pair> _nonTextPairs(ThemeData theme, {required bool pinnedImplicitRoles}) 
       _Pair('outline (an outlined control\'s rim) on $surface', scheme.outline, background),
       _Pair('focusRing on $surface', palette.focusRing, background),
     ],
+    // The sign-in identity panel's icons (issue #375) sit on `surfaceMuted`.
+    _Pair('actionPrimary (an icon) on surfaceMuted', palette.actionPrimary, palette.surfaceMuted),
     _Pair('navSelectedAccent on the selected Destination\'s fill', palette.navSelectedAccent,
         palette.navSelectedBackground),
   ];

@@ -77,6 +77,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -329,168 +330,156 @@ class _Header extends StatelessWidget {
         maxWidth: WorkOrdersScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Work orders', style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: Spacing.xs),
-                        // "Every open job" stopped being true once the history
-                        // toggle can bring completed and cancelled rows back
-                        // (issue #63) — neutral wording that holds either way.
+          child: AppPageHeader(
+            title: 'Work orders',
+            // "Every open job" stopped being true once the history
+            // toggle can bring completed and cancelled rows back
+            // (issue #63) — neutral wording that holds either way.
+            description:
+                'The work raised at this Site, which Asset it is '
+                'against, and who has it.',
+            actions: [
+              if (canRaiseWorkOrder && loaded != null)
+                FilledButton.icon(
+                  key: WorkOrdersScreen.raiseKey,
+                  // Its own address (issue #104, Decision A/B) —
+                  // `${Routes.workOrders}/new` — rather than a bare
+                  // `showDialog`, so a refresh mid-raise does not lose
+                  // the form and the address can be sent to a
+                  // colleague.
+                  onPressed: loaded.isRaising
+                      ? null
+                      : () => context.go('${Routes.workOrders}/new'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Raise a Work order'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
+                ),
+            ],
+            below: loaded == null
+                ? null
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (loaded.sites.length > 1) ...[
+                        SizedBox(
+                          width: 280,
+                          child: DropdownButtonFormField<String>(
+                            key: WorkOrdersScreen.siteKey,
+                            initialValue: loaded.siteId,
+                            isDense: true,
+                            decoration: const InputDecoration(
+                                labelText: 'Site', border: OutlineInputBorder()),
+                            items: [
+                              for (final site in loaded.sites)
+                                DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                            ],
+                            onChanged: (siteId) {
+                              if (siteId == null) return;
+                              context.read<WorkOrdersBloc>().add(WorkOrdersSiteSelected(siteId));
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: Spacing.md),
+                      ],
+                      // Filters live here, as removable chips (issue #104,
+                      // Decision D). Today there is exactly one filter dimension
+                      // (the Org Unit narrow), so there is nothing yet to offer a
+                      // "Clear all" over — but this `Wrap` is where a second
+                      // dimension (a status filter, say, that a future Maintenance
+                      // Screen adds) would sit alongside this one, with "Clear
+                      // all" appearing once there are two chips to clear at once.
+                      // "Show completed and cancelled" below is deliberately kept
+                      // out of this row: it broadens the read rather than
+                      // narrowing it, so it stays the plain `FilterChip` toggle it
+                      // already was rather than being folded in as a third
+                      // "applied filter".
+                      Wrap(
+                        spacing: Spacing.sm,
+                        runSpacing: Spacing.sm,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (loaded.orgUnitFilterId == null)
+                            OutlinedButton.icon(
+                              key: WorkOrdersScreen.filterKey,
+                              onPressed: () => _openOrgUnitFilter(context, loaded.siteId!),
+                              icon: const Icon(Icons.filter_alt_outlined),
+                              label: const Text('Narrow to an Org Unit'),
+                              style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
+                            )
+                          else
+                            // A `Chip` plus its own adjacent `IconButton`, not
+                            // `Chip.onDeleted`/`deleteIcon` directly: passing
+                            // `Chip.deleteIconBoxConstraints` — the documented way
+                            // to guarantee this icon's 44×44 target (#99 user
+                            // story 28) — triggers a framework semantics assertion
+                            // on the pinned SDK the moment a `Chip` carrying one
+                            // first enters the tree (reproduced in isolation
+                            // against a bare `Chip`, nothing specific to this
+                            // Screen or this filter). This sidesteps that bug
+                            // entirely rather than shipping a Screen that crashes
+                            // its own tests, while keeping the same look (a
+                            // removable chip) and the same [clearFilterKey] the
+                            // clear affordance always carried.
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Chip(
+                                  label: Text(
+                                    'Narrowed to ${loaded.orgUnitFilterName}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                IconButton(
+                                  key: WorkOrdersScreen.clearFilterKey,
+                                  tooltip: 'Show the whole Site again',
+                                  icon: const Icon(Icons.close),
+                                  style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
+                                  onPressed: () => context
+                                      .read<WorkOrdersBloc>()
+                                      .add(const WorkOrdersOrgUnitFilterCleared()),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: Spacing.md),
+                      FilterChip(
+                        key: WorkOrdersScreen.showHistoryKey,
+                        label: const Text('Show completed and cancelled'),
+                        selected: loaded.showHistory,
+                        // Same guard `AssetsScreen.showRetiredKey` uses for its own
+                        // chip: toggling while a raise, assign or transition is in
+                        // flight would interleave the re-read with that write's own
+                        // mutation and could wipe a pending success notice before
+                        // the caller ever sees it.
+                        onSelected: loaded.isRaising || loaded.isAssigning || loaded.isTransitioning
+                            ? null
+                            : (value) =>
+                                context.read<WorkOrdersBloc>().add(WorkOrdersShowHistoryChanged(value)),
+                      ),
+                      // How much is on screen, in the domain's own words (issue
+                      // #168). Not a footer under the list, and that is a deliberate
+                      // departure from the ticket's own first wording: the list is a
+                      // lazy `ListView`, so a footer is only reached by scrolling to
+                      // the bottom — the one place a reader who is wondering "is this
+                      // everything?" is least likely to be. Here, beside the controls
+                      // that changed it, it is always visible.
+                      //
+                      // Suppressed when nothing is shown: the empty state already
+                      // speaks, and "0 Work orders" above it would be the same fact
+                      // said twice (and would read as an error rather than as the
+                      // state the Screen has its own words for).
+                      if (loaded.workOrders.isNotEmpty) ...[
+                        const SizedBox(height: Spacing.md),
                         Text(
-                          'The work raised at this Site, which Asset it is '
-                          'against, and who has it.',
+                          WorkOrdersScreen._countLabel(loaded),
+                          key: WorkOrdersScreen.countKey,
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ],
-                    ),
-                  ),
-                  if (canRaiseWorkOrder && loaded != null)
-                    FilledButton.icon(
-                      key: WorkOrdersScreen.raiseKey,
-                      // Its own address (issue #104, Decision A/B) —
-                      // `${Routes.workOrders}/new` — rather than a bare
-                      // `showDialog`, so a refresh mid-raise does not lose
-                      // the form and the address can be sent to a
-                      // colleague.
-                      onPressed: loaded.isRaising
-                          ? null
-                          : () => context.go('${Routes.workOrders}/new'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Raise a Work order'),
-                      style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
-                    ),
-                ],
-              ),
-              if (loaded != null && loaded.sites.length > 1) ...[
-                const SizedBox(height: Spacing.md),
-                SizedBox(
-                  width: 280,
-                  child: DropdownButtonFormField<String>(
-                    key: WorkOrdersScreen.siteKey,
-                    initialValue: loaded.siteId,
-                    isDense: true,
-                    decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                    items: [
-                      for (final site in loaded.sites)
-                        DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
                     ],
-                    onChanged: (siteId) {
-                      if (siteId == null) return;
-                      context.read<WorkOrdersBloc>().add(WorkOrdersSiteSelected(siteId));
-                    },
                   ),
-                ),
-              ],
-              if (loaded != null) ...[
-                const SizedBox(height: Spacing.md),
-                // Filters live here, as removable chips (issue #104,
-                // Decision D). Today there is exactly one filter dimension
-                // (the Org Unit narrow), so there is nothing yet to offer a
-                // "Clear all" over — but this `Wrap` is where a second
-                // dimension (a status filter, say, that a future Maintenance
-                // Screen adds) would sit alongside this one, with "Clear
-                // all" appearing once there are two chips to clear at once.
-                // "Show completed and cancelled" below is deliberately kept
-                // out of this row: it broadens the read rather than
-                // narrowing it, so it stays the plain `FilterChip` toggle it
-                // already was rather than being folded in as a third
-                // "applied filter".
-                Wrap(
-                  spacing: Spacing.sm,
-                  runSpacing: Spacing.sm,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (loaded.orgUnitFilterId == null)
-                      OutlinedButton.icon(
-                        key: WorkOrdersScreen.filterKey,
-                        onPressed: () => _openOrgUnitFilter(context, loaded.siteId!),
-                        icon: const Icon(Icons.filter_alt_outlined),
-                        label: const Text('Narrow to an Org Unit'),
-                        style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                      )
-                    else
-                      // A `Chip` plus its own adjacent `IconButton`, not
-                      // `Chip.onDeleted`/`deleteIcon` directly: passing
-                      // `Chip.deleteIconBoxConstraints` — the documented way
-                      // to guarantee this icon's 44×44 target (#99 user
-                      // story 28) — triggers a framework semantics assertion
-                      // on the pinned SDK the moment a `Chip` carrying one
-                      // first enters the tree (reproduced in isolation
-                      // against a bare `Chip`, nothing specific to this
-                      // Screen or this filter). This sidesteps that bug
-                      // entirely rather than shipping a Screen that crashes
-                      // its own tests, while keeping the same look (a
-                      // removable chip) and the same [clearFilterKey] the
-                      // clear affordance always carried.
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Chip(
-                            label: Text(
-                              'Narrowed to ${loaded.orgUnitFilterName}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          IconButton(
-                            key: WorkOrdersScreen.clearFilterKey,
-                            tooltip: 'Show the whole Site again',
-                            icon: const Icon(Icons.close),
-                            style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
-                            onPressed: () => context
-                                .read<WorkOrdersBloc>()
-                                .add(const WorkOrdersOrgUnitFilterCleared()),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-                const SizedBox(height: Spacing.md),
-                FilterChip(
-                  key: WorkOrdersScreen.showHistoryKey,
-                  label: const Text('Show completed and cancelled'),
-                  selected: loaded.showHistory,
-                  // Same guard `AssetsScreen.showRetiredKey` uses for its own
-                  // chip: toggling while a raise, assign or transition is in
-                  // flight would interleave the re-read with that write's own
-                  // mutation and could wipe a pending success notice before
-                  // the caller ever sees it.
-                  onSelected: loaded.isRaising || loaded.isAssigning || loaded.isTransitioning
-                      ? null
-                      : (value) =>
-                          context.read<WorkOrdersBloc>().add(WorkOrdersShowHistoryChanged(value)),
-                ),
-                // How much is on screen, in the domain's own words (issue
-                // #168). Not a footer under the list, and that is a deliberate
-                // departure from the ticket's own first wording: the list is a
-                // lazy `ListView`, so a footer is only reached by scrolling to
-                // the bottom — the one place a reader who is wondering "is this
-                // everything?" is least likely to be. Here, beside the controls
-                // that changed it, it is always visible.
-                //
-                // Suppressed when nothing is shown: the empty state already
-                // speaks, and "0 Work orders" above it would be the same fact
-                // said twice (and would read as an error rather than as the
-                // state the Screen has its own words for).
-                if (loaded.workOrders.isNotEmpty) ...[
-                  const SizedBox(height: Spacing.md),
-                  Text(
-                    WorkOrdersScreen._countLabel(loaded),
-                    key: WorkOrdersScreen.countKey,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
-              ],
-            ],
           ),
         ),
       ),

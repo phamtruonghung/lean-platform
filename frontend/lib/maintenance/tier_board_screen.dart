@@ -25,6 +25,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -101,7 +102,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is TierBoardLoaded ? state as TierBoardLoaded : null;
 
     return Center(
@@ -109,22 +109,12 @@ class _Header extends StatelessWidget {
         maxWidth: TierBoardScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Tier board', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.xs),
-              Text(
+          child: AppPageHeader(
+            title: 'Tier board',
+            description:
                 'The numbers this Site\'s work produces, reported under the five Pillars. '
                 'Every Pillar is shown whether or not anything reports under it yet.',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              if (loaded != null) ...[
-                const SizedBox(height: Spacing.md),
-                _Controls(state: loaded),
-              ],
-            ],
+            below: loaded == null ? null : _Controls(state: loaded),
           ),
         ),
       ),
