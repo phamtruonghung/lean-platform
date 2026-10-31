@@ -1,6 +1,6 @@
 # How a Screen is laid out
 
-Three rules, two traps, and where each rule is enforced. Short on purpose: the
+Four rules, two traps, and where each rule is enforced. Short on purpose: the
 widgets and the tests are the detail, and this file exists so the next agent does
 not have to infer the conventions from twenty-five files.
 
@@ -86,6 +86,14 @@ its Org Unit filter, its status chooser and its overdue switch are all answered
 by the server, so a term typed over the page it received would report "no such
 investigation" for one the server put further down its own order.
 
+## 4. A matrix Screen's header and body rows share one column spec
+
+A Screen whose rows are columns (the two KPI Screens, #363) states its columns
+once, as a list, and builds the header row and every body row's cells from it
+(`lib/kpi/kpi_matrix.dart`): the same `Expanded` weights, the same row padding, the
+same cell gap. A header label and its cells then start at the same x by
+construction, and the header row is the first row of the `AppListCard`.
+
 ## The two traps behind all of it
 
 1. **A container sizes itself to its child, not to the space it is given.** A
@@ -110,6 +118,7 @@ investigation" for one the server put further down its own order.
 | card alignment | `test/layout_rules_test.dart` | a `Card`'s direct child is a `Column` that does not state `crossAxisAlignment` |
 | one left edge | `test/page_alignment_test.dart` | a page's title, description, first card or first row's text is not where the rule says |
 | Screen coverage | `test/page_alignment_test.dart` | a new `*_screen.dart` is neither audited in that file's table nor excluded there with a reason |
+| matrix columns line up | `test/kpi_test.dart` ("a header label and its cells start at the same x") | a column's header label and its first body cell start more than 1px apart |
 | a form picker finds a record | `test/form_pickers_test.dart` | one of the eleven pickers is no longer an `AppSearchField`, issues a request as a term is typed, stops showing its label, its record, the no-match state, or stops gating submission on a pick |
 
 **The layout rows are ordinary `flutter test` files**, so `npm`-free CI runs them
