@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/floor_screen.dart';
 import 'package:lean_platform/people/floor_training_dialog.dart';
 import 'package:lean_platform/people/training_answer_dialog.dart';
+import 'package:lean_platform/theme.dart';
 
 import 'harness.dart';
 
@@ -137,6 +138,25 @@ void main() {
   });
 
   group('the Signature a confirmed answer carries (issue #319)', () {
+    testWidgets('a Signature that cannot be decoded says so in the ink drawn for its backdrop in dark',
+        (tester) async {
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      addTearDown(tester.platformDispatcher.clearAllTestValues);
+      final wire = _wire()..floorSignature = Uint8List.fromList([1, 2, 3, 4]);
+      await pumpApp(tester, gateway: FakeAuthGateway(), client: wire.client, initialLocation: '/floor');
+      await identify(tester);
+      await tapIn(tester, find.byKey(FloorTrainingDialog.confirmKey('7')));
+      await tester.pumpAndSettle();
+      // The decode failure is reported to FlutterError; it is the point here.
+      tester.takeException();
+
+      final message = tester.widget<Text>(find.text('This Signature could not be shown.'));
+      expect(message.style?.color, AppPalette.dark.onSignatureBackdrop);
+      // ...and the app really is in the dark palette, which is what gives that ink its 7.58:1.
+      final context = tester.element(find.byKey(TrainingAnswerDialog.dialogKey));
+      expect(AppColors.of(context).canvas, AppPalette.dark.canvas);
+    });
+
     testWidgets('with a Signature kept, Confirm shows it and offers using it or drawing one', (tester) async {
       final wire = _wire()..floorSignature = _keptPng;
       await pumpApp(tester, gateway: FakeAuthGateway(), client: wire.client, initialLocation: '/floor');

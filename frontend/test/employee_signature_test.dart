@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/people/directory_screen.dart';
 import 'package:lean_platform/people/employee_detail_screen.dart';
 import 'package:lean_platform/people/employee_signature_dialog.dart';
+import 'package:lean_platform/theme.dart';
 
 import 'harness.dart';
 
@@ -52,6 +53,25 @@ void main() {
     expect(find.byKey(EmployeeSignatureDialog.drawKey), findsOneWidget);
     expect(find.byKey(EmployeeSignatureDialog.removeKey), findsNothing);
     expect(wire.employeeSignatureWrites, isEmpty);
+  });
+
+  testWidgets('a Signature that cannot be decoded says so in the ink drawn for its backdrop in dark',
+      (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+    final wire = _wire();
+    wire.employeeSignatures['7'] = Uint8List.fromList([1, 2, 3, 4]);
+    await _open(tester, wire);
+    await tapIn(tester, find.byKey(EmployeeDetailScreen.signatureKey));
+    await tester.pumpAndSettle();
+    // The decode failure is reported to FlutterError; it is the point here.
+    tester.takeException();
+
+    final message = tester.widget<Text>(find.text('This Signature could not be shown.'));
+    expect(message.style?.color, AppPalette.dark.onSignatureBackdrop);
+    // ...and the app really is in the dark palette, which is what gives that ink its 7.58:1.
+    final context = tester.element(find.byKey(EmployeeSignatureDialog.currentKey));
+    expect(AppColors.of(context).canvas, AppPalette.dark.canvas);
   });
 
   testWidgets('a Signature set for them shows who set it', (tester) async {
