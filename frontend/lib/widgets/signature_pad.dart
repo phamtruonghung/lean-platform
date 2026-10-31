@@ -46,28 +46,33 @@ class SignaturePadController extends ChangeNotifier {
 
   /// The strokes as a Signature PNG fitted to the normalised box, or null when
   /// nothing has been drawn or the engine could not encode it.
-  Future<Uint8List?> toPng() {
+  ///
+  /// [ink] is the colour the strokes are drawn in — the caller passes
+  /// `AppColors.of(context).signatureInk`, which is the same in both palettes,
+  /// so the exported mark does not depend on the palette it was drawn under
+  /// (issue #366). A controller has no `BuildContext`, so it is handed in.
+  Future<Uint8List?> toPng(Color ink) {
     if (isEmpty) return Future.value(null);
     final snapshot = [for (final stroke in _strokes) List<Offset>.of(stroke)];
     return encodeSignaturePng(
       sourceWidth: SignaturePad.width,
       sourceHeight: SignaturePad.height,
-      draw: (canvas) => _paintStrokes(canvas, snapshot),
+      draw: (canvas) => _paintStrokes(canvas, snapshot, ink),
     );
   }
 }
 
 const double _strokeWidth = 2.5;
 
-Paint _inkPaint() => Paint()
-  ..color = AppColors.textPrimary
+Paint _inkPaint(Color ink) => Paint()
+  ..color = ink
   ..style = PaintingStyle.stroke
   ..strokeWidth = _strokeWidth
   ..strokeCap = StrokeCap.round
   ..strokeJoin = StrokeJoin.round;
 
-void _paintStrokes(ui.Canvas canvas, List<List<Offset>> strokes) {
-  final ink = _inkPaint();
+void _paintStrokes(ui.Canvas canvas, List<List<Offset>> strokes, Color inkColor) {
+  final ink = _inkPaint(inkColor);
   for (final stroke in strokes) {
     if (stroke.length == 1) {
       // A tap is a dot.
@@ -95,12 +100,17 @@ class SignaturePad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
     return Semantics(
       label: 'Signature drawing area',
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.card,
-          border: Border.all(color: AppColors.edge),
+          // Paper, not the card: the ink is dark in both palettes (it is what
+          // the exported PNG will be), so the pad it is collected on is light in
+          // both too (issue #366). In the light palette this is the card's own
+          // white.
+          color: palette.signaturePaper,
+          border: Border.all(color: palette.edge),
           borderRadius: BorderRadius.circular(AppRadius.card),
         ),
         child: ClipRect(
@@ -114,7 +124,10 @@ class SignaturePad extends StatelessWidget {
               listenable: controller,
               builder: (context, _) => CustomPaint(
                 size: const Size(width, height),
-                painter: _StrokesPainter(List.of(controller._strokes.map(List<Offset>.of))),
+                painter: _StrokesPainter(
+                  List.of(controller._strokes.map(List<Offset>.of)),
+                  palette.signatureInk,
+                ),
               ),
             ),
           ),
@@ -125,12 +138,13 @@ class SignaturePad extends StatelessWidget {
 }
 
 class _StrokesPainter extends CustomPainter {
-  _StrokesPainter(this.strokes);
+  _StrokesPainter(this.strokes, this.ink);
 
   final List<List<Offset>> strokes;
+  final Color ink;
 
   @override
-  void paint(Canvas canvas, Size size) => _paintStrokes(canvas, strokes);
+  void paint(Canvas canvas, Size size) => _paintStrokes(canvas, strokes, ink);
 
   @override
   bool shouldRepaint(_StrokesPainter oldDelegate) => true;

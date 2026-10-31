@@ -822,7 +822,7 @@ class _WorkOrderTableHeader extends StatelessWidget {
     Widget label(String text, int flex) => Expanded(flex: flex, child: Text(text, style: style));
     return Container(
       decoration: BoxDecoration(
-        color: AppComponentColors.tableHeaderFill,
+        color: AppColors.of(context).tableHeaderFill,
         border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
@@ -881,12 +881,12 @@ class _WorkOrderTableRow extends StatelessWidget {
         key: WorkOrdersScreen.detailsKey(workOrder.id),
         onTap: () => context.go('${Routes.workOrders}/${workOrder.id}'),
         // A deliberate highlight rather than Material's own faint default
-        // (issue #168) — see [AppComponentColors.rowHoverFill]. Set here, on
+        // (issue #168) — see [AppPalette.rowHoverFill]. Set here, on
         // this row, rather than globally on `ThemeData.hoverColor`: the reason
         // a row needs to be trackable is that this row is seven columns wide,
         // and nothing about the rest of the Platform's InkWells follows from
         // it.
-        hoverColor: AppComponentColors.rowHoverFill,
+        hoverColor: AppColors.of(context).rowHoverFill,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -953,7 +953,7 @@ class _WorkOrderCard extends StatelessWidget {
         // The same deliberate highlight the wide row carries (issue #168): a
         // card is one Work order and its actions sit at the bottom of it, so
         // the pointer needs the same help staying with the card it started on.
-        hoverColor: AppComponentColors.rowHoverFill,
+        hoverColor: AppColors.of(context).rowHoverFill,
         child: Padding(
         padding: const EdgeInsets.all(Spacing.lg),
         child: Column(

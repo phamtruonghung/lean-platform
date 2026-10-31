@@ -48,11 +48,11 @@ class StatusChip extends StatelessWidget {
     return Chip(
       label: Text(label),
       visualDensity: VisualDensity.compact,
-      backgroundColor: AppComponentColors.statusFill(tone),
+      backgroundColor: AppColors.of(context).statusFill(tone),
       labelStyle: Theme.of(context)
           .textTheme
           .labelLarge
-          ?.copyWith(color: AppComponentColors.statusForeground(tone)),
+          ?.copyWith(color: AppColors.of(context).statusForeground(tone)),
       side: BorderSide.none,
     );
   }

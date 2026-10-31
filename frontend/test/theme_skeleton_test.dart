@@ -59,7 +59,7 @@ void main() {
   test('the theme builds with the design defaults', () {
     final theme = buildAppTheme();
     expect(theme.useMaterial3, isTrue);
-    expect(theme.scaffoldBackgroundColor, AppColors.canvas);
+    expect(theme.scaffoldBackgroundColor, AppPalette.light.canvas);
     expect(theme.cardTheme, isNotNull);
   });
 
@@ -89,8 +89,8 @@ void main() {
   test(
       'no raw Color literal or Colors.* constant appears outside theme.dart '
       '(issue #102)', () {
-    // A Screen names a colour through AppColors / AppComponentColors, or
-    // reaches Theme.of(context).colorScheme directly — never a Color(0x...)
+    // A Screen names a colour through AppColors.of, or reaches
+    // Theme.of(context).colorScheme directly — never a Color(0x...)
     // literal or a Colors.* constant. This walks every Dart source file
     // under lib/, excluding theme.dart itself (the one file allowed to hold
     // the primitives everything else is named from), and fails the moment
@@ -117,7 +117,7 @@ void main() {
 
     expect(offenders, isEmpty,
         reason: 'raw colour literal(s) found outside theme.dart: ${offenders.join(', ')} — '
-            'route colour through theme.dart\'s AppColors / AppComponentColors '
-            'tokens instead (issue #102).');
+            'route colour through theme.dart\'s '
+            'AppColors.of tokens instead (issue #102).');
   });
 }

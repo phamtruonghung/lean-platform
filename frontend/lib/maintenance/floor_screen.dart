@@ -217,7 +217,7 @@ class FloorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: AppColors.of(context).canvas,
       body: SafeArea(
         child: BlocBuilder<FloorBloc, FloorState>(
           builder: (context, state) => switch (state) {

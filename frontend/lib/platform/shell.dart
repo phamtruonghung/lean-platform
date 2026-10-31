@@ -25,6 +25,8 @@ class PlatformShell extends StatelessWidget {
     required this.onDestinationSelected,
     required this.account,
     required this.onSignOut,
+    required this.darkPalette,
+    required this.onToggleDarkPalette,
     required this.child,
   });
 
@@ -38,6 +40,15 @@ class PlatformShell extends StatelessWidget {
 
   final AccountActive account;
   final VoidCallback onSignOut;
+
+  /// Whether the dark palette is the one on screen, so the account menu's
+  /// `Dark palette` item can show a check mark (issue #366). A value and a
+  /// callback rather than the cubit itself, so the Shell is pumped in a test
+  /// with no provider.
+  final bool darkPalette;
+
+  /// Switches to the other palette. The Shell decides nothing about which.
+  final VoidCallback onToggleDarkPalette;
 
   /// The Screen the sidebar wraps.
   final Widget child;
@@ -66,6 +77,10 @@ class PlatformShell extends StatelessWidget {
   static const ValueKey<String> changePasswordKey =
       ValueKey<String>('platform-shell-change-password');
 
+  /// The account menu's `Dark palette` item (issue #366).
+  static const ValueKey<String> themeToggleKey =
+      ValueKey<String>('platform-shell-theme-toggle');
+
   @override
   Widget build(BuildContext context) {
     final collapsed = MediaQuery.sizeOf(context).width < railBreakpoint;
@@ -83,6 +98,8 @@ class PlatformShell extends StatelessWidget {
             collapsed: collapsed,
             account: account,
             onSignOut: onSignOut,
+            darkPalette: darkPalette,
+            onToggleDarkPalette: onToggleDarkPalette,
           ),
           Expanded(child: child),
         ],
@@ -99,6 +116,8 @@ class _Sidebar extends StatelessWidget {
     required this.collapsed,
     required this.account,
     required this.onSignOut,
+    required this.darkPalette,
+    required this.onToggleDarkPalette,
   });
 
   final List<Destination> destinations;
@@ -107,6 +126,8 @@ class _Sidebar extends StatelessWidget {
   final bool collapsed;
   final AccountActive account;
   final VoidCallback onSignOut;
+  final bool darkPalette;
+  final VoidCallback onToggleDarkPalette;
 
   @override
   Widget build(BuildContext context) {
@@ -114,13 +135,14 @@ class _Sidebar extends StatelessWidget {
     // specific match rather than every path-prefix of the address, because the
     // CAPA list lives under the action log's own `/actions` (issue #211).
     final selectedPath = selectedDestinationPath(destinations, currentLocation);
+    final palette = AppColors.of(context);
 
     return Container(
       key: PlatformShell.sidebarKey,
       width: collapsed ? PlatformShell.collapsedWidth : PlatformShell.expandedWidth,
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        border: Border(right: BorderSide(color: AppColors.edge)),
+      decoration: BoxDecoration(
+        color: palette.card,
+        border: Border(right: BorderSide(color: palette.edge)),
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -145,12 +167,12 @@ class _Sidebar extends StatelessWidget {
                       for (final (index, group) in groupDestinations(destinations).indexed) ...[
                         if (index > 0)
                           if (collapsed)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: Spacing.sm,
                                 vertical: Spacing.xs,
                               ),
-                              child: Divider(height: 1, color: AppColors.edge),
+                              child: Divider(height: 1, color: palette.edge),
                             )
                           else if (group.name != null)
                             _GroupHeading(name: group.name!),
@@ -170,6 +192,8 @@ class _Sidebar extends StatelessWidget {
                 account: account,
                 collapsed: collapsed,
                 onSignOut: onSignOut,
+                darkPalette: darkPalette,
+                onToggleDarkPalette: onToggleDarkPalette,
               ),
             ],
           ),
@@ -223,7 +247,7 @@ class _Brand extends StatelessWidget {
 /// ADR-0020's "What this costs" section names to watch for.
 ///
 /// Deliberately quieter than a [_NavItem]: uppercase, letter-spaced and
-/// [AppColors.textMuted], so it reads as a heading over the destinations filed
+/// [AppPalette.textMuted], so it reads as a heading over the destinations filed
 /// beneath it rather than competing with them — never the word "section",
 /// which CONTEXT.md lists under `_Avoid_` for a Destination group. Never
 /// rendered into the collapsed rail — see the boundary hairline in
@@ -249,7 +273,7 @@ class _GroupHeading extends StatelessWidget {
       child: Text(
         name.toUpperCase(),
         style: theme.textTheme.labelMedium?.copyWith(
-          color: AppColors.textMuted,
+          color: AppColors.of(context).textMuted,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.8,
         ),
@@ -278,14 +302,14 @@ class _NavItem extends StatelessWidget {
     // (issue #102's AppComponentColors) — this exact pairing repeats
     // nowhere else yet, but it is the shape #102 named the token for.
     final foreground =
-        selected ? AppComponentColors.navSelectedForeground : theme.colorScheme.onSurfaceVariant;
+        selected ? AppColors.of(context).navSelectedForeground : theme.colorScheme.onSurfaceVariant;
 
     Widget item = InkWell(
       borderRadius: BorderRadius.circular(Spacing.md),
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: selected ? AppComponentColors.navSelectedBackground : null,
+          color: selected ? AppColors.of(context).navSelectedBackground : null,
           borderRadius: BorderRadius.circular(Spacing.md),
         ),
         padding: EdgeInsets.symmetric(
@@ -312,7 +336,7 @@ class _NavItem extends StatelessWidget {
                 child: selected
                     ? DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppComponentColors.navSelectedAccent,
+                          color: AppColors.of(context).navSelectedAccent,
                           borderRadius: BorderRadius.circular(PlatformShell._selectedMarkWidth / 2),
                         ),
                         child: const SizedBox(height: 20, width: PlatformShell._selectedMarkWidth),
@@ -362,11 +386,18 @@ class _AccountFooter extends StatelessWidget {
     required this.account,
     required this.collapsed,
     required this.onSignOut,
+    required this.darkPalette,
+    required this.onToggleDarkPalette,
   });
 
   final AccountActive account;
   final bool collapsed;
   final VoidCallback onSignOut;
+  final bool darkPalette;
+  final VoidCallback onToggleDarkPalette;
+
+  static const String _changePasswordValue = 'change-password';
+  static const String _themeToggleValue = 'theme-toggle';
 
   @override
   Widget build(BuildContext context) {
@@ -390,12 +421,31 @@ class _AccountFooter extends StatelessWidget {
           key: PlatformShell.accountMenuKey,
           tooltip: 'Account menu',
           padding: EdgeInsets.zero,
-          onSelected: (_) => ChangePasswordDialog.open(context),
-          itemBuilder: (context) => const [
-            PopupMenuItem<String>(
+          onSelected: (value) {
+            switch (value) {
+              case _changePasswordValue:
+                ChangePasswordDialog.open(context);
+              case _themeToggleValue:
+                onToggleDarkPalette();
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem<String>(
               key: PlatformShell.changePasswordKey,
-              value: 'change-password',
+              value: _changePasswordValue,
               child: Text('Change password'),
+            ),
+            // One item that switches between the two palettes (issue #366),
+            // checked while the dark one is on screen.
+            PopupMenuItem<String>(
+              key: PlatformShell.themeToggleKey,
+              value: _themeToggleValue,
+              child: Row(
+                children: [
+                  const Expanded(child: Text('Dark palette')),
+                  if (darkPalette) const Icon(Icons.check, size: 20),
+                ],
+              ),
             ),
           ],
           child: child,
@@ -410,7 +460,7 @@ class _AccountFooter extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Divider(height: 1, color: AppColors.edge),
+        Divider(height: 1, color: AppColors.of(context).edge),
         Padding(
           padding: EdgeInsets.symmetric(
             horizontal: collapsed ? Spacing.xs : Spacing.lg,

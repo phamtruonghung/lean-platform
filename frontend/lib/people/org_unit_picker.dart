@@ -126,7 +126,7 @@ class _Pane extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.edge),
+        border: Border.all(color: AppColors.of(context).edge),
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Column(

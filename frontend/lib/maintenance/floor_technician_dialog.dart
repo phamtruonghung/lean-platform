@@ -124,7 +124,7 @@ class _FloorTechnicianDialogState extends State<FloorTechnicianDialog> {
                 Text(
                   'Who is recording this? Your Employee number and PIN identify you '
                   'for this action only.',
-                  style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+                  style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
                 ),
                 const SizedBox(height: Spacing.md),
                 TextField(

@@ -476,12 +476,12 @@ class _HomeCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(icon, color: AppColors.actionPrimary),
+                  Icon(icon, color: AppColors.of(context).actionPrimary),
                   const SizedBox(width: Spacing.sm),
                   Expanded(
                     child: Text(
                       label,
-                      style: AppTypography.dense(context)?.copyWith(color: AppColors.textMuted),
+                      style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
                     ),
                   ),
                 ],
@@ -491,7 +491,7 @@ class _HomeCard extends StatelessWidget {
               const SizedBox(height: Spacing.xs),
               Text(
                 context_,
-                style: AppTypography.dense(context)?.copyWith(color: AppColors.textMuted),
+                style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
               ),
             ],
           ),

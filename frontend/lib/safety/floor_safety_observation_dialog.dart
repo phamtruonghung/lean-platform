@@ -158,7 +158,7 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
       children: [
         Text(
           'What was seen? Everything with a known set is chosen from a fixed list.',
-          style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+          style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
         DropdownButtonFormField<String?>(
@@ -227,7 +227,7 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
         Text(
           'Who is recording this? Your Employee number and PIN identify you for '
           'this record only.',
-          style: AppTypography.body(context)?.copyWith(color: AppColors.textMuted),
+          style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
         TextField(

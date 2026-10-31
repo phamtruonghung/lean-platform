@@ -18,14 +18,14 @@
 /// the tree and break every test that finds one, for no visual gain.
 ///
 /// **A catalogue row is not tappable, so there is no hover fill.** The
-/// `AppComponentColors.rowHoverFill` token exists for the Work orders table's
+/// `AppPalette.rowHoverFill` token exists for the Work orders table's
 /// tappable rows (issue #168), where the pointer's position is what ties an ID
 /// at the left edge to an action at the right. A catalogue row's affordances are
 /// its own buttons; a hover band would advertise a click that does nothing. Do
 /// not "complete" this widget by adding one.
 ///
-/// **The divider is the palette's hairline, not a new colour.** `AppColors.edge`
-/// is the same value `AppComponentColors.cardBorder` binds as the card's own
+/// **The divider is the palette's hairline, not a new colour.** `AppPalette.edge`
+/// is the same value `AppPalette.cardBorder` binds as the card's own
 /// rim, so a row's rule and its card's edge are the same weight in the same
 /// family — and no `Color` literal is written here, which
 /// `theme_skeleton_test.dart` enforces across `lib/`.
@@ -59,7 +59,7 @@ class AppListCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var index = 0; index < rows.length; index++) ...[
-            if (index > 0) const Divider(height: 1, thickness: 1, color: AppColors.edge),
+            if (index > 0) Divider(height: 1, thickness: 1, color: AppColors.of(context).edge),
             rows[index],
           ],
         ],

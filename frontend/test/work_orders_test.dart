@@ -1854,9 +1854,9 @@ void main() {
         theme.outlinedButtonTheme.style?.overlayColor?.resolve({WidgetState.focused});
     final iconFocusSide = theme.iconButtonTheme.style?.side?.resolve({WidgetState.focused});
 
-    expect(outlinedFocusSide?.color, AppComponentColors.focusRing);
+    expect(outlinedFocusSide?.color, AppPalette.light.focusRing);
     expect(outlinedFocusOverlay, isNotNull);
-    expect(iconFocusSide?.color, AppComponentColors.focusRing);
+    expect(iconFocusSide?.color, AppPalette.light.focusRing);
 
     // Unfocused, neither control claims the ring — it is only ever the
     // focused state's own decoration.
@@ -1941,7 +1941,7 @@ void main() {
         find.ancestor(of: find.text('WO#'), matching: find.byType(Container)).first,
       );
       final decoration = band.decoration! as BoxDecoration;
-      expect(decoration.color, AppComponentColors.tableHeaderFill);
+      expect(decoration.color, AppPalette.light.tableHeaderFill);
       // The same hairline every data row draws above itself, so the table
       // still reads as one table rather than as a panel glued to a list.
       final context = tester.element(find.text('WO#'));
@@ -1977,7 +1977,7 @@ void main() {
             )
             .first,
       );
-      expect(row.hoverColor, AppComponentColors.rowHoverFill);
+      expect(row.hoverColor, AppPalette.light.rowHoverFill);
     });
 
     testWidgets('a cell whose value may be clipped can disclose the whole of it',

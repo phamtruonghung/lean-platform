@@ -23,7 +23,7 @@
 /// nothing.
 ///
 /// The colour each tone resolves to is a design token, and lives in
-/// `theme.dart` (`AppComponentColors.statusFill` / `.statusForeground`) — the
+/// `theme.dart` (`AppPalette.statusFill` / `.statusForeground`) — the
 /// only file allowed to name a colour, which `theme_skeleton_test.dart`
 /// enforces.
 library;
