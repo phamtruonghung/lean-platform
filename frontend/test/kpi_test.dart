@@ -112,6 +112,16 @@ IconButton _icon(WidgetTester tester, int kpiId, String status) =>
 /// The icon a judgement button draws right now.
 IconData? _glyph(WidgetTester tester, int kpiId, String status) => (_icon(tester, kpiId, status).icon as Icon).icon;
 
+/// [count] KPIs, ids from 1, each with a Target, so every cell is the same height.
+List<Map<String, dynamic>> _targetedRows(int count) => [
+      for (var id = 1; id <= count; id++) kpiReviewRowJson(id, 'KPI $id', unit: '%', target: 85),
+    ];
+
+/// Where the first [count] KPI cells landed, in order.
+List<Rect> _cellRects(WidgetTester tester, int count) => [
+      for (var id = 1; id <= count; id++) tester.getRect(find.byKey(KpiReviewScreen.rowKey(id))),
+    ];
+
 /// Chooses Missed for [kpiId], writes [note] in the popup and confirms it.
 Future<void> _missWith(WidgetTester tester, int kpiId, String note) async {
   await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(kpiId, 'missed')));
@@ -542,6 +552,27 @@ void main() {
     expect(find.byKey(KpiReviewScreen.noteEditKey(1)), findsNothing);
   });
 
+  testWidgets('a note that Save will clear says so, and a Missed note does not', (tester) async {
+    await _open(tester, _wire(reviewRows: [missedRow]), Routes.kpiReview);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.notePopupKey(1)));
+    expect(find.byKey(KpiReviewScreen.noteClearsKey(1)), findsNothing, reason: 'Save keeps a Missed note');
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteCloseKey(1)));
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'met')));
+    await tapIn(tester, find.byKey(KpiReviewScreen.notePopupKey(1)));
+
+    final popup = find.byKey(KpiReviewScreen.noteReadDialogKey(1));
+    expect(
+      find.descendant(of: popup, matching: find.byKey(KpiReviewScreen.noteClearsKey(1))),
+      findsOneWidget,
+      reason: 'Met posts no note, so Save will clear this one',
+    );
+    expect(find.descendant(of: popup, matching: find.text(KpiReviewScreen.clearsNoteText)), findsOneWidget);
+    expect(find.descendant(of: popup, matching: find.text('seal failure on line 2')), findsOneWidget, reason: 'the note itself stays readable');
+    expect(find.byKey(KpiReviewScreen.noteEditKey(1)), findsNothing, reason: 'only a Missed note is edited');
+  });
+
   testWidgets('without write authority the Review is read-only, and a note still opens', (tester) async {
     final wire = _wire(
       role: Roles.supervisor,
@@ -908,24 +939,57 @@ void main() {
     });
   }
 
-  testWidgets('at 1200px the KPI cells tile across one row at equal widths', (tester) async {
-    await _open(tester, _wire(), Routes.kpiReview, size: const Size(1200, 1600));
-    final cells = [for (final id in [1, 2, 3]) tester.getRect(find.byKey(KpiReviewScreen.rowKey(id)))];
+  testWidgets('at 1400px the KPI cells tile four across and the fifth starts the second row', (tester) async {
+    await _open(tester, _wire(reviewRows: _targetedRows(5)), Routes.kpiReview, size: const Size(1400, 1600));
+    final cells = _cellRects(tester, 5);
 
-    expect(cells[1].top, cells[0].top);
-    expect(cells[2].top, cells[0].top);
-    expect(cells[1].left, greaterThan(cells[0].right));
-    expect(cells[2].left, greaterThan(cells[1].right));
-    expect(cells[1].width, cells[0].width);
-    expect(cells[2].width, cells[0].width);
+    for (final i in [1, 2, 3]) {
+      expect(cells[i].top, cells[0].top, reason: 'cell ${i + 1} shares the first row');
+      expect(cells[i].left, greaterThan(cells[i - 1].right), reason: 'cell ${i + 1} sits right of cell $i');
+      expect(cells[i].width, cells[0].width, reason: 'cell ${i + 1} is as wide as the first');
+    }
+    for (final i in [0, 1, 2, 3]) {
+      expect(cells[4].top, greaterThan(cells[i].bottom), reason: 'the fifth cell starts the second row');
+    }
+    expect(cells[4].left, cells[0].left, reason: 'the second row starts at the first column');
   });
 
-  testWidgets('at 700px the KPI cells stack onto more rows, still one cell per KPI', (tester) async {
-    await _open(tester, _wire(), Routes.kpiReview, size: const Size(700, 1600));
-    final cells = [for (final id in [1, 2, 3]) tester.getRect(find.byKey(KpiReviewScreen.rowKey(id)))];
+  testWidgets('at 1200px the KPI cells tile three across and the fourth starts the second row', (tester) async {
+    await _open(tester, _wire(reviewRows: _targetedRows(4)), Routes.kpiReview, size: const Size(1200, 1600));
+    final cells = _cellRects(tester, 4);
 
-    expect(cells[2].top, greaterThan(cells[0].bottom));
-    expect(cells[2].left, cells[0].left, reason: 'the columns line up');
-    expect(cells[2].width, cells[0].width);
+    for (final i in [1, 2]) {
+      expect(cells[i].top, cells[0].top, reason: 'cell ${i + 1} shares the first row');
+      expect(cells[i].left, greaterThan(cells[i - 1].right), reason: 'cell ${i + 1} sits right of cell $i');
+      expect(cells[i].width, cells[0].width, reason: 'cell ${i + 1} is as wide as the first');
+    }
+    expect(cells[3].top, greaterThan(cells[0].bottom), reason: 'the fourth cell starts the second row');
+    expect(cells[3].left, cells[0].left, reason: 'the second row starts at the first column');
+  });
+
+  // Two across, not three: the sidebar leaves 740 of a 1000px window and the list
+  // pads 32, so the grid sees 708 and three columns' 820 is out of reach.
+  testWidgets('at 1000px the KPI cells tile two across, two to a row', (tester) async {
+    await _open(tester, _wire(reviewRows: _targetedRows(4)), Routes.kpiReview, size: const Size(1000, 1600));
+    final cells = _cellRects(tester, 4);
+
+    expect(cells[1].top, cells[0].top, reason: 'the second cell shares the first row');
+    expect(cells[1].left, greaterThan(cells[0].right), reason: 'the second cell sits right of the first');
+    expect(cells[1].width, cells[0].width, reason: 'the second cell is as wide as the first');
+    expect(cells[2].top, greaterThan(cells[0].bottom), reason: 'the third cell starts the second row');
+    expect(cells[2].left, cells[0].left, reason: 'the second row starts at the first column');
+    expect(cells[3].top, cells[2].top, reason: 'the fourth cell shares the second row');
+    expect(cells[3].left, cells[1].left, reason: 'the second column lines up across rows');
+  });
+
+  testWidgets('at 700px the KPI cells stack one to a row, still one cell per KPI', (tester) async {
+    await _open(tester, _wire(reviewRows: _targetedRows(4)), Routes.kpiReview, size: const Size(700, 1600));
+    final cells = _cellRects(tester, 4);
+
+    for (final i in [1, 2, 3]) {
+      expect(cells[i].top, greaterThan(cells[i - 1].bottom), reason: 'cell ${i + 1} starts below cell $i');
+      expect(cells[i].left, cells[0].left, reason: 'the columns line up');
+      expect(cells[i].width, cells[0].width, reason: 'cell ${i + 1} is as wide as the first');
+    }
   });
 }
