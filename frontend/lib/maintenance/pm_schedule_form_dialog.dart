@@ -447,6 +447,7 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
                     Expanded(
                       child: DropdownButtonFormField<int>(
                         key: PmScheduleFormDialog.priorityKey,
+                        isExpanded: true,
                         initialValue: _priority,
                         decoration: const InputDecoration(
                           labelText: 'Priority',
