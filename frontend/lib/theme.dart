@@ -215,6 +215,11 @@ abstract final class _PrimitivesLight {
   /// [AppPalette.signatureInk].
   static const Color signatureInk = Color(0xFF1E3A8A);
 
+  /// The text on a stored Signature's backdrop (an error message in place of
+  /// an image that would not decode). Written as its own primitive, as
+  /// [signatureInk] is, so it is the same in both palettes.
+  static const Color signatureBackdropInk = Color(0xFF475569);
+
   /// No fill: the light surfaces a displayed Signature already sits on are
   /// light, so it needs no paper of its own (see [AppPalette.signatureBackdrop]).
   static const Color clear = Color(0x00FFFFFF);
@@ -317,6 +322,11 @@ abstract final class _PrimitivesDark {
   /// purpose (a Signature is a legal mark; its exported pixels do not depend on
   /// the palette). 10.36:1, navy on white.
   static const Color signatureInk = Color(0xFF1E3A8A);
+
+  /// The text on a stored Signature's backdrop (an error message in place of
+  /// an image that would not decode). Written as its own primitive, as
+  /// [signatureInk] is, so it is the same in both palettes.
+  static const Color signatureBackdropInk = Color(0xFF475569);
   static const Color white = Color(0xFFFFFFFF);
 }
 
@@ -356,6 +366,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.signatureInk,
     required this.signaturePaper,
     required this.signatureBackdrop,
+    required this.onSignatureBackdrop,
   });
 
   /// The light palette — every value the Platform shipped before issue #366.
@@ -381,6 +392,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     signatureInk: _PrimitivesLight.signatureInk,
     signaturePaper: _PrimitivesLight.white,
     signatureBackdrop: _PrimitivesLight.clear,
+    onSignatureBackdrop: _PrimitivesLight.signatureBackdropInk,
   );
 
   /// The dark palette (ADR-0056). Every pair is measured; see
@@ -407,6 +419,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     signatureInk: _PrimitivesDark.signatureInk,
     signaturePaper: _PrimitivesDark.white,
     signatureBackdrop: _PrimitivesDark.white,
+    onSignatureBackdrop: _PrimitivesDark.signatureBackdropInk,
   );
 
   // --- surface ---
@@ -544,6 +557,12 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// is shown on paper.
   final Color signatureBackdrop;
 
+  /// Text drawn on [signatureBackdrop] (the "could not be shown" message).
+  /// [AppColors.textMuted] is too pale there in dark. 7.58:1 on
+  /// [signatureBackdrop]'s white in the dark palette, and on the card in the
+  /// light palette where the backdrop is clear.
+  final Color onSignatureBackdrop;
+
   // --- component bindings (layer 3) ---
 
   /// The selected sidebar destination's fill (`_NavItem` in
@@ -673,7 +692,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
       statusInfoForeground == other.statusInfoForeground &&
       signatureInk == other.signatureInk &&
       signaturePaper == other.signaturePaper &&
-      signatureBackdrop == other.signatureBackdrop;
+      signatureBackdrop == other.signatureBackdrop &&
+      onSignatureBackdrop == other.onSignatureBackdrop;
 
   @override
   int get hashCode => Object.hashAll([
@@ -698,6 +718,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
         signatureInk,
         signaturePaper,
         signatureBackdrop,
+        onSignatureBackdrop,
       ]);
 
   @override
@@ -723,6 +744,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     Color? signatureInk,
     Color? signaturePaper,
     Color? signatureBackdrop,
+    Color? onSignatureBackdrop,
   }) =>
       AppPalette(
         canvas: canvas ?? this.canvas,
@@ -746,6 +768,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
         signatureInk: signatureInk ?? this.signatureInk,
         signaturePaper: signaturePaper ?? this.signaturePaper,
         signatureBackdrop: signatureBackdrop ?? this.signatureBackdrop,
+        onSignatureBackdrop: onSignatureBackdrop ?? this.onSignatureBackdrop,
       );
 
   /// Runs while `MaterialApp` animates between its two themes, so every field
@@ -775,6 +798,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
       signatureInk: Color.lerp(signatureInk, other.signatureInk, t)!,
       signaturePaper: Color.lerp(signaturePaper, other.signaturePaper, t)!,
       signatureBackdrop: Color.lerp(signatureBackdrop, other.signatureBackdrop, t)!,
+      onSignatureBackdrop: Color.lerp(onSignatureBackdrop, other.onSignatureBackdrop, t)!,
     );
   }
 }

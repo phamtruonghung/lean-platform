@@ -161,6 +161,8 @@ palette as it already shipped, noted here and left alone rather than changed und
 - The Training Record form (a printable document) is drawn in the dark palette when
   dark is on; printing it from the browser prints what is on screen. Nothing here
   changes how it prints, and a print stylesheet is a separate request.
+  The CAPA report (`router.dart`, `capaReport`, issue #212) is routed outside the Shell
+  under the same `MaterialApp` and prints dark too.
 - Ninety token reads across twenty-seven files changed from a `static` to
   `AppColors.of(context)`, and about ten `const` expressions stopped being `const`.
   That is the price of a runtime palette and was paid once, here.

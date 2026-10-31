@@ -140,7 +140,7 @@ class _BodyState extends State<_Body> {
                 errorBuilder: (context, error, stackTrace) => Text(
                   'This Signature could not be shown.',
                   style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: AppColors.of(context).textMuted),
+                      ?.copyWith(color: AppColors.of(context).onSignatureBackdrop),
                 ),
               ),
             ),

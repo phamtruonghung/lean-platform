@@ -89,6 +89,11 @@ List<_Pair> _textPairs(ThemeData theme, {required bool pinnedImplicitRoles}) {
       _Pair('onInverseSurface on inverseSurface', scheme.onInverseSurface, scheme.inverseSurface),
       _Pair('inversePrimary on inverseSurface', scheme.inversePrimary, scheme.inverseSurface),
     ],
+    _Pair(
+      'onSignatureBackdrop on the Signature backdrop',
+      palette.onSignatureBackdrop,
+      compositeOver(palette.signatureBackdrop, palette.card),
+    ),
   ];
 }
 
@@ -206,5 +211,7 @@ void main() {
     // the card behind it would swallow dark ink, and invisible in light.
     expect(AppPalette.dark.signatureBackdrop, const Color(0xFFFFFFFF));
     expect(AppPalette.light.signatureBackdrop.a, 0);
+    expect(AppPalette.dark.onSignatureBackdrop, const Color(0xFF475569));
+    expect(AppPalette.light.onSignatureBackdrop, const Color(0xFF475569));
   });
 }
