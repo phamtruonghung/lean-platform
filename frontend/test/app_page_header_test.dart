@@ -24,6 +24,7 @@ const _belowKey = ValueKey<String>('test-below');
 Future<void> _pump(
   WidgetTester tester, {
   double boxWidth = 900,
+  double windowWidth = 1000,
   String title = 'Things',
   String? description = 'What this page is for.',
   bool actions = true,
@@ -32,7 +33,7 @@ Future<void> _pump(
   List<Widget>? actionWidgets,
 }) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(1000, 800);
+  tester.view.physicalSize = Size(windowWidth, 800);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
@@ -144,6 +145,62 @@ void main() {
     final title = tester.getRect(find.byKey(AppPageHeader.titleKey));
     final action = tester.getRect(find.byKey(_actionKey));
     expect(action.top, lessThan(title.bottom));
+  });
+
+  testWidgets('below 1x text the breakpoint is not lowered: the actions stay on the title row at it',
+      (tester) async {
+    // An Android "small font" (0.85) must not see headers wrap earlier than
+    // they did before the breakpoint scaled: the multiplier is clamped at 1
+    // from below.
+    await _pump(tester, boxWidth: AppPageHeader.wrapBreakpoint, textScale: 0.8);
+    final title = tester.getRect(find.byKey(AppPageHeader.titleKey));
+    final action = tester.getRect(find.byKey(_actionKey));
+    expect(action.top, lessThan(title.bottom));
+    expect(action.left, greaterThan(title.right));
+  });
+
+  testWidgets('below 1x text the actions still wrap one pixel under the breakpoint', (tester) async {
+    // Without the clamp the breakpoint at 0.8 would be 448 and this box would
+    // not wrap; the clamp holds it at the unscaled breakpoint.
+    await _pump(tester, boxWidth: AppPageHeader.wrapBreakpoint - 1, textScale: 0.8);
+    final title = tester.getRect(find.byKey(AppPageHeader.titleKey));
+    final action = tester.getRect(find.byKey(_actionKey));
+    expect(action.top, greaterThanOrEqualTo(title.bottom));
+    expect(action.left, title.left, reason: 'wrapped actions start at the title edge');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('at 2x text the actions wrap one pixel under the doubled breakpoint', (tester) async {
+    // The breakpoint doubles with the reader's text size, so a box one pixel
+    // under it still wraps. The window is wider than the box: Align passes
+    // loose constraints, and a box wider than the window would be clamped.
+    await _pump(
+      tester,
+      boxWidth: AppPageHeader.wrapBreakpoint * 2 - 1,
+      windowWidth: 1200,
+      textScale: 2,
+    );
+    final title = tester.getRect(find.byKey(AppPageHeader.titleKey));
+    final action = tester.getRect(find.byKey(_actionKey));
+    expect(action.top, greaterThanOrEqualTo(title.bottom));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('at 2x text the actions return to the title row at the doubled breakpoint',
+      (tester) async {
+    // The upper edge: a constant multiplier for every scale above 1 would
+    // keep wrapping here. The window is wider than the box so the box is
+    // really this wide.
+    await _pump(
+      tester,
+      boxWidth: AppPageHeader.wrapBreakpoint * 2,
+      windowWidth: 1200,
+      textScale: 2,
+    );
+    final title = tester.getRect(find.byKey(AppPageHeader.titleKey));
+    final action = tester.getRect(find.byKey(_actionKey));
+    expect(action.top, lessThan(title.bottom));
+    expect(action.right, 1120, reason: 'at the far end of the box');
   });
 
   testWidgets('at 2x text the Directory title keeps one line: the actions wrap, not squeeze it',
