@@ -106,6 +106,20 @@ Future<void> _open(
 
 bool _enabled(WidgetTester tester, Key key) => tester.widget<FilledButton>(find.byKey(key)).onPressed != null;
 
+IconButton _icon(WidgetTester tester, int kpiId, String status) =>
+    tester.widget<IconButton>(find.byKey(KpiReviewScreen.statusKey(kpiId, status)));
+
+/// The icon a judgement button draws right now.
+IconData? _glyph(WidgetTester tester, int kpiId, String status) => (_icon(tester, kpiId, status).icon as Icon).icon;
+
+/// Chooses Missed for [kpiId], writes [note] in the popup and confirms it.
+Future<void> _missWith(WidgetTester tester, int kpiId, String note) async {
+  await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(kpiId, 'missed')));
+  await tester.enterText(find.byKey(KpiReviewScreen.noteKey(kpiId)), note);
+  await tester.pumpAndSettle();
+  await tapIn(tester, find.byKey(KpiReviewScreen.noteSaveKey(kpiId)));
+}
+
 Future<void> _fillAddKpi(WidgetTester tester, {String title = 'Overall equipment effectiveness'}) async {
   await tester.enterText(find.byKey(AddKpiDialog.nameKey), 'OEE');
   await tester.enterText(find.byKey(AddKpiDialog.titleKey), title);
@@ -291,7 +305,48 @@ void main() {
     expect(find.byKey(ChangeTargetDialog.submitKey), findsNothing);
   });
 
-  testWidgets("the Review Screen refuses a Missed row's short note and enables Save at 10", (tester) async {
+  testWidgets('each KPI cell shows its three judgement icons, none chosen before a Review', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview);
+
+    for (final id in [1, 2, 3]) {
+      expect(_glyph(tester, id, 'met'), Icons.check_circle_outline, reason: 'KPI $id');
+      expect(_glyph(tester, id, 'missed'), Icons.cancel_outlined, reason: 'KPI $id');
+      expect(_glyph(tester, id, 'not_measured'), Icons.remove_circle_outline, reason: 'KPI $id');
+    }
+    expect(_icon(tester, 1, 'met').tooltip, 'Met');
+    expect(_icon(tester, 1, 'missed').tooltip, 'Missed');
+    expect(_icon(tester, 1, 'not_measured').tooltip, 'Not measured');
+    expect(find.text('Daily target: >= 85 %'), findsOneWidget);
+    expect(find.text('Daily target: <= 1.5 %'), findsOneWidget);
+    expect(find.text('No target'), findsOneWidget);
+    expect(find.byKey(KpiReviewScreen.notePopupKey(1)), findsNothing, reason: 'no note yet');
+  });
+
+  testWidgets('the chosen icon is filled and coloured by its own meaning, the rest outline', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview);
+    final context = tester.element(find.byKey(KpiReviewScreen.rowKey(1)));
+    final colors = Theme.of(context).colorScheme;
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'met')));
+    expect(_glyph(tester, 1, 'met'), Icons.check_circle);
+    expect(_icon(tester, 1, 'met').color, colors.primary);
+    expect(_icon(tester, 1, 'met').isSelected, isTrue);
+    expect(_glyph(tester, 1, 'missed'), Icons.cancel_outlined);
+    expect(_glyph(tester, 1, 'not_measured'), Icons.remove_circle_outline);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'not_measured')));
+    expect(_glyph(tester, 1, 'met'), Icons.check_circle_outline);
+    expect(_glyph(tester, 1, 'not_measured'), Icons.remove_circle);
+    expect(_icon(tester, 1, 'not_measured').color, colors.onSurfaceVariant);
+
+    await _missWith(tester, 1, 'broken seal on line');
+    expect(_glyph(tester, 1, 'not_measured'), Icons.remove_circle_outline);
+    expect(_glyph(tester, 1, 'missed'), Icons.cancel);
+    expect(_icon(tester, 1, 'missed').color, colors.error);
+  });
+
+  testWidgets("choosing Missed opens the popup, which refuses a short note, and Save holds until it's confirmed",
+      (tester) async {
     final wire = _wire();
     await _open(tester, wire, Routes.kpiReview);
 
@@ -299,18 +354,39 @@ void main() {
     expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse, reason: 'nothing changed yet');
 
     await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
-    // The note area names the Target that was missed.
+    expect(find.byKey(KpiReviewScreen.noteDialogKey(1)), findsOneWidget);
+    // The popup names the Target that was missed.
     expect(find.text('Why was the Target (>= 85 %) missed?'), findsOneWidget);
+    expect(
+      find.text('A note of at least 10 characters is required when a KPI is missed (0 so far).'),
+      findsOneWidget,
+    );
+    expect(_enabled(tester, KpiReviewScreen.noteSaveKey(1)), isFalse);
     expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
 
     await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'broken');
     await tester.pumpAndSettle();
-    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
-    expect(find.textContaining('at least 10 characters'), findsOneWidget);
+    expect(find.textContaining('(6 so far)'), findsOneWidget);
+    expect(_enabled(tester, KpiReviewScreen.noteSaveKey(1)), isFalse);
 
-    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'broken seal');
+    // Ten characters only with the padding: it counts after trimming.
+    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), '   broken   ');
     await tester.pumpAndSettle();
+    expect(find.textContaining('(6 so far)'), findsOneWidget);
+    expect(_enabled(tester, KpiReviewScreen.noteSaveKey(1)), isFalse);
+    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
+
+    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), '  broken seal ');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('at least 10 characters'), findsNothing);
+    expect(_enabled(tester, KpiReviewScreen.noteSaveKey(1)), isTrue);
+    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse, reason: 'not drafted until confirmed');
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteSaveKey(1)));
+    expect(find.byKey(KpiReviewScreen.noteDialogKey(1)), findsNothing);
+    expect(_glyph(tester, 1, 'missed'), Icons.cancel);
     expect(_enabled(tester, KpiReviewScreen.saveKey), isTrue);
+    expect(wire.reviewPosts, isEmpty, reason: 'the popup keeps a draft; only Save posts');
 
     await tapIn(tester, find.byKey(KpiReviewScreen.saveKey));
 
@@ -324,6 +400,168 @@ void main() {
     expect(find.byKey(KpiReviewScreen.savedKey), findsOneWidget);
     expect(find.text('Missed · A B · 2026-10-30 08:12'), findsOneWidget);
     expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
+  });
+
+  testWidgets('a popup with no Target to name asks why it was missed', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview);
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(3, 'missed')));
+    expect(find.text('Why was it missed?'), findsOneWidget);
+  });
+
+  testWidgets('Save posts every changed KPI in one request', (tester) async {
+    final wire = _wire();
+    await _open(tester, wire, Routes.kpiReview);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'met')));
+    await _missWith(tester, 2, 'seal failure on line 2');
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(3, 'not_measured')));
+    await tapIn(tester, find.byKey(KpiReviewScreen.saveKey));
+
+    expect(wire.reviewPosts, hasLength(1));
+    expect(wire.reviewPosts.single['entries'], [
+      {'kpi_id': 1, 'status': 'met', 'observed': null, 'note': null},
+      {'kpi_id': 2, 'status': 'missed', 'observed': null, 'note': 'seal failure on line 2'},
+      {'kpi_id': 3, 'status': 'not_measured', 'observed': null, 'note': null},
+    ]);
+  });
+
+  testWidgets('cancelling the popup leaves a saved judgement and its note as they were', (tester) async {
+    final wire = _wire(
+      reviewRows: [
+        kpiReviewRowJson(1, 'Overall equipment effectiveness', unit: '%', target: 85, status: 'met'),
+      ],
+    );
+    await _open(tester, wire, Routes.kpiReview);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
+    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'broken seal on line');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteCancelKey(1)));
+
+    expect(find.byKey(KpiReviewScreen.noteDialogKey(1)), findsNothing);
+    expect(_glyph(tester, 1, 'met'), Icons.check_circle);
+    expect(_glyph(tester, 1, 'missed'), Icons.cancel_outlined);
+    expect(find.byKey(KpiReviewScreen.notePopupKey(1)), findsNothing);
+    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
+  });
+
+  testWidgets('cancelling the popup leaves an earlier draft as it was, and Save posts that', (tester) async {
+    final wire = _wire();
+    await _open(tester, wire, Routes.kpiReview);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'not_measured')));
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
+    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'short');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteCancelKey(1)));
+
+    expect(_glyph(tester, 1, 'not_measured'), Icons.remove_circle);
+    expect(_glyph(tester, 1, 'missed'), Icons.cancel_outlined);
+    await tapIn(tester, find.byKey(KpiReviewScreen.saveKey));
+    expect(wire.reviewPosts.single['entries'], [
+      {'kpi_id': 1, 'status': 'not_measured', 'observed': null, 'note': null},
+    ]);
+  });
+
+  testWidgets('cancelling an edit keeps the note already drafted', (tester) async {
+    final wire = _wire();
+    await _open(tester, wire, Routes.kpiReview);
+    await _missWith(tester, 1, 'broken seal on line');
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
+    expect(tester.widget<TextField>(find.byKey(KpiReviewScreen.noteKey(1))).controller!.text, 'broken seal on line');
+    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'x');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteCancelKey(1)));
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.saveKey));
+    expect(wire.reviewPosts.single['entries'], [
+      {'kpi_id': 1, 'status': 'missed', 'observed': null, 'note': 'broken seal on line'},
+    ]);
+  });
+
+  final missedRow = kpiReviewRowJson(
+    1,
+    'Overall equipment effectiveness',
+    unit: '%',
+    target: 85,
+    status: 'missed',
+    note: 'seal failure on line 2',
+    appUser: 'C D',
+    enteredAt: '2026-10-30T08:12:00',
+  );
+
+  testWidgets('a saved note opens in the read-only popup with its Target and author', (tester) async {
+    await _open(tester, _wire(reviewRows: [missedRow]), Routes.kpiReview);
+    expect(find.text('seal failure on line 2'), findsNothing, reason: 'a note lives in its popup');
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.notePopupKey(1)));
+
+    final popup = find.byKey(KpiReviewScreen.noteReadDialogKey(1));
+    expect(popup, findsOneWidget);
+    expect(find.descendant(of: popup, matching: find.text('seal failure on line 2')), findsOneWidget);
+    expect(find.descendant(of: popup, matching: find.text('Daily target: >= 85 %')), findsOneWidget);
+    expect(find.descendant(of: popup, matching: find.text('C D · 2026-10-30 08:12')), findsOneWidget);
+    expect(find.descendant(of: popup, matching: find.byType(TextField)), findsNothing);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteCloseKey(1)));
+    expect(popup, findsNothing);
+    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
+  });
+
+  testWidgets('a Missed note is edited from its read-only popup, and the draft names no author', (tester) async {
+    final wire = _wire(reviewRows: [missedRow]);
+    await _open(tester, wire, Routes.kpiReview);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.notePopupKey(1)));
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteEditKey(1)));
+    expect(find.byKey(KpiReviewScreen.noteReadDialogKey(1)), findsNothing);
+    expect(find.byKey(KpiReviewScreen.noteDialogKey(1)), findsOneWidget);
+    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'the seal failed again');
+    await tester.pumpAndSettle();
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteSaveKey(1)));
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.notePopupKey(1)));
+    final popup = find.byKey(KpiReviewScreen.noteReadDialogKey(1));
+    expect(find.descendant(of: popup, matching: find.text('the seal failed again')), findsOneWidget);
+    expect(find.descendant(of: popup, matching: find.textContaining('C D')), findsNothing);
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteCloseKey(1)));
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.saveKey));
+    expect(wire.reviewPosts.single['entries'], [
+      {'kpi_id': 1, 'status': 'missed', 'observed': null, 'note': 'the seal failed again'},
+    ]);
+  });
+
+  testWidgets('a note that is no longer Missed reads without an Edit button', (tester) async {
+    await _open(tester, _wire(reviewRows: [missedRow]), Routes.kpiReview);
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'not_measured')));
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.notePopupKey(1)));
+    expect(find.byKey(KpiReviewScreen.noteReadDialogKey(1)), findsOneWidget);
+    expect(find.byKey(KpiReviewScreen.noteEditKey(1)), findsNothing);
+  });
+
+  testWidgets('without write authority the Review is read-only, and a note still opens', (tester) async {
+    final wire = _wire(
+      role: Roles.supervisor,
+      orgUnitScope: {'everywhere': false, 'grants': const <dynamic>[]},
+      reviewRows: [missedRow],
+    );
+    await _open(tester, wire, Routes.kpiReview);
+    final context = tester.element(find.byKey(KpiReviewScreen.rowKey(1)));
+
+    for (final status in ['met', 'missed', 'not_measured']) {
+      expect(_icon(tester, 1, status).onPressed, isNull, reason: status);
+    }
+    // What was judged stays readable: filled, in its own colour.
+    expect(_glyph(tester, 1, 'missed'), Icons.cancel);
+    expect(_icon(tester, 1, 'missed').disabledColor, Theme.of(context).colorScheme.error);
+    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
+
+    await tapIn(tester, find.byKey(KpiReviewScreen.notePopupKey(1)));
+    expect(find.text('seal failure on line 2'), findsOneWidget);
+    expect(find.byKey(KpiReviewScreen.noteEditKey(1)), findsNothing);
   });
 
   testWidgets('a 403 from the API renders the refusal sentence', (tester) async {
@@ -368,11 +606,9 @@ void main() {
     expect(find.text('No target — set one first'), findsOneWidget);
     expect(find.byKey(KpiReviewScreen.noTargetHintKey(1)), findsNothing);
 
-    ChoiceChip chip(String status) =>
-        tester.widget<ChoiceChip>(find.byKey(KpiReviewScreen.statusKey(3, status)));
-    expect(chip('met').onSelected, isNull, reason: 'Met is disabled');
-    expect(chip('missed').onSelected, isNotNull);
-    expect(chip('not_measured').onSelected, isNotNull);
+    expect(_icon(tester, 3, 'met').onPressed, isNull, reason: 'Met is disabled');
+    expect(_icon(tester, 3, 'missed').onPressed, isNotNull);
+    expect(_icon(tester, 3, 'not_measured').onPressed, isNotNull);
 
     await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(3, 'not_measured')));
     expect(_enabled(tester, KpiReviewScreen.saveKey), isTrue);
@@ -452,7 +688,6 @@ void main() {
   });
 
   const catalogueColumns = ['KPI', 'Unit', 'Direction', 'Daily', 'Weekly', 'Monthly', 'Today'];
-  const reviewColumns = ['KPI', 'Daily target', 'Judgement', 'Note', 'Saved'];
 
   List<String> headerLabels(WidgetTester tester, Key headerRowKey) => [
         for (final text in tester.widgetList<Text>(
@@ -466,11 +701,6 @@ void main() {
     expect(headerLabels(tester, KpiCatalogueScreen.headerRowKey), catalogueColumns);
   });
 
-  testWidgets('the review matrix labels its columns, in order', (tester) async {
-    await _open(tester, _wire(), Routes.kpiReview);
-    expect(headerLabels(tester, KpiReviewScreen.headerRowKey), reviewColumns);
-  });
-
   testWidgets('a header label and its cells start at the same x, on /kpi', (tester) async {
     await _open(tester, _wire(), Routes.kpi);
     for (final column in catalogueColumns) {
@@ -481,21 +711,6 @@ void main() {
         ),
       );
       final cell = tester.getTopLeft(find.byKey(KpiCatalogueScreen.cellKey(1, column)));
-      // Equality, not "a row renders": a header that drifts from its column renders fine.
-      expect((header.dx - cell.dx).abs(), lessThan(1.0), reason: '$column header ${header.dx} cell ${cell.dx}');
-    }
-  });
-
-  testWidgets('a header label and its cells start at the same x, on /kpi/review', (tester) async {
-    await _open(tester, _wire(), Routes.kpiReview);
-    for (final column in reviewColumns) {
-      final header = tester.getTopLeft(
-        find.descendant(
-          of: find.byKey(KpiReviewScreen.columnHeaderKey(column)),
-          matching: find.byType(Text),
-        ),
-      );
-      final cell = tester.getTopLeft(find.byKey(KpiReviewScreen.cellKey(1, column)));
       // Equality, not "a row renders": a header that drifts from its column renders fine.
       expect((header.dx - cell.dx).abs(), lessThan(1.0), reason: '$column header ${header.dx} cell ${cell.dx}');
     }
@@ -571,9 +786,7 @@ void main() {
     final wire = _wire();
     await _open(tester, wire, Routes.kpiReview);
 
-    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
-    await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'broken seal on line');
-    await tester.pumpAndSettle();
+    await _missWith(tester, 1, 'broken seal on line');
 
     await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'scrap');
     await tester.pumpAndSettle();
@@ -585,8 +798,10 @@ void main() {
     // The draft survived: clearing the term shows the edit, not the server's value.
     await tapIn(tester, find.byKey(KpiReviewScreen.filterClearKey));
     expect(find.byKey(KpiReviewScreen.hiddenChangesKey), findsNothing);
-    expect(tester.widget<ChoiceChip>(find.byKey(KpiReviewScreen.statusKey(1, 'missed'))).selected, isTrue);
-    expect(tester.widget<TextField>(find.byKey(KpiReviewScreen.noteKey(1))).controller!.text, 'broken seal on line');
+    expect(_glyph(tester, 1, 'missed'), Icons.cancel);
+    await tapIn(tester, find.byKey(KpiReviewScreen.notePopupKey(1)));
+    expect(find.text('broken seal on line'), findsOneWidget);
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteCloseKey(1)));
 
     await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'scrap');
     await tester.pumpAndSettle();
@@ -646,19 +861,19 @@ void main() {
     expect(find.byKey(KpiCatalogueScreen.filterCountKey), findsNothing);
   });
 
-  testWidgets('a hidden changed row with a too-short note keeps Save disabled', (tester) async {
+  // A short note can no longer become a draft, so what the filter could hide is
+  // gone with it: the popup refuses the note, and cancelling it changes nothing.
+  testWidgets('a refused short note leaves no changed KPI for the filter to hide', (tester) async {
     await _open(tester, _wire(), Routes.kpiReview);
     await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
     await tester.enterText(find.byKey(KpiReviewScreen.noteKey(1)), 'short');
     await tester.pumpAndSettle();
+    expect(find.textContaining('at least 10 characters'), findsOneWidget);
+    await tapIn(tester, find.byKey(KpiReviewScreen.noteCancelKey(1)));
 
     await tester.enterText(find.byKey(KpiReviewScreen.filterFieldKey), 'scrap');
     await tester.pumpAndSettle();
-    expect(find.text('1 changed KPI is hidden by the search.'), findsOneWidget);
-    expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
-
-    await tapIn(tester, find.byKey(KpiReviewScreen.filterClearKey));
-    expect(find.textContaining('at least 10 characters'), findsOneWidget);
+    expect(find.byKey(KpiReviewScreen.hiddenChangesKey), findsNothing);
     expect(_enabled(tester, KpiReviewScreen.saveKey), isFalse);
   });
 
@@ -684,11 +899,33 @@ void main() {
 
     testWidgets('/kpi/review renders without overflow at ${size.width.toInt()}px', (tester) async {
       await _open(tester, _wire(), Routes.kpiReview, size: size);
-      expect(find.byKey(KpiReviewScreen.headerRowKey), findsOneWidget);
-      expect(find.byKey(KpiReviewScreen.rowKey(1)), findsOneWidget);
-      // The widest row: Missed reveals the note field and its inline error.
+      for (final id in [1, 2, 3]) {
+        expect(find.byKey(KpiReviewScreen.rowKey(id)), findsOneWidget, reason: 'KPI $id');
+      }
+      // The widest state: Missed opens the popup, with its inline error.
       await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
       expect(find.byKey(KpiReviewScreen.noteKey(1)), findsOneWidget);
     });
   }
+
+  testWidgets('at 1200px the KPI cells tile across one row at equal widths', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview, size: const Size(1200, 1600));
+    final cells = [for (final id in [1, 2, 3]) tester.getRect(find.byKey(KpiReviewScreen.rowKey(id)))];
+
+    expect(cells[1].top, cells[0].top);
+    expect(cells[2].top, cells[0].top);
+    expect(cells[1].left, greaterThan(cells[0].right));
+    expect(cells[2].left, greaterThan(cells[1].right));
+    expect(cells[1].width, cells[0].width);
+    expect(cells[2].width, cells[0].width);
+  });
+
+  testWidgets('at 700px the KPI cells stack onto more rows, still one cell per KPI', (tester) async {
+    await _open(tester, _wire(), Routes.kpiReview, size: const Size(700, 1600));
+    final cells = [for (final id in [1, 2, 3]) tester.getRect(find.byKey(KpiReviewScreen.rowKey(id)))];
+
+    expect(cells[2].top, greaterThan(cells[0].bottom));
+    expect(cells[2].left, cells[0].left, reason: 'the columns line up');
+    expect(cells[2].width, cells[0].width);
+  });
 }

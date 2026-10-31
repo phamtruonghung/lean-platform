@@ -1,16 +1,20 @@
-/// The daily KPI Review (ADR-0055) at `/kpi/review`: for one day, one row per
-/// KPI of the MTU line with the Daily Target that day had, and a three-way
-/// judgement — Met, Missed or Not measured.
+/// The daily KPI Review (ADR-0055) at `/kpi/review`: for one day, a tiled matrix
+/// of one cell per KPI of the MTU line, each with the Daily Target that day had
+/// and a three-way judgement — Met, Missed or Not measured — chosen by icon.
 ///
-/// - A row with **no Target** shows "No target — set one first", cannot be
+/// - A cell with **no Target** shows "No target — set one first", cannot be
 ///   judged Met, and can still be reviewed Missed or Not measured.
-/// - Choosing **Missed** reveals a required note of at least 10 characters
-///   after trimming (the database's own CHECK), validated inline; the note area
-///   names the Target that was missed.
-/// - A row with a saved Review shows it in place — `Met · A B · 2026-10-30
+/// - Choosing **Missed** opens a popup asking for a note of at least 10
+///   characters after trimming (the database's own CHECK), naming the Target
+///   that was missed. Nothing is drafted until the popup is confirmed, so
+///   cancelling it leaves the judgement and the note as they were, and a
+///   cancelled popup can never leave an invalid Missed draft behind.
+/// - A cell with a note shows a note icon that opens it read-only, with an Edit
+///   button when the judgement is Missed and the caller may write.
+/// - A cell with a saved Review shows it in place — `Met · A B · 2026-10-30
 ///   08:12` — as the server holds it (`app_user`, `entered_at`).
-/// - **Save** posts every changed row in one request; it is disabled when
-///   nothing changed or any changed Missed row's note is too short.
+/// - **Save** posts every changed KPI in one request; it is disabled when
+///   nothing changed or any changed Missed KPI's note is too short.
 ///
 /// "Today" is the server's. `review_date` is the heading's day (with no date
 /// chosen, the Site's last working day), and the date picker opens another
@@ -29,19 +33,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_filter_field.dart';
-import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import 'kpi_catalogue.dart';
-import 'kpi_matrix.dart';
+import 'kpi_matrix.dart' show kpiMatchesSearch;
 import 'kpi_review_bloc.dart';
 
 class KpiReviewScreen extends StatelessWidget {
   const KpiReviewScreen({super.key, this.canWrite = true});
 
-  /// Whether the caller holds a write Grant anywhere. Without one the rows are
+  /// Whether the caller holds a write Grant anywhere. Without one the cells are
   /// read-only; the server is still the gate on a save.
   final bool canWrite;
 
@@ -50,7 +53,7 @@ class KpiReviewScreen extends StatelessWidget {
   /// The earliest day the picker offers.
   static final DateTime firstReviewDate = DateTime(2020, 1, 1);
 
-  /// A note owed on a Missed row: at least this many characters once trimmed.
+  /// A note owed on a Missed KPI: at least this many characters once trimmed.
   static const int minNoteLength = 10;
 
   static const ValueKey<String> siteKey = ValueKey<String>('kpi-review-site');
@@ -65,28 +68,32 @@ class KpiReviewScreen extends StatelessWidget {
   static const ValueKey<String> headingKey = ValueKey<String>('kpi-review-heading');
   static ValueKey<String> rowKey(int kpiId) => ValueKey<String>('kpi-review-row-$kpiId');
 
-  static const ValueKey<String> headerRowKey = ValueKey<String>('kpi-review-header');
   static const ValueKey<String> noMatchKey = ValueKey<String>('kpi-review-no-match');
 
-  /// The sentence naming changed rows the filter hides, beside Save.
+  /// The sentence naming changed KPIs the filter hides, beside Save.
   static const ValueKey<String> hiddenChangesKey = ValueKey<String>('kpi-review-hidden-changes');
   static const String filterFieldName = 'kpi-review-filter';
   static ValueKey<String> get filterFieldKey => AppFilterField.fieldKey(filterFieldName);
   static ValueKey<String> get filterClearKey => AppFilterField.clearKey(filterFieldName);
   static ValueKey<String> get filterCountKey => AppFilterField.countKey(filterFieldName);
 
-  /// The header cell of one column, by its label (`'KPI'`, `'Judgement'`, …).
-  static ValueKey<String> columnHeaderKey(String column) => ValueKey<String>('kpi-review-column-$column');
-
-  /// The body cell of one column of one KPI's row.
-  static ValueKey<String> cellKey(int kpiId, String column) =>
-      ValueKey<String>('kpi-review-cell-$kpiId-$column');
   static ValueKey<String> statusKey(int kpiId, String status) =>
       ValueKey<String>('kpi-review-$kpiId-$status');
+
+  /// The popup that asks for the note, and its field, confirm and cancel.
+  static ValueKey<String> noteDialogKey(int kpiId) => ValueKey<String>('kpi-review-note-dialog-$kpiId');
   static ValueKey<String> noteKey(int kpiId) => ValueKey<String>('kpi-review-note-$kpiId');
+  static ValueKey<String> noteSaveKey(int kpiId) => ValueKey<String>('kpi-review-note-save-$kpiId');
+  static ValueKey<String> noteCancelKey(int kpiId) => ValueKey<String>('kpi-review-note-cancel-$kpiId');
+
+  /// The cell's note icon, and the read-only popup it opens.
+  static ValueKey<String> notePopupKey(int kpiId) => ValueKey<String>('kpi-review-note-popup-$kpiId');
+  static ValueKey<String> noteReadDialogKey(int kpiId) => ValueKey<String>('kpi-review-note-read-$kpiId');
+  static ValueKey<String> noteEditKey(int kpiId) => ValueKey<String>('kpi-review-note-edit-$kpiId');
+  static ValueKey<String> noteCloseKey(int kpiId) => ValueKey<String>('kpi-review-note-close-$kpiId');
   static ValueKey<String> noTargetHintKey(int kpiId) => ValueKey<String>('kpi-review-no-target-$kpiId');
 
-  /// The row's saved state in place, e.g. `Met · A B · 2026-10-30 08:12`.
+  /// The cell's saved state in place, e.g. `Met · A B · 2026-10-30 08:12`.
   static ValueKey<String> savedStateKey(int kpiId) => ValueKey<String>('kpi-review-saved-state-$kpiId');
 
   static const String noTargetHint = 'No target — set one first';
@@ -110,11 +117,11 @@ class KpiReviewScreen extends StatelessWidget {
   }
 }
 
-/// What a person has chosen on one row so far.
+/// What a person has chosen for one KPI so far.
 class _Draft {
   const _Draft({required this.status, required this.note});
 
-  final String? status;
+  final String status;
   final String note;
 }
 
@@ -129,14 +136,13 @@ class _Loaded extends StatefulWidget {
 }
 
 class _LoadedState extends State<_Loaded> {
-  /// Per KPI, what the rows report. A row that has not been touched has no
-  /// entry. Cleared whenever a fresh read arrives (a day, a Site or a save),
-  /// because the row tiles are rebuilt on it.
+  /// Per KPI, what the cells report. A KPI that has not been touched has no
+  /// entry. Cleared whenever a fresh read arrives (a day, a Site or a save).
   final Map<int, _Draft> _drafts = {};
 
-  /// What the filter box is narrowing the rows to, `''` when nothing is. It
+  /// What the filter box is narrowing the cells to, `''` when nothing is. It
   /// survives a day change and is cleared only when the Site changes. It never
-  /// touches [_drafts]: a hidden row's unsaved judgement is still saved.
+  /// touches [_drafts]: a hidden cell's unsaved judgement is still saved.
   String _term = '';
 
   @override
@@ -159,7 +165,7 @@ class _LoadedState extends State<_Loaded> {
     for (final MapEntry(key: kpiId, value: draft) in _drafts.entries) {
       final row = _rowOf(kpiId);
       final status = draft.status;
-      if (row == null || status == null) continue;
+      if (row == null) continue;
       final note = draft.note.trim();
       final sameStatus = status == row.status;
       final sameNote = status != ReviewStatus.missed || note == (row.note ?? '').trim();
@@ -178,7 +184,46 @@ class _LoadedState extends State<_Loaded> {
   bool _noteTooShort(ReviewEntryInput entry) =>
       entry.status == ReviewStatus.missed && (entry.note ?? '').length < KpiReviewScreen.minNoteLength;
 
-  void _draft(int kpiId, String? status, String note) => setState(() => _drafts[kpiId] = _Draft(status: status, note: note));
+  void _draft(int kpiId, String status, String note) => setState(() => _drafts[kpiId] = _Draft(status: status, note: note));
+
+  bool get _enabled => widget.canWrite && !widget.state.isMutating;
+
+  String _noteOf(ReviewRow row) => _drafts[row.kpiId]?.note ?? row.note ?? '';
+
+  void _choose(ReviewRow row, String status) {
+    if (status == ReviewStatus.missed) {
+      _writeNote(row);
+    } else {
+      _draft(row.kpiId, status, _noteOf(row));
+    }
+  }
+
+  /// Asks for the note and only then drafts Missed. Every way out but confirm
+  /// (Cancel, Escape, a browser back) answers null and leaves [_drafts] alone,
+  /// so there is nothing to restore.
+  Future<void> _writeNote(ReviewRow row) async {
+    final review = widget.state.review;
+    final note = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _NoteDialog(row: row, note: _noteOf(row)),
+    );
+    if (note == null || !mounted || !identical(review, widget.state.review)) return;
+    _draft(row.kpiId, ReviewStatus.missed, note);
+  }
+
+  Future<void> _readNote(ReviewRow row) async {
+    final status = _drafts[row.kpiId]?.status ?? row.status;
+    final edit = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ReadNoteDialog(
+        row: row,
+        note: _noteOf(row).trim(),
+        canEdit: _enabled && status == ReviewStatus.missed,
+      ),
+    );
+    if (edit == true && mounted) await _writeNote(row);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +231,7 @@ class _LoadedState extends State<_Loaded> {
     final state = widget.state;
     final review = state.review;
     final changes = _changes;
-    // Filtered here, immediately before the row widgets are built. `changes`
+    // Filtered here, immediately before the cells are built. `changes`
     // stays over every draft, visible or not.
     final rows = review?.rows ?? const <ReviewRow>[];
     final matches = [
@@ -286,16 +331,16 @@ class _LoadedState extends State<_Loaded> {
                       'different title, or clear the filter.',
                 )
               else
-                AppListCard(
-                  rows: [
-                    MatrixHeaderRow(key: KpiReviewScreen.headerRowKey, columns: _columns),
+                _ReviewGrid(
+                  cells: [
                     for (final row in matches)
-                      _ReviewRowTile(
-                        key: ObjectKey(row),
+                      _ReviewCell(
                         row: row,
-                        draft: _drafts[row.kpiId],
-                        enabled: widget.canWrite && !state.isMutating,
-                        onChanged: _draft,
+                        status: _drafts[row.kpiId]?.status ?? row.status,
+                        note: _noteOf(row),
+                        enabled: _enabled,
+                        onChoose: (status) => _choose(row, status),
+                        onReadNote: () => _readNote(row),
                       ),
                   ],
                 ),
@@ -350,69 +395,79 @@ class _LoadedState extends State<_Loaded> {
   }
 }
 
-// Column weights shared by the header and the rows, so they line up.
-const int _kpiFlex = 3;
-const int _targetFlex = 2;
-const int _judgementFlex = 4;
-const int _noteFlex = 4;
-const int _savedFlex = 2;
+/// How many cells fit across [width]: the matrix's four, three, two or one.
+int _gridColumns(double width) => switch (width) {
+      >= 1080 => 4,
+      >= 820 => 3,
+      >= 560 => 2,
+      _ => 1,
+    };
 
-MatrixColumn _column(int flex, String label) =>
-    MatrixColumn(flex: flex, label: label, headerKey: KpiReviewScreen.columnHeaderKey(label));
+/// The tiled matrix: equal-width cells, so the columns line up.
+class _ReviewGrid extends StatelessWidget {
+  const _ReviewGrid({required this.cells});
 
-final List<MatrixColumn> _columns = [
-  _column(_kpiFlex, 'KPI'),
-  _column(_targetFlex, 'Daily target'),
-  _column(_judgementFlex, 'Judgement'),
-  _column(_noteFlex, 'Note'),
-  _column(_savedFlex, 'Saved'),
-];
+  final List<Widget> cells;
 
-class _ReviewRowTile extends StatefulWidget {
-  const _ReviewRowTile({
-    super.key,
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = _gridColumns(constraints.maxWidth);
+        // Floored: a width that rounds up would overflow the run by a fraction
+        // of a pixel and drop its last cell onto the next one.
+        final width = ((constraints.maxWidth - Spacing.md * (columns - 1)) / columns).floorToDouble();
+        return Wrap(
+          spacing: Spacing.md,
+          runSpacing: Spacing.md,
+          children: [
+            for (final cell in cells) SizedBox(width: width, child: cell),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The filled and outline icon of one judgement, and the colour it takes when
+/// chosen.
+(IconData, IconData, Color) _judgementIcons(ColorScheme colors, String status) => switch (status) {
+      ReviewStatus.met => (Icons.check_circle, Icons.check_circle_outline, colors.primary),
+      ReviewStatus.missed => (Icons.cancel, Icons.cancel_outlined, colors.error),
+      _ => (Icons.remove_circle, Icons.remove_circle_outline, colors.onSurfaceVariant),
+    };
+
+/// The Target line of a KPI on the day on screen, as the popups name it too.
+String? _targetText(ReviewRow row) {
+  final target = row.target;
+  return target == null ? null : formatReviewTarget(row, target);
+}
+
+class _ReviewCell extends StatelessWidget {
+  const _ReviewCell({
     required this.row,
-    required this.draft,
+    required this.status,
+    required this.note,
     required this.enabled,
-    required this.onChanged,
+    required this.onChoose,
+    required this.onReadNote,
   });
 
   final ReviewRow row;
 
-  /// What the parent holds for this KPI, if the person has touched it. A tile
-  /// the filter hid loses its `State`, so it seeds from this before the server.
-  final _Draft? draft;
+  /// The draft judgement, else the saved one; null when neither exists.
+  final String? status;
+
+  /// The draft note, else the saved one.
+  final String note;
   final bool enabled;
-  final void Function(int kpiId, String? status, String note) onChanged;
-
-  @override
-  State<_ReviewRowTile> createState() => _ReviewRowTileState();
-}
-
-class _ReviewRowTileState extends State<_ReviewRowTile> {
-  /// Starts on the person's draft, else the saved judgement, if any; a row with
-  /// neither starts with nothing selected.
-  late String? _status = widget.draft?.status ?? widget.row.status;
-  late final TextEditingController _note =
-      TextEditingController(text: widget.draft?.note ?? widget.row.note ?? '');
-
-  @override
-  void dispose() {
-    _note.dispose();
-    super.dispose();
-  }
-
-  void _choose(String status) {
-    setState(() => _status = status);
-    widget.onChanged(widget.row.kpiId, _status, _note.text);
-  }
+  final ValueChanged<String> onChoose;
+  final VoidCallback onReadNote;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final row = widget.row;
-    final target = row.target;
-    final targetText = target == null ? null : formatReviewTarget(row, target);
+    final targetText = _targetText(row);
     final saved = row.status == null
         ? null
         : [
@@ -420,88 +475,181 @@ class _ReviewRowTileState extends State<_ReviewRowTile> {
             if (row.appUser != null) row.appUser!,
             if (row.enteredAt != null) formatEnteredAt(row.enteredAt!),
           ].join(' · ');
-    final noteLength = _note.text.trim().length;
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    Widget cell(int flex, String column, Widget child) =>
-        matrixCell(flex: flex, key: KpiReviewScreen.cellKey(row.kpiId, column), child: child);
-    return Padding(
+    return Card(
       key: KpiReviewScreen.rowKey(row.kpiId),
-      padding: matrixRowPadding,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          cell(
-            _kpiFlex,
-            'KPI',
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(row.title, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: Spacing.xs),
+            Text(targetText == null ? 'No target' : 'Daily target: $targetText', style: muted),
+            if (targetText == null)
+              Text(
+                KpiReviewScreen.noTargetHint,
+                key: KpiReviewScreen.noTargetHintKey(row.kpiId),
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              ),
+            const SizedBox(height: Spacing.sm),
+            Row(
               children: [
-                Text(row.title, style: theme.textTheme.bodyLarge),
-                if (target == null)
-                  Text(
-                    KpiReviewScreen.noTargetHint,
-                    key: KpiReviewScreen.noTargetHintKey(row.kpiId),
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                for (final choice in ReviewStatus.all) _judgementButton(theme.colorScheme, choice),
+                const Spacer(),
+                if (note.trim().isNotEmpty)
+                  IconButton(
+                    key: KpiReviewScreen.notePopupKey(row.kpiId),
+                    tooltip: 'Read the note',
+                    icon: const Icon(Icons.sticky_note_2_outlined),
+                    onPressed: onReadNote,
                   ),
               ],
             ),
-          ),
-          cell(_targetFlex, 'Daily target', Text(targetText ?? 'No target', style: muted)),
-          cell(
-            _judgementFlex,
-            'Judgement',
-            Wrap(
-              spacing: Spacing.sm,
-              runSpacing: Spacing.xs,
-              children: [
-                for (final status in ReviewStatus.all)
-                  ChoiceChip(
-                    key: KpiReviewScreen.statusKey(row.kpiId, status),
-                    label: Text(ReviewStatus.label(status)),
-                    selected: _status == status,
-                    // A KPI with no Target cannot have met one.
-                    onSelected: !widget.enabled || (status == ReviewStatus.met && target == null)
-                        ? null
-                        : (_) => _choose(status),
-                  ),
-              ],
-            ),
-          ),
-          cell(
-            _noteFlex,
-            'Note',
-            _status == ReviewStatus.missed
-                ? TextField(
-                    key: KpiReviewScreen.noteKey(row.kpiId),
-                    controller: _note,
-                    enabled: widget.enabled,
-                    minLines: 2,
-                    maxLines: 4,
-                    onChanged: (value) {
-                      setState(() {});
-                      widget.onChanged(row.kpiId, _status, value);
-                    },
-                    decoration: InputDecoration(
-                      labelText:
-                          targetText == null ? 'Why was it missed?' : 'Why was the Target ($targetText) missed?',
-                      errorText: noteLength < KpiReviewScreen.minNoteLength
-                          ? 'A note of at least ${KpiReviewScreen.minNoteLength} characters is required '
-                              'when a KPI is missed ($noteLength so far).'
-                          : null,
-                      border: const OutlineInputBorder(),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          cell(
-            _savedFlex,
-            'Saved',
-            saved == null
-                ? const SizedBox.shrink()
-                : Text(saved, key: KpiReviewScreen.savedStateKey(row.kpiId), style: muted),
-          ),
-        ],
+            if (saved != null) Text(saved, key: KpiReviewScreen.savedStateKey(row.kpiId), style: muted),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _judgementButton(ColorScheme colors, String choice) {
+    final (filled, outline, colour) = _judgementIcons(colors, choice);
+    final selected = status == choice;
+    return IconButton(
+      key: KpiReviewScreen.statusKey(row.kpiId, choice),
+      tooltip: ReviewStatus.label(choice),
+      isSelected: selected,
+      icon: Icon(selected ? filled : outline),
+      color: selected ? colour : colors.onSurfaceVariant,
+      // A read-only cell still shows what was judged, in its own colour.
+      disabledColor: selected ? colour : null,
+      // A KPI with no Target cannot have met one.
+      onPressed: !enabled || (choice == ReviewStatus.met && row.target == null) ? null : () => onChoose(choice),
+    );
+  }
+}
+
+/// Asks why a KPI was missed. Answers the trimmed note on confirm, and null
+/// however else it closes.
+class _NoteDialog extends StatefulWidget {
+  const _NoteDialog({required this.row, required this.note});
+
+  final ReviewRow row;
+  final String note;
+
+  @override
+  State<_NoteDialog> createState() => _NoteDialogState();
+}
+
+class _NoteDialogState extends State<_NoteDialog> {
+  late final TextEditingController _note = TextEditingController(text: widget.note);
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final kpiId = widget.row.kpiId;
+    final targetText = _targetText(widget.row);
+    final note = _note.text.trim();
+    final tooShort = note.length < KpiReviewScreen.minNoteLength;
+    return AlertDialog(
+      key: KpiReviewScreen.noteDialogKey(kpiId),
+      title: Text(widget.row.title),
+      scrollable: true,
+      content: SizedBox(
+        width: 420,
+        child: TextField(
+          key: KpiReviewScreen.noteKey(kpiId),
+          controller: _note,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 6,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            labelText: targetText == null ? 'Why was it missed?' : 'Why was the Target ($targetText) missed?',
+            errorText: tooShort
+                ? 'A note of at least ${KpiReviewScreen.minNoteLength} characters is required '
+                    'when a KPI is missed (${note.length} so far).'
+                : null,
+            errorMaxLines: 3,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          key: KpiReviewScreen.noteCancelKey(kpiId),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: KpiReviewScreen.noteSaveKey(kpiId),
+          onPressed: tooShort ? null : () => Navigator.of(context).pop(note),
+          child: const Text('Confirm'),
+        ),
+      ],
+    );
+  }
+}
+
+/// A note, read-only. Answers true when the person asked to edit it.
+class _ReadNoteDialog extends StatelessWidget {
+  const _ReadNoteDialog({required this.row, required this.note, required this.canEdit});
+
+  final ReviewRow row;
+  final String note;
+  final bool canEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final targetText = _targetText(row);
+    // A draft the person typed is not the server's, so it names nobody.
+    final isSaved = row.note != null && row.note!.trim() == note;
+    final author = [
+      if (isSaved && row.appUser != null) row.appUser!,
+      if (isSaved && row.enteredAt != null) formatEnteredAt(row.enteredAt!),
+    ].join(' · ');
+    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    return AlertDialog(
+      key: KpiReviewScreen.noteReadDialogKey(row.kpiId),
+      title: Text(row.title),
+      scrollable: true,
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(targetText == null ? 'No target' : 'Daily target: $targetText', style: muted),
+            const SizedBox(height: Spacing.sm),
+            Text(note, style: theme.textTheme.bodyMedium),
+            if (author.isNotEmpty) ...[
+              const SizedBox(height: Spacing.sm),
+              Text(author, style: muted),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          key: KpiReviewScreen.noteCloseKey(row.kpiId),
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Close'),
+        ),
+        if (canEdit)
+          FilledButton(
+            key: KpiReviewScreen.noteEditKey(row.kpiId),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Edit'),
+          ),
+      ],
     );
   }
 }
