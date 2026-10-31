@@ -835,7 +835,7 @@ abstract final class AppColors {
 ///   22px, `headlineLarge` 26px (#367). A Screen's title is `headlineSmall`,
 ///   so no Screen's title is more than about 1.3× its body text, which is the
 ///   reference board's own headroom. The one larger text a Screen sets today is
-///   the count on a Home tile, in `headlineMedium`: a figure, not a title.
+///   the count on a Home tile, in `headlineLarge`: a figure, not a title.
 ///
 /// The existing Screens still reach for `bodyMedium` as their body
 /// default — migrating all of them is deliberately out of scope for #102
