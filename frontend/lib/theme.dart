@@ -558,7 +558,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color signatureBackdrop;
 
   /// Text drawn on [signatureBackdrop] (the "could not be shown" message).
-  /// [AppColors.textMuted] is too pale there in dark. 7.58:1 on
+  /// [textMuted] is too pale there in dark. 7.58:1 on
   /// [signatureBackdrop]'s white in the dark palette, and on the card in the
   /// light palette where the backdrop is clear.
   final Color onSignatureBackdrop;
@@ -814,23 +814,28 @@ abstract final class AppColors {
   static AppPalette of(BuildContext context) => Theme.of(context).extension<AppPalette>()!;
 }
 
-/// The Platform's type scale (issue #102). Material 3's own scale already
-/// supplies the exact numbers wanted, so this class names which role a
-/// Screen should reach for rather than redefining any of them —
-/// `ThemeData.textTheme`, built by [buildAppTheme] from the Material 3
-/// defaults and tinted by the seed's `ColorScheme`, stays the source of
+/// The Platform's type scale (issue #102; pinned by #367). This class names
+/// which role a Screen should reach for rather than redefining any of them —
+/// `ThemeData.textTheme`, whose sizes [buildAppTheme] pins from [_typeScale]
+/// and whose weights and line heights stay Material 3's own, is the source of
 /// truth.
 ///
 /// - **Body** — `bodyLarge`, 16px / 24px line height (1.5). The base size
-///   this ticket asks for; new body copy should reach for this.
+///   #102 asked for; new body copy should reach for this. Unchanged by #367.
 /// - **Dense** — `bodyMedium`, 14px / 20px. Still correct for labels,
-///   metadata and dense table cells; not being replaced.
-/// - **Floor** — `bodySmall`, 12px / 16px. Nothing in the Platform goes
-///   below this. **Enforced as of issue #168**: the last labels that sat below
-///   it — including the Shell's own Destination-group heading, at 11px — were
-///   brought up to `labelMedium`, and `labelSmall` is no longer spent anywhere
-///   under `lib/`. A new label below this floor is a regression, not a
+///   metadata and dense table cells; not being replaced. Unchanged by #367.
+/// - **Floor** — `bodySmall`, 12px / 16px. Unchanged by #367. Nothing in the
+///   Platform goes below this. **Enforced as of issue #168**: the labels that
+///   sat below it — including the Shell's own Destination-group heading, at
+///   11px — were brought up to `labelMedium`. Three detail Screens still spend
+///   `labelSmall`, so #367 pins that role at 12 rather than leaving it at
+///   Material's 11. A new label below this floor is a regression, not a
 ///   judgement call.
+/// - **Headings** — `headlineSmall` and `titleLarge` 18px, `headlineMedium`
+///   22px, `headlineLarge` 26px (#367). A Screen's title is `headlineSmall`,
+///   so no Screen's title is more than about 1.3× its body text, which is the
+///   reference board's own headroom. The one larger text a Screen sets today is
+///   the count on a Home tile, in `headlineMedium`: a figure, not a title.
 ///
 /// The existing Screens still reach for `bodyMedium` as their body
 /// default — migrating all of them is deliberately out of scope for #102
@@ -845,6 +850,42 @@ abstract final class AppTypography {
 
   static TextStyle? floor(BuildContext context) => Theme.of(context).textTheme.bodySmall;
 }
+
+/// The Platform's type sizes, pinned role by role (issue #367), for the reason
+/// the palette is: left to Material 3's own 2021 defaults, a Flutter upgrade
+/// could quietly restyle the app.
+///
+/// **Where these values come from.** The reference is the MTU board
+/// (`https://mtu-db.digitalciapp.com/`), measured from its own deployed CSS: 14px
+/// body, 12px dense and table text, 11px labels, and a largest heading of 16px,
+/// which is about 1.33× the body it reads at. The Platform's body ladder already
+/// matched at 14px and 12px, so those numbers are Material's own, written down.
+/// The heading end is where the Platform differed: a page title was 24px, 1.5×
+/// the board's largest text and 1.7× the body beneath it. The heading roles step
+/// down to the board's headroom.
+///
+/// `titleMedium` and `bodyLarge` stay at 16px: 1.14× the board's 14px body, inside
+/// tolerance. `labelSmall` is the one role that goes *up*, from 11 to 12, because
+/// the Platform's floor is 12px (see [AppTypography]) where the board's is 11.
+///
+/// Each entry is a `fontSize` and nothing else. Weight, line height and letter
+/// spacing stay Material's own per role, so a line height here is Material's
+/// ratio at the size above rather than a second number to keep in step with the
+/// spec.
+const TextTheme _typeScale = TextTheme(
+  headlineLarge: TextStyle(fontSize: 26),
+  headlineMedium: TextStyle(fontSize: 22),
+  headlineSmall: TextStyle(fontSize: 18),
+  titleLarge: TextStyle(fontSize: 18),
+  titleMedium: TextStyle(fontSize: 16),
+  titleSmall: TextStyle(fontSize: 14),
+  bodyLarge: TextStyle(fontSize: 16),
+  bodyMedium: TextStyle(fontSize: 14),
+  bodySmall: TextStyle(fontSize: 12),
+  labelLarge: TextStyle(fontSize: 14),
+  labelMedium: TextStyle(fontSize: 12),
+  labelSmall: TextStyle(fontSize: 12),
+);
 
 /// Builds the app theme for [brightness] (issue #366): the light one by
 /// default, so every existing no-argument call keeps meaning what it meant.
@@ -989,6 +1030,7 @@ ThemeData _themeFrom(ColorScheme scheme, AppPalette palette) {
     useMaterial3: true,
     colorScheme: scheme,
     fontFamily: 'Roboto',
+    textTheme: _typeScale,
     scaffoldBackgroundColor: palette.canvas,
     focusColor: palette.focusRing.withValues(alpha: 0.12),
     cardTheme: CardThemeData(
