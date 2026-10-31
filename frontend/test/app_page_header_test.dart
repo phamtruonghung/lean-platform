@@ -12,6 +12,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/theme.dart';
@@ -23,9 +24,12 @@ const _belowKey = ValueKey<String>('test-below');
 Future<void> _pump(
   WidgetTester tester, {
   double boxWidth = 900,
+  String title = 'Things',
   String? description = 'What this page is for.',
   bool actions = true,
   bool below = true,
+  double textScale = 1,
+  List<Widget>? actionWidgets,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1000, 800);
@@ -34,17 +38,25 @@ Future<void> _pump(
     MaterialApp(
       theme: buildAppTheme(),
       home: Scaffold(
-        body: Align(
-          alignment: Alignment.topLeft,
-          child: SizedBox(
-            width: boxWidth,
-            child: AppPageHeader(
-              title: 'Things',
-              description: description,
-              actions: actions
-                  ? [FilledButton(key: _actionKey, onPressed: () {}, child: const Text('Add a thing'))]
-                  : const [],
-              below: below ? const Text('Filters', key: _belowKey) : null,
+        // The text scale sits inside the MaterialApp, where a real reader's
+        // setting reaches the header; the box width is still the SizedBox's.
+        body: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: boxWidth,
+                child: AppPageHeader(
+                  title: title,
+                  description: description,
+                  actions: actionWidgets ??
+                      (actions
+                          ? [FilledButton(key: _actionKey, onPressed: () {}, child: const Text('Add a thing'))]
+                          : const []),
+                  below: below ? const Text('Filters', key: _belowKey) : null,
+                ),
+              ),
             ),
           ),
         ),
@@ -132,6 +144,46 @@ void main() {
     final title = tester.getRect(find.byKey(AppPageHeader.titleKey));
     final action = tester.getRect(find.byKey(_actionKey));
     expect(action.top, lessThan(title.bottom));
+  });
+
+  testWidgets('at 2x text the Directory title keeps one line: the actions wrap, not squeeze it',
+      (tester) async {
+    // The breakpoint scales with the reader's text size (WCAG 1.4.4): the
+    // actions row grows with the scale and the box does not.
+    await _pump(
+      tester,
+      boxWidth: AppPageHeader.wrapBreakpoint,
+      title: 'Directory',
+      description: null,
+      below: false,
+      textScale: 2,
+      actionWidgets: [
+        FilledButton.icon(
+          key: _actionKey,
+          onPressed: () {},
+          icon: const Icon(Icons.person_add_alt_1_outlined),
+          label: const Text('Add Employee'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () {},
+          icon: const Icon(Icons.badge_outlined),
+          label: const Text('My record'),
+        ),
+      ],
+    );
+    final paragraph = tester.renderObject<RenderParagraph>(find.byKey(AppPageHeader.titleKey));
+    // One box per line: a title squeezed to a sliver breaks across many.
+    final lines = paragraph
+        .getBoxesForSelection(const TextSelection(baseOffset: 0, extentOffset: 'Directory'.length))
+        .map((box) => box.top.round())
+        .toSet();
+    expect(lines, hasLength(1));
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getRect(find.byKey(_actionKey)).top,
+      greaterThanOrEqualTo(tester.getRect(find.byKey(AppPageHeader.titleKey)).bottom),
+      reason: 'the actions wrap under the title',
+    );
   });
 
   testWidgets('a hairline in the card border colour sits under the whole block', (tester) async {
