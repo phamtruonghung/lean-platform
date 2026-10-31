@@ -14,6 +14,7 @@ import 'package:lean_platform/kpi/kpi_review_screen.dart';
 import 'package:lean_platform/kpi/kpi_targets_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/router.dart';
+import 'package:lean_platform/widgets/app_date_field.dart';
 import 'harness.dart';
 
 const String _outside = "Outside the caller's granted Org Units";
@@ -392,6 +393,28 @@ void main() {
     await tester.tap(find.descendant(of: find.byType(DatePickerDialog), matching: find.text('Cancel')));
     await tester.pumpAndSettle();
     await pickDate(tester, KpiReviewScreen.dateKey, DateTime(2026, 10, 30));
+    expect(find.text('KPI Review for 2026-10-30'), findsOneWidget);
+  });
+
+  testWidgets('with no date the Review shows the last working day and the picker ends at the Site\'s today',
+      (tester) async {
+    final wire = _wire()
+      ..kpiSiteToday = '2026-10-30'
+      ..kpiReviewDate = '2026-10-29';
+    await _open(tester, wire, Routes.kpiReview);
+
+    expect(find.text('KPI Review for 2026-10-29'), findsOneWidget);
+    expect(find.text('Overall equipment effectiveness'), findsOneWidget);
+    expect(
+      tester
+          .widget<AppDateField>(find.ancestor(of: find.byKey(KpiReviewScreen.dateKey), matching: find.byType(AppDateField)))
+          .lastDate,
+      DateTime(2026, 10, 30),
+    );
+
+    await pickDate(tester, KpiReviewScreen.dateKey, DateTime(2026, 10, 30));
+
+    expect(wire.kpiReads.last.queryParameters, {'site_id': '1', 'date': '2026-10-30'});
     expect(find.text('KPI Review for 2026-10-30'), findsOneWidget);
   });
 

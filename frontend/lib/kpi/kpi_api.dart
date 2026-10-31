@@ -120,7 +120,7 @@ class KpiApi {
   }
 
   /// One day's KPI Review (`GET /review`). Without [date] the server answers
-  /// the Site's own today.
+  /// the Site's last working day, and `site_today` carries the Site's own today.
   Future<KpiReview> fetchReview(String accessToken, {required String siteId, String? date}) async {
     final path = '$_base/review';
     final uri = Uri.parse(path).replace(queryParameters: {'site_id': siteId, 'date': ?date});

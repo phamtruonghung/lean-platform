@@ -29,6 +29,12 @@
  * `date` into a JavaScript Date at the server's local midnight, which is exactly
  * the JavaScript date handling the paragraph above refuses.
  *
+ * The Site's last working day is what a Daily Review read with no date answers:
+ * the most recent day before the Site's own today that no `calendar_exceptions`
+ * row marks non-working (the same predicate the Shift instance generator uses).
+ * Weekends are not skipped: this plant runs seven days, so a Saturday or Sunday
+ * is a working day unless an exception row says otherwise.
+ *
  * The small pieces every route of both routers shares live here too, so there
  * is one copy of each rather than six: the 503 guard for an unconfigured
  * catalogue, the scope check, the Site resolution and the strict date parser.
@@ -64,6 +70,34 @@ async function findSiteContext(siteId) {
     rootOrgUnitId: row.root_org_unit_id,
     siteToday: row.site_today
   };
+}
+
+// The Site's last working day: the most recent date strictly before the Site's
+// own today that is not marked non-working in calendar_exceptions, using the
+// same predicate the shift generator uses (generate_shift_instances in
+// migrations/1756000000000_baseline.js): 'holiday', 'shutdown' and
+// 'non_working' make a day non-working; 'maintenance' does not. Weekends are not
+// special — this plant runs seven days, so a Saturday or Sunday is a working day
+// unless an exception row says otherwise. Resolved in SQL (ADR-0048), bounded at
+// 365 days, and falling back to `site_today - 1` when the whole window is
+// excepted: a Screen that cannot load is worse than a slightly wrong day.
+async function findLastWorkingDay({ site, rootOrgUnitId, siteToday }) {
+  const { rows: [row] } = await getPool().query(
+    `SELECT COALESCE(
+              (SELECT d::date::text
+                 FROM generate_series(($1::date - 1), ($1::date - 365), interval '-1 day') AS d
+                WHERE NOT EXISTS (
+                        SELECT 1 FROM calendar_exceptions ce
+                         WHERE ce.site_id = $2
+                           AND (ce.org_unit_id IS NULL OR ce.org_unit_id = $3::bigint)
+                           AND ce.exception_type IN ('holiday','shutdown','non_working')
+                           AND ce.exception_date = d::date)
+                ORDER BY d DESC
+                LIMIT 1),
+              ($1::date - 1)::text) AS last_working_day`,
+    [siteToday, site.id, rootOrgUnitId]
+  );
+  return row.last_working_day;
 }
 
 // Mounted after `authenticate` and `requireActive` on every route, so an
@@ -120,6 +154,7 @@ function parseDateOnly(value) {
 
 module.exports = {
   findSiteContext,
+  findLastWorkingDay,
   requireCatalogueConfigured,
   requireScope,
   resolveSiteContext,

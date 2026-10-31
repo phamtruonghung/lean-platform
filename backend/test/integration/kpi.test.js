@@ -338,6 +338,57 @@ test('a correction for the same KPI and day appends a second row and the newest 
   assert.strictEqual(after.body.rows.find((r) => r.kpi_id === 3).target, 3);
 });
 
+test('with no date the Review answers the last working day and carries the Site\'s today', async () => {
+  const { rows: [d] } = await pool.query(
+    `SELECT (now() AT TIME ZONE $1)::date::text AS today,
+            ((now() AT TIME ZONE $1)::date - 1)::text AS yesterday,
+            ((now() AT TIME ZONE $1)::date - 2)::text AS day_before,
+            ((now() AT TIME ZONE $1)::date - 3)::text AS three_days_before`,
+    [TIMEZONE]
+  );
+  const insertedExceptionIds = [];
+  async function addException(orgUnitId, date, type) {
+    const { rows: [row] } = await pool.query(
+      `INSERT INTO calendar_exceptions (site_id, org_unit_id, exception_date, exception_type)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [site.id, orgUnitId, date, type]
+    );
+    insertedExceptionIds.push(row.id);
+  }
+  const readNoDate = () => get(writer.token, `/review?site_id=${site.id}`);
+
+  try {
+    // No exception row: yesterday, weekend or not.
+    const plain = await readNoDate();
+    assert.strictEqual(plain.status, 200, JSON.stringify(plain.body));
+    assert.strictEqual(plain.body.review_date, d.yesterday);
+    assert.strictEqual(plain.body.site_today, d.today);
+
+    // An explicit date wins, and site_today is still there.
+    const explicit = await get(writer.token, `/review?site_id=${site.id}&date=${REVIEW_DATE}`);
+    assert.strictEqual(explicit.status, 200, JSON.stringify(explicit.body));
+    assert.strictEqual(explicit.body.review_date, REVIEW_DATE);
+    assert.strictEqual(explicit.body.site_today, d.today);
+
+    // Maintenance does not make a day non-working.
+    await addException(rootOrgUnit.id, d.yesterday, 'maintenance');
+    const maintenance = await readNoDate();
+    assert.strictEqual(maintenance.status, 200, JSON.stringify(maintenance.body));
+    assert.strictEqual(maintenance.body.review_date, d.yesterday);
+
+    // A holiday (root Org Unit) and a shutdown (whole Site) do.
+    await addException(rootOrgUnit.id, d.yesterday, 'holiday');
+    await addException(null, d.day_before, 'shutdown');
+    const excepted = await readNoDate();
+    assert.strictEqual(excepted.status, 200, JSON.stringify(excepted.body));
+    assert.strictEqual(excepted.body.review_date, d.three_days_before);
+  } finally {
+    if (insertedExceptionIds.length > 0) {
+      await pool.query('DELETE FROM calendar_exceptions WHERE id = ANY($1)', [insertedExceptionIds]);
+    }
+  }
+});
+
 test('a read-only Grant reads all three, writes none, and an administrator needs no Grant', async () => {
   const { rows: [{ before }] } = await mtuPool.query(
     `SELECT (SELECT count(*) FROM kpi.kpi)::int + (SELECT count(*) FROM kpi.kpi_target)::int

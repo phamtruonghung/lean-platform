@@ -2668,10 +2668,14 @@ class FakeWire {
   /// `app_user` [kpiFakeAppUser]), so the Screen's re-read shows what was saved.
   final List<Map<String, dynamic>> kpiReviewRows;
 
-  /// The Site's today as the server would report it (`review_date` of a read
-  /// that carried no `date`). `'2026-10-30'` when null. A read that carried a
-  /// `date` answers that date back, as the routes do.
+  /// The `review_date` a read that carried no `date` answers (the Site's last
+  /// working day on the real server). `'2026-10-30'` when null. A read that
+  /// carried a `date` answers that date back, as the routes do.
   String? kpiReviewDate;
+
+  /// The Site's today the server reports as `site_today` on a Review read.
+  /// `'2026-10-30'` when null.
+  String? kpiSiteToday;
 
   int kpiCatalogueStatus;
   String kpiCatalogueMessage;
@@ -2730,7 +2734,9 @@ class FakeWire {
       }
       if (path == '/api/kpi/review') {
         if (kpiReviewStatus != 200) return refusal(kpiReviewStatus, 'The KPI Review is unavailable.');
-        return http.Response(jsonEncode({'review_date': date, 'rows': kpiReviewRows}), 200);
+        return http.Response(jsonEncode({'review_date': date, 'site_today': kpiSiteToday ?? '2026-10-30', 'rows': kpiReviewRows}),
+          200,
+        );
       }
       return http.Response('{}', 404);
     }
