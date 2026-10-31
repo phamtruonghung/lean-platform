@@ -25,6 +25,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -81,31 +82,18 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ProductsScreen.maxWidth,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Products', style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: Spacing.xs),
-                      Text(
-                        'What the plant makes — one catalogue shared by every Site, '
-                        'and what each Product is measured in.',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
+            AppPageHeader(
+              title: 'Products',
+              description:
+                  'What the plant makes — one catalogue shared by every Site, '
+                  'and what each Product is measured in.',
+              actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: ProductsScreen.addKey,

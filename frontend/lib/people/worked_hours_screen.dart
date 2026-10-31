@@ -38,6 +38,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import 'worked_hours.dart';
 import 'worked_hours_bloc.dart';
 
@@ -97,12 +98,11 @@ class _WorkedHoursBody extends StatelessWidget {
                 label: const Text('Back to Employee'),
               ),
               const SizedBox(height: Spacing.sm),
-              Text('Worked hours', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                'The confirmed hours this Employee actually worked, day by day. '
-                'Only confirmed attendance counts — an unconfirmed sheet is a draft.',
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              const AppPageHeader(
+                title: 'Worked hours',
+                description:
+                    'The confirmed hours this Employee actually worked, day by day. '
+                    'Only confirmed attendance counts — an unconfirmed sheet is a draft.',
               ),
               const SizedBox(height: Spacing.lg),
               Row(

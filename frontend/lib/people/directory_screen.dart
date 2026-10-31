@@ -17,6 +17,7 @@ import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
@@ -127,7 +128,6 @@ class _HeaderState extends State<_Header> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = widget.state is DirectoryLoaded ? widget.state as DirectoryLoaded : null;
 
     return Center(
@@ -135,133 +135,121 @@ class _HeaderState extends State<_Header> {
         maxWidth: DirectoryScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title and subtitle on their own full-width row, not squeezed
-              // beside the action buttons: with two of them now offered to an
-              // administrator (issue #87's own "Add Employee", alongside "My
-              // record"), an `Expanded` column sharing a `Row` with both would
-              // be forced so narrow that "Directory" itself wraps character by
-              // character, ballooning this header's own height and starving
-              // whatever the body below has left — exactly the failure mode
-              // the buttons now live in their own `Wrap` beneath this to avoid.
-              Text('Directory', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.xs),
-              Text(
+          // The buttons are the header's actions: `AppPageHeader` puts them at
+          // the row's far end, and wraps them under the title when the box is
+          // too narrow to share (the failure the old comment here guarded
+          // against: "Directory" itself wrapping character by character).
+          child: AppPageHeader(
+            title: 'Directory',
+            description:
                 'Who works here — searched, filtered, and Departed Employees kept '
                 'out of sight until asked for.',
-                style:
-                    theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            actions: [
+              if (widget.isAdmin)
+                FilledButton.icon(
+                  key: DirectoryScreen.addKey,
+                  onPressed: loaded != null && loaded.isAdding
+                      ? null
+                      : () => EmployeeFormDialog.open(context),
+                  icon: const Icon(Icons.person_add_alt_1_outlined),
+                  label: const Text('Add Employee'),
+                ),
+              OutlinedButton.icon(
+                key: DirectoryScreen.myRecordKey,
+                onPressed: () => context.go('${Routes.directory}/me'),
+                icon: const Icon(Icons.badge_outlined),
+                label: const Text('My record'),
               ),
-              const SizedBox(height: Spacing.md),
-              Wrap(
-                spacing: Spacing.sm,
-                runSpacing: Spacing.xs,
-                children: [
-                  if (widget.isAdmin)
-                    FilledButton.icon(
-                      key: DirectoryScreen.addKey,
-                      onPressed: loaded != null && loaded.isAdding
-                          ? null
-                          : () => EmployeeFormDialog.open(context),
-                      icon: const Icon(Icons.person_add_alt_1_outlined),
-                      label: const Text('Add Employee'),
-                    ),
-                  OutlinedButton.icon(
-                    key: DirectoryScreen.myRecordKey,
-                    onPressed: () => context.go('${Routes.directory}/me'),
-                    icon: const Icon(Icons.badge_outlined),
-                    label: const Text('My record'),
+            ],
+            below: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // As-you-type suggestions (issue #128, ADR-0023 point 5) sit
+                // alongside the list filter below, not in place of it: picking
+                // a suggestion navigates straight to that Employee
+                // (`onSelected`), while pressing Enter without picking one
+                // still narrows the list underneath exactly as it always has
+                // (`onSubmitted` → `DirectorySearchChanged`) — "show me
+                // everyone called Nguyen" is a real thing to want, and is not
+                // the same as jumping to one person (this ticket's own "Why").
+                AppSearchField<Employee>(
+                  name: DirectoryScreen._searchFieldName,
+                  label: 'Search by name',
+                  // No confirmed selection to seed or track here — unlike
+                  // `SiteFormDialog`'s timezone field, a pick here navigates
+                  // away rather than settling into this field, so there is
+                  // never a chosen Employee this field itself needs to display.
+                  value: null,
+                  onChanged: (_) {},
+                  onSelected: (employee) => context.go('${Routes.directory}/${employee.id}'),
+                  fetchSuggestions: _fetchSuggestions,
+                  suggestionBuilder: (context, employee) {
+                    final theme = Theme.of(context);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(employee.displayName),
+                          Text(
+                            _employeeSubtitle(employee),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  idOf: (employee) => employee.id,
+                  displayStringFor: (employee) => employee.displayName,
+                  onSubmitted: (value) =>
+                      context.read<DirectoryBloc>().add(DirectorySearchChanged(value)),
+                ),
+                if (loaded != null) ...[
+                  const SizedBox(height: Spacing.sm),
+                  Wrap(
+                    spacing: Spacing.sm,
+                    runSpacing: Spacing.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        key: DirectoryScreen.orgUnitFilterKey,
+                        onPressed: () => DirectoryOrgUnitFilterDialog.open(context),
+                        icon: const Icon(Icons.account_tree_outlined, size: 18),
+                        label: Text(loaded.orgUnitName ?? 'All Org Units'),
+                      ),
+                      SizedBox(
+                        width: 220,
+                        child: DropdownButtonFormField<String>(
+                          key: DirectoryScreen.jobRoleFilterKey,
+                          initialValue: loaded.jobRoleId,
+                          isDense: true,
+                          isExpanded: true,
+                          decoration:
+                              const InputDecoration(labelText: 'Job role', border: OutlineInputBorder()),
+                          items: [
+                            const DropdownMenuItem<String>(value: null, child: Text('All job roles')),
+                            for (final jobRole in loaded.jobRoles)
+                              DropdownMenuItem<String>(value: jobRole.id, child: Text(jobRole.name)),
+                          ],
+                          onChanged: (jobRoleId) => context
+                              .read<DirectoryBloc>()
+                              .add(DirectoryJobRoleFilterChanged(jobRoleId)),
+                        ),
+                      ),
+                      FilterChip(
+                        key: DirectoryScreen.includeDepartedKey,
+                        label: const Text('Include Departed'),
+                        selected: loaded.includeDeparted,
+                        onSelected: (value) =>
+                            context.read<DirectoryBloc>().add(DirectoryIncludeDepartedChanged(value)),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-              const SizedBox(height: Spacing.md),
-              // As-you-type suggestions (issue #128, ADR-0023 point 5) sit
-              // alongside the list filter below, not in place of it: picking
-              // a suggestion navigates straight to that Employee
-              // (`onSelected`), while pressing Enter without picking one
-              // still narrows the list underneath exactly as it always has
-              // (`onSubmitted` → `DirectorySearchChanged`) — "show me
-              // everyone called Nguyen" is a real thing to want, and is not
-              // the same as jumping to one person (this ticket's own "Why").
-              AppSearchField<Employee>(
-                name: DirectoryScreen._searchFieldName,
-                label: 'Search by name',
-                // No confirmed selection to seed or track here — unlike
-                // `SiteFormDialog`'s timezone field, a pick here navigates
-                // away rather than settling into this field, so there is
-                // never a chosen Employee this field itself needs to display.
-                value: null,
-                onChanged: (_) {},
-                onSelected: (employee) => context.go('${Routes.directory}/${employee.id}'),
-                fetchSuggestions: _fetchSuggestions,
-                suggestionBuilder: (context, employee) {
-                  final theme = Theme.of(context);
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(employee.displayName),
-                        Text(
-                          _employeeSubtitle(employee),
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                idOf: (employee) => employee.id,
-                displayStringFor: (employee) => employee.displayName,
-                onSubmitted: (value) =>
-                    context.read<DirectoryBloc>().add(DirectorySearchChanged(value)),
-              ),
-              if (loaded != null) ...[
-                const SizedBox(height: Spacing.sm),
-                Wrap(
-                  spacing: Spacing.sm,
-                  runSpacing: Spacing.xs,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    OutlinedButton.icon(
-                      key: DirectoryScreen.orgUnitFilterKey,
-                      onPressed: () => DirectoryOrgUnitFilterDialog.open(context),
-                      icon: const Icon(Icons.account_tree_outlined, size: 18),
-                      label: Text(loaded.orgUnitName ?? 'All Org Units'),
-                    ),
-                    SizedBox(
-                      width: 220,
-                      child: DropdownButtonFormField<String>(
-                        key: DirectoryScreen.jobRoleFilterKey,
-                        initialValue: loaded.jobRoleId,
-                        isDense: true,
-                        isExpanded: true,
-                        decoration:
-                            const InputDecoration(labelText: 'Job role', border: OutlineInputBorder()),
-                        items: [
-                          const DropdownMenuItem<String>(value: null, child: Text('All job roles')),
-                          for (final jobRole in loaded.jobRoles)
-                            DropdownMenuItem<String>(value: jobRole.id, child: Text(jobRole.name)),
-                        ],
-                        onChanged: (jobRoleId) => context
-                            .read<DirectoryBloc>()
-                            .add(DirectoryJobRoleFilterChanged(jobRoleId)),
-                      ),
-                    ),
-                    FilterChip(
-                      key: DirectoryScreen.includeDepartedKey,
-                      label: const Text('Include Departed'),
-                      selected: loaded.includeDeparted,
-                      onSelected: (value) =>
-                          context.read<DirectoryBloc>().add(DirectoryIncludeDepartedChanged(value)),
-                    ),
-                  ],
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),

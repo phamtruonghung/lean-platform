@@ -24,6 +24,7 @@ import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -110,7 +111,6 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final state = widget.state;
     final canWrite = widget.canWrite;
     final catalogue = state.catalogue;
@@ -127,39 +127,13 @@ class _LoadedState extends State<_Loaded> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Text('KPI catalogue', style: theme.textTheme.headlineSmall),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              catalogue == null
+            AppPageHeader(
+              title: 'KPI catalogue',
+              description: catalogue == null
                   ? 'The KPIs of the MTU line, with the Target in force per grain.'
                   : 'The KPIs of the MTU line, with the Target in force per grain and the '
                       'review state for today, ${catalogue.reviewDate}.',
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: Spacing.md),
-            Wrap(
-              spacing: Spacing.md,
-              runSpacing: Spacing.md,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (state.sites.length > 1)
-                  SizedBox(
-                    width: 280,
-                    child: DropdownButtonFormField<String>(
-                      key: KpiCatalogueScreen.siteKey,
-                      initialValue: state.siteId,
-                      isDense: true,
-                      decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                      items: [
-                        for (final site in state.sites)
-                          DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-                      ],
-                      onChanged: (siteId) {
-                        if (siteId == null) return;
-                        context.read<KpiCatalogueBloc>().add(KpiCatalogueSiteSelected(siteId));
-                      },
-                    ),
-                  ),
+              actions: [
                 if (canWrite)
                   FilledButton.icon(
                     key: KpiCatalogueScreen.addKpiKey,
@@ -168,6 +142,26 @@ class _LoadedState extends State<_Loaded> {
                     label: const Text('Add KPI'),
                   ),
               ],
+              below: state.sites.length > 1
+                  ? SizedBox(
+                      width: 280,
+                      child: DropdownButtonFormField<String>(
+                        key: KpiCatalogueScreen.siteKey,
+                        initialValue: state.siteId,
+                        isDense: true,
+                        decoration:
+                            const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                        items: [
+                          for (final site in state.sites)
+                            DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                        ],
+                        onChanged: (siteId) {
+                          if (siteId == null) return;
+                          context.read<KpiCatalogueBloc>().add(KpiCatalogueSiteSelected(siteId));
+                        },
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(height: Spacing.lg),
             if (state.isLoadingCatalogue || catalogue == null)

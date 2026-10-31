@@ -15,7 +15,9 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/home_screen.dart';
@@ -23,6 +25,7 @@ import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/people/approval_queue_screen.dart';
 import 'package:lean_platform/actions/actions_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 
 import 'harness.dart';
@@ -450,5 +453,154 @@ void main() {
       tester.getTopLeft(find.byKey(HomeScreen.unassignedCardKey)).dy,
       greaterThan(tester.getTopLeft(find.byKey(HomeScreen.openWorkOrdersCardKey)).dy),
     );
+  });
+
+  // The stat tile and the header (issue #375). What these claim is what a
+  // person sees and does: a rule under the header, a quieter zero, a hover fill
+  // and a keyboard ring that really draw, motion that obeys reduced motion, and
+  // a 320px window that overflows nowhere.
+
+  /// An administrator whose only open Work order is already assigned: Open work
+  /// orders reads 1 and Awaiting assignment reads 0, so one Home carries a real
+  /// number and a zero side by side.
+  Future<void> pumpOneAndZero(WidgetTester tester, {Size size = const Size(1200, 1400)}) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = size;
+    addTearDown(tester.view.reset);
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt', assignedTo: '9', assigneeName: 'Jo')],
+      },
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+  }
+
+  Text countIn(WidgetTester tester, Key card, String count) => tester.widget<Text>(
+        find.descendant(of: find.byKey(card), matching: find.text(count)),
+      );
+
+  testWidgets('a hairline rule sits under the email and role line, above the grid, from the '
+      "title's left edge", (tester) async {
+    await pumpOneAndZero(tester);
+
+    final title = tester.getTopLeft(find.text('Welcome, A B'));
+    final line = tester.getBottomLeft(find.text('admin@b.c · admin'));
+    final rule = find.byKey(HomeScreen.headerRuleKey);
+    expect(rule, findsOneWidget);
+    expect(tester.getTopLeft(rule).dy, greaterThanOrEqualTo(line.dy));
+    expect(tester.getTopLeft(rule).dy,
+        lessThan(tester.getTopLeft(find.byKey(HomeScreen.myActionsCardKey)).dy));
+    expect(tester.getTopLeft(rule).dx, title.dx);
+    expect(tester.getSize(rule).height, 1);
+  });
+
+  testWidgets('the greeting is a semantic header', (tester) async {
+    await pumpOneAndZero(tester);
+    final handle = tester.ensureSemantics();
+    expect(
+      tester.getSemantics(find.text('Welcome, A B')),
+      matchesSemantics(label: 'Welcome, A B', isHeader: true),
+    );
+    handle.dispose();
+  });
+
+  testWidgets('a zero count is quieter than a real one, and its card still has its label, '
+      'caption and link', (tester) async {
+    await pumpOneAndZero(tester);
+    final palette = AppColors.of(tester.element(find.byType(Scaffold).first));
+
+    final real = countIn(tester, HomeScreen.openWorkOrdersCardKey, '1').style!;
+    final zero = countIn(tester, HomeScreen.unassignedCardKey, '0').style!;
+    expect(zero.fontSize!, lessThan(real.fontSize!));
+    expect(zero.fontWeight!.value, lessThan(real.fontWeight!.value));
+    expect(zero.color, palette.textMuted);
+
+    final zeroCard = find.byKey(HomeScreen.unassignedCardKey);
+    expect(find.descendant(of: zeroCard, matching: find.text('Awaiting assignment')), findsOneWidget);
+    expect(find.descendant(of: zeroCard, matching: find.text('Open, with nobody holding them yet')),
+        findsOneWidget);
+    await tapIn(tester, zeroCard);
+    expect(find.byType(WorkOrdersScreen), findsOneWidget);
+  });
+
+  testWidgets('every tile shows a chevron, and hovering one paints the row hover fill',
+      (tester) async {
+    await pumpOneAndZero(tester);
+    final palette = AppColors.of(tester.element(find.byType(Scaffold).first));
+    final card = find.byKey(HomeScreen.openWorkOrdersCardKey);
+
+    expect(find.descendant(of: card, matching: find.byIcon(Icons.chevron_right)), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right), findsNWidgets(find.byType(Card).evaluate().length));
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await tester.pump();
+    final material = tester.renderObject(
+      find.descendant(of: find.ancestor(of: card, matching: find.byType(Card)), matching: find.byType(Material)).first,
+    );
+    expect(material, isNot(paints..rrect(color: palette.rowHoverFill)));
+
+    await mouse.moveTo(tester.getCenter(card));
+    await tester.pumpAndSettle();
+    expect(material, paints..rrect(color: palette.rowHoverFill));
+    expect(tester.widget<InkWell>(card).hoverColor, palette.rowHoverFill);
+  });
+
+  testWidgets('a keyboard focus draws a two pixel ring and moves nothing', (tester) async {
+    FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTraditional;
+    addTearDown(() => FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic);
+    await pumpOneAndZero(tester);
+    final palette = AppColors.of(tester.element(find.byType(Scaffold).first));
+    final key = HomeScreen.openWorkOrdersCardKey;
+    final cardOf = find.ancestor(of: find.byKey(key), matching: find.byType(Card));
+
+    RoundedRectangleBorder shape() => tester.widget<Card>(cardOf).shape! as RoundedRectangleBorder;
+    expect(tester.widget<Card>(cardOf).shape, isNull);
+    final before = tester.getSize(cardOf);
+
+    var focused = false;
+    for (var i = 0; i < 80 && !focused; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      focused = Focus.of(
+        tester.element(find.descendant(of: find.byKey(key), matching: find.byType(Padding)).first),
+      ).hasPrimaryFocus;
+    }
+    expect(focused, isTrue, reason: 'Tab never reached the card');
+
+    expect(shape().side.color, palette.focusRing);
+    expect(shape().side.width, 2);
+    expect(tester.getSize(cardOf), before);
+  });
+
+  testWidgets('the hover fade is 200ms, nothing under reduced motion, and there is no ink ripple',
+      (tester) async {
+    await pumpOneAndZero(tester);
+    final tile = tester.widget<InkWell>(find.byKey(HomeScreen.myActionsCardKey));
+    expect(tile.hoverDuration, const Duration(milliseconds: 200));
+    // A ripple runs far longer than the 150-250ms a tile's motion is held to,
+    // and takes no notice of the reduced-motion setting.
+    expect(tile.splashFactory, NoSplash.splashFactory);
+
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpAndSettle();
+    expect(tester.widget<InkWell>(find.byKey(HomeScreen.myActionsCardKey)).hoverDuration,
+        Duration.zero);
+  });
+
+  testWidgets('no tile overflows at a 320px window', (tester) async {
+    await pumpOneAndZero(tester, size: const Size(320, 1800));
+
+    expect(tester.takeException(), isNull);
+    for (final key in [
+      HomeScreen.myActionsCardKey,
+      HomeScreen.openWorkOrdersCardKey,
+      HomeScreen.unassignedCardKey,
+    ]) {
+      expect(tester.getRect(find.byKey(key)).right, lessThanOrEqualTo(320));
+    }
   });
 }

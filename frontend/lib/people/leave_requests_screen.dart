@@ -24,6 +24,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -81,7 +82,6 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final bloc = context.read<LeaveRequestsBloc>();
     final isMine = state.view == LeaveRequestView.mine;
     return Center(
@@ -90,23 +90,10 @@ class _Loaded extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Leave requests', style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: Spacing.xs),
-                      Text(
-                        'Ask to be away from work, and follow what became of it.',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
+            AppPageHeader(
+              title: 'Leave requests',
+              description: 'Ask to be away from work, and follow what became of it.',
+              actions: [
                 FilledButton.icon(
                   key: LeaveRequestsScreen.requestKey,
                   onPressed: state.isMutating ? null : () => _request(context),
@@ -114,28 +101,28 @@ class _Loaded extends StatelessWidget {
                   label: const Text('Request leave'),
                 ),
               ],
+              below: canDecide
+                  ? Wrap(
+                      spacing: Spacing.sm,
+                      children: [
+                        ChoiceChip(
+                          key: LeaveRequestsScreen.viewMineKey,
+                          label: const Text('Mine'),
+                          selected: isMine,
+                          onSelected: (_) =>
+                              bloc.add(const LeaveRequestsViewSelected(LeaveRequestView.mine)),
+                        ),
+                        ChoiceChip(
+                          key: LeaveRequestsScreen.viewToDecideKey,
+                          label: const Text('To decide'),
+                          selected: !isMine,
+                          onSelected: (_) => bloc
+                              .add(const LeaveRequestsViewSelected(LeaveRequestView.toDecide)),
+                        ),
+                      ],
+                    )
+                  : null,
             ),
-            if (canDecide) ...[
-              const SizedBox(height: Spacing.md),
-              Wrap(
-                spacing: Spacing.sm,
-                children: [
-                  ChoiceChip(
-                    key: LeaveRequestsScreen.viewMineKey,
-                    label: const Text('Mine'),
-                    selected: isMine,
-                    onSelected: (_) => bloc.add(const LeaveRequestsViewSelected(LeaveRequestView.mine)),
-                  ),
-                  ChoiceChip(
-                    key: LeaveRequestsScreen.viewToDecideKey,
-                    label: const Text('To decide'),
-                    selected: !isMine,
-                    onSelected: (_) =>
-                        bloc.add(const LeaveRequestsViewSelected(LeaveRequestView.toDecide)),
-                  ),
-                ],
-              ),
-            ],
             const SizedBox(height: Spacing.lg),
             if (state.requests.isEmpty)
               PlatformEmptyState.noneExist(

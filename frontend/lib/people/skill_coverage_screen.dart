@@ -18,6 +18,7 @@ import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -115,7 +116,6 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final state = widget.state;
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
@@ -126,32 +126,30 @@ class _LoadedState extends State<_Loaded> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Text('Skill coverage', style: theme.textTheme.headlineSmall),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              'Where this Site falls short of its own skill requirements.',
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            AppPageHeader(
+              title: 'Skill coverage',
+              description: 'Where this Site falls short of its own skill requirements.',
+              below: state.sites.length > 1
+                  ? SizedBox(
+                      width: 280,
+                      child: DropdownButtonFormField<String>(
+                        key: SkillCoverageScreen.siteKey,
+                        initialValue: state.siteId,
+                        isDense: true,
+                        decoration:
+                            const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                        items: [
+                          for (final site in state.sites)
+                            DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                        ],
+                        onChanged: (siteId) {
+                          if (siteId == null) return;
+                          context.read<SkillCoverageBloc>().add(SkillCoverageSiteSelected(siteId));
+                        },
+                      ),
+                    )
+                  : null,
             ),
-            if (state.sites.length > 1) ...[
-              const SizedBox(height: Spacing.md),
-              SizedBox(
-                width: 280,
-                child: DropdownButtonFormField<String>(
-                  key: SkillCoverageScreen.siteKey,
-                  initialValue: state.siteId,
-                  isDense: true,
-                  decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                  items: [
-                    for (final site in state.sites)
-                      DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-                  ],
-                  onChanged: (siteId) {
-                    if (siteId == null) return;
-                    context.read<SkillCoverageBloc>().add(SkillCoverageSiteSelected(siteId));
-                  },
-                ),
-              ),
-            ],
             const SizedBox(height: Spacing.lg),
             if (state.isLoadingCoverage)
               const SkeletonList(rows: 3, maxWidth: SkillCoverageScreen.maxWidth)

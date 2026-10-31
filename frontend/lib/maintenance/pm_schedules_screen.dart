@@ -20,6 +20,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -107,7 +108,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is PmSchedulesLoaded ? state as PmSchedulesLoaded : null;
 
     return Center(
@@ -115,60 +115,43 @@ class _Header extends StatelessWidget {
         maxWidth: PmSchedulesScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('PM schedules', style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: Spacing.xs),
-                        Text(
-                          'The Job plans attached to this Site\'s Assets that raise a Work order '
-                          'before something breaks.',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (canAct && loaded != null)
-                    FilledButton.icon(
-                      key: PmSchedulesScreen.createKey,
-                      onPressed: loaded.isMutating || loaded.siteId == null
-                          ? null
-                          : () => PmScheduleFormDialog.open(context, siteId: loaded.siteId!),
-                      icon: const Icon(Icons.event_repeat_outlined),
-                      label: const Text('Add a PM schedule'),
-                      style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
-                    ),
-                ],
-              ),
-              if (loaded != null && loaded.sites.length > 1) ...[
-                const SizedBox(height: Spacing.md),
-                SizedBox(
-                  width: 280,
-                  child: DropdownButtonFormField<String>(
-                    key: PmSchedulesScreen.siteKey,
-                    initialValue: loaded.siteId,
-                    isDense: true,
-                    decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                    items: [
-                      for (final site in loaded.sites)
-                        DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-                    ],
-                    onChanged: (siteId) {
-                      if (siteId == null) return;
-                      context.read<PmSchedulesBloc>().add(PmSchedulesSiteSelected(siteId));
-                    },
-                  ),
+          child: AppPageHeader(
+            title: 'PM schedules',
+            description:
+                'The Job plans attached to this Site\'s Assets that raise a Work order '
+                'before something breaks.',
+            actions: [
+              if (canAct && loaded != null)
+                FilledButton.icon(
+                  key: PmSchedulesScreen.createKey,
+                  onPressed: loaded.isMutating || loaded.siteId == null
+                      ? null
+                      : () => PmScheduleFormDialog.open(context, siteId: loaded.siteId!),
+                  icon: const Icon(Icons.event_repeat_outlined),
+                  label: const Text('Add a PM schedule'),
+                  style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
                 ),
-              ],
             ],
+            below: loaded != null && loaded.sites.length > 1
+                ? SizedBox(
+                    width: 280,
+                    child: DropdownButtonFormField<String>(
+                      key: PmSchedulesScreen.siteKey,
+                      initialValue: loaded.siteId,
+                      isDense: true,
+                      decoration:
+                          const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                      items: [
+                        for (final site in loaded.sites)
+                          DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                      ],
+                      onChanged: (siteId) {
+                        if (siteId == null) return;
+                        context.read<PmSchedulesBloc>().add(PmSchedulesSiteSelected(siteId));
+                      },
+                    ),
+                  )
+                : null,
           ),
         ),
       ),

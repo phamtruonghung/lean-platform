@@ -29,6 +29,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -153,7 +154,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is SafetyObservationsLoaded ? state as SafetyObservationsLoaded : null;
 
     return Center(
@@ -161,44 +161,23 @@ class _Header extends StatelessWidget {
         maxWidth: SafetyObservationsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: Spacing.md,
-                runSpacing: Spacing.sm,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Safety observations', style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: Spacing.xs),
-                      Text(
-                        'What was seen before anything went wrong, ranked worst-first by the '
-                        'worst credible outcome.',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                  if (loaded != null)
-                    FilledButton.icon(
-                      key: SafetyObservationsScreen.recordKey,
-                      onPressed: loaded.isRecording || loaded.siteId == null
-                          ? null
-                          : () => context.go('${Routes.safetyObservations}/record'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Record an observation'),
-                    ),
-                ],
-              ),
-              if (loaded != null) ...[
-                const SizedBox(height: Spacing.md),
-                _Filters(loaded: loaded),
-              ],
+          child: AppPageHeader(
+            title: 'Safety observations',
+            description:
+                'What was seen before anything went wrong, ranked worst-first by the '
+                'worst credible outcome.',
+            actions: [
+              if (loaded != null)
+                FilledButton.icon(
+                  key: SafetyObservationsScreen.recordKey,
+                  onPressed: loaded.isRecording || loaded.siteId == null
+                      ? null
+                      : () => context.go('${Routes.safetyObservations}/record'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Record an observation'),
+                ),
             ],
+            below: loaded == null ? null : _Filters(loaded: loaded),
           ),
         ),
       ),

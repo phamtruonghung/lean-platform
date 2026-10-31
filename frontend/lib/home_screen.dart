@@ -25,6 +25,24 @@
 /// load independently — a section that cannot be read says so across the grid
 /// rather than taking the Screen with it — and nothing about a card's own
 /// content, count or Destination changed.
+///
+/// **Identity (issue #375).** Home was the Screen with the least of it: a
+/// greeting, a line of small print and four identical boxes. It now has a
+/// header — the greeting as the Screen's title, `email · role` beneath it, and a
+/// hairline rule under both, all on the `Spacing.xl` inset the alignment test
+/// pins — and each card is a stat tile (see [_HomeCard]): an icon tile, the
+/// label, the count at the top of the pinned type scale, the caption, and a
+/// chevron that says the whole tile is a link. A count of zero is deliberately
+/// quieter than a real one.
+///
+/// **The grid stays flat, with no grouping headings.** #375 allowed headings
+/// only if they were honest, and they cannot be. `home_test.dart`'s geometry
+/// test pins rows that cross section lines — [Assigned to you, Open work orders]
+/// and [Awaiting assignment, Accounts awaiting Approval] — and #289 kept those
+/// pairings on purpose. A heading over the Work order cards would have to split
+/// that Work order pair across two rows, or leave one heading in the middle of a
+/// row. There is no place for a heading that does not change the rows that test
+/// pins, so there is none.
 library;
 
 import 'package:flutter/material.dart';
@@ -46,6 +64,8 @@ class HomeScreen extends StatelessWidget {
 
   static const double maxWidth = 900;
 
+  /// The hairline between the header and the grid (issue #375).
+  static const ValueKey<String> headerRuleKey = ValueKey<String>('home-header-rule');
   static const ValueKey<String> openWorkOrdersCardKey = ValueKey<String>('home-open-work-orders');
   static const ValueKey<String> unassignedCardKey = ValueKey<String>('home-unassigned-work-orders');
   static const ValueKey<String> approvalsCardKey = ValueKey<String>('home-approvals');
@@ -85,6 +105,7 @@ class _HomeBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: HomeScreen.maxWidth,
@@ -93,9 +114,31 @@ class _HomeBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome, ${account.displayName}', style: theme.textTheme.headlineSmall),
+              // The Screen's title. It stays `headlineSmall`: #372 caps a
+              // Screen's title at 1.3x its body, so the weight is what makes
+              // it a title, not its size. A real header to a screen reader,
+              // not just a larger line of text.
+              Semantics(
+                header: true,
+                child: Text(
+                  'Welcome, ${account.displayName}',
+                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
               const SizedBox(height: Spacing.sm),
-              Text('${account.email} · ${account.role}', style: AppTypography.body(context)),
+              Text(
+                '${account.email} · ${account.role}',
+                style: AppTypography.body(context)?.copyWith(color: palette.textMuted),
+              ),
+              const SizedBox(height: Spacing.lg),
+              // A hairline under the header. A `Divider` spans the content box,
+              // so it starts at the title's own left edge.
+              Divider(
+                key: HomeScreen.headerRuleKey,
+                height: 1,
+                thickness: 1,
+                color: palette.cardBorder,
+              ),
               const SizedBox(height: Spacing.xl),
               // What is assigned to *you* comes first: it is the one card on
               // this Screen a person is personally on the hook for, and the
@@ -431,16 +474,32 @@ class _SpanningCell extends StatelessWidget {
   Widget build(BuildContext context) => child;
 }
 
-/// One card: a label, a count, a line of context, and a link to the
-/// Destination that serves it (issue #101's own shape) — never a trend, a
-/// target or a percentage against a goal, which is #76's tier board.
+/// One stat tile: an icon tile, a label, a count, a line of context, and a
+/// link to the Destination that serves it (issue #101's own shape) — never a
+/// trend, a target or a percentage against a goal, which is #76's tier board.
 ///
-/// **It fills the cell it is given (issue #188).** It used to be a fixed 260px
-/// wide, which is what made a row of cards ragged in the first place. It is now
-/// as wide as its row's cell and as tall as its row's tallest card; its own
-/// content is unchanged, so the count sits directly under the label and the
-/// context line under that.
-class _HomeCard extends StatelessWidget {
+/// **It fills the cell it is given (issue #188).** It is as wide as its row's
+/// cell and as tall as its row's tallest card.
+///
+/// **Its shape (issue #375).** The top row is a rounded-square icon tile and,
+/// at the far end, a chevron; beneath it, at the card's own padding edge, the
+/// eyebrow label, the count and the context line. The text is stacked under the
+/// icon rather than set beside it because `page_alignment_test.dart` requires
+/// the left-most text in a Home card to sit within 20px of the card's edge, and
+/// that table is not changed to suit a tile. The count is `headlineLarge`, the
+/// top of the pinned type scale (#372): the `display*` roles are outside it. A
+/// count of zero is quieter ([_countStyle]); the card keeps its label, caption
+/// and link. The icon tile reuses [AppPalette.navSelectedBackground] and
+/// [AppPalette.navSelectedForeground], a pair `palette_contrast_test.dart`
+/// already measures in both palettes, rather than adding a token.
+///
+/// **Hover and focus.** The tile fills with [AppPalette.rowHoverFill] under a
+/// pointer. The theme's `focusColor` is only a 12% overlay on an `InkWell`,
+/// which is not a ring, so a keyboard focus also draws a 2px
+/// [AppPalette.focusRing] by swapping the `Card`'s `shape` — a change that
+/// moves no pixel of layout, so a row's cards keep their equal heights. A
+/// pointer focus draws none, so a click does not leave a ring behind.
+class _HomeCard extends StatefulWidget {
   const _HomeCard({
     required this.cardKey,
     required this.icon,
@@ -461,14 +520,61 @@ class _HomeCard extends StatelessWidget {
   final String destination;
 
   @override
+  State<_HomeCard> createState() => _HomeCardState();
+}
+
+/// The icon tile's side, and its corner radius. No `AppRadius` token suits a
+/// 40px square (`card`'s 14 is proportioned for a whole card), so the radius is
+/// local to this tile.
+const double _iconTileSize = 40;
+const double _iconTileRadius = 10;
+
+/// The count's own style: the top of the type scale and bold when there is
+/// something to read, and a quiet muted `titleMedium` at regular weight when
+/// there is nothing. `textMuted` is a token the palette contrast test already
+/// measures at 4.5:1 on a card.
+TextStyle? _countStyle(BuildContext context, int count) {
+  final textTheme = Theme.of(context).textTheme;
+  if (count == 0) {
+    return textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w400,
+      color: AppColors.of(context).textMuted,
+    );
+  }
+  return textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w700);
+}
+
+class _HomeCardState extends State<_HomeCard> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+    final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
+    final showRing =
+        _focused && FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
     return Card(
       margin: EdgeInsets.zero,
+      // Null leaves the theme's hairline shape in force.
+      shape: showRing
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              side: BorderSide(color: palette.focusRing, width: 2),
+            )
+          : null,
       child: InkWell(
-        key: cardKey,
-        onTap: () => context.go(destination),
+        key: widget.cardKey,
+        onTap: () => context.go(widget.destination),
         borderRadius: BorderRadius.circular(AppRadius.card),
+        hoverColor: palette.rowHoverFill,
+        splashFactory: NoSplash.splashFactory,
+        // The one fade on this tile, 200ms and skipped when the person has
+        // asked for reduced motion. The ink ripple is off altogether: it runs
+        // far longer than that and takes no notice of the setting.
+        hoverDuration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 200),
+        onFocusChange: (focused) => setState(() => _focused = focused),
         child: Padding(
           padding: const EdgeInsets.all(Spacing.lg),
           child: Column(
@@ -476,23 +582,28 @@ class _HomeCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(icon, color: AppColors.of(context).actionPrimary),
-                  const SizedBox(width: Spacing.sm),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
+                  Container(
+                    width: _iconTileSize,
+                    height: _iconTileSize,
+                    decoration: BoxDecoration(
+                      color: palette.navSelectedBackground,
+                      borderRadius: BorderRadius.circular(_iconTileRadius),
                     ),
+                    child: Icon(widget.icon, color: palette.navSelectedForeground),
+                  ),
+                  const Spacer(),
+                  // Decorative: the tile is already one link.
+                  ExcludeSemantics(
+                    child: Icon(Icons.chevron_right, color: palette.textMuted),
                   ),
                 ],
               ),
-              const SizedBox(height: Spacing.sm),
-              Text('$count', style: theme.textTheme.headlineMedium),
+              const SizedBox(height: Spacing.md),
+              Text(widget.label, style: muted),
               const SizedBox(height: Spacing.xs),
-              Text(
-                context_,
-                style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
-              ),
+              Text('${widget.count}', style: _countStyle(context, widget.count)),
+              const SizedBox(height: Spacing.xs),
+              Text(widget.context_, style: muted),
             ],
           ),
         ),

@@ -37,6 +37,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import 'attendance.dart';
 import 'attendance_to_confirm_bloc.dart';
 import 'org_unit_picker_bloc.dart';
@@ -101,12 +102,11 @@ class _WorklistBodyState extends State<_WorklistBody> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
-              Text('Attendance to confirm', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                "Past shifts whose sheet is missing or hasn't been confirmed yet, "
-                'oldest first, across the Org Units you can confirm one at.',
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              const AppPageHeader(
+                title: 'Attendance to confirm',
+                description:
+                    "Past shifts whose sheet is missing or hasn't been confirmed yet, "
+                    'oldest first, across the Org Units you can confirm one at.',
               ),
               const SizedBox(height: Spacing.lg),
               _OrgUnitFilter(
