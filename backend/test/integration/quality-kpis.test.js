@@ -655,8 +655,9 @@ test('the board counts the customer complaints received in the period for the ch
   );
   const today = await currentProductionDay(ground.site.id);
   const monthStart = `${today.slice(0, 7)}-01`;
-  const earlier = addDays(today, -10) > monthStart ? addDays(today, -10) : monthStart;
-  const anchorDay = earlier === today ? addDays(today, 1) : earlier;
+  const tenDaysBack = addDays(today, -10);
+  const earlierDay = tenDaysBack > monthStart ? tenDaysBack : monthStart;
+  const anchorDay = earlierDay === today ? addDays(today, 1) : earlierDay;
   await pool.query(
     `UPDATE customer_complaints cc
         SET received_at = ($2::date + interval '12 hours') AT TIME ZONE s.timezone
