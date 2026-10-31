@@ -46,6 +46,7 @@ import '../platform/auth_gateway.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/status_chip.dart';
 import 'org_unit.dart';
@@ -163,24 +164,12 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Org Units', style: theme.textTheme.headlineSmall),
-                          const SizedBox(height: Spacing.xs),
-                          Text(
-                            "A Site's own shape — where a KPI is measured, an Account is "
-                            'granted, and an Asset sits.',
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
+                AppPageHeader(
+                  title: 'Org Units',
+                  description:
+                      "A Site's own shape — where a KPI is measured, an Account is "
+                      'granted, and an Asset sits.',
+                  actions: [
                     if (widget.isAdmin)
                       FilledButton.icon(
                         key: OrgUnitsScreen.addSiteKey,
@@ -191,19 +180,16 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                         label: const Text('Add Site'),
                       ),
                     if (widget.isAdmin)
-                      Padding(
-                        padding: const EdgeInsets.only(left: Spacing.sm),
-                        child: OutlinedButton.icon(
-                          key: OrgUnitsScreen.editSiteKey,
-                          // Nothing to correct until a Site is selected — the
-                          // picker loads them asynchronously, so this is
-                          // disabled while the list is empty or still loading.
-                          onPressed: adminState.isMutating || pickerState.site == null
-                              ? null
-                              : () => SiteFormDialog.open(context, site: pickerState.site),
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const Text('Edit Site'),
-                        ),
+                      OutlinedButton.icon(
+                        key: OrgUnitsScreen.editSiteKey,
+                        // Nothing to correct until a Site is selected — the
+                        // picker loads them asynchronously, so this is
+                        // disabled while the list is empty or still loading.
+                        onPressed: adminState.isMutating || pickerState.site == null
+                            ? null
+                            : () => SiteFormDialog.open(context, site: pickerState.site),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Edit Site'),
                       ),
                   ],
                 ),

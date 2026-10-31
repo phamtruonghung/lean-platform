@@ -30,6 +30,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -91,7 +92,6 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final rows = defectCodeTree(state.codes);
 
     return Center(
@@ -100,24 +100,12 @@ class _Loaded extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Defect codes', style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: Spacing.xs),
-                      Text(
-                        'The kinds of thing found wrong — one list shared by every '
-                        'Site, and the severity each starts a Non-conformance at.',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
+            AppPageHeader(
+              title: 'Defect codes',
+              description:
+                  'The kinds of thing found wrong — one list shared by every '
+                  'Site, and the severity each starts a Non-conformance at.',
+              actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: DefectCodesScreen.addKey,

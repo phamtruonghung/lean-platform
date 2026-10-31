@@ -19,6 +19,7 @@ import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import 'training_answer_dialog.dart';
@@ -115,12 +116,11 @@ class _Body extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: Spacing.sm),
-              Text('Training to confirm', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                'Training records sent to you that you have not answered yet, oldest first. '
-                'Confirm that you attended, or decline because the record is wrong.',
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              const AppPageHeader(
+                title: 'Training to confirm',
+                description:
+                    'Training records sent to you that you have not answered yet, oldest first. '
+                    'Confirm that you attended, or decline because the record is wrong.',
               ),
               const SizedBox(height: Spacing.lg),
               content,

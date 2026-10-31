@@ -12,6 +12,7 @@ import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -107,7 +108,6 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final state = widget.state;
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
@@ -118,23 +118,10 @@ class _LoadedState extends State<_Loaded> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(state.store.name, style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: Spacing.xs),
-                      Text(
-                        '${state.store.code} · ${state.store.orgUnitName}',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
+            AppPageHeader(
+              title: state.store.name,
+              description: '${state.store.code} · ${state.store.orgUnitName}',
+              actions: [
                 if (widget.canReceive && state.parts.isNotEmpty)
                   FilledButton.icon(
                     key: StoreStockScreen.receiveKey,

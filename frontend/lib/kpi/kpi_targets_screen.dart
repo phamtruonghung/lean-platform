@@ -17,6 +17,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -89,41 +90,41 @@ class _Loaded extends StatelessWidget {
                 label: const Text('KPI catalogue'),
               ),
             ),
-            Text('${kpi.kpi} · ${kpi.title}', key: KpiTargetsScreen.headerKey, style: theme.textTheme.headlineSmall),
-            const SizedBox(height: Spacing.xs),
-            Text('KPI Targets, ${kpi.direction} ${kpi.unit}'.trim(), style: muted),
-            const SizedBox(height: Spacing.md),
-            Wrap(
-              spacing: Spacing.md,
-              runSpacing: Spacing.md,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (state.sites.length > 1)
-                  SizedBox(
-                    width: 280,
-                    child: DropdownButtonFormField<String>(
-                      key: KpiTargetsScreen.siteKey,
-                      initialValue: state.siteId,
-                      isDense: true,
-                      decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                      items: [
-                        for (final site in state.sites)
-                          DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-                      ],
-                      onChanged: (siteId) {
-                        if (siteId == null) return;
-                        context.read<KpiTargetsBloc>().add(KpiTargetsSiteSelected(siteId));
-                      },
+            KeyedSubtree(
+              key: KpiTargetsScreen.headerKey,
+              child: AppPageHeader(
+                title: '${kpi.kpi} · ${kpi.title}',
+                description: 'KPI Targets, ${kpi.direction} ${kpi.unit}'.trim(),
+                actions: [
+                  if (canWrite)
+                    FilledButton.icon(
+                      key: KpiTargetsScreen.changeTargetKey,
+                      onPressed: () => ChangeTargetDialog.open(context, siteToday: state.siteToday),
+                      icon: const Icon(Icons.edit_calendar_outlined),
+                      label: const Text('Change Target'),
                     ),
-                  ),
-                if (canWrite)
-                  FilledButton.icon(
-                    key: KpiTargetsScreen.changeTargetKey,
-                    onPressed: () => ChangeTargetDialog.open(context, siteToday: state.siteToday),
-                    icon: const Icon(Icons.edit_calendar_outlined),
-                    label: const Text('Change Target'),
-                  ),
-              ],
+                ],
+                below: state.sites.length > 1
+                    ? SizedBox(
+                        width: 280,
+                        child: DropdownButtonFormField<String>(
+                          key: KpiTargetsScreen.siteKey,
+                          initialValue: state.siteId,
+                          isDense: true,
+                          decoration: const InputDecoration(
+                              labelText: 'Site', border: OutlineInputBorder()),
+                          items: [
+                            for (final site in state.sites)
+                              DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                          ],
+                          onChanged: (siteId) {
+                            if (siteId == null) return;
+                            context.read<KpiTargetsBloc>().add(KpiTargetsSiteSelected(siteId));
+                          },
+                        ),
+                      )
+                    : null,
+              ),
             ),
             const SizedBox(height: Spacing.lg),
             Text('Currently in force', style: theme.textTheme.titleMedium),

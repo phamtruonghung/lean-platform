@@ -31,6 +31,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -89,31 +90,18 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: InjuryTypesScreen.maxWidth,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Injury types', style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: Spacing.xs),
-                      Text(
-                        'What an injury was — one catalogue shared by every Site, '
-                        'and what a Safety incident is classified against.',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
+            AppPageHeader(
+              title: 'Injury types',
+              description:
+                  'What an injury was — one catalogue shared by every Site, '
+                  'and what a Safety incident is classified against.',
+              actions: [
                 if (isAdmin)
                   FilledButton.icon(
                     key: InjuryTypesScreen.addKey,

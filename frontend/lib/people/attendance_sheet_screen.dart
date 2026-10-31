@@ -25,6 +25,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/app_search_field.dart';
 import 'attendance.dart';
 import 'attendance_record_dialog.dart';
@@ -80,25 +81,18 @@ class _NotStarted extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: AttendanceSheetScreen.maxWidth,
         child: Padding(
           key: AttendanceSheetScreen.notStartedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Attendance sheet', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.sm),
-              Text(
+          child: const AppPageHeader(
+            title: 'Attendance sheet',
+            description:
                 'Nobody with an edit Grant here has opened this sheet yet, so there '
                 'is nothing to show. Only a supervisor holding an edit Grant reaching '
                 'this shift — or an administrator — can start it.',
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
           ),
         ),
       ),
@@ -167,16 +161,9 @@ class _Sheet extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Attendance sheet',
-                    style: theme.textTheme.headlineSmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: Spacing.md),
+            AppPageHeader(
+              title: 'Attendance sheet',
+              actions: [
                 if (sheet.isConfirmed)
                   Chip(
                     key: AttendanceSheetScreen.confirmedChipKey,

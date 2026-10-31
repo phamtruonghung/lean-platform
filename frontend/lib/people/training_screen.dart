@@ -26,6 +26,7 @@ import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/status_chip.dart';
@@ -145,23 +146,10 @@ class _RegisterBodyState extends State<_RegisterBody> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Training records', style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: Spacing.xs),
-                        Text(
-                          'What the plant has trained people on, and when.',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
+              AppPageHeader(
+                title: 'Training records',
+                description: 'What the plant has trained people on, and when.',
+                actions: [
                   if (widget.canRaise)
                     FilledButton.icon(
                       key: TrainingScreen.raiseKey,
