@@ -15,6 +15,7 @@ import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'asset.dart';
@@ -121,7 +122,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is AssetsLoaded ? state as AssetsLoaded : null;
 
     return Center(
@@ -129,76 +129,65 @@ class _Header extends StatelessWidget {
         maxWidth: AssetsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Assets', style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: Spacing.xs),
-                        Text(
-                          'Every machine on the register at this Site, and the Org '
-                          'Unit each one sits at.',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (canPlaceAnAsset && loaded != null)
-                    FilledButton.icon(
-                      key: AssetsScreen.addKey,
-                      onPressed: loaded.isAdding
-                          ? null
-                          : () => AssetFormDialog.open(context, siteId: loaded.siteId),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add an Asset'),
-                    ),
-                ],
-              ),
-              if (loaded != null && loaded.sites.length > 1) ...[
-                const SizedBox(height: Spacing.md),
-                SizedBox(
-                  width: 280,
-                  child: DropdownButtonFormField<String>(
-                    key: AssetsScreen.siteKey,
-                    initialValue: loaded.siteId,
-                    isDense: true,
-                    decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                    items: [
-                      for (final site in loaded.sites)
-                        DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-                    ],
-                    onChanged: (siteId) {
-                      if (siteId == null) return;
-                      context.read<AssetsBloc>().add(AssetsSiteSelected(siteId));
-                    },
-                  ),
-                ),
-              ],
-              if (loaded != null) ...[
-                const SizedBox(height: Spacing.md),
-                FilterChip(
-                  key: AssetsScreen.showRetiredKey,
-                  label: const Text('Show retired'),
-                  selected: loaded.showRetired,
-                  // Same guard as the row actions below: toggling this while a
-                  // mutation is in flight would interleave the re-read with the
-                  // mutation's own write and could wipe a pending success
-                  // `notice` before the caller ever sees it. Not a new
-                  // mechanism — `mutatingAssetId != null || isAdding` is the
-                  // one guard, just checked here too.
-                  onSelected: loaded.mutatingAssetId != null || loaded.isAdding
+          child: AppPageHeader(
+            title: 'Assets',
+            description:
+                'Every machine on the register at this Site, and the Org '
+                'Unit each one sits at.',
+            actions: [
+              if (canPlaceAnAsset && loaded != null)
+                FilledButton.icon(
+                  key: AssetsScreen.addKey,
+                  onPressed: loaded.isAdding
                       ? null
-                      : (value) => context.read<AssetsBloc>().add(AssetsShowRetiredChanged(value)),
+                      : () => AssetFormDialog.open(context, siteId: loaded.siteId),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add an Asset'),
                 ),
-              ],
             ],
+            below: loaded == null
+                ? null
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (loaded.sites.length > 1) ...[
+                        SizedBox(
+                          width: 280,
+                          child: DropdownButtonFormField<String>(
+                            key: AssetsScreen.siteKey,
+                            initialValue: loaded.siteId,
+                            isDense: true,
+                            decoration: const InputDecoration(
+                                labelText: 'Site', border: OutlineInputBorder()),
+                            items: [
+                              for (final site in loaded.sites)
+                                DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                            ],
+                            onChanged: (siteId) {
+                              if (siteId == null) return;
+                              context.read<AssetsBloc>().add(AssetsSiteSelected(siteId));
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: Spacing.md),
+                      ],
+                      FilterChip(
+                        key: AssetsScreen.showRetiredKey,
+                        label: const Text('Show retired'),
+                        selected: loaded.showRetired,
+                        // Same guard as the row actions below: toggling this while a
+                        // mutation is in flight would interleave the re-read with the
+                        // mutation's own write and could wipe a pending success
+                        // `notice` before the caller ever sees it. Not a new
+                        // mechanism — `mutatingAssetId != null || isAdding` is the
+                        // one guard, just checked here too.
+                        onSelected: loaded.mutatingAssetId != null || loaded.isAdding
+                            ? null
+                            : (value) =>
+                                context.read<AssetsBloc>().add(AssetsShowRetiredChanged(value)),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),

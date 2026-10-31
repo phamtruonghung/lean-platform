@@ -29,6 +29,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -157,7 +158,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is NonconformancesLoaded ? state as NonconformancesLoaded : null;
 
     return Center(
@@ -165,46 +165,23 @@ class _Header extends StatelessWidget {
         maxWidth: NonconformancesScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // A `Wrap`, not a `Row`: the button's label is long and the
-              // header must not overflow at a narrow width.
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: Spacing.md,
-                runSpacing: Spacing.sm,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Non-conformances', style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: Spacing.xs),
-                      Text(
-                        'What was found not to conform at this Site, where it was found, and how '
-                        'much of it there is.',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                  if (loaded != null)
-                    FilledButton.icon(
-                      key: NonconformancesScreen.recordKey,
-                      onPressed: loaded.isRecording || loaded.siteId == null
-                          ? null
-                          : () => context.go('${Routes.nonConformances}/new'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Record a Non-conformance'),
-                    ),
-                ],
-              ),
-              if (loaded != null) ...[
-                const SizedBox(height: Spacing.md),
-                _Filters(loaded: loaded),
-              ],
+          child: AppPageHeader(
+            title: 'Non-conformances',
+            description:
+                'What was found not to conform at this Site, where it was found, and how '
+                'much of it there is.',
+            actions: [
+              if (loaded != null)
+                FilledButton.icon(
+                  key: NonconformancesScreen.recordKey,
+                  onPressed: loaded.isRecording || loaded.siteId == null
+                      ? null
+                      : () => context.go('${Routes.nonConformances}/new'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Record a Non-conformance'),
+                ),
             ],
+            below: loaded == null ? null : _Filters(loaded: loaded),
           ),
         ),
       ),

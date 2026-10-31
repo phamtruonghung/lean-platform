@@ -26,6 +26,7 @@ import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/skeleton_list.dart';
 import 'account_correction_dialog.dart';
 import 'account_employee_dialog.dart';
@@ -168,27 +169,18 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: AccountsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Accounts', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.xs),
-              // Every Account, not only the ones already dealt with (issue
-              // #112, Decision B) — the wording that used to live here
-              // ("Everyone already dealt with…") is exactly the confusion
-              // that issue reports.
-              Text(
-                'Every Account on this plant: what it holds, and whether it can sign in.',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
+          // Every Account, not only the ones already dealt with (issue
+          // #112, Decision B) — the wording that used to live here
+          // ("Everyone already dealt with…") is exactly the confusion
+          // that issue reports.
+          child: const AppPageHeader(
+            title: 'Accounts',
+            description: 'Every Account on this plant: what it holds, and whether it can sign in.',
           ),
         ),
       ),

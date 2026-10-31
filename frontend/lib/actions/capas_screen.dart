@@ -31,6 +31,7 @@ import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -141,7 +142,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is CapasLoaded ? state as CapasLoaded : null;
 
     return Center(
@@ -149,22 +149,12 @@ class _Header extends StatelessWidget {
         maxWidth: CapasScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('CAPAs', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.xs),
-              Text(
+          child: AppPageHeader(
+            title: 'CAPAs',
+            description:
                 'The investigations opened on a Concern, and the effectiveness check each one is '
                 'waiting on.',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              if (loaded != null) ...[
-                const SizedBox(height: Spacing.md),
-                _Filters(loaded: loaded),
-              ],
-            ],
+            below: loaded == null ? null : _Filters(loaded: loaded),
           ),
         ),
       ),

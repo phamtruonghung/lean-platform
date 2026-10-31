@@ -15,6 +15,7 @@ import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/skeleton_list.dart';
 import 'admission_dialog.dart';
 import 'approval_queue_bloc.dart';
@@ -80,23 +81,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ApprovalQueueScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Approval queue', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.xs),
-              Text(
-                'Everyone waiting to be let in to the Platform.',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
+          child: const AppPageHeader(
+            title: 'Approval queue',
+            description: 'Everyone waiting to be let in to the Platform.',
           ),
         ),
       ),

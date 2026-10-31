@@ -16,6 +16,7 @@ import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -130,7 +131,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is ActionsLoaded ? state as ActionsLoaded : null;
 
     return Center(
@@ -138,43 +138,23 @@ class _Header extends StatelessWidget {
         maxWidth: ActionsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Actions', style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: Spacing.xs),
-                        Text(
-                          'What the plant owes at this Site: what was found, who owns it, and '
-                          'when it is due. Overdue first.',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (loaded != null)
-                    FilledButton.icon(
-                      key: ActionsScreen.raiseKey,
-                      onPressed: loaded.isRaising || loaded.siteId == null
-                          ? null
-                          : () => context.go('${Routes.actions}/new'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Raise a concern'),
-                    ),
-                ],
-              ),
-              if (loaded != null) ...[
-                const SizedBox(height: Spacing.md),
-                _Filters(loaded: loaded),
-              ],
+          child: AppPageHeader(
+            title: 'Actions',
+            description:
+                'What the plant owes at this Site: what was found, who owns it, and '
+                'when it is due. Overdue first.',
+            actions: [
+              if (loaded != null)
+                FilledButton.icon(
+                  key: ActionsScreen.raiseKey,
+                  onPressed: loaded.isRaising || loaded.siteId == null
+                      ? null
+                      : () => context.go('${Routes.actions}/new'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Raise a concern'),
+                ),
             ],
+            below: loaded == null ? null : _Filters(loaded: loaded),
           ),
         ),
       ),

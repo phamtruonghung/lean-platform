@@ -18,6 +18,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -99,7 +100,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is JobPlansLoaded ? state as JobPlansLoaded : null;
 
     return Center(
@@ -107,24 +107,12 @@ class _Header extends StatelessWidget {
         maxWidth: JobPlansScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Job plans', style: theme.textTheme.headlineSmall),
-                    const SizedBox(height: Spacing.xs),
-                    Text(
-                      'How each recurring job is done — the steps it takes and what each one '
-                      'requires. A Work order follows a plan; it does not change one.',
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
+          child: AppPageHeader(
+            title: 'Job plans',
+            description:
+                'How each recurring job is done — the steps it takes and what each one '
+                'requires. A Work order follows a plan; it does not change one.',
+            actions: [
               if (isAdmin && loaded != null)
                 FilledButton.icon(
                   key: JobPlansScreen.addKey,

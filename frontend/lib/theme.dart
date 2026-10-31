@@ -1034,6 +1034,7 @@ ThemeData _themeFrom(ColorScheme scheme, AppPalette palette) {
     scaffoldBackgroundColor: palette.canvas,
     focusColor: palette.focusRing.withValues(alpha: 0.12),
     cardTheme: CardThemeData(
+      color: palette.card,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.card),

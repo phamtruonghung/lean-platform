@@ -20,6 +20,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -108,7 +109,6 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final loaded = state is RequestsLoaded ? state as RequestsLoaded : null;
 
     return Center(
@@ -116,38 +116,31 @@ class _Header extends StatelessWidget {
         maxWidth: RequestsScreen.maxWidth,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Triage queue', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.xs),
-              Text(
+          child: AppPageHeader(
+            title: 'Triage queue',
+            description:
                 'The Requests waiting for a decision at this Site. Accepting one raises '
                 'a Work order for it.',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              if (loaded != null && loaded.sites.length > 1) ...[
-                const SizedBox(height: Spacing.md),
-                SizedBox(
-                  width: 280,
-                  child: DropdownButtonFormField<String>(
-                    key: RequestsScreen.siteKey,
-                    initialValue: loaded.siteId,
-                    isDense: true,
-                    decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                    items: [
-                      for (final site in loaded.sites)
-                        DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-                    ],
-                    onChanged: (siteId) {
-                      if (siteId == null) return;
-                      context.read<RequestsBloc>().add(RequestsSiteSelected(siteId));
-                    },
-                  ),
-                ),
-              ],
-            ],
+            below: loaded != null && loaded.sites.length > 1
+                ? SizedBox(
+                    width: 280,
+                    child: DropdownButtonFormField<String>(
+                      key: RequestsScreen.siteKey,
+                      initialValue: loaded.siteId,
+                      isDense: true,
+                      decoration:
+                          const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                      items: [
+                        for (final site in loaded.sites)
+                          DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                      ],
+                      onChanged: (siteId) {
+                        if (siteId == null) return;
+                        context.read<RequestsBloc>().add(RequestsSiteSelected(siteId));
+                      },
+                    ),
+                  )
+                : null,
           ),
         ),
       ),
