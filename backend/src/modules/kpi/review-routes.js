@@ -9,14 +9,15 @@ const express = require('express');
 const people = require('../people');
 const review = require('./review');
 const {
-  requireCatalogueConfigured, requireScope, resolveSiteContext, parseDateOnly
+  requireCatalogueConfigured, requireScope, resolveSiteContext, parseDateOnly, findLastWorkingDay
 } = require('./site-context');
 const { httpError, parseId, handleError } = require('./errors');
 
 const router = express.Router();
 
 // One row per KPI for a day, with its judgement (status null where there is
-// none yet) and the Daily Target that day had.
+// none yet) and the Daily Target that day had. With no `date` it answers the
+// Site's last working day, and `site_today` carries the Site's own today.
 router.get(
   '/review',
   people.authenticate,
@@ -25,7 +26,7 @@ router.get(
   async (req, res, next) => {
     try {
       const context = await resolveSiteContext(req.query.site_id);
-      let reviewDate = context.siteToday;
+      let reviewDate = null;
       if (req.query.date !== undefined) {
         reviewDate = parseDateOnly(req.query.date);
         if (reviewDate === null) throw httpError(400, 'date must be a valid YYYY-MM-DD date');
@@ -33,8 +34,10 @@ router.get(
 
       await requireScope(req.account, context.rootOrgUnitId, { write: false });
 
+      if (reviewDate === null) reviewDate = await findLastWorkingDay(context);
+
       const rows = await review.listReview({ reviewDate });
-      res.json({ review_date: reviewDate, rows });
+      res.json({ review_date: reviewDate, site_today: context.siteToday, rows });
     } catch (error) {
       handleError(error, res, next);
     }

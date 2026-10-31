@@ -12,10 +12,11 @@
 /// - **Save** posts every changed row in one request; it is disabled when
 ///   nothing changed or any changed Missed row's note is too short.
 ///
-/// "Today" is the server's. `review_date` is the heading's day, and the date
-/// picker opens a past day: its first day is fixed, its last is the Site's
-/// today (the day on screen cannot be the last day, or choosing a past day
-/// would shut the way forward).
+/// "Today" is the server's. `review_date` is the heading's day (with no date
+/// chosen, the Site's last working day), and the date picker opens another
+/// day: its first day is fixed, its last is the Site's today, `site_today`
+/// (the day on screen cannot be the last day, or choosing a past day would
+/// shut the way forward).
 ///
 /// The value a reviewer read off the chart (`observed`) has no field here: the
 /// brief for this Screen does not ask for one, and the entries go out with

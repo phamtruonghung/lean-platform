@@ -289,13 +289,19 @@ class ReviewRow {
 }
 
 class KpiReview {
-  const KpiReview({required this.reviewDate, required this.rows});
+  const KpiReview({required this.reviewDate, required this.rows, this.siteToday});
 
   final String reviewDate;
   final List<ReviewRow> rows;
 
+  /// The Site's own today (`site_today`), which is the date picker's last
+  /// day. Never the day shown: a read with no `date` answers the last working
+  /// day in [reviewDate].
+  final String? siteToday;
+
   factory KpiReview.fromJson(Map<String, dynamic> json) => KpiReview(
         reviewDate: json['review_date'] as String? ?? '',
+        siteToday: json['site_today'] as String?,
         rows: [
           for (final row in json['rows'] as List<dynamic>? ?? const [])
             ReviewRow.fromJson(row as Map<String, dynamic>),

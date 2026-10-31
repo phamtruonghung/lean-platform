@@ -2,12 +2,12 @@
 /// the Daily Target that day had and the judgement saved so far.
 ///
 /// "Today" is the server's. The first read carries no `date`, so `review_date`
-/// in the answer is the Site's own today; the date picker passes `?date=` and
-/// the answer's `review_date` is both the heading's day and the picker's last
-/// day.
+/// in the answer is the Site's last working day and `site_today` is the Site's
+/// own today; the date picker passes `?date=`. `review_date` is the heading's
+/// day and `site_today` is the picker's last day.
 ///
 /// Saving posts every changed row in one request and then reads the day on
-/// screen again (never an omitted date, which would be the Site's today), so
+/// screen again (never an omitted date, which would be the last working day), so
 /// the `app_user` and `entered_at` shown are the server's.
 library;
 
@@ -24,7 +24,7 @@ sealed class KpiReviewEvent {
 }
 
 /// Load the Sites, then the Review at the first of them, for [date] or, when
-/// null, the Site's today. Also the retry a failed load offers.
+/// null, the Site's last working day. Also the retry a failed load offers.
 class KpiReviewStarted extends KpiReviewEvent {
   const KpiReviewStarted({this.date});
   final String? date;
@@ -76,7 +76,8 @@ class KpiReviewLoaded extends KpiReviewState {
   /// Null while a Site or day switch is still reading.
   final KpiReview? review;
 
-  /// The Site's own today, taken from the last read that asked for no `date`.
+  /// The Site's own today (`site_today`), taken from the last read that asked
+  /// for no `date`; that read answers the last working day as `review_date`.
   /// It is the date picker's last day: the day on screen cannot be, or a past
   /// day once picked would shut the way forward again. Null when the Screen
   /// was opened on a given day and today is not yet known.
@@ -134,7 +135,7 @@ class KpiReviewBloc extends Bloc<KpiReviewEvent, KpiReviewState> {
 
   String? _lastSiteId;
 
-  /// The day on screen; null means "the Site's today" (no `date` sent).
+  /// The day on screen; null means "the Site's last working day" (no `date` sent).
   String? _date;
 
   Future<void> _onStarted(KpiReviewStarted event, Emitter<KpiReviewState> emit) async {
@@ -193,9 +194,9 @@ class KpiReviewBloc extends Bloc<KpiReviewEvent, KpiReviewState> {
       final review = await _api.fetchReview(token, siteId: siteId, date: date);
       final now = state;
       if (now is! KpiReviewLoaded || now.siteId != siteId || _date != date) return;
-      // A read that asked for no `date` is the Site's today, whatever day the
-      // answer then names.
-      emit(now.copyWith(review: review, siteToday: date == null ? review.reviewDate : null, isLoadingReview: false));
+      // A read that asked for no `date` is a read of the Site's last working
+      // day; the Site's today comes back as `site_today`.
+      emit(now.copyWith(review: review, siteToday: date == null ? review.siteToday : null, isLoadingReview: false));
     } on KpiApiException catch (error) {
       final now = state;
       if (now is! KpiReviewLoaded || now.siteId != siteId || _date != date) return;
