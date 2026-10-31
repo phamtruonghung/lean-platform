@@ -372,6 +372,14 @@ async function currentProductionDay(siteId) {
   return payload.period.start;
 }
 
+// A calendar day a given number of days away from a `YYYY-MM-DD` string, in the
+// same format. The arithmetic runs on UTC instants, so no local clock is read.
+function addDays(day, days) {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 test.before(async () => {
   jwks = await createTestJwks();
   process.env.SUPABASE_JWKS_URL = jwks.url;
@@ -629,21 +637,36 @@ test('the board counts the customer complaints received in the period for the ch
   const siteBoard = await getBoard(adminToken, ground.site.id, '?periodType=day');
   assert.strictEqual(readKpi(siteBoard.payload, 'Q', 'QUA_COMPLAINTS').value, 3);
 
-  // The period's own boundaries: a complaint received ten days ago belongs to
-  // that production day and to the month, not to today. `received_at` has no
-  // field on the recording address — it is when the plant heard — so the day it
-  // arrived on is moved by a statement of its own, the same licence the states
-  // above take.
+  // The period's own boundaries: a complaint received on another production day
+  // of the same month belongs to that day and to the month, not to today. The
+  // anchor is a day in the current month, never a blind "ten days ago": that is
+  // the previous month on days 1..10, where the month board rightly leaves it
+  // out, and it took the required `backend` check down for ten days of every
+  // month for a clock reason (issue #383). On the 1st the month holds no
+  // earlier day, so the row sits one day ahead inside it — a different plant
+  // day, which is all the boundary needs. `received_at` has no field on the
+  // recording address — it is when the plant heard — so the day it arrived on
+  // is moved by a statement of its own, the same licence the states above take.
+  // Midday on the plant's own clock is what makes `plant_date()` land on the
+  // anchor day whatever the session's clock says.
   const { rows: [received] } = await pool.query(
     `SELECT id FROM customer_complaints WHERE org_unit_id = $1 ORDER BY id LIMIT 1`,
     [ground.line.id]
   );
+  const today = await currentProductionDay(ground.site.id);
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const earlier = addDays(today, -10) > monthStart ? addDays(today, -10) : monthStart;
+  const anchorDay = earlier === today ? addDays(today, 1) : earlier;
   await pool.query(
-    `UPDATE customer_complaints SET received_at = now() - interval '10 days' WHERE id = $1`,
-    [received.id]
+    `UPDATE customer_complaints cc
+        SET received_at = ($2::date + interval '12 hours') AT TIME ZONE s.timezone
+       FROM org_units ou
+       JOIN sites s ON s.id = ou.site_id
+      WHERE ou.id = cc.org_unit_id
+        AND cc.id = $1`,
+    [received.id, anchorDay]
   );
 
-  const today = await currentProductionDay(ground.site.id);
   const todayBoard = await getBoard(
     adminToken,
     ground.site.id,
@@ -651,12 +674,16 @@ test('the board counts the customer complaints received in the period for the ch
   );
   assert.strictEqual(readKpi(todayBoard.payload, 'Q', 'QUA_COMPLAINTS').value, 1);
 
-  const earlier = await getBoard(
+  const earlierBoard = await getBoard(
     adminToken,
     ground.site.id,
-    `?periodType=day&date=${today}&orgUnitId=${ground.area.id}`
+    `?periodType=day&date=${anchorDay}&orgUnitId=${ground.area.id}`
   );
-  assert.strictEqual(readKpi(earlier.payload, 'Q', 'QUA_COMPLAINTS').value, 1);
+  assert.strictEqual(
+    readKpi(earlierBoard.payload, 'Q', 'QUA_COMPLAINTS').value,
+    1,
+    'the earlier day holds the one complaint received on it'
+  );
 
   const month = await getBoard(
     adminToken,
