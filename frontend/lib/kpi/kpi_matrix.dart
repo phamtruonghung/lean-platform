@@ -1,12 +1,22 @@
-/// The matrix chrome and the one matching rule the two KPI Screens share
-/// (issue #363): `/kpi` and `/kpi/review` are both a header row over aligned
-/// body rows inside an `AppListCard`, narrowed by an `AppFilterField`.
+/// The catalogue's matrix chrome, and the one matching rule both KPI Screens
+/// share (issue #363, narrowed by #365).
 ///
-/// They live in one file so the two Screens cannot drift: the same row padding,
-/// the same header label style, the same cell gap, and one search rule. A
-/// Screen declares its columns once, as [MatrixColumn]s, and builds both its
-/// header ([MatrixHeaderRow]) and each body row's cells ([matrixCell]) from
+/// The chrome is `/kpi`'s alone: [MatrixColumn], [MatrixHeaderRow],
+/// [matrixCell] and the padding and gap they share build that Screen a header
+/// row over aligned body rows inside an `AppListCard`. A Screen declares its
+/// columns once and builds both its header and each body row's cells from
 /// those, so a header label and its cells start at the same x by construction.
+/// It lives here, belonging to no Screen in particular, so the chrome cannot
+/// drift from itself: one row padding, one header label style, one cell gap.
+///
+/// What both Screens share is the rule, not the chrome. `/kpi` and
+/// `/kpi/review` narrow the same way — [kpiMatchesSearch] over
+/// [foldForSearch]'s diacritic-free forms, the catalogue matching on code or
+/// title and the review on its title alone — and the review takes that rule
+/// and nothing else from this file: since #365 it is a tiled grid of
+/// equal-width cards (`_ReviewGrid` in `kpi_review_screen.dart`), with no
+/// header row, columns or cells of the matrix kind. The rule lives here so two
+/// copies of it cannot drift apart.
 library;
 
 import 'package:flutter/material.dart';
