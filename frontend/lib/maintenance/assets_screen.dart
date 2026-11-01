@@ -6,12 +6,19 @@
 /// to a caller who holds a write Grant somewhere — an action the server would
 /// refuse is not offered in the first place.
 ///
-/// **A register of the tree, and a card per Asset below 900px of content.** At
+/// **A register of the tree, and a card per Asset below 700px of content.** At
 /// or above [AssetsScreen.narrowBreakpoint] (at a text scale of 1) the Assets
 /// are an `AppTableHeader` band and one `AppTableRow` per Asset, both built from
 /// the one column spec [_columns]; the tree is the first cell's indent
 /// (`depth * Spacing.xl`) and the band's first label stays at depth 0. Below it,
 /// one card per Asset, as before. Never horizontal scroll.
+///
+/// **A register row offers one act inline and keeps the rest in a kebab.** A row
+/// with four buttons is four lines tall, and density is what the register is
+/// for, so Retire (or Reinstate) stays inline, as the next *status* change, and
+/// Correct details…, Change Org Unit… and Nest under…/Detach go in the overflow
+/// beside it, the shape `WorkOrdersScreen`'s rows settled. The card has the room
+/// and keeps all of them inline.
 ///
 /// There are two toolbars, for a reason: the Site and "Show retired" live in
 /// the header's `AppToolbar`, because they must stay reachable when the register
@@ -67,14 +74,14 @@ class AssetsScreen extends StatelessWidget {
 
   /// The content width (at a text scale of 1) below which the register gives way
   /// to one card per Asset, measured by `_AssetsList`'s `LayoutBuilder` and not
-  /// the window. It is 900, the page's own width, rather than the 700 a
-  /// register of five columns would get: the last column holds up to four
-  /// buttons (Retire, Correct details…, Change Org Unit…, and Nest under… or
-  /// Detach) that wrap to two lines in 340px, and the three text columns beside
-  /// it need about 450px between them before the name and the Org Unit stop
-  /// being clipped on most rows. The register is therefore drawn only when the
-  /// page frame is at its full width.
-  static const double narrowBreakpoint = 900;
+  /// the window: that box is the Screen's own content, before the page padding
+  /// and the row's. It is [AppBreakpoints.registerTable] (700), the Platform's
+  /// number for a register of five columns. At 700 the cells have about 640px:
+  /// the Actions column is one button and the kebab (about 170) and Criticality
+  /// about 90, which leaves about 380 for Name, Code · Type and Org Unit at 3:3:2,
+  /// enough for a name and a code to read and for `DisclosingText` to disclose
+  /// the rest.
+  static const double narrowBreakpoint = AppBreakpoints.registerTable;
   static const ValueKey<String> addKey = ValueKey<String>('assets-add');
   static const ValueKey<String> siteKey = ValueKey<String>('assets-site');
   static const ValueKey<String> showRetiredKey = ValueKey<String>('assets-show-retired');
@@ -86,6 +93,14 @@ class AssetsScreen extends StatelessWidget {
   static ValueKey<String> retiredChipKey(String id) => ValueKey<String>('asset-retired-$id');
   static ValueKey<String> retireKey(String id) => ValueKey<String>('asset-retire-$id');
   static ValueKey<String> reinstateKey(String id) => ValueKey<String>('asset-reinstate-$id');
+
+  /// The overflow trigger for one register row (the Work order row's shape): a
+  /// kebab holding Correct details…, Change Org Unit… and Nest under…/Detach, each
+  /// under the key its inline button carries in the card. Its own `onPressed` is
+  /// null while any mutation is in flight, so "no act is offered while one is
+  /// running" is proved by reading it. Present in the register only; the card
+  /// keeps every act inline.
+  static ValueKey<String> rowActionsKey(String id) => ValueKey<String>('asset-actions-$id');
   static ValueKey<String> correctKey(String id) => ValueKey<String>('asset-correct-$id');
   static ValueKey<String> nestKey(String id) => ValueKey<String>('asset-nest-$id');
   static ValueKey<String> detachKey(String id) => ValueKey<String>('asset-detach-$id');
@@ -510,11 +525,25 @@ class _AssetsListState extends State<_AssetsList> {
   }
 }
 
-/// The register's own fixed width for its trailing actions column: two buttons
-/// side by side, wrapping to a second line for the third and fourth. It is a
-/// column of [_columns], so the band's label and every row's actions share it by
-/// construction, whichever row does or does not offer a Correct button.
-const double _actionsColumnWidth = 340;
+/// The Actions column's measured width: the wider of the two inline labels
+/// ("Reinstate" is wider than "Retire") in the button's label style at the
+/// reader's text scale, the button's own horizontal padding either side
+/// (`Spacing.xl`), the gap, the kebab at [AppTouchTarget.min], and the slot's
+/// `Spacing.sm` gutter. It is a column of [_columns], so the band's label and
+/// every row's actions share it by construction.
+double _actionsColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  );
+  var widest = 0.0;
+  for (final label in const ['Retire', 'Reinstate']) {
+    painter.text = TextSpan(text: label, style: Theme.of(context).textTheme.labelLarge);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  return widest + 2 * Spacing.xl + Spacing.sm + AppTouchTarget.min + Spacing.sm;
+}
 
 /// The Criticality column's measured width: the widest of the four labels in a
 /// compact `Chip`'s own label style at the reader's text scale, plus the chip's
@@ -542,7 +571,7 @@ List<AppTableColumn> _columns(BuildContext context) => [
   const AppTableColumn('Code · Type', flex: 3),
   const AppTableColumn('Org Unit', flex: 2),
   AppTableColumn('Criticality', width: _criticalityColumnWidth(context)),
-  const AppTableColumn('Actions', width: _actionsColumnWidth, align: AppColumnAlign.end),
+  AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
 ];
 
 class _AssetRow extends StatelessWidget {
@@ -642,8 +671,9 @@ class _AssetRow extends StatelessWidget {
   }
 }
 
-/// One Asset's actions, shared by the register row and the card so both offer
-/// exactly the same acts through exactly the same keys and enable conditions.
+/// One Asset's actions as inline buttons, for the card: it has the room, and the
+/// register row offers the same acts through [_AssetRowActions] under the same
+/// keys and enable conditions.
 ///
 /// A `Wrap` rather than a `Row` since issue #171: up to four actions are wide
 /// enough to overflow the narrowest box, and a second line of buttons is honest
@@ -654,21 +684,18 @@ class _AssetActions extends StatelessWidget {
     required this.tree,
     required this.disabled,
     required this.canCorrectAsset,
-    this.alignment = WrapAlignment.start,
   });
 
   final Asset asset;
   final _AssetTree tree;
   final bool disabled;
   final bool Function(String orgUnitId) canCorrectAsset;
-  final WrapAlignment alignment;
 
   @override
   Widget build(BuildContext context) {
     const size = Size(AppTouchTarget.min, AppTouchTarget.min);
     final style = OutlinedButton.styleFrom(minimumSize: size);
     return Wrap(
-      alignment: alignment,
       spacing: Spacing.sm,
       runSpacing: Spacing.sm,
       children: [
@@ -720,6 +747,110 @@ class _AssetActions extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+/// One Asset's actions in a register row: Retire (or Reinstate) inline, and the
+/// rest in a kebab — the shape of `WorkOrdersScreen`'s `_RowActions`, for the
+/// same reason: a row is 52px (a 44px control and `Spacing.xs` above and below)
+/// only when it holds one line of controls.
+///
+/// The overflow is opened with [showMenu] from an `IconButton`, not a
+/// `PopupMenuButton`, so its `onPressed` is a real field a test can read:
+/// [disabled] makes it null, exactly as it disables Retire. Correct details… is
+/// absent from the menu, not disabled, for a caller [canCorrectAsset] refuses.
+class _AssetRowActions extends StatelessWidget {
+  const _AssetRowActions({
+    required this.asset,
+    required this.tree,
+    required this.disabled,
+    required this.canCorrectAsset,
+  });
+
+  final Asset asset;
+  final _AssetTree tree;
+  final bool disabled;
+  final bool Function(String orgUnitId) canCorrectAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = Size(AppTouchTarget.min, AppTouchTarget.min);
+    final items = <(Key, String, VoidCallback)>[
+      if (canCorrectAsset(asset.orgUnitId))
+        (
+          AssetsScreen.correctKey(asset.id),
+          'Correct details…',
+          () => AssetFormDialog.open(context, asset: asset),
+        ),
+      (
+        AssetsScreen.orgUnitKey(asset.id),
+        'Change Org Unit…',
+        () => AssetMoveDialog.open(context, asset: asset),
+      ),
+      if (asset.parentId != null)
+        (
+          AssetsScreen.detachKey(asset.id),
+          'Detach',
+          () =>
+              context.read<AssetsBloc>().add(AssetParentChanged(assetId: asset.id, parentId: null)),
+        )
+      else
+        (
+          AssetsScreen.nestKey(asset.id),
+          'Nest under…',
+          () => _openParentChooser(context, tree, asset),
+        ),
+    ];
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OutlinedButton(
+          key: asset.isActive
+              ? AssetsScreen.retireKey(asset.id)
+              : AssetsScreen.reinstateKey(asset.id),
+          onPressed: disabled ? null : () => _toggleActive(context, asset),
+          style: OutlinedButton.styleFrom(minimumSize: size),
+          child: Text(asset.isActive ? 'Retire' : 'Reinstate'),
+        ),
+        const SizedBox(width: Spacing.sm),
+        Builder(
+          builder: (buttonContext) => IconButton(
+            key: AssetsScreen.rowActionsKey(asset.id),
+            tooltip: 'More actions',
+            icon: const Icon(Icons.more_vert),
+            style: IconButton.styleFrom(minimumSize: size),
+            onPressed: disabled ? null : () => _openMenu(buttonContext, items),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openMenu(BuildContext context, List<(Key, String, VoidCallback)> items) async {
+    final button = context.findRenderObject() as RenderBox;
+    final overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+    final selected = await showMenu<Key>(
+      context: context,
+      position: position,
+      items: [
+        for (final (key, label, _) in items)
+          PopupMenuItem<Key>(key: key, value: key, child: Text(label)),
+      ],
+    );
+    if (selected == null) return;
+    for (final (key, _, run) in items) {
+      if (key == selected) {
+        run();
+        return;
+      }
+    }
   }
 }
 
@@ -795,12 +926,11 @@ class _AssetTableRow extends StatelessWidget {
             Chip(label: Text(asset.criticalityLabel), visualDensity: VisualDensity.compact),
           ),
           shrinkWrapTargets(
-            _AssetActions(
+            _AssetRowActions(
               asset: asset,
               tree: tree,
               disabled: disabled,
               canCorrectAsset: canCorrectAsset,
-              alignment: WrapAlignment.end,
             ),
           ),
         ],

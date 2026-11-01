@@ -4,6 +4,11 @@
 /// CONTEXT.md's PM schedule entry is the point of the choice: only a
 /// cumulative meter — an hour counter or a cycle count — can drive a schedule.
 /// The unit is chosen from the baseline catalogue, never typed (ADR-0023).
+///
+/// The form width (520): a searchable Asset, a code, a name, a unit and a kind
+/// are five fields in one column and none has columns of its own, so it is a
+/// form, not the wide dialog; the 560 this used to set inside an `AlertDialog`'s
+/// content left the title and the action row at a width the platform chose.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'asset.dart';
 import 'maintenance_api.dart';
@@ -45,9 +51,15 @@ class MeterFormDialog extends StatefulWidget {
   static const ValueKey<String> uomKey = ValueKey<String>('meter-form-uom');
   static const ValueKey<String> uomFailedKey = ValueKey<String>('meter-form-uom-failed');
   static const ValueKey<String> typeKey = ValueKey<String>('meter-form-type');
-  static const ValueKey<String> submitKey = ValueKey<String>('meter-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('meter-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('meter-form-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'meter-form-submit';
+  static const String _cancelId = 'meter-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
 
   static Future<void> open(BuildContext context, {required String siteId}) {
     final bloc = context.read<MetersBloc>();
@@ -170,14 +182,14 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
       _failure = null;
     });
     context.read<MetersBloc>().add(
-          MeterCreateConfirmed(
-            assetId: _assetId!,
-            code: _code.text.trim(),
-            name: _name.text.trim(),
-            uomCode: _uomCode!,
-            meterType: _type.wire,
-          ),
-        );
+      MeterCreateConfirmed(
+        assetId: _assetId!,
+        code: _code.text.trim(),
+        name: _name.text.trim(),
+        uomCode: _uomCode!,
+        meterType: _type.wire,
+      ),
+    );
   }
 
   void _onMetersChanged(BuildContext context, MetersState state) {
@@ -194,104 +206,101 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<MetersBloc, MetersState>(
       listener: _onMetersChanged,
-      child: AlertDialog(
-        title: const Text('Define a meter'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _AssetField(
-                  status: _assetsStatus,
-                  assets: _assets,
-                  failure: _assetsFailure,
-                  selectedId: _assetId,
-                  enabled: !_awaiting,
-                  onRetry: _loadAssets,
-                  onChanged: (id) => setState(() => _assetId = id),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: MeterFormDialog.codeKey,
-                  controller: _code,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Code',
-                    helperText: 'How this meter is known on the Asset, e.g. RUN-HRS.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: MeterFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                _UomField(
-                  status: _uomsStatus,
-                  uoms: _uoms,
-                  failure: _uomsFailure,
-                  selectedCode: _uomCode,
-                  enabled: !_awaiting,
-                  onRetry: _loadUnits,
-                  onChanged: (code) => setState(() => _uomCode = code),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<MeterType>(
-                  key: MeterFormDialog.typeKey,
-                  initialValue: _type,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Kind of meter',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final type in MeterType.values)
-                      DropdownMenuItem<MeterType>(value: type, child: Text(type.label)),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _type = value!),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: Spacing.xs),
-                  child: Text(_type.explanation, style: theme.textTheme.bodySmall),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: MeterFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Define a meter',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: MeterFormDialog.cancelKey,
+          AppDialogAction(
+            id: MeterFormDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: MeterFormDialog.submitKey,
+          AppDialogAction(
+            id: MeterFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : 'Define',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Define'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _AssetField(
+              status: _assetsStatus,
+              assets: _assets,
+              failure: _assetsFailure,
+              selectedId: _assetId,
+              enabled: !_awaiting,
+              onRetry: _loadAssets,
+              onChanged: (id) => setState(() => _assetId = id),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: MeterFormDialog.codeKey,
+              controller: _code,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Code',
+                helperText: 'How this meter is known on the Asset, e.g. RUN-HRS.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: MeterFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            _UomField(
+              status: _uomsStatus,
+              uoms: _uoms,
+              failure: _uomsFailure,
+              selectedCode: _uomCode,
+              enabled: !_awaiting,
+              onRetry: _loadUnits,
+              onChanged: (code) => setState(() => _uomCode = code),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<MeterType>(
+              key: MeterFormDialog.typeKey,
+              initialValue: _type,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Kind of meter',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final type in MeterType.values)
+                  DropdownMenuItem<MeterType>(value: type, child: Text(type.label)),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _type = value!),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: Spacing.xs),
+              child: Text(
+                _type.explanation,
+                style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: MeterFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -328,13 +337,17 @@ class _AssetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
           height: 48,
           child: Center(
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         );
       case _LoadStatus.failed:
@@ -344,7 +357,7 @@ class _AssetField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The Assets could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],
@@ -405,13 +418,17 @@ class _UomField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
           height: 48,
           child: Center(
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         );
       case _LoadStatus.failed:
@@ -421,7 +438,7 @@ class _UomField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The units of measure could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],

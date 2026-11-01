@@ -24,6 +24,7 @@ import 'package:lean_platform/maintenance/org_unit_chooser.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_confirm_dialog.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
@@ -1069,5 +1070,90 @@ void main() {
     expect(find.byKey(AssetsScreen.rowKey('7')), findsOneWidget);
     expect(find.byKey(AssetsScreen.filterCountKey), findsNothing);
     expect(wire.requests.length, requestsBefore);
+  });
+  testWidgets(
+      'a register row offers Retire inline and the rest in the kebab, which opens its acts',
+      (tester) async {
+    // 1280 wide: the content box is past the register breakpoint, so rows draw.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1280, 900);
+    addTearDown(tester.view.reset);
+
+    final wire = wireWith(
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1'), assetJson('8', 'CONV-2', 'Infeed conveyor')],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    // Retire is inline; the other acts are not in the tree until the kebab opens.
+    expect(find.byKey(AssetsScreen.retireKey('7')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.nestKey('7')), findsNothing);
+    expect(
+      tester.getSize(find.byKey(AssetsScreen.rowKey('7'))).height,
+      AppTouchTarget.min + 2 * Spacing.xs,
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.rowActionsKey('7')));
+    expect(find.byKey(AssetsScreen.correctKey('7')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.orgUnitKey('7')), findsOneWidget);
+    expect(find.byKey(AssetsScreen.nestKey('7')), findsOneWidget);
+    await tapIn(tester, find.byKey(AssetsScreen.nestKey('7')));
+    expect(find.byKey(AssetsScreen.parentChooserKey), findsOneWidget);
+    await tapIn(tester, find.byKey(AssetsScreen.parentOptionKey('8')));
+    expect(find.byKey(AssetsScreen.parentChooserKey), findsNothing);
+  });
+  testWidgets(
+      'while a mutation is in flight every register row\'s kebab and Retire are disabled, '
+      'read off their own onPressed, and are enabled again once it completes', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1280, 900);
+    addTearDown(tester.view.reset);
+
+    final wire = wireWith(
+      assets: {
+        '1': [assetJson('7', 'PRESS-1', 'Press 1'), assetJson('8', 'CONV-2', 'Infeed conveyor')],
+      },
+    )..assetPatchGate = Completer<void>();
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    VoidCallback? kebab(String id) =>
+        tester.widget<IconButton>(find.byKey(AssetsScreen.rowActionsKey(id))).onPressed;
+    VoidCallback? retire(String id) =>
+        tester.widget<OutlinedButton>(find.byKey(AssetsScreen.retireKey(id))).onPressed;
+
+    // Before: both are live, so the assertions below cannot pass by the
+    // controls simply always being disabled.
+    expect(kebab('7'), isNotNull);
+    expect(kebab('8'), isNotNull);
+    expect(retire('7'), isNotNull);
+    expect(retire('8'), isNotNull);
+
+    // Row 7's retirement starts and hangs on the gate.
+    await tapIn(tester, find.byKey(AssetsScreen.retireKey('7')));
+    await tapIn(tester, find.byKey(AppConfirmDialog.confirmKey));
+
+    expect(kebab('7'), isNull);
+    expect(kebab('8'), isNull);
+    expect(retire('7'), isNull);
+    expect(retire('8'), isNull);
+
+    wire.assetPatchGate!.complete();
+    await tester.pumpAndSettle();
+
+    // After: row 7 is retired and gone; the remaining row is live again.
+    expect(find.byKey(AssetsScreen.rowKey('7')), findsNothing);
+    expect(kebab('8'), isNotNull);
+    expect(retire('8'), isNotNull);
   });
 }
