@@ -87,4 +87,7 @@ the one decision in it a reader would otherwise second-guess.
   its own slice adopts a primitive.
 - **A 32px row is a new thing to defend in review.** Anyone who sees one will
   reasonably ask whether it breaks the tap floor. The answer is in this file and
-  in the row-height rule, and the primitive's own test is what will pin it.
+  in the row-height rule, and `frontend/test/app_table_test.dart` pins both
+  heights today: a read-only row is exactly `AppTableRow.height` (32), and a row
+  with an `onTap` is exactly `AppTouchTarget.min` (44) with the whole row as the
+  target.

@@ -59,8 +59,10 @@ question first.
 **The shared primitives are the one addition (#386, added in this card).**
 `AppToolbar`,
 `AppTableHeader` / `AppTableRow`, `AppStatTile`, `AppDetailSection` and
-`AppSectionGrid` carry one golden each. That does not reopen the "no golden per
-Screen" scope above, for three reasons. A primitive is not a Screen: it has no
+`AppSectionGrid` carry a golden each; the two with two shapes carry two —
+`AppToolbar` wide and wrapped, `AppSectionGrid` wide and narrow — seven in all.
+That does not reopen the "no golden per Screen" scope above, for three reasons.
+A primitive is not a Screen: it has no
 content of its own to churn, so a golden of it changes only when the design
 language (`docs/design-language.md`) changes, which is exactly the change a
 reviewer should see as pixels. It is mounted the way `app_page_header_test.dart`

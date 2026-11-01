@@ -477,6 +477,11 @@ Named once, in one class:
 | `AppBreakpoints.formTwoColumn` | 900 | a form's field grid goes two-column |
 | `AppBreakpoints.detailTwoColumn` | 1000 | a detail page's sections go two-column |
 
+One of the five is still named twice. `headerActionsWrap` (560) is the number
+`AppPageHeader.wrapBreakpoint` already holds, and the header still computes its
+own text-scale factor, so the class holds the copy that header points at until it
+adopts `AppBreakpoints.effective`.
+
 `AppBreakpoints` ships in this card (#386), in `theme.dart`; the five numbers are
 named there and this section argues them. Three are pinned by a test today:
 `headerActionsWrap` (560), which is the same number as
@@ -484,11 +489,14 @@ named there and this section argues them. Three are pinned by a test today:
 `test/app_page_header_test.dart`; `toolbarWrap` (640) by
 `test/app_toolbar_test.dart`; and `detailTwoColumn` (1000) by
 `test/app_section_grid_test.dart`. The other two are named but spent by nothing
-yet: `registerTable` (700) belongs to the Work orders register and
-`formTwoColumn` (900) to a form's field grid, and each is pinned by that Screen's
-own test when the Screen adopts its primitive. Home's grid carries a private
-`_CardGrid.twoColumnWidth` of 640, read from its own `LayoutBuilder`; that is the
-same 640 already in the class, spent by Home's grid.
+yet: `registerTable` (700) belongs to a register of five columns or fewer, and
+`formTwoColumn` (900) to a form's field grid; each is pinned by the test of the
+Screen that adopts it. Work orders is deliberately not on 700: its seven columns
+keep their own 800, argued in section 6, and its own tests cover both sides of
+that number. Home's grid carries a private `_CardGrid.twoColumnWidth` of 640,
+read from its own `LayoutBuilder`; that is the same 640 already in the class,
+spent by Home's grid — and it compares without the text scale, the one place that
+does not yet follow the rule above, until its own slice adopts the class.
 
 **Why it is written once.** The bug shipped twice. #105 was the window-versus-box
 confusion of section 2, in the Work orders table. #379 was the header's wrap
@@ -497,8 +505,8 @@ reader's text size and the box does not, so the same box needs the wrap sooner
 (#381 then pinned that rule's edges). Each was fixed where it was found, and each
 was a rule that the next Screen would have had to rediscover. The class exists so
 there is one place that reads the box and one that reads the text scale. A number
-is pinned by the widget that spends it, at its edge (section 10 names which three
-are pinned today and which two wait for the Screen that spends them).
+is pinned by the widget that spends it, at its edge (the paragraph above names
+which three are pinned today and which two wait for the Screen that spends them).
 
 Against section 2, the five numbers sort the three common windows:
 
