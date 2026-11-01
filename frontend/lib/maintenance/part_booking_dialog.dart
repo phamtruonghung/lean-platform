@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'maintenance_api.dart';
 import 'part.dart';
@@ -64,8 +65,14 @@ class PartBookingDialog extends StatefulWidget {
   static const ValueKey<String> partNoKey = ValueKey<String>('part-booking-part-no');
   static const ValueKey<String> descriptionKey = ValueKey<String>('part-booking-description');
   static const ValueKey<String> uomKey = ValueKey<String>('part-booking-uom');
-  static const ValueKey<String> submitKey = ValueKey<String>('part-booking-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('part-booking-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
+  static const String _submitId = 'submit';
+  static const String _cancelId = 'cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('part-booking-failure');
 
   @override
@@ -221,202 +228,202 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<WorkOrderDetailBloc, WorkOrderDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: const Text('Book a part'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  key: PartBookingDialog.sourcedKey,
-                  initialValue: _sourced,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Sourced', border: OutlineInputBorder()),
-                  items: [
-                    for (final source in PartSource.values)
-                      DropdownMenuItem<String>(value: source.wire, child: Text(source.label)),
-                  ],
-                  onChanged: _awaiting
-                      ? null
-                      : (value) => setState(() => _sourced = value ?? PartSource.stores.wire),
-                ),
-                const SizedBox(height: Spacing.md),
-                if (_status == _OptionsStatus.loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Spacing.md),
-                    child: Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  )
-                else if (_status == _OptionsStatus.failed)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _optionsFailure ?? 'The options could not be read.',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                      ),
-                      TextButton(onPressed: _awaiting ? null : _loadOptions, child: const Text('Try again')),
-                    ],
-                  )
-                else if (_sourced == PartSource.stores.wire) ...[
-                  AppSearchField<Part>(
-                    name: PartBookingDialog._partFieldName,
-                    label: 'Part',
-                    value: _selectedPart,
-                    enabled: !_awaiting,
-                    // A pick sets the dialog's own id; typing over the chosen
-                    // Part retires it, so this booking cannot name a Part its
-                    // own field has stopped showing (ADR-0023 point 4).
-                    onChanged: (part) => setState(() => _partId = part?.id),
-                    onSelected: (part) => setState(() => _partId = part.id),
-                    // A dumb in-memory filter over the catalogue `initState`
-                    // already read — no HTTP request of its own (ADR-0023).
-                    // Matched on the two fields that identify a Part: its
-                    // part number and its description.
-                    fetchSuggestions: (term) async {
-                      final lower = term.toLowerCase();
-                      return [
-                        for (final part in _parts)
-                          if (part.partNo.toLowerCase().contains(lower) ||
-                              part.description.toLowerCase().contains(lower))
-                            part,
-                      ];
-                    },
-                    suggestionBuilder: (context, part) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Spacing.md,
-                        vertical: Spacing.sm,
-                      ),
-                      child: Text(part.label, overflow: TextOverflow.ellipsis),
-                    ),
-                    idOf: (part) => part.id,
-                    displayStringFor: (part) => part.label,
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  AppSearchField<Store>(
-                    name: PartBookingDialog._storeFieldName,
-                    label: 'Store',
-                    value: _selectedStore,
-                    enabled: !_awaiting,
-                    onChanged: (store) => setState(() => _storeId = store?.id),
-                    onSelected: (store) => setState(() => _storeId = store.id),
-                    // A dumb in-memory filter over the Site's stores
-                    // `initState` already read, matching the Store's own name
-                    // (ADR-0023, issue #190's rule).
-                    fetchSuggestions: (term) async {
-                      final lower = term.toLowerCase();
-                      return [
-                        for (final store in _stores)
-                          if (store.name.toLowerCase().contains(lower)) store,
-                      ];
-                    },
-                    suggestionBuilder: (context, store) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Spacing.md,
-                        vertical: Spacing.sm,
-                      ),
-                      child: Text(store.label, overflow: TextOverflow.ellipsis),
-                    ),
-                    idOf: (store) => store.id,
-                    displayStringFor: (store) => store.label,
-                  ),
-                ] else ...[
-                  TextField(
-                    key: PartBookingDialog.partNoKey,
-                    controller: _partNo,
-                    enabled: !_awaiting,
-                    decoration: const InputDecoration(
-                      labelText: 'Part number (optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  TextField(
-                    key: PartBookingDialog.descriptionKey,
-                    controller: _description,
-                    enabled: !_awaiting,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  DropdownButtonFormField<String>(
-                    key: PartBookingDialog.uomKey,
-                    initialValue: _uomCode,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Unit of measure',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final unit in _units)
-                        DropdownMenuItem<String>(
-                          value: unit.code,
-                          child: Text('${unit.name} (${unit.code})'),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _uomCode = value),
-                  ),
-                ],
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: PartBookingDialog.quantityKey,
-                  controller: _quantity,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Quantity', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: PartBookingDialog.unitCostKey,
-                  controller: _unitCost,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Unit cost (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: PartBookingDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // The form width (520): five fields at most, one of them a picker (§11).
+      // It was 560 inside the content; it does not outgrow the form width, so
+      // there is no wide (640) dialog here.
+      child: AppDialog(
+        title: 'Book a part',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: PartBookingDialog.cancelKey,
+          AppDialogAction(
+            id: PartBookingDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: PartBookingDialog.submitKey,
+          AppDialogAction(
+            id: PartBookingDialog._submitId,
+            label: 'Book part',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Book part'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              key: PartBookingDialog.sourcedKey,
+              initialValue: _sourced,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Sourced', border: OutlineInputBorder()),
+              items: [
+                for (final source in PartSource.values)
+                  DropdownMenuItem<String>(value: source.wire, child: Text(source.label)),
+              ],
+              onChanged: _awaiting
+                  ? null
+                  : (value) => setState(() => _sourced = value ?? PartSource.stores.wire),
+            ),
+            const SizedBox(height: Spacing.md),
+            if (_status == _OptionsStatus.loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.md),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else if (_status == _OptionsStatus.failed)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _optionsFailure ?? 'The options could not be read.',
+                    style: AppTypography.floor(context)?.copyWith(color: palette.statusDanger),
+                  ),
+                  TextButton(onPressed: _awaiting ? null : _loadOptions, child: const Text('Try again')),
+                ],
+              )
+            else if (_sourced == PartSource.stores.wire) ...[
+              AppSearchField<Part>(
+                name: PartBookingDialog._partFieldName,
+                label: 'Part',
+                value: _selectedPart,
+                enabled: !_awaiting,
+                // A pick sets the dialog's own id; typing over the chosen
+                // Part retires it, so this booking cannot name a Part its
+                // own field has stopped showing (ADR-0023 point 4).
+                onChanged: (part) => setState(() => _partId = part?.id),
+                onSelected: (part) => setState(() => _partId = part.id),
+                // A dumb in-memory filter over the catalogue `initState`
+                // already read — no HTTP request of its own (ADR-0023).
+                // Matched on the two fields that identify a Part: its
+                // part number and its description.
+                fetchSuggestions: (term) async {
+                  final lower = term.toLowerCase();
+                  return [
+                    for (final part in _parts)
+                      if (part.partNo.toLowerCase().contains(lower) ||
+                          part.description.toLowerCase().contains(lower))
+                        part,
+                  ];
+                },
+                suggestionBuilder: (context, part) => Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Spacing.md,
+                    vertical: Spacing.sm,
+                  ),
+                  child: Text(part.label, overflow: TextOverflow.ellipsis),
+                ),
+                idOf: (part) => part.id,
+                displayStringFor: (part) => part.label,
+              ),
+              const SizedBox(height: Spacing.md),
+              AppSearchField<Store>(
+                name: PartBookingDialog._storeFieldName,
+                label: 'Store',
+                value: _selectedStore,
+                enabled: !_awaiting,
+                onChanged: (store) => setState(() => _storeId = store?.id),
+                onSelected: (store) => setState(() => _storeId = store.id),
+                // A dumb in-memory filter over the Site's stores
+                // `initState` already read, matching the Store's own name
+                // (ADR-0023, issue #190's rule).
+                fetchSuggestions: (term) async {
+                  final lower = term.toLowerCase();
+                  return [
+                    for (final store in _stores)
+                      if (store.name.toLowerCase().contains(lower)) store,
+                  ];
+                },
+                suggestionBuilder: (context, store) => Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Spacing.md,
+                    vertical: Spacing.sm,
+                  ),
+                  child: Text(store.label, overflow: TextOverflow.ellipsis),
+                ),
+                idOf: (store) => store.id,
+                displayStringFor: (store) => store.label,
+              ),
+            ] else ...[
+              TextField(
+                key: PartBookingDialog.partNoKey,
+                controller: _partNo,
+                enabled: !_awaiting,
+                decoration: const InputDecoration(
+                  labelText: 'Part number (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: PartBookingDialog.descriptionKey,
+                controller: _description,
+                enabled: !_awaiting,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: Spacing.md),
+              DropdownButtonFormField<String>(
+                key: PartBookingDialog.uomKey,
+                initialValue: _uomCode,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Unit of measure',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final unit in _units)
+                    DropdownMenuItem<String>(
+                      value: unit.code,
+                      child: Text('${unit.name} (${unit.code})'),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _uomCode = value),
+              ),
+            ],
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: PartBookingDialog.quantityKey,
+              controller: _quantity,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Quantity', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: PartBookingDialog.unitCostKey,
+              controller: _unitCost,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Unit cost (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: PartBookingDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

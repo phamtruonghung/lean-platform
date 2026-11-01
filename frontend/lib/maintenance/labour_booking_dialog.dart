@@ -23,6 +23,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
@@ -51,8 +52,14 @@ class LabourBookingDialog extends StatefulWidget {
   static const ValueKey<String> activityKey = ValueKey<String>('labour-booking-activity');
   static const ValueKey<String> overtimeKey = ValueKey<String>('labour-booking-overtime');
   static const ValueKey<String> noteKey = ValueKey<String>('labour-booking-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('labour-booking-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('labour-booking-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
+  static const String _submitId = 'submit';
+  static const String _cancelId = 'cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('labour-booking-failure');
 
   @override
@@ -165,106 +172,105 @@ class _LabourBookingDialogState extends State<LabourBookingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<WorkOrderDetailBloc, WorkOrderDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: const Text('Book labour'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _EmployeeField(
-                  status: _employeesStatus,
-                  employees: _employees,
-                  failure: _employeesFailure,
-                  selectedId: _employeeId,
-                  enabled: !_awaiting,
-                  onRetry: _loadEmployees,
-                  onChanged: (id) => setState(() => _employeeId = id),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: LabourBookingDialog.activityKey,
-                  initialValue: _activity,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Activity',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final activity in LabourActivity.values)
-                      DropdownMenuItem<String>(value: activity.wire, child: Text(activity.label)),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _activity = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                AppDateTimeField(
-                  name: 'labour-started-at',
-                  label: 'Started at',
-                  value: _startedAt,
-                  enabled: !_awaiting,
-                  onChanged: (value) {
-                    if (value != null) setState(() => _startedAt = value);
-                  },
-                ),
-                const SizedBox(height: Spacing.md),
-                AppDateTimeField(
-                  name: 'labour-ended-at',
-                  label: 'Ended at',
-                  value: _endedAt,
-                  enabled: !_awaiting,
-                  onChanged: (value) {
-                    if (value != null) setState(() => _endedAt = value);
-                  },
-                ),
-                const SizedBox(height: Spacing.sm),
-                CheckboxListTile(
-                  key: LabourBookingDialog.overtimeKey,
-                  value: _isOvertime,
-                  onChanged: _awaiting ? null : (value) => setState(() => _isOvertime = value ?? false),
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: const Text('Overtime'),
-                ),
-                TextField(
-                  key: LabourBookingDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: LabourBookingDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // The form width (520): six fields, one of them a picker (§11). It does
+      // not outgrow it, so there is no wide (640) dialog here.
+      child: AppDialog(
+        title: 'Book labour',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: LabourBookingDialog.cancelKey,
+          AppDialogAction(
+            id: LabourBookingDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: LabourBookingDialog.submitKey,
+          AppDialogAction(
+            id: LabourBookingDialog._submitId,
+            label: 'Book labour',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Book labour'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _EmployeeField(
+              status: _employeesStatus,
+              employees: _employees,
+              failure: _employeesFailure,
+              selectedId: _employeeId,
+              enabled: !_awaiting,
+              onRetry: _loadEmployees,
+              onChanged: (id) => setState(() => _employeeId = id),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: LabourBookingDialog.activityKey,
+              initialValue: _activity,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Activity',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final activity in LabourActivity.values)
+                  DropdownMenuItem<String>(value: activity.wire, child: Text(activity.label)),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _activity = value),
+            ),
+            const SizedBox(height: Spacing.md),
+            AppDateTimeField(
+              name: 'labour-started-at',
+              label: 'Started at',
+              value: _startedAt,
+              enabled: !_awaiting,
+              onChanged: (value) {
+                if (value != null) setState(() => _startedAt = value);
+              },
+            ),
+            const SizedBox(height: Spacing.md),
+            AppDateTimeField(
+              name: 'labour-ended-at',
+              label: 'Ended at',
+              value: _endedAt,
+              enabled: !_awaiting,
+              onChanged: (value) {
+                if (value != null) setState(() => _endedAt = value);
+              },
+            ),
+            const SizedBox(height: Spacing.sm),
+            CheckboxListTile(
+              key: LabourBookingDialog.overtimeKey,
+              value: _isOvertime,
+              onChanged: _awaiting ? null : (value) => setState(() => _isOvertime = value ?? false),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text('Overtime'),
+            ),
+            TextField(
+              key: LabourBookingDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Note (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: LabourBookingDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -301,7 +307,7 @@ class _EmployeeField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _EmployeesStatus.loading:
         return const SizedBox(
@@ -317,7 +323,7 @@ class _EmployeeField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The Employees could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.floor(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],

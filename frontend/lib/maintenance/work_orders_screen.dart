@@ -57,13 +57,14 @@
 ///   plus one overflow holding everything else, never four buttons in a
 ///   row. See `_RowActions`'s own header below.
 ///
-/// - **Filters live in the header, as removable chips**, with room left for
-///   a second filter dimension and a "Clear all" affordance once one
-///   arrives — see `_Header`'s own comment on its filter row.
+/// - **Filters and the count live in one `AppToolbar`, under the header's
+///   hairline**, with room left for a second filter dimension and a "Clear
+///   all" affordance once one arrives — see `_Header`'s own comment on its
+///   filter row.
 ///
-/// - **Below 800px of this Screen's own content width, cards; at or above,
-///   a table — never horizontal scroll.** See `_WorkOrdersList`'s own
-///   header.
+/// - **Below 800px of this Screen's own content width (at a text scale of 1),
+///   cards; at or above, a register — never horizontal scroll.** See
+///   `_WorkOrdersList`'s own header.
 library;
 
 import 'package:flutter/material.dart';
@@ -75,9 +76,12 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/app_toolbar.dart';
 import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -322,7 +326,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final loaded = state is WorkOrdersLoaded ? state as WorkOrdersLoaded : null;
 
     return Center(
@@ -352,17 +356,20 @@ class _Header extends StatelessWidget {
                       : () => context.go('${Routes.workOrders}/new'),
                   icon: const Icon(Icons.add),
                   label: const Text('Raise a Work order'),
-                  style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
+                  style: FilledButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min)),
                 ),
             ],
+            // Filters and the count in one toolbar (design-language §5): the
+            // narrowing controls lead, the read-out of what they narrowed to
+            // follows. "Raise a Work order" stays in the header's own actions.
             below: loaded == null
                 ? null
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (loaded.sites.length > 1) ...[
+                : AppToolbar(
+                    filters: [
+                      if (loaded.sites.length > 1)
                         SizedBox(
-                          width: 280,
+                          width: _siteFieldWidth,
                           child: DropdownButtonFormField<String>(
                             key: WorkOrdersScreen.siteKey,
                             initialValue: loaded.siteId,
@@ -379,70 +386,62 @@ class _Header extends StatelessWidget {
                             },
                           ),
                         ),
-                        const SizedBox(height: Spacing.md),
-                      ],
                       // Filters live here, as removable chips (issue #104,
-                      // Decision D). Today there is exactly one filter dimension
-                      // (the Org Unit narrow), so there is nothing yet to offer a
-                      // "Clear all" over — but this `Wrap` is where a second
-                      // dimension (a status filter, say, that a future Maintenance
-                      // Screen adds) would sit alongside this one, with "Clear
-                      // all" appearing once there are two chips to clear at once.
-                      // "Show completed and cancelled" below is deliberately kept
-                      // out of this row: it broadens the read rather than
-                      // narrowing it, so it stays the plain `FilterChip` toggle it
-                      // already was rather than being folded in as a third
-                      // "applied filter".
-                      Wrap(
-                        spacing: Spacing.sm,
-                        runSpacing: Spacing.sm,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          if (loaded.orgUnitFilterId == null)
-                            OutlinedButton.icon(
-                              key: WorkOrdersScreen.filterKey,
-                              onPressed: () => _openOrgUnitFilter(context, loaded.siteId!),
-                              icon: const Icon(Icons.filter_alt_outlined),
-                              label: const Text('Narrow to an Org Unit'),
-                              style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                            )
-                          else
-                            // A `Chip` plus its own adjacent `IconButton`, not
-                            // `Chip.onDeleted`/`deleteIcon` directly: passing
-                            // `Chip.deleteIconBoxConstraints` — the documented way
-                            // to guarantee this icon's 44×44 target (#99 user
-                            // story 28) — triggers a framework semantics assertion
-                            // on the pinned SDK the moment a `Chip` carrying one
-                            // first enters the tree (reproduced in isolation
-                            // against a bare `Chip`, nothing specific to this
-                            // Screen or this filter). This sidesteps that bug
-                            // entirely rather than shipping a Screen that crashes
-                            // its own tests, while keeping the same look (a
-                            // removable chip) and the same [clearFilterKey] the
-                            // clear affordance always carried.
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Chip(
-                                  label: Text(
-                                    'Narrowed to ${loaded.orgUnitFilterName}',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                IconButton(
-                                  key: WorkOrdersScreen.clearFilterKey,
-                                  tooltip: 'Show the whole Site again',
-                                  icon: const Icon(Icons.close),
-                                  style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
-                                  onPressed: () => context
-                                      .read<WorkOrdersBloc>()
-                                      .add(const WorkOrdersOrgUnitFilterCleared()),
-                                ),
-                              ],
+                      // Decision D). Today there is exactly one narrowing
+                      // dimension (the Org Unit narrow), so there is nothing yet
+                      // to offer a "Clear all" over — but this list is where a
+                      // second dimension (a status filter, say, that a future
+                      // Maintenance Screen adds) would sit alongside this one,
+                      // with "Clear all" appearing once there are two chips to
+                      // clear at once. "Show completed and cancelled" below is
+                      // deliberately not an "applied filter": it broadens the
+                      // read rather than narrowing it, so it stays the plain
+                      // `FilterChip` toggle it already was.
+                      if (loaded.orgUnitFilterId == null)
+                        OutlinedButton.icon(
+                          key: WorkOrdersScreen.filterKey,
+                          onPressed: () => _openOrgUnitFilter(context, loaded.siteId!),
+                          icon: const Icon(Icons.filter_alt_outlined),
+                          label: const Text('Narrow to an Org Unit'),
+                          style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min)),
+                        )
+                      else
+                        // A `Chip` plus its own adjacent `IconButton`, not
+                        // `Chip.onDeleted`/`deleteIcon` directly: passing
+                        // `Chip.deleteIconBoxConstraints` — the documented way
+                        // to guarantee this icon's 44×44 target (#99 user
+                        // story 28) — triggers a framework semantics assertion
+                        // on the pinned SDK the moment a `Chip` carrying one
+                        // first enters the tree (reproduced in isolation
+                        // against a bare `Chip`, nothing specific to this
+                        // Screen or this filter). This sidesteps that bug
+                        // entirely rather than shipping a Screen that crashes
+                        // its own tests, while keeping the same look (a
+                        // removable chip) and the same [clearFilterKey] the
+                        // clear affordance always carried.
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Chip(
+                              label: Text(
+                                'Narrowed to ${loaded.orgUnitFilterName}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: Spacing.md),
+                            IconButton(
+                              key: WorkOrdersScreen.clearFilterKey,
+                              tooltip: 'Show the whole Site again',
+                              icon: const Icon(Icons.close),
+                              style: IconButton.styleFrom(
+                                  minimumSize:
+                                      const Size(AppTouchTarget.min, AppTouchTarget.min)),
+                              onPressed: () => context
+                                  .read<WorkOrdersBloc>()
+                                  .add(const WorkOrdersOrgUnitFilterCleared()),
+                            ),
+                          ],
+                        ),
                       FilterChip(
                         key: WorkOrdersScreen.showHistoryKey,
                         label: const Text('Show completed and cancelled'),
@@ -457,28 +456,26 @@ class _Header extends StatelessWidget {
                             : (value) =>
                                 context.read<WorkOrdersBloc>().add(WorkOrdersShowHistoryChanged(value)),
                       ),
-                      // How much is on screen, in the domain's own words (issue
-                      // #168). Not a footer under the list, and that is a deliberate
-                      // departure from the ticket's own first wording: the list is a
-                      // lazy `ListView`, so a footer is only reached by scrolling to
-                      // the bottom — the one place a reader who is wondering "is this
-                      // everything?" is least likely to be. Here, beside the controls
-                      // that changed it, it is always visible.
-                      //
-                      // Suppressed when nothing is shown: the empty state already
-                      // speaks, and "0 Work orders" above it would be the same fact
-                      // said twice (and would read as an error rather than as the
-                      // state the Screen has its own words for).
-                      if (loaded.workOrders.isNotEmpty) ...[
-                        const SizedBox(height: Spacing.md),
-                        Text(
-                          WorkOrdersScreen._countLabel(loaded),
-                          key: WorkOrdersScreen.countKey,
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
                     ],
+                    // How much is on screen, in the domain's own words (issue
+                    // #168). Not a footer under the list, and that is a deliberate
+                    // departure from the ticket's own first wording: the list is a
+                    // lazy `ListView`, so a footer is only reached by scrolling to
+                    // the bottom — the one place a reader who is wondering "is this
+                    // everything?" is least likely to be. Here, beside the controls
+                    // that changed it, it is always visible.
+                    //
+                    // Suppressed when nothing is shown: the empty state already
+                    // speaks, and "0 Work orders" above it would be the same fact
+                    // said twice (and would read as an error rather than as the
+                    // state the Screen has its own words for).
+                    count: loaded.workOrders.isEmpty
+                        ? null
+                        : Text(
+                            WorkOrdersScreen._countLabel(loaded),
+                            key: WorkOrdersScreen.countKey,
+                            style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+                          ),
                   ),
           ),
         ),
@@ -486,6 +483,10 @@ class _Header extends StatelessWidget {
     );
   }
 }
+
+/// The Site dropdown's own width: wide enough for a Site's name, fixed so the
+/// control does not move with the toolbar's other filters.
+const double _siteFieldWidth = 280;
 
 /// Opens a chooser over the same tree `OrgUnitChooser` already browses for
 /// placing an Asset (#56) — the real tree engine (`OrgUnitPickerBloc`), not
@@ -522,25 +523,30 @@ class _OrgUnitFilterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Narrow to an Org Unit'),
-      content: SizedBox(
-        width: 480,
-        child: OrgUnitChooser(
-          selectedId: null,
-          onSelected: (node) => Navigator.of(context).pop(node),
-          // The filter is scoped to the Site the list is already showing —
-          // browsing a different Site's tree from inside it would let the
-          // header end up naming an Org Unit outside that Site.
-          showSitePicker: false,
-          title: 'Narrow the list',
-          description: 'Choose the Org Unit to narrow the list to. Everything beneath it is '
-              'included too.',
-        ),
-      ),
+    // A picker (460): a tree to choose one Org Unit from. It stays a bare
+    // `showDialog` that returns the node, and adopts the shell (§11).
+    return AppDialog(
+      title: 'Narrow to an Org Unit',
+      size: AppDialogSize.picker,
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        AppDialogAction(
+          id: 'cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ],
+      child: OrgUnitChooser(
+        selectedId: null,
+        onSelected: (node) => Navigator.of(context).pop(node),
+        // The filter is scoped to the Site the list is already showing —
+        // browsing a different Site's tree from inside it would let the
+        // header end up naming an Org Unit outside that Site.
+        showSitePicker: false,
+        title: 'Narrow the list',
+        description: 'Choose the Org Unit to narrow the list to. Everything beneath it is '
+            'included too.',
+      ),
     );
   }
 }
@@ -552,16 +558,15 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: WorkOrdersScreen.maxWidth,
         child: Padding(
           key: WorkOrdersScreen.truncatedKey,
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
             'There are more Work orders than this list shows. Narrow it by Org Unit, or turn history off, to see the rest.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
           ),
         ),
       ),
@@ -616,14 +621,17 @@ class _Notice extends StatelessWidget {
 /// own doc comment for why the window was never the right thing to ask) —
 /// never a third, horizontally-scrolling shape:
 ///
-/// - At or above [WorkOrdersScreen.narrowBreakpoint] (800px of content): a
-///   table —
-///   a header row of column labels, then one `Row` of cells per Work order,
-///   built from `Expanded`/`Flexible` cells with `TextOverflow.ellipsis`,
-///   sized so it never needs to scroll sideways. Deliberately not Flutter's
-///   `DataTable`: its default is a horizontally-scrolling
-///   `SingleChildScrollView`, which is exactly the shape this ticket bans at
-///   every width, not only below the breakpoint.
+/// - At or above [WorkOrdersScreen.narrowBreakpoint] (800px of content, at a
+///   text scale of 1): a **register** (`design-language.md` §6) — an
+///   `AppTableHeader` band, then one `AppTableRow` per Work order, both built
+///   from the one column spec [_columns], so a label and its cells start at the
+///   same x by construction. Deliberately not Flutter's `DataTable`: its
+///   default is a horizontally-scrolling `SingleChildScrollView`, which is
+///   exactly the shape this ticket bans at every width, not only below the
+///   breakpoint. **A row is exactly 44px** (`AppTouchTarget.min`): the whole row
+///   opens the Work order, so it is a tap target, and §6 moves Work orders from
+///   56 to 44. The row's own buttons are laid out inside that 44, see
+///   [_RowActions.compact].
 /// - Below it: one card per Work order, carrying at minimum the Work order
 ///   number, summary, Asset, Org Unit, status and the single primary action
 ///   — issue #104's own floor. The assignee stays too, since #99's own wide
@@ -702,7 +710,12 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
     // width.
     return LayoutBuilder(
       builder: (context, constraints) {
-        final narrow = constraints.maxWidth < WorkOrdersScreen.narrowBreakpoint;
+        // Scaled by the reader's text size (never below 1): a row grows with the
+        // text and the box does not, so the same box needs cards sooner
+        // (design-language §10, the #379/#381 bug).
+        final narrow = constraints.maxWidth <
+            AppBreakpoints.effective(context, WorkOrdersScreen.narrowBreakpoint);
+        final columns = _columns(context);
         return Center(
           child: AppPageFrame(
             maxWidth: WorkOrdersScreen.maxWidth,
@@ -747,9 +760,10 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
                               padding: const EdgeInsets.fromLTRB(
                                   Spacing.lg, 0, Spacing.lg, Spacing.xl),
                               children: [
-                                const _WorkOrderTableHeader(),
+                                AppTableHeader(columns: columns),
                                 for (final workOrder in matches)
                                   _WorkOrderTableRow(
+                                    columns: columns,
                                     workOrder: workOrder,
                                     canAssign: widget.canAssign(workOrder.orgUnitId),
                                     canWork: widget.canWork,
@@ -766,17 +780,25 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
   }
 }
 
-/// The wide table's own fixed width for its trailing actions column — wide
-/// enough for one primary button plus the overflow trigger side by side,
-/// shared between [_WorkOrderTableHeader]'s spacer and every
-/// [_WorkOrderTableRow]'s own actions cell so the columns before it stay
-/// aligned regardless of which row does or does not offer a primary button.
+/// The register's own fixed width for its trailing actions column — wide
+/// enough for one primary button plus the overflow trigger side by side. It is a
+/// column of [_columns], so the band's label and every row's actions cell share
+/// it by construction, whichever row does or does not offer a primary button.
 const double _actionsColumnWidth = 232;
+
+/// How tall a button is when it sits *inside* a 44px register row: the row's 44
+/// less the `Spacing.xs` `AppTableRow` pads above and below it. The row itself is
+/// the 44px target (it opens the Work order); a card's buttons stay 44.
+const double _compactControlHeight = AppTouchTarget.min - 2 * Spacing.xs;
 
 double _statusColumnWidth(BuildContext context) {
   final style = Theme.of(context).textTheme.labelLarge;
   final direction = Directionality.of(context);
-  final painter = TextPainter(textDirection: direction);
+  // The reader's text scale is counted: the chip's label grows with it.
+  final painter = TextPainter(
+    textDirection: direction,
+    textScaler: MediaQuery.textScalerOf(context),
+  );
   var widest = 0.0;
   for (final label in WorkOrder.knownStatusLabels) {
     painter.text = TextSpan(text: label, style: style);
@@ -786,63 +808,41 @@ double _statusColumnWidth(BuildContext context) {
   return widest + 32 + Spacing.sm;
 }
 
-class _WorkOrderTableHeader extends StatelessWidget {
-  const _WorkOrderTableHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // The header reads as a header (issue #168) by spending two things the
-    // data rows do not: a band behind it, and weight on its labels. The
-    // labels were `onSurfaceVariant` in `labelMedium` — the same colour and
-    // size as the metadata in the rows below, separated from them by one
-    // hairline, which is why the row read as a fifth row of data.
-    //
-    // Sentence case and 12px are kept deliberately: uppercasing is the
-    // Shell's own Destination-group device (`_GroupHeading`), and the column
-    // names are the domain's words ("WO#", "Org Unit"), not decoration. The
-    // hairline under the band is the same `outlineVariant` every row's own
-    // bottom border uses, so the table still reads as one table.
-    final style = theme.textTheme.labelMedium?.copyWith(
-      color: theme.colorScheme.onSurface,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.2,
-    );
-    Widget label(String text, int flex) => Expanded(flex: flex, child: Text(text, style: style));
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.of(context).tableHeaderFill,
-        border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-      child: Row(
-        children: [
-          label('WO#', 2),
-          label('Summary', 4),
-          label('Asset', 4),
-          label('Org Unit', 2),
-          SizedBox(width: _statusColumnWidth(context), child: Text('Status', style: style)),
-          label('Assignee', 3),
-          SizedBox(width: _actionsColumnWidth, child: Text('Actions', style: style)),
-        ],
-      ),
-    );
-  }
-}
+/// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
+/// built from this list, so a header label and its cells start at the same x.
+List<AppTableColumn> _columns(BuildContext context) => [
+      const AppTableColumn('WO#', flex: 2),
+      const AppTableColumn('Summary', flex: 4),
+      const AppTableColumn('Asset', flex: 4),
+      const AppTableColumn('Org Unit', flex: 2),
+      AppTableColumn('Status', width: _statusColumnWidth(context)),
+      const AppTableColumn('Assignee', flex: 3),
+      const AppTableColumn('Actions', width: _actionsColumnWidth, align: AppColumnAlign.end),
+    ];
 
 class _WorkOrderTableRow extends StatelessWidget {
-  const _WorkOrderTableRow({required this.workOrder, required this.canAssign, required this.canWork});
+  const _WorkOrderTableRow({
+    required this.columns,
+    required this.workOrder,
+    required this.canAssign,
+    required this.canWork,
+  });
 
+  final List<AppTableColumn> columns;
   final WorkOrder workOrder;
   final bool canAssign;
   final bool canWork;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final state = context.watch<WorkOrdersBloc>().state;
     final busy = state is WorkOrdersLoaded && (state.isAssigning || state.isTransitioning);
-    final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final dense = AppTypography.dense(context);
+    // The code reads quieter than the thing it identifies (§6): WO# is
+    // `textMuted`, the Summary `textPrimary`.
+    final muted = dense?.copyWith(color: palette.textMuted);
+    final primary = dense?.copyWith(color: palette.textPrimary);
 
     // `disclose` covers the two cells whose values are genuinely unbounded —
     // an Asset's name and code, and an Assignee's name — so a clipped value
@@ -850,65 +850,47 @@ class _WorkOrderTableRow extends StatelessWidget {
     // cells hold values this Screen's own schema bounds (a Work order number,
     // a status label, an Org Unit name that the column split now fits), so
     // wrapping them too would put a tooltip on every cell of every row for no
-    // reason.
-    Widget cell(String text, int flex, {TextStyle? style, bool disclose = false}) => Expanded(
-          flex: flex,
-          child: Padding(
-            padding: const EdgeInsets.only(right: Spacing.sm),
-            child: disclose
-                ? DisclosingText(text, style: style)
-                : Text(text, overflow: TextOverflow.ellipsis, style: style),
-          ),
+    // reason. One line each: a row is 44, never taller.
+    Widget cell(String text, {TextStyle? style, bool disclose = false}) => disclose
+        ? DisclosingText(text, style: style)
+        : Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+
+    // The register's own buttons and chip sit inside a 44px row, so the
+    // framework's padded tap target (48 on a mobile platform) is lifted here:
+    // the row is the target, and it must not be pushed past 44 by a control.
+    Widget compact(Widget child) => Theme(
+          data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          child: child,
         );
 
-    return Container(
+    // Both keys survive: `rowKey` names the row, `detailsKey` is what a test
+    // taps, and it lands on the row's own `InkWell` (`AppTableRow.onTap`).
+    return KeyedSubtree(
       key: WorkOrdersScreen.rowKey(workOrder.id),
-      constraints: const BoxConstraints(minHeight: 56),
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant))),
-      child: InkWell(
+      child: KeyedSubtree(
         key: WorkOrdersScreen.detailsKey(workOrder.id),
-        onTap: () => context.go('${Routes.workOrders}/${workOrder.id}'),
-        // A deliberate highlight rather than Material's own faint default
-        // (issue #168) — see [AppPalette.rowHoverFill]. Set here, on
-        // this row, rather than globally on `ThemeData.hoverColor`: the reason
-        // a row needs to be trackable is that this row is seven columns wide,
-        // and nothing about the rest of the Platform's InkWells follows from
-        // it.
-        hoverColor: AppColors.of(context).rowHoverFill,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            cell(workOrder.workOrderNo, 2, style: muted),
-            cell(workOrder.summary, 4, style: theme.textTheme.bodyMedium),
+        child: AppTableRow(
+          columns: columns,
+          onTap: () => context.go('${Routes.workOrders}/${workOrder.id}'),
+          cells: [
+            cell(workOrder.workOrderNo, style: muted),
+            cell(workOrder.summary, style: primary),
             // Asset and Assignee each hold one more share of the table than
             // they did before (issue #168): 3→4 and 2→3. These are the two
             // cells whose values are unbounded, and both used to ellipsize in
-            // ordinary use ("Press 1 (PRESS-…", "Unassign…"). The two that
-            // clip nothing — the Work order number, which the Site's own
-            // sequence bounds, and the Org Unit name — keep what they had, and
-            // Summary is unchanged at 4 rather than being raided to pay for
-            // the rest.
-            cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}', 4,
+            // ordinary use ("Press 1 (PRESS-…", "Unassign…").
+            cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}',
                 style: muted, disclose: true),
-            cell(workOrder.orgUnitName, 2, style: muted),
-            SizedBox(
-              width: _statusColumnWidth(context),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: StatusChip(
-                  label: workOrder.statusLabel,
-                  tone: workOrder.statusTone,
-                ),
-              ),
-            ),
-            cell(workOrder.assigneeName ?? 'Unassigned', 3, style: theme.textTheme.bodyMedium,
-                disclose: true),
-            SizedBox(
-              width: _actionsColumnWidth,
-              child:
-                  _RowActions(workOrder: workOrder, canAssign: canAssign, canWork: canWork, busy: busy),
-            ),
+            cell(workOrder.orgUnitName, style: muted),
+            compact(StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone)),
+            cell(workOrder.assigneeName ?? 'Unassigned', style: primary, disclose: true),
+            compact(_RowActions(
+              workOrder: workOrder,
+              canAssign: canAssign,
+              canWork: canWork,
+              busy: busy,
+              compact: true,
+            )),
           ],
         ),
       ),
@@ -916,10 +898,14 @@ class _WorkOrderTableRow extends StatelessWidget {
   }
 }
 
-/// The narrow (<800px of content) card — one Work order's number, summary,
-/// Asset, Org Unit, status, assignee and actions stacked vertically, issue
-/// #104's own floor for the narrow layout (see `_WorkOrdersList`'s own
-/// header).
+/// The narrow (<800px of content, at a text scale of 1) card — one Work
+/// order's number, summary, Asset, Org Unit, status, assignee and actions
+/// stacked vertically, issue #104's own floor for the narrow layout (see
+/// `_WorkOrdersList`'s own header).
+///
+/// **Measured:** 208px for a one-line card in a 700px window
+/// (440px of box, text scale 1), pinned by `work_orders_geometry_test.dart`;
+/// a long assignee or Org Unit wraps to a second line and the card grows with it.
 class _WorkOrderCard extends StatelessWidget {
   const _WorkOrderCard({required this.workOrder, required this.canAssign, required this.canWork});
 
@@ -929,9 +915,11 @@ class _WorkOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final state = context.watch<WorkOrdersBloc>().state;
     final busy = state is WorkOrdersLoaded && (state.isAssigning || state.isTransitioning);
+    final dense = AppTypography.dense(context);
+    final floor = AppTypography.floor(context);
 
     return Card(
       key: WorkOrdersScreen.rowKey(workOrder.id),
@@ -942,67 +930,87 @@ class _WorkOrderCard extends StatelessWidget {
         // The same deliberate highlight the wide row carries (issue #168): a
         // card is one Work order and its actions sit at the bottom of it, so
         // the pointer needs the same help staying with the card it started on.
-        hoverColor: AppColors.of(context).rowHoverFill,
+        hoverColor: palette.rowHoverFill,
         child: Padding(
-        padding: const EdgeInsets.all(Spacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(Spacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          workOrder.workOrderNo,
+                          style: floor?.copyWith(color: palette.textMuted),
+                        ),
+                        const SizedBox(height: Spacing.xxs),
+                        Text(
+                          workOrder.summary,
+                          style: dense?.copyWith(
+                              fontWeight: FontWeight.w600, color: palette.textPrimary),
+                        ),
+                        const SizedBox(height: Spacing.xxs),
+                        Text(
+                          '${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}',
+                          style: floor?.copyWith(color: palette.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: Spacing.md),
+                  StatusChip(
+                    label: workOrder.statusLabel,
+                    tone: workOrder.statusTone,
+                  ),
+                ],
+              ),
+              const SizedBox(height: Spacing.sm),
+              // A `Wrap`, not a `Row`: at a large text size the assignee and the
+              // Org Unit no longer fit side by side, and they drop to a second
+              // line instead of overflowing.
+              Wrap(
+                spacing: Spacing.lg,
+                runSpacing: Spacing.xs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        workOrder.workOrderNo,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: Spacing.xxs),
-                      Text(workOrder.summary, style: theme.textTheme.titleSmall),
-                      const SizedBox(height: Spacing.xxs),
-                      Text(
-                        '${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      Icon(Icons.person_outline, size: 16, color: palette.textMuted),
+                      const SizedBox(width: Spacing.xs),
+                      // Never a blank when nobody has it yet — "Unassigned" says so
+                      // plainly, the contract issue #57 sets for a null assignee.
+                      Flexible(
+                        child: Text(
+                          workOrder.assigneeName ?? 'Unassigned',
+                          style: dense?.copyWith(color: palette.textPrimary),
+                        ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: Spacing.md),
-                StatusChip(
-                  label: workOrder.statusLabel,
-                  tone: workOrder.statusTone,
-                ),
-              ],
-            ),
-            const SizedBox(height: Spacing.sm),
-            Row(
-              children: [
-                Icon(Icons.person_outline, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: Spacing.xs),
-                // Never a blank when nobody has it yet — "Unassigned" says so
-                // plainly, the contract issue #57 sets for a null assignee.
-                Text(workOrder.assigneeName ?? 'Unassigned', style: theme.textTheme.bodyMedium),
-                const SizedBox(width: Spacing.lg),
-                Icon(Icons.account_tree_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: Spacing.xs),
-                Expanded(
-                  child: Text(
-                    workOrder.orgUnitName,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.account_tree_outlined, size: 16, color: palette.textMuted),
+                      const SizedBox(width: Spacing.xs),
+                      Flexible(
+                        child: Text(
+                          workOrder.orgUnitName,
+                          style: dense?.copyWith(color: palette.textMuted),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Spacing.sm),
-            _RowActions(workOrder: workOrder, canAssign: canAssign, canWork: canWork, busy: busy),
-          ],
-        ),
+                ],
+              ),
+              const SizedBox(height: Spacing.sm),
+              _RowActions(workOrder: workOrder, canAssign: canAssign, canWork: canWork, busy: busy),
+            ],
+          ),
         ),
       ),
     );
@@ -1031,22 +1039,32 @@ class _WorkOrderCard extends StatelessWidget {
 /// [busy] — an assign or a transition in flight anywhere on the Screen —
 /// disables the primary button and the overflow trigger itself, so a second
 /// write cannot even be started while the first is still settling.
+///
+/// **[compact]** is the register row's shape: the buttons are
+/// [_compactControlHeight] (36) tall so that, with the `Spacing.xs` the row pads
+/// above and below, the row is exactly 44 and the *row* is the 44px target. A
+/// card's actions are not compact: they sit under the card's own text and keep
+/// the full 44.
 class _RowActions extends StatelessWidget {
   const _RowActions({
     required this.workOrder,
     required this.canAssign,
     required this.canWork,
     required this.busy,
+    this.compact = false,
   });
 
   final WorkOrder workOrder;
   final bool canAssign;
   final bool canWork;
   final bool busy;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final status = workOrder.status;
+    final buttonSize =
+        Size(AppTouchTarget.min, compact ? _compactControlHeight : AppTouchTarget.min);
     final items = <_RowOverflowItem>[
       if (canAssign)
         _RowOverflowItem(
@@ -1068,14 +1086,14 @@ class _RowActions extends StatelessWidget {
         key: WorkOrdersScreen.startKey(workOrder.id),
         onPressed:
             busy ? null : () => context.read<WorkOrdersBloc>().add(WorkOrderStartConfirmed(workOrder.id)),
-        style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
+        style: OutlinedButton.styleFrom(minimumSize: buttonSize),
         child: const Text('Start'),
       );
     } else if (canWork && offersComplete(status)) {
       primary = OutlinedButton(
         key: WorkOrdersScreen.completeKey(workOrder.id),
         onPressed: busy ? null : () => context.go('${Routes.workOrders}/${workOrder.id}/complete'),
-        style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
+        style: OutlinedButton.styleFrom(minimumSize: buttonSize),
         child: const Text('Complete'),
       );
     }
@@ -1088,7 +1106,8 @@ class _RowActions extends StatelessWidget {
         ?primary,
         if (primary != null && items.isNotEmpty) const SizedBox(width: Spacing.sm),
         if (items.isNotEmpty)
-          _RowOverflowButton(workOrderId: workOrder.id, items: items, enabled: !busy),
+          _RowOverflowButton(
+              workOrderId: workOrder.id, items: items, enabled: !busy, size: buttonSize),
       ],
     );
   }
@@ -1113,11 +1132,17 @@ class _RowOverflowItem {
 /// busy, the same shape every other disabled control on this Screen already
 /// carries.
 class _RowOverflowButton extends StatelessWidget {
-  const _RowOverflowButton({required this.workOrderId, required this.items, required this.enabled});
+  const _RowOverflowButton({
+    required this.workOrderId,
+    required this.items,
+    required this.enabled,
+    required this.size,
+  });
 
   final String workOrderId;
   final List<_RowOverflowItem> items;
   final bool enabled;
+  final Size size;
 
   @override
   Widget build(BuildContext context) {
@@ -1125,7 +1150,9 @@ class _RowOverflowButton extends StatelessWidget {
       key: WorkOrdersScreen.rowActionsKey(workOrderId),
       tooltip: 'More actions',
       icon: const Icon(Icons.more_vert),
-      style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
+      // No padding of its own: the icon sits in the `size` the caller asks for,
+      // so a compact trigger is 36 tall rather than 40.
+      style: IconButton.styleFrom(minimumSize: size, padding: EdgeInsets.zero),
       onPressed: enabled ? () => _open(context) : null,
     );
   }

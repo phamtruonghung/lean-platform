@@ -24,6 +24,7 @@ import '../people_api.dart';
 import '../platform/floor_device_gateway.dart';
 import '../quality/quality.dart';
 import '../safety/safety.dart';
+import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
@@ -269,16 +270,11 @@ class FloorScreen extends StatelessWidget {
                         onAction: () => context.read<FloorBloc>().add(const FloorStarted()),
                         icon: Icons.check_circle_outline,
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.md, Spacing.lg, Spacing.xl),
-                        itemCount: workOrders.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: Spacing.md),
-                        itemBuilder: (_, index) => _FloorWorkOrderCard(
-                          workOrder: workOrders[index],
-                          isActing: isActing,
-                          onStart: () => _start(context, workOrders[index]),
-                          onComplete: () => _complete(context, workOrders[index]),
-                        ),
+                    : _FloorBoard(
+                        workOrders: workOrders,
+                        isActing: isActing,
+                        onStart: (workOrder) => _start(context, workOrder),
+                        onComplete: (workOrder) => _complete(context, workOrder),
                       ),
               ),
           },
@@ -463,7 +459,91 @@ class _FloorFrame extends StatelessWidget {
   }
 }
 
-/// One large card: what the job is, where, and the one action it offers. Sized
+/// The board (docs/design-language.md section 6): a legend of the tones the
+/// lanes actually paint, then one lane per Org Unit, stacked, tiles full width.
+///
+/// Grouped here, on the client, by `WorkOrder.orgUnitName` in first-seen order —
+/// `FloorBloc`, `FloorInfo` and the API are unchanged. A device registered to one
+/// Org Unit yields one lane, which is correct. Nothing in a lane scrolls: the
+/// `ListView` is the one scroller, vertical, so nothing scrolls sideways at any
+/// width or text scale (every row is full width and wraps its text).
+class _FloorBoard extends StatelessWidget {
+  const _FloorBoard({
+    required this.workOrders,
+    required this.isActing,
+    required this.onStart,
+    required this.onComplete,
+  });
+
+  final List<WorkOrder> workOrders;
+  final bool isActing;
+  final void Function(WorkOrder) onStart;
+  final void Function(WorkOrder) onComplete;
+
+  /// A tone's own word, which is what `StatusTone` calls it: the enum's name,
+  /// sentence-cased like every other chip label. Read from `status_tone.dart`
+  /// (neutral, info, success, warning, danger) and the tone legend in
+  /// `docs/design-language.md` section 13, which names the same five words.
+  static String toneWord(StatusTone tone) =>
+      '${tone.name[0].toUpperCase()}${tone.name.substring(1)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final lanes = <String, List<WorkOrder>>{};
+    for (final workOrder in workOrders) {
+      lanes.putIfAbsent(workOrder.orgUnitName, () => []).add(workOrder);
+    }
+    // Only the tones the lanes use, in the enum's own order.
+    final tones = [
+      for (final tone in StatusTone.values)
+        if (workOrders.any((workOrder) => workOrder.statusTone == tone)) tone,
+    ];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.md, Spacing.lg, Spacing.xl),
+      children: [
+        Wrap(
+          spacing: Spacing.sm,
+          runSpacing: Spacing.sm,
+          children: [
+            for (final tone in tones) StatusChip(label: toneWord(tone), tone: tone),
+          ],
+        ),
+        for (final lane in lanes.entries) ...[
+          const SizedBox(height: Spacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(
+                child: Text(
+                  lane.key,
+                  style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(width: Spacing.sm),
+              Text(
+                '${lane.value.length}',
+                style: AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: Spacing.sm),
+          for (var i = 0; i < lane.value.length; i++) ...[
+            if (i > 0) const SizedBox(height: Spacing.sm),
+            _FloorWorkOrderCard(
+              workOrder: lane.value[i],
+              isActing: isActing,
+              onStart: () => onStart(lane.value[i]),
+              onComplete: () => onComplete(lane.value[i]),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+/// One large tile: what the job is, where, and the one action it offers. Sized
 /// and typed for reading at arm's length.
 class _FloorWorkOrderCard extends StatelessWidget {
   const _FloorWorkOrderCard({
@@ -484,7 +564,7 @@ class _FloorWorkOrderCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(Spacing.lg),
+        padding: const EdgeInsets.all(Spacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

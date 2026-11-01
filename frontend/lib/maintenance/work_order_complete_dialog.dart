@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
 
@@ -19,8 +20,14 @@ class WorkOrderCompleteDialog extends StatefulWidget {
   final WorkOrder workOrder;
 
   static const ValueKey<String> noteKey = ValueKey<String>('work-order-complete-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('work-order-complete-submit');
-  static const ValueKey<String> dismissKey = ValueKey<String>('work-order-complete-dismiss');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
+  static const String _submitId = 'submit';
+  static const String _dismissId = 'dismiss';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get dismissKey => AppDialog.actionKey(_dismissId);
   static const ValueKey<String> failureKey = ValueKey<String>('work-order-complete-failure');
 
   @override
@@ -66,54 +73,53 @@ class _WorkOrderCompleteDialogState extends State<WorkOrderCompleteDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<WorkOrdersBloc, WorkOrdersState>(
       listener: _onWorkOrdersChanged,
-      child: AlertDialog(
-        title: const Text('Complete this Work order'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: WorkOrderCompleteDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  maxLines: 4,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'What was found?',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: WorkOrderCompleteDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // The decision width (420): one question and two actions. The one
+      // free-text field is the answer to the question, not a form (§11).
+      child: AppDialog(
+        title: 'Complete this Work order',
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: WorkOrderCompleteDialog.dismissKey,
+          AppDialogAction(
+            id: WorkOrderCompleteDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: WorkOrderCompleteDialog.submitKey,
+          AppDialogAction(
+            id: WorkOrderCompleteDialog._submitId,
+            label: 'Complete',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Complete'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: WorkOrderCompleteDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              maxLines: 4,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'What was found?',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: WorkOrderCompleteDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

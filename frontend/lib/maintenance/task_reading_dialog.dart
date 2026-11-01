@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'work_order.dart';
 import 'work_order_detail_bloc.dart';
 
@@ -20,8 +21,14 @@ class TaskReadingDialog extends StatefulWidget {
 
   static const ValueKey<String> readingKey = ValueKey<String>('task-reading-reading');
   static const ValueKey<String> noteKey = ValueKey<String>('task-reading-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('task-reading-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('task-reading-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
+  static const String _submitId = 'submit';
+  static const String _cancelId = 'cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('task-reading-failure');
 
   static Future<void> open(BuildContext context, {required WorkOrderTask task}) {
@@ -85,67 +92,65 @@ class _TaskReadingDialogState extends State<TaskReadingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final task = widget.task;
     return BlocListener<WorkOrderDetailBloc, WorkOrderDetailState>(
       listener: _onStateChanged,
-      child: AlertDialog(
-        title: Text('Record a reading on ${task.meterName ?? task.meterCode ?? 'the meter'}'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(task.instruction, style: theme.textTheme.bodyMedium),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: TaskReadingDialog.readingKey,
-                  controller: _reading,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'What the meter reads',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: TaskReadingDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: TaskReadingDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // The form width (520): two fields under an instruction (§11).
+      child: AppDialog(
+        title: 'Record a reading on ${task.meterName ?? task.meterCode ?? 'the meter'}',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: TaskReadingDialog.cancelKey,
+          AppDialogAction(
+            id: TaskReadingDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: TaskReadingDialog.submitKey,
+          AppDialogAction(
+            id: TaskReadingDialog._submitId,
+            label: _awaiting ? 'Saving…' : 'Record reading',
             onPressed: _readingValue != null && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Record reading'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(task.instruction, style: AppTypography.dense(context)),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: TaskReadingDialog.readingKey,
+              controller: _reading,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'What the meter reads',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: TaskReadingDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              decoration: const InputDecoration(
+                labelText: 'Note (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: TaskReadingDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

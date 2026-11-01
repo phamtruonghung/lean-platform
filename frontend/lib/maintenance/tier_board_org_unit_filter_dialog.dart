@@ -16,14 +16,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../widgets/app_dialog.dart';
 import 'org_unit_chooser.dart';
 import 'tier_board_bloc.dart';
 
 class TierBoardOrgUnitFilterDialog extends StatelessWidget {
   const TierBoardOrgUnitFilterDialog({super.key});
 
-  static const ValueKey<String> allOrgUnitsKey = ValueKey<String>('tier-board-filter-all');
-  static const ValueKey<String> cancelKey = ValueKey<String>('tier-board-filter-cancel');
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
+  static const String _allOrgUnitsId = 'all-org-units';
+  static const String _cancelId = 'cancel';
+  static ValueKey<String> get allOrgUnitsKey => AppDialog.actionKey(_allOrgUnitsId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
 
   /// Opens the filter over the board. `showDialog` builds its route under the
   /// Navigator, which is not a descendant of the route-scoped
@@ -52,10 +58,27 @@ class TierBoardOrgUnitFilterDialog extends StatelessWidget {
     final state = context.watch<TierBoardBloc>().state;
     final selectedId = state is TierBoardLoaded ? state.orgUnitFilterId : null;
 
-    return AlertDialog(
-      title: const Text('Filter by Org Unit'),
-      content: SizedBox(
-        width: 420,
+    // The picker width (460): one tree to choose a single Org Unit from (§11).
+    return AppDialog(
+      title: 'Filter by Org Unit',
+      size: AppDialogSize.picker,
+      actions: [
+        AppDialogAction(
+          id: _cancelId,
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        AppDialogAction(
+          id: _allOrgUnitsId,
+          label: 'All Org Units',
+          onPressed: () {
+            context.read<TierBoardBloc>().add(const TierBoardOrgUnitFilterCleared());
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
+      child: SizedBox(
         height: 420,
         child: OrgUnitChooser(
           selectedId: selectedId,
@@ -70,21 +93,6 @@ class TierBoardOrgUnitFilterDialog extends StatelessWidget {
           },
         ),
       ),
-      actions: [
-        TextButton(
-          key: allOrgUnitsKey,
-          onPressed: () {
-            context.read<TierBoardBloc>().add(const TierBoardOrgUnitFilterCleared());
-            Navigator.of(context).pop();
-          },
-          child: const Text('All Org Units'),
-        ),
-        TextButton(
-          key: cancelKey,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-      ],
     );
   }
 }

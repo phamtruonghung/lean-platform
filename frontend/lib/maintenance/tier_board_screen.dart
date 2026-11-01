@@ -22,13 +22,16 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'tier_board.dart';
 import 'tier_board_bloc.dart';
 import 'tier_board_org_unit_filter_dialog.dart';
@@ -122,6 +125,15 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// A control's width at the reader's text scale: the 1x widths were measured for
+/// 1x text, and a dropdown's label and value grow with it, so the box grows too
+/// (never below its 1x width). A `Wrap` clamps it to the line if the line is
+/// narrower.
+double _controlWidth(BuildContext context, double base) {
+  final scale = MediaQuery.textScalerOf(context).scale(1);
+  return base * (scale < 1 ? 1 : scale);
+}
+
 /// The four controls, each dispatching exactly one event on change.
 class _Controls extends StatelessWidget {
   const _Controls({required this.state});
@@ -138,7 +150,7 @@ class _Controls extends StatelessWidget {
       children: [
         if (state.sites.length > 1)
           SizedBox(
-            width: 220,
+            width: _controlWidth(context, 220),
             child: DropdownButtonFormField<String>(
               key: TierBoardScreen.siteKey,
               initialValue: state.siteId,
@@ -155,7 +167,7 @@ class _Controls extends StatelessWidget {
             ),
           ),
         SizedBox(
-          width: 150,
+          width: _controlWidth(context, 150),
           child: DropdownButtonFormField<String>(
             key: TierBoardScreen.periodTypeKey,
             initialValue: state.periodType,
@@ -172,7 +184,7 @@ class _Controls extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 220,
+          width: _controlWidth(context, 220),
           child: AppDateField(
             name: TierBoardScreen.dateFieldName,
             label: 'Date',
@@ -196,18 +208,29 @@ class _Controls extends StatelessWidget {
   }
 }
 
-/// Placeholders in the board's own shape: five Pillar columns, so the wait
-/// reads as the board arriving rather than as an unrelated spinner.
+/// Placeholders in the board's own shape: five Pillar tiles, so the wait reads
+/// as the board arriving rather than as an unrelated spinner. Five across where
+/// the box can hold them, two across where it cannot (a tile five-across in a
+/// phone-width box is too short for its own bars), decided from the box and the
+/// reader's text scale, like the lane rows.
 class _BoardSkeleton extends StatelessWidget {
   const _BoardSkeleton();
 
+  static const int _wideColumns = 5;
+  static const int _narrowColumns = 2;
+
   @override
   Widget build(BuildContext context) {
-    return const SkeletonGrid(
-      key: TierBoardScreen.loadingKey,
-      tiles: 5,
-      crossAxisCount: 5,
-      maxWidth: TierBoardScreen.maxWidth,
+    return LayoutBuilder(
+      builder: (context, constraints) => SkeletonGrid(
+        key: TierBoardScreen.loadingKey,
+        tiles: 5,
+        crossAxisCount:
+            constraints.maxWidth >= AppBreakpoints.effective(context, AppBreakpoints.registerTable)
+                ? _wideColumns
+                : _narrowColumns,
+        maxWidth: TierBoardScreen.maxWidth,
+      ),
     );
   }
 }
@@ -225,24 +248,51 @@ class _TierBoardEmpty extends StatelessWidget {
   }
 }
 
+/// The board (docs/design-language.md section 6): a legend of the tones the
+/// rows actually paint, then one lane per Pillar, stacked, each lane a header and
+/// one row per KPI. Nothing in a lane scrolls: the page's own `SingleChildScrollView`
+/// is the one scroller, vertical, so nothing scrolls sideways at any width or
+/// text scale.
 class _TierBoardView extends StatelessWidget {
   const _TierBoardView({required this.board});
 
   final TierBoard board;
 
+  /// A tone's own word, which is what `StatusTone` calls it: the enum's name,
+  /// sentence-cased like every other chip label. The same source and the same
+  /// convention as the floor's legend (`status_tone.dart`, and the tone legend in
+  /// `docs/design-language.md` section 13): a private copy, because that one is
+  /// private to its Screen and `widgets/` is not this slice's to change.
+  static String toneWord(StatusTone tone) =>
+      '${tone.name[0].toUpperCase()}${tone.name.substring(1)}';
+
   @override
   Widget build(BuildContext context) {
+    // Only the tones the rows use, in the enum's own order.
+    final tones = [
+      for (final tone in StatusTone.values)
+        if (board.pillars.any((pillar) => pillar.kpis.any((kpi) => _toneOf(kpi) == tone))) tone,
+    ];
     return Center(
       child: AppPageFrame(
         maxWidth: TierBoardScreen.maxWidth,
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          child: Wrap(
-            spacing: Spacing.md,
-            runSpacing: Spacing.md,
-            crossAxisAlignment: WrapCrossAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final pillar in board.pillars) _PillarColumn(pillar: pillar),
+              if (tones.isNotEmpty)
+                Wrap(
+                  spacing: Spacing.sm,
+                  runSpacing: Spacing.sm,
+                  children: [
+                    for (final tone in tones) StatusChip(label: toneWord(tone), tone: tone),
+                  ],
+                ),
+              for (final pillar in board.pillars) ...[
+                const SizedBox(height: Spacing.md),
+                _PillarLane(pillar: pillar),
+              ],
             ],
           ),
         ),
@@ -251,127 +301,172 @@ class _TierBoardView extends StatelessWidget {
   }
 }
 
-class _PillarColumn extends StatelessWidget {
-  const _PillarColumn({required this.pillar});
+/// A KPI's tone, decided here and not in `tier_board.dart`: green is success,
+/// amber warning, red danger; no target, no data and a status this build does not
+/// know are neutral. The label stays `BoardKpi.statusLabel`.
+StatusTone _toneOf(BoardKpi kpi) => switch (kpi.status) {
+      BoardKpi.greenStatus => StatusTone.success,
+      BoardKpi.amberStatus => StatusTone.warning,
+      BoardKpi.redStatus => StatusTone.danger,
+      _ => StatusTone.neutral,
+    };
+
+class _PillarLane extends StatelessWidget {
+  const _PillarLane({required this.pillar});
 
   final Pillar pillar;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted);
+    final palette = AppColors.of(context);
+    final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
+    const inset = EdgeInsets.symmetric(horizontal: Spacing.md);
 
-    return SizedBox(
-      width: 220,
-      child: Card(
-        key: TierBoardScreen.pillarKey(pillar.code),
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(pillar.name, style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.xs),
-              // A Pillar with nothing measured says so rather than standing as
-              // an empty box. Its KPIs still render beneath — each honestly
-              // reading "No data" — so a later read that fills one in shows
-              // without this note having hidden the shape of the Pillar.
-              if (!pillar.hasData) ...[
-                Text(
-                  'No data yet',
-                  key: TierBoardScreen.pillarNoDataKey(pillar.code),
-                  style: muted,
-                ),
-                const SizedBox(height: Spacing.sm),
-              ],
-              if (pillar.kpis.isEmpty)
-                Text('No KPI is defined under this Pillar yet.', style: muted)
-              else
-                for (var i = 0; i < pillar.kpis.length; i++) ...[
-                  if (i > 0) const SizedBox(height: Spacing.sm),
-                  _KpiCard(kpi: pillar.kpis[i]),
-                ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _KpiCard extends StatelessWidget {
-  const _KpiCard({required this.kpi});
-
-  final BoardKpi kpi;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted);
-
-    return Container(
-      key: TierBoardScreen.kpiKey(kpi.code),
-      padding: const EdgeInsets.all(Spacing.sm),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.of(context).cardBorder),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
+    return Card(
+      key: TierBoardScreen.pillarKey(pillar.code),
+      margin: EdgeInsets.zero,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Tooltip(
-            message: kpi.formulaText,
-            child: Text(kpi.name, style: theme.textTheme.bodyMedium),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.md, Spacing.md, Spacing.sm),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Flexible(
+                  child: Text(
+                    pillar.name,
+                    style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(width: Spacing.sm),
+                Text(
+                  '${pillar.kpis.length}',
+                  style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: Spacing.xxs),
-          Wrap(
-            spacing: Spacing.xxs,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                kpi.formattedValue,
-                key: TierBoardScreen.kpiValueKey(kpi.code),
-                style: theme.textTheme.titleLarge,
+          // A Pillar with nothing measured says so rather than standing as an
+          // empty box. Its KPIs still render beneath — each honestly reading
+          // "No data" — so a later read that fills one in shows without this
+          // note having hidden the shape of the Pillar.
+          if (!pillar.hasData)
+            Padding(
+              padding: inset.copyWith(bottom: Spacing.sm),
+              child: Text(
+                'No data yet',
+                key: TierBoardScreen.pillarNoDataKey(pillar.code),
+                style: muted,
               ),
-              if (kpi.unit.isNotEmpty) Text(kpi.unit, style: muted),
-            ],
-          ),
-          const SizedBox(height: Spacing.xs),
-          _StatusIndicator(kpi: kpi),
+            ),
+          if (pillar.kpis.isEmpty)
+            Padding(
+              padding: inset.copyWith(bottom: Spacing.md),
+              child: Text('No KPI is defined under this Pillar yet.', style: muted),
+            )
+          else
+            for (final kpi in pillar.kpis) _KpiRow(kpi: kpi),
         ],
       ),
     );
   }
 }
 
-class _StatusIndicator extends StatelessWidget {
-  const _StatusIndicator({required this.kpi});
+/// One KPI: its name, its number, and its standing as a chip in its own slot.
+///
+/// A table row (name flex 4, number flex 2 end-aligned, chip flex 2 end-aligned)
+/// when the lane's own box is wide enough, measured from the `LayoutBuilder` and
+/// compared with the reader's text scale counted (`AppBreakpoints.registerTable`,
+/// the same threshold the registers turn at). Narrower, or at a large text size,
+/// the name takes its own line and the number and chip share the one under it, so
+/// nothing is clipped and nothing scrolls sideways.
+class _KpiRow extends StatelessWidget {
+  const _KpiRow({required this.kpi});
 
   final BoardKpi kpi;
 
+  static const List<AppTableColumn> _columns = [
+    AppTableColumn('KPI', flex: 4),
+    AppTableColumn('Value', flex: 2, align: AppColumnAlign.end),
+    AppTableColumn('Status', flex: 2, align: AppColumnAlign.end),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (IconData icon, Color color) = switch (kpi.status) {
-      BoardKpi.greenStatus => (Icons.check_circle_outline, AppColors.of(context).statusSuccess),
-      BoardKpi.amberStatus => (Icons.error_outline, AppColors.of(context).statusWarning),
-      BoardKpi.redStatus => (Icons.cancel_outlined, AppColors.of(context).statusDanger),
-      BoardKpi.noTargetStatus => (Icons.remove_circle_outline, scheme.onSurfaceVariant),
-      _ => (Icons.horizontal_rule, scheme.onSurfaceVariant),
-    };
-
-    return Row(
+    final palette = AppColors.of(context);
+    final name = Tooltip(
+      message: kpi.formulaText,
+      child: Text(
+        kpi.name,
+        style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+      ),
+    );
+    final value = Text(
+      kpi.formattedValue,
+      key: TierBoardScreen.kpiValueKey(kpi.code),
+      style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
+    );
+    final unit = kpi.unit.isEmpty
+        ? null
+        : Text(
+            kpi.unit,
+            style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+          );
+    final chip = StatusChip(
       key: TierBoardScreen.kpiStatusKey(kpi.code),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: Spacing.xxs),
-        Text(
-          kpi.statusLabel,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color),
-        ),
-      ],
+      label: kpi.statusLabel,
+      tone: _toneOf(kpi),
+    );
+    final figure = Wrap(
+      spacing: Spacing.xxs,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [value, ?unit],
+    );
+
+    return KeyedSubtree(
+      key: TierBoardScreen.kpiKey(kpi.code),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >=
+              AppBreakpoints.effective(context, AppBreakpoints.registerTable)) {
+            return AppTableRow(
+              columns: _columns,
+              cells: [
+                name,
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: Spacing.xxs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [value, ?unit],
+                ),
+                chip,
+              ],
+            );
+          }
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+            foregroundDecoration:
+                BoxDecoration(border: Border(bottom: BorderSide(color: palette.edge))),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                name,
+                const SizedBox(height: Spacing.xs),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: figure),
+                    const SizedBox(width: Spacing.sm),
+                    chip,
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

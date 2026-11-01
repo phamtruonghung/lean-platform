@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'asset.dart';
 import 'maintenance_api.dart';
@@ -48,8 +49,14 @@ class WorkOrderFormDialog extends StatefulWidget {
   static const ValueKey<String> workTypeKey = ValueKey<String>('work-order-form-work-type');
   static const ValueKey<String> priorityKey = ValueKey<String>('work-order-form-priority');
   static const ValueKey<String> descriptionKey = ValueKey<String>('work-order-form-description');
-  static const ValueKey<String> submitKey = ValueKey<String>('work-order-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('work-order-form-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
+  static const String _submitId = 'submit';
+  static const String _cancelId = 'cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('work-order-form-failure');
 
   @override
@@ -165,116 +172,114 @@ class _WorkOrderFormDialogState extends State<WorkOrderFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<WorkOrdersBloc, WorkOrdersState>(
       listener: _onWorkOrdersChanged,
-      child: AlertDialog(
-        title: const Text('Raise a Work order'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _AssetField(
-                  status: _assetsStatus,
-                  assets: _assets,
-                  failure: _assetsFailure,
-                  selectedId: _assetId,
-                  enabled: !_awaiting,
-                  onRetry: () => _loadAssets(widget.siteId),
-                  onChanged: (id) => setState(() => _assetId = id),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: WorkOrderFormDialog.summaryKey,
-                  controller: _summary,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration:
-                      const InputDecoration(labelText: 'Summary', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<WorkType>(
-                        key: WorkOrderFormDialog.workTypeKey,
-                        initialValue: _workType,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Work type',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (final type in WorkType.values)
-                            DropdownMenuItem<WorkType>(value: type, child: Text(type.label)),
-                        ],
-                        onChanged: _awaiting ? null : (value) => setState(() => _workType = value),
-                      ),
-                    ),
-                    const SizedBox(width: Spacing.md),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        key: WorkOrderFormDialog.priorityKey,
-                        initialValue: _priority,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Priority',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (var level = 1; level <= 5; level++)
-                            DropdownMenuItem<int>(
-                              value: level,
-                              child: Text(
-                                '$level - ${_priorityLabels[level - 1]}',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                        onChanged: _awaiting ? null : (value) => setState(() => _priority = value),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: WorkOrderFormDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: WorkOrderFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // A short form of five fields: the form width (520), now on the shell
+      // rather than on a `SizedBox` inside the content (§11).
+      child: AppDialog(
+        title: 'Raise a Work order',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: WorkOrderFormDialog.cancelKey,
+          AppDialogAction(
+            id: WorkOrderFormDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: WorkOrderFormDialog.submitKey,
+          AppDialogAction(
+            id: WorkOrderFormDialog._submitId,
+            label: 'Raise',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Raise'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _AssetField(
+              status: _assetsStatus,
+              assets: _assets,
+              failure: _assetsFailure,
+              selectedId: _assetId,
+              enabled: !_awaiting,
+              onRetry: () => _loadAssets(widget.siteId),
+              onChanged: (id) => setState(() => _assetId = id),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: WorkOrderFormDialog.summaryKey,
+              controller: _summary,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Summary', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<WorkType>(
+                    key: WorkOrderFormDialog.workTypeKey,
+                    initialValue: _workType,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Work type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final type in WorkType.values)
+                        DropdownMenuItem<WorkType>(value: type, child: Text(type.label)),
+                    ],
+                    onChanged: _awaiting ? null : (value) => setState(() => _workType = value),
+                  ),
+                ),
+                const SizedBox(width: Spacing.md),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    key: WorkOrderFormDialog.priorityKey,
+                    initialValue: _priority,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Priority',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (var level = 1; level <= 5; level++)
+                        DropdownMenuItem<int>(
+                          value: level,
+                          child: Text(
+                            '$level - ${_priorityLabels[level - 1]}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: _awaiting ? null : (value) => setState(() => _priority = value),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: WorkOrderFormDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Description (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: WorkOrderFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
