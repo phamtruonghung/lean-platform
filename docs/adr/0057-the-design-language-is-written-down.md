@@ -63,11 +63,13 @@ the one decision in it a reader would otherwise second-guess.
 
 ## What this costs
 
-- **Later slices must adopt the primitives.** `AppBreakpoints`, `AppTouchTarget`,
-  `AppToolbar`, `AppTableHeader`, `AppTableRow`, `AppStatTile`, `AppDetailSection`
-  and `AppSectionGrid` are the target of #386's slice B, and each Screen's move onto
-  them is its own change. Until then the document describes a target, and it says
-  which names are shipped and which are not.
+- **Later slices must adopt the primitives.** `AppBreakpoints` and
+  `AppTouchTarget` are in `theme.dart`, and the five widget files are in
+  `frontend/lib/widgets/` — `app_toolbar.dart`, `app_table.dart`
+  (`AppTableHeader` + `AppTableRow`), `app_stat_tile.dart`,
+  `app_detail_section.dart`, `app_section_grid.dart` — all shipped with this
+  card. Each Screen's move onto them is its own change, so the document still
+  says which names shipped and which Screen has not adopted them.
 - **Work orders' private table header and Home's private tile survive this card.**
   `_WorkOrderTableHeader` (w700, `onSurface`, 56px rows) and `_HomeCard` are the
   shapes the primitives generalise, and each is adopted, with its own golden, in
@@ -76,10 +78,13 @@ the one decision in it a reader would otherwise second-guess.
 - **The Shell's 700px rail cliff is untouched.** Growing a window from 699 to 700
   shrinks a page's content box from 635 to 440. The document states it as a
   constraint the design survives, and changing it is a separate ticket.
-- **No Screen changes in this card's first slice.** It adds documents only: this
-  record, `docs/design-language.md`, a fifth rule in `docs/frontend-layout.md`
-  and a paragraph in `frontend/test/GOLDENS.md`. Nothing in `lib/` or `test/`
-  moves.
+- **No Screen changes.** The card adds this record, `docs/design-language.md`, a
+  fifth rule in `docs/frontend-layout.md`, a paragraph in
+  `frontend/test/GOLDENS.md`, `AppTouchTarget` and `AppBreakpoints` in
+  `frontend/lib/theme.dart`, five widget files under `frontend/lib/widgets/`,
+  their five test files and seven goldens. Nothing under a module directory moves
+  and `home_screen.dart` is not touched: every Screen keeps its own widgets until
+  its own slice adopts a primitive.
 - **A 32px row is a new thing to defend in review.** Anyone who sees one will
   reasonably ask whether it breaks the tap floor. The answer is in this file and
   in the row-height rule, and the primitive's own test is what will pin it.

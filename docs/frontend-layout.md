@@ -121,8 +121,8 @@ right-aligned numerics, not by going below the tap floor. The reasoning, the
 reference it was measured against, and the breakpoint at which a register becomes
 cards are in [`design-language.md`](design-language.md) (sections 3, 6 and 10), and
 ADR-0057 records the decision. The primitives that make a register one column spec
-(`AppTableHeader`, `AppTableRow`) are the target of #386's slice B and do not exist
-yet.
+(`AppTableHeader`, `AppTableRow`) ship in #386, and a Screen adopts them in its own
+slice.
 
 A form's submit is a sticky bar at the bottom of the page's own viewport, and its
 list pays for the bar's height in bottom padding; the pattern is
@@ -153,8 +153,8 @@ list pays for the bar's height in bottom padding; the pattern is
 | one left edge | `test/page_alignment_test.dart` | a page's title, description, first card or first row's text is not where the rule says |
 | Screen coverage | `test/page_alignment_test.dart` | a new `*_screen.dart` is neither audited in that file's table nor excluded there with a reason |
 | matrix columns line up | `test/kpi_test.dart` ("a header label and its cells start at the same x") | a column's header label and its first body cell start more than 1px apart |
-| a register's band and rows share one spec, and a row is 32 or 44px | the primitive's own widget test (#386, slice B; `test/app_table_test.dart` does not exist yet) | a header label and its cells start apart, or a row holding a control is under 44px |
-| a breakpoint is read from the box, scaled by text size | the primitive's own widget test (#386, slice B; `AppBreakpoints`' test does not exist yet). Until then `test/app_page_header_test.dart` pins the header's own | a breakpoint is compared against `MediaQuery` width, or without the reader's text scale |
+| a register's band and rows share one spec, and a row is 32 or 44px | the primitive's own widget test (#386, `test/app_table_test.dart`) | a header label and its cells start apart, or a row holding a control is under 44px |
+| a breakpoint is read from the box, scaled by text size | the primitives' own widget tests (#386: `test/app_toolbar_test.dart`, `test/app_section_grid_test.dart`), and `test/app_page_header_test.dart` for the header's own 560 | a breakpoint is compared against `MediaQuery` width, or without the reader's text scale |
 | a form picker finds a record | `test/form_pickers_test.dart` | one of the eleven pickers is no longer an `AppSearchField`, issues a request as a term is typed, stops showing its label, its record, the no-match state, or stops gating submission on a pick |
 
 **The layout rows are ordinary `flutter test` files**, so `npm`-free CI runs them

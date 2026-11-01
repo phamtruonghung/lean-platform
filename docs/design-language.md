@@ -11,24 +11,25 @@ This file argues rather than instructs. Every number below is either read off
 the code, measured from a rendered tree, or measured from the reference board
 named in section 3, and it says which. Where this file describes what has
 shipped and disagrees with the code, the code is right and this file is the bug.
-Where it describes the target of this card, the code has not arrived yet.
+Where it describes what a later slice still has to adopt, it says so at that line.
 
 `docs/frontend-layout.md` is the shorter companion: the layout rules that tests
 enforce. This is the wider one: the vocabulary of the look. The decision to
 write it down, and the one trade it settles, is ADR-0057.
 
-**What exists and what is the target of this card.** Issue #386 lands in
-slices. This document is slice A; the primitives it names are slice B. A reader
-must be able to tell the two apart, so the shared names sort into these two
-lists.
+**What this card ships, and what a later slice adopts.** Issue #386 lands in
+slices. Slice A wrote this document; slice B built every primitive it names, so
+those are in `lib/` as of this card. What remains is each Screen's move onto a
+primitive, which is that Screen's own slice. The shared names therefore sort into
+three lists, and only the third is still a target.
 
-| already in `lib/` | the target of this card (slice B), not yet shipped |
-|---|---|
-| `AppPageFrame`, `AppPageHeader`, `AppListCard` | `AppBreakpoints` |
-| `SkeletonList`, `SkeletonDetail`, `SkeletonGrid` | `AppTouchTarget` |
-| `PlatformEmptyState.noneExist` / `.noneMatched`, `PlatformFailureState` | `AppToolbar` |
-| `AppFilterField`, `StatusChip`, `DisclosingText` | `AppTableHeader`, `AppTableRow` |
-| `AppPalette` (read as `AppColors.of(context)`), `Spacing`, `AppRadius`, `AppLayout`, `AppTypography` | `AppStatTile`, `AppDetailSection`, `AppSectionGrid` |
+| already in `lib/` before this card | shipped in this card (#386) | adopted by a later slice |
+|---|---|---|
+| `AppPageFrame`, `AppPageHeader`, `AppListCard` | `AppBreakpoints`, `AppTouchTarget` (`theme.dart`) | Work orders' register onto `AppTableHeader` / `AppTableRow` |
+| `SkeletonList`, `SkeletonDetail`, `SkeletonGrid` | `AppToolbar` (`app_toolbar.dart`) | Home's private `_HomeCard` onto `AppStatTile` |
+| `PlatformEmptyState.noneExist` / `.noneMatched`, `PlatformFailureState` | `AppTableHeader`, `AppTableRow` (`app_table.dart`) | a detail Screen's sections onto `AppDetailSection` / `AppSectionGrid` |
+| `AppFilterField`, `StatusChip`, `DisclosingText` | `AppStatTile` (`app_stat_tile.dart`) | a form onto `AppDetailSection` plus the section 6 sticky bar |
+| `AppPalette` (read as `AppColors.of(context)`), `Spacing`, `AppRadius`, `AppLayout`, `AppTypography` | `AppDetailSection` (`app_detail_section.dart`), `AppSectionGrid` (`app_section_grid.dart`) | |
 
 `_RowActions` is not in either list: it is a private widget, and there are two
 of them, one in `maintenance/work_orders_screen.dart` and one in
@@ -96,7 +97,7 @@ like 220 for text layout, because the text doubles and the box does not. So a
 breakpoint is always multiplied by the reader's text scale, never below 1, before
 the box is compared with it (WCAG 1.4.4, Resize Text). `AppPageHeader.wrapBreakpoint`
 already states exactly this rule; section 10 names it once for everyone, and
-`AppBreakpoints.effective` in slice B is the one helper that will spend it.
+`AppBreakpoints.effective` is the one helper that spends it.
 
 ## 3. The reference: what is copied and what is not
 
@@ -164,8 +165,8 @@ A Screen spends six things and nothing else:
 3. **`AppRadius`**: `card` 14 and `pill` 28.
 4. **`AppLayout`**: `pageWidth` 900.
 5. **`AppTypography`**: `body` 16/24, `dense` 14/20, `floor` 12/16.
-6. **`AppTouchTarget.min`**: 44. This one is the target of this card; the constant
-   does not exist until slice B.
+6. **`AppTouchTarget.min`**: 44. The constant ships in this card (#386), in
+   `theme.dart` beside the rest of the ladder.
 
 No `Color` literal, no `Colors.*`, no magic padding. `test/theme_skeleton_test.dart`
 enforces the colour half by reading every file under `lib/`. The padding half is
@@ -198,8 +199,8 @@ AppPageFrame(maxWidth)                 // 900 by default; a table/board page nam
   footer actions                       // only where a page has a primary act at the end
 ```
 
-`AppToolbar` is slice B. Until it ships, a Screen's `below:` is whatever filter
-row it already composes, at the same spacing.
+`AppToolbar` ships in this card (#386). A Screen that has not adopted it yet still
+composes its own filter row in that slot, at the same spacing.
 
 Spacing is a `Spacing` value everywhere, and these are the values:
 
@@ -220,7 +221,7 @@ A note on the register row's vertical figure. The board's `6px + line + 6px` has
 no 6 on the `Spacing` ladder, and this document does not add one. The row is
 specified by its height (32, content centred vertically), which is what yields 6
 above and below a 20px line; the 4 + 8 above is the ladder's way of writing the
-12 the two paddings sum to, and the primitive in slice B is where the split is
+12 the two paddings sum to, and `AppTableRow` is where the split is
 decided.
 
 **One left edge.** The title, the description, the toolbar's first control and the
@@ -240,23 +241,24 @@ entries below, is a part some of them are built from, not a sixth.
 A column-label band plus rows. This is the Work orders table, the KPI matrices,
 and the shape the maintenance registers are moving towards.
 
-**The band** is `AppTableHeader` (slice B). Fill `tableHeaderFill`; a 1px `edge`
-hairline under it; `labelMedium` 12 at **w600 in `textMuted`**, which measures
-6.50:1 on the band in light and 6.97:1 in dark (section 9). Sentence case, never
-uppercased: uppercase is the Shell's Destination-group device, and the labels are
-the domain's own words ("WO#", "Org Unit"). A band is never a row: it has no hover
-and no tap.
+**The band** is `AppTableHeader`, shipped in this card (#386). Fill
+`tableHeaderFill`; a 1px `edge` hairline under it; `labelMedium` 12 at **w600 in
+`textMuted`**, which measures 6.50:1 on the band in light and 6.97:1 in dark
+(section 9). Sentence case, never uppercased: uppercase is the Shell's
+Destination-group device, and the labels are the domain's own words ("WO#", "Org
+Unit"). A band is never a row: it has no hover and no tap.
 
 Today's `_WorkOrderTableHeader` is private to its Screen and differs from this: it
 sets `colorScheme.onSurface` at w700 with 0.2 letter spacing. The row above is the
 target, and Work orders adopts it in its own slice.
 
-**A row** is `AppTableRow` (slice B): **32px when nothing in it is tappable,
-`AppTouchTarget.min` (44) when something is.** A hairline of `edge` sits under every
-row. A row that is itself the tap target (Work orders' whole row opens the Work
-order) carries `rowHoverFill`, because a seven-column row's only tie between its
-first cell and its action is where the pointer is. Such a row is 44, not 32: Work
-orders moves from 56 to 44 and reaches the board's 32 only on a row nobody taps.
+**A row** is `AppTableRow`, shipped in this card (#386): **32px when nothing in it
+is tappable, `AppTouchTarget.min` (44) when something is.** A hairline of `edge`
+sits under every row. A row that is itself the tap target (Work orders' whole row
+opens the Work order) carries `rowHoverFill`, because a seven-column row's only tie
+between its first cell and its action is where the pointer is. Such a row is 44,
+not 32: Work orders moves from 56 to 44 and reaches the board's 32 only on a row
+nobody taps.
 
 **Alignment by column kind.** This table is a rule, not a preference:
 
@@ -316,12 +318,12 @@ same in shorter form, and a Screen's own doc comment names which it is.
 ### The detail
 
 A summary card first (the record's identifying fields), then `AppDetailSection`s
-(slice B). Each is a `Card` whose `Column` states `CrossAxisAlignment.stretch`
-(`layout_rules_test.dart` enforces that the column states *something*), a
-`titleMedium` w600 title with an optional trailing action, a hairline `Spacing.sm`
-under it, then the section's rows. **One column below 1000 of box width, two above:
-`AppBreakpoints.detailTwoColumn`**, and the sections in a row share a height
-(`AppSectionGrid`, slice B).
+(shipped in #386). Each is a `Card` whose `Column` states
+`CrossAxisAlignment.stretch` (`layout_rules_test.dart` enforces that the column
+states *something*), a `titleMedium` w600 title with an optional trailing action,
+a hairline `Spacing.sm` under it, then the section's rows. **One column below 1000
+of box width, two above: `AppBreakpoints.detailTwoColumn`**, and the sections in a
+row share a height (`AppSectionGrid`, shipped in #386).
 
 Against section 2 that is also concrete: at 900 the page has 640, and at 1280 it
 has 1020, so **a detail Screen is two-column only in a window of about 1260 and
@@ -351,8 +353,8 @@ registers use.
 
 ### The stat tile
 
-`AppStatTile` (slice B) generalises Home's private `_HomeCard`: an icon tile
-(`_iconTileSize`, 40), a label, a figure, a caption. The figure is
+`AppStatTile` (shipped in #386) generalises Home's private `_HomeCard`: an icon
+tile (`_iconTileSize`, 40), a label, a figure, a caption. The figure is
 `headlineLarge` w700 when there is something to read, and a quiet `titleMedium`
 w400 `textMuted` when it is zero (`_countStyle`). The figure sits `Spacing.xs`
 under its label. A quiet figure measures 7.58:1 light and 9.85:1 dark on a card
@@ -360,8 +362,8 @@ under its label. A quiet figure measures 7.58:1 light and 9.85:1 dark on a card
 
 ### The form
 
-A section per group of fields (`AppDetailSection`, slice B), a field grid, and a
-sticky submit.
+A section per group of fields (`AppDetailSection`, shipped in #386), a field grid,
+and a sticky submit.
 
 **One column below 900 of box width, two above: `AppBreakpoints.formTwoColumn`.**
 It is a number of its own and not `AppBreakpoints.detailTwoColumn`, because a form
@@ -411,9 +413,9 @@ front of a grid is a layout shift in disguise.
 
 None of these is a taste. Each has a measured reason or a standard behind it.
 
-- **44px** minimum on every control's tap target (`AppTouchTarget.min`, slice B).
-  This is the one number the density work does not get to spend: the reference
-  board's 32px rows are under it.
+- **44px** minimum on every control's tap target (`AppTouchTarget.min`, shipped in
+  #386). This is the one number the density work does not get to spend: the
+  reference board's 32px rows are under it.
 - **A semantics label on every icon-only control**; a decorative icon is
   `ExcludeSemantics`. The Home tile's chevron is the example.
 - **A visible keyboard focus ring**: 2px `AppColors.of(context).focusRing`, drawn
@@ -475,20 +477,28 @@ Named once, in one class:
 | `AppBreakpoints.formTwoColumn` | 900 | a form's field grid goes two-column |
 | `AppBreakpoints.detailTwoColumn` | 1000 | a detail page's sections go two-column |
 
-`AppBreakpoints` lands in slice B; this document names it as the target.
-`headerActionsWrap` is today `AppPageHeader.wrapBreakpoint` (560), already
-implemented as above and pinned by `test/app_page_header_test.dart`. Home's grid
-carries a private `_CardGrid.twoColumnWidth` of 640, also read from its own
-`LayoutBuilder`; it is correct, and it is a fifth number that is not yet in the
-class.
+`AppBreakpoints` ships in this card (#386), in `theme.dart`; the five numbers are
+named there and this section argues them. Three are pinned by a test today:
+`headerActionsWrap` (560), which is the same number as
+`AppPageHeader.wrapBreakpoint` and is pinned at its edge by
+`test/app_page_header_test.dart`; `toolbarWrap` (640) by
+`test/app_toolbar_test.dart`; and `detailTwoColumn` (1000) by
+`test/app_section_grid_test.dart`. The other two are named but spent by nothing
+yet: `registerTable` (700) belongs to the Work orders register and
+`formTwoColumn` (900) to a form's field grid, and each is pinned by that Screen's
+own test when the Screen adopts its primitive. Home's grid carries a private
+`_CardGrid.twoColumnWidth` of 640, read from its own `LayoutBuilder`; that is the
+same 640 already in the class, spent by Home's grid.
 
 **Why it is written once.** The bug shipped twice. #105 was the window-versus-box
 confusion of section 2, in the Work orders table. #379 was the header's wrap
 breakpoint not accounting for the text scale: the actions row grows with the
 reader's text size and the box does not, so the same box needs the wrap sooner
 (#381 then pinned that rule's edges). Each was fixed where it was found, and each
-was a rule that the next Screen would have had to rediscover. The class exists so there is one place that reads the box, one that reads the text
-scale, and one test (slice B's) that pins the five numbers at their edges.
+was a rule that the next Screen would have had to rediscover. The class exists so
+there is one place that reads the box and one that reads the text scale. A number
+is pinned by the widget that spends it, at its edge (section 10 names which three
+are pinned today and which two wait for the Screen that spends them).
 
 Against section 2, the five numbers sort the three common windows:
 

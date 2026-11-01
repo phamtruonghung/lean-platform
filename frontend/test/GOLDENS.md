@@ -56,7 +56,7 @@ and get deleted within a month, which is worse than not having one. Do not
 add a golden for a Screen outside this list without re-opening that scope
 question first.
 
-**The shared primitives are the one addition (#386, landing in its slice B).**
+**The shared primitives are the one addition (#386, added in this card).**
 `AppToolbar`,
 `AppTableHeader` / `AppTableRow`, `AppStatTile`, `AppDetailSection` and
 `AppSectionGrid` carry one golden each. That does not reopen the "no golden per
