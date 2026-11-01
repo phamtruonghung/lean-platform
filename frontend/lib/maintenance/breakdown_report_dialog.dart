@@ -13,6 +13,18 @@
 ///
 /// Raised against whatever Site the list screen is already showing — there is
 /// no Site selector of its own, mirroring `WorkOrderFormDialog`.
+///
+/// The form width (520): an Asset search field, an optional date-time field and
+/// a three-line note, in one column — a short form, like every other
+/// single-column form of this Module (Part, meter, reading). Nothing here has
+/// columns of its own to spend the wide dialog's extra 120 on.
+/// The 560 this used to set inside an `AlertDialog`'s content left the title and
+/// the action row at a width the platform chose.
+///
+/// A dismiss that is disabled while the request is in flight stays disabled, and
+/// so does `Esc` then: `AppDialog` runs the dismiss action, which does nothing
+/// while it is null. The `AlertDialog` this replaces let `Esc` pop the route
+/// mid-request.
 library;
 
 import 'package:flutter/material.dart';
@@ -20,6 +32,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_date_time_field.dart';
 import '../widgets/app_search_field.dart';
 import 'asset.dart';
@@ -48,12 +61,20 @@ class BreakdownReportDialog extends StatefulWidget {
   /// (AGENTS.md §7).
   static ValueKey<String> assetSuggestionKey(String assetId) =>
       AppSearchField.suggestionKey(_assetFieldName, assetId);
-  static const ValueKey<String> assetsFailedKey = ValueKey<String>('breakdown-report-assets-failed');
+  static const ValueKey<String> assetsFailedKey = ValueKey<String>(
+    'breakdown-report-assets-failed',
+  );
   static const ValueKey<String> startedAtKey = ValueKey<String>('breakdown-report-started-at');
   static const ValueKey<String> descriptionKey = ValueKey<String>('breakdown-report-description');
-  static const ValueKey<String> submitKey = ValueKey<String>('breakdown-report-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('breakdown-report-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('breakdown-report-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'breakdown-report-submit';
+  static const String _dismissId = 'breakdown-report-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
 
   @override
   State<BreakdownReportDialog> createState() => _BreakdownReportDialogState();
@@ -132,13 +153,13 @@ class _BreakdownReportDialogState extends State<BreakdownReportDialog> {
     });
     final description = _description.text.trim();
     context.read<DowntimeBloc>().add(
-          BreakdownReportConfirmed(
-            siteId: widget.siteId,
-            assetId: _assetId!,
-            startedAt: _startedAt,
-            description: description.isEmpty ? null : description,
-          ),
-        );
+      BreakdownReportConfirmed(
+        siteId: widget.siteId,
+        assetId: _assetId!,
+        startedAt: _startedAt,
+        description: description.isEmpty ? null : description,
+      ),
+    );
   }
 
   void _onDowntimeChanged(BuildContext context, DowntimeState state) {
@@ -155,74 +176,71 @@ class _BreakdownReportDialogState extends State<BreakdownReportDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<DowntimeBloc, DowntimeState>(
       listener: _onDowntimeChanged,
-      child: AlertDialog(
-        title: const Text('Report a Breakdown'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _AssetField(
-                  status: _assetsStatus,
-                  assets: _assets,
-                  failure: _assetsFailure,
-                  selectedId: _assetId,
-                  enabled: !_awaiting,
-                  onRetry: () => _loadAssets(widget.siteId),
-                  onChanged: (id) => setState(() => _assetId = id),
-                ),
-                const SizedBox(height: Spacing.md),
-                AppDateTimeField(
-                  key: BreakdownReportDialog.startedAtKey,
-                  name: 'breakdown-report-started-at',
-                  label: 'Started at (optional)',
-                  helperText: 'Leave blank to record now.',
-                  value: _startedAt,
-                  optional: true,
-                  enabled: !_awaiting,
-                  onChanged: (value) => setState(() => _startedAt = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: BreakdownReportDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: BreakdownReportDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Report a Breakdown',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: BreakdownReportDialog.cancelKey,
+          AppDialogAction(
+            id: BreakdownReportDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: BreakdownReportDialog.submitKey,
+          AppDialogAction(
+            id: BreakdownReportDialog._submitId,
+            label: 'Report',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Report'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _AssetField(
+              status: _assetsStatus,
+              assets: _assets,
+              failure: _assetsFailure,
+              selectedId: _assetId,
+              enabled: !_awaiting,
+              onRetry: () => _loadAssets(widget.siteId),
+              onChanged: (id) => setState(() => _assetId = id),
+            ),
+            const SizedBox(height: Spacing.md),
+            AppDateTimeField(
+              key: BreakdownReportDialog.startedAtKey,
+              name: 'breakdown-report-started-at',
+              label: 'Started at (optional)',
+              helperText: 'Leave blank to record now.',
+              value: _startedAt,
+              optional: true,
+              enabled: !_awaiting,
+              onChanged: (value) => setState(() => _startedAt = value),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: BreakdownReportDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Description (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: BreakdownReportDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -259,13 +277,17 @@ class _AssetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _AssetsStatus.loading:
         return const SizedBox(
           height: 48,
           child: Center(
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         );
       case _AssetsStatus.failed:
@@ -275,7 +297,7 @@ class _AssetField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The Assets could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],

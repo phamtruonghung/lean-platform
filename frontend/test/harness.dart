@@ -4046,6 +4046,10 @@ class FakeWire {
   /// placeholders while a read is still in flight.
   Completer<void>? downtimeGate;
 
+  /// When set, a downtime close hangs until the test completes it — to hold a
+  /// mutation open and read the row's controls while it is in flight.
+  Completer<void>? downtimeCloseGate;
+
   /// `GET /api/maintenance/downtime-reasons` — the classify picker's own
   /// catalogue.
   List<Map<String, dynamic>> downtimeReasons;
@@ -7287,6 +7291,7 @@ class FakeWire {
           final id = path.split('/')[4];
           final body = jsonDecode(request.body) as Map<String, dynamic>;
           downtimeCloses.add((id, body));
+          if (downtimeCloseGate != null) await downtimeCloseGate!.future;
           if (closeDowntimeStatus != 200) {
             return http.Response(jsonEncode({'message': closeDowntimeMessage}), closeDowntimeStatus);
           }
