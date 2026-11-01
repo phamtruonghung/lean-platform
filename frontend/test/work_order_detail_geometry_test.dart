@@ -138,6 +138,19 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('at 900 it is one column and the booking actions are above the sections',
+      (tester) async {
+    await _open(tester, width: 900);
+    _expectOneColumn(tester);
+    // The 640 box less the page's own inset: the card is within the window, and
+    // the actions sit above the sections.
+    expect(tester.getBottomRight(_summary).dx, lessThanOrEqualTo(900));
+    expect(tester.getSize(_summary).width, greaterThan(0));
+    expect(tester.getTopLeft(find.byKey(WorkOrderDetailScreen.bookLabourKey)).dy,
+        lessThan(tester.getTopLeft(_section('Tasks')).dy));
+    expect(tester.takeException(), isNull);
+  });
+
   for (final width in [1280.0, 700.0]) {
     testWidgets('at a text scale of 2, at $width, it is one column and nothing overflows',
         (tester) async {

@@ -14,10 +14,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_table.dart';
+import 'package:lean_platform/widgets/disclosing_text.dart';
 import 'package:lean_platform/widgets/app_toolbar.dart';
 
 import 'contrast.dart';
@@ -39,7 +41,22 @@ FakeWire _wire() => FakeWire(
       },
     );
 
-Future<void> _pump(WidgetTester tester, {required double width, double textScale = 1}) async {
+FakeWire _realisticWire() => FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      orgUnits: {
+        null: [orgUnitJson('10', 'Assembly')],
+      },
+      assets: {'1': []},
+      workOrders: {
+        '1': [
+          workOrderJson('101', 'WO-BUC-2026-00001', 'Replace the worn drive belt on the infeed',
+              orgUnitName: 'Final Assembly Line 1', assigneeName: 'Jane Doe'),
+        ],
+      },
+    );
+
+Future<void> _pump(WidgetTester tester,
+    {required double width, double textScale = 1, FakeWire? wire}) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(width, 1000);
   tester.platformDispatcher.textScaleFactorTestValue = textScale;
@@ -48,7 +65,7 @@ Future<void> _pump(WidgetTester tester, {required double width, double textScale
   await pumpApp(
     tester,
     gateway: FakeAuthGateway(accessToken: 'a-token'),
-    client: _wire().client,
+    client: (wire ?? _wire()).client,
     initialLocation: '/work-orders',
   );
 }
@@ -149,13 +166,56 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('at 900 the register is cards, at the list\'s inset', (tester) async {
+    await _pump(tester, width: 900);
+
+    expect(find.byType(AppTableHeader), findsNothing, reason: 'a 608 box is under 800');
+    final a = find.byKey(WorkOrdersScreen.rowKey('101'));
+    final b = find.byKey(WorkOrdersScreen.rowKey('102'));
+    expect(a, findsOneWidget);
+    const sidebar = 260.0;
+    expect(tester.getTopLeft(a).dx, sidebar + Spacing.lg);
+    expect(tester.getBottomRight(a).dx, 900 - Spacing.lg);
+    expect(tester.getSize(a).width, 900 - sidebar - 2 * Spacing.lg);
+    expect(tester.getTopLeft(b).dx, tester.getTopLeft(a).dx);
+    expect(tester.getTopLeft(b).dy, greaterThan(tester.getBottomRight(a).dy));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('at 1280 with realistic content the WO# fits and every clipped cell discloses',
+      (tester) async {
+    await _pump(tester, width: 1280, wire: _realisticWire());
+
+    final wo = _inRow('101', AppTableRow.cellKey(0));
+    final woParagraph = tester.renderObject<RenderParagraph>(
+        find.descendant(of: wo, matching: find.text('WO-BUC-2026-00001')));
+    expect(woParagraph.didExceedMaxLines, isFalse, reason: 'its column is measured to fit it');
+
+    // Every text cell: if its paragraph is clipped it must be a DisclosingText.
+    for (final i in [0, 1, 2, 3, 5]) {
+      final cell = _inRow('101', AppTableRow.cellKey(i));
+      final paragraphs = find.descendant(of: cell, matching: find.byType(RichText));
+      expect(paragraphs, findsOneWidget, reason: 'cell $i');
+      final paragraph = tester.renderObject<RenderParagraph>(paragraphs);
+      // ignore: avoid_print
+      print('cell $i: slot ${tester.getSize(cell).width} text ${paragraph.size.width} clipped ${paragraph.didExceedMaxLines}');
+      if (paragraph.didExceedMaxLines) {
+        expect(find.descendant(of: cell, matching: find.byType(DisclosingText)), findsOneWidget,
+            reason: 'cell $i is clipped, so it must be disclosed');
+      }
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('at 1280 and 700 the toolbar carries the count, and nothing overflows',
       (tester) async {
-    await _pump(tester, width: 1280);
-    expect(find.byType(AppToolbar), findsOneWidget);
-    expect(find.byKey(WorkOrdersScreen.countKey), findsOneWidget);
-    expect(find.byKey(WorkOrdersScreen.showHistoryKey), findsOneWidget);
-    expect(tester.takeException(), isNull);
+    for (final width in [1280.0, 700.0]) {
+      await _pump(tester, width: width);
+      expect(find.byType(AppToolbar), findsOneWidget, reason: 'width $width');
+      expect(find.byKey(WorkOrdersScreen.countKey), findsOneWidget, reason: 'width $width');
+      expect(find.byKey(WorkOrdersScreen.showHistoryKey), findsOneWidget, reason: 'width $width');
+      expect(tester.takeException(), isNull, reason: 'width $width');
+    }
   });
 
   testWidgets('at a text scale of 2, at 1280 and at 700, it is cards and nothing overflows',

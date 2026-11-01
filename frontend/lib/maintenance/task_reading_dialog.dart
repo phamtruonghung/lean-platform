@@ -25,8 +25,8 @@ class TaskReadingDialog extends StatefulWidget {
   /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
   /// for this dialog's use of them: a `ValueKey` is equal by value, so these
   /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
-  static const String _submitId = 'submit';
-  static const String _cancelId = 'cancel';
+  static const String _submitId = 'task-reading-submit';
+  static const String _cancelId = 'task-reading-cancel';
   static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
   static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('task-reading-failure');

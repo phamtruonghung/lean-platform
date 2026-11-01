@@ -268,8 +268,9 @@ and the control sits inside the 44. A hairline of `edge` sits under every row.
 A row that is itself the tap target (Work orders' whole row
 opens the Work order) carries `rowHoverFill`, because a seven-column row's only tie
 between its first cell and its action is where the pointer is. Such a row is 44,
-not 32: Work orders moves from 56 to 44 and reaches the board's 32 only on a row
-nobody taps.
+not 32: Work orders' row measures 52 (the 44 control plus `Spacing.xs` above and below,
+pinned by `work_orders_geometry_test.dart`, down from 56) and reaches the board's
+32 only on a row nobody taps.
 
 **Alignment by column kind.** This table is a rule, not a preference:
 
@@ -341,9 +342,10 @@ row share a height (`AppSectionGrid`, shipped in #386).
 Against section 2 that is also concrete, once the page's inset is counted (the 32
 of section 5, and 48 where the page insets `Spacing.xl`): at a 900 window the page
 has 640 and the grid is handed 608, and at 1280 it has 1020 and the grid is handed
-988 — 972 on a page inset 24 each side. So **a detail Screen is two-column only in
-a window of about 1292 and wider, and only where the page names a frame of at
-least 1032**; the default `AppPageFrame(900)` hands it 868 and never reaches 1000.
+988 on the default frame's box, 1020 on one that names 1040 (972 on a page inset 24 each side). So **a detail Screen is two-column only where
+its box reaches 1000**: the Work order detail names a 1040 frame and is handed the
+page's 1020 at a 1280 window, so it is two columns there; the default
+`AppPageFrame(900)` hands a page 868 and never reaches 1000.
 That is intended. A section is a card with a title and rows; squeezed to half of
 640 it is worse than stacked.
 
@@ -549,21 +551,19 @@ the page naming a frame at least as wide as the window allows:
 |---|---|---|---|---|---|---|---|
 | 700 | 440 | 408 | no, under it | no | cards | one column | one column |
 | 900 | 640 | 608 | yes | no, it wraps | cards | one column | one column |
-| 1280 | 1020 | 988 | yes | yes | table | one column | yes |
+| 1280 | 1020 | 988 (1020 for the Work order detail) | yes | yes | table | two columns (Work order detail) | yes |
 
 Two of those cells are what the box costs. The toolbar wraps at a 900 window
 because 608 is 32 under its 640; one line starts at a box of 640, a page box of
-672 and a window of about 932. The detail page stays one column at a 1280 window
-because 988 is 12 under its 1000, and a page that insets `Spacing.xl` (24 each
-side inside the frame, as `capa_detail_screen.dart` does) is handed 972. Two
-columns need a page box of 1032 — a window of about 1292 — **and a frame that
-names at least 1032**: under the default `AppPageFrame(900)` every one of these
-is handed 868, so `detailTwoColumn` (1000) and `formTwoColumn` (900) are
-unreachable at any window until the page names a wider frame.
+672 and a window of about 932. The Work order detail names
+`WorkOrderDetailScreen.maxWidth = 1040`, so at a 1280 window its box is the
+page's 1020 and it is two columns. A page left on the default `AppPageFrame(900)`
+is handed 868, so `detailTwoColumn` (1000) and `formTwoColumn` (900) stay
+unreachable there until that page names a wider frame.
 
 At 2x text every effective breakpoint doubles (1120, 1280, 1400, 1800 and 2000), so even
-the 1280 window's 988 box wraps the header and the toolbar, shows cards, and stays
-one column.
+the 1280 window's 988 box (1020 for the Work order detail) wraps the header and the
+toolbar, shows cards, and the detail stays one column.
 
 ## 11. The dialog: four widths, one shell, and a sheet when the box is narrow or the text is large
 

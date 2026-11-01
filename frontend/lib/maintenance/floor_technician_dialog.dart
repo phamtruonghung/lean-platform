@@ -40,8 +40,8 @@ class FloorTechnicianDialog extends StatefulWidget {
   /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
   /// for this dialog's use of them: a `ValueKey` is equal by value, so these
   /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
-  static const String _submitId = 'submit';
-  static const String _dismissId = 'dismiss';
+  static const String _submitId = 'floor-technician-submit';
+  static const String _dismissId = 'floor-technician-dismiss';
   static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
   static ValueKey<String> get dismissKey => AppDialog.actionKey(_dismissId);
   static const ValueKey<String> failureKey = ValueKey<String>('floor-technician-failure');

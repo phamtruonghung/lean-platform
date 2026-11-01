@@ -121,6 +121,14 @@ void main() {
     _expectBoard(tester, width: 700);
   });
 
+  testWidgets('at 900 the lanes are stacked full width under the legend', (tester) async {
+    await _open(tester, width: 900);
+    _expectBoard(tester, width: 900);
+    expect(tester.getTopLeft(_tile('WO-1')).dx, Spacing.lg);
+    expect(tester.getBottomRight(_tile('WO-1')).dx, 900 - Spacing.lg);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final width in [1280.0, 700.0]) {
     testWidgets('at a text scale of 2, at $width, the board holds and nothing overflows',
         (tester) async {

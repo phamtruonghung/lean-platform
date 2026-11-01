@@ -530,7 +530,7 @@ class _OrgUnitFilterDialog extends StatelessWidget {
       size: AppDialogSize.picker,
       actions: [
         AppDialogAction(
-          id: 'cancel',
+          id: 'work-orders-org-unit-picker-cancel',
           label: 'Cancel',
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
@@ -806,15 +806,30 @@ double _statusColumnWidth(BuildContext context) {
   return widest + 32 + Spacing.sm;
 }
 
+/// The WO# column's measured width: the widest realistic Work order number,
+/// `WO-BUC-2026-00001` (site code, year and a five-digit sequence, the format
+/// `next_document_number` issues), laid out in the cell's own dense style at the
+/// reader's text scale, plus the slot's `Spacing.sm` gutter and a small allowance.
+/// The number is a code, never truncated, so its column is sized to it and does
+/// not take a share of the flex.
+double _workOrderNoColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    text: TextSpan(text: 'WO-BUC-2026-00001', style: AppTypography.dense(context)),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  return painter.width + Spacing.sm + 8;
+}
+
 /// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
 /// built from this list, so a header label and its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context) => [
-      const AppTableColumn('WO#', flex: 2),
-      const AppTableColumn('Summary', flex: 4),
-      const AppTableColumn('Asset', flex: 4),
+      AppTableColumn('WO#', width: _workOrderNoColumnWidth(context)),
+      const AppTableColumn('Summary', flex: 8),
+      const AppTableColumn('Asset', flex: 2),
       const AppTableColumn('Org Unit', flex: 2),
       AppTableColumn('Status', width: _statusColumnWidth(context)),
-      const AppTableColumn('Assignee', flex: 3),
+      const AppTableColumn('Assignee', flex: 2),
       const AppTableColumn('Actions', width: _actionsColumnWidth, align: AppColumnAlign.end),
     ];
 
@@ -842,13 +857,12 @@ class _WorkOrderTableRow extends StatelessWidget {
     final muted = dense?.copyWith(color: palette.textMuted);
     final primary = dense?.copyWith(color: palette.textPrimary);
 
-    // `disclose` covers the two cells whose values are genuinely unbounded —
-    // an Asset's name and code, and an Assignee's name — so a clipped value
-    // can still be read in full (issue #168, `DisclosingText`). The other
-    // cells hold values this Screen's own schema bounds (a Work order number,
-    // a status label, an Org Unit name that the column split now fits), so
-    // wrapping them too would put a tooltip on every cell of every row for no
-    // reason. One line each, so no cell makes a row taller than its 44px controls.
+    // `disclose` covers every cell that can be clipped — the Summary, the
+    // Asset's name and code, the Org Unit and the Assignee's name are user text
+    // and unbounded — so a clipped value can still be read in full (issue #168,
+    // `DisclosingText`). The WO# and the status are bounded: the number's column
+    // is measured to fit it and the chip's to its widest label, so neither is
+    // wrapped. One line each, so no cell makes a row taller than its 44px controls.
     Widget cell(String text, {TextStyle? style, bool disclose = false}) => disclose
         ? DisclosingText(text, style: style)
         : Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
@@ -873,14 +887,12 @@ class _WorkOrderTableRow extends StatelessWidget {
           onTap: () => context.go('${Routes.workOrders}/${workOrder.id}'),
           cells: [
             cell(workOrder.workOrderNo, style: muted),
-            cell(workOrder.summary, style: primary),
-            // Asset and Assignee each hold one more share of the table than
-            // they did before (issue #168): 3→4 and 2→3. These are the two
-            // cells whose values are unbounded, and both used to ellipsize in
-            // ordinary use ("Press 1 (PRESS-…", "Unassign…").
+            cell(workOrder.summary, style: primary, disclose: true),
+            // Asset, Org Unit and Assignee are unbounded user text and each gives
+            // way to the Summary, the row's name column; all three disclose.
             cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}',
                 style: muted, disclose: true),
-            cell(workOrder.orgUnitName, style: muted),
+            cell(workOrder.orgUnitName, style: muted, disclose: true),
             shrinkWrapTargets(StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone)),
             cell(workOrder.assigneeName ?? 'Unassigned', style: primary, disclose: true),
             shrinkWrapTargets(_RowActions(

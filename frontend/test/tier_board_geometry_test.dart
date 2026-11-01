@@ -185,6 +185,19 @@ void main() {
     _expectBoard(tester, table: false);
   });
 
+  testWidgets('at 900 the lanes are stacked, measured, and nothing overflows', (tester) async {
+    await _open(tester, width: 900);
+    // The lane's table needs 800 of lane; a 900 window leaves less, so it is cards.
+    _expectBoard(tester, table: false);
+    final lane = tester.getRect(find.byKey(TierBoardScreen.pillarKey('S')));
+    expect(lane.right, lessThanOrEqualTo(900));
+    expect(lane.width, greaterThan(0));
+    final row = tester.getRect(find.byKey(TierBoardScreen.kpiKey('SAF_NEARMISS')));
+    expect(row.left, lane.left);
+    expect(row.width, lane.width);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('at a text scale of 2, at 1280, the board holds and nothing overflows',
       (tester) async {
     await _open(tester, width: 1280, textScale: 2);

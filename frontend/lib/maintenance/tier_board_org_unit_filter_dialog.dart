@@ -27,7 +27,7 @@ class TierBoardOrgUnitFilterDialog extends StatelessWidget {
   /// for this dialog's use of them: a `ValueKey` is equal by value, so these
   /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
   static const String _allOrgUnitsId = 'all-org-units';
-  static const String _cancelId = 'cancel';
+  static const String _cancelId = 'tier-board-org-unit-filter-cancel';
   static ValueKey<String> get allOrgUnitsKey => AppDialog.actionKey(_allOrgUnitsId);
   static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
 
