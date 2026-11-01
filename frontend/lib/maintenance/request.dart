@@ -162,3 +162,47 @@ class Request {
     return wire;
   }
 }
+
+const List<String> _monthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/// The date a Request was raised, as a person says it: `31 Oct 2026`.
+///
+/// The date part is taken from the ISO string the server sent, as written. It is
+/// never read through the device's zone, because the device clock is not the
+/// plant's (design-language §13, ADR-0048). One consequence is stated rather than
+/// hidden: `reported_at` is a UTC instant and this read sends no plant day with
+/// it, so for a Site east of UTC the date shown is the day before the plant's own
+/// from the plant's midnight until UTC's midnight, that is, for the hours before
+/// UTC midnight, as many hours a day as the Site's offset (seven at UTC+7).
+///
+/// The unknown value is `—`, never a blank and never a date: a null, and a string
+/// that does not begin with a calendar date that exists (`2026-02-31` does not),
+/// both render it. Existence is checked on a `DateTime.utc`, which reads no zone.
+String formatRequestDate(String? reportedAt) {
+  if (reportedAt == null) return '—';
+  final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(reportedAt);
+  if (match == null) return '—';
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final day = int.parse(match.group(3)!);
+  final date = DateTime.utc(year, month, day);
+  if (date.year != year || date.month != month || date.day != day) return '—';
+  return '$day ${_monthNames[month - 1]} $year';
+}
+
+/// Every month label [formatRequestDate] can produce, for a column that must be
+/// wide enough for the widest of them.
+const List<String> requestDateMonths = _monthNames;

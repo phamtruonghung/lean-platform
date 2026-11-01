@@ -3,12 +3,24 @@
 ///
 /// This is a dialog, not a Screen and not a Destination — CONTEXT.md's own
 /// Screen entry says a dialog inside a Screen is not a Screen.
+///
+/// The picker width (460): a list of the other open Requests to choose one from.
+/// The shell's content area is the one scroller, so the list is a plain column of
+/// radio rows (each at least 44px tall) that scrolls with the dialog, and the
+/// failure line sits in the content where it can be read, not among the buttons.
+/// Marking a duplicate takes the Request out of the queue but deletes nothing, so
+/// the act is a primary action. Submit stays disabled until a Request is chosen.
+///
+/// While a request is in flight the dismiss is disabled, as it always was, and so
+/// is `Esc`: `AppDialog` runs the dismiss action, which does nothing while it is
+/// null. The `AlertDialog` this replaces let `Esc` pop the route mid-request.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'request.dart';
 import 'requests_bloc.dart';
 
@@ -25,8 +37,14 @@ class RequestDuplicateDialog extends StatefulWidget {
 
   static ValueKey<String> candidateKey(String id) =>
       ValueKey<String>('request-duplicate-candidate-$id');
-  static const ValueKey<String> submitKey = ValueKey<String>('request-duplicate-submit');
-  static const ValueKey<String> dismissKey = ValueKey<String>('request-duplicate-dismiss');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'request-duplicate-submit';
+  static const String _dismissId = 'request-duplicate-dismiss';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get dismissKey => AppDialog.actionKey(_dismissId);
   static const ValueKey<String> failureKey = ValueKey<String>('request-duplicate-failure');
   static const ValueKey<String> noneKey = ValueKey<String>('request-duplicate-none');
 
@@ -46,11 +64,8 @@ class _RequestDuplicateDialogState extends State<RequestDuplicateDialog> {
       _failure = null;
     });
     context.read<RequestsBloc>().add(
-          RequestDuplicateConfirmed(
-            requestId: widget.request.id,
-            duplicateOfId: _duplicateOfId!,
-          ),
-        );
+      RequestDuplicateConfirmed(requestId: widget.request.id, duplicateOfId: _duplicateOfId!),
+    );
   }
 
   void _onRequestsChanged(BuildContext context, RequestsState state) {
@@ -67,77 +82,79 @@ class _RequestDuplicateDialogState extends State<RequestDuplicateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
     return BlocListener<RequestsBloc, RequestsState>(
       listener: _onRequestsChanged,
-      child: AlertDialog(
-        title: const Text('Mark as a duplicate'),
-        content: SizedBox(
-          width: 520,
-          height: 360,
-          child: widget.candidates.isEmpty
-              ? Center(
-                  key: RequestDuplicateDialog.noneKey,
-                  child: Text(
-                    'There is no other open Request for this one to duplicate.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Which Request survives? ${widget.request.requestNo} leaves the queue.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: Spacing.sm),
-                    Expanded(
-                      child: RadioGroup<String>(
-                        groupValue: _duplicateOfId,
-                        onChanged: (id) {
-                          if (!_awaiting && id != null) setState(() => _duplicateOfId = id);
-                        },
-                        child: ListView.separated(
-                          itemCount: widget.candidates.length,
-                          separatorBuilder: (_, _) => const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final candidate = widget.candidates[index];
-                            return RadioListTile<String>(
-                              key: RequestDuplicateDialog.candidateKey(candidate.id),
-                              value: candidate.id,
-                              enabled: !_awaiting,
-                              title: Text(candidate.summary),
-                              subtitle: Text('${candidate.requestNo} · ${candidate.assetName}'),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-        ),
+      child: AppDialog(
+        title: 'Mark as a duplicate',
+        size: AppDialogSize.picker,
         actions: [
-          if (_failure != null)
-            Padding(
-              key: RequestDuplicateDialog.failureKey,
-              padding: const EdgeInsets.only(right: Spacing.md),
-              child: Text(
-                _failure!,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-              ),
-            ),
-          TextButton(
-            key: RequestDuplicateDialog.dismissKey,
+          AppDialogAction(
+            id: RequestDuplicateDialog._dismissId,
+            label: 'Keep it separate',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Keep it separate'),
           ),
-          FilledButton(
-            key: RequestDuplicateDialog.submitKey,
+          AppDialogAction(
+            id: RequestDuplicateDialog._submitId,
+            label: 'Mark duplicate',
             onPressed: _duplicateOfId != null && !_awaiting ? _submit : null,
-            child: const Text('Mark duplicate'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.candidates.isEmpty)
+              Center(
+                key: RequestDuplicateDialog.noneKey,
+                child: Text(
+                  'There is no other open Request for this one to duplicate.',
+                  textAlign: TextAlign.center,
+                  style: dense?.copyWith(color: palette.textPrimary),
+                ),
+              )
+            else ...[
+              Text(
+                'Which Request survives? ${widget.request.requestNo} leaves the queue.',
+                style: dense?.copyWith(color: palette.textPrimary),
+              ),
+              const SizedBox(height: Spacing.sm),
+              RadioGroup<String>(
+                groupValue: _duplicateOfId,
+                onChanged: (id) {
+                  if (!_awaiting && id != null) setState(() => _duplicateOfId = id);
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var index = 0; index < widget.candidates.length; index++) ...[
+                      if (index > 0) const Divider(height: 1),
+                      RadioListTile<String>(
+                        key: RequestDuplicateDialog.candidateKey(widget.candidates[index].id),
+                        value: widget.candidates[index].id,
+                        enabled: !_awaiting,
+                        title: Text(widget.candidates[index].summary),
+                        subtitle: Text(
+                          '${widget.candidates[index].requestNo} · '
+                          '${widget.candidates[index].assetName}',
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: RequestDuplicateDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(_failure!, style: dense?.copyWith(color: palette.statusDanger)),
+              ),
+          ],
+        ),
       ),
     );
   }

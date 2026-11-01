@@ -12,6 +12,20 @@
 /// actions the Request has been triaged and leaves this queue. The link back
 /// to the Work order an accepted Request produced is ADR-0014's, and the
 /// requester follows it on `MyRequestsScreen`.
+///
+/// **A triage register, and a card per Request below 960px of content.** At or
+/// above [RequestsScreen.narrowBreakpoint] (at a text scale of 1) the queue is an
+/// `AppTableHeader` band and one `AppTableRow` per Request, both built from the one
+/// column spec [_columns], chosen for deciding rather than for reading a record:
+/// the number, the summary (and whether production is stopped), the Asset, who
+/// raised it and when, the state, the urgency, and the decision itself. Accept is
+/// the one act inline; Decline and Mark duplicate sit behind a kebab beside it, the
+/// shape `WorkOrdersScreen`'s rows settled. The Raised column is the date the
+/// Request was raised, read as a person says it (`formatRequestDate`); the card
+/// does not show it. The Site dropdown stays in the header, not in the list's
+/// toolbar: it must stay reachable when the list is absent (a Site with nothing
+/// waiting shows `_RequestsEmpty`, and a failed read shows the failure state),
+/// while the filter box needs the rows it narrows.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,9 +35,13 @@ import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/app_toolbar.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'request.dart';
 import 'request_accept_dialog.dart';
 import 'request_decline_dialog.dart';
@@ -41,6 +59,26 @@ class RequestsScreen extends StatelessWidget {
   final bool canTriage;
 
   static const double maxWidth = 960;
+
+  /// The content width (at a text scale of 1) below which the register gives way
+  /// to one card per Request, measured by `_RequestsList`'s `LayoutBuilder`, never
+  /// the window. It is 960, the page's own width, rather than the 700 of a
+  /// five-column register: this one has eight. At 960 the cells have about 904px
+  /// (the box less the list's and the row's padding); the date, the state, the
+  /// urgency and the actions are measured and take about 450 of that, which leaves
+  /// about 450 for the four flex columns over their 13 shares: about 35px a share,
+  /// so a Request number of about 140px (the length of `MR-BUC-2026-00001`), a
+  /// summary of about 140, an Asset of about 105 and a Raised by of about 70,
+  /// enough for their band labels and for `DisclosingText` to disclose the rest.
+  /// Narrower and the shares fall under what the number and the labels need. The
+  /// register is therefore drawn only when the page frame is at its full width.
+  static const double narrowBreakpoint = 960;
+
+  /// The overflow trigger of a register row: a kebab holding Decline and Mark
+  /// duplicate under [declineKey] and [duplicateKey]. Its own `onPressed` is null
+  /// while a triage act is in flight, as Accept's is. Present in the register
+  /// only; the card keeps all three acts inline.
+  static ValueKey<String> rowActionsKey(String id) => ValueKey<String>('request-actions-$id');
 
   static const ValueKey<String> siteKey = ValueKey<String>('requests-site');
   static const ValueKey<String> noticeKey = ValueKey<String>('requests-notice');
@@ -82,18 +120,22 @@ class RequestsScreen extends StatelessWidget {
             child: switch (state) {
               RequestsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               RequestsUnavailable(message: final message) => PlatformFailureState(
-                  key: RequestsScreen.failedKey,
-                  title: 'The requests could not be read',
-                  message: message,
-                  retryKey: RequestsScreen.retryKey,
-                  onRetry: () => context.read<RequestsBloc>().add(const RequestsStarted()),
-                ),
-              RequestsLoaded(isLoadingRequests: true) =>
-                const SkeletonList(rows: 4, maxWidth: maxWidth),
+                key: RequestsScreen.failedKey,
+                title: 'The requests could not be read',
+                message: message,
+                retryKey: RequestsScreen.retryKey,
+                onRetry: () => context.read<RequestsBloc>().add(const RequestsStarted()),
+              ),
+              RequestsLoaded(isLoadingRequests: true) => const SkeletonList(
+                rows: 4,
+                maxWidth: maxWidth,
+              ),
               RequestsLoaded(requests: final requests) when requests.isEmpty =>
                 const _RequestsEmpty(),
-              RequestsLoaded(requests: final requests) =>
-                _RequestsList(requests: requests, canTriage: canTriage),
+              RequestsLoaded(requests: final requests) => _RequestsList(
+                requests: requests,
+                canTriage: canTriage,
+              ),
             },
           ),
         ],
@@ -128,8 +170,10 @@ class _Header extends StatelessWidget {
                       key: RequestsScreen.siteKey,
                       initialValue: loaded.siteId,
                       isDense: true,
-                      decoration:
-                          const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                        labelText: 'Site',
+                        border: OutlineInputBorder(),
+                      ),
                       items: [
                         for (final site in loaded.sites)
                           DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -175,8 +219,9 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
                   ),
                 ),
               ],
@@ -231,46 +276,377 @@ class _RequestsListState extends State<_RequestsList> {
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingRequests;
-    return Center(
-      child: AppPageFrame(
-        maxWidth: RequestsScreen.maxWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
-              child: AppFilterField(
-                name: RequestsScreen.filterFieldName,
-                label: 'Filter requests',
-                helperText: 'By description, Request number or Asset.',
-                term: _term,
-                onChanged: (term) => setState(() => _term = term),
-                shown: matches.length,
-                total: widget.requests.length,
-              ),
-            ),
-            const SizedBox(height: Spacing.md),
-            Expanded(
-              child: matches.isEmpty
-                  ? PlatformEmptyState.noneMatched(
-                      key: RequestsScreen.noMatchKey,
-                      title: 'No requests match',
-                      message: 'Requests are waiting at this Site, but none matches '
-                          '"${_term.trim()}". Try a different description or Asset.',
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                      itemCount: matches.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-                      itemBuilder: (context, index) =>
-                          _RequestCard(request: matches[index], canTriage: widget.canTriage),
+    // The box this Screen actually got from its parent, scaled by the reader's
+    // text size (design-language §10) — never the window.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow =
+            constraints.maxWidth <
+            AppBreakpoints.effective(context, RequestsScreen.narrowBreakpoint);
+        final columns = _columns(context, canTriage: widget.canTriage, requests: matches);
+        return Center(
+          child: AppPageFrame(
+            maxWidth: RequestsScreen.maxWidth,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // A toolbar's `Wrap` hands its children unbounded width, which a
+                // text field cannot take, so the field is given the box's own width.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+                  child: LayoutBuilder(
+                    builder: (context, box) => AppToolbar(
+                      filters: [
+                        SizedBox(
+                          width: box.maxWidth,
+                          child: AppFilterField(
+                            name: RequestsScreen.filterFieldName,
+                            label: 'Filter requests',
+                            helperText: 'By description, Request number or Asset.',
+                            term: _term,
+                            onChanged: (term) => setState(() => _term = term),
+                            shown: matches.length,
+                            total: widget.requests.length,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: Spacing.md),
+                Expanded(
+                  child: matches.isEmpty
+                      ? PlatformEmptyState.noneMatched(
+                          key: RequestsScreen.noMatchKey,
+                          title: 'No requests match',
+                          message:
+                              'Requests are waiting at this Site, but none matches '
+                              '"${_term.trim()}". Try a different description or Asset.',
+                        )
+                      : narrow
+                      ? ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                          itemCount: matches.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                          itemBuilder: (context, index) =>
+                              _RequestCard(request: matches[index], canTriage: widget.canTriage),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                          children: [
+                            AppTableHeader(columns: columns),
+                            for (final request in matches)
+                              _RequestTableRow(
+                                key: ValueKey<String>('request-table-row-${request.id}'),
+                                columns: columns,
+                                request: request,
+                                canTriage: widget.canTriage,
+                              ),
+                          ],
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The widest of [labels] in [style] at the reader's text scale.
+double _widest(BuildContext context, Iterable<String> labels, TextStyle? style) {
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  );
+  var widest = 0.0;
+  for (final label in labels) {
+    painter.text = TextSpan(text: label, style: style);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  return widest;
+}
+
+/// A band label's width in the band's own style (`AppTableHeader`: `labelMedium`,
+/// w600, letter spacing 0.2) at the reader's text scale.
+double _bandLabelWidth(BuildContext context, String label) => _widest(
+  context,
+  [label],
+  Theme.of(context).textTheme.labelMedium
+      ?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.2),
+);
+
+/// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
+/// built from this list, so a label and its cells start at the same x. The values
+/// are the card's: the Request number, the summary (with the production-stopped
+/// line under it), the Asset with its Org Unit, who raised it, the urgency and the
+/// acts; the state and the raised date are the queue's own. "Raised by" moves out
+/// of the cell into the band. Every measured column is sized to its widest
+/// possible content or its band label, whichever is wider, plus the slot's
+/// `Spacing.sm` gutter. A caller who cannot triage has no Actions column at all.
+List<AppTableColumn> _columns(
+  BuildContext context, {
+  required bool canTriage,
+  required List<Request> requests,
+}) {
+  double sized(double content, String label) {
+    final bandLabel = _bandLabelWidth(context, label);
+    return (content > bandLabel ? content : bandLabel) + Spacing.sm;
+  }
+
+  final numeric = AppTableRow.numberStyle(context);
+  final labelLarge = Theme.of(context).textTheme.labelLarge;
+  return [
+    const AppTableColumn('Request', flex: 4),
+    const AppTableColumn('Summary', flex: 4),
+    const AppTableColumn('Asset', flex: 3),
+    const AppTableColumn('Raised by', flex: 2),
+    AppTableColumn(
+      'Raised',
+      // The widest month, with the digits of a number cell (tabular, so each is
+      // as wide as the next).
+      width: sized(
+        _widest(context, [for (final month in requestDateMonths) '00 $month 0000'], numeric),
+        'Raised',
+      ),
+      align: AppColumnAlign.end,
+    ),
+    AppTableColumn(
+      'Status',
+      // A chip's own padding and label padding (`Spacing.xxl`).
+      width: sized(
+        // The five states the database allows (`maintenance_requests.status`), and
+        // whatever label the rows on screen carry, so a state this build does not
+        // know still fits.
+        _widest(context, [
+              'New',
+              'Triaged',
+              'Accepted',
+              'Rejected',
+              'Duplicate',
+              for (final r in requests) r.statusLabel,
+            ], labelLarge) +
+            Spacing.xxl,
+        'Status',
+      ),
+    ),
+    AppTableColumn(
+      'Urgency',
+      width: sized(
+        _widest(context, [
+              for (final u in RequestUrgency.values) u.label,
+              for (final r in requests) r.urgencyLabel,
+            ], labelLarge) +
+            Spacing.xxl,
+        'Urgency',
+      ),
+    ),
+    if (canTriage)
+      AppTableColumn(
+        'Actions',
+        // Accept (its label and the button's horizontal padding either side, in
+        // `Spacing.xl`), the gap, and the kebab at the 44px floor.
+        width:
+            _widest(context, const ['Accept'], labelLarge) +
+            2 * Spacing.xl +
+            Spacing.sm +
+            AppTouchTarget.min +
+            Spacing.sm,
+        align: AppColumnAlign.end,
+      ),
+  ];
+}
+
+class _RequestTableRow extends StatelessWidget {
+  const _RequestTableRow({
+    super.key,
+    required this.columns,
+    required this.request,
+    required this.canTriage,
+  });
+
+  final List<AppTableColumn> columns;
+  final Request request;
+  final bool canTriage;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final muted = dense?.copyWith(color: palette.textMuted);
+    // The framework's padded tap target is lifted on the chips and the buttons:
+    // each button states its own 44 through `minimumSize`.
+    Widget shrinkWrapTargets(Widget child) => Theme(
+      data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      child: child,
+    );
+
+    return KeyedSubtree(
+      key: RequestsScreen.rowKey(request.id),
+      child: AppTableRow(
+        columns: columns,
+        cells: [
+          DisclosingText(request.requestNo, style: muted),
+          // Two dense lines are 40px, inside the 52px of a row with a control.
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DisclosingText(request.summary, style: dense?.copyWith(color: palette.textPrimary)),
+              if (request.productionStopped)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_outlined,
+                      size: Spacing.lg,
+                      color: palette.statusDanger,
+                    ),
+                    const SizedBox(width: Spacing.xxs),
+                    Flexible(
+                      child: Text(
+                        'Production is stopped',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: dense?.copyWith(color: palette.statusDanger),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          DisclosingText(
+            '${request.assetName} (${request.assetCode}) · ${request.orgUnitName}',
+            style: muted,
+          ),
+          request.reporterName == null
+              ? const SizedBox.shrink()
+              : DisclosingText(request.reporterName!, style: muted),
+          Text(
+            formatRequestDate(request.reportedAt),
+            maxLines: 1,
+            style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
+          ),
+          shrinkWrapTargets(StatusChip(label: request.statusLabel, tone: request.statusTone)),
+          shrinkWrapTargets(
+            Chip(label: Text(request.urgencyLabel), visualDensity: VisualDensity.compact),
+          ),
+          if (canTriage) shrinkWrapTargets(_RequestRowActions(request: request)),
+        ],
       ),
     );
   }
+}
+
+/// A register row's acts: Accept inline, and Decline and Mark duplicate in a
+/// kebab — the shape of `WorkOrdersScreen`'s `_RowActions`. Both are disabled
+/// while a triage act is in flight, and each is read off its own `onPressed`.
+class _RequestRowActions extends StatelessWidget {
+  const _RequestRowActions({required this.request});
+
+  final Request request;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<RequestsBloc>().state;
+    final busy = state is RequestsLoaded && state.isTriaging;
+    const size = Size(AppTouchTarget.min, AppTouchTarget.min);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FilledButton(
+          key: RequestsScreen.acceptKey(request.id),
+          onPressed: busy ? null : () => _openAccept(context, request),
+          style: FilledButton.styleFrom(minimumSize: size),
+          child: const Text('Accept'),
+        ),
+        const SizedBox(width: Spacing.sm),
+        Builder(
+          builder: (buttonContext) => IconButton(
+            key: RequestsScreen.rowActionsKey(request.id),
+            tooltip: 'More actions',
+            icon: const Icon(Icons.more_vert),
+            style: IconButton.styleFrom(minimumSize: size),
+            onPressed: busy ? null : () => _openMenu(buttonContext),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openMenu(BuildContext context) async {
+    final button = context.findRenderObject() as RenderBox;
+    final overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+    final decline = RequestsScreen.declineKey(request.id);
+    final duplicate = RequestsScreen.duplicateKey(request.id);
+    final selected = await showMenu<Key>(
+      context: context,
+      position: position,
+      items: [
+        PopupMenuItem<Key>(key: decline, value: decline, child: const Text('Decline')),
+        PopupMenuItem<Key>(key: duplicate, value: duplicate, child: const Text('Mark duplicate')),
+      ],
+    );
+    if (selected == null || !context.mounted) return;
+    if (selected == decline) {
+      await _openDecline(context, request);
+    } else {
+      await _openDuplicate(context, request);
+    }
+  }
+}
+
+Future<void> _openAccept(BuildContext context, Request request) {
+  // `showDialog` pushes onto the root Navigator, above the route-scoped
+  // `RequestsBloc` — re-provide the same instance so the dialog's own context can
+  // read it.
+  final bloc = context.read<RequestsBloc>();
+  return showDialog<void>(
+    context: context,
+    builder: (_) => BlocProvider<RequestsBloc>.value(
+      value: bloc,
+      child: RequestAcceptDialog(request: request),
+    ),
+  );
+}
+
+Future<void> _openDecline(BuildContext context, Request request) {
+  final bloc = context.read<RequestsBloc>();
+  return showDialog<void>(
+    context: context,
+    builder: (_) => BlocProvider<RequestsBloc>.value(
+      value: bloc,
+      child: RequestDeclineDialog(request: request),
+    ),
+  );
+}
+
+Future<void> _openDuplicate(BuildContext context, Request request) {
+  final bloc = context.read<RequestsBloc>();
+  final state = bloc.state;
+  final candidates = state is RequestsLoaded
+      ? [
+          for (final other in state.requests)
+            if (other.id != request.id) other,
+        ]
+      : const <Request>[];
+  return showDialog<void>(
+    context: context,
+    builder: (_) => BlocProvider<RequestsBloc>.value(
+      value: bloc,
+      child: RequestDuplicateDialog(request: request, candidates: candidates),
+    ),
+  );
 }
 
 class _RequestCard extends StatelessWidget {
@@ -330,9 +706,15 @@ class _RequestCard extends StatelessWidget {
                     children: [
                       Icon(Icons.warning_amber_outlined, size: 16, color: theme.colorScheme.error),
                       const SizedBox(width: Spacing.xxs),
-                      Text(
-                        'Production is stopped',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                      // Flexible, so at a large text size the words wrap inside the
+                      // card rather than running past its edge.
+                      Flexible(
+                        child: Text(
+                          'Production is stopped',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -403,7 +785,10 @@ class _RequestCard extends StatelessWidget {
     final bloc = context.read<RequestsBloc>();
     final state = bloc.state;
     final candidates = state is RequestsLoaded
-        ? [for (final other in state.requests) if (other.id != request.id) other]
+        ? [
+            for (final other in state.requests)
+              if (other.id != request.id) other,
+          ]
         : const <Request>[];
     return showDialog<void>(
       context: context,

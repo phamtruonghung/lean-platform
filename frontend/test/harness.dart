@@ -3987,6 +3987,10 @@ class FakeWire {
   /// from a triage action, since those routes update [triageRequests].
   Completer<void>? requestsGate;
 
+  /// When set, a Request accept hangs until the test completes it — to hold a
+  /// triage act open and read the row's controls while it is in flight.
+  Completer<void>? requestAcceptGate;
+
   /// `GET /api/maintenance/sites/:siteId/requests/mine` — the caller's own
   /// Requests, keyed by Site id.
   Map<String, List<Map<String, dynamic>>> myRequests;
@@ -8021,6 +8025,7 @@ class FakeWire {
           final id = path.split('/')[4];
           final body = jsonDecode(request.body) as Map<String, dynamic>;
           requestAccepts.add((id, body));
+          if (requestAcceptGate != null) await requestAcceptGate!.future;
           if (acceptRequestStatus != 200) {
             return http.Response(jsonEncode({'message': acceptRequestMessage}), acceptRequestStatus);
           }

@@ -10,12 +10,21 @@
 ///
 /// This is a dialog, not a Screen and not a Destination — CONTEXT.md's own
 /// Screen entry says a dialog inside a Screen is not a Screen.
+///
+/// The decision width (420): one sentence and one dropdown that holds only
+/// `3 - Normal` and its neighbours, so nothing needs more room. Accepting raises
+/// a Work order rather than destroying anything, so the act is a primary action.
+///
+/// While a request is in flight the dismiss is disabled, as it always was, and so is
+/// `Esc`: `AppDialog` runs the dismiss action, which does nothing while it is null.
+/// The `AlertDialog` this replaces let `Esc` pop the route mid-request.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'request.dart';
 import 'requests_bloc.dart';
 
@@ -33,9 +42,15 @@ class RequestAcceptDialog extends StatefulWidget {
   final Request request;
 
   static const ValueKey<String> priorityKey = ValueKey<String>('request-accept-priority');
-  static const ValueKey<String> submitKey = ValueKey<String>('request-accept-submit');
-  static const ValueKey<String> dismissKey = ValueKey<String>('request-accept-dismiss');
   static const ValueKey<String> failureKey = ValueKey<String>('request-accept-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'request-accept-submit';
+  static const String _dismissId = 'request-accept-dismiss';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get dismissKey => AppDialog.actionKey(_dismissId);
 
   @override
   State<RequestAcceptDialog> createState() => _RequestAcceptDialogState();
@@ -56,8 +71,8 @@ class _RequestAcceptDialogState extends State<RequestAcceptDialog> {
       _failure = null;
     });
     context.read<RequestsBloc>().add(
-          RequestAcceptConfirmed(requestId: widget.request.id, priority: _priority),
-        );
+      RequestAcceptConfirmed(requestId: widget.request.id, priority: _priority),
+    );
   }
 
   void _onRequestsChanged(BuildContext context, RequestsState state) {
@@ -74,68 +89,67 @@ class _RequestAcceptDialogState extends State<RequestAcceptDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<RequestsBloc, RequestsState>(
       listener: _onRequestsChanged,
-      child: AlertDialog(
-        title: Text('Accept ${widget.request.requestNo}?'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Accepting raises a Work order for this Request. Its priority '
-                  'is your call, not the reporter\'s urgency.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<int>(
-                  key: RequestAcceptDialog.priorityKey,
-                  initialValue: _priority,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (var level = 1; level <= 5; level++)
-                      DropdownMenuItem<int>(
-                        value: level,
-                        child: Text('$level - ${_priorityLabels[level - 1]}'),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) {
-                    if (value != null) setState(() => _priority = value);
-                  },
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: RequestAcceptDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Accept ${widget.request.requestNo}?',
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: RequestAcceptDialog.dismissKey,
+          AppDialogAction(
+            id: RequestAcceptDialog._dismissId,
+            label: 'Keep it waiting',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Keep it waiting'),
           ),
-          FilledButton(
-            key: RequestAcceptDialog.submitKey,
+          AppDialogAction(
+            id: RequestAcceptDialog._submitId,
+            label: 'Accept this Request',
             onPressed: _awaiting ? null : _submit,
-            child: const Text('Accept this Request'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Accepting raises a Work order for this Request. Its priority '
+              'is your call, not the reporter\'s urgency.',
+              style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<int>(
+              key: RequestAcceptDialog.priorityKey,
+              initialValue: _priority,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Priority',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (var level = 1; level <= 5; level++)
+                  DropdownMenuItem<int>(
+                    value: level,
+                    child: Text('$level - ${_priorityLabels[level - 1]}'),
+                  ),
+              ],
+              onChanged: _awaiting
+                  ? null
+                  : (value) {
+                      if (value != null) setState(() => _priority = value);
+                    },
+            ),
+            if (_failure != null)
+              Padding(
+                key: RequestAcceptDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
