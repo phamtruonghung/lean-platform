@@ -31,6 +31,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../status_tone.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/status_chip.dart';
 import 'work_order.dart';
@@ -54,8 +55,19 @@ class WorkOrderAssignDialog extends StatefulWidget {
       ValueKey<String>('assign-skill-$employeeId-$skillId');
   static ValueKey<String> lapsedChipKey(String employeeId, String skillId) =>
       ValueKey<String>('assign-skill-lapsed-$employeeId-$skillId');
-  static const ValueKey<String> submitKey = ValueKey<String>('work-order-assign-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('work-order-assign-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
+  static const String _submitId = 'work-order-assign-submit';
+  static const String _cancelId = 'work-order-assign-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
+
+  /// How tall the candidate list is. The dialog's content is the one scroller
+  /// (`AppDialog`), so a list that scrolls on its own needs a height of its own
+  /// to scroll in; it is what the dialog already gave it.
+  static const double _listHeight = 420;
   static const ValueKey<String> failureKey = ValueKey<String>('work-order-assign-failure');
   static const ValueKey<String> candidatesFailedKey =
       ValueKey<String>('work-order-assign-candidates-failed');
@@ -185,74 +197,85 @@ class _WorkOrderAssignDialogState extends State<WorkOrderAssignDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final matching = _matchingCandidates();
     final visible = _visibleCandidates(matching);
     final hasTerm = _term.trim().isNotEmpty;
+    final label = widget.workOrder.assignedTo == null ? 'Assign' : 'Reassign';
     return BlocListener<WorkOrdersBloc, WorkOrdersState>(
       listener: _onWorkOrdersChanged,
-      child: AlertDialog(
-        title: Text(widget.workOrder.assignedTo == null ? 'Assign' : 'Reassign'),
-        content: SizedBox(
-          width: 560,
-          height: 420,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Only while there is a list to narrow. A filter box over a set
-              // that failed to load, or has not arrived yet, is a control that
-              // can do nothing, and the dialog's own failure state is what
-              // those two states need to be read as.
-              if (_status == _CandidatesStatus.ready && _candidates.isNotEmpty) ...[
-                AppFilterField(
-                  name: WorkOrderAssignDialog.searchFieldName,
-                  label: 'Find a person',
-                  helperText: 'By name, employee number, or the qualification they hold.',
-                  term: _term,
-                  enabled: !_awaiting,
-                  onChanged: (term) => setState(() => _term = term),
-                  shown: visible.length,
-                  total: _candidates.length,
-                ),
-                const SizedBox(height: Spacing.md),
-              ],
-              Expanded(
-                child: _CandidatesList(
-                  status: _status,
-                  candidates: visible,
-                  failure: _candidatesFailure,
-                  selectedId: _employeeId,
-                  term: _term,
-                  isFiltered: hasTerm,
-                  enabled: !_awaiting,
-                  onRetry: _loadCandidates,
-                  onChanged: (id) => setState(() => _employeeId = id),
-                ),
-              ),
-            ],
-          ),
-        ),
+      // A form: a filter box and a list to choose one person from (§11).
+      child: AppDialog(
+        title: label,
+        size: AppDialogSize.form,
         actions: [
-          if (_failure != null)
-            Padding(
-              key: WorkOrderAssignDialog.failureKey,
-              padding: const EdgeInsets.only(right: Spacing.md),
-              child: Text(
-                _failure!,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-              ),
-            ),
-          TextButton(
-            key: WorkOrderAssignDialog.cancelKey,
+          AppDialogAction(
+            id: WorkOrderAssignDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: WorkOrderAssignDialog.submitKey,
+          AppDialogAction(
+            id: WorkOrderAssignDialog._submitId,
+            label: label,
             onPressed: _employeeId != null && !_awaiting ? _submit : null,
-            child: Text(widget.workOrder.assignedTo == null ? 'Assign' : 'Reassign'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: WorkOrderAssignDialog._listHeight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Only while there is a list to narrow. A filter box over a set
+                  // that failed to load, or has not arrived yet, is a control that
+                  // can do nothing, and the dialog's own failure state is what
+                  // those two states need to be read as.
+                  if (_status == _CandidatesStatus.ready && _candidates.isNotEmpty) ...[
+                    AppFilterField(
+                      name: WorkOrderAssignDialog.searchFieldName,
+                      label: 'Find a person',
+                      helperText: 'By name, employee number, or the qualification they hold.',
+                      term: _term,
+                      enabled: !_awaiting,
+                      onChanged: (term) => setState(() => _term = term),
+                      shown: visible.length,
+                      total: _candidates.length,
+                    ),
+                    const SizedBox(height: Spacing.md),
+                  ],
+                  Expanded(
+                    child: _CandidatesList(
+                      status: _status,
+                      candidates: visible,
+                      failure: _candidatesFailure,
+                      selectedId: _employeeId,
+                      term: _term,
+                      isFiltered: hasTerm,
+                      enabled: !_awaiting,
+                      onRetry: _loadCandidates,
+                      onChanged: (id) => setState(() => _employeeId = id),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // The failure was a line in the action row; the shell has no slot
+            // there, so it is read where the list ends, inline (§12).
+            if (_failure != null)
+              Padding(
+                key: WorkOrderAssignDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.floor(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

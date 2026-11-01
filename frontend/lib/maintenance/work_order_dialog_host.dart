@@ -25,6 +25,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
 
@@ -75,9 +77,17 @@ class WorkOrderDialogHost extends StatelessWidget {
 
     final state = context.watch<WorkOrdersBloc>().state;
     if (state is! WorkOrdersLoaded || state.isLoadingWorkOrders) {
-      return const AlertDialog(
+      // A notice with nothing to decide: the decision width (420), no action,
+      // so `Esc` pops the route like the barrier would.
+      return const AppDialog(
         key: loadingKey,
-        content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
+        title: 'Loading this Work order',
+        size: AppDialogSize.decision,
+        actions: [],
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: Spacing.lg),
+          child: Center(child: CircularProgressIndicator()),
+        ),
       );
     }
 
@@ -95,23 +105,32 @@ class WorkOrderDialogHost extends StatelessWidget {
       return builder(workOrder);
     }
 
-    return AlertDialog(
+    return AppDialog(
       key: notFoundKey,
-      title: const Text('That Work order is not in this list'),
-      content: const Text(
-        'It may have been completed, cancelled, or it is outside the Site or Org Unit the '
-        'list is currently showing.',
-      ),
-      actions: [TextButton(onPressed: () => context.pop(), child: const Text('Back to the list'))],
+      title: 'That Work order is not in this list',
+      description: 'It may have been completed, cancelled, or it is outside the Site or Org Unit '
+          'the list is currently showing.',
+      size: AppDialogSize.decision,
+      actions: [_backToTheList(context)],
     );
   }
 
   Widget _refusal(BuildContext context, {required String title, required String message}) {
-    return AlertDialog(
+    return AppDialog(
       key: notAvailableKey,
-      title: Text(title),
-      content: Text(message),
-      actions: [TextButton(onPressed: () => context.pop(), child: const Text('Back to the list'))],
+      title: title,
+      description: message,
+      size: AppDialogSize.decision,
+      actions: [_backToTheList(context)],
     );
   }
+
+  /// The one way out of a notice: it changes nothing, so it is the dismiss
+  /// action and `Esc` runs it.
+  AppDialogAction _backToTheList(BuildContext context) => AppDialogAction(
+        id: 'work-order-notice-back',
+        label: 'Back to the list',
+        kind: AppDialogActionKind.dismiss,
+        onPressed: () => context.pop(),
+      );
 }

@@ -31,7 +31,8 @@ void main() {
     expect(find.byType(FloorScreen), findsOneWidget);
     expect(find.byType(PlatformShell), findsNothing);
     expect(find.text('Floor work'), findsOneWidget);
-    expect(find.text('Line 1'), findsOneWidget);
+    // The device's Org Unit is named in the header and now also heads its lane.
+    expect(find.text('Line 1'), findsNWidgets(2));
     expect(find.text('Replace the drive belt'), findsOneWidget);
     expect(locationOf(tester, find.byType(FloorScreen)), '/floor');
   });

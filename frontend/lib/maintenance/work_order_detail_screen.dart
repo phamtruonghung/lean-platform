@@ -17,7 +17,9 @@ import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
@@ -49,7 +51,11 @@ class WorkOrderDetailScreen extends StatelessWidget {
   /// a meter offers a reading action only to a caller who could write one.
   final bool canRecord;
 
-  static const double maxWidth = 760;
+  /// The page names 1040 so a box of 1000 is reachable: at a 1280 window the
+  /// Shell leaves a page box of 1020, and `AppBreakpoints.detailTwoColumn`
+  /// (1000) is compared with that box. Under the old 760 it was unreachable at
+  /// any window (`docs/design-language.md` §10).
+  static const double maxWidth = 1040;
 
   static const ValueKey<String> backKey = ValueKey<String>('work-order-detail-back');
   static const ValueKey<String> retryKey = ValueKey<String>('work-order-detail-retry');
@@ -78,10 +84,7 @@ class WorkOrderDetailScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Header(
-            workOrder: state is WorkOrderDetailLoaded ? state.workOrder : null,
-            canBook: canBook,
-          ),
+          _Header(loaded: state is WorkOrderDetailLoaded),
           if (state is WorkOrderDetailLoaded && state.notice != null)
             _Notice(message: state.notice!),
           Expanded(
@@ -96,7 +99,7 @@ class WorkOrderDetailScreen extends StatelessWidget {
                       context.read<WorkOrderDetailBloc>().add(const WorkOrderDetailStarted()),
                 ),
               WorkOrderDetailLoaded(workOrder: final workOrder) =>
-                _WorkOrderBody(workOrder: workOrder, canRecord: canRecord),
+                _WorkOrderBody(workOrder: workOrder, canBook: canBook, canRecord: canRecord),
             },
           ),
         ],
@@ -145,28 +148,29 @@ class _Notice extends StatelessWidget {
   }
 }
 
+/// Opens a dialog under the Navigator route-scoped `WorkOrderDetailBloc`
+/// lives in — `showDialog` builds its route as a sibling, not a descendant,
+/// so the Bloc is handed across explicitly the same way `ReceiveDialog.open`
+/// hands `StoreStockBloc` across.
+void _openDialog(BuildContext context, Widget dialog) {
+  final bloc = context.read<WorkOrderDetailBloc>();
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => BlocProvider<WorkOrderDetailBloc>.value(value: bloc, child: dialog),
+  );
+}
+
+/// The page's own head: the way back, then the shared `AppPageHeader`. What the
+/// Work order *is* (its number, summary, Asset, state) is the summary card's,
+/// below, once it has loaded.
 class _Header extends StatelessWidget {
-  const _Header({required this.workOrder, required this.canBook});
+  const _Header({required this.loaded});
 
-  final WorkOrder? workOrder;
-  final bool canBook;
-
-  /// Opens a dialog under the Navigator route-scoped `WorkOrderDetailBloc`
-  /// lives in — `showDialog` builds its route as a sibling, not a descendant,
-  /// so the Bloc is handed across explicitly the same way `ReceiveDialog.open`
-  /// hands `StoreStockBloc` across.
-  void _open(BuildContext context, Widget dialog) {
-    final bloc = context.read<WorkOrderDetailBloc>();
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => BlocProvider<WorkOrderDetailBloc>.value(value: bloc, child: dialog),
-    );
-  }
+  final bool loaded;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: WorkOrderDetailScreen.maxWidth,
@@ -182,59 +186,10 @@ class _Header extends StatelessWidget {
                 label: const Text('Back to Work orders'),
               ),
               const SizedBox(height: Spacing.sm),
-              Text('Work order', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: Spacing.xs),
-              if (workOrder != null) ...[
-                Text(workOrder!.summary, style: theme.textTheme.titleMedium),
-                const SizedBox(height: Spacing.xxs),
-                Text(
-                  '${workOrder!.workOrderNo} · ${workOrder!.assetName} '
-                  '(${workOrder!.assetCode})',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                // This Screen used to render the Work order's own status as
-                // one more word in the identity line above (issue #168's own
-                // user story 7, corrected here after review): the detail read
-                // is where somebody checks *what state this job is in*, and it
-                // was the one place in the Platform still showing that state as
-                // plain text. It is the same `StatusChip` every list uses, next
-                // to the identity rather than inside it.
-                const SizedBox(height: Spacing.sm),
-                StatusChip(label: workOrder!.statusLabel, tone: workOrder!.statusTone),
-                if (canBook) ...[
-                  const SizedBox(height: Spacing.md),
-                  Wrap(
-                    spacing: Spacing.sm,
-                    runSpacing: Spacing.xs,
-                    children: [
-                      FilledButton.icon(
-                        key: WorkOrderDetailScreen.bookLabourKey,
-                        onPressed: () => _open(
-                          context,
-                          LabourBookingDialog(workOrderId: workOrder!.id),
-                        ),
-                        icon: const Icon(Icons.schedule),
-                        label: const Text('Book labour'),
-                      ),
-                      FilledButton.icon(
-                        key: WorkOrderDetailScreen.bookPartKey,
-                        onPressed: () => _open(
-                          context,
-                          PartBookingDialog(siteId: workOrder!.siteId),
-                        ),
-                        icon: const Icon(Icons.inventory_2_outlined),
-                        label: const Text('Book a part'),
-                      ),
-                    ],
-                  ),
-                ],
-              ] else
-                Text(
-                  'The tasks copied from the Job plan that raised it.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
+              AppPageHeader(
+                title: 'Work order',
+                description: loaded ? null : 'The tasks copied from the Job plan that raised it.',
+              ),
             ],
           ),
         ),
@@ -244,48 +199,196 @@ class _Header extends StatelessWidget {
 }
 
 class _WorkOrderBody extends StatelessWidget {
-  const _WorkOrderBody({required this.workOrder, required this.canRecord});
+  const _WorkOrderBody({required this.workOrder, required this.canBook, required this.canRecord});
+
+  final WorkOrder workOrder;
+  final bool canBook;
+  final bool canRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AppPageFrame(
+        maxWidth: WorkOrderDetailScreen.maxWidth,
+        // The box is the page's, before its `Spacing.lg` inset: at a 1280 window
+        // that is 1020, over 1000, so the booking rail appears; the sections
+        // themselves are handed 988. It is the box, not the window, and it is
+        // compared at the reader's text scale, so at 2x it stays one column.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final twoColumns = canBook &&
+                constraints.maxWidth >=
+                    AppBreakpoints.effective(context, AppBreakpoints.detailTwoColumn);
+            final sections = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _TasksSection(workOrder: workOrder, canRecord: canRecord),
+                const SizedBox(height: Spacing.md),
+                _CostSection(cost: workOrder.cost),
+              ],
+            );
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+              children: [
+                _SummaryCard(
+                  workOrder: workOrder,
+                  actions: canBook && !twoColumns ? _BookingActions(workOrder: workOrder) : null,
+                ),
+                const SizedBox(height: Spacing.md),
+                if (twoColumns)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: sections),
+                      const SizedBox(width: Spacing.md),
+                      Expanded(child: _BookingActions(workOrder: workOrder, stacked: true)),
+                    ],
+                  )
+                else
+                  sections,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// The record's identifying fields, first. There is no date on a Work order
+/// (`WorkOrder` carries no created, raised or scheduled field), so the card
+/// renders no "when" rather than inventing one.
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.workOrder, this.actions});
+
+  final WorkOrder workOrder;
+
+  /// The booking actions, when the page is one column and the rail is not there.
+  final Widget? actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+
+    Widget fact(String label, String value) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label, style: AppTypography.floor(context)?.copyWith(color: palette.textMuted)),
+            Text(value, style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary)),
+          ],
+        );
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    workOrder.workOrderNo,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600, color: palette.textPrimary),
+                  ),
+                ),
+                const SizedBox(width: Spacing.sm),
+                // The same `StatusChip` every list uses: the detail read is where
+                // somebody checks what state this job is in (issue #168).
+                StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone),
+              ],
+            ),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              workOrder.summary,
+              style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+            ),
+            const SizedBox(height: Spacing.md),
+            Wrap(
+              spacing: Spacing.xl,
+              runSpacing: Spacing.md,
+              children: [
+                fact('Asset', '${workOrder.assetName} (${workOrder.assetCode})'),
+                fact('Org Unit', workOrder.orgUnitName),
+                fact('Work type', workOrder.workTypeLabel),
+                fact('Priority', '${workOrder.priority}'),
+                fact('Assignee', workOrder.assigneeName ?? 'Unassigned'),
+              ],
+            ),
+            if (actions != null) ...[
+              const SizedBox(height: Spacing.md),
+              actions!,
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Book labour" and "Book a part": in the summary card's action row on one
+/// column, stacked in the right rail on two.
+class _BookingActions extends StatelessWidget {
+  const _BookingActions({required this.workOrder, this.stacked = false});
+
+  final WorkOrder workOrder;
+  final bool stacked;
+
+  static final ButtonStyle _style =
+      FilledButton.styleFrom(minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min));
+
+  @override
+  Widget build(BuildContext context) {
+    final labour = FilledButton.icon(
+      key: WorkOrderDetailScreen.bookLabourKey,
+      onPressed: () => _openDialog(context, LabourBookingDialog(workOrderId: workOrder.id)),
+      style: _style,
+      icon: const Icon(Icons.schedule),
+      label: const Text('Book labour'),
+    );
+    final part = FilledButton.icon(
+      key: WorkOrderDetailScreen.bookPartKey,
+      onPressed: () => _openDialog(context, PartBookingDialog(siteId: workOrder.siteId)),
+      style: _style,
+      icon: const Icon(Icons.inventory_2_outlined),
+      label: const Text('Book a part'),
+    );
+    if (stacked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [labour, const SizedBox(height: Spacing.sm), part],
+      );
+    }
+    return Wrap(spacing: Spacing.sm, runSpacing: Spacing.sm, children: [labour, part]);
+  }
+}
+
+class _TasksSection extends StatelessWidget {
+  const _TasksSection({required this.workOrder, required this.canRecord});
 
   final WorkOrder workOrder;
   final bool canRecord;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: AppPageFrame(
-        maxWidth: WorkOrderDetailScreen.maxWidth,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          children: [
-            Text('Tasks', style: theme.textTheme.titleSmall),
-            const SizedBox(height: Spacing.sm),
-            if (workOrder.tasks.isEmpty)
-              Text(
-                'No steps were copied onto this Work order.',
-                key: WorkOrderDetailScreen.emptyTasksKey,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              )
-            else
-              Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  // Stated, not defaulted (issue #195): a Column centres its
-                  // cross axis, so a row that sizes to its own content would
-                  // float to the middle of this card.
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final task in workOrder.tasks)
-                      _WorkOrderTaskRow(task: task, canRecord: canRecord),
-                  ],
-                ),
-              ),
-            const SizedBox(height: Spacing.xl),
-            _CostSummary(cost: workOrder.cost),
-          ],
-        ),
-      ),
+    final palette = AppColors.of(context);
+    return AppDetailSection(
+      title: 'Tasks',
+      children: [
+        if (workOrder.tasks.isEmpty)
+          Text(
+            'No steps were copied onto this Work order.',
+            key: WorkOrderDetailScreen.emptyTasksKey,
+            style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+          )
+        else
+          for (final task in workOrder.tasks) _WorkOrderTaskRow(task: task, canRecord: canRecord),
+      ],
     );
   }
 }
@@ -295,137 +398,120 @@ class _WorkOrderBody extends StatelessWidget {
 /// is stated on the screen rather than buried, because summing labour here
 /// with plant labour cost would double-count every technician (the schema's
 /// own warning above `work_order_labour`).
-class _CostSummary extends StatelessWidget {
-  const _CostSummary({required this.cost});
+class _CostSection extends StatelessWidget {
+  const _CostSection({required this.cost});
 
   final WorkOrderCost? cost;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context)?.copyWith(color: palette.textPrimary);
+    final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
+    final note = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     final shown = cost ?? const WorkOrderCost.empty();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return AppDetailSection(
+      title: 'Cost so far',
       children: [
-        Text('Cost so far', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.sm),
         if (!shown.hasLabour)
-          Text(
-            'No labour has been booked.',
-            key: WorkOrderDetailScreen.emptyLabourKey,
-            style: muted,
-          )
+          Text('No labour has been booked.', key: WorkOrderDetailScreen.emptyLabourKey, style: muted)
         else
-          Card(
-            margin: EdgeInsets.zero,
-            child: Column(
-              // Stated, not defaulted (issue #195): a Column centres its
-              // cross axis, so a row that sizes to its own content would
-              // float to the middle of this card.
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final activity in shown.labourByActivity)
-                  ListTile(
-                    key: WorkOrderDetailScreen.activityKey(activity.activity),
-                    dense: true,
-                    title: Text(activity.label),
-                    trailing: Text(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final activity in shown.labourByActivity)
+                Padding(
+                  key: WorkOrderDetailScreen.activityKey(activity.activity),
+                  padding: const EdgeInsets.only(bottom: Spacing.sm),
+                  child: _line(
+                    Text(activity.label, style: dense),
+                    Text(
                       activity.overtimeHours > 0
                           ? '${_hours(activity.hours)} · ${_hours(activity.overtimeHours)} overtime'
                           : _hours(activity.hours),
-                      style: theme.textTheme.bodyMedium,
+                      style: dense,
                     ),
-                  ),
-                Padding(
-                  key: WorkOrderDetailScreen.labourHoursKey,
-                  padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, Spacing.md),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Booked labour is part of the plant labour cost already reported, not new money.',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
-                if (shown.overtimeHours > 0)
-                  Padding(
-                    key: WorkOrderDetailScreen.overtimeKey,
-                    padding: const EdgeInsets.fromLTRB(Spacing.md, 0, Spacing.md, Spacing.sm),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        '${_hours(shown.overtimeHours)} of it is overtime.',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+              Text(
+                'Booked labour is part of the plant labour cost already reported, not new money.',
+                key: WorkOrderDetailScreen.labourHoursKey,
+                style: note,
+              ),
+              if (shown.overtimeHours > 0)
+                Padding(
+                  key: WorkOrderDetailScreen.overtimeKey,
+                  padding: const EdgeInsets.only(top: Spacing.xs),
+                  child: Text('${_hours(shown.overtimeHours)} of it is overtime.', style: dense),
+                ),
+            ],
           ),
-        const SizedBox(height: Spacing.lg),
         if (!shown.hasParts)
-          Text(
-            'No parts have been fitted.',
-            key: WorkOrderDetailScreen.emptyPartsKey,
-            style: muted,
-          )
+          Text('No parts have been fitted.', key: WorkOrderDetailScreen.emptyPartsKey, style: muted)
         else
-          Card(
-            margin: EdgeInsets.zero,
-            child: Column(
-              // Stated, not defaulted (issue #195): a Column centres its
-              // cross axis, so a row that sizes to its own content would
-              // float to the middle of this card.
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final part in shown.parts)
-                  ListTile(
-                    key: WorkOrderDetailScreen.partKey(part.id),
-                    dense: true,
-                    title: Text(part.name),
-                    subtitle: Text(
-                      '${_count(part.quantity)} ${part.uomCode} · ${part.sourcedLabel}',
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final part in shown.parts)
+                Padding(
+                  key: WorkOrderDetailScreen.partKey(part.id),
+                  padding: const EdgeInsets.only(bottom: Spacing.sm),
+                  child: _line(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(part.name, style: dense),
+                        Text('${_count(part.quantity)} ${part.uomCode} · ${part.sourcedLabel}',
+                            style: note),
+                      ],
                     ),
-                    trailing: Text(
+                    Text(
                       part.totalCost == null
                           ? 'No cost recorded'
                           : _money(part.totalCost!, part.currency),
-                      style: theme.textTheme.bodyMedium,
+                      style: dense,
                     ),
                   ),
-                Padding(
-                  key: WorkOrderDetailScreen.partsTotalKey,
-                  padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, Spacing.md),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Parts are new cost — the one maintenance component that adds.',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                      Text(
-                        shown.partsCost == null
-                            ? 'No cost recorded'
-                            : _money(shown.partsCost!, shown.parts.first.currency),
-                        style: theme.textTheme.titleSmall,
-                      ),
-                    ],
-                  ),
                 ),
-              ],
-            ),
+              Row(
+                key: WorkOrderDetailScreen.partsTotalKey,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Parts are new cost — the one maintenance component that adds.',
+                      style: note,
+                    ),
+                  ),
+                  const SizedBox(width: Spacing.sm),
+                  Text(
+                    shown.partsCost == null
+                        ? 'No cost recorded'
+                        : _money(shown.partsCost!, shown.parts.first.currency),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: palette.textPrimary),
+                  ),
+                ],
+              ),
+            ],
           ),
       ],
     );
   }
+
+  /// A label and a figure beside it, both of which wrap rather than push the
+  /// other out: at 2x text "3 h · 1 h overtime" is wider than half the card.
+  static Widget _line(Widget label, Widget figure) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: label),
+          const SizedBox(width: Spacing.sm),
+          Flexible(child: Align(alignment: Alignment.centerRight, child: figure)),
+        ],
+      );
 
   /// A quantity or hours figure without a pointless trailing `.0` — `2.5`
   /// stays `2.5`, `2.0` reads as `2`.
@@ -437,7 +523,6 @@ class _CostSummary extends StatelessWidget {
   static String _money(num value, String currency) => '${_count(value)} $currency';
 }
 
-
 class _WorkOrderTaskRow extends StatelessWidget {
   const _WorkOrderTaskRow({required this.task, required this.canRecord});
 
@@ -446,57 +531,59 @@ class _WorkOrderTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    return Padding(
+    final palette = AppColors.of(context);
+    final muted = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
+    return Row(
       key: WorkOrderDetailScreen.taskKey(task.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 28,
-            child: Text('${task.stepNo}.', style: muted),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(task.instruction, style: theme.textTheme.bodyMedium),
-                const SizedBox(height: Spacing.xxs),
-                Wrap(
-                  spacing: Spacing.md,
-                  runSpacing: Spacing.xxs,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    // The required Skill's name is the fact the ticket's own
-                    // criterion asks to be visible on a Work order's task.
-                    if (task.hasSkill)
-                      Text('Requires ${task.skillName}', style: muted)
-                    else
-                      Text('No skill required', style: muted),
-                    if (task.hasMeter)
-                      Text('Records ${task.meterName ?? task.meterCode}', style: muted),
-                    if (task.note != null) Text(task.note!, style: muted),
-                    if (task.reading != null) Text('Reading ${task.reading}', style: muted),
-                  ],
-                ),
-                if (task.hasMeter && canRecord) ...[
-                  const SizedBox(height: Spacing.xs),
-                  OutlinedButton(
-                    key: WorkOrderDetailScreen.recordReadingKey(task.id),
-                    onPressed: () => TaskReadingDialog.open(context, task: task),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                    child: const Text('Record a reading'),
-                  ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 28,
+          child: Text('${task.stepNo}.', style: muted),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                task.instruction,
+                style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+              ),
+              const SizedBox(height: Spacing.xxs),
+              Wrap(
+                spacing: Spacing.md,
+                runSpacing: Spacing.xxs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // The required Skill's name is the fact the ticket's own
+                  // criterion asks to be visible on a Work order's task.
+                  if (task.hasSkill)
+                    Text('Requires ${task.skillName}', style: muted)
+                  else
+                    Text('No skill required', style: muted),
+                  if (task.hasMeter)
+                    Text('Records ${task.meterName ?? task.meterCode}', style: muted),
+                  if (task.note != null) Text(task.note!, style: muted),
+                  if (task.reading != null) Text('Reading ${task.reading}', style: muted),
                 ],
+              ),
+              if (task.hasMeter && canRecord) ...[
+                const SizedBox(height: Spacing.xs),
+                OutlinedButton(
+                  key: WorkOrderDetailScreen.recordReadingKey(task.id),
+                  onPressed: () => TaskReadingDialog.open(context, task: task),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  child: const Text('Record a reading'),
+                ),
               ],
-            ),
+            ],
           ),
-          const SizedBox(width: Spacing.sm),
-          StatusChip(label: task.statusLabel, tone: task.statusTone),
-        ],
-      ),
+        ),
+        const SizedBox(width: Spacing.sm),
+        StatusChip(label: task.statusLabel, tone: task.statusTone),
+      ],
     );
   }
 }

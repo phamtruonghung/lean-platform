@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'work_order.dart';
 import 'work_orders_bloc.dart';
 
@@ -23,8 +24,14 @@ class WorkOrderCancelDialog extends StatefulWidget {
   final WorkOrder workOrder;
 
   static const ValueKey<String> reasonKey = ValueKey<String>('work-order-cancel-reason');
-  static const ValueKey<String> submitKey = ValueKey<String>('work-order-cancel-submit');
-  static const ValueKey<String> dismissKey = ValueKey<String>('work-order-cancel-dismiss');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed (`docs/design-language.md` §11).
+  static const String _submitId = 'work-order-cancel-submit';
+  static const String _dismissId = 'work-order-cancel-dismiss';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get dismissKey => AppDialog.actionKey(_dismissId);
   static const ValueKey<String> failureKey = ValueKey<String>('work-order-cancel-failure');
 
   @override
@@ -72,53 +79,55 @@ class _WorkOrderCancelDialogState extends State<WorkOrderCancelDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<WorkOrdersBloc, WorkOrdersState>(
       listener: _onWorkOrdersChanged,
-      child: AlertDialog(
-        title: const Text('Cancel this Work order?'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: WorkOrderCancelDialog.reasonKey,
-                  controller: _reason,
-                  enabled: !_awaiting,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Why is this being cancelled? (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: WorkOrderCancelDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // The decision width (420): a question, and a way out that keeps the Work
+      // order open. Cancelling is the destructive act, so it is drawn as one and
+      // separated from the dismiss; the optional reason is the answer, not a
+      // form (§11).
+      child: AppDialog(
+        title: 'Cancel this Work order?',
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: WorkOrderCancelDialog.dismissKey,
+          AppDialogAction(
+            id: WorkOrderCancelDialog._dismissId,
+            label: 'Keep it open',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Keep it open'),
           ),
-          FilledButton(
-            key: WorkOrderCancelDialog.submitKey,
+          AppDialogAction(
+            id: WorkOrderCancelDialog._submitId,
+            label: 'Cancel this Work order',
+            kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
-            child: const Text('Cancel this Work order'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: WorkOrderCancelDialog.reasonKey,
+              controller: _reason,
+              enabled: !_awaiting,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Why is this being cancelled? (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: WorkOrderCancelDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

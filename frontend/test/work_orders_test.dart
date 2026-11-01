@@ -1944,17 +1944,19 @@ void main() {
       expect(decoration.color, AppPalette.light.tableHeaderFill);
       // The same hairline every data row draws above itself, so the table
       // still reads as one table rather than as a panel glued to a list.
-      final context = tester.element(find.text('WO#'));
       expect(
         decoration.border,
-        Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+        Border(bottom: BorderSide(color: AppPalette.light.edge)),
       );
 
       // Weight and colour, so the labels are not the same type as the
-      // metadata below them.
+      // metadata below them. Updated for the register's shared band
+      // (`AppTableHeader`, #387): w600 in `textMuted` replaces w700 in
+      // `onSurface`, and the hairline is the palette's `edge` rather than
+      // `outlineVariant` (both of which this assertion used to name).
       final label = tester.widget<Text>(find.text('WO#'));
-      expect(label.style?.fontWeight, FontWeight.w700);
-      expect(label.style?.color, Theme.of(context).colorScheme.onSurface);
+      expect(label.style?.fontWeight, FontWeight.w600);
+      expect(label.style?.color, AppPalette.light.textMuted);
     });
 
     testWidgets('a row carries a deliberate highlight under the pointer', (tester) async {
