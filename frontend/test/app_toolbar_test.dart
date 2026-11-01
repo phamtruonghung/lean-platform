@@ -218,13 +218,15 @@ void main() {
     expect(tester.getSize(find.byKey(_exportKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
   });
 
-  // The five assertions above pass even with the toolbar's floor deleted:
-  // `flutter_test` mounts on Android, where a Material button's `_InputPadding`
-  // already makes its target 48 tall, so they measure the framework and not
-  // `AppToolbar._target`. `shrinkWrap` lifts that padding, leaving the toolbar's
-  // own `ConstrainedBox` as the only thing that can hold 44. The control
-  // experiment at the end proves the override has teeth: a bare button the
-  // toolbar did not wrap is shorter than 44 in the same theme.
+  // The four assertions above (in 'the actions are at least 44 tall, wide and
+  // wrapped') and the one in 'an icon-only action keeps the label its caller
+  // gave it, and is still 44 tall' below pass even with the toolbar's floor
+  // deleted: `flutter_test` mounts on Android, where a Material button's
+  // `_InputPadding` already makes its target 48 tall, so they measure the
+  // framework and not `AppToolbar._target`. `shrinkWrap` lifts that padding,
+  // leaving the toolbar's own `ConstrainedBox` as the only thing that can hold
+  // 44. The control experiment at the end proves the override has teeth: a
+  // bare button the toolbar did not wrap is shorter than 44 in the same theme.
   testWidgets('under shrinkWrap the 44 is the toolbar\'s own floor, not the framework\'s input padding',
       (tester) async {
     const shrinkWrap = MaterialTapTargetSize.shrinkWrap;
@@ -260,11 +262,16 @@ void main() {
         ),
       ),
     );
+    // A MaterialApp theme change is animated, so without the settle the
+    // measurement reads the theme the previous pump left in force.
+    await tester.pumpAndSettle();
     expect(
       tester.getSize(find.byKey(_exportKey)).height,
       lessThan(AppTouchTarget.min),
-      reason: 'an unwrapped button is under 44 here, which proves _InputPadding is lifted in this '
-          'theme, so the toolbar\'s 44 above can only come from its own ConstrainedBox',
+      reason: 'in the control\'s own settled theme (no animation residue) an unwrapped '
+          'OutlinedButton measures 40 tall, under 44, which shows _InputPadding is lifted '
+          'under shrinkWrap; so the toolbar\'s 44 measured above cannot come from the '
+          'framework\'s padding and can only come from AppToolbar\'s own ConstrainedBox',
     );
   });
 
