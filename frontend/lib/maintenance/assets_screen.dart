@@ -5,6 +5,19 @@
 /// (#55, ADR-0009's reasoning carried to Maintenance). Adding is offered only
 /// to a caller who holds a write Grant somewhere — an action the server would
 /// refuse is not offered in the first place.
+///
+/// **A register of the tree, and a card per Asset below 900px of content.** At
+/// or above [AssetsScreen.narrowBreakpoint] (at a text scale of 1) the Assets
+/// are an `AppTableHeader` band and one `AppTableRow` per Asset, both built from
+/// the one column spec [_columns]; the tree is the first cell's indent
+/// (`depth * Spacing.xl`) and the band's first label stays at depth 0. Below it,
+/// one card per Asset, as before. Never horizontal scroll.
+///
+/// There are two toolbars, for a reason: the Site and "Show retired" live in
+/// the header's `AppToolbar`, because they must stay reachable when the register
+/// is empty and `_AssetsList` does not exist then; the filter box lives in a
+/// second `AppToolbar` inside `_AssetsList`, immediately above the rows, because
+/// its term is that widget's own state and it only means something with rows.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,10 +25,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_confirm_dialog.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/app_toolbar.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'asset.dart';
@@ -46,6 +64,17 @@ class AssetsScreen extends StatelessWidget {
   final bool Function(String orgUnitId) canCorrectAsset;
 
   static const double maxWidth = 900;
+
+  /// The content width (at a text scale of 1) below which the register gives way
+  /// to one card per Asset, measured by `_AssetsList`'s `LayoutBuilder` and not
+  /// the window. It is 900, the page's own width, rather than the 700 a
+  /// register of five columns would get: the last column holds up to four
+  /// buttons (Retire, Correct details…, Change Org Unit…, and Nest under… or
+  /// Detach) that wrap to two lines in 340px, and the three text columns beside
+  /// it need about 450px between them before the name and the Org Unit stop
+  /// being clipped on most rows. The register is therefore drawn only when the
+  /// page frame is at its full width.
+  static const double narrowBreakpoint = 900;
   static const ValueKey<String> addKey = ValueKey<String>('assets-add');
   static const ValueKey<String> siteKey = ValueKey<String>('assets-site');
   static const ValueKey<String> showRetiredKey = ValueKey<String>('assets-show-retired');
@@ -92,13 +121,15 @@ class AssetsScreen extends StatelessWidget {
             child: switch (state) {
               AssetsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               AssetsUnavailable(message: final message) => _AssetsFailed(message: message),
-              AssetsLoaded(isLoadingAssets: true) =>
-                const SkeletonList(rows: 4, maxWidth: maxWidth),
+              AssetsLoaded(isLoadingAssets: true) => const SkeletonList(
+                rows: 4,
+                maxWidth: maxWidth,
+              ),
               AssetsLoaded(assets: final assets) when assets.isEmpty => const _AssetsEmpty(),
               AssetsLoaded(
                 assets: final assets,
                 mutatingAssetId: final mutatingAssetId,
-                isAdding: final isAdding
+                isAdding: final isAdding,
               ) =>
                 _AssetsList(
                   assets: assets,
@@ -143,14 +174,18 @@ class _Header extends StatelessWidget {
                       : () => AssetFormDialog.open(context, siteId: loaded.siteId),
                   icon: const Icon(Icons.add),
                   label: const Text('Add an Asset'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
                 ),
             ],
+            // The Site and the "Show retired" toggle in one toolbar
+            // (design-language §5): both narrow what the register lists.
             below: loaded == null
                 ? null
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (loaded.sites.length > 1) ...[
+                : AppToolbar(
+                    filters: [
+                      if (loaded.sites.length > 1)
                         SizedBox(
                           width: 280,
                           child: DropdownButtonFormField<String>(
@@ -158,7 +193,9 @@ class _Header extends StatelessWidget {
                             initialValue: loaded.siteId,
                             isDense: true,
                             decoration: const InputDecoration(
-                                labelText: 'Site', border: OutlineInputBorder()),
+                              labelText: 'Site',
+                              border: OutlineInputBorder(),
+                            ),
                             items: [
                               for (final site in loaded.sites)
                                 DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -169,8 +206,6 @@ class _Header extends StatelessWidget {
                             },
                           ),
                         ),
-                        const SizedBox(height: Spacing.md),
-                      ],
                       FilterChip(
                         key: AssetsScreen.showRetiredKey,
                         label: const Text('Show retired'),
@@ -184,7 +219,7 @@ class _Header extends StatelessWidget {
                         onSelected: loaded.mutatingAssetId != null || loaded.isAdding
                             ? null
                             : (value) =>
-                                context.read<AssetsBloc>().add(AssetsShowRetiredChanged(value)),
+                                  context.read<AssetsBloc>().add(AssetsShowRetiredChanged(value)),
                       ),
                     ],
                   ),
@@ -222,8 +257,9 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
                   ),
                 ),
               ],
@@ -259,7 +295,11 @@ class _AssetTree {
     return _AssetTree._(nodesById: nodesById, rootIds: rootIds, childIdsByParent: childIdsByParent);
   }
 
-  const _AssetTree._({required this.nodesById, required this.rootIds, required this.childIdsByParent});
+  const _AssetTree._({
+    required this.nodesById,
+    required this.rootIds,
+    required this.childIdsByParent,
+  });
 
   final Map<String, Asset> nodesById;
   final List<String> rootIds;
@@ -382,56 +422,128 @@ class _AssetsListState extends State<_AssetsList> {
     // otherwise reach the Bloc while the first is still mid-write and be
     // silently reported as dropped rather than ever executed.
     final disabled = widget.mutatingAssetId != null || widget.isAdding;
-    return Center(
-      child: AppPageFrame(
-        maxWidth: AssetsScreen.maxWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
-              child: AppFilterField(
-                name: AssetsScreen.filterFieldName,
-                label: 'Filter Assets',
-                helperText: 'By name or code.',
-                term: _term,
-                onChanged: (term) => setState(() => _term = term),
-                shown: matches.length,
-                total: widget.assets.length,
-              ),
-            ),
-            const SizedBox(height: Spacing.md),
-            Expanded(
-              child: matches.isEmpty
-                  ? PlatformEmptyState.noneMatched(
-                      key: AssetsScreen.noMatchKey,
-                      title: 'No Assets match',
-                      message: 'This Site has Assets on the register, but none matches '
-                          '"${_term.trim()}". Try a different name or code, or clear the '
-                          'filter.',
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                      itemCount: rows.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-                      itemBuilder: (context, index) {
-                        final (asset, depth) = rows[index];
-                        return _AssetRow(
-                          asset: asset,
-                          depth: depth,
-                          tree: tree,
-                          disabled: disabled,
-                          canCorrectAsset: widget.canCorrectAsset,
-                        );
-                      },
+    // The box this Screen actually got from its own parent, scaled by the
+    // reader's text size (design-language §10) — never the window.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow =
+            constraints.maxWidth < AppBreakpoints.effective(context, AssetsScreen.narrowBreakpoint);
+        final columns = _columns(context);
+        return Center(
+          child: AppPageFrame(
+            maxWidth: AssetsScreen.maxWidth,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+                  // A `Wrap` inside the toolbar hands its children unbounded width, which
+                  // a text field cannot take, so the field is given the box's own width.
+                  child: LayoutBuilder(
+                    builder: (context, box) => AppToolbar(
+                      filters: [
+                        SizedBox(
+                          width: box.maxWidth,
+                          child: AppFilterField(
+                            name: AssetsScreen.filterFieldName,
+                            label: 'Filter Assets',
+                            helperText: 'By name or code.',
+                            term: _term,
+                            onChanged: (term) => setState(() => _term = term),
+                            shown: matches.length,
+                            total: widget.assets.length,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: Spacing.md),
+                Expanded(
+                  child: matches.isEmpty
+                      ? PlatformEmptyState.noneMatched(
+                          key: AssetsScreen.noMatchKey,
+                          title: 'No Assets match',
+                          message:
+                              'This Site has Assets on the register, but none matches '
+                              '"${_term.trim()}". Try a different name or code, or clear the '
+                              'filter.',
+                        )
+                      : narrow
+                      ? ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                          itemCount: rows.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                          itemBuilder: (context, index) {
+                            final (asset, depth) = rows[index];
+                            return _AssetRow(
+                              asset: asset,
+                              depth: depth,
+                              tree: tree,
+                              disabled: disabled,
+                              canCorrectAsset: widget.canCorrectAsset,
+                            );
+                          },
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                          children: [
+                            AppTableHeader(columns: columns),
+                            for (final (asset, depth) in rows)
+                              _AssetTableRow(
+                                columns: columns,
+                                asset: asset,
+                                depth: depth,
+                                tree: tree,
+                                disabled: disabled,
+                                canCorrectAsset: widget.canCorrectAsset,
+                              ),
+                          ],
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
+
+/// The register's own fixed width for its trailing actions column: two buttons
+/// side by side, wrapping to a second line for the third and fourth. It is a
+/// column of [_columns], so the band's label and every row's actions share it by
+/// construction, whichever row does or does not offer a Correct button.
+const double _actionsColumnWidth = 340;
+
+/// The Criticality column's measured width: the widest of the four labels in a
+/// compact `Chip`'s own label style at the reader's text scale, plus the chip's
+/// padding and the slot's `Spacing.sm` gutter.
+double _criticalityColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  );
+  var widest = 0.0;
+  for (final level in Criticality.values) {
+    painter.text = TextSpan(text: level.label, style: Theme.of(context).textTheme.labelLarge);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  // The chip's own horizontal padding and label padding (`Spacing.xxl`), then
+  // the slot's gutter.
+  return widest + Spacing.xxl + Spacing.sm;
+}
+
+/// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
+/// built from this list, so a header label and its cells start at the same x.
+List<AppTableColumn> _columns(BuildContext context) => [
+  const AppTableColumn('Name', flex: 3),
+  const AppTableColumn('Code · Type', flex: 3),
+  const AppTableColumn('Org Unit', flex: 2),
+  AppTableColumn('Criticality', width: _criticalityColumnWidth(context)),
+  const AppTableColumn('Actions', width: _actionsColumnWidth, align: AppColumnAlign.end),
+];
 
 class _AssetRow extends StatelessWidget {
   const _AssetRow({
@@ -486,91 +598,212 @@ class _AssetRow extends StatelessWidget {
                                   // it — a strikethrough survives even where
                                   // the chip has scrolled out of view.
                                   decoration: asset.isActive ? null : TextDecoration.lineThrough,
-                                  color: asset.isActive
-                                      ? null
-                                      : theme.colorScheme.onSurfaceVariant,
+                                  color: asset.isActive ? null : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
                             if (!asset.isActive) ...[
                               const SizedBox(width: Spacing.sm),
-                              StatusChip(key: AssetsScreen.retiredChipKey(asset.id), label: 'Retired', tone: StatusTone.neutral),
+                              StatusChip(
+                                key: AssetsScreen.retiredChipKey(asset.id),
+                                label: 'Retired',
+                                tone: StatusTone.neutral,
+                              ),
                             ],
                           ],
                         ),
                         const SizedBox(height: Spacing.xxs),
                         Text(
                           '${asset.code} · ${asset.typeLabel}',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   Text(asset.orgUnitName, style: theme.textTheme.bodyMedium),
                   const SizedBox(width: Spacing.lg),
-                  Chip(
-                    label: Text(asset.criticalityLabel),
-                    visualDensity: VisualDensity.compact,
-                  ),
+                  Chip(label: Text(asset.criticalityLabel), visualDensity: VisualDensity.compact),
                 ],
               ),
               const SizedBox(height: Spacing.sm),
-              // A `Wrap` rather than a `Row` since issue #171: three actions
-              // are wide enough to overflow at the narrowest window the Shell
-              // allows, and a second line of buttons is honest where a clipped
-              // one is not. With one or two actions the layout is unchanged.
-              Wrap(
-                spacing: Spacing.sm,
-                runSpacing: Spacing.sm,
-                children: [
-                  OutlinedButton(
-                    key: asset.isActive
-                        ? AssetsScreen.retireKey(asset.id)
-                        : AssetsScreen.reinstateKey(asset.id),
-                    onPressed: disabled ? null : () => _toggleActive(context, asset),
-                    child: Text(asset.isActive ? 'Retire' : 'Reinstate'),
-                  ),
-                  // Absent outright for a caller without a write Grant
-                  // reaching this Asset's Org Unit (issue #173) — unlike
-                  // every other action on this row, which is offered
-                  // unconditionally and relies on the server's own 403.
-                  if (canCorrectAsset(asset.orgUnitId))
-                    OutlinedButton(
-                      key: AssetsScreen.correctKey(asset.id),
-                      onPressed:
-                          disabled ? null : () => AssetFormDialog.open(context, asset: asset),
-                      child: const Text('Correct details…'),
-                    ),
-                  // Labelled for what it changes, not "Move": the register
-                  // already reads "move" as Nest under…/Detach, which moves an
-                  // Asset in the tree rather than across Org Units.
-                  OutlinedButton(
-                    key: AssetsScreen.orgUnitKey(asset.id),
-                    onPressed: disabled ? null : () => AssetMoveDialog.open(context, asset: asset),
-                    child: const Text('Change Org Unit…'),
-                  ),
-                  if (asset.parentId != null)
-                    OutlinedButton(
-                      key: AssetsScreen.detachKey(asset.id),
-                      onPressed: disabled
-                          ? null
-                          : () => context
-                              .read<AssetsBloc>()
-                              .add(AssetParentChanged(assetId: asset.id, parentId: null)),
-                      child: const Text('Detach'),
-                    )
-                  else
-                    OutlinedButton(
-                      key: AssetsScreen.nestKey(asset.id),
-                      onPressed: disabled ? null : () => _openParentChooser(context, tree, asset),
-                      child: const Text('Nest under…'),
-                    ),
-                ],
+              _AssetActions(
+                asset: asset,
+                tree: tree,
+                disabled: disabled,
+                canCorrectAsset: canCorrectAsset,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One Asset's actions, shared by the register row and the card so both offer
+/// exactly the same acts through exactly the same keys and enable conditions.
+///
+/// A `Wrap` rather than a `Row` since issue #171: up to four actions are wide
+/// enough to overflow the narrowest box, and a second line of buttons is honest
+/// where a clipped one is not. Each is [AppTouchTarget.min] tall.
+class _AssetActions extends StatelessWidget {
+  const _AssetActions({
+    required this.asset,
+    required this.tree,
+    required this.disabled,
+    required this.canCorrectAsset,
+    this.alignment = WrapAlignment.start,
+  });
+
+  final Asset asset;
+  final _AssetTree tree;
+  final bool disabled;
+  final bool Function(String orgUnitId) canCorrectAsset;
+  final WrapAlignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = Size(AppTouchTarget.min, AppTouchTarget.min);
+    final style = OutlinedButton.styleFrom(minimumSize: size);
+    return Wrap(
+      alignment: alignment,
+      spacing: Spacing.sm,
+      runSpacing: Spacing.sm,
+      children: [
+        OutlinedButton(
+          key: asset.isActive
+              ? AssetsScreen.retireKey(asset.id)
+              : AssetsScreen.reinstateKey(asset.id),
+          onPressed: disabled ? null : () => _toggleActive(context, asset),
+          style: style,
+          child: Text(asset.isActive ? 'Retire' : 'Reinstate'),
+        ),
+        // Absent outright for a caller without a write Grant reaching this
+        // Asset's Org Unit (issue #173) — unlike every other action on this
+        // row, which is offered unconditionally and relies on the server's own
+        // 403.
+        if (canCorrectAsset(asset.orgUnitId))
+          OutlinedButton(
+            key: AssetsScreen.correctKey(asset.id),
+            onPressed: disabled ? null : () => AssetFormDialog.open(context, asset: asset),
+            style: style,
+            child: const Text('Correct details…'),
+          ),
+        // Labelled for what it changes, not "Move": the register already reads
+        // "move" as Nest under…/Detach, which moves an Asset in the tree rather
+        // than across Org Units.
+        OutlinedButton(
+          key: AssetsScreen.orgUnitKey(asset.id),
+          onPressed: disabled ? null : () => AssetMoveDialog.open(context, asset: asset),
+          style: style,
+          child: const Text('Change Org Unit…'),
+        ),
+        if (asset.parentId != null)
+          OutlinedButton(
+            key: AssetsScreen.detachKey(asset.id),
+            onPressed: disabled
+                ? null
+                : () => context.read<AssetsBloc>().add(
+                    AssetParentChanged(assetId: asset.id, parentId: null),
+                  ),
+            style: style,
+            child: const Text('Detach'),
+          )
+        else
+          OutlinedButton(
+            key: AssetsScreen.nestKey(asset.id),
+            onPressed: disabled ? null : () => _openParentChooser(context, tree, asset),
+            style: style,
+            child: const Text('Nest under…'),
+          ),
+      ],
+    );
+  }
+}
+
+/// One Asset as a row of the register. The tree is drawn by the first cell's
+/// indent (`depth * Spacing.xl`) — the band's own first label stays at depth 0 —
+/// and a retired Asset reads as retired twice: a line through its name and a
+/// `StatusChip`, so it still reads where the chip has been clipped away.
+class _AssetTableRow extends StatelessWidget {
+  const _AssetTableRow({
+    required this.columns,
+    required this.asset,
+    required this.depth,
+    required this.tree,
+    required this.disabled,
+    required this.canCorrectAsset,
+  });
+
+  final List<AppTableColumn> columns;
+  final Asset asset;
+  final int depth;
+  final _AssetTree tree;
+  final bool disabled;
+  final bool Function(String orgUnitId) canCorrectAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final muted = dense?.copyWith(color: palette.textMuted);
+    // The framework's padded tap target is lifted on the chip and the buttons:
+    // each button states its own 44 through `minimumSize`, and the padded target
+    // would add height to the row.
+    Widget shrinkWrapTargets(Widget child) => Theme(
+      data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      child: child,
+    );
+
+    return KeyedSubtree(
+      key: AssetsScreen.rowKey(asset.id),
+      child: AppTableRow(
+        columns: columns,
+        cells: [
+          Padding(
+            padding: EdgeInsets.only(left: depth * Spacing.xl),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: DisclosingText(
+                    asset.name,
+                    style: dense?.copyWith(
+                      color: asset.isActive ? palette.textPrimary : palette.textMuted,
+                      decoration: asset.isActive ? null : TextDecoration.lineThrough,
+                    ),
+                  ),
+                ),
+                if (!asset.isActive) ...[
+                  const SizedBox(width: Spacing.sm),
+                  shrinkWrapTargets(
+                    StatusChip(
+                      key: AssetsScreen.retiredChipKey(asset.id),
+                      label: 'Retired',
+                      tone: StatusTone.neutral,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          DisclosingText('${asset.code} · ${asset.typeLabel}', style: muted),
+          DisclosingText(asset.orgUnitName, style: muted),
+          shrinkWrapTargets(
+            Chip(label: Text(asset.criticalityLabel), visualDensity: VisualDensity.compact),
+          ),
+          shrinkWrapTargets(
+            _AssetActions(
+              asset: asset,
+              tree: tree,
+              disabled: disabled,
+              canCorrectAsset: canCorrectAsset,
+              alignment: WrapAlignment.end,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -589,22 +822,15 @@ Future<void> _toggleActive(BuildContext context, Asset asset) async {
   }
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Retire this Asset?'),
-      content: Text(
-        '${asset.name} will no longer appear on the active register. Nothing '
-        'is deleted, and it can be reinstated at any time.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Retire'),
-        ),
-      ],
+    builder: (dialogContext) => AppConfirmDialog(
+      title: 'Retire this Asset?',
+      description:
+          '${asset.name} will no longer appear on the active register. Nothing '
+          'is deleted, and it can be reinstated at any time.',
+      confirmLabel: 'Retire',
+      dismissLabel: 'Cancel',
+      onDismiss: () => Navigator.of(dialogContext).pop(false),
+      onConfirm: () => Navigator.of(dialogContext).pop(true),
     ),
   );
   if (confirmed ?? false) {
@@ -628,26 +854,74 @@ Future<void> _openParentChooser(BuildContext context, _AssetTree tree, Asset ass
   ];
   final chosenId = await showDialog<String>(
     context: context,
-    builder: (dialogContext) => SimpleDialog(
+    builder: (dialogContext) => AppDialog(
       key: AssetsScreen.parentChooserKey,
-      title: const Text('Nest under…'),
-      children: [
-        if (candidates.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: Spacing.lg),
-            child: Text('There is nothing else on this register it could sit beneath.'),
-          ),
-        for (final candidate in candidates)
-          SimpleDialogOption(
-            key: AssetsScreen.parentOptionKey(candidate.id),
-            onPressed: () => Navigator.of(dialogContext).pop(candidate.id),
-            child: Text('${candidate.name} (${candidate.code})'),
-          ),
+      title: 'Nest under…',
+      // A picker (460): one Asset to choose from a list. It stays a bare
+      // `showDialog` that returns the id, dismissed by its Cancel, Esc or the
+      // barrier exactly as the `SimpleDialog` it replaces was.
+      size: AppDialogSize.picker,
+      actions: [
+        AppDialogAction(
+          id: 'asset-parent-chooser-cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(dialogContext).pop(),
+        ),
       ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (candidates.isEmpty)
+            Text(
+              'There is nothing else on this register it could sit beneath.',
+              style: AppTypography.dense(dialogContext)
+                  ?.copyWith(color: AppColors.of(dialogContext).textPrimary),
+            ),
+          for (final candidate in candidates)
+            _ParentOption(
+              key: AssetsScreen.parentOptionKey(candidate.id),
+              label: '${candidate.name} (${candidate.code})',
+              onPressed: () => Navigator.of(dialogContext).pop(candidate.id),
+            ),
+        ],
+      ),
     ),
   );
   if (chosenId != null) {
     bloc.add(AssetParentChanged(assetId: asset.id, parentId: chosenId));
+  }
+}
+
+/// One choice in the "Nest under…" picker: the whole line is the target, and at
+/// least [AppTouchTarget.min] tall.
+class _ParentOption extends StatelessWidget {
+  const _ParentOption({super.key, required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      hoverColor: AppColors.of(context).rowHoverFill,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+            child: Text(
+              label,
+              style: AppTypography.dense(context)
+                  ?.copyWith(color: AppColors.of(context).textPrimary),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -666,7 +940,11 @@ class _AssetsEmpty extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.precision_manufacturing_outlined, size: 48, color: theme.colorScheme.outline),
+              Icon(
+                Icons.precision_manufacturing_outlined,
+                size: 48,
+                color: theme.colorScheme.outline,
+              ),
               const SizedBox(height: Spacing.md),
               Text('No Assets on the register yet', style: theme.textTheme.titleMedium),
               const SizedBox(height: Spacing.sm),
@@ -674,8 +952,9 @@ class _AssetsEmpty extends StatelessWidget {
                 'Nothing has been recorded at this Site. Add a machine and it '
                 'can be worked on the same day.',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -709,8 +988,9 @@ class _AssetsFailed extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: Spacing.md),
               FilledButton.tonal(

@@ -5,6 +5,11 @@
 /// the existing `units_of_measure` catalogue, never typed (ADR-0023): this
 /// dialog fetches the list once when it opens, and a list it cannot fetch
 /// blocks submission rather than falling back to free text.
+///
+/// The form width (520): three fields and nothing with its own columns. The
+/// 420 this used to set inside an `AlertDialog`'s content left the title and
+/// the action row at a width the platform chose; `AppDialog` states the width
+/// once for all three (`docs/design-language.md` §11).
 library;
 
 import 'package:flutter/material.dart';
@@ -12,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/failure_state.dart';
 import 'maintenance_api.dart';
 import 'part.dart';
@@ -23,8 +29,14 @@ class PartFormDialog extends StatefulWidget {
   static const ValueKey<String> partNoKey = ValueKey<String>('part-form-part-no');
   static const ValueKey<String> descriptionKey = ValueKey<String>('part-form-description');
   static const ValueKey<String> uomKey = ValueKey<String>('part-form-uom');
-  static const ValueKey<String> submitKey = ValueKey<String>('part-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('part-form-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'part-form-submit';
+  static const String _cancelId = 'part-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('part-form-failure');
   static const ValueKey<String> unitsFailedKey = ValueKey<String>('part-form-units-failed');
   static const ValueKey<String> unitsRetryKey = ValueKey<String>('part-form-units-retry');
@@ -38,10 +50,8 @@ class PartFormDialog extends StatefulWidget {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => BlocProvider<PartsBloc>.value(
-        value: bloc,
-        child: const PartFormDialog(),
-      ),
+      builder: (dialogContext) =>
+          BlocProvider<PartsBloc>.value(value: bloc, child: const PartFormDialog()),
     );
   }
 
@@ -114,12 +124,12 @@ class _PartFormDialogState extends State<PartFormDialog> {
       _failure = null;
     });
     context.read<PartsBloc>().add(
-          PartAddConfirmed(
-            partNo: _partNo.text.trim(),
-            description: _description.text.trim(),
-            uomCode: _uomCode!,
-          ),
-        );
+      PartAddConfirmed(
+        partNo: _partNo.text.trim(),
+        description: _description.text.trim(),
+        uomCode: _uomCode!,
+      ),
+    );
   }
 
   void _onPartsChanged(BuildContext context, PartsState state) {
@@ -136,90 +146,93 @@ class _PartFormDialogState extends State<PartFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<PartsBloc, PartsState>(
       listener: _onPartsChanged,
-      child: AlertDialog(
-        title: const Text('Add part'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: PartFormDialog.partNoKey,
-                  controller: _partNo,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Part number', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: PartFormDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                if (_loadingUnits)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Spacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_unitsFailure != null)
-                  PlatformFailureState(
-                    key: PartFormDialog.unitsFailedKey,
-                    title: 'The units of measure could not be read',
-                    message: _unitsFailure!,
-                    retryKey: PartFormDialog.unitsRetryKey,
-                    onRetry: _loadUnits,
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    key: PartFormDialog.uomKey,
-                    initialValue: _uomCode,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Unit of measure', border: OutlineInputBorder()),
-                    items: [
-                      for (final unit in _units)
-                        DropdownMenuItem<String>(
-                          value: unit.code,
-                          child: Text(
-                            '${unit.name} (${unit.code})',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _uomCode = value),
-                  ),
-                if (_failure != null)
-                  Padding(
-                    key: PartFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Add part',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: PartFormDialog.cancelKey,
+          AppDialogAction(
+            id: PartFormDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: PartFormDialog.submitKey,
+          AppDialogAction(
+            id: PartFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : 'Add part',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Add part'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: PartFormDialog.partNoKey,
+              controller: _partNo,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Part number',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: PartFormDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            if (_loadingUnits)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.md),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_unitsFailure != null)
+              PlatformFailureState(
+                key: PartFormDialog.unitsFailedKey,
+                title: 'The units of measure could not be read',
+                message: _unitsFailure!,
+                retryKey: PartFormDialog.unitsRetryKey,
+                onRetry: _loadUnits,
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: PartFormDialog.uomKey,
+                initialValue: _uomCode,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Unit of measure',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final unit in _units)
+                    DropdownMenuItem<String>(
+                      value: unit.code,
+                      child: Text('${unit.name} (${unit.code})', overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _uomCode = value),
+              ),
+            if (_failure != null)
+              Padding(
+                key: PartFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -24,6 +24,7 @@ import 'package:lean_platform/maintenance/org_unit_chooser.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_confirm_dialog.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 import 'harness.dart';
@@ -631,7 +632,7 @@ void main() {
 
     await tapIn(tester, find.byKey(AssetsScreen.retireKey('7')));
     expect(find.text('Retire this Asset?'), findsOneWidget);
-    await tapIn(tester, find.widgetWithText(TextButton, 'Cancel'));
+    await tapIn(tester, find.byKey(AppConfirmDialog.dismissKey));
     expect(wire.assetPatches, isEmpty);
 
     await tapIn(tester, find.byKey(AssetsScreen.retireKey('7')));

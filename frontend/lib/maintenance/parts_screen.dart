@@ -18,6 +18,9 @@ import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/app_toolbar.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -34,6 +37,14 @@ class PartsScreen extends StatelessWidget {
   /// The Platform's own page width (issue #189): this Screen used to declare
   /// 800, one of five numbers six catalogue Screens each picked for themselves.
   static const double maxWidth = AppLayout.pageWidth;
+
+  /// Below this much of the Screen's own content width (at a text scale of 1)
+  /// the catalogue is one card row per Part; at or above, a register. Three
+  /// columns (part number, description, unit) is well inside the
+  /// five-column rule, so this is the Platform's own
+  /// [AppBreakpoints.registerTable], not a number of this Screen's. It is
+  /// measured by the `LayoutBuilder` in `_LoadedState`, never the window.
+  static const double narrowBreakpoint = AppBreakpoints.registerTable;
 
   static const ValueKey<String> addKey = ValueKey<String>('parts-add');
   static const ValueKey<String> failedKey = ValueKey<String>('parts-failed');
@@ -65,12 +76,12 @@ class PartsScreen extends StatelessWidget {
       body: switch (state) {
         PartsLoading() => const SkeletonList(maxWidth: PartsScreen.maxWidth),
         PartsUnavailable(message: final message) => PlatformFailureState(
-            key: PartsScreen.failedKey,
-            title: 'The parts catalogue could not be read',
-            message: message,
-            retryKey: PartsScreen.retryKey,
-            onRetry: () => context.read<PartsBloc>().add(const PartsStarted()),
-          ),
+          key: PartsScreen.failedKey,
+          title: 'The parts catalogue could not be read',
+          message: message,
+          retryKey: PartsScreen.retryKey,
+          onRetry: () => context.read<PartsBloc>().add(const PartsStarted()),
+        ),
         PartsLoaded() => _Loaded(state: state, isAdmin: isAdmin),
       },
     );
@@ -102,8 +113,7 @@ class _LoadedState extends State<_Loaded> {
   /// the same rule the assign dialog's own filter uses (issue #187), so the
   /// Platform's two filter boxes behave alike.
   static bool _matches(Part part, String term) =>
-      part.partNo.toLowerCase().contains(term) ||
-      part.description.toLowerCase().contains(term);
+      part.partNo.toLowerCase().contains(term) || part.description.toLowerCase().contains(term);
 
   /// The rows actually rendered — every one of them while the term is empty.
   List<Part> get _matchingParts {
@@ -130,8 +140,7 @@ class _LoadedState extends State<_Loaded> {
                 if (widget.isAdmin)
                   FilledButton.icon(
                     key: PartsScreen.addKey,
-                    onPressed:
-                        widget.state.isAdding ? null : () => PartFormDialog.open(context),
+                    onPressed: widget.state.isAdding ? null : () => PartFormDialog.open(context),
                     icon: const Icon(Icons.add),
                     label: const Text('Add part'),
                   ),
@@ -153,32 +162,105 @@ class _LoadedState extends State<_Loaded> {
               // control that can do nothing, so it appears with the rows —
               // and stays while a term excludes them all, because the reader
               // still has to be able to clear it.
-              AppFilterField(
-                name: PartsScreen.filterFieldName,
-                label: 'Filter parts',
-                helperText: 'By part number or description.',
-                term: _term,
-                onChanged: (term) => setState(() => _term = term),
-                shown: matches.length,
-                total: widget.state.parts.length,
+              // A `Wrap` inside the toolbar hands its children unbounded width, which
+              // a text field cannot take, so the field is given the box's own width.
+              LayoutBuilder(
+                builder: (context, box) => AppToolbar(
+                  filters: [
+                    SizedBox(
+                      width: box.maxWidth,
+                      child: AppFilterField(
+                        name: PartsScreen.filterFieldName,
+                        label: 'Filter parts',
+                        helperText: 'By part number or description.',
+                        term: _term,
+                        onChanged: (term) => setState(() => _term = term),
+                        shown: matches.length,
+                        total: widget.state.parts.length,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: Spacing.lg),
+              const SizedBox(height: Spacing.md),
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: PartsScreen.noMatchKey,
                   title: 'No parts match',
-                  message: 'Nothing in the catalogue matches "${_term.trim()}". Try a '
+                  message:
+                      'Nothing in the catalogue matches "${_term.trim()}". Try a '
                       'different part number or description, or clear the filter.',
                 )
               else
-                // One row per part, ruled apart from its neighbours
-                // (issue #189).
-                AppListCard(
-                  rows: [for (final part in matches) _PartRow(part: part)],
+                // Measured on the box the list actually got (a `LayoutBuilder`),
+                // and scaled by the reader's text size, so large text gets the
+                // cards sooner (design-language §10).
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final narrow =
+                        constraints.maxWidth <
+                        AppBreakpoints.effective(context, PartsScreen.narrowBreakpoint);
+                    if (narrow) {
+                      // One row per part, ruled apart from its neighbours
+                      // (issue #189).
+                      return AppListCard(rows: [for (final part in matches) _PartRow(part: part)]);
+                    }
+                    // The register: the band and every row are built from the one
+                    // column spec, so a label and its cells share an x.
+                    final columns = _columns();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AppTableHeader(columns: columns),
+                        for (final part in matches) _PartTableRow(columns: columns, part: part),
+                      ],
+                    );
+                  },
                 ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The register's one column spec. The part number is a code, so it reads
+/// quieter than the description it identifies (§6); the unit is a short code
+/// too and takes the smallest share. Nobody can tap a Part row, so the rows
+/// are the 32px of a row that holds nothing to press.
+List<AppTableColumn> _columns() => const [
+  AppTableColumn('Part number', flex: 2),
+  AppTableColumn('Description', flex: 5),
+  AppTableColumn('Unit', flex: 1),
+];
+
+class _PartTableRow extends StatelessWidget {
+  const _PartTableRow({required this.columns, required this.part});
+
+  final List<AppTableColumn> columns;
+  final Part part;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    // The part number and description are user text and unbounded, so a clipped
+    // one can still be read in full (`DisclosingText`).
+    return KeyedSubtree(
+      key: PartsScreen.rowKey(part.id),
+      child: AppTableRow(
+        columns: columns,
+        cells: [
+          DisclosingText(part.partNo, style: dense?.copyWith(color: palette.textMuted)),
+          DisclosingText(part.description, style: dense?.copyWith(color: palette.textPrimary)),
+          Text(
+            part.uomCode,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: dense?.copyWith(color: palette.textMuted),
+          ),
+        ],
       ),
     );
   }
@@ -205,8 +287,9 @@ class _PartRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   part.description,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
