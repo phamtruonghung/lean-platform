@@ -134,6 +134,17 @@ abstract final class AppBreakpoints {
   /// A detail page's sections go two-column.
   static const double detailTwoColumn = 1000;
 
+  /// A dialog becomes a bottom sheet when the box it is handed is this narrow or
+  /// narrower. A dialog route is given the whole window (no Shell chrome around
+  /// it), so the box measured is the window; this is the one place a window-sized
+  /// box is the right input. Compared with `<=`, unlike the rest of the class.
+  static const double dialogSheet = 700;
+
+  /// A dialog becomes a bottom sheet at or above this text scale, whatever the
+  /// box: a 520px dialog at 2x text has less usable width than a phone. Compared
+  /// with `>=` against the reader's text scale itself, not against a box.
+  static const double dialogSheetTextScale = 1.5;
+
   /// [breakpoint] scaled by the reader's text size: the number a box width is
   /// compared with.
   ///

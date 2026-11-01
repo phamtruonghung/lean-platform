@@ -31,6 +31,14 @@ three lists, and only the third is still a target.
 | `AppFilterField`, `StatusChip`, `DisclosingText` | `AppStatTile` (`app_stat_tile.dart`) | a form onto `AppDetailSection` plus the section 6 sticky bar |
 | `AppPalette` (read as `AppColors.of(context)`), `Spacing`, `AppRadius`, `AppLayout`, `AppTypography` | `AppDetailSection` (`app_detail_section.dart`), `AppSectionGrid` (`app_section_grid.dart`) | |
 
+**Issue #398 extends this document** with the three conventions no per-Screen
+slice touches: sections 11 (dialogs), 12 (feedback) and 13 (data display), and
+ships the primitives they name: `AppDialog` (`app_dialog.dart`), `AppConfirmDialog`
+(`app_confirm_dialog.dart`) and `AppBanner` (`app_banner.dart`), with two further
+rows in section 10's table. Section 13 names no widget on purpose. No dialog and
+no Screen has adopted these yet; each Screen's and dialog's move is its own slice,
+exactly as for the first list.
+
 `_RowActions` is not in either list: it is a private widget, and there are two
 of them, one in `maintenance/work_orders_screen.dart` and one in
 `people/accounts_screen.dart`. Where this document says "the row's own
@@ -471,14 +479,17 @@ meaning on its own (a focus ring, a selected mark) uses `focusRing` or
 
 A breakpoint is a **box width at a text scale of 1**, always read from a
 `LayoutBuilder`, and always multiplied by the reader's text scale (never below 1)
-before it is compared. The window is never asked.
+before it is compared. The window is never asked. The one exception is the dialog's
+own pair (#398, §11): there the box is compared as it is and the text scale is a
+trigger of its own, argued below.
 
 ```
 effective = breakpoint * max(1, MediaQuery.textScalerOf(context).scale(1))
 narrow    = constraints.maxWidth < effective
 ```
 
-Named once, in one class:
+Named once, in one class (the last two rows were added by #398 and are the
+exceptions that prove the rule: see the paragraph after the table):
 
 | name | at 1x | decides |
 |---|---|---|
@@ -487,14 +498,23 @@ Named once, in one class:
 | `AppBreakpoints.registerTable` | 700 | a register of five columns or fewer becomes cards |
 | `AppBreakpoints.formTwoColumn` | 900 | a form's field grid goes two-column |
 | `AppBreakpoints.detailTwoColumn` | 1000 | a detail page's sections go two-column |
+| `AppBreakpoints.dialogSheet` | 700 | a dialog becomes a bottom sheet when the box is **this wide or narrower** (`<=`) |
+| `AppBreakpoints.dialogSheetTextScale` | 1.5 | a dialog becomes a bottom sheet at **this text scale or larger** (`>=`), whatever the box |
 
-One of the five is still named twice. `headerActionsWrap` (560) is the number
+The last two rows are not like the first five. They are a pair, one dialog's
+trigger: the box is compared as it is (a dialog route's box is the window, section
+11), and the text scale is its own trigger rather than a factor on the box, so
+`AppBreakpoints.effective` is deliberately not applied to either. Multiplying 700 by
+the scale as well would count the text twice. They are pinned at their edges by
+`test/app_dialog_test.dart`.
+
+One of the first five is still named twice. `headerActionsWrap` (560) is the number
 `AppPageHeader.wrapBreakpoint` already holds, and the header still computes its
 own text-scale factor, so the class holds the copy that header points at until it
 adopts `AppBreakpoints.effective`.
 
 `AppBreakpoints` ships in this card (#386), in `theme.dart`; the five numbers are
-named there and this section argues them. Three are pinned by a test today:
+named there and this section argues them (#398 added the two dialog rows). Three are pinned by a test today:
 `headerActionsWrap` (560), which is the same number as
 `AppPageHeader.wrapBreakpoint` and is pinned at its edge by
 `test/app_page_header_test.dart`; `toolbarWrap` (640) by
@@ -545,7 +565,394 @@ At 2x text every effective breakpoint doubles (1120, 1280, 1400, 1800 and 2000),
 the 1280 window's 988 box wraps the header and the toolbar, shows cards, and stays
 one column.
 
-## 11. What this document does not decide
+## 11. The dialog: four widths, one shell, and a sheet when the box is narrow or the text is large
+
+A dialog is the one surface every Module spends and no Screen owns. Of the files
+under `frontend/lib/` whose name contains `dialog` there were 113 before this card
+(115 now: these two widgets' own files match the name too), and what they share is
+accidental: 112 are an `AlertDialog` — the one that is not is
+`platform/dialog_page.dart`, the route — 110 put a `SizedBox` directly in
+`content:`, and each chose its own number.
+`AppDialog` (`widgets/app_dialog.dart`, shipped in #398) is the shell they
+will move onto, one slice at a time; `AppConfirmDialog` is its destructive form.
+Nothing in `lib/` has adopted either yet, and no existing dialog changes in the
+card that ships them.
+
+### The four widths
+
+| kind | width | what fits |
+|---|---|---|
+| decision | 420 | one question, a description, two actions, no fields |
+| picker | 460 | a list or filter to choose one thing from |
+| form | 520 | a short form, up to about six fields |
+| wide | 640 | a long form, or content with its own columns |
+
+A reader sizes a dialog from this table alone: say what the dialog holds, take
+the width in the row. `AppDialogSize` names the four and `AppDialog` defaults to
+`form`.
+
+**Where the four come from.** The seven widths in use were counted off the tree
+before this card (`grep -hoE "width: [0-9]{3}\\b"` over those 113 files, so a width
+is counted once per occurrence): **420 ×34, 520 ×28, 460 ×20, 560 ×11, 480 ×10,
+640 ×5, 620 ×5** — 113 occurrences at those seven sizes. The same files hold 121
+`width: <n>` lines in all, the other eight being narrower 140–260 widths inside a
+dialog's own column. By file rather than by occurrence, where a file sizes two
+things, it is 33, 24, 20, 11, 10, 5 and 5. Seven numbers answer four
+questions: 420 is the dialog that asks, 460 the one that lists, 520 the one that
+asks for a few things, and the three at the top (560, 620, 640) are one dialog
+drawn three ways. A 480 is a 460 or a 520 by what is in it; a 560 is a form that
+has outgrown 520 or a wide that has not needed 640. That mapping is each adopting
+slice's to make against the table above, by content, and when a dialog does not
+fit the width it chose it moves to the next one up, never down.
+
+**The width lives on the shell.** In 112 of the 113 the width sits on a
+`SizedBox` *inside* `content:`. The `AlertDialog` around it sizes itself to that
+box, so the title and the action row are as wide as the content plus the
+platform's own padding, not the width the author chose; and the actions, centred
+by `AlertDialog`'s default, are in a different place in every dialog.
+`WorkOrderCancelDialog` is the example (`maintenance/work_order_cancel_dialog.dart:78`
+is its `AlertDialog`, `:81` its `width: 480`). `AppDialog` puts the width on the
+surface itself, so the title, the content and the action row share one left edge
+and one right edge, and the number is measured on that surface (`AppDialog.surfaceKey`).
+
+A dialog is never wider than its box less `Spacing.xl` a side. On a box wide
+enough to be a dialog at all (701 and up) the widest of the four, 640, always fits:
+701 − 48 = 653.
+
+### The shell, top to bottom
+
+```
+title row        titleMedium, w600, textPrimary; at most one trailing icon control, 44px, with a label
+description      dense, textMuted, Spacing.xs under the title (optional)
+content          the only scroller; capped at about 60% of the box height
+action row       pinned; never scrolls away
+```
+
+The fill is `card`, the radius `AppRadius.card` (14), a hairline of `edge` round
+it, and no elevation. It is **not** an `AlertDialog`: that widget's platform
+padding and centred action row are exactly what this replaces, and a shell
+that is a `Dialog` with its own anatomy is one place to read rather than 112.
+
+| gap | value |
+|---|---|
+| title, description and content, inline | `Spacing.lg` (16) |
+| the action row, inline | `Spacing.lg` (16) |
+| the action row, above and below | `Spacing.md` (12) |
+| the title block to the content | `Spacing.md` (12) |
+| the content to the action row | `Spacing.lg` (16) |
+| the title to the description | `Spacing.xs` (4) |
+
+The content is the only scroller, and the cap is what makes that safe: a form
+that is longer than 60% of the box scrolls inside the dialog while its title and
+its actions stay put, so the primary action is never reachable only by scrolling
+(§6 argues the same of a page's sticky submit). `app_dialog_test.dart` pins it:
+with forty 44px rows in a 600px-high window the action row's bottom edge stays at
+or under 600, the content is no taller than 360, and dragging scrolls the content
+and not the dialog.
+
+### The action row
+
+Dismiss actions sit at the inline start, a `Spacing.lg` gap, then the destructive
+and the primary at the inline end. **The primary is right-most; a destructive
+action is separated from it and never first.** There are three kinds
+(`AppDialogActionKind`):
+
+| kind | drawn as | `Esc` |
+|---|---|---|
+| `dismiss` | `OutlinedButton` | runs it |
+| `primary` | `FilledButton` | never |
+| `destructive` | `FilledButton`, `statusDanger` fill, `canvas` label | never |
+
+Every action carries `AppDialog.actionKey(id)` (`app-dialog-action-<id>`), keeps
+the caller's label verbatim, is at least `AppTouchTarget.min` (44) tall through its
+`minimumSize`, and renders disabled when its `onPressed` is null, which is how a
+caller shows a request in flight. A label that does not fit wraps inside its
+button instead of overflowing the row: the dismiss group takes its natural width
+up to two fifths of the row and the end group takes what is left.
+
+**The destructive pair is measured, not chosen.** The canvas on `statusDanger`
+is **6.18:1 in the light palette and 9.41:1 in the dark**. White on the dark
+`statusDanger` (`#FCA5A5`) is **1.90:1**, which is why a destructive fill is never
+given a white label in either palette (the light palette would pass and the dark
+would not, and a theme that passes in one is how this ships), and why
+`Colors.white` is not used at all. `app_confirm_dialog_test.dart` measures all
+three numbers from the shipped hexes with `test/contrast.dart`.
+
+### When a dialog is a sheet
+
+A dialog becomes a **bottom sheet** when either trigger holds:
+
+| trigger | name | compared |
+|---|---|---|
+| the box is 700 wide or less | `AppBreakpoints.dialogSheet` (700) | `box <= 700` |
+| the text is 1.5x or larger | `AppBreakpoints.dialogSheetTextScale` (1.5) | `textScale >= 1.5` |
+
+The first is the 700 §2 reads off the Shell, applied to the box a dialog is
+actually handed, which is the window. The second is a trigger of its own, not a factor
+on the first, because text is the thing that spends width. §2 measured the
+440px box behaving like 220 at 2x, and the same arithmetic runs through a dialog:
+a 520 form has 488 of usable width after its padding, which at 2x text holds what
+244 holds at 1x, and a 360px phone at 1x has 328. A form dialog at 2x text has
+less to work with than a phone, whatever the window. So the box is compared as it
+is (700, never scaled), and the text scale triggers the sheet by itself;
+multiplying the 700 by the scale as well would count the text twice.
+`app_dialog_test.dart` pins every edge: 700 of box is a sheet and 701 is not; 1.49
+at 1280 is a dialog and 1.5 is a sheet; 2.0 at 1280 is a sheet with nothing
+overflowing and both labels in view. A long confirm label such as "Cancel this Work order" at 1.49 in the 420
+dialog wraps inside its button if it must, and nothing overflows.
+
+**A sheet's anatomy** is the same four rows in the same order. It is full box
+width, anchored to the bottom, `AppRadius.card` on the top corners only, the
+title row and the action row pinned, and the content the only scroller. The
+action row is full-width and the primary action fills the inline end: a thumb
+finds the act without aiming. A field's text and focus survive the box crossing
+700 while the dialog is open (a rotated phone, a resized window): the body is
+kept alive under a `GlobalKey`, and a test types into a field, narrows the window
+and finds the text and the focus where they were.
+
+**The decision comes from the `LayoutBuilder` at the dialog's root, and a dialog
+route's box is the window.** A route is mounted in the `Navigator`'s overlay,
+above the Shell, so nothing narrows the box it is handed: the sidebar of §2 is not
+around it. The window *is* the box, and it is the one place in this document where
+a window-sized number is the right input. Do not "fix" it into
+`MediaQuery.sizeOf`: a dialog hosted in anything narrower than the window (a
+golden, a test, a future split view) would then be told the wrong width, which is
+the #105 defect in reverse.
+
+### The address stays the `DialogPage`
+
+ADR-0019 gave the Work order transition dialogs addresses of their own and
+ADR-0021 did the same on the client, so that a refresh keeps the dialog and a link
+to "cancel this Work order" can be sent. That is `DialogPage`
+(`platform/dialog_page.dart:23`): a `Page` whose `createRoute` returns a
+`DialogRoute` (`:37`), non-opaque, so the list stays visible beneath it. **That
+does not change.** `AppDialog` is the surface *inside* the route, not a second route:
+`DialogPage` stays the address and `AppDialog` is what its `builder` returns.
+
+The route has two populations today, both counted off the tree: **52**
+`DialogPage<void>(` pages in `platform/router.dart`, each an address, and **137**
+`showDialog` call sites across 68 files, each a dialog with no address of its
+own. Both stay legal. A dialog that is not addressable (a filter picker, a
+confirmation inside a Screen that has no reason to survive a refresh) is a
+`showDialog` call that builds an `AppDialog`, and nothing is wrong with that.
+**Focus restoration did not need a helper**: `app_dialog_test.dart` opens a dialog
+from a focused button with plain `showDialog`, closes it, and finds focus back on
+the button, so there is no `showAppDialog` and this document does not ask for
+one. Should a measurement ever say otherwise, the smallest thing that fixes it is
+the thing to add.
+
+### `barrierDismissible`, and what the primitive guarantees
+
+`DialogPage` defaults `barrierDismissible` to `false` (`dialog_page.dart:26`),
+matching every one of the four dialogs it replaced. The policy for the whole
+client:
+
+- **`false` wherever the dialog's own act is consequential or destructive.** A tap
+  on the barrier is an accident, not a decision, and it loses what was typed.
+- **Never the only way out.** The dialog always offers its own dismiss control, so
+  a reader is never trapped by a barrier that does nothing.
+- **`true` only for a read-only or picker dialog** whose `Esc` and Cancel are
+  harmless.
+
+The barrier flag belongs to the route and so to the caller. `Esc` is the primitive's.
+Flutter's own `ModalRoute` handles `Esc` only when the route's `barrierDismissible`
+is true, so on a `DialogPage` at its default `Esc` did nothing at all; `AppDialog`
+catches it and runs the dialog's own dismiss action, which is what makes `Esc` on a
+destructive confirm *cancel* rather than pop blindly past a callback the caller
+needs to run.
+
+**What `AppDialog` guarantees**, each pinned by a test of the same name:
+
+- focus is **trapped**: the dialog is a focus scope of its own, inside the route's,
+  and twelve Tab presses cycle the three stops of a field and two actions without
+  ever reaching the field behind it. The scope also sits under the `Esc` handler, so
+  a focused action that is disabled while a request is in flight leaves focus on the
+  dialog and `Esc` still works when the actions re-enable;
+- **first focus**: the first focusable thing in `child`, else the first *enabled*
+  primary action, else the enabled dismiss action, else the enabled destructive one;
+  with none enabled, the dialog's scope. A dialog whose only act is destructive
+  opens on its dismiss, so that Enter does not confirm, and a disabled action is
+  never the place focus is sent;
+- `Esc` runs the dismiss action; with no dismiss action it pops; with a dismiss
+  action that is disabled it does nothing, like the button;
+- **focus is restored** to the control that opened it when the route closes;
+- a `Semantics(scopesRoute, namesRoute)` node labelled with the title;
+- every action 44px, every colour a token.
+
+**What the caller still owns**: its strings, verbatim; its field keys and labels;
+its enable conditions (`onPressed: null`); its own failure text, inline in `child`
+(§12); what each callback does, including popping or going (the primitive pops
+nothing for it); and `DialogPage`'s barrier flag.
+
+## 12. Feedback: one place per outcome, and what is never a snack
+
+`AppBanner` (`widgets/app_banner.dart`, shipped in #398) is the Platform's one
+feedback surface: an inline strip with a tone, a message, an optional title, an
+optional action and an optional dismiss. There is no `AppFeedback` and no wrapper
+around `SnackBar`.
+
+### The three outcome classes
+
+| outcome | where it goes |
+|---|---|
+| an act succeeded and the view does not show it | `AppBanner(tone: success)` at the top of the page body |
+| a failure the reader must act on | `AppBanner(tone: danger)`, with a retry as its `action` |
+| a field the reader must fix | that field's own inline error, never a banner |
+
+The first is the one that is missing today: "Work order raised" is true, and the
+list that is now longer by one is not evidence of it to a reader who is looking at
+a filtered page. The second is §7's `PlatformFailureState` for a *read*; a failed
+*act* (a transition, a save) does not replace the page, so it needs a surface that
+sits above it. The third is not a banner because a banner tells the reader that
+something is wrong somewhere, and a field that is wrong should say so where the
+reader's eyes already are.
+
+### Where the banner sits
+
+First child of the page body, above the toolbar's content and `Spacing.md` under
+the header, in the order of §5. It is not an overlay and covers no control, so
+nothing under it moves when it disappears except the page, which is correct: it was
+taking its place. **It is never inside a dialog.** A dialog reports its own failure
+inline, the way `WorkOrderCancelDialog` already does (`work_order_cancel_dialog.dart:99`,
+`failureKey`, in `error` text directly under the field), and a banner behind a
+dialog's barrier is a message nobody can read.
+
+### What is never a snack
+
+- a failure;
+- the outcome of a destructive act;
+- anything the reader must act on;
+- anything that must survive a route change.
+
+A `SnackBar` is one line, one duration, at the bottom of the window and gone
+before a second reader looks, which is measured against its two users in `lib/`:
+`maintenance/floor_screen.dart` (three calls, at `:137`, `:167` and `:197`) and
+`platform/change_password_dialog.dart` (`:36`). All three report a recorded act whose
+effect is already visible. That is the only thing a snack is for: **an
+acknowledgement of an act whose effect is already on the page.** Anything else is a
+banner.
+
+### The announcement
+
+`AppBanner` is `Semantics(container: true, liveRegion: true)`, so a screen reader
+reads it when it appears, which is the whole reason there is one surface rather
+than many. The tone's colour is never the only carrier: the icon is decorative
+(`ExcludeSemantics`) and the words are the message. The contrast of each tone's
+text on its own fill, measured from the shipped hexes by `app_banner_test.dart`:
+
+| tone | light | dark |
+|---|---|---|
+| neutral | 6.50:1 | 6.97:1 |
+| info | 8.49:1 | 8.49:1 |
+| success | 6.49:1 | 6.49:1 |
+| warning | 6.38:1 | 9.28:1 |
+| danger | 5.30:1 | 5.28:1 |
+
+All ten clear 4.5:1; the lowest is the dark danger. The action drops under the
+message below `AppBreakpoints.headerActionsWrap` (560) of box, scaled by the text
+(§10), so a banner at 2x text on a 900 box wraps its action as a 440 box does at 1x.
+
+### One surface, not three
+
+The client's failure is not that it has no transient feedback; Flutter has one,
+and a `SnackBar` is in the tree twice. It is that there is nowhere stable to put
+a persistent one, so each Screen tints its own `Container`: **17 files outside
+`theme.dart` reach for the scheme's `errorContainer` or `secondaryContainer` by
+hand** (`grep -lE "errorContainer|secondaryContainer"`), in 17 slightly different
+spots. A second surface (`AppFeedback`, a snack wrapper) would be a third place for
+an outcome to land and a decision about which, per outcome, forever. One surface
+and the table above leaves no decision to make. The adoption of the 17 is each
+Screen's own slice.
+
+## 13. Data display: dates, numbers, money, and the tone legend
+
+This section is a **written convention, not a widget.** The client has no `intl`
+dependency (`frontend/pubspec.yaml` lists none), so a helper that took a locale
+and a pattern would be the first of its kind and would pull a package in to format
+a date the plant reads one way. What there is today is three hand-rolled
+formatters, read for this section rather than imitated blind:
+
+| file | what it formats |
+|---|---|
+| `kpi/kpi_catalogue.dart:368` `formatEnteredAt` | a timestamp as `YYYY-MM-DD HH:MM` in the device's zone |
+| `production/handover_format.dart:6, :16, :25` | `formatClock` (`HH:mm`, `—` when null), `formatMinutes` (`1 h 35 min`), `formatPercent` (one decimal) |
+| `people/worked_hours.dart:85` `formatWorkedMinutes` | minutes as `7h 30m` |
+
+Where a rule below has no helper, the adopting slice owes one, in the module that
+needs it, written the same way and tested the same way; there is no fourth
+formatter in this card.
+
+### Dates and times
+
+A date is read as a person says it: **`31 Oct 2026`, never `2026-10-31`.** A time
+is 24-hour: **`06:30`**. A date with a time is the two, a space apart:
+`31 Oct 2026 06:30`. An ISO string is a wire format; showing one is showing the
+reader the API.
+
+**A production day is spelled as the plant spells it.** "Today" is the Site's
+local date resolved in the database (ADR-0048, migration
+`1802300000000_site-local-today`), not the browser's: a Site at UTC+7 is on
+tomorrow's date from 17:00 UTC, and a client that formats "today" from
+`DateTime.now()` would disagree with the server for seven hours of every day. A
+Screen that needs to say what day it is for the plant shows the date the server
+sent, formatted, and never derives it from the device clock.
+
+**Where ISO strings render today**, named so the adopting slices have a target and
+nothing is changed here: `actions/capa_detail_screen.dart:384`,
+`actions/action.dart:279` (`decidedOn`), `actions/action_detail_screen.dart:353`,
+`actions/capa_report_screen.dart:343` and `:814`, `people/training_detail_screen.dart:508`
+(a bare `substring(0, 10)`), and `kpi/kpi_catalogue.dart:368`, which is the
+formatter above. `AppDateField` also shows `YYYY-MM-DD` in its own text
+(`widgets/app_date_field.dart:133`): it is an input, a field's value is not a
+sentence, and whether it stays ISO is a decision for the slice that adopts this
+section, not one made here.
+
+### Numbers
+
+A count has thousands separators and no decimals (`12,480`, never `12480.0`). A
+percentage has **one** decimal (`94.5%`), matching `formatPercent`, and **is
+rounded once, at display, and never re-derived**: the server's ratio is the
+value, `94.5%` is how it is shown, and a Screen that divides two displayed
+numbers to produce a third has made a number nobody recorded. Any quantity column
+uses tabular figures and aligns to the end (§6's alignment table is the rule and
+is not repeated; `widgets/app_table.dart:160` is the one place the code spends
+`FontFeature.tabularFigures()` today). A quantity that is a whole number is shown
+whole and any other as the API sent it, which is already what `action.dart:293`
+and `kpi_catalogue.dart:381` do.
+
+### Money and units
+
+**The unit belongs to the column label, never to the cell.** The header says
+`Cost (EUR)` and `Downtime (min)`, and every cell is a bare figure, so a column
+of them compares by eye (§6) and a unit is written once. A money cell carries its
+currency in the header for the same reason. A figure outside a column (a tile, a
+sentence) carries its unit after it, as `formatMinutes` does.
+
+### Nothing versus zero
+
+**An unknown value is `—`; it is never `0` and never blank.** A zero that is a
+fact is `0`. The two mean different things: zero downtime and unmeasured downtime
+are not the same report, and a blank cell is read as a rendering bug.
+`maintenance/tier_board.dart:157` already does this (`'—'` when `value` is null,
+with a comment saying never `0` for an unmeasured KPI) and
+`production/handover_format.dart:8` does it for a missing time. This is §7's four
+states at the scale of one cell: **loading** is a skeleton, **none exist** is `—`,
+and **a fact** is the figure.
+
+### The tone legend
+
+The five `StatusTone` values mean (from `status_tone.dart`): **neutral**, nothing is
+being asked of anyone (a draft, a deliberate cancellation); **info**, live and in
+hand; **success**, finished; **warning**, wants a decision from whoever is reading;
+**danger**, something is wrong or was done wrongly. **Every Screen that paints
+tones carries a legend or a column label**, because a colour that is the only
+carrier of an outcome fails WCAG 1.4.1, and §6's board already argues this. The
+legend is **built from the tones the Screen actually paints**: a Screen that
+shows three tones shows three chips, labelled with that tone's word, rendered
+through `StatusChip`. A banner is the same: its tone is a colour and its message is
+the words.
+
+## 14. What this document does not decide
 
 - **The Shell's 700px rail breakpoint**, and the cliff it makes in section 2. A
   separate ticket.
@@ -555,3 +962,9 @@ one column.
   change is one reviewable diff with its own golden.
 - **Colours, fonts and radii.** ADR-0056 and `theme.dart` own those, and section
   3 says why the reference board's are not borrowed.
+- **Which of the 113 dialogs moves onto `AppDialog`, in what order, and at which of
+  the four widths.** Section 11 gives the table and the census; each dialog's move is
+  its own slice, with its own diff. The same is true of the 17 hand-tinted banners
+  (section 12) and of every ISO date (section 13).
+- **A formatting helper.** Section 13 is a convention. The slice that first needs a
+  date or a number formatted owns the helper and its test.
