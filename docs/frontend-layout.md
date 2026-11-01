@@ -153,7 +153,7 @@ list pays for the bar's height in bottom padding; the pattern is
 | one left edge | `test/page_alignment_test.dart` | a page's title, description, first card or first row's text is not where the rule says |
 | Screen coverage | `test/page_alignment_test.dart` | a new `*_screen.dart` is neither audited in that file's table nor excluded there with a reason |
 | matrix columns line up | `test/kpi_test.dart` ("a header label and its cells start at the same x") | a column's header label and its first body cell start more than 1px apart |
-| a register's band and rows share one spec, and a row is 32 or 44px | the primitive's own widget test (#386, `test/app_table_test.dart`) | a header label and its cells start apart, or a row holding a control is under 44px |
+| a register's band and rows share one spec, and a row is exactly 32px without an `onTap` and exactly `AppTouchTarget.min` (44) with one | the primitive's own widget test (#386, `test/app_table_test.dart`) | a header label and its cells start apart, or a row given an `onTap` is not exactly `AppTouchTarget.min` tall |
 | a breakpoint is read from the box, scaled by text size | the primitives' own widget tests (#386: `test/app_toolbar_test.dart`, `test/app_section_grid_test.dart`), and `test/app_page_header_test.dart` for the header's own 560 | a breakpoint is compared against `MediaQuery` width, or without the reader's text scale |
 | a form picker finds a record | `test/form_pickers_test.dart` | one of the eleven pickers is no longer an `AppSearchField`, issues a request as a term is typed, stops showing its label, its record, the no-match state, or stops gating submission on a pick |
 

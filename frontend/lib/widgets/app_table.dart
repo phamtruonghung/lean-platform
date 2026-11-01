@@ -21,9 +21,11 @@
 /// somebody can.** The reference board's `6px + line + 6px` is about 32, and the
 /// Work orders row says 56; the whole distance between that board's density and
 /// this Platform is paid here, on a row that holds nothing to press, and never
-/// by shrinking a tap target. A row that is itself the target (`onTap`) or that
-/// holds a control is 44. Content is centred, which is what yields the board's
-/// 6px above and below a 20px line without a 6 on the [Spacing] ladder.
+/// by shrinking a tap target. A row whose own `onTap` is set is 44 — that is the
+/// floor this widget applies, and a row that holds a control is given one, so the
+/// control is never the only thing to press. Content is centred, which is what
+/// yields the board's 6px above and below a 20px line without a 6 on the
+/// [Spacing] ladder.
 ///
 /// **Alignment is a property of the column kind, not a per-call choice.** A
 /// quantity (a count, an amount of money) is [AppColumnAlign.end] so a column of

@@ -126,7 +126,8 @@ The arithmetic that matters is the table row. `6px + a 20.3px line (14px at
 `minHeight: 56`. That 24px gap, repeated down a screenful, is the whole distance
 between "the UI has not changed" and a dense board, and it is where
 this document makes its one concession (section 6): a row nobody can tap is 32px,
-and a row that holds a control is never less than 44.
+and a row its Screen gives an `onTap` is 44 — a row that holds a control is given
+one, so the control is never the only thing to press.
 
 **Copied: the density, the grouping, the column-label band, and right-aligned
 numerics.** A small ladder of gaps and a short ladder of type; related things
@@ -212,7 +213,7 @@ Spacing is a `Spacing` value everywhere, and these are the values:
 | toolbar to the body | `Spacing.md` (12) |
 | one card or section to the next | `Spacing.md` (12) |
 | inside a card | `Spacing.lg` (16) |
-| inside a register row, vertical | `Spacing.xs` (4) + `Spacing.sm` (8) = 12, around a 20px line, so 32px |
+| inside a register row, vertical | `Spacing.xs` (4) top and bottom = 8, around a 20px line; the row is 32 by its `minHeight`, content centred |
 | inside a register row, horizontal | `Spacing.md` (12) |
 | section title to its hairline | `Spacing.sm` (8) |
 | a label to the figure under it | `Spacing.xs` (4) |
@@ -220,9 +221,9 @@ Spacing is a `Spacing` value everywhere, and these are the values:
 A note on the register row's vertical figure. The board's `6px + line + 6px` has
 no 6 on the `Spacing` ladder, and this document does not add one. The row is
 specified by its height (32, content centred vertically), which is what yields 6
-above and below a 20px line; the 4 + 8 above is the ladder's way of writing the
-12 the two paddings sum to, and `AppTableRow` is where the split is
-decided.
+above and below a 20px line. `AppTableRow` pads `Spacing.xs` (4) top and bottom
+and floors the row at 32 through its `minHeight`, so the 6 above and below the
+line is what centring a 20px line in 32 leaves, not a sum of two paddings.
 
 **One left edge.** The title, the description, the toolbar's first control and the
 first row's first cell all begin at the frame's left edge plus the page inset.
@@ -252,9 +253,11 @@ Today's `_WorkOrderTableHeader` is private to its Screen and differs from this: 
 sets `colorScheme.onSurface` at w700 with 0.2 letter spacing. The row above is the
 target, and Work orders adopts it in its own slice.
 
-**A row** is `AppTableRow`, shipped in this card (#386): **32px when nothing in it
-is tappable, `AppTouchTarget.min` (44) when something is.** A hairline of `edge`
-sits under every row. A row that is itself the tap target (Work orders' whole row
+**A row** is `AppTableRow`, shipped in this card (#386): **32px when the row's own
+`onTap` is null, `AppTouchTarget.min` (44) when it is set.** The primitive floors
+the row, not the cell, so a row that holds a control is given the row's `onTap`
+and the control sits inside the 44. A hairline of `edge` sits under every row.
+A row that is itself the tap target (Work orders' whole row
 opens the Work order) carries `rowHoverFill`, because a seven-column row's only tie
 between its first cell and its action is where the pointer is. Such a row is 44,
 not 32: Work orders moves from 56 to 44 and reaches the board's 32 only on a row
@@ -293,10 +296,12 @@ ellipsized, and at 750 "Assignee" and "Actions" ran together, so it chose 800 by
 rendering the Screen at each width. Its location, in the Screen rather than in
 `AppBreakpoints`, is a deliberate deviation, not a precedent to copy silently.
 
-Read against section 2, this is concrete. At a 700 window the page has 440, at 900
-it has 640: **both are below 700, so a five-column register is cards at both**, and
-tables appear only where the window leaves the page 700 or more, which is a window
-of about 960 and up. Work orders, at 800, is cards until the window is about 1060.
+Read against section 2, this is concrete. A register measures the box it is handed
+— the page's box less its inset, 32 at the `Spacing.lg` (16) each side of section
+5. At a 700 window that is 408, at 900 it is 608: **both are below 700, so a
+five-column register is cards at both**, and tables appear only where the box
+reaches 700, which is a page box of 732 and a window of about 992 and up. Work
+orders, at 800, is cards until the window is about 1060.
 
 ### The catalogue: a list of records that are read down
 
@@ -325,10 +330,14 @@ a hairline `Spacing.sm` under it, then the section's rows. **One column below 10
 of box width, two above: `AppBreakpoints.detailTwoColumn`**, and the sections in a
 row share a height (`AppSectionGrid`, shipped in #386).
 
-Against section 2 that is also concrete: at 900 the page has 640, and at 1280 it
-has 1020, so **a detail Screen is two-column only in a window of about 1260 and
-wider**. That is intended. A section is a card with a title and rows; squeezed to
-half of 640 it is worse than stacked.
+Against section 2 that is also concrete, once the page's inset is counted (the 32
+of section 5, and 48 where the page insets `Spacing.xl`): at a 900 window the page
+has 640 and the grid is handed 608, and at 1280 it has 1020 and the grid is handed
+988 — 972 on a page inset 24 each side. So **a detail Screen is two-column only in
+a window of about 1292 and wider, and only where the page names a frame of at
+least 1032**; the default `AppPageFrame(900)` hands it 868 and never reaches 1000.
+That is intended. A section is a card with a title and rows; squeezed to half of
+640 it is worse than stacked.
 
 ### The board
 
@@ -367,9 +376,11 @@ and a sticky submit.
 
 **One column below 900 of box width, two above: `AppBreakpoints.formTwoColumn`.**
 It is a number of its own and not `AppBreakpoints.detailTwoColumn`, because a form
-is not a detail page. Against section 2, the boxes are 440, 640 and 1020, so **a
-form is one column at a 700 or 900 window and two columns only at a 1280 window**.
-That is intended: a form is a sheet of paper, not a dashboard.
+is not a detail page. Against section 2, the boxes it is handed are 408, 608 and
+988, so **a form is one column at a 700 or 900 window and two columns at a 1280
+window only where the page names a frame of at least 932** (900 of box plus the 32
+inset); the default `AppPageFrame(900)` hands it 868 and stays one column at any
+window. That is intended: a form is a sheet of paper, not a dashboard.
 
 **The submit is sticky.** It is a bar pinned to the bottom of the page's own
 viewport, holding the form's primary action at the inline end, and a secondary
@@ -508,16 +519,30 @@ there is one place that reads the box and one that reads the text scale. A numbe
 is pinned by the widget that spends it, at its edge (the paragraph above names
 which three are pinned today and which two wait for the Screen that spends them).
 
-Against section 2, the five numbers sort the three common windows:
+Against section 2, the five numbers sort the three common windows. Every primitive
+measures the box it is handed, which is the page's box less its inset — 16 each
+side by section 5, so 32 off the page box — and no more than the frame's
+`maxWidth`. The "box" column below is that handover at the section 5 inset, with
+the page naming a frame at least as wide as the window allows:
 
-| window | box | header actions beside the title | toolbar on one line | register | detail | form |
-|---|---|---|---|---|---|---|
-| 700 | 440 | no, under it | no | cards | one column | one column |
-| 900 | 640 | yes | yes | cards | one column | one column |
-| 1280 | 1020 | yes | yes | table | two columns | two columns |
+| window | page box | box the primitive is handed | header actions beside the title (560) | toolbar on one line (640) | register table (700) | detail two columns (1000) | form two columns (900) |
+|---|---|---|---|---|---|---|---|
+| 700 | 440 | 408 | no, under it | no | cards | one column | one column |
+| 900 | 640 | 608 | yes | no, it wraps | cards | one column | one column |
+| 1280 | 1020 | 988 | yes | yes | table | one column | yes |
+
+Two of those cells are what the box costs. The toolbar wraps at a 900 window
+because 608 is 32 under its 640; one line starts at a box of 640, a page box of
+672 and a window of about 932. The detail page stays one column at a 1280 window
+because 988 is 12 under its 1000, and a page that insets `Spacing.xl` (24 each
+side inside the frame, as `capa_detail_screen.dart` does) is handed 972. Two
+columns need a page box of 1032 — a window of about 1292 — **and a frame that
+names at least 1032**: under the default `AppPageFrame(900)` every one of these
+is handed 868, so `detailTwoColumn` (1000) and `formTwoColumn` (900) are
+unreachable at any window until the page names a wider frame.
 
 At 2x text every effective breakpoint doubles (1120, 1280, 1400, 1800 and 2000), so even
-the 1280 window's 1020 box wraps the header and the toolbar, shows cards, and stays
+the 1280 window's 988 box wraps the header and the toolbar, shows cards, and stays
 one column.
 
 ## 11. What this document does not decide
