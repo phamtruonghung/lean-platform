@@ -86,6 +86,70 @@ abstract final class AppLayout {
   static const double pageWidth = 900;
 }
 
+/// The smallest a control's tap target may be (WCAG 2.5.8, Target Size).
+///
+/// **The number is spent in two places**: the height of a register row that
+/// holds a control or is itself the tap target (`AppTableRow`), and the height
+/// a toolbar's actions are laid out to. It is the one figure the density work
+/// does not get to spend: the reference board's 32px rows are under it, and the
+/// whole distance between that density and this Platform is paid by making a
+/// row nobody can tap 32px, never by shrinking a target.
+///
+/// **A row nobody can tap is allowed to be 32.** A target size is a property of
+/// something a person has to hit; a row of read-only cells has no such thing, so
+/// the floor does not apply to it.
+abstract final class AppTouchTarget {
+  static const double min = 44;
+}
+
+/// The widths at which a layout changes shape, named once.
+///
+/// **A breakpoint is a box width at a text scale of 1**, always read from a
+/// `LayoutBuilder` and never from the window, and always multiplied by the
+/// reader's text scale before it is compared ([effective]). Both halves of that
+/// sentence are a defect that shipped: #379 (and #381, which pinned its edges)
+/// was a header that wrapped by the box but forgot the text scale, so a reader at
+/// 200% text had actions squeezing a title; the earlier one, #105, was a table
+/// that asked the window for a width the Shell had already given away to its
+/// sidebar.
+///
+/// [headerActionsWrap] is the same number `AppPageHeader.wrapBreakpoint` already
+/// spends; neither file changes in this card. The names exist so that the
+/// primitives built on them, and the slices that adopt those, stop re-deriving
+/// the rule Screen by Screen. `docs/design-language.md` section 10 argues each
+/// number.
+abstract final class AppBreakpoints {
+  /// A page header's actions drop under its title.
+  static const double headerActionsWrap = 560;
+
+  /// A toolbar's count and actions drop under its filters.
+  static const double toolbarWrap = 640;
+
+  /// A register of five columns or fewer becomes a card per record.
+  static const double registerTable = 700;
+
+  /// A form's field grid goes two-column.
+  static const double formTwoColumn = 900;
+
+  /// A detail page's sections go two-column.
+  static const double detailTwoColumn = 1000;
+
+  /// [breakpoint] scaled by the reader's text size: the number a box width is
+  /// compared with.
+  ///
+  /// Text that is larger takes more room and the box does not grow, so the same
+  /// box needs the change of shape sooner (WCAG 1.4.4, Resize Text). **The text
+  /// scale never narrows a breakpoint below its 1x value**: each number was
+  /// measured at a scale of 1, so smaller text keeps it rather than loosening
+  /// it, which is why the factor is clamped at 1. Unclamped, a scale below 1
+  /// would shrink the number and the layout would change later, at a narrower
+  /// box, than the one that was measured.
+  static double effective(BuildContext context, double breakpoint) {
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    return breakpoint * (scale < 1 ? 1 : scale);
+  }
+}
+
 /// Layer 1, light — primitives. Raw values only, and only the ones a semantic
 /// or component token below actually spends.
 ///
