@@ -535,4 +535,80 @@ void main() {
     expect(find.byKey(JobPlansScreen.filterCountKey), findsNothing);
     expect(wire.requests.length, requestsBefore);
   });
+
+  testWidgets(
+    'at 1280 wide a Job plan\'s steps stay showing after a filter term that still matches it',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 900);
+      addTearDown(tester.view.reset);
+
+      final wire = wireWith(
+        jobPlans: [
+          jobPlanJson(
+            '1',
+            'JP-1',
+            'Annual service',
+            tasks: [jobPlanTaskJson('t1', 1, 'Isolate the motor')],
+          ),
+          jobPlanJson('2', 'JP-2', 'Quarterly inspection'),
+        ],
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/job-plans',
+      );
+
+      expect(find.text('Isolate the motor'), findsNothing);
+      await tapIn(tester, find.byKey(JobPlansScreen.stepsKey('1')));
+      expect(find.text('Isolate the motor'), findsOneWidget);
+
+      await tester.enterText(find.byKey(JobPlansScreen.filterFieldKey), 'annual');
+      await tester.pumpAndSettle();
+      expect(find.byKey(JobPlansScreen.rowKey('2')), findsNothing);
+      expect(find.text('Isolate the motor'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'at 1280 wide a PM schedule\'s rules stay showing after a filter term that still matches it',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 900);
+      addTearDown(tester.view.reset);
+
+      final wire = wireWith(
+        pmSchedules: {
+          '1': [
+            pmScheduleJson('9', 'PM-9', 'Quarterly press service'),
+            pmScheduleJson(
+              '10',
+              'PM-10',
+              'Conveyor belt check',
+              assetId: '8',
+              assetCode: 'CONV-2',
+              assetName: 'Conveyor 2',
+            ),
+          ],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/pm-schedules',
+      );
+
+      expect(find.textContaining('Raised 7 days early'), findsNothing);
+      await tapIn(tester, find.byKey(PmSchedulesScreen.rulesKey('9')));
+      expect(find.textContaining('Raised 7 days early'), findsOneWidget);
+
+      await tester.enterText(find.byKey(PmSchedulesScreen.filterFieldKey), 'press');
+      await tester.pumpAndSettle();
+      expect(find.byKey(PmSchedulesScreen.rowKey('10')), findsNothing);
+      expect(find.textContaining('Raised 7 days early'), findsOneWidget);
+    },
+  );
 }

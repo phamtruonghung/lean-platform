@@ -53,12 +53,15 @@ class MetersScreen extends StatelessWidget {
   /// The content width (at a text scale of 1) below which the register gives way
   /// to one card per meter, measured by `_MetersList`'s `LayoutBuilder`, never the
   /// window. It is 960, the page's own width, rather than the 700 of a five-column
-  /// register: this one has eight, and at 960 the cells have about 900px, of which
-  /// the kind and the action take about 290, leaving about 44px per share of the
-  /// six text and number columns — a code, a name and an Asset that read, with
-  /// `DisclosingText` for the rest. Narrower and the code and the unit would be
-  /// clipped on most rows. The register is therefore drawn only when the page frame
-  /// is at its full width.
+  /// register: this one has eight, and at 960 the cells have about 904px (the box
+  /// less the list's and the row's padding). The kind, the two number columns and
+  /// the action are measured and take about 470 of that, which leaves about 430 for
+  /// the four flex columns over their 10 shares: about 43px a share, so a code of
+  /// about 85px, a name of about 130, an Asset of about 170 and a unit of about
+  /// 35. Every band label fits its cell; the code, name and Asset text clip on
+  /// many rows and `DisclosingText` discloses it, as it does the carried-forward
+  /// line. Narrower and the shares fall under what the labels need. The register
+  /// is therefore drawn only when the page frame is at its full width.
   static const double narrowBreakpoint = 960;
 
   static const ValueKey<String> createKey = ValueKey<String>('meters-create');
@@ -351,6 +354,36 @@ double _widestLabel(BuildContext context, Iterable<String> labels) {
   return widest;
 }
 
+/// A band label's width in the band's own style (`AppTableHeader`: `labelMedium`,
+/// w600, letter spacing 0.2) at the reader's text scale, so a number column
+/// sized to it never ellipsizes its label.
+double _bandLabelWidth(BuildContext context, String label) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: label,
+      style: Theme.of(context).textTheme.labelMedium
+          ?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.2),
+    ),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width;
+}
+
+/// The Latest reading column's width: the wider of its band label and the
+/// "No reading yet" a meter with no reading shows, plus the slot's gutter.
+double _latestColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    text: TextSpan(text: 'No reading yet', style: AppTypography.dense(context)),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  final label = _bandLabelWidth(context, 'Latest reading');
+  return (painter.width > label ? painter.width : label) + Spacing.sm;
+}
+
 /// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
 /// built from this list, so a header label and its cells start at the same x.
 /// The values and their order are the card's: the meter's code, its name, the
@@ -371,8 +404,14 @@ List<AppTableColumn> _columns(BuildContext context, {required bool canAct}) => [
         Spacing.sm,
   ),
   const AppTableColumn('Unit', flex: 1),
-  const AppTableColumn('Latest reading', flex: 2, align: AppColumnAlign.end),
-  const AppTableColumn('Accumulated use', flex: 2, align: AppColumnAlign.end),
+  // The number columns are sized to their label, which is wider than their
+  // digits; the latest reading is also sized to its "No reading yet" words.
+  AppTableColumn('Latest reading', width: _latestColumnWidth(context), align: AppColumnAlign.end),
+  AppTableColumn(
+    'Accumulated use',
+    width: _bandLabelWidth(context, 'Accumulated use') + Spacing.sm,
+    align: AppColumnAlign.end,
+  ),
   if (canAct)
     AppTableColumn(
       'Actions',
@@ -424,7 +463,7 @@ class _MeterTableRow extends StatelessWidget {
           shrinkWrapTargets(
             Chip(label: Text(meter.meterTypeLabel), visualDensity: VisualDensity.compact),
           ),
-          Text(meter.uomCode, maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+          DisclosingText(meter.uomCode, style: muted),
           meter.latestReading == null
               ? Text('No reading yet', maxLines: 1, overflow: TextOverflow.ellipsis, style: muted)
               : Text(_number(meter.latestReading!), maxLines: 1, style: number),

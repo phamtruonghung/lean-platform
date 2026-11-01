@@ -47,6 +47,7 @@ import 'asset.dart';
 import 'asset_form_dialog.dart';
 import 'asset_move_dialog.dart';
 import 'assets_bloc.dart';
+import 'name_with_chip.dart';
 
 class AssetsScreen extends StatelessWidget {
   const AssetsScreen({super.key, required this.canPlaceAnAsset, required this.canCorrectAsset});
@@ -574,6 +575,12 @@ List<AppTableColumn> _columns(BuildContext context) => [
   AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
 ];
 
+/// The card's inner width (at a text scale of 1) below which the Org Unit and
+/// the criticality wrap under the name instead of sitting beside it. Measured
+/// on the card's own box, so a deep row in the tree, which loses `depth *
+/// Spacing.xl` to its indent, wraps sooner.
+const double _cardMetaBesideName = 400;
+
 class _AssetRow extends StatelessWidget {
   const _AssetRow({
     required this.asset,
@@ -609,52 +616,79 @@ class _AssetRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                asset.name,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  // A retired Asset must read as retired at a
-                                  // glance, not only through the chip beside
-                                  // it — a strikethrough survives even where
-                                  // the chip has scrolled out of view.
-                                  decoration: asset.isActive ? null : TextDecoration.lineThrough,
-                                  color: asset.isActive ? null : theme.colorScheme.onSurfaceVariant,
-                                ),
+              // The Org Unit and the criticality sit beside the name while the
+              // box can hold them, and wrap under it when it cannot: scaled by
+              // the reader's text size, because the name grows with the text and
+              // the box does not (design-language §10). A `Row` here overflowed
+              // at 2x text in a phone-width box.
+              LayoutBuilder(
+                builder: (context, box) {
+                  final meta = [
+                    Text(asset.orgUnitName, style: theme.textTheme.bodyMedium),
+                    Chip(label: Text(asset.criticalityLabel), visualDensity: VisualDensity.compact),
+                  ];
+                  final info = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              asset.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                // A retired Asset must read as retired at a
+                                // glance, not only through the chip beside
+                                // it — a strikethrough survives even where
+                                // the chip has scrolled out of view.
+                                decoration: asset.isActive ? null : TextDecoration.lineThrough,
+                                color: asset.isActive ? null : theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
-                            if (!asset.isActive) ...[
-                              const SizedBox(width: Spacing.sm),
-                              StatusChip(
-                                key: AssetsScreen.retiredChipKey(asset.id),
-                                label: 'Retired',
-                                tone: StatusTone.neutral,
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: Spacing.xxs),
-                        Text(
-                          '${asset.code} · ${asset.typeLabel}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
                           ),
+                          if (!asset.isActive) ...[
+                            const SizedBox(width: Spacing.sm),
+                            StatusChip(
+                              key: AssetsScreen.retiredChipKey(asset.id),
+                              label: 'Retired',
+                              tone: StatusTone.neutral,
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: Spacing.xxs),
+                      Text(
+                        '${asset.code} · ${asset.typeLabel}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  );
+                  if (box.maxWidth < AppBreakpoints.effective(context, _cardMetaBesideName)) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        info,
+                        const SizedBox(height: Spacing.sm),
+                        Wrap(
+                          spacing: Spacing.lg,
+                          runSpacing: Spacing.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: meta,
                         ),
                       ],
-                    ),
-                  ),
-                  Text(asset.orgUnitName, style: theme.textTheme.bodyMedium),
-                  const SizedBox(width: Spacing.lg),
-                  Chip(label: Text(asset.criticalityLabel), visualDensity: VisualDensity.compact),
-                ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: info),
+                      meta[0],
+                      const SizedBox(width: Spacing.lg),
+                      meta[1],
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: Spacing.sm),
               _AssetActions(
@@ -895,29 +929,24 @@ class _AssetTableRow extends StatelessWidget {
         cells: [
           Padding(
             padding: EdgeInsets.only(left: depth * Spacing.xl),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: DisclosingText(
-                    asset.name,
-                    style: dense?.copyWith(
-                      color: asset.isActive ? palette.textPrimary : palette.textMuted,
-                      decoration: asset.isActive ? null : TextDecoration.lineThrough,
-                    ),
-                  ),
+            child: NameWithChip(
+              name: DisclosingText(
+                asset.name,
+                style: dense?.copyWith(
+                  color: asset.isActive ? palette.textPrimary : palette.textMuted,
+                  decoration: asset.isActive ? null : TextDecoration.lineThrough,
                 ),
-                if (!asset.isActive) ...[
-                  const SizedBox(width: Spacing.sm),
-                  shrinkWrapTargets(
-                    StatusChip(
-                      key: AssetsScreen.retiredChipKey(asset.id),
-                      label: 'Retired',
-                      tone: StatusTone.neutral,
+              ),
+              chipLabel: 'Retired',
+              chip: asset.isActive
+                  ? null
+                  : shrinkWrapTargets(
+                      StatusChip(
+                        key: AssetsScreen.retiredChipKey(asset.id),
+                        label: 'Retired',
+                        tone: StatusTone.neutral,
+                      ),
                     ),
-                  ),
-                ],
-              ],
             ),
           ),
           DisclosingText('${asset.code} · ${asset.typeLabel}', style: muted),

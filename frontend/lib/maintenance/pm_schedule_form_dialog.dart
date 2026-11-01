@@ -9,6 +9,12 @@
 /// The Asset picker reads the Site's own register; the Job plan picker reads
 /// the shared catalogue, active plans only — the server refuses an inactive
 /// one with a 400, so it is not offered in the first place.
+///
+/// The wide dialog (640): an Asset, a Job plan, the basis, an interval or a meter
+/// target, the anchor and its explanation, lead time and priority side by side,
+/// and a start date are more than a short form holds, and the pair that sit in a
+/// row need the width. The 560 this used to set inside an `AlertDialog`'s content
+/// left the title and the action row at a width the platform chose.
 library;
 
 import 'package:flutter/material.dart';
@@ -16,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_search_field.dart';
 import 'asset.dart';
@@ -47,7 +54,10 @@ class PmScheduleFormDialog extends StatefulWidget {
   /// (AGENTS.md §7).
   static ValueKey<String> assetSuggestionKey(String assetId) =>
       AppSearchField.suggestionKey(_assetFieldName, assetId);
-  static const ValueKey<String> assetsFailedKey = ValueKey<String>('pm-schedule-form-assets-failed');
+  static const ValueKey<String> assetsFailedKey = ValueKey<String>(
+    'pm-schedule-form-assets-failed',
+  );
+
   /// The Job plan picker's own field name — the one string [jobPlanKey] and
   /// [jobPlanSuggestionKey] are both derived from (AGENTS.md §7). The
   /// catalogue is the whole plant's plans, so it is found by typing rather
@@ -60,22 +70,34 @@ class PmScheduleFormDialog extends StatefulWidget {
   /// (AGENTS.md §7).
   static ValueKey<String> jobPlanSuggestionKey(String jobPlanId) =>
       AppSearchField.suggestionKey(_jobPlanFieldName, jobPlanId);
-  static const ValueKey<String> jobPlansFailedKey =
-      ValueKey<String>('pm-schedule-form-job-plans-failed');
+  static const ValueKey<String> jobPlansFailedKey = ValueKey<String>(
+    'pm-schedule-form-job-plans-failed',
+  );
   static const ValueKey<String> basisKey = ValueKey<String>('pm-schedule-form-basis');
   static const ValueKey<String> intervalKey = ValueKey<String>('pm-schedule-form-interval');
   static const ValueKey<String> meterKey = ValueKey<String>('pm-schedule-form-meter');
-  static const ValueKey<String> metersFailedKey = ValueKey<String>('pm-schedule-form-meters-failed');
-  static const ValueKey<String> intervalMeterKey = ValueKey<String>('pm-schedule-form-interval-meter');
+  static const ValueKey<String> metersFailedKey = ValueKey<String>(
+    'pm-schedule-form-meters-failed',
+  );
+  static const ValueKey<String> intervalMeterKey = ValueKey<String>(
+    'pm-schedule-form-interval-meter',
+  );
   static const ValueKey<String> anchorKey = ValueKey<String>('pm-schedule-form-anchor');
-  static const ValueKey<String> anchorExplanationKey =
-      ValueKey<String>('pm-schedule-form-anchor-explanation');
+  static const ValueKey<String> anchorExplanationKey = ValueKey<String>(
+    'pm-schedule-form-anchor-explanation',
+  );
   static const ValueKey<String> leadTimeKey = ValueKey<String>('pm-schedule-form-lead-time');
   static const ValueKey<String> priorityKey = ValueKey<String>('pm-schedule-form-priority');
   static const ValueKey<String> nextDueKey = ValueKey<String>('pm-schedule-form-next-due');
-  static const ValueKey<String> submitKey = ValueKey<String>('pm-schedule-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('pm-schedule-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('pm-schedule-form-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'pm-schedule-form-submit';
+  static const String _cancelId = 'pm-schedule-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
 
   /// Opens the form over the schedule list — the same explicit Bloc hand-off
   /// every dialog in this Module uses, `showDialog`'s route sitting outside
@@ -187,7 +209,10 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
       return;
     }
     try {
-      final plans = await context.read<MaintenanceApi>().fetchJobPlans(token, includeInactive: false);
+      final plans = await context.read<MaintenanceApi>().fetchJobPlans(
+        token,
+        includeInactive: false,
+      );
       if (!mounted) return;
       setState(() {
         _jobPlans = plans;
@@ -222,13 +247,16 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
     }
     try {
       final meters = await context.read<MaintenanceApi>().fetchMeters(
-            token,
-            siteId: widget.siteId,
-            assetId: assetId,
-          );
+        token,
+        siteId: widget.siteId,
+        assetId: assetId,
+      );
       if (!mounted) return;
       setState(() {
-        _meters = [for (final meter in meters) if (meter.isCumulative) meter];
+        _meters = [
+          for (final meter in meters)
+            if (meter.isCumulative) meter,
+        ];
         _metersStatus = _LoadStatus.ready;
       });
     } on MaintenanceApiException catch (error) {
@@ -280,18 +308,18 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
     });
     final onMeter = _basis == _IntervalBasis.meter;
     context.read<PmSchedulesBloc>().add(
-          PmScheduleCreateConfirmed(
-            assetId: _assetId!,
-            jobPlanId: _jobPlanId!,
-            anchor: _anchor.wire,
-            intervalDays: onMeter ? null : _intervalValue!.toInt(),
-            assetMeterId: onMeter ? _meterId : null,
-            intervalMeter: onMeter ? _intervalMeterValue : null,
-            leadTimeDays: _leadTimeValue,
-            priority: _priority,
-            nextDueOn: onMeter ? null : _nextDueOn,
-          ),
-        );
+      PmScheduleCreateConfirmed(
+        assetId: _assetId!,
+        jobPlanId: _jobPlanId!,
+        anchor: _anchor.wire,
+        intervalDays: onMeter ? null : _intervalValue!.toInt(),
+        assetMeterId: onMeter ? _meterId : null,
+        intervalMeter: onMeter ? _intervalMeterValue : null,
+        leadTimeDays: _leadTimeValue,
+        priority: _priority,
+        nextDueOn: onMeter ? null : _nextDueOn,
+      ),
+    );
   }
 
   void _onSchedulesChanged(BuildContext context, PmSchedulesState state) {
@@ -308,206 +336,206 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<PmSchedulesBloc, PmSchedulesState>(
       listener: _onSchedulesChanged,
-      child: AlertDialog(
-        title: const Text('Schedule preventive maintenance'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
+      child: AppDialog(
+        title: 'Schedule preventive maintenance',
+        size: AppDialogSize.wide,
+        actions: [
+          AppDialogAction(
+            id: PmScheduleFormDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: PmScheduleFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : 'Schedule',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _AssetField(
+              status: _assetsStatus,
+              assets: _assets,
+              failure: _assetsFailure,
+              selectedId: _assetId,
+              enabled: !_awaiting,
+              onRetry: _loadAssets,
+              onChanged: _onAssetChanged,
+            ),
+            const SizedBox(height: Spacing.md),
+            _JobPlanField(
+              status: _plansStatus,
+              jobPlans: _jobPlans,
+              failure: _plansFailure,
+              selectedId: _jobPlanId,
+              enabled: !_awaiting,
+              onRetry: _loadJobPlans,
+              onChanged: (id) => setState(() => _jobPlanId = id),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<_IntervalBasis>(
+              key: PmScheduleFormDialog.basisKey,
+              initialValue: _basis,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Comes round on',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem<_IntervalBasis>(
+                  value: _IntervalBasis.days,
+                  child: Text('Elapsed time'),
+                ),
+                DropdownMenuItem<_IntervalBasis>(
+                  value: _IntervalBasis.meter,
+                  child: Text('Accumulated use'),
+                ),
+              ],
+              onChanged: _awaiting
+                  ? null
+                  : (value) {
+                      if (value == null) return;
+                      setState(() => _basis = value);
+                    },
+            ),
+            const SizedBox(height: Spacing.md),
+            if (_basis == _IntervalBasis.days)
+              TextField(
+                key: PmScheduleFormDialog.intervalKey,
+                controller: _interval,
+                enabled: !_awaiting,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Every how many days',
+                  border: OutlineInputBorder(),
+                ),
+              )
+            else ...[
+              _MeterField(
+                status: _metersStatus,
+                meters: _meters,
+                failure: _metersFailure,
+                selectedId: _meterId,
+                enabled: !_awaiting,
+                onRetry: () {
+                  final assetId = _assetId;
+                  if (assetId != null) _loadMeters(assetId);
+                },
+                onChanged: (id) => setState(() => _meterId = id),
+              ),
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: PmScheduleFormDialog.intervalMeterKey,
+                controller: _intervalMeter,
+                enabled: !_awaiting,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Every how much accumulated use',
+                  helperText: _selectedMeter == null
+                      ? 'Choose a cumulative meter first.'
+                      : 'In ${_selectedMeter!.uomCode}, one interval past where the meter stands now.',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<PmScheduleAnchor>(
+              key: PmScheduleFormDialog.anchorKey,
+              initialValue: _anchor,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'The interval rolls from',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final anchor in PmScheduleAnchor.values)
+                  DropdownMenuItem<PmScheduleAnchor>(value: anchor, child: Text(anchor.label)),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _anchor = value!),
+            ),
+            Padding(
+              key: PmScheduleFormDialog.anchorExplanationKey,
+              padding: const EdgeInsets.only(top: Spacing.xs),
+              child: Text(
+                _anchor.explanation,
+                style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            Row(
               children: [
-                _AssetField(
-                  status: _assetsStatus,
-                  assets: _assets,
-                  failure: _assetsFailure,
-                  selectedId: _assetId,
-                  enabled: !_awaiting,
-                  onRetry: _loadAssets,
-                  onChanged: _onAssetChanged,
-                ),
-                const SizedBox(height: Spacing.md),
-                _JobPlanField(
-                  status: _plansStatus,
-                  jobPlans: _jobPlans,
-                  failure: _plansFailure,
-                  selectedId: _jobPlanId,
-                  enabled: !_awaiting,
-                  onRetry: _loadJobPlans,
-                  onChanged: (id) => setState(() => _jobPlanId = id),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<_IntervalBasis>(
-                  key: PmScheduleFormDialog.basisKey,
-                  initialValue: _basis,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Comes round on',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem<_IntervalBasis>(
-                      value: _IntervalBasis.days,
-                      child: Text('Elapsed time'),
-                    ),
-                    DropdownMenuItem<_IntervalBasis>(
-                      value: _IntervalBasis.meter,
-                      child: Text('Accumulated use'),
-                    ),
-                  ],
-                  onChanged: _awaiting
-                      ? null
-                      : (value) {
-                          if (value == null) return;
-                          setState(() => _basis = value);
-                        },
-                ),
-                const SizedBox(height: Spacing.md),
-                if (_basis == _IntervalBasis.days)
-                  TextField(
-                    key: PmScheduleFormDialog.intervalKey,
-                    controller: _interval,
+                Expanded(
+                  child: TextField(
+                    key: PmScheduleFormDialog.leadTimeKey,
+                    controller: _leadTime,
                     enabled: !_awaiting,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
                     decoration: const InputDecoration(
-                      labelText: 'Every how many days',
+                      labelText: 'Raise this many days early',
                       border: OutlineInputBorder(),
                     ),
-                  )
-                else ...[
-                  _MeterField(
-                    status: _metersStatus,
-                    meters: _meters,
-                    failure: _metersFailure,
-                    selectedId: _meterId,
-                    enabled: !_awaiting,
-                    onRetry: () {
-                      final assetId = _assetId;
-                      if (assetId != null) _loadMeters(assetId);
-                    },
-                    onChanged: (id) => setState(() => _meterId = id),
                   ),
-                  const SizedBox(height: Spacing.md),
-                  TextField(
-                    key: PmScheduleFormDialog.intervalMeterKey,
-                    controller: _intervalMeter,
-                    enabled: !_awaiting,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Every how much accumulated use',
-                      helperText: _selectedMeter == null
-                          ? 'Choose a cumulative meter first.'
-                          : 'In ${_selectedMeter!.uomCode}, one interval past where the meter stands now.',
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<PmScheduleAnchor>(
-                  key: PmScheduleFormDialog.anchorKey,
-                  initialValue: _anchor,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'The interval rolls from',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final anchor in PmScheduleAnchor.values)
-                      DropdownMenuItem<PmScheduleAnchor>(value: anchor, child: Text(anchor.label)),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _anchor = value!),
                 ),
-                Padding(
-                  key: PmScheduleFormDialog.anchorExplanationKey,
-                  padding: const EdgeInsets.only(top: Spacing.xs),
-                  child: Text(_anchor.explanation, style: theme.textTheme.bodySmall),
-                ),
-                const SizedBox(height: Spacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        key: PmScheduleFormDialog.leadTimeKey,
-                        controller: _leadTime,
-                        enabled: !_awaiting,
-                        keyboardType: TextInputType.number,
-                        onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          labelText: 'Raise this many days early',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                const SizedBox(width: Spacing.md),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    key: PmScheduleFormDialog.priorityKey,
+                    isExpanded: true,
+                    initialValue: _priority,
+                    decoration: const InputDecoration(
+                      labelText: 'Priority',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(width: Spacing.md),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        key: PmScheduleFormDialog.priorityKey,
-                        isExpanded: true,
-                        initialValue: _priority,
-                        decoration: const InputDecoration(
-                          labelText: 'Priority',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem<int>(value: 1, child: Text('1 — most urgent')),
-                          DropdownMenuItem<int>(value: 2, child: Text('2')),
-                          DropdownMenuItem<int>(value: 3, child: Text('3')),
-                          DropdownMenuItem<int>(value: 4, child: Text('4')),
-                          DropdownMenuItem<int>(value: 5, child: Text('5 — least urgent')),
-                        ],
-                        onChanged: _awaiting
-                            ? null
-                            : (value) {
-                                if (value == null) return;
-                                setState(() => _priority = value);
-                              },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Spacing.md),
-                if (_basis == _IntervalBasis.days) ...[
-                  AppDateField(
-                    key: PmScheduleFormDialog.nextDueKey,
-                    name: 'pm-schedule-next-due',
-                    label: 'First due date (optional)',
-                    helperText: 'Left blank, the first due date is the interval from today.',
-                    value: _nextDueOn,
-                    onChanged: (value) => setState(() => _nextDueOn = value),
-                    optional: true,
-                    enabled: !_awaiting,
+                    items: const [
+                      DropdownMenuItem<int>(value: 1, child: Text('1 — most urgent')),
+                      DropdownMenuItem<int>(value: 2, child: Text('2')),
+                      DropdownMenuItem<int>(value: 3, child: Text('3')),
+                      DropdownMenuItem<int>(value: 4, child: Text('4')),
+                      DropdownMenuItem<int>(value: 5, child: Text('5 — least urgent')),
+                    ],
+                    onChanged: _awaiting
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() => _priority = value);
+                          },
                   ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: PmScheduleFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: Spacing.md),
+            if (_basis == _IntervalBasis.days) ...[
+              AppDateField(
+                key: PmScheduleFormDialog.nextDueKey,
+                name: 'pm-schedule-next-due',
+                label: 'First due date (optional)',
+                helperText: 'Left blank, the first due date is the interval from today.',
+                value: _nextDueOn,
+                onChanged: (value) => setState(() => _nextDueOn = value),
+                optional: true,
+                enabled: !_awaiting,
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: PmScheduleFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
         ),
-        actions: [
-          TextButton(
-            key: PmScheduleFormDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: PmScheduleFormDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Schedule'),
-          ),
-        ],
       ),
     );
   }
@@ -544,13 +572,17 @@ class _AssetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
           height: 48,
           child: Center(
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         );
       case _LoadStatus.failed:
@@ -560,7 +592,7 @@ class _AssetField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The Assets could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],
@@ -631,13 +663,17 @@ class _JobPlanField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
           height: 48,
           child: Center(
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         );
       case _LoadStatus.failed:
@@ -647,7 +683,7 @@ class _JobPlanField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The Job plans could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],
@@ -707,13 +743,17 @@ class _MeterField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
           height: 48,
           child: Center(
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         );
       case _LoadStatus.failed:
@@ -723,7 +763,7 @@ class _MeterField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The meters could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],
