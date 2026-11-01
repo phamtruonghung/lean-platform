@@ -225,12 +225,23 @@ void main() {
   // `_InputPadding` already makes its target 48 tall, so they measure the
   // framework and not `AppToolbar._target`. `shrinkWrap` lifts that padding,
   // leaving the toolbar's own `ConstrainedBox` as the only thing that can hold
-  // 44. The control experiment at the end proves the override has teeth: a
-  // bare button the toolbar did not wrap is shorter than 44 in the same theme.
+  // 44. The case first asserts the shrinkWrap theme is in force before it
+  // measures anything: theme is shrinkWrap, the toolbar holds 44, and the
+  // control experiment at the end shows a bare button the toolbar did not wrap
+  // is shorter than 44 (40) under that same theme, so the 44 is the toolbar's
+  // own floor.
   testWidgets('under shrinkWrap the 44 is the toolbar\'s own floor, not the framework\'s input padding',
       (tester) async {
     const shrinkWrap = MaterialTapTargetSize.shrinkWrap;
     await _pump(tester, boxWidth: 1280, tapTargetSize: shrinkWrap);
+    // The measurements below only mean anything if the tree really is in
+    // shrinkWrap: with the framework's `_InputPadding` in place a 48-tall
+    // button satisfies `>= AppTouchTarget.min` on its own.
+    expect(
+      Theme.of(tester.element(find.byKey(_exportKey))).materialTapTargetSize,
+      shrinkWrap,
+      reason: 'the toolbar case must be measured under shrinkWrap, or its 44 is the framework\'s',
+    );
     expect(tester.getSize(find.byKey(AppToolbar.actionsKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
     expect(tester.getSize(find.byKey(_addKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
     expect(tester.getSize(find.byKey(_exportKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
@@ -270,8 +281,9 @@ void main() {
       lessThan(AppTouchTarget.min),
       reason: 'in the control\'s own settled theme (no animation residue) an unwrapped '
           'OutlinedButton measures 40 tall, under 44, which shows _InputPadding is lifted '
-          'under shrinkWrap; so the toolbar\'s 44 measured above cannot come from the '
-          'framework\'s padding and can only come from AppToolbar\'s own ConstrainedBox',
+          'under shrinkWrap, and the toolbar case above is asserted to run under the same '
+          'shrinkWrap theme; so its 44 cannot come from the framework\'s padding and can '
+          'only come from AppToolbar\'s own ConstrainedBox',
     );
   });
 
