@@ -825,11 +825,11 @@ double _workOrderNoColumnWidth(BuildContext context) {
 /// built from this list, so a header label and its cells start at the same x.
 List<AppTableColumn> _columns(BuildContext context) => [
       AppTableColumn('WO#', width: _workOrderNoColumnWidth(context)),
-      const AppTableColumn('Summary', flex: 8),
+      const AppTableColumn('Summary', flex: 6),
       const AppTableColumn('Asset', flex: 2),
       const AppTableColumn('Org Unit', flex: 2),
       AppTableColumn('Status', width: _statusColumnWidth(context)),
-      const AppTableColumn('Assignee', flex: 2),
+      const AppTableColumn('Assignee', flex: 4),
       const AppTableColumn('Actions', width: _actionsColumnWidth, align: AppColumnAlign.end),
     ];
 
@@ -888,8 +888,10 @@ class _WorkOrderTableRow extends StatelessWidget {
           cells: [
             cell(workOrder.workOrderNo, style: muted),
             cell(workOrder.summary, style: primary, disclose: true),
-            // Asset, Org Unit and Assignee are unbounded user text and each gives
-            // way to the Summary, the row's name column; all three disclose.
+            // Asset gives way to the Summary, the row's name column, and Org Unit
+            // is the narrowest; both disclose. The Assignee keeps the share issue
+            // #168 raised (2→3, now 4 of 14) because "Unassigned" and an ordinary
+            // name were ellipsizing at the smaller one: at 1280 in Roboto both fit.
             cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}',
                 style: muted, disclose: true),
             cell(workOrder.orgUnitName, style: muted, disclose: true),

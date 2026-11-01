@@ -197,14 +197,30 @@ void main() {
       final paragraphs = find.descendant(of: cell, matching: find.byType(RichText));
       expect(paragraphs, findsOneWidget, reason: 'cell $i');
       final paragraph = tester.renderObject<RenderParagraph>(paragraphs);
-      // ignore: avoid_print
-      print('cell $i: slot ${tester.getSize(cell).width} text ${paragraph.size.width} clipped ${paragraph.didExceedMaxLines}');
       if (paragraph.didExceedMaxLines) {
         expect(find.descendant(of: cell, matching: find.byType(DisclosingText)), findsOneWidget,
             reason: 'cell $i is clipped, so it must be disclosed');
       }
     }
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('at the narrowest table windows no flex cell is squeezed to nothing or overflows',
+      (tester) async {
+    // A box of 800 is a window of about 1092 at a text scale of 1; at 1.19 the
+    // 800 has grown to 952, a window of about 1245. The WO# column is fixed, so
+    // these are the windows where the flex columns have the least left.
+    for (final (width, scale) in [(1093.0, 1.0), (1245.0, 1.19)]) {
+      await _pump(tester, width: width, textScale: scale, wire: _realisticWire());
+      expect(find.byType(AppTableHeader), findsOneWidget, reason: 'a table at $width x$scale');
+      for (final i in [1, 2, 3, 5]) {
+        final cell = _inRow('101', AppTableRow.cellKey(i));
+        expect(tester.getSize(cell).width, greaterThan(0), reason: 'cell $i at $width x$scale');
+        expect(find.descendant(of: cell, matching: find.byType(DisclosingText)), findsOneWidget,
+            reason: 'cell $i can be clipped here, so it discloses');
+      }
+      expect(tester.takeException(), isNull, reason: 'width $width x$scale');
+    }
   });
 
   testWidgets('at 1280 and 700 the toolbar carries the count, and nothing overflows',

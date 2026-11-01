@@ -128,7 +128,7 @@ class WorkOrderDialogHost extends StatelessWidget {
   /// The one way out of a notice: it changes nothing, so it is the dismiss
   /// action and `Esc` runs it.
   AppDialogAction _backToTheList(BuildContext context) => AppDialogAction(
-        id: 'back',
+        id: 'work-order-notice-back',
         label: 'Back to the list',
         kind: AppDialogActionKind.dismiss,
         onPressed: () => context.pop(),
