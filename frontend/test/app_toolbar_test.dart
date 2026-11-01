@@ -37,13 +37,14 @@ Future<void> _pump(
   List<Widget>? filters,
   Widget? count = const Text('12 work orders', key: _countTextKey),
   List<Widget>? actions,
+  MaterialTapTargetSize tapTargetSize = MaterialTapTargetSize.padded,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(2300, 900);
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
-      theme: buildAppTheme(),
+      theme: buildAppTheme().copyWith(materialTapTargetSize: tapTargetSize),
       home: Scaffold(
         body: Builder(
           builder: (context) => MediaQuery(
@@ -215,6 +216,56 @@ void main() {
     await _pump(tester, boxWidth: 440);
     expect(tester.getSize(find.byKey(_addKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
     expect(tester.getSize(find.byKey(_exportKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+  });
+
+  // The five assertions above pass even with the toolbar's floor deleted:
+  // `flutter_test` mounts on Android, where a Material button's `_InputPadding`
+  // already makes its target 48 tall, so they measure the framework and not
+  // `AppToolbar._target`. `shrinkWrap` lifts that padding, leaving the toolbar's
+  // own `ConstrainedBox` as the only thing that can hold 44. The control
+  // experiment at the end proves the override has teeth: a bare button the
+  // toolbar did not wrap is shorter than 44 in the same theme.
+  testWidgets('under shrinkWrap the 44 is the toolbar\'s own floor, not the framework\'s input padding',
+      (tester) async {
+    const shrinkWrap = MaterialTapTargetSize.shrinkWrap;
+    await _pump(tester, boxWidth: 1280, tapTargetSize: shrinkWrap);
+    expect(tester.getSize(find.byKey(AppToolbar.actionsKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+    expect(tester.getSize(find.byKey(_addKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+    expect(tester.getSize(find.byKey(_exportKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+    await _pump(tester, boxWidth: 440, tapTargetSize: shrinkWrap);
+    expect(tester.getSize(find.byKey(AppToolbar.actionsKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+    expect(tester.getSize(find.byKey(_addKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+    expect(tester.getSize(find.byKey(_exportKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+
+    // An icon-only action is the narrowest target a caller can hand in.
+    await _pump(
+      tester,
+      boxWidth: 1280,
+      tapTargetSize: shrinkWrap,
+      actions: [
+        IconButton(key: _exportKey, tooltip: 'Export', onPressed: () {}, icon: const Icon(Icons.download)),
+      ],
+    );
+    expect(tester.getSize(find.byKey(_exportKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+
+    // Control: the same button with no AppToolbar around it, in the same theme.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme().copyWith(materialTapTargetSize: shrinkWrap),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: OutlinedButton(key: _exportKey, onPressed: () {}, child: const Text('Export')),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.getSize(find.byKey(_exportKey)).height,
+      lessThan(AppTouchTarget.min),
+      reason: 'an unwrapped button is under 44 here, which proves _InputPadding is lifted in this '
+          'theme, so the toolbar\'s 44 above can only come from its own ConstrainedBox',
+    );
   });
 
   testWidgets('an icon-only action keeps the label its caller gave it, and is still 44 tall',
