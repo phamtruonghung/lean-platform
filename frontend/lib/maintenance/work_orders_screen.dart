@@ -628,10 +628,13 @@ class _Notice extends StatelessWidget {
 ///   same x by construction. Deliberately not Flutter's `DataTable`: its
 ///   default is a horizontally-scrolling `SingleChildScrollView`, which is
 ///   exactly the shape this ticket bans at every width, not only below the
-///   breakpoint. **A row is exactly 44px** (`AppTouchTarget.min`): the whole row
-///   opens the Work order, so it is a tap target, and §6 moves Work orders from
-///   56 to 44. The row's own buttons are laid out inside that 44, see
-///   [_RowActions.compact].
+///   breakpoint. **A row is 52px at a text scale of 1**
+///   (`AppTouchTarget.min` + 2 × `Spacing.xs`): the whole row opens the Work
+///   order, so it is a tap target of at least 44 (§6 moves Work orders from 56
+///   toward 44), but it also holds Start/Complete and the overflow trigger, and
+///   a control is never less than 44 either. The 44px control plus the
+///   `Spacing.xs` `AppTableRow` pads above and below it is the 52; a row with no
+///   action is 44.
 /// - Below it: one card per Work order, carrying at minimum the Work order
 ///   number, summary, Asset, Org Unit, status and the single primary action
 ///   — issue #104's own floor. The assignee stays too, since #99's own wide
@@ -786,11 +789,6 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
 /// it by construction, whichever row does or does not offer a primary button.
 const double _actionsColumnWidth = 232;
 
-/// How tall a button is when it sits *inside* a 44px register row: the row's 44
-/// less the `Spacing.xs` `AppTableRow` pads above and below it. The row itself is
-/// the 44px target (it opens the Work order); a card's buttons stay 44.
-const double _compactControlHeight = AppTouchTarget.min - 2 * Spacing.xs;
-
 double _statusColumnWidth(BuildContext context) {
   final style = Theme.of(context).textTheme.labelLarge;
   final direction = Directionality.of(context);
@@ -850,15 +848,16 @@ class _WorkOrderTableRow extends StatelessWidget {
     // cells hold values this Screen's own schema bounds (a Work order number,
     // a status label, an Org Unit name that the column split now fits), so
     // wrapping them too would put a tooltip on every cell of every row for no
-    // reason. One line each: a row is 44, never taller.
+    // reason. One line each, so no cell makes a row taller than its 44px controls.
     Widget cell(String text, {TextStyle? style, bool disclose = false}) => disclose
         ? DisclosingText(text, style: style)
         : Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
 
-    // The register's own buttons and chip sit inside a 44px row, so the
-    // framework's padded tap target (48 on a mobile platform) is lifted here:
-    // the row is the target, and it must not be pushed past 44 by a control.
-    Widget compact(Widget child) => Theme(
+    // The framework's padded tap target (48 on a mobile platform) is lifted on
+    // the chip and the buttons: each control states its own 44 through
+    // `minimumSize`, and the padded target would add height to the row, which
+    // is 52 by that 44 and not by the framework's rounding.
+    Widget shrinkWrapTargets(Widget child) => Theme(
           data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
           child: child,
         );
@@ -882,14 +881,13 @@ class _WorkOrderTableRow extends StatelessWidget {
             cell('${workOrder.assetName} (${workOrder.assetCode}) · ${workOrder.workTypeLabel}',
                 style: muted, disclose: true),
             cell(workOrder.orgUnitName, style: muted),
-            compact(StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone)),
+            shrinkWrapTargets(StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone)),
             cell(workOrder.assigneeName ?? 'Unassigned', style: primary, disclose: true),
-            compact(_RowActions(
+            shrinkWrapTargets(_RowActions(
               workOrder: workOrder,
               canAssign: canAssign,
               canWork: canWork,
               busy: busy,
-              compact: true,
             )),
           ],
         ),
@@ -1040,31 +1038,27 @@ class _WorkOrderCard extends StatelessWidget {
 /// disables the primary button and the overflow trigger itself, so a second
 /// write cannot even be started while the first is still settling.
 ///
-/// **[compact]** is the register row's shape: the buttons are
-/// [_compactControlHeight] (36) tall so that, with the `Spacing.xs` the row pads
-/// above and below, the row is exactly 44 and the *row* is the 44px target. A
-/// card's actions are not compact: they sit under the card's own text and keep
-/// the full 44.
+/// Every button here is `AppTouchTarget.min` (44) square at least, in the
+/// register row and in the card alike: a row that holds a control keeps the
+/// control's own 44 rather than leaning on the row being the target.
+///
 class _RowActions extends StatelessWidget {
   const _RowActions({
     required this.workOrder,
     required this.canAssign,
     required this.canWork,
     required this.busy,
-    this.compact = false,
   });
 
   final WorkOrder workOrder;
   final bool canAssign;
   final bool canWork;
   final bool busy;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final status = workOrder.status;
-    final buttonSize =
-        Size(AppTouchTarget.min, compact ? _compactControlHeight : AppTouchTarget.min);
+    const buttonSize = Size(AppTouchTarget.min, AppTouchTarget.min);
     final items = <_RowOverflowItem>[
       if (canAssign)
         _RowOverflowItem(
@@ -1150,9 +1144,7 @@ class _RowOverflowButton extends StatelessWidget {
       key: WorkOrdersScreen.rowActionsKey(workOrderId),
       tooltip: 'More actions',
       icon: const Icon(Icons.more_vert),
-      // No padding of its own: the icon sits in the `size` the caller asks for,
-      // so a compact trigger is 36 tall rather than 40.
-      style: IconButton.styleFrom(minimumSize: size, padding: EdgeInsets.zero),
+      style: IconButton.styleFrom(minimumSize: size),
       onPressed: enabled ? () => _open(context) : null,
     );
   }

@@ -2,9 +2,9 @@
 ///
 /// The register is an `AppTableHeader` band and one `AppTableRow` per Work order
 /// at or above 800 of box, and a card per Work order below it. This pins what a
-/// reader can see of that: the band is 32 and a row exactly 44 (the whole row
-/// opens the Work order, so it is a tap target, and design-language §6 moves it
-/// from 56), a header label starts where its cells start, a column's left edge
+/// reader can see of that: the band is 32 and a row exactly 52 (the 44px
+/// control inside it plus the `Spacing.xs` `AppTableRow` pads above and below;
+/// design-language §6 moves it from 56 and says a control is never under 44), a header label starts where its cells start, a column's left edge
 /// is the same on every row, the actions column ends where the row's padding
 /// says, and the card layout has a height of its own that does not drift. The
 /// same structure is asserted at a text scale of 2, with no overflow.
@@ -59,15 +59,17 @@ Finder _inRow(String id, Key cell) => find.descendant(
     );
 
 void main() {
-  testWidgets('at 1280 the band is 32, a row is exactly 44, and the columns line up', (tester) async {
+  testWidgets('at 1280 the band is 32, a row is exactly 52, and the columns line up', (tester) async {
     await _pump(tester, width: 1280);
 
     expect(find.byType(AppTableHeader), findsOneWidget);
     expect(tester.getSize(find.byType(AppTableHeader)).height, AppTableHeader.height);
 
     for (final id in ['101', '102']) {
-      expect(tester.getSize(find.byKey(WorkOrdersScreen.rowKey(id))).height, AppTouchTarget.min,
-          reason: 'Work order $id: the row is the 44px tap target, not 56');
+      expect(tester.getSize(find.byKey(WorkOrdersScreen.rowKey(id))).height,
+          AppTouchTarget.min + 2 * Spacing.xs,
+          reason: 'Work order $id: the 44px control inside it plus Spacing.xs above and below, '
+              'not 56');
     }
 
     // A header label starts at the same x as its column's first cell. Actions is
@@ -99,11 +101,34 @@ void main() {
     }
   });
 
-  testWidgets('at 1280 the rows are no taller than 44, so a day\'s list fits', (tester) async {
+  testWidgets('at 1280 every row control is at least 44 wide and tall', (tester) async {
+    await _pump(tester, width: 1280);
+    final controls = {
+      'Start 101': WorkOrdersScreen.startKey('101'),
+      'kebab 101': WorkOrdersScreen.rowActionsKey('101'),
+      'Complete 102': WorkOrdersScreen.completeKey('102'),
+      'kebab 102': WorkOrdersScreen.rowActionsKey('102'),
+    };
+    for (final entry in controls.entries) {
+      final size = tester.getSize(find.byKey(entry.value));
+      expect(size.height, AppTouchTarget.min, reason: '${entry.key} height');
+      expect(size.width, greaterThanOrEqualTo(AppTouchTarget.min), reason: '${entry.key} width');
+    }
+  });
+
+  testWidgets('at 1280 the rows are no taller than 52, so a working day\'s list fits',
+      (tester) async {
     await _pump(tester, width: 1280);
     final first = tester.getTopLeft(find.byKey(WorkOrdersScreen.rowKey('101'))).dy;
     final second = tester.getTopLeft(find.byKey(WorkOrdersScreen.rowKey('102'))).dy;
-    expect(second - first, AppTouchTarget.min);
+    expect(second - first, AppTouchTarget.min + 2 * Spacing.xs);
+    // Rows that fit in the 900px under the band: the page above the first row is
+    // measured, not assumed.
+    final bandBottom = tester.getBottomRight(find.byType(AppTableHeader)).dy;
+    const body = 900.0;
+    final rows = ((body - bandBottom) / (AppTouchTarget.min + 2 * Spacing.xs)).floor();
+    expect(rows, greaterThanOrEqualTo(10),
+        reason: 'a 900px page shows at least ten rows below a band at $bandBottom');
     expect(tester.takeException(), isNull);
   });
 
