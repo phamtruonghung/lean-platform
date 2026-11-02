@@ -1,4 +1,4 @@
-/// One issue's pictures: reading them, adding one, removing one (issue #418).
+/// One issue's pictures: reading them, adding one, removing one (issue #419).
 ///
 /// **One Bloc for both record kinds.** A Non-conformance's pictures and a
 /// customer complaint's are the same four addresses under different paths, and

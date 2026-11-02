@@ -546,7 +546,7 @@ const List<Destination> platformDestinations = [
     path: Routes.complaints,
     group: DestinationGroupNames.quality,
   ),
-  // The slide show (issue #418): the Quality issues chosen for the Site, one
+  // The slide show (issue #419): the Quality issues chosen for the Site, one
   // picture at a time. Filed here, beside the two registers it draws from,
   // because it is the same records read differently — a wall rather than a
   // list. Offered to every approved Account for the same reason the registers

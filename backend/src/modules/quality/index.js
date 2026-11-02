@@ -94,7 +94,7 @@ const supplierRoutes = require('./supplier-routes');
 const supplierNcrRoutes = require('./supplier-ncr-routes');
 const floorRoutes = require('./floor-routes');
 // Pictures of an issue, and the Site's slide show of the chosen ones
-// (issue #418). Two files: the four image addresses are mounted for both record
+// (issue #419). Two files: the four image addresses are mounted for both record
 // kinds, and the show has its own three.
 const issueImageRoutes = require('./issue-image-routes');
 const slideShowRoutes = require('./slide-show-routes');

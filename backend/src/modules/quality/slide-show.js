@@ -1,5 +1,5 @@
 /*
- * The slide show's chosen set (issue #418): which Quality issues a supervisor
+ * The slide show's chosen set (issue #419): which Quality issues a supervisor
  * put on the wall, in what order, and the pictures to draw for each.
  *
  * **The choice is a column on the record, not a membership table.** The card

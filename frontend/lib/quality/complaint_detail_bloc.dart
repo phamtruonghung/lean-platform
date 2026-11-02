@@ -65,7 +65,7 @@ class ComplaintLinkConfirmed extends ComplaintDetailEvent {
   final String nonconformanceId;
 }
 
-/// Puts this complaint on its Site's slide show, or takes it off (issue #418) —
+/// Puts this complaint on its Site's slide show, or takes it off (issue #419) —
 /// the detail Screen's own switch. The record is re-read afterwards so the
 /// switch, the register row and the wall all agree.
 class ComplaintSlideShowToggled extends ComplaintDetailEvent {

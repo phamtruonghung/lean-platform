@@ -1,4 +1,4 @@
-/// The pictures of one Quality issue, on its detail Screen (issue #418).
+/// The pictures of one Quality issue, on its detail Screen (issue #419).
 ///
 /// One section, used by both record kinds: the Non-conformance's Screen and the
 /// complaint's Screen each build an [IssueImagesBloc] for their own record and

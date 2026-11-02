@@ -1,4 +1,4 @@
-/// Pictures of a Quality issue, and the Site's slide show (issue #418), driven
+/// Pictures of a Quality issue, and the Site's slide show (issue #419), driven
 /// through the router against a faked wire — the seam `nonconformances_test.dart`
 /// and `complaints_test.dart` already use.
 ///
@@ -367,6 +367,35 @@ void main() {
     await _settleLoad(tester);
 
     expect(find.byKey(SlideShowScreen.slideKey), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('at 1280 with twice the text the facts drop under the picture', (tester) async {
+    final wire = _wire(slideShowIssues: [
+      _slide(
+        kind: 'nonconformance',
+        id: '701',
+        number: 'NC-HCM-2026-00001',
+        position: 1,
+        images: [_picture('1')],
+      ),
+    ]);
+    await _pump(
+      tester,
+      wire,
+      location: '/slide-show',
+      size: const Size(1280, 900),
+      textScale: 2,
+      settle: false,
+    );
+    await _settleLoad(tester);
+
+    final picture = tester.getRect(find.byKey(SlideShowScreen.slideKey));
+    final facts = tester.getRect(find.byKey(SlideShowScreen.factsKey));
+    // A 1280 box at twice the text is the narrow layout: the facts go under the
+    // picture, not over it. A breakpoint read off the width alone draws them on
+    // top of it, which is why this measures instead of only finding the keys.
+    expect(facts.top, greaterThanOrEqualTo(picture.bottom - 1));
     expect(tester.takeException(), isNull);
   });
 

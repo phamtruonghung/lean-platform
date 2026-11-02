@@ -69,7 +69,7 @@ class PlatformApp extends StatefulWidget {
   /// web); a widget test supplies one that answers without a browser.
   final SignatureFilePicker? signatureFilePicker;
 
-  /// How a person chooses a picture of a Quality issue (issue #418) — the same
+  /// How a person chooses a picture of a Quality issue (issue #419) — the same
   /// seam as [signatureFilePicker], and supplied by a test for the same reason.
   final QualityPhotoPicker? qualityPhotoPicker;
 

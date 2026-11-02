@@ -1,4 +1,4 @@
-/// Choose this issue for the Site's slide show (issue #418).
+/// Choose this issue for the Site's slide show (issue #419).
 ///
 /// **One widget, two sizes.** A register row gets the compact form — an icon
 /// control beside "Open" — because a seven-column table has no room for a

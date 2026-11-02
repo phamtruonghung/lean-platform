@@ -1,5 +1,5 @@
 /*
- * The slide show over HTTP (issue #418).
+ * The slide show over HTTP (issue #419).
  *
  *   GET  /sites/:siteId/slide-show            what is on this Site's wall
  *   PUT  /slide-show/:kind/:id                put one issue on it, or take it off

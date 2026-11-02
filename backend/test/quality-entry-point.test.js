@@ -230,7 +230,7 @@ test('the router carries the Product, Defect code, Non-conformance, Customer, co
     'POST /supplier-ncrs/:id/link',
     'POST /supplier-ncrs/:id/nonconformance',
     'POST /suppliers',
-    // Issue #418: a picture per issue, and the Site's slide show of the
+    // Issue #419: a picture per issue, and the Site's slide show of the
     // chosen ones.
     'PUT /sites/:siteId/slide-show/order',
     'PUT /slide-show/:kind/:id'

@@ -1,4 +1,4 @@
-/// Turning a chosen file into a picture this Platform will store (issue #418).
+/// Turning a chosen file into a picture this Platform will store (issue #419).
 ///
 /// **The client does the pixel work, because the backend carries no image
 /// library.** That is the division of labour ADR-0052 already recorded for a

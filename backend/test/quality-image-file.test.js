@@ -1,5 +1,5 @@
 /*
- * `image-file.js` — what a picture is, read from its own bytes (issue #418).
+ * `image-file.js` — what a picture is, read from its own bytes (issue #419).
  *
  * No database and no HTTP: this is the arithmetic and the refusals, and every
  * case below is a case the door actually has to answer. The two that matter

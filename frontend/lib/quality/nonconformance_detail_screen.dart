@@ -77,7 +77,7 @@ class NonconformanceDetailScreen extends StatelessWidget {
 
   static const ValueKey<String> backKey = ValueKey<String>('nonconformance-back');
 
-  /// The slide-show switch on this record (issue #418).
+  /// The slide-show switch on this record (issue #419).
   static const ValueKey<String> slideShowKey =
       ValueKey<String>('nonconformance-detail-slide-show');
   static const ValueKey<String> statusKey = ValueKey<String>('nonconformance-detail-status');
@@ -454,7 +454,7 @@ class _SummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.sm),
             // The slide-show switch belongs beside the record's own facts
-            // rather than in a card of its own (issue #418): it is a fact about
+            // rather than in a card of its own (issue #419): it is a fact about
             // this record, and a separate card pushed every section below it
             // down the page.
             SlideShowToggle(
@@ -956,7 +956,7 @@ StatusTone _severityTone(String severity) => switch (severity) {
 String _number(double value) =>
     value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toString();
 
-/// The record's pictures (issue #418) — the shared section with a Bloc of its
+/// The record's pictures (issue #419) — the shared section with a Bloc of its
 /// own for this record.
 class _PicturesSection extends StatelessWidget {
   const _PicturesSection({required this.row});

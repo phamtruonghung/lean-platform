@@ -1,4 +1,4 @@
-/// Choosing a picture of a Quality issue from the device (issue #418).
+/// Choosing a picture of a Quality issue from the device (issue #419).
 ///
 /// A seam, so the Screen that offers "add picture" does not know it is running
 /// in a browser: the browser's file input lives behind a conditional import

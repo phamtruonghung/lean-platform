@@ -239,7 +239,7 @@ class CustomerComplaint {
   final bool isWarranty;
   final String? closedAt;
 
-  /// Whether this complaint is on its Site's slide show (issue #418).
+  /// Whether this complaint is on its Site's slide show (issue #419).
   final bool inSlideShow;
 
   /// What was said back, written when the complaint was closed. Required to

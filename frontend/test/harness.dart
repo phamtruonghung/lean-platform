@@ -70,7 +70,7 @@ Future<void> loadAppFonts() async {
 }
 
 /// A real, decodable 1×1 PNG — the bytes every picture address in [FakeWire]
-/// answers with (issue #418).
+/// answers with (issue #419).
 ///
 /// A fixture rather than a placeholder string because `Image.memory` decodes
 /// its argument: garbage bytes throw inside the widget, which a widget test
@@ -5388,7 +5388,7 @@ class FakeWire {
   }
 
   // -------------------------------------------------------------------------
-  // Pictures of a Quality issue, and the Site's slide show (issue #418).
+  // Pictures of a Quality issue, and the Site's slide show (issue #419).
   //
   // Their own section rather than branches inside the two registers' blocks:
   // the picture addresses hang off the same records, and the show is a Site
@@ -10836,7 +10836,7 @@ class FakeSignatureFilePicker implements SignatureFilePicker {
 
 /// A [QualityPhotoPicker] that answers with whatever the test says the person
 /// chose (null: they chose nothing, a thrown exception: the file was not a
-/// picture), and counts how often it was asked (issue #418).
+/// picture), and counts how often it was asked (issue #419).
 class FakeQualityPhotoPicker implements QualityPhotoPicker {
   FakeQualityPhotoPicker({this.chosen, this.refusal});
 
@@ -11012,7 +11012,7 @@ Future<void> pumpApp(
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       // The file input a browser would show, faked: a test says what was chosen.
       signatureFilePicker: signatureFilePicker ?? FakeSignatureFilePicker(),
-      // Issue #418's own file input, faked at the same seam.
+      // Issue #419's own file input, faked at the same seam.
       qualityPhotoPicker: qualityPhotoPicker ?? FakeQualityPhotoPicker(),
       initialLocation: initialLocation,
     ),

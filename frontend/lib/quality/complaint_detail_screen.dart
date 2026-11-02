@@ -66,7 +66,7 @@ class ComplaintDetailScreen extends StatelessWidget {
   static const ValueKey<String> retryKey = ValueKey<String>('complaint-detail-retry');
   static const ValueKey<String> backKey = ValueKey<String>('complaint-detail-back');
 
-  /// The slide-show switch on this record (issue #418).
+  /// The slide-show switch on this record (issue #419).
   static const ValueKey<String> slideShowKey = ValueKey<String>('complaint-detail-slide-show');
   static const ValueKey<String> statusKey = ValueKey<String>('complaint-detail-status');
   static const ValueKey<String> overdueKey = ValueKey<String>('complaint-detail-overdue');
@@ -363,7 +363,7 @@ class _SummaryCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Spacing.sm),
-            // The slide-show switch, beside the record's own facts (issue #418)
+            // The slide-show switch, beside the record's own facts (issue #419)
             // — see `nonconformance_detail_screen.dart` for the same choice.
             SlideShowToggle(
               key: ComplaintDetailScreen.slideShowKey,
@@ -516,7 +516,7 @@ class _ResponseSection extends StatelessWidget {
   }
 }
 
-/// The complaint's pictures (issue #418): the section, with a Bloc of its own
+/// The complaint's pictures (issue #419): the section, with a Bloc of its own
 /// per record — the same one the Non-conformance detail Screen uses.
 class _PicturesSection extends StatelessWidget {
   const _PicturesSection({required this.complaint});

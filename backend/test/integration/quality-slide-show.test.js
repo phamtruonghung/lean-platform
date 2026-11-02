@@ -1,5 +1,5 @@
 /*
- * Pictures of a Quality issue, and the Site's slide show (issue #418) — over
+ * Pictures of a Quality issue, and the Site's slide show (issue #419) — over
  * HTTP, against a real database and a locally issued JWKS. The scaffolding is
  * the one `customer-complaints.test.js` establishes.
  *

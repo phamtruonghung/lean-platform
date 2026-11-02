@@ -145,7 +145,7 @@ class NonconformanceConcernLinked extends NonconformanceDetailEvent {
 }
 
 /// Puts this Non-conformance on its Site's slide show, or takes it off
-/// (issue #418) — the detail Screen's own switch.
+/// (issue #419) — the detail Screen's own switch.
 class NonconformanceDetailSlideShowToggled extends NonconformanceDetailEvent {
   const NonconformanceDetailSlideShowToggled({required this.id, required this.chosen});
 
@@ -605,7 +605,7 @@ class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, Nonconfor
     }
   }
 
-  /// The detail Screen's slide-show switch (issue #418): choose or unchoose the
+  /// The detail Screen's slide-show switch (issue #419): choose or unchoose the
   /// record, then re-read it so the switch and the register row agree.
   Future<void> _onSlideShowToggled(
     NonconformanceDetailSlideShowToggled event,

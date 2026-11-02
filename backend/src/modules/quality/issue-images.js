@@ -1,5 +1,5 @@
 /*
- * A picture of a Quality issue (issue #418) — the storage half, for both record
+ * A picture of a Quality issue (issue #419) — the storage half, for both record
  * kinds that can carry one: a Non-conformance and a customer complaint.
  *
  * **One table, two parents.** `quality_issue_images` holds exactly one of

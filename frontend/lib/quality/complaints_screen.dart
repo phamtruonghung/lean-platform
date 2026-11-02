@@ -99,7 +99,7 @@ class ComplaintsScreen extends StatelessWidget {
   /// keyboard reaches only by tabbing through everything before it.
   static ValueKey<String> rowOpenKey(String id) => ValueKey<String>('complaint-open-$id');
 
-  /// The row's slide-show toggle (issue #418), and the banner a refused toggle
+  /// The row's slide-show toggle (issue #419), and the banner a refused toggle
   /// renders in.
   static ValueKey<String> slideShowKey(String id) => ValueKey<String>('complaint-slide-show-$id');
   static const ValueKey<String> slideShowFailureKey =
@@ -409,7 +409,7 @@ double _openColumnWidth(BuildContext context) {
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,
   )..layout();
-  // The Open button and the slide-show toggle beside it (issue #418); see
+  // The Open button and the slide-show toggle beside it (issue #419); see
   // `nonconformances_screen.dart`'s own note on the same measurement.
   return painter.width + 2 * Spacing.xl + Spacing.sm + AppTouchTarget.min + Spacing.xs;
 }
@@ -669,7 +669,7 @@ class _ComplaintCard extends StatelessWidget {
   }
 }
 
-/// Whether this row's slide-show request is in flight (issue #418) — the
+/// Whether this row's slide-show request is in flight (issue #419) — the
 /// complaint's half of `NonconformancesScreen`'s own helper, and `select` for
 /// the same reason: only the row that changed rebuilds.
 bool _slideShowPending(BuildContext context, String id) =>

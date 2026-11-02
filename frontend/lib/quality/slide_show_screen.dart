@@ -1,4 +1,4 @@
-/// The Quality slide show (issue #418): one Site's chosen issues, one picture
+/// The Quality slide show (issue #419): one Site's chosen issues, one picture
 /// at a time, on a loop.
 ///
 /// **It is a Screen, not a kiosk mode.** It has an address, it sits under the
@@ -34,6 +34,7 @@ import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_banner.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
@@ -536,109 +537,117 @@ class _OrderDialog extends StatelessWidget {
     return BlocBuilder<SlideShowBloc, SlideShowState>(
       builder: (context, state) {
         if (state is! SlideShowLoaded) {
-          return const AlertDialog(
+          return AppDialog(
             key: SlideShowScreen.orderDialogKey,
-            content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
+            title: 'The order the show plays in',
+            size: AppDialogSize.form,
+            actions: [
+              AppDialogAction(
+                id: 'quality-slide-order-close',
+                label: 'Done',
+                kind: AppDialogActionKind.dismiss,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+            child: const SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
           );
         }
         final issues = state.issues;
-        return AlertDialog(
+        return AppDialog(
           key: SlideShowScreen.orderDialogKey,
-          title: const Text('The order the show plays in'),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (issues.isEmpty)
-                    const Text('Nothing is chosen yet.')
-                  else
-                    for (var index = 0; index < issues.length; index++)
-                      ListTile(
-                        key: SlideShowScreen.orderRowKey(issues[index].kind, issues[index].id),
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          '${index + 1}. ${issues[index].number} '
-                          '(${IssueKind.label(issues[index].kind)})',
-                        ),
-                        subtitle: Text(
-                          issues[index].hasPicture
-                              ? '${issues[index].images.length} picture${issues[index].images.length == 1 ? '' : 's'}'
-                              : 'No picture yet — it will not appear until one is added',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              key: SlideShowScreen.orderUpKey(
-                                  issues[index].kind, issues[index].id),
-                              tooltip: 'Move earlier',
-                              onPressed: index == 0 || state.isSaving
-                                  ? null
-                                  : () => context.read<SlideShowBloc>().add(
-                                        SlideShowIssueMoved(
-                                          kind: issues[index].kind,
-                                          id: issues[index].id,
-                                          delta: -1,
-                                        ),
-                                      ),
-                              icon: const Icon(Icons.arrow_upward),
-                            ),
-                            IconButton(
-                              key: SlideShowScreen.orderDownKey(
-                                  issues[index].kind, issues[index].id),
-                              tooltip: 'Move later',
-                              onPressed: index == issues.length - 1 || state.isSaving
-                                  ? null
-                                  : () => context.read<SlideShowBloc>().add(
-                                        SlideShowIssueMoved(
-                                          kind: issues[index].kind,
-                                          id: issues[index].id,
-                                          delta: 1,
-                                        ),
-                                      ),
-                              icon: const Icon(Icons.arrow_downward),
-                            ),
-                            IconButton(
-                              key: SlideShowScreen.orderRemoveKey(
-                                  issues[index].kind, issues[index].id),
-                              tooltip: 'Take off the wall',
-                              onPressed: state.isSaving
-                                  ? null
-                                  : () => context.read<SlideShowBloc>().add(
-                                        SlideShowIssueRemoved(
-                                          kind: issues[index].kind,
-                                          id: issues[index].id,
-                                        ),
-                                      ),
-                              icon: const Icon(Icons.remove_circle_outline),
-                            ),
-                          ],
-                        ),
-                      ),
-                  if (state.failure != null)
-                    Padding(
-                      key: SlideShowScreen.orderSaveFailedKey,
-                      padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
-                        state.failure!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+          title: 'The order the show plays in',
+          size: AppDialogSize.form,
           actions: [
-            TextButton(
+            AppDialogAction(
+              id: 'quality-slide-order-done',
+              label: 'Done',
+              kind: AppDialogActionKind.dismiss,
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Done'),
             ),
           ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (issues.isEmpty)
+                const Text('Nothing is chosen yet.')
+              else
+                for (var index = 0; index < issues.length; index++)
+                  ListTile(
+                    key: SlideShowScreen.orderRowKey(issues[index].kind, issues[index].id),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '${index + 1}. ${issues[index].number} '
+                      '(${IssueKind.label(issues[index].kind)})',
+                    ),
+                    subtitle: Text(
+                      issues[index].hasPicture
+                          ? '${issues[index].images.length} picture${issues[index].images.length == 1 ? '' : 's'}'
+                          : 'No picture yet — it will not appear until one is added',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          key: SlideShowScreen.orderUpKey(
+                              issues[index].kind, issues[index].id),
+                          tooltip: 'Move earlier',
+                          onPressed: index == 0 || state.isSaving
+                              ? null
+                              : () => context.read<SlideShowBloc>().add(
+                                    SlideShowIssueMoved(
+                                      kind: issues[index].kind,
+                                      id: issues[index].id,
+                                      delta: -1,
+                                    ),
+                                  ),
+                          icon: const Icon(Icons.arrow_upward),
+                        ),
+                        IconButton(
+                          key: SlideShowScreen.orderDownKey(
+                              issues[index].kind, issues[index].id),
+                          tooltip: 'Move later',
+                          onPressed: index == issues.length - 1 || state.isSaving
+                              ? null
+                              : () => context.read<SlideShowBloc>().add(
+                                    SlideShowIssueMoved(
+                                      kind: issues[index].kind,
+                                      id: issues[index].id,
+                                      delta: 1,
+                                    ),
+                                  ),
+                          icon: const Icon(Icons.arrow_downward),
+                        ),
+                        IconButton(
+                          key: SlideShowScreen.orderRemoveKey(
+                              issues[index].kind, issues[index].id),
+                          tooltip: 'Take off the wall',
+                          onPressed: state.isSaving
+                              ? null
+                              : () => context.read<SlideShowBloc>().add(
+                                    SlideShowIssueRemoved(
+                                      kind: issues[index].kind,
+                                      id: issues[index].id,
+                                    ),
+                                  ),
+                          icon: const Icon(Icons.remove_circle_outline),
+                        ),
+                      ],
+                    ),
+                  ),
+              if (state.failure != null)
+                Padding(
+                  key: SlideShowScreen.orderSaveFailedKey,
+                  padding: const EdgeInsets.only(top: Spacing.md),
+                  child: Text(
+                    state.failure!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );

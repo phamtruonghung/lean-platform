@@ -1,5 +1,5 @@
 /*
- * What a picture of a Quality issue is, read from its own bytes (issue #418).
+ * What a picture of a Quality issue is, read from its own bytes (issue #419).
  *
  * The backend carries no image library, on purpose (ADR-0052's own comment on
  * `signature_png.dart`: the client does the pixel work so the server never has

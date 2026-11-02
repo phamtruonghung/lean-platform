@@ -302,7 +302,7 @@ abstract final class Routes {
   /// `/:id/nonconformance`, `/:id/link`) — all addressed, per ADR-0021.
   static const String complaints = '/complaints';
 
-  /// The Quality slide show (issue #418): one Site's chosen Non-conformances
+  /// The Quality slide show (issue #419): one Site's chosen Non-conformances
   /// and customer complaints, one picture at a time. Its own address because
   /// it is a Screen a supervisor leaves open on a wall — bookmarked, linked,
   /// and reached without going through a register.
@@ -1226,7 +1226,7 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
               );
             },
           ),
-          // The slide show (issue #418). Its own Bloc beside the route, created
+          // The slide show (issue #419). Its own Bloc beside the route, created
           // once: the Site, the running order and the play state are the
           // Screen's whole memory, and leaving the Screen should forget them.
           // The Screen's keys are wrapped here rather than inside it so the

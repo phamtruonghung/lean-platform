@@ -489,7 +489,7 @@ class Nonconformance {
         shiftCode: json['shiftCode'] as String?,
         shiftName: json['shiftName'] as String?,
         closedAt: json['closedAt'] as String?,
-        // Issue #418: whether this record is on its Site's slide show. Older
+        // Issue #419: whether this record is on its Site's slide show. Older
         // fixtures and any response from before the column existed read as
         // "not chosen", which is the column's own default.
         inSlideShow: json['inSlideShow'] == true,
@@ -576,7 +576,7 @@ class Nonconformance {
   /// (issue #206). Null while either has still to happen.
   final String? closedAt;
 
-  /// Whether this record is on its Site's slide show (issue #418) — the flag
+  /// Whether this record is on its Site's slide show (issue #419) — the flag
   /// the register row's toggle and the detail Screen's switch both read and
   /// write.
   final bool inSlideShow;

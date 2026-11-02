@@ -1,6 +1,6 @@
 /**
  * A picture of a Quality issue, and the two flags that put an issue in the
- * slide show (issue #418).
+ * slide show (issue #419).
  *
  * **Why a second `bytea` column exists.** ADR-0052 made `employee_signatures`
  * the schema's one image, and `schema.test.js` fails if a second `bytea` column

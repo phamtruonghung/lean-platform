@@ -152,7 +152,7 @@ const COMPLAINT_COLUMNS = `
   to_char(cc.response_due_at AT TIME ZONE s.timezone, 'YYYY-MM-DD') AS response_due_date,
   cc.first_response_at, cc.is_warranty, cc.claim_cost, cc.currency,
   cc.closed_at, cc.response_note, cc.created_at, cc.updated_at,
-  -- The slide show's own two columns (issue #418); see nonconformances.js's own
+  -- The slide show's own two columns (issue #419); see nonconformances.js's own
   -- note on the same pair.
   cc.in_slide_show, cc.slide_show_position,
   -- The two facts a reader asks about a deadline: whether it has been missed by

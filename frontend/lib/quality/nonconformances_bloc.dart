@@ -133,7 +133,7 @@ class NonconformanceRecordConfirmed extends NonconformancesEvent {
 
 /// Put this Non-conformance on the Site's slide show, or take it off
 /// (`PUT /api/quality/slide-show/nonconformance/:id`) — the register row's own
-/// toggle, added by issue #418.
+/// toggle, added by issue #419.
 ///
 /// The row is re-read afterwards rather than patched in place: the API's answer
 /// carries the flag and nothing else, and the register's own row is the
@@ -197,7 +197,7 @@ class NonconformancesLoaded extends NonconformancesState {
   /// open so the caller can fix the one field that was wrong.
   final String? recordFailure;
 
-  /// The rows whose slide-show toggle is in flight (issue #418), so the row's
+  /// The rows whose slide-show toggle is in flight (issue #419), so the row's
   /// own control can show it is working rather than look stuck.
   final Set<String> slideShowPending;
 
@@ -544,7 +544,7 @@ class NonconformancesBloc extends Bloc<NonconformancesEvent, NonconformancesStat
     }
   }
 
-  /// The register row's slide-show toggle (issue #418): put the record on the
+  /// The register row's slide-show toggle (issue #419): put the record on the
   /// Site's show, or take it off, then re-read the row so the control says what
   /// the server says.
   ///

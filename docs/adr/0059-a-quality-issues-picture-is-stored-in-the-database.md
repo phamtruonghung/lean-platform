@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (issue #418).
+Accepted (issue #419).
 
 ## Context
 

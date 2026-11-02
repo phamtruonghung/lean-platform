@@ -100,7 +100,7 @@ class ComplaintRecordConfirmed extends ComplaintsEvent {
 
 /// Put this complaint on the Site's slide show, or take it off
 /// (`PUT /api/quality/slide-show/complaint/:id`) — the register row's own
-/// toggle, added by issue #418. The row is re-read afterwards, for the reason
+/// toggle, added by issue #419. The row is re-read afterwards, for the reason
 /// `NonconformanceSlideShowToggled` gives for the same choice.
 class ComplaintSlideShowToggled extends ComplaintsEvent {
   const ComplaintSlideShowToggled({required this.id, required this.chosen});
@@ -163,7 +163,7 @@ class ComplaintsLoaded extends ComplaintsState {
   /// open so the caller can fix the one field that was wrong.
   final String? recordFailure;
 
-  /// The rows whose slide-show toggle is in flight (issue #418).
+  /// The rows whose slide-show toggle is in flight (issue #419).
   final Set<String> slideShowPending;
 
   /// Why the last toggle did not land, in the API's own words.
@@ -443,7 +443,7 @@ class ComplaintsBloc extends Bloc<ComplaintsEvent, ComplaintsState> {
     }
   }
 
-  /// The register row's slide-show toggle (issue #418) — the complaint's half
+  /// The register row's slide-show toggle (issue #419) — the complaint's half
   /// of `NonconformancesBloc._onSlideShowToggled`, row by row for the same
   /// reason.
   Future<void> _onSlideShowToggled(

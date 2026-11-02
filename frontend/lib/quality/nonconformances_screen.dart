@@ -99,7 +99,7 @@ class NonconformancesScreen extends StatelessWidget {
   /// The way into one record, right-most on its row (new in #390).
   static ValueKey<String> rowOpenKey(String id) => ValueKey<String>('nonconformance-open-$id');
 
-  /// The row's slide-show toggle (issue #418).
+  /// The row's slide-show toggle (issue #419).
   static ValueKey<String> slideShowKey(String id) =>
       ValueKey<String>('nonconformance-slide-show-$id');
 
@@ -518,7 +518,7 @@ double _openColumnWidth(BuildContext context) {
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,
   )..layout();
-  // The Open button, then the slide-show toggle beside it (issue #418): a
+  // The Open button, then the slide-show toggle beside it (issue #419): a
   // 44-px control and the [Spacing.xs] that separates the two. Without the
   // extra room the cell's Row overflows, which is what a table does when a
   // control is added to a column measured for one button.
@@ -782,7 +782,7 @@ StatusTone _severityTone(String severity) => switch (severity) {
 String _number(double value) =>
     value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toString();
 
-/// Whether this row's slide-show request is in flight (issue #418). A row that
+/// Whether this row's slide-show request is in flight (issue #419). A row that
 /// is waiting shows it rather than looking stuck; `select` keeps the rebuild to
 /// the one row that changed.
 bool _slideShowPending(BuildContext context, String id) =>

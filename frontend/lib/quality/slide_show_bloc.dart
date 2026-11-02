@@ -1,4 +1,4 @@
-/// The Quality slide show's own state (issue #418): one Site's chosen issues,
+/// The Quality slide show's own state (issue #419): one Site's chosen issues,
 /// flattened into the slides the wall plays, and which slide is up.
 ///
 /// **A slide is one picture.** The API sends one entry per chosen issue with all

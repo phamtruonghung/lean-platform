@@ -1275,7 +1275,7 @@ class QualityApi {
   }
 
   // -------------------------------------------------------------------------
-  // Pictures of an issue, and the Site's slide show (issue #418)
+  // Pictures of an issue, and the Site's slide show (issue #419)
   // -------------------------------------------------------------------------
   //
   // The picture addresses hang off the record itself
