@@ -26,6 +26,18 @@
 /// total**: the window's [WorkedHoursTotals] arrives from the same read as
 /// [WorkedHoursDay]s, so the bottom line and the rows cannot disagree the way
 /// two client-side sum could.
+///
+/// **A table that sums visibly** (issue #393, `docs/design-language.md`
+/// sections 6 and 13). The days are one `AppTableHeader` band and one
+/// `AppTableRow` each — Day, Worked, Overtime, the quantities end-aligned in
+/// tabular figures so a column of durations compares down its right edge — and
+/// the window's own totals are the *same table's* footer row rather than a
+/// second card below it: the foot wears the band's own `surfaceMuted` fill and
+/// a w600 weight, so the total reads as the sum of the rows above it instead of
+/// as another card to evaluate. `—` is what a day with no overtime shows
+/// (section 13: an absent value is never a blank cell). The window's two bounds
+/// moved into `AppPageHeader.below`, so the title, the window and the table's
+/// own left edge are one line.
 library;
 
 import 'package:flutter/material.dart';
@@ -39,8 +51,17 @@ import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
+import '../widgets/skeleton_list.dart';
 import 'worked_hours.dart';
 import 'worked_hours_bloc.dart';
+
+/// The height a `SkeletonList` is given when it stands in for a list inside a
+/// page that is itself scrolling: the placeholder scrolls its own rows, so it
+/// needs a bounded box where the page hands out an unbounded one.
+const double _skeletonHeight = 288;
 
 class WorkedHoursScreen extends StatelessWidget {
   const WorkedHoursScreen({super.key, required this.employeeId});
@@ -50,9 +71,11 @@ class WorkedHoursScreen extends StatelessWidget {
   final String employeeId;
 
   static const ValueKey<String> failureKey = ValueKey<String>('work-hours-failure');
+  static const ValueKey<String> retryKey = ValueKey<String>('work-hours-retry');
   static const ValueKey<String> emptyKey = ValueKey<String>('work-hours-empty');
   static const ValueKey<String> loadingKey = ValueKey<String>('work-hours-loading');
   static const ValueKey<String> totalsKey = ValueKey<String>('work-hours-totals');
+  static const ValueKey<String> tableKey = ValueKey<String>('work-hours-table');
   static const ValueKey<String> fromFieldKey = ValueKey<String>('work-hours-from');
   static const ValueKey<String> toFieldKey = ValueKey<String>('work-hours-to');
   static const ValueKey<String> backKey = ValueKey<String>('work-hours-back');
@@ -78,11 +101,64 @@ class _WorkedHoursBody extends StatelessWidget {
 
   final String employeeId;
 
+  /// The quantity columns are as wide as their longest figure at the reader's
+  /// own text size, so a duration never wraps and the column never grows a
+  /// second line the row above it does not have.
+  static double _columnWidth(BuildContext context, List<WorkedHoursDay> days, double bandWidth) {
+    final style = AppTableRow.numberStyle(context);
+    var widest = bandWidth;
+    for (final day in days) {
+      for (final text in [
+        formatWorkedMinutes(day.workedMinutes),
+        '(+${formatWorkedMinutes(day.overtimeMinutes)} OT)',
+      ]) {
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: style),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1,
+        )..layout();
+        if (painter.width > widest) widest = painter.width;
+      }
+    }
+    return widest + Spacing.sm;
+  }
+
+  static double _bandWidth(BuildContext context, String label) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    return painter.width;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final state = context.watch<WorkedHoursBloc>().state;
     final bloc = context.read<WorkedHoursBloc>();
+
+    final columns = [
+      const AppTableColumn('Day', flex: 3),
+      AppTableColumn(
+        'Worked',
+        width: _columnWidth(context, state.days, _bandWidth(context, 'Worked')),
+        align: AppColumnAlign.end,
+      ),
+      AppTableColumn(
+        'Overtime',
+        width: _columnWidth(context, state.days, _bandWidth(context, 'Overtime')),
+        align: AppColumnAlign.end,
+      ),
+    ];
 
     return Scaffold(
       body: Center(
@@ -91,143 +167,194 @@ class _WorkedHoursBody extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
-              TextButton.icon(
-                key: WorkedHoursScreen.backKey,
-                onPressed: () => context.go('${Routes.directory}/$employeeId'),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Employee'),
+              // A crumb, not a second title: the rule this page sits one level
+              // below (`docs/design-language.md` section 6).
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: WorkedHoursScreen.backKey,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, AppTouchTarget.min),
+                    padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
+                  ),
+                  onPressed: () => context.go('${Routes.directory}/$employeeId'),
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                  label: const Text('Back to Employee'),
+                ),
               ),
-              const SizedBox(height: Spacing.sm),
-              const AppPageHeader(
+              const SizedBox(height: Spacing.xs),
+              AppPageHeader(
                 title: 'Worked hours',
                 description:
                     'The confirmed hours this Employee actually worked, day by day. '
                     'Only confirmed attendance counts — an unconfirmed sheet is a draft.',
-              ),
-              const SizedBox(height: Spacing.lg),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppDateField(
-                      key: WorkedHoursScreen.fromFieldKey,
-                      name: 'work-hours-from',
-                      label: 'From',
-                      value: state.from,
-                      optional: true,
-                      onChanged: (value) => bloc.add(WorkedHoursFromChosen(value)),
-                    ),
-                  ),
-                  const SizedBox(width: Spacing.md),
-                  Expanded(
-                    child: AppDateField(
-                      key: WorkedHoursScreen.toFieldKey,
-                      name: 'work-hours-to',
-                      label: 'To',
-                      value: state.to,
-                      optional: true,
-                      onChanged: (value) => bloc.add(WorkedHoursToChosen(value)),
-                    ),
-                  ),
-                ],
+                below: _WindowFields(state: state, bloc: bloc),
               ),
               const SizedBox(height: Spacing.lg),
               if (state.failure != null)
-                Text(
-                  state.failure!,
+                PlatformFailureState(
                   key: WorkedHoursScreen.failureKey,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                  title: 'The worked-hours summary could not be read',
+                  message: state.failure!,
+                  retryKey: WorkedHoursScreen.retryKey,
+                  // The same window again: `WorkedHoursStarted` takes the bounds
+                  // it is given, so a retry asks for exactly what is on screen.
+                  onRetry: () => bloc.add(WorkedHoursStarted(from: state.from, to: state.to)),
                 )
               else if (state.isLoading)
-                const Center(
-                  key: WorkedHoursScreen.loadingKey,
-                  child: CircularProgressIndicator(),
+                // Bounded, because `SkeletonList` scrolls its own rows and this
+                // page's ListView hands out no height of its own.
+                SizedBox(
+                  height: _skeletonHeight,
+                  child: const SkeletonList(
+                    key: WorkedHoursScreen.loadingKey,
+                    rows: 5,
+                    maxWidth: WorkedHoursScreen.maxWidth,
+                  ),
                 )
               else if (state.days.isEmpty)
-                Text(
-                  'No confirmed worked hours in this window.',
+                PlatformEmptyState.noneExist(
                   key: WorkedHoursScreen.emptyKey,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  title: 'No confirmed worked hours in this window.',
+                  message: 'Widen the window, or confirm the shift sheets for the days '
+                      'this Employee worked.',
+                  icon: Icons.schedule_outlined,
                 )
-              else ...[
+              else
                 Card(
+                  key: WorkedHoursScreen.tableKey,
                   margin: EdgeInsets.zero,
+                  clipBehavior: Clip.antiAlias,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final day in state.days) _WorkedHoursRow(day: day),
+                      AppTableHeader(columns: columns),
+                      for (final day in state.days)
+                        AppTableRow(
+                          key: WorkedHoursScreen.rowKey(day.date),
+                          columns: columns,
+                          cells: [
+                            Text(day.date, style: AppTypography.dense(context)),
+                            Text(
+                              formatWorkedMinutes(day.workedMinutes),
+                              key: ValueKey<String>('work-hours-worked-${day.date}'),
+                              style: AppTableRow.numberStyle(context),
+                            ),
+                            day.overtimeMinutes > 0
+                                ? Text(
+                                    '(+${formatWorkedMinutes(day.overtimeMinutes)} OT)',
+                                    style: AppTableRow.numberStyle(context)
+                                        ?.copyWith(color: palette.textMuted),
+                                  )
+                                : Text('—', style: AppTableRow.numberStyle(context)),
+                          ],
+                        ),
+                      if (state.totals != null)
+                        Container(
+                          key: WorkedHoursScreen.totalsKey,
+                          color: palette.tableHeaderFill,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              AppTableRow(
+                                columns: columns,
+                                cells: [
+                                  Text(
+                                    'Totals',
+                                    style: AppTypography.dense(context)?.copyWith(
+                                      color: palette.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${formatWorkedMinutes(state.totals!.workedMinutes)} worked',
+                                    style: _totalFigure(context),
+                                  ),
+                                  state.totals!.overtimeMinutes > 0
+                                      ? Text(
+                                          '${formatWorkedMinutes(state.totals!.overtimeMinutes)} overtime',
+                                          style: _totalFigure(context),
+                                        )
+                                      : Text('—', style: _totalFigure(context)),
+                                ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  Spacing.md,
+                                  0,
+                                  Spacing.md,
+                                  Spacing.sm,
+                                ),
+                                child: Text(
+                                  'of ${formatWorkedMinutes(state.totals!.scheduledMinutes)} scheduled',
+                                  style: AppTypography.floor(context)?.copyWith(
+                                    color: palette.textMuted,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),
-                if (state.totals != null) ...[
-                  const SizedBox(height: Spacing.md),
-                  _TotalsCard(totals: state.totals!),
-                ],
-              ],
             ],
           ),
         ),
       ),
     );
   }
+
+  /// The footer's own figures: the row's tabular style, heavier, so the foot
+  /// reads as a sum rather than as one more day.
+  TextStyle? _totalFigure(BuildContext context) =>
+      AppTableRow.numberStyle(context)?.copyWith(fontWeight: FontWeight.w600);
 }
 
-class _WorkedHoursRow extends StatelessWidget {
-  const _WorkedHoursRow({required this.day});
+/// The two bounds of the window: one row when the box holds them side by side,
+/// stacked when it does not — the box, scaled by the reader's text size
+/// (`AppBreakpoints.effective`), never the window.
+class _WindowFields extends StatelessWidget {
+  const _WindowFields({required this.state, required this.bloc});
 
-  final WorkedHoursDay day;
+  final WorkedHoursState state;
+  final WorkedHoursBloc bloc;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      key: WorkedHoursScreen.rowKey(day.date),
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(child: Text(day.date, style: theme.textTheme.bodyLarge)),
-          Text(
-            formatWorkedMinutes(day.workedMinutes),
-            key: ValueKey<String>('work-hours-worked-${day.date}'),
-            style: theme.textTheme.bodyLarge,
-          ),
-          const SizedBox(width: Spacing.sm),
-          if (day.overtimeMinutes > 0)
-            Text(
-              '(+${formatWorkedMinutes(day.overtimeMinutes)} OT)',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-        ],
-      ),
+    final from = AppDateField(
+      key: WorkedHoursScreen.fromFieldKey,
+      name: 'work-hours-from',
+      label: 'From',
+      value: state.from,
+      optional: true,
+      onChanged: (value) => bloc.add(WorkedHoursFromChosen(value)),
     );
-  }
-}
-
-class _TotalsCard extends StatelessWidget {
-  const _TotalsCard({required this.totals});
-
-  final WorkedHoursTotals totals;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.lg),
-        key: WorkedHoursScreen.totalsKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    final to = AppDateField(
+      key: WorkedHoursScreen.toFieldKey,
+      name: 'work-hours-to',
+      label: 'To',
+      value: state.to,
+      optional: true,
+      onChanged: (value) => bloc.add(WorkedHoursToChosen(value)),
+    );
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (box.maxWidth < AppBreakpoints.effective(context, AppBreakpoints.toolbarWrap)) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [from, const SizedBox(height: Spacing.md), to],
+          );
+        }
+        return Row(
           children: [
-            Text('Totals', style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.sm),
-            Text('${formatWorkedMinutes(totals.workedMinutes)} worked'),
-            if (totals.overtimeMinutes > 0)
-              Text('${formatWorkedMinutes(totals.overtimeMinutes)} overtime'),
-            Text('of ${formatWorkedMinutes(totals.scheduledMinutes)} scheduled'),
+            Expanded(child: from),
+            const SizedBox(width: Spacing.md),
+            Expanded(child: to),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -1705,6 +1705,28 @@ Map<String, dynamic> attendanceSheetJson(
       'confirmedByAccountId': confirmedByAccountId,
     };
 
+/// One `shift_instances` row as `GET /api/people/org-units/:id/shift-instances`
+/// sends it (`toShiftInstanceSummary`, attendance.js, issue #249) — the
+/// Attendance picker's own fixture.
+Map<String, dynamic> shiftInstanceSummaryJson(
+  String id, {
+  String shiftDefinitionCode = 'DAY',
+  String shiftDefinitionName = 'Day shift',
+  String productionDate = '2026-05-04',
+  String startsAt = '2026-05-04T06:00:00.000Z',
+  bool hasSheet = false,
+  String? confirmedAt,
+}) =>
+    {
+      'id': id,
+      'shiftDefinitionCode': shiftDefinitionCode,
+      'shiftDefinitionName': shiftDefinitionName,
+      'productionDate': productionDate,
+      'startsAt': startsAt,
+      'hasSheet': hasSheet,
+      'confirmedAt': confirmedAt,
+    };
+
 /// One `absence_reasons` row (`GET /api/people/absence-reasons`,
 /// `toAbsenceReason`, attendance.js, issue #249) — shared reference data,
 /// mirroring `skillJson`'s own shape for a catalogue row.
@@ -2361,6 +2383,7 @@ class FakeWire {
     this.skillCoverageStatus = 200,
     this.attendanceSheet,
     List<Map<String, dynamic>>? attendanceRecords,
+    List<Map<String, dynamic>>? shiftInstances,
     this.attendanceSheetStatus = 200,
     this.attendanceSheetMessage = 'The attendance sheet is unavailable.',
     this.confirmAttendanceSheetStatus = 200,
@@ -2626,6 +2649,7 @@ class FakeWire {
         qualifiedEmployees = qualifiedEmployees ?? [],
         skillCoverage = skillCoverage ?? {},
         attendanceRecords = attendanceRecords ?? [],
+        shiftInstances = shiftInstances ?? [],
         absenceReasons = absenceReasons ??
             [
               absenceReasonJson('SICK', 'Sickness'),
@@ -4526,6 +4550,15 @@ class FakeWire {
   int attendanceSheetStatus;
   String attendanceSheetMessage;
 
+  /// `GET /api/people/org-units/:id/shift-instances` (issue #249) — the
+  /// Attendance picker's own listing. One day's worth, not keyed by Org Unit:
+  /// the same one-scenario-at-a-time simplification [attendanceSheet] makes.
+  List<Map<String, dynamic>> shiftInstances;
+
+  /// Every Org Unit id the picker asked for shifts at, in the order the
+  /// requests reached the wire.
+  final List<String> shiftInstanceRequests = [];
+
   /// Every shift instance id a sheet was opened for, in the order the
   /// requests reached the wire.
   final List<String> attendanceSheetRequests = [];
@@ -4645,6 +4678,10 @@ class FakeWire {
   /// read, or the write, answer that status with `{message}`.
   Uint8List? mySignature;
   int mySignatureStatus = 200;
+
+  /// Holds the Signature read open, so a test can measure the loading state the
+  /// way `sitesGate`/`employeeDetailGate` let the People registers' be measured.
+  Completer<void>? mySignatureGate;
   int keepSignatureStatus = 200;
   String keepSignatureMessage = 'That Signature could not be kept.';
   int removeSignatureStatus = 200;
@@ -8899,6 +8936,13 @@ class FakeWire {
           }
           return http.Response(jsonEncode({'coverage': skillCoverage[siteId] ?? []}), 200);
         }
+        // A production day's shift instances at one Org Unit (issue #249) —
+        // the Attendance picker's own listing.
+        if (path.startsWith('/api/people/org-units/') && path.endsWith('/shift-instances')) {
+          final orgUnitId = path.split('/')[4];
+          shiftInstanceRequests.add(orgUnitId);
+          return http.Response(jsonEncode({'shiftInstances': shiftInstances}), 200);
+        }
         // The attendance sheet (issue #249) — GET .../attendance-sheet,
         // POST .../attendance-sheet/confirm, POST/PATCH/DELETE
         // .../attendance-records[/:id]. One scenario at a time, not keyed by
@@ -9012,6 +9056,7 @@ class FakeWire {
         // The caller's own Signature (issue #317).
         if (path == '/api/people/me/signature') {
           if (request.method == 'GET') {
+            if (mySignatureGate != null) await mySignatureGate!.future;
             if (mySignatureStatus != 200) {
               return http.Response(jsonEncode({'message': 'Your Signature is unavailable.'}), mySignatureStatus);
             }

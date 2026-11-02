@@ -8,6 +8,18 @@
 /// Reached at `/leave-requests/new` (ADR-0021). A refusal (a clash, an
 /// Account with no Employee behind it) is shown beside the button with what
 /// the caller chose still in place.
+///
+/// **Its shell is `AppDialog` at the `form` width** (issue #393,
+/// `docs/design-language.md` section 11): a leave type, two dates and a note is
+/// the shape the `form` row names, so the dialog is 520 rather than the 420 it
+/// drew for itself. What did not change: every field, key, label and enable
+/// condition, the dates' own pickers, the inline failure, the leave types'
+/// `FailureState` with its retry (which is the dialog's whole content when the
+/// catalogue cannot be read), and that Request leave stays shut until the three
+/// choices are made. `Esc` now runs Cancel rather than popping blindly past the
+/// callback the caller owns, and the two action `Key`s are the shell's
+/// (`app-dialog-action-cancel` / `app-dialog-action-submit`) — the accessors
+/// below are unchanged.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,6 +27,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/failure_state.dart';
 import 'leave_requests_bloc.dart';
 
@@ -26,8 +39,8 @@ class LeaveRequestFormDialog extends StatefulWidget {
   static const String startsOnName = 'leave-request-starts-on';
   static const String endsOnName = 'leave-request-ends-on';
   static const ValueKey<String> noteKey = ValueKey<String>('leave-request-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('leave-request-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('leave-request-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('leave-request-failure');
   static const ValueKey<String> typesFailedKey = ValueKey<String>('leave-request-types-failed');
   static const ValueKey<String> typesRetryKey = ValueKey<String>('leave-request-types-retry');
@@ -91,81 +104,78 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
     final types = loaded?.leaveTypes ?? const [];
     return BlocListener<LeaveRequestsBloc, LeaveRequestsState>(
       listener: _onStateChanged,
-      child: AlertDialog(
-        title: const Text('Request leave'),
-        content: SizedBox(
-          width: 420,
-          child: typesFailure != null
-              ? PlatformFailureState(
-                  key: LeaveRequestFormDialog.typesFailedKey,
-                  title: 'Leave types could not be read',
-                  message: typesFailure,
-                  retryKey: LeaveRequestFormDialog.typesRetryKey,
-                  onRetry: () => context.read<LeaveRequestsBloc>().add(const LeaveTypesRequested()),
-                )
-              : SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DropdownButtonFormField<String>(
-                        key: LeaveRequestFormDialog.typeFieldKey,
-                        initialValue: _typeId,
-                        decoration: const InputDecoration(labelText: 'Leave type'),
-                        items: [
-                          for (final type in types)
-                            DropdownMenuItem(value: type.id, child: Text(type.name)),
-                        ],
-                        onChanged: _awaiting ? null : (value) => setState(() => _typeId = value),
-                      ),
-                      const SizedBox(height: Spacing.md),
-                      AppDateField(
-                        name: LeaveRequestFormDialog.startsOnName,
-                        label: 'First day',
-                        value: _startsOn,
-                        enabled: !_awaiting,
-                        onChanged: (value) => setState(() => _startsOn = value),
-                      ),
-                      const SizedBox(height: Spacing.md),
-                      AppDateField(
-                        name: LeaveRequestFormDialog.endsOnName,
-                        label: 'Last day',
-                        value: _endsOn,
-                        enabled: !_awaiting,
-                        onChanged: (value) => setState(() => _endsOn = value),
-                      ),
-                      const SizedBox(height: Spacing.md),
-                      TextField(
-                        key: LeaveRequestFormDialog.noteKey,
-                        controller: _note,
-                        enabled: !_awaiting,
-                        decoration: const InputDecoration(labelText: 'Note (optional)'),
-                      ),
-                      if (_failure != null)
-                        Padding(
-                          key: LeaveRequestFormDialog.failureKey,
-                          padding: const EdgeInsets.only(top: Spacing.md),
-                          child: Text(
-                            _failure!,
-                            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-        ),
+      child: AppDialog(
+        title: 'Request leave',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: LeaveRequestFormDialog.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: LeaveRequestFormDialog.submitKey,
+          AppDialogAction(
+            id: 'submit',
+            label: _awaiting ? 'Requesting…' : 'Request leave',
             onPressed: _awaiting || !_complete || typesFailure != null ? null : _submit,
-            child: Text(_awaiting ? 'Requesting…' : 'Request leave'),
           ),
         ],
+        child: typesFailure != null
+            ? PlatformFailureState(
+                key: LeaveRequestFormDialog.typesFailedKey,
+                title: 'Leave types could not be read',
+                message: typesFailure,
+                retryKey: LeaveRequestFormDialog.typesRetryKey,
+                onRetry: () => context.read<LeaveRequestsBloc>().add(const LeaveTypesRequested()),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    key: LeaveRequestFormDialog.typeFieldKey,
+                    initialValue: _typeId,
+                    decoration: const InputDecoration(labelText: 'Leave type'),
+                    items: [
+                      for (final type in types)
+                        DropdownMenuItem(value: type.id, child: Text(type.name)),
+                    ],
+                    onChanged: _awaiting ? null : (value) => setState(() => _typeId = value),
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  AppDateField(
+                    name: LeaveRequestFormDialog.startsOnName,
+                    label: 'First day',
+                    value: _startsOn,
+                    enabled: !_awaiting,
+                    onChanged: (value) => setState(() => _startsOn = value),
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  AppDateField(
+                    name: LeaveRequestFormDialog.endsOnName,
+                    label: 'Last day',
+                    value: _endsOn,
+                    enabled: !_awaiting,
+                    onChanged: (value) => setState(() => _endsOn = value),
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  TextField(
+                    key: LeaveRequestFormDialog.noteKey,
+                    controller: _note,
+                    enabled: !_awaiting,
+                    decoration: const InputDecoration(labelText: 'Note (optional)'),
+                  ),
+                  if (_failure != null)
+                    Padding(
+                      key: LeaveRequestFormDialog.failureKey,
+                      padding: const EdgeInsets.only(top: Spacing.md),
+                      child: Text(
+                        _failure!,
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                      ),
+                    ),
+                ],
+              ),
       ),
     );
   }

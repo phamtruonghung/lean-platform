@@ -3,12 +3,27 @@
 /// `/leave-requests/:id/approve` and `/leave-requests/:id/reject`
 /// (ADR-0021). A refusal — someone decided first, a 409 — is shown beside the
 /// button with the note still in the field.
+///
+/// **Its shell is `AppDialog` at the `form` width** (issue #393,
+/// `docs/design-language.md` section 11). It asks one question, but it asks it
+/// with a field for the note, and the table's `decision` width is the one with
+/// no fields; one field plus two actions is the shape `form` names, so the
+/// dialog is 520 rather than the 420 it drew for itself. The request's own line
+/// (who, which leave, which days) is the shell's `description`, so the question
+/// and the record it is about share one left edge. What did not change: the
+/// note field and its key, the failure text inside the dialog, the enable
+/// conditions, what Approve/Reject sends, that the dialog pops itself once the
+/// Bloc reports success, and `DialogPage`'s own route. `Esc` now runs Back
+/// rather than popping blindly, and the two action `Key`s are the shell's
+/// (`app-dialog-action-back` / `app-dialog-action-submit`) — the accessors
+/// below are unchanged.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'leave_request.dart';
 import 'leave_requests_bloc.dart';
 
@@ -23,8 +38,8 @@ class LeaveRequestDecisionDialog extends StatefulWidget {
   static const ValueKey<String> loadingKey = ValueKey<String>('leave-decision-loading');
   static const ValueKey<String> notFoundKey = ValueKey<String>('leave-decision-not-found');
   static const ValueKey<String> noteKey = ValueKey<String>('leave-decision-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('leave-decision-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('leave-decision-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('back');
   static const ValueKey<String> failureKey = ValueKey<String>('leave-decision-failure');
 
   @override
@@ -78,58 +93,50 @@ class _LeaveRequestDecisionDialogState extends State<LeaveRequestDecisionDialog>
     final verb = widget.approve ? 'Approve' : 'Reject';
     return BlocListener<LeaveRequestsBloc, LeaveRequestsState>(
       listener: _onStateChanged,
-      child: AlertDialog(
-        title: Text('$verb leave request'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${request.employee.displayName} · ${request.leaveTypeName} · '
-                  '${request.periodLabel} (${request.daysLabel})',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: LeaveRequestDecisionDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: LeaveRequestDecisionDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: '$verb leave request',
+        description: '${request.employee.displayName} · ${request.leaveTypeName} · '
+            '${request.periodLabel} (${request.daysLabel})',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: LeaveRequestDecisionDialog.cancelKey,
+          AppDialogAction(
+            id: 'back',
+            label: 'Back',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Back'),
           ),
-          FilledButton(
-            key: LeaveRequestDecisionDialog.submitKey,
+          AppDialogAction(
+            id: 'submit',
+            label: _awaiting ? 'Saving…' : verb,
             onPressed: _awaiting ? null : _submit,
-            child: Text(_awaiting ? 'Saving…' : verb),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: LeaveRequestDecisionDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                labelText: 'Note (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: LeaveRequestDecisionDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -1,12 +1,24 @@
 /// Cancelling a leave request (issue #265): a confirmation, nothing to fill
 /// in. Reached at `/leave-requests/:id/cancel` (ADR-0021). A refusal is shown
 /// in the dialog, which stays open.
+///
+/// **Its shell is `AppDialog` at the `decision` width** (issue #393,
+/// `docs/design-language.md` section 11): one question, its answer in a
+/// sentence, two actions and no fields — the row of the table this dialog
+/// answers, at the width it already chose for itself. The sentence is the
+/// shell's `description` rather than a block of content, so the question and
+/// what it is about share one left edge. What did not change: the wording, the
+/// key the failure keeps, the enable conditions, what Cancel request sends, and
+/// that the dialog pops itself once the Bloc reports success. `Esc` now runs
+/// Keep request rather than popping blindly past the callback the caller owns,
+/// and the two action `Key`s are the shell's (`app-dialog-action-back` /
+/// `app-dialog-action-submit`) — the accessors below are unchanged.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'leave_request.dart';
 import 'leave_requests_bloc.dart';
 
@@ -17,8 +29,8 @@ class LeaveRequestCancelDialog extends StatefulWidget {
 
   static const ValueKey<String> loadingKey = ValueKey<String>('leave-cancel-loading');
   static const ValueKey<String> notFoundKey = ValueKey<String>('leave-cancel-not-found');
-  static const ValueKey<String> submitKey = ValueKey<String>('leave-cancel-submit');
-  static const ValueKey<String> backKey = ValueKey<String>('leave-cancel-back');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('submit');
+  static final ValueKey<String> backKey = AppDialog.actionKey('back');
   static const ValueKey<String> failureKey = ValueKey<String>('leave-cancel-failure');
 
   @override
@@ -56,43 +68,31 @@ class _LeaveRequestCancelDialogState extends State<LeaveRequestCancelDialog> {
     final request = widget.request;
     return BlocListener<LeaveRequestsBloc, LeaveRequestsState>(
       listener: _onStateChanged,
-      child: AlertDialog(
-        title: const Text('Cancel leave request'),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Cancel the ${request.leaveTypeName} request for ${request.employee.displayName}, '
-                '${request.periodLabel} (${request.daysLabel})?',
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (_failure != null)
-                Padding(
-                  key: LeaveRequestCancelDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: 'Cancel leave request',
+        description: 'Cancel the ${request.leaveTypeName} request for ${request.employee.displayName}, '
+            '${request.periodLabel} (${request.daysLabel})?',
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: LeaveRequestCancelDialog.backKey,
+          AppDialogAction(
+            id: 'back',
+            label: 'Keep request',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Keep request'),
           ),
-          FilledButton(
-            key: LeaveRequestCancelDialog.submitKey,
+          AppDialogAction(
+            id: 'submit',
+            label: _awaiting ? 'Cancelling…' : 'Cancel request',
             onPressed: _awaiting ? null : _submit,
-            child: Text(_awaiting ? 'Cancelling…' : 'Cancel request'),
           ),
         ],
+        child: _failure == null
+            ? null
+            : Text(
+                _failure!,
+                key: LeaveRequestCancelDialog.failureKey,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+              ),
       ),
     );
   }

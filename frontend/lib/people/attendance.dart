@@ -3,6 +3,8 @@
 /// it, and the absence reason catalogue a row's exception is chosen from.
 library;
 
+import '../status_tone.dart';
+
 /// `attendance_status`'s six values, mirrored exactly from the baseline's
 /// own CHECK (`backend/migrations/1756000000000_baseline.js`) and from
 /// `attendance.js`'s `ATTENDANCE_STATUSES` — a value with a known set is
@@ -33,6 +35,42 @@ String attendanceStatusLabel(String status) => switch (status) {
 /// rule.
 bool attendanceStatusNeedsReason(String status) =>
     status == 'absent_planned' || status == 'absent_unplanned';
+
+/// The meaning a sheet cell carries, in the client's shared vocabulary
+/// (issue #393, `docs/design-language.md` section 13).
+///
+/// The six statuses answer four questions, which is why this is not a
+/// one-to-one map: somebody who was there reads as finished whatever time they
+/// clocked on (`present` and `late` are both [StatusTone.success], and the
+/// cell's own word says which), a planned absence is leave ([StatusTone.info]),
+/// an unplanned one is the fault the sheet exists to catch
+/// ([StatusTone.danger]), a training day is live-but-not-at-the-machine
+/// ([StatusTone.info], again with its own word), and somebody who was never
+/// rostered is not a fault at all ([StatusTone.neutral]). The colour is never
+/// the only carrier — `StatusChip` always renders its label.
+StatusTone attendanceRecordTone(AttendanceRecord record) =>
+    switch (record.attendanceStatus) {
+      'present' || 'late' => StatusTone.success,
+      'absent_planned' || 'training' => StatusTone.info,
+      'absent_unplanned' => StatusTone.danger,
+      'not_scheduled' => StatusTone.neutral,
+      _ => StatusTone.neutral,
+    };
+
+/// Minutes as a register cell's figure: a bare count, because the column's own
+/// label carries the unit (`Worked (min)`), with thousands separated —
+/// `docs/design-language.md` section 13's own rule for a count (`12,480`, never
+/// `12480.0`). The sheet is the first Screen to need it, so the helper lives
+/// here rather than in `theme.dart`.
+String formatAttendanceMinutes(int minutes) {
+  final digits = minutes.abs().toString();
+  final grouped = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(',');
+    grouped.write(digits[i]);
+  }
+  return minutes < 0 ? '-$grouped' : grouped.toString();
+}
 
 /// One `attendance_sheets` row (`toAttendanceSheet`, attendance.js).
 /// [confirmedAt]/[confirmedByAccountId] are both null, or both set — ADR-0040's

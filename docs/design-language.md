@@ -527,6 +527,48 @@ form decides whether it earns one: the Shift handover (#389) built it as a priva
 one consumer is not a primitive, and the shared set belongs to the foundation
 slice, not to a module's design pass.
 
+### A register wider than its page: the frozen column
+
+A register whose columns do not fit its box has three possible answers and only one
+of them is right. Squeezing the columns is not: a cell measured for 135px and given
+67 renders an ellipsis in a column nobody can read (#409). Turning the register into
+one card per record is not either, when the box is a wide window that the columns
+only just miss — that is the wrong shape for a table read across.
+
+**The answer is a horizontal scroll inside a column that does not scroll.** The
+Attendance sheet (#393) is the first: the Employee's name is the reader's handle on
+the row, so it stays put while the columns beside it move.
+
+The shape, which a Screen builds rather than a primitive (one consumer so far):
+
+- **Two stacks, one row.** The frozen column is a `Column` of name cells; the rest
+  are a `Column` inside `Expanded(SingleChildScrollView(scrollDirection:
+  horizontal))`. There is no widget that freezes a cell of a single `Row`, so the
+  row is the two stacks side by side rather than one `AppTableRow` spanning them.
+- **Both stacks take the same height, computed once**: `AppTouchTarget.min *` the
+  reader's text scale. Every cell in the matrix is single-line (`DisclosingText` for
+  the name, a chip or a figure for the rest), so the two halves cannot drift apart
+  at any text size — the failure mode of a frozen column, and the reason the height
+  is stated rather than left to the content.
+- **The band is `AppTableHeader` on the scrolling half** and the same container,
+  mirrored (`tableHeaderFill`, `labelMedium` w600, one `edge` hairline), on the
+  frozen half: a label cannot be split across two `AppTableHeader`s, and the two
+  must meet at the same y.
+- **The columns state a `width`, never a `flex`.** A flex column has no bounded box
+  to divide inside a horizontal scroll view. Each is measured from its own longest
+  value at the reader's text size, plus `Spacing.md` at each end that the band and
+  the rows both apply.
+- **Wider than it needs, the columns give the slack to the frozen column** rather
+  than leaving a gutter, so a 1280px window has no empty strip beside the matrix.
+- **The page names its own frame width** when the register is read across
+  (`AttendanceSheetScreen.maxWidth` is 1040, the Work order detail's number for the
+  same reason) — §2's default 900 would scroll on a wide screen for nothing.
+
+At a 700px window the Shell leaves the page 440 (§2), which is the box this shape
+exists for: the name column holds, and the columns scroll under it.
+`people_attendance_geometry_test.dart` drags the scroll view and asserts the name
+cell's left edge did not move while a column beside it did.
+
 ## 7. The four states, and where each is used
 
 Every read has four outcomes, and each has one widget. A Screen that draws its own
@@ -1092,6 +1134,15 @@ legend is **built from the tones the Screen actually paints**: a Screen that
 shows three tones shows three chips, labelled with that tone's word, rendered
 through `StatusChip`. A banner is the same: its tone is a colour and its message is
 the words.
+
+**When one tone covers several states, the legend names the word the cells carry.**
+The attendance sheet (#393) paints `success` for both `present` and `late`, `info`
+for a planned absence and for a training day, `danger` for an unplanned absence and
+`neutral` for somebody who was never scheduled — so its legend says **Present,
+Leave, Absent, Not recorded**, the four words a reader will find in the cells,
+rather than four enum names nobody on the floor uses. A `late` cell keeps its own
+word in the cell, which is what tells it apart from `present` without asking the
+legend to list six.
 
 ## 14. What this document does not decide
 

@@ -11,6 +11,24 @@
 /// `DirectoryOrgUnitFilterDialog` already drives for a single-select choice
 /// over the same tree — that file's own header explains why the full
 /// `OrgUnitPicker` widget (a Grant editor) is not reused instead.
+///
+/// **One page rhythm, and the picker is read in one column** (issue #393,
+/// `docs/design-language.md` sections 1, 2 and 5). The title row is the shared
+/// `AppPageHeader` with the worklist link as its own action, so the title, the
+/// description, the browser and the shifts below all start at the same left
+/// edge — before this pass the title was a `Wrap` of its own with its button
+/// beside it, and the description began 8px under it rather than at the
+/// header's own baseline. The browser and the day choice sit in one card
+/// (`AppListCard`'s hairline between rows is not wanted here: these are two
+/// controls, not a list of records), and each shift below is a row of a
+/// catalogue whose trailing cell is its state chip.
+///
+/// **A shift's state is a chip, not a second line of prose.** The three
+/// sentences — Not opened yet, Started, not yet confirmed, Confirmed — are
+/// unchanged; they moved from a `ListTile` subtitle to the row's trailing
+/// `StatusChip`, which paints the meaning as well as saying it. A `ListTile`
+/// was also the wrong row for this page: 56 high and padded to its own spec,
+/// where the row here is [AppTouchTarget.min] and shares the card's own edges.
 library;
 
 import 'package:flutter/material.dart';
@@ -20,12 +38,24 @@ import 'package:go_router/go_router.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
+import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
+import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'attendance.dart';
 import 'attendance_picker_bloc.dart';
 import 'org_unit_picker_bloc.dart';
+
+/// The height a `SkeletonList` is given when it stands in for a list inside a
+/// page that is itself scrolling: the placeholder scrolls its own rows, so it
+/// needs a bounded box where the page hands out an unbounded one.
+const double _skeletonHeight = 288;
 
 class AttendancePickerScreen extends StatelessWidget {
   const AttendancePickerScreen({super.key});
@@ -37,6 +67,8 @@ class AttendancePickerScreen extends StatelessWidget {
   static const ValueKey<String> orgUnitChosenKey = ValueKey<String>('attendance-picker-org-unit-chosen');
   static const ValueKey<String> emptyKey = ValueKey<String>('attendance-picker-empty');
   static const ValueKey<String> failureKey = ValueKey<String>('attendance-picker-failure');
+  static const ValueKey<String> retryKey = ValueKey<String>('attendance-picker-retry');
+  static const ValueKey<String> catalogueKey = ValueKey<String>('attendance-picker-shifts');
   static ValueKey<String> orgUnitRowKey(String id) => ValueKey<String>('attendance-picker-org-unit-$id');
   static ValueKey<String> shiftRowKey(String id) => ValueKey<String>('attendance-picker-shift-$id');
 
@@ -64,7 +96,6 @@ class _PickerBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final state = context.watch<AttendancePickerBloc>().state;
 
     return Scaffold(
@@ -74,17 +105,11 @@ class _PickerBody extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
-              // A `Wrap`, not a `Row`: at this Screen's narrower widths
-              // (`maxWidth` is 640) the title plus the button below do not
-              // both fit on one line, and a `Row` would overflow rather than
-              // reflow — `Wrap` moves the button to its own line instead.
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: Spacing.md,
-                runSpacing: Spacing.sm,
-                children: [
-                  Text('Attendance', style: theme.textTheme.headlineSmall),
+              AppPageHeader(
+                title: 'Attendance',
+                description: 'Choose an Org Unit and a production day to open that '
+                    "shift's attendance sheet.",
+                actions: [
                   // The worklist (issue #250): every past shift this caller
                   // could confirm whose sheet is missing or unconfirmed —
                   // its own address nested under this one, reached from
@@ -92,27 +117,20 @@ class _PickerBody extends StatelessWidget {
                   // `attendance_to_confirm_screen.dart`'s own header).
                   OutlinedButton.icon(
                     key: AttendancePickerScreen.toConfirmLinkKey,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, AppTouchTarget.min),
+                    ),
                     onPressed: () => context.go('${Routes.attendance}/to-confirm'),
-                    icon: const Icon(Icons.fact_check_outlined),
+                    icon: const Icon(Icons.fact_check_outlined, size: 18),
                     label: const Text('Attendance to confirm'),
                   ),
                 ],
-              ),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                'Choose an Org Unit and a production day to open that '
-                "shift's attendance sheet.",
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: Spacing.lg),
               if (state.orgUnitName == null)
                 const _OrgUnitBrowser()
               else
-                Text(
-                  state.orgUnitName!,
-                  key: AttendancePickerScreen.orgUnitChosenKey,
-                  style: theme.textTheme.titleMedium,
-                ),
+                _ChosenOrgUnit(name: state.orgUnitName!),
               const SizedBox(height: Spacing.md),
               AppDateField(
                 key: AttendancePickerScreen.dateFieldKey,
@@ -127,21 +145,42 @@ class _PickerBody extends StatelessWidget {
               ),
               const SizedBox(height: Spacing.lg),
               if (state.failure != null)
-                Text(
-                  state.failure!,
+                PlatformFailureState(
                   key: AttendancePickerScreen.failureKey,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                  title: 'The shifts could not be read',
+                  message: state.failure!,
+                  // The same read again, with the Org Unit and day the caller
+                  // already chose: `_reload` reads both off the state, so this
+                  // asks for nothing they did not already ask for.
+                  retryKey: AttendancePickerScreen.retryKey,
+                  onRetry: () => context
+                      .read<AttendancePickerBloc>()
+                      .add(AttendancePickerDateChosen(state.date!)),
                 )
               else if (state.isLoading)
-                const Center(child: CircularProgressIndicator())
+                // `SkeletonList` scrolls its own rows, so inside this page's
+                // ListView it is given a bounded height rather than an
+                // unbounded one — a ghost of the list's own length, then the
+                // real rows in the same place.
+                SizedBox(
+                  height: _skeletonHeight,
+                  child: const SkeletonList(rows: 3, maxWidth: AttendancePickerScreen.maxWidth),
+                )
               else if (state.orgUnitId != null && state.date != null && state.shiftInstances.isEmpty)
-                Text(
-                  'No shifts are scheduled here on that day.',
+                PlatformEmptyState.noneExist(
                   key: AttendancePickerScreen.emptyKey,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  title: 'No shifts are scheduled here on that day.',
+                  message: 'Choose another production day, or another Org Unit.',
+                  icon: Icons.event_busy_outlined,
                 )
               else
-                for (final shiftInstance in state.shiftInstances) _ShiftRow(shiftInstance: shiftInstance),
+                AppListCard(
+                  key: AttendancePickerScreen.catalogueKey,
+                  rows: [
+                    for (final shiftInstance in state.shiftInstances)
+                      _ShiftRow(shiftInstance: shiftInstance),
+                  ],
+                ),
             ],
           ),
         ),
@@ -150,29 +189,81 @@ class _PickerBody extends StatelessWidget {
   }
 }
 
+/// The Org Unit a caller has already chosen, in the same card the browser
+/// would have drawn — so choosing one does not make the page jump by a card.
+class _ChosenOrgUnit extends StatelessWidget {
+  const _ChosenOrgUnit({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.md),
+        child: Row(
+          children: [
+            Icon(Icons.account_tree_outlined, size: 18, color: palette.textMuted),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: Text(
+                name,
+                key: AttendancePickerScreen.orgUnitChosenKey,
+                style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One shift instance: what it was, when, and whether its sheet is missing,
+/// started or confirmed. The whole row opens the sheet (the address the old
+/// `context.go('/people/attendance/…')` got wrong and #250 fixed).
 class _ShiftRow extends StatelessWidget {
   const _ShiftRow({required this.shiftInstance});
 
   final ShiftInstanceSummary shiftInstance;
 
+  /// The three sentences, unchanged — they now say their meaning in colour as
+  /// well (`StatusChip`'s own rule: the label is always rendered).
+  (String, StatusTone) get _state {
+    if (!shiftInstance.hasSheet) return ('Not opened yet', StatusTone.warning);
+    if (shiftInstance.confirmedAt != null) return ('Confirmed', StatusTone.success);
+    return ('Started, not yet confirmed', StatusTone.warning);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListTile(
+    final palette = AppColors.of(context);
+    final (label, tone) = _state;
+    return InkWell(
       key: AttendancePickerScreen.shiftRowKey(shiftInstance.id),
-      title: Text(shiftInstance.shiftDefinitionName),
-      subtitle: Text(shiftInstance.hasSheet
-          ? (shiftInstance.confirmedAt != null ? 'Confirmed' : 'Started, not yet confirmed')
-          : 'Not opened yet'),
-      trailing: const Icon(Icons.chevron_right),
-      // Fixed alongside #250: this used to `context.go('/people/attendance/...')`,
-      // an address no GoRoute registers (`Routes.attendance` and every route
-      // nested under it, router.dart, are all `/attendance...` with no
-      // `/people` prefix), so tapping a row here landed on the not-found
-      // Screen instead of the sheet. Caught while wiring the worklist's own
-      // entries to the same address.
       onTap: () => context.go('${Routes.attendance}/${shiftInstance.id}'),
-      tileColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  shiftInstance.shiftDefinitionName,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+                ),
+              ),
+              const SizedBox(width: Spacing.sm),
+              StatusChip(label: label, tone: tone),
+              const SizedBox(width: Spacing.xs),
+              Icon(Icons.chevron_right, size: 18, color: palette.textMuted),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -183,13 +274,26 @@ class _OrgUnitBrowser extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
     final bloc = context.read<OrgUnitPickerBloc>();
 
     Widget body;
     if (state.sitesStatus == SitesStatus.loading || state.rootsLoading) {
-      body = const Center(
-        child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+      // The browser is a control inside the card above, not one of this
+      // page's list surfaces, so it keeps its own small placeholder: a
+      // `SkeletonList` here would draw a card inside a card and read as the
+      // page loading twice.
+      body = const Padding(
+        padding: EdgeInsets.symmetric(vertical: Spacing.sm),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
       );
     } else if (state.sitesStatus == SitesStatus.failed) {
       body = Text(state.sitesFailure ?? 'The Sites are unavailable.');
@@ -206,24 +310,40 @@ class _OrgUnitBrowser extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (state.sites.length > 1)
-          DropdownButtonFormField<String>(
-            initialValue: state.siteId,
-            isDense: true,
-            decoration: const InputDecoration(labelText: 'Site'),
-            items: [
-              for (final site in state.sites) DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-            ],
-            onChanged: (siteId) {
-              if (siteId != null) bloc.add(OrgUnitPickerSiteSelected(siteId));
-            },
-          ),
-        const SizedBox(height: Spacing.sm),
-        DefaultTextStyle.merge(style: theme.textTheme.bodyMedium!, child: body),
-      ],
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Org Unit',
+              style: AppTypography.floor(context)?.copyWith(
+                color: palette.textMuted,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: Spacing.sm),
+            if (state.sites.length > 1)
+              DropdownButtonFormField<String>(
+                initialValue: state.siteId,
+                isDense: true,
+                decoration: const InputDecoration(labelText: 'Site'),
+                items: [
+                  for (final site in state.sites)
+                    DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                ],
+                onChanged: (siteId) {
+                  if (siteId != null) bloc.add(OrgUnitPickerSiteSelected(siteId));
+                },
+              ),
+            const SizedBox(height: Spacing.sm),
+            DefaultTextStyle.merge(style: theme.textTheme.bodyMedium!, child: body),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -236,43 +356,53 @@ class _OrgUnitRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
     return Padding(
       padding: EdgeInsets.only(left: row.depth * Spacing.lg),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 32,
-            height: 32,
-            child: row.isLoadingChildren
-                ? const Padding(
-                    padding: EdgeInsets.all(Spacing.sm),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : IconButton(
-                    padding: EdgeInsets.zero,
-                    iconSize: 18,
-                    tooltip: row.isExpanded ? 'Collapse' : 'Expand',
-                    onPressed: () => bloc.add(
-                      row.isExpanded
-                          ? OrgUnitPickerCollapsed(row.node.id)
-                          : OrgUnitPickerExpanded(row.node.id),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+        child: Row(
+          children: [
+            SizedBox(
+              width: AppTouchTarget.min,
+              height: AppTouchTarget.min,
+              child: row.isLoadingChildren
+                  ? const Padding(
+                      padding: EdgeInsets.all(Spacing.md),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 18,
+                      tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                      onPressed: () => bloc.add(
+                        row.isExpanded
+                            ? OrgUnitPickerCollapsed(row.node.id)
+                            : OrgUnitPickerExpanded(row.node.id),
+                      ),
+                      icon: Icon(row.isExpanded ? Icons.expand_more : Icons.chevron_right),
                     ),
-                    icon: Icon(row.isExpanded ? Icons.expand_more : Icons.chevron_right),
+            ),
+            Expanded(
+              child: InkWell(
+                key: AttendancePickerScreen.orgUnitRowKey(row.node.id),
+                onTap: () => context.read<AttendancePickerBloc>().add(
+                      AttendancePickerOrgUnitChosen(
+                        orgUnitId: row.node.id,
+                        orgUnitName: row.node.name,
+                      ),
+                    ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+                  child: Text(
+                    row.node.name,
+                    style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
                   ),
-          ),
-          Expanded(
-            child: InkWell(
-              key: AttendancePickerScreen.orgUnitRowKey(row.node.id),
-              onTap: () => context.read<AttendancePickerBloc>().add(
-                    AttendancePickerOrgUnitChosen(orgUnitId: row.node.id, orgUnitName: row.node.name),
-                  ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
-                child: Text(row.node.name),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
