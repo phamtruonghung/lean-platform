@@ -9,13 +9,37 @@
 ///
 /// **Submit is never greyed out.** A handover that is not complete is refused
 /// by the server with everything it is missing at once (409,
-/// `INCOMPLETE_HANDOVER`), and that list renders at the top of the form —
-/// which Asset has no line, which line is short of what, which block is
-/// unanswered, which Action has no disposition. A disabled button would say
-/// "not yet" without saying why.
+/// `INCOMPLETE_HANDOVER`), and that list renders at the top of the form — which
+/// Asset has no line, which line is short of what, which block is unanswered,
+/// which Action has no disposition. A disabled button would say "not yet"
+/// without saying why.
 ///
-/// A sealed handover renders the same blocks read-only: what was handed over
-/// is the record, and an amendment is its own act, not an edit of this one.
+/// A sealed handover renders the same blocks read-only: what was handed over is
+/// the record, and an amendment is its own act, not an edit of this one.
+///
+/// **The shape, and why (issue #389's design pass).** This is a 1000-line form
+/// read once per shift by somebody standing at a machine, so the page is built
+/// around finding the right block quickly rather than around filling fields in
+/// order:
+///
+/// - **A section per block** — one `AppDetailSection` each, its title being the
+///   form's own heading and its lead line the sentence that used to sit above
+///   the card. Five cards, one edge, one hairline weight; the reader scrolls a
+///   form whose blocks are visible as blocks (`docs/design-language.md` §6,
+///   "the form").
+/// - **A pinned submit at a wide box, section anchors at a narrow one.** Wide,
+///   the form's one act sits in a bar pinned to the page frame's bottom, so it
+///   is reachable from the top field to the last. Narrow, the bar would take a
+///   phone's scarcest resource — vertical room — so the header carries a row of
+///   anchors instead and Submit stays inline where the form ends.
+/// - **Fields share a row by weight, not by a hand-set width.** The 220/280px
+///   pickers this form used to set clipped their own labels at a text scale of
+///   2; a row of `Expanded` fields from `AppBreakpoints.formTwoColumn` (scaled
+///   by the reader's text size) stacks below it and shares the row above.
+///
+/// **Nothing about the handover's behaviour moved.** Every field, every key,
+/// every validation, every Bloc event and every rendered sentence is the one
+/// that was here before; this pass changes where they sit.
 library;
 
 import 'package:flutter/material.dart';
@@ -28,7 +52,10 @@ import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_banner.dart';
+import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -66,6 +93,21 @@ class ShiftHandoverScreen extends StatelessWidget {
   static const ValueKey<String> failureKey = ValueKey<String>('shift-handover-failure');
   static const ValueKey<String> refusalKey = ValueKey<String>('shift-handover-refusal');
   static const ValueKey<String> submitKey = ValueKey<String>('shift-handover-submit');
+
+  /// The pinned bar the submit sits in at a wide box (issue #389), and the row
+  /// of anchors that replaces it at a narrow one.
+  static const ValueKey<String> submitBarKey = ValueKey<String>('shift-handover-submit-bar');
+  static const ValueKey<String> anchorsKey = ValueKey<String>('shift-handover-anchors');
+  static ValueKey<String> anchorKey(String section) => ValueKey<String>('shift-handover-anchor-$section');
+
+  /// The five section ids the anchors jump to, in reading order.
+  static const List<(String, String)> sections = [
+    ('numbers', 'Numbers'),
+    ('machines', 'Machines'),
+    ('change-points', 'Change points'),
+    ('actions', 'Actions'),
+    ('evidence', 'Evidence'),
+  ];
 
   static ValueKey<String> statusCardKey(String field) => ValueKey<String>('shift-handover-card-$field');
 
@@ -133,7 +175,7 @@ class ShiftHandoverScreen extends StatelessWidget {
   }
 }
 
-class _Loaded extends StatelessWidget {
+class _Loaded extends StatefulWidget {
   const _Loaded({required this.state, required this.orgUnitId, this.date});
 
   final ShiftHandoverLoaded state;
@@ -141,116 +183,299 @@ class _Loaded extends StatelessWidget {
   final String? date;
 
   @override
+  State<_Loaded> createState() => _LoadedState();
+}
+
+class _LoadedState extends State<_Loaded> {
+  /// One key per section, so an anchor can bring its own section to the top of
+  /// the viewport. Held here rather than per section because the anchors are in
+  /// the header, above every section they point at.
+  final Map<String, GlobalKey> _sectionKeys = {
+    for (final (id, _) in ShiftHandoverScreen.sections) id: GlobalKey(),
+  };
+
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _jumpTo(String section) {
+    final target = _sectionKeys[section]?.currentContext;
+    if (target == null) return;
+    // 200ms, and nothing at all under `MediaQuery.disableAnimationsOf`: motion
+    // here says "the page moved", so a reader who asked for less gets the
+    // destination rather than the journey.
+    Scrollable.ensureVisible(
+      target,
+      alignment: 0,
+      duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 200),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final handover = state.handover;
+    final palette = AppColors.of(context);
+    final handover = widget.state.handover;
+    final state = widget.state;
     final editable = handover.isDraft && !state.isMutating;
 
     return Center(
       child: AppPageFrame(
         maxWidth: ShiftHandoverScreen.maxWidth,
-        child: ListView(
-          key: ShiftHandoverScreen.loadedKey,
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: ShiftHandoverScreen.backKey,
-                onPressed: () => context.go(Routes.sectionBoard(orgUnitId, date: date ?? handover.productionDate)),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to the Section board'),
-              ),
-            ),
-            const SizedBox(height: Spacing.sm),
-            Wrap(
-              spacing: Spacing.xs,
-              runSpacing: Spacing.xxs,
-              crossAxisAlignment: WrapCrossAlignment.center,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Narrow is the form's own two-column point, scaled by the reader's
+            // text size: below it the fields stack, and the anchors replace the
+            // pinned bar (WCAG 1.4.4 — #379 and #381 were both a breakpoint
+            // read without the scale).
+            final narrow = constraints.maxWidth <
+                AppBreakpoints.effective(context, AppBreakpoints.formTwoColumn);
+
+            // One submit control in the tree, whichever place is right for the
+            // box: a bar over a tall form, or the end of the form itself.
+            final Widget? submit = handover.isDraft
+                ? ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+                    child: FilledButton.icon(
+                      key: ShiftHandoverScreen.submitKey,
+                      onPressed: state.isMutating
+                          ? null
+                          : () => context.read<ShiftHandoverBloc>().add(const HandoverSubmitted()),
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text('Submit the handover'),
+                    ),
+                  )
+                : null;
+
+            return Column(
               children: [
-                if (handover.handoverNo != null) Text(handover.handoverNo!, style: theme.textTheme.labelMedium),
-                StatusChip(
-                  key: ShiftHandoverScreen.statusKey,
-                  label: _statusLabel(handover.status),
-                  tone: _statusTone(handover.status),
+                Expanded(
+                  child: SingleChildScrollView(
+                    key: ShiftHandoverScreen.loadedKey,
+                    controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+                            child: TextButton.icon(
+                              key: ShiftHandoverScreen.backKey,
+                              onPressed: () => context.go(
+                                Routes.sectionBoard(widget.orgUnitId,
+                                    date: widget.date ?? handover.productionDate),
+                              ),
+                              icon: const Icon(Icons.arrow_back),
+                              label: const Text('Back to the Section board'),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: Spacing.sm),
+                        AppPageHeader(
+                          title: 'Shift handover · ${handover.sectionName ?? 'Section'}',
+                          description: '${handover.productionDate ?? ''} · '
+                              '${formatClock(handover.shiftStartsAt)}–${formatClock(handover.shiftEndsAt)}'
+                              '${handover.authorDisplayName != null ? ' · handed over by ${handover.authorDisplayName}' : ''}',
+                          // The record's own identifying marks at the row's far
+                          // end: its number, where it stands, whether it was
+                          // late, and which version of it this is.
+                          actions: [
+                            if (handover.handoverNo != null)
+                              Text(handover.handoverNo!, style: theme.textTheme.labelMedium),
+                            StatusChip(
+                              key: ShiftHandoverScreen.statusKey,
+                              label: _statusLabel(handover.status),
+                              tone: _statusTone(handover.status),
+                            ),
+                            if (handover.late == true) const StatusChip(label: 'Late', tone: StatusTone.warning),
+                            if (handover.version > 1)
+                              StatusChip(label: 'Version ${handover.version}', tone: StatusTone.info),
+                          ],
+                          below: narrow ? _Anchors(onJump: _jumpTo) : null,
+                        ),
+                        if (state.refusal != null) ...[
+                          const SizedBox(height: Spacing.lg),
+                          _RefusalPanel(refusal: state.refusal!),
+                        ],
+                        if (state.mutationFailure != null) ...[
+                          const SizedBox(height: Spacing.md),
+                          // A write that did not land, in the one inline surface
+                          // §12 puts an outcome on (never a snack, never an
+                          // overlay).
+                          AppBanner(
+                            key: ShiftHandoverScreen.failureKey,
+                            tone: StatusTone.danger,
+                            message: state.mutationFailure!,
+                          ),
+                        ],
+                        const SizedBox(height: Spacing.lg),
+                        KeyedSubtree(
+                          key: _sectionKeys['numbers']!,
+                          child: AppDetailSection(
+                            title: 'The numbers the shift closed on',
+                            children: [
+                              Text(
+                                handover.isDraft
+                                    ? 'Frozen when the handover is submitted.'
+                                    : 'Frozen at submit.',
+                                style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+                              ),
+                              _SnapshotCells(handover: handover),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: Spacing.md),
+                        KeyedSubtree(
+                          key: _sectionKeys['machines']!,
+                          child: AppDetailSection(
+                            title: 'Machines',
+                            children: [
+                              Text(
+                                'One line per Asset in the Section.',
+                                style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+                              ),
+                              if (state.assets.isEmpty)
+                                Text('This Section has no active Assets.', style: AppTypography.dense(context))
+                              else
+                                for (var i = 0; i < state.assets.length; i++) ...[
+                                  if (i > 0)
+                                    Divider(height: Spacing.lg, thickness: 1, color: palette.edge),
+                                  _MachineRow(
+                                    key: ShiftHandoverScreen.machineRowKey(state.assets[i].id),
+                                    asset: state.assets[i],
+                                    line: handover.lineFor(state.assets[i].id),
+                                    enabled: editable,
+                                    showSave: handover.isDraft,
+                                  ),
+                                ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: Spacing.md),
+                        KeyedSubtree(
+                          key: _sectionKeys['change-points']!,
+                          child: AppDetailSection(
+                            title: 'Change points',
+                            children: [
+                              Text(
+                                'What the incoming shift will meet that differs, and what to watch.',
+                                style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+                              ),
+                              _ChangePoints(handover: handover, enabled: editable),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: Spacing.md),
+                        KeyedSubtree(
+                          key: _sectionKeys['actions']!,
+                          child: AppDetailSection(
+                            title: 'Carried actions',
+                            children: [
+                              Text(
+                                'Every open Action of the Section is carried, reassigned or closed.',
+                                style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+                              ),
+                              _Actions(handover: handover, enabled: editable),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: Spacing.md),
+                        KeyedSubtree(
+                          key: _sectionKeys['evidence']!,
+                          child: AppDetailSection(
+                            title: 'Handover evidence',
+                            children: [_Evidence(handover: handover, enabled: editable)],
+                          ),
+                        ),
+                        if (submit != null && narrow) ...[
+                          const SizedBox(height: Spacing.xl),
+                          Align(alignment: Alignment.centerLeft, child: submit),
+                        ],
+                        if (!handover.isDraft && handover.acknowledgedAt != null) ...[
+                          const SizedBox(height: Spacing.xl),
+                          Text(
+                            'Acknowledged ${formatClock(handover.acknowledgedAt)}'
+                            '${handover.acknowledgementNote != null ? ' — ${handover.acknowledgementNote}' : ''}',
+                            style: AppTypography.dense(context),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-                if (handover.late == true) const StatusChip(label: 'Late', tone: StatusTone.warning),
-                if (handover.version > 1) StatusChip(label: 'Version ${handover.version}', tone: StatusTone.info),
+                if (submit != null && !narrow) _SubmitBar(key: ShiftHandoverScreen.submitBarKey, child: submit),
               ],
-            ),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              'Shift handover · ${handover.sectionName ?? 'Section'}',
-              style: theme.textTheme.headlineSmall,
-            ),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              '${handover.productionDate ?? ''} · ${formatClock(handover.shiftStartsAt)}–'
-              '${formatClock(handover.shiftEndsAt)}'
-              '${handover.authorDisplayName != null ? ' · handed over by ${handover.authorDisplayName}' : ''}',
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            if (state.refusal != null) ...[
-              const SizedBox(height: Spacing.lg),
-              _RefusalPanel(refusal: state.refusal!),
-            ],
-            if (state.mutationFailure != null) ...[
-              const SizedBox(height: Spacing.md),
-              Text(
-                state.mutationFailure!,
-                key: ShiftHandoverScreen.failureKey,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: Spacing.lg),
-            _Heading('The numbers the shift closed on',
-                handover.isDraft ? 'Frozen when the handover is submitted.' : 'Frozen at submit.'),
-            _StatusCards(handover: handover),
-            const SizedBox(height: Spacing.xl),
-            _Heading('Machines', 'One line per Asset in the Section.'),
-            if (state.assets.isEmpty)
-              Text('This Section has no active Assets.', style: theme.textTheme.bodyMedium)
-            else
-              for (final asset in state.assets)
-                _MachineRow(
-                  key: ShiftHandoverScreen.machineRowKey(asset.id),
-                  asset: asset,
-                  line: handover.lineFor(asset.id),
-                  enabled: editable,
-                  showSave: handover.isDraft,
-                ),
-            const SizedBox(height: Spacing.xl),
-            _Heading('Change points', 'What the incoming shift will meet that differs, and what to watch.'),
-            _ChangePoints(handover: handover, enabled: editable),
-            const SizedBox(height: Spacing.xl),
-            _Heading('Carried actions', 'Every open Action of the Section is carried, reassigned or closed.'),
-            _Actions(handover: handover, enabled: editable),
-            const SizedBox(height: Spacing.xl),
-            _Heading('Handover evidence', null),
-            _Evidence(handover: handover, enabled: editable),
-            if (handover.isDraft) ...[
-              const SizedBox(height: Spacing.xl),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  key: ShiftHandoverScreen.submitKey,
-                  onPressed: state.isMutating
-                      ? null
-                      : () => context.read<ShiftHandoverBloc>().add(const HandoverSubmitted()),
-                  icon: const Icon(Icons.send_outlined),
-                  label: const Text('Submit the handover'),
-                ),
-              ),
-            ] else if (handover.acknowledgedAt != null) ...[
-              const SizedBox(height: Spacing.xl),
-              Text(
-                'Acknowledged ${formatClock(handover.acknowledgedAt)}'
-                '${handover.acknowledgementNote != null ? ' — ${handover.acknowledgementNote}' : ''}',
-                style: theme.textTheme.bodyMedium,
-              ),
-            ],
-          ],
+            );
+          },
         ),
+      ),
+    );
+  }
+}
+
+/// The row of section anchors a narrow form carries instead of a pinned bar
+/// (issue #389): five 44px targets that bring their section to the top of the
+/// viewport, so a reader at the bottom of a long form is one tap from the top
+/// one rather than one long scroll.
+class _Anchors extends StatelessWidget {
+  const _Anchors({required this.onJump});
+
+  final void Function(String section) onJump;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Wrap(
+      key: ShiftHandoverScreen.anchorsKey,
+      spacing: Spacing.sm,
+      runSpacing: Spacing.xs,
+      children: [
+        for (final (id, label) in ShiftHandoverScreen.sections)
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+            child: TextButton(
+              key: ShiftHandoverScreen.anchorKey(id),
+              onPressed: () => onJump(id),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+                textStyle: theme.textTheme.labelLarge,
+              ),
+              child: Text(label),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Submit, pinned to the bottom of the page frame at a wide box.
+///
+/// It is a sibling of the scroll view rather than an overlay: the viewport ends
+/// where the bar begins, so the bar cannot hide the last field and the form owes
+/// it no bottom padding. One hairline above it, in the palette's own edge, so it
+/// reads as chrome rather than as one more row of the form.
+class _SubmitBar extends StatelessWidget {
+  const _SubmitBar({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: palette.card,
+        border: Border(top: BorderSide(color: palette.edge)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.md, Spacing.lg, Spacing.md),
+        child: Row(children: [child]),
       ),
     );
   }
@@ -270,28 +495,45 @@ StatusTone _statusTone(String status) => switch (status) {
       _ => StatusTone.neutral,
     };
 
-class _Heading extends StatelessWidget {
-  const _Heading(this.title, this.description);
+/// A row of fields in a section (issue #389): stacked below the form's own
+/// two-column box, and sharing the row above it.
+///
+/// Each field carries a `flex` rather than a hand-set width, because a fixed
+/// 220px picker clips its own selected label at a text scale of 2 (WCAG 1.4.4)
+/// while a share of the row does not — and a form that names 220 and 280 is
+/// naming two numbers nobody measured against the reader.
+class _FieldRow extends StatelessWidget {
+  const _FieldRow({required this.fields});
 
-  final String title;
-  final String? description;
+  final List<(Widget, int)> fields;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Spacing.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: theme.textTheme.titleMedium),
-          if (description != null)
-            Text(
-              description!,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= AppBreakpoints.effective(context, AppBreakpoints.formTwoColumn);
+        if (!wide) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < fields.length; i++) ...[
+                if (i > 0) const SizedBox(height: Spacing.sm),
+                fields[i].$1,
+              ],
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < fields.length; i++) ...[
+              if (i > 0) const SizedBox(width: Spacing.md),
+              Expanded(flex: fields[i].$2, child: fields[i].$1),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -364,48 +606,77 @@ const List<(String, String, _Unit)> _snapshotCards = [
   ('safetyEventCount', 'Safety events', _Unit.count),
 ];
 
-/// The frozen snapshot, read-only. A null is shown as `—`, with the reason the
-/// server gave for it when it gave one.
-class _StatusCards extends StatelessWidget {
-  const _StatusCards({required this.handover});
+/// The frozen snapshot, read-only, as a grid of labelled figures (issue #389).
+///
+/// Thirteen numbers at a fixed 160px each were two rows of six-ish cards with
+/// the last one stranded; a grid of equal cells in two, three or four columns
+/// reads as one band and keeps every cell's figure on a shared baseline. A null
+/// is shown as `—`, with the reason the server gave for it when it gave one.
+class _SnapshotCells extends StatelessWidget {
+  const _SnapshotCells({required this.handover});
 
   final ShiftHandover handover;
+
+  /// One cell's floor width, three `AppTouchTarget.min`s: two columns fit the
+  /// narrowest section box and four the widest.
+  static const double cellFloor = AppTouchTarget.min * 3;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Wrap(
-      spacing: Spacing.sm,
-      runSpacing: Spacing.sm,
-      children: [
-        for (final (field, label, unit) in _snapshotCards)
-          SizedBox(
-            width: 160,
-            child: Card(
-              key: ShiftHandoverScreen.statusCardKey(field),
-              child: Padding(
-                padding: const EdgeInsets.all(Spacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: Spacing.xxs),
-                    Text(_value(handover.snapshot[field], unit), style: theme.textTheme.titleLarge),
-                    for (final gap in handover.snapshotGaps)
-                      if (gap.field == field)
-                        Text(
-                          gap.reason,
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                  ],
-                ),
-              ),
+    final palette = AppColors.of(context);
+    final labelStyle = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
+    final figureStyle = theme.textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w600,
+      // A column of figures is scanned digit by digit, which is what tabular
+      // figures are for (`docs/design-language.md` §13).
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= AppBreakpoints.effective(context, cellFloor * 4)
+            ? 4
+            : constraints.maxWidth >= AppBreakpoints.effective(context, cellFloor * 3)
+                ? 3
+                : 2;
+
+        Widget cell((String, String, _Unit) card) {
+          final (field, label, unit) = card;
+          return Padding(
+            key: ShiftHandoverScreen.statusCardKey(field),
+            padding: const EdgeInsets.symmetric(vertical: Spacing.sm, horizontal: Spacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: labelStyle),
+                const SizedBox(height: Spacing.xxs),
+                Text(_value(handover.snapshot[field], unit), style: figureStyle),
+                for (final gap in handover.snapshotGaps)
+                  if (gap.field == field) Text(gap.reason, style: labelStyle),
+              ],
             ),
-          ),
-      ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var start = 0; start < _snapshotCards.length; start += columns) ...[
+              if (start > 0) Divider(height: 1, thickness: 1, color: palette.edge),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = start; i < start + columns; i++)
+                    Expanded(child: i < _snapshotCards.length ? cell(_snapshotCards[i]) : const SizedBox.shrink()),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -487,97 +758,96 @@ class _MachineRowState extends State<_MachineRow> {
     final theme = Theme.of(context);
     final id = widget.asset.id;
     final recorded = widget.line != null;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Wrap(
-              spacing: Spacing.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text('${widget.asset.code} · ${widget.asset.name}', style: theme.textTheme.titleSmall),
-                if (!recorded) const StatusChip(label: 'No line yet', tone: StatusTone.warning),
-              ],
-            ),
-            const SizedBox(height: Spacing.sm),
-            Wrap(
-              spacing: Spacing.md,
-              runSpacing: Spacing.sm,
-              children: [
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<String>(
-                    key: ShiftHandoverScreen.machineStateKey(id),
-                    initialValue: _state,
-                    isDense: true,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'State'),
-                    items: [
-                      for (final choice in HandoverVocabulary.machineStates)
-                        DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
-                    ],
-                    onChanged: widget.enabled ? (value) => setState(() => _state = value) : null,
-                  ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: Spacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('${widget.asset.code} · ${widget.asset.name}', style: theme.textTheme.titleSmall),
+              if (!recorded) const StatusChip(label: 'No line yet', tone: StatusTone.warning),
+            ],
+          ),
+          const SizedBox(height: Spacing.sm),
+          _FieldRow(
+            fields: [
+              (
+                DropdownButtonFormField<String>(
+                  key: ShiftHandoverScreen.machineStateKey(id),
+                  initialValue: _state,
+                  isDense: true,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'State'),
+                  items: [
+                    for (final choice in HandoverVocabulary.machineStates)
+                      DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
+                  ],
+                  onChanged: widget.enabled ? (value) => setState(() => _state = value) : null,
                 ),
-                SizedBox(
-                  width: 280,
-                  child: DropdownButtonFormField<String?>(
-                    key: ShiftHandoverScreen.machineAbnormalityKey(id),
-                    initialValue: _abnormality,
-                    isDense: true,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Abnormality'),
-                    items: [
-                      const DropdownMenuItem<String?>(value: null, child: Text('None found')),
-                      for (final choice in HandoverVocabulary.abnormalityTypes)
-                        DropdownMenuItem<String?>(value: choice.wire, child: Text(choice.label)),
-                    ],
-                    onChanged: widget.enabled ? (value) => setState(() => _abnormality = value) : null,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Spacing.sm),
-            TextField(
-              key: ShiftHandoverScreen.machineNoteKey(id),
-              controller: _note,
-              enabled: widget.enabled,
-              decoration: InputDecoration(
-                labelText: 'Note',
-                helperText: _state != null && !HandoverVocabulary.normalRunningStates.contains(_state)
-                    ? 'Required: say why it is not running normally'
-                    : null,
+                3,
               ),
-            ),
-            const SizedBox(height: Spacing.sm),
-            TextField(
-              key: ShiftHandoverScreen.machineWatchKey(id),
-              controller: _watch,
-              enabled: widget.enabled,
-              decoration: const InputDecoration(labelText: 'What the incoming shift must watch'),
-            ),
-            const SizedBox(height: Spacing.xs),
-            Row(
-              children: [
-                Checkbox(
-                  key: ShiftHandoverScreen.machineWalkedKey(id),
-                  value: _walked,
-                  onChanged: widget.enabled ? (value) => setState(() => _walked = value ?? false) : null,
+              (
+                DropdownButtonFormField<String?>(
+                  key: ShiftHandoverScreen.machineAbnormalityKey(id),
+                  initialValue: _abnormality,
+                  isDense: true,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Abnormality'),
+                  items: [
+                    const DropdownMenuItem<String?>(value: null, child: Text('None found')),
+                    for (final choice in HandoverVocabulary.abnormalityTypes)
+                      DropdownMenuItem<String?>(value: choice.wire, child: Text(choice.label)),
+                  ],
+                  onChanged: widget.enabled ? (value) => setState(() => _abnormality = value) : null,
                 ),
-                const Text('Walked'),
-                const Spacer(),
-                if (widget.showSave)
-                  OutlinedButton(
+                4,
+              ),
+            ],
+          ),
+          const SizedBox(height: Spacing.sm),
+          TextField(
+            key: ShiftHandoverScreen.machineNoteKey(id),
+            controller: _note,
+            enabled: widget.enabled,
+            decoration: InputDecoration(
+              labelText: 'Note',
+              helperText: _state != null && !HandoverVocabulary.normalRunningStates.contains(_state)
+                  ? 'Required: say why it is not running normally'
+                  : null,
+            ),
+          ),
+          const SizedBox(height: Spacing.sm),
+          TextField(
+            key: ShiftHandoverScreen.machineWatchKey(id),
+            controller: _watch,
+            enabled: widget.enabled,
+            decoration: const InputDecoration(labelText: 'What the incoming shift must watch'),
+          ),
+          const SizedBox(height: Spacing.xs),
+          Row(
+            children: [
+              Checkbox(
+                key: ShiftHandoverScreen.machineWalkedKey(id),
+                value: _walked,
+                onChanged: widget.enabled ? (value) => setState(() => _walked = value ?? false) : null,
+              ),
+              const Text('Walked'),
+              const Spacer(),
+              if (widget.showSave)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+                  child: OutlinedButton(
                     key: ShiftHandoverScreen.machineSaveKey(id),
                     onPressed: widget.enabled && _state != null ? _save : null,
                     child: Text(recorded ? 'Save line' : 'Record line'),
                   ),
-              ],
-            ),
-          ],
-        ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -627,76 +897,74 @@ class _ChangePointsState extends State<_ChangePoints> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final handover = widget.handover;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            CheckboxListTile(
-              key: ShiftHandoverScreen.changePointsNoneKey,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              value: handover.changePointsNone,
-              title: const Text('No change points this shift'),
-              onChanged: widget.enabled
-                  ? (value) => context
-                      .read<ShiftHandoverBloc>()
-                      .add(HandoverHeaderSaved({'changePointsNone': value ?? false}))
-                  : null,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CheckboxListTile(
+          key: ShiftHandoverScreen.changePointsNoneKey,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          value: handover.changePointsNone,
+          title: const Text('No change points this shift'),
+          onChanged: widget.enabled
+              ? (value) => context
+                  .read<ShiftHandoverBloc>()
+                  .add(HandoverHeaderSaved({'changePointsNone': value ?? false}))
+              : null,
+        ),
+        for (final dimension in HandoverVocabulary.changePointDimensions)
+          Padding(
+            key: ShiftHandoverScreen.changePointGroupKey(dimension.wire),
+            padding: const EdgeInsets.only(top: Spacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(dimension.label, style: theme.textTheme.titleSmall),
+                if ((handover.changePoints[dimension.wire] ?? const []).isEmpty)
+                  Text(
+                    'None recorded',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                for (final point in handover.changePoints[dimension.wire] ?? const <ChangePoint>[])
+                  Row(
+                    key: ShiftHandoverScreen.changePointKey(point.id),
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(point.description, style: theme.textTheme.bodyMedium),
+                            Text(
+                              'Watch: ${point.watchNote}'
+                              '${point.watchResult != null ? ' · found ${HandoverVocabulary.watchResultLabel(point.watchResult)}' : ''}',
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (handover.isDraft)
+                        IconButton(
+                          key: ShiftHandoverScreen.changePointRemoveKey(point.id),
+                          tooltip: 'Remove',
+                          onPressed: widget.enabled
+                              ? () => context.read<ShiftHandoverBloc>().add(ChangePointRemoved(point.id))
+                              : null,
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                    ],
+                  ),
+              ],
             ),
-            for (final dimension in HandoverVocabulary.changePointDimensions)
-              Padding(
-                key: ShiftHandoverScreen.changePointGroupKey(dimension.wire),
-                padding: const EdgeInsets.only(top: Spacing.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(dimension.label, style: theme.textTheme.titleSmall),
-                    if ((handover.changePoints[dimension.wire] ?? const []).isEmpty)
-                      Text(
-                        'None recorded',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    for (final point in handover.changePoints[dimension.wire] ?? const <ChangePoint>[])
-                      Row(
-                        key: ShiftHandoverScreen.changePointKey(point.id),
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(point.description, style: theme.textTheme.bodyMedium),
-                                Text(
-                                  'Watch: ${point.watchNote}'
-                                  '${point.watchResult != null ? ' · found ${HandoverVocabulary.watchResultLabel(point.watchResult)}' : ''}',
-                                  style: theme.textTheme.bodySmall
-                                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (handover.isDraft)
-                            IconButton(
-                              key: ShiftHandoverScreen.changePointRemoveKey(point.id),
-                              tooltip: 'Remove',
-                              onPressed: widget.enabled
-                                  ? () => context.read<ShiftHandoverBloc>().add(ChangePointRemoved(point.id))
-                                  : null,
-                              icon: const Icon(Icons.delete_outline),
-                            ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-            if (handover.isDraft) ...[
-              const Divider(height: Spacing.xl),
-              Text('Add a change point', style: theme.textTheme.titleSmall),
-              const SizedBox(height: Spacing.sm),
-              SizedBox(
-                width: 220,
-                child: DropdownButtonFormField<String>(
+          ),
+        if (handover.isDraft) ...[
+          const Divider(height: Spacing.xl),
+          Text('Add a change point', style: theme.textTheme.titleSmall),
+          const SizedBox(height: Spacing.sm),
+          _FieldRow(
+            fields: [
+              (
+                DropdownButtonFormField<String>(
                   key: ShiftHandoverScreen.changePointDimensionKey,
                   initialValue: _dimension,
                   isDense: true,
@@ -708,37 +976,45 @@ class _ChangePointsState extends State<_ChangePoints> {
                   ],
                   onChanged: widget.enabled ? (value) => setState(() => _dimension = value ?? _dimension) : null,
                 ),
+                2,
               ),
-              const SizedBox(height: Spacing.sm),
-              TextField(
-                key: ShiftHandoverScreen.changePointDescriptionKey,
-                controller: _description,
-                enabled: widget.enabled,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(labelText: 'What is different'),
-              ),
-              const SizedBox(height: Spacing.sm),
-              TextField(
-                key: ShiftHandoverScreen.changePointWatchKey,
-                controller: _watch,
-                enabled: widget.enabled,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(labelText: 'What the incoming shift must watch for'),
-              ),
-              const SizedBox(height: Spacing.sm),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  key: ShiftHandoverScreen.changePointAddKey,
-                  onPressed: widget.enabled && _complete ? _add : null,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add change point'),
+              (
+                TextField(
+                  key: ShiftHandoverScreen.changePointDescriptionKey,
+                  controller: _description,
+                  enabled: widget.enabled,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(labelText: 'What is different'),
                 ),
+                3,
+              ),
+              (
+                TextField(
+                  key: ShiftHandoverScreen.changePointWatchKey,
+                  controller: _watch,
+                  enabled: widget.enabled,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(labelText: 'What the incoming shift must watch for'),
+                ),
+                3,
               ),
             ],
-          ],
-        ),
-      ),
+          ),
+          const SizedBox(height: Spacing.sm),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+              child: OutlinedButton.icon(
+                key: ShiftHandoverScreen.changePointAddKey,
+                onPressed: widget.enabled && _complete ? _add : null,
+                icon: const Icon(Icons.add),
+                label: const Text('Add change point'),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -754,55 +1030,67 @@ class _Actions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     if (handover.actions.isEmpty && handover.openActions.isEmpty) {
       return Text(
         'The Section has no open Actions to hand over.',
-        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final link in handover.actions)
-          Card(
-            key: ShiftHandoverScreen.actionLinkKey(link.id),
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.md),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${link.action.actionNo} · ${link.action.title}', style: theme.textTheme.titleSmall),
-                        Text(
-                          [
-                            HandoverVocabulary.dispositionLabel(link.disposition),
-                            if (link.ownerName != null) 'to ${link.ownerName}',
-                            if (link.closureNote != null) link.closureNote!,
-                            if (link.ageShifts != null && link.ageShifts! > 0)
-                              '${link.ageShifts} ${link.ageShifts == 1 ? 'shift' : 'shifts'} old',
-                          ].join(' · '),
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
+        for (var i = 0; i < handover.actions.length; i++) ...[
+          if (i > 0) Divider(height: Spacing.lg, thickness: 1, color: palette.edge),
+          Padding(
+            key: ShiftHandoverScreen.actionLinkKey(handover.actions[i].id),
+            padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${handover.actions[i].action.actionNo} · ${handover.actions[i].action.title}',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      Text(
+                        [
+                          HandoverVocabulary.dispositionLabel(handover.actions[i].disposition),
+                          if (handover.actions[i].ownerName != null) 'to ${handover.actions[i].ownerName}',
+                          if (handover.actions[i].closureNote != null) handover.actions[i].closureNote!,
+                          if (handover.actions[i].ageShifts != null && handover.actions[i].ageShifts! > 0)
+                            '${handover.actions[i].ageShifts} '
+                                '${handover.actions[i].ageShifts == 1 ? 'shift' : 'shifts'} old',
+                        ].join(' · '),
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
                   ),
-                  if (handover.isDraft)
-                    IconButton(
-                      key: ShiftHandoverScreen.actionLinkRemoveKey(link.id),
-                      tooltip: 'Remove',
-                      onPressed: enabled
-                          ? () => context.read<ShiftHandoverBloc>().add(ActionLinkRemoved(link.id))
-                          : null,
-                      icon: const Icon(Icons.delete_outline),
-                    ),
-                ],
-              ),
+                ),
+                if (handover.isDraft)
+                  IconButton(
+                    key: ShiftHandoverScreen.actionLinkRemoveKey(handover.actions[i].id),
+                    tooltip: 'Remove',
+                    onPressed: enabled
+                        ? () => context.read<ShiftHandoverBloc>().add(ActionLinkRemoved(handover.actions[i].id))
+                        : null,
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+              ],
             ),
           ),
-        for (final action in handover.openActions)
-          _OpenActionRow(key: ShiftHandoverScreen.openActionKey(action.id), action: action, enabled: enabled),
+        ],
+        for (var i = 0; i < handover.openActions.length; i++) ...[
+          if (i > 0 || handover.actions.isNotEmpty)
+            Divider(height: Spacing.lg, thickness: 1, color: palette.edge),
+          _OpenActionRow(
+            key: ShiftHandoverScreen.openActionKey(handover.openActions[i].id),
+            action: handover.openActions[i],
+            enabled: enabled,
+          ),
+        ],
       ],
     );
   }
@@ -863,91 +1151,96 @@ class _OpenActionRowState extends State<_OpenActionRow> {
     final theme = Theme.of(context);
     final action = widget.action;
     final id = action.id;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('${action.actionNo} · ${action.title}', style: theme.textTheme.titleSmall),
-            Text(
-              [
-                if (action.ownerName != null) 'Owner ${action.ownerName}',
-                if (action.dueDate != null) 'due ${action.dueDate}',
-                'no disposition yet',
-              ].join(' · '),
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: Spacing.sm),
-            SizedBox(
-              width: 220,
-              child: DropdownButtonFormField<String>(
-                key: ShiftHandoverScreen.actionDispositionKey(id),
-                initialValue: _disposition,
-                isDense: true,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Disposition'),
-                items: [
-                  for (final choice in HandoverVocabulary.dispositions)
-                    DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
-                ],
-                onChanged: widget.enabled
-                    ? (value) => setState(() {
-                          _disposition = value;
-                          _error = null;
-                        })
-                    : null,
-              ),
-            ),
-            if (_disposition == 'reassigned') ...[
-              const SizedBox(height: Spacing.sm),
-              AppSearchField<Employee>(
-                key: ShiftHandoverScreen.actionOwnerKey(id),
-                name: 'handover-action-$id-owner',
-                label: 'New owner',
-                value: _owner,
-                enabled: widget.enabled,
-                onChanged: (employee) => setState(() => _owner = employee),
-                fetchSuggestions: (term) async {
-                  final token = context.read<AuthGateway>().currentAccessToken;
-                  if (token == null) return const [];
-                  return context.read<PeopleApi>().fetchEmployees(token, search: term);
-                },
-                suggestionBuilder: (context, employee) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-                  child: Text(employee.displayName),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('${action.actionNo} · ${action.title}', style: theme.textTheme.titleSmall),
+          Text(
+            [
+              if (action.ownerName != null) 'Owner ${action.ownerName}',
+              if (action.dueDate != null) 'due ${action.dueDate}',
+              'no disposition yet',
+            ].join(' · '),
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: Spacing.sm),
+          _FieldRow(
+            fields: [
+              (
+                DropdownButtonFormField<String>(
+                  key: ShiftHandoverScreen.actionDispositionKey(id),
+                  initialValue: _disposition,
+                  isDense: true,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Disposition'),
+                  items: [
+                    for (final choice in HandoverVocabulary.dispositions)
+                      DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
+                  ],
+                  onChanged: widget.enabled
+                      ? (value) => setState(() {
+                            _disposition = value;
+                            _error = null;
+                          })
+                      : null,
                 ),
-                idOf: (employee) => employee.id,
-                displayStringFor: (employee) => employee.displayName,
-                onSelected: (employee) => setState(() => _owner = employee),
+                3,
               ),
             ],
-            if (_disposition == 'closed') ...[
-              const SizedBox(height: Spacing.sm),
-              TextField(
-                key: ShiftHandoverScreen.actionClosureNoteKey(id),
-                controller: _closureNote,
-                enabled: widget.enabled,
-                decoration: const InputDecoration(labelText: 'What closed it'),
-              ),
-            ],
-            if (_error != null)
-              Padding(
-                key: ShiftHandoverScreen.actionErrorKey(id),
-                padding: const EdgeInsets.only(top: Spacing.xs),
-                child: Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
-              ),
+          ),
+          if (_disposition == 'reassigned') ...[
             const SizedBox(height: Spacing.sm),
-            Align(
-              alignment: Alignment.centerLeft,
+            AppSearchField<Employee>(
+              key: ShiftHandoverScreen.actionOwnerKey(id),
+              name: 'handover-action-$id-owner',
+              label: 'New owner',
+              value: _owner,
+              enabled: widget.enabled,
+              onChanged: (employee) => setState(() => _owner = employee),
+              fetchSuggestions: (term) async {
+                final token = context.read<AuthGateway>().currentAccessToken;
+                if (token == null) return const [];
+                return context.read<PeopleApi>().fetchEmployees(token, search: term);
+              },
+              suggestionBuilder: (context, employee) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+                child: Text(employee.displayName),
+              ),
+              idOf: (employee) => employee.id,
+              displayStringFor: (employee) => employee.displayName,
+              onSelected: (employee) => setState(() => _owner = employee),
+            ),
+          ],
+          if (_disposition == 'closed') ...[
+            const SizedBox(height: Spacing.sm),
+            TextField(
+              key: ShiftHandoverScreen.actionClosureNoteKey(id),
+              controller: _closureNote,
+              enabled: widget.enabled,
+              decoration: const InputDecoration(labelText: 'What closed it'),
+            ),
+          ],
+          if (_error != null)
+            Padding(
+              key: ShiftHandoverScreen.actionErrorKey(id),
+              padding: const EdgeInsets.only(top: Spacing.xs),
+              child: Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+            ),
+          const SizedBox(height: Spacing.sm),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
               child: OutlinedButton(
                 key: ShiftHandoverScreen.actionRecordKey(id),
                 onPressed: widget.enabled ? _record : null,
                 child: const Text('Record disposition'),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -990,33 +1283,31 @@ class _EvidenceState extends State<_Evidence> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            CheckboxListTile(
-              key: ShiftHandoverScreen.jointWalkKey,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              value: _jointWalk,
-              title: const Text('Joint walk done'),
-              onChanged: widget.enabled ? (value) => setState(() => _jointWalk = value ?? false) : null,
-            ),
-            TextField(
-              key: ShiftHandoverScreen.criticalItemsKey,
-              controller: _critical,
-              enabled: widget.enabled,
-              minLines: 2,
-              maxLines: 5,
-              maxLength: 2000,
-              decoration: const InputDecoration(labelText: 'Critical items'),
-            ),
-            const SizedBox(height: Spacing.sm),
-            SizedBox(
-              width: 280,
-              child: DropdownButtonFormField<String>(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CheckboxListTile(
+          key: ShiftHandoverScreen.jointWalkKey,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          value: _jointWalk,
+          title: const Text('Joint walk done'),
+          onChanged: widget.enabled ? (value) => setState(() => _jointWalk = value ?? false) : null,
+        ),
+        TextField(
+          key: ShiftHandoverScreen.criticalItemsKey,
+          controller: _critical,
+          enabled: widget.enabled,
+          minLines: 2,
+          maxLines: 5,
+          maxLength: 2000,
+          decoration: const InputDecoration(labelText: 'Critical items'),
+        ),
+        const SizedBox(height: Spacing.sm),
+        _FieldRow(
+          fields: [
+            (
+              DropdownButtonFormField<String>(
                 key: ShiftHandoverScreen.deviationReasonKey,
                 initialValue: _deviation,
                 isDense: true,
@@ -1028,21 +1319,25 @@ class _EvidenceState extends State<_Evidence> {
                 ],
                 onChanged: widget.enabled ? (value) => setState(() => _deviation = value ?? _deviation) : null,
               ),
+              3,
             ),
-            if (widget.handover.isDraft) ...[
-              const SizedBox(height: Spacing.sm),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  key: ShiftHandoverScreen.evidenceSaveKey,
-                  onPressed: widget.enabled ? _save : null,
-                  child: const Text('Save evidence'),
-                ),
-              ),
-            ],
           ],
         ),
-      ),
+        if (widget.handover.isDraft) ...[
+          const SizedBox(height: Spacing.sm),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+              child: OutlinedButton(
+                key: ShiftHandoverScreen.evidenceSaveKey,
+                onPressed: widget.enabled ? _save : null,
+                child: const Text('Save evidence'),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
