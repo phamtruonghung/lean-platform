@@ -3,8 +3,8 @@
 /// **What this file is for.** The design pass on the Section board and the Shift
 /// handover changed where things sit, so "it renders" proves nothing: these tests
 /// measure. Every assertion below is a rectangle or a size read off the rendered
-/// tree (`getTopLeft`, `getSize`, `getBottomRight`) at the two boxes the card
-/// names (700 and 1280 logical pixels) and at a text scale of 2, so a later pass
+/// tree (`getTopLeft`, `getSize`, `getBottomRight`) at the three boxes the card
+/// names (700, 900 and 1280 logical pixels) and at a text scale of 2, so a later pass
 /// that moves the counts below the shifts, narrows a machine tile under a glove's
 /// target, or lets the pinned submit creep over the form fails here rather than
 /// looking subtly wrong on a floor tablet.
@@ -218,11 +218,66 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('at a text scale of 2, at 1280 and at 700, nothing overflows and a shift\'s own '
-        'action is still reachable', (tester) async {
-      for (final width in [1280.0, 700.0]) {
+    testWidgets('at 900 the board still takes the narrow shape: the counts fall to two columns, the '
+        'page keeps one left edge and a machine tile is a 44px target', (tester) async {
+      await _pump(tester, at: _boardAddress, width: 900, drafted: false);
+
+      final frame = find.byType(AppPageFrame);
+      expect(frame, findsOneWidget);
+      final left = tester.getRect(frame).left + Spacing.lg;
+      expect(tester.getTopLeft(find.byKey(SectionBoardScreen.countsKey)).dx, closeTo(left, 1.5));
+
+      // The Shell's rail leaves a 640px page here, so the counts row is handed
+      // 608 of it (640 − 2×`Spacing.lg`) — under its 704 floor, so two columns
+      // rather than four. This is the width closest to that floor, which is why
+      // it is worth its own case.
+      final shiftsTile = find.byKey(SectionBoardScreen.countKey('shifts'));
+      expect(
+        tester.getTopLeft(find.byKey(SectionBoardScreen.countKey('no_handover'))).dy,
+        closeTo(tester.getTopLeft(shiftsTile).dy, 0.5),
+        reason: 'the second count shares the first row',
+      );
+      expect(
+        tester.getTopLeft(find.byKey(SectionBoardScreen.countKey('unacknowledged'))).dy,
+        greaterThan(tester.getBottomLeft(shiftsTile).dy),
+        reason: 'the third count starts a new row',
+      );
+
+      final tile = find.byKey(SectionBoardScreen.machineTileKey('500', 'a1'));
+      expect(tester.getSize(tile).height, greaterThanOrEqualTo(AppTouchTarget.min));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('at a text scale of 2, at 1280, 900 and at 700, nothing overflows, the counts still '
+        'fall to two columns and a shift\'s own action is still reachable', (tester) async {
+      for (final width in [1280.0, 900.0, 700.0]) {
         await _pump(tester, at: _boardAddress, width: width, drafted: false, textScale: 2);
         expect(tester.takeException(), isNull, reason: 'board at $width x2');
+
+        // The breakpoint is a function of the reader's text size as well as of
+        // the box: at 2x the counts row's 704 floor becomes 1408, so even this
+        // Screen's widest content box (868 at a 1280 window) sits under it and
+        // two columns is right at all three widths. Compare a raw
+        // `tileFloor * 4`, which puts four across at 1280 and overflows the
+        // captions.
+        final shiftsTile = find.byKey(SectionBoardScreen.countKey('shifts'));
+        expect(
+          tester.getTopLeft(find.byKey(SectionBoardScreen.countKey('no_handover'))).dy,
+          closeTo(tester.getTopLeft(shiftsTile).dy, 0.5),
+          reason: 'board counts two-across at $width x2',
+        );
+        expect(
+          tester.getTopLeft(find.byKey(SectionBoardScreen.countKey('unacknowledged'))).dy,
+          greaterThan(tester.getBottomLeft(shiftsTile).dy),
+          reason: 'board counts two-across at $width x2: the third starts a new row',
+        );
+        // A machine tile still holds a glove's target with the text doubled.
+        expect(
+          tester.getSize(find.byKey(SectionBoardScreen.machineTileKey('500', 'a2'))).height,
+          greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'board tile at $width x2',
+        );
+
         final open = find.byKey(SectionBoardScreen.openHandoverKey('500'));
         await tester.ensureVisible(open);
         await tester.pumpAndSettle();
@@ -262,6 +317,32 @@ void main() {
       expect(tester.getSize(submit).height, greaterThanOrEqualTo(AppTouchTarget.min));
       // Wide, the anchors are not drawn: the bar is the way to the act.
       expect(find.byKey(ShiftHandoverScreen.anchorsKey), findsNothing);
+      // And the field grid is two across, the other side of the same
+      // breakpoint: 'State' and 'Abnormality' share a row here and stack at 2x.
+      expect(
+        tester.getTopLeft(find.byKey(ShiftHandoverScreen.machineAbnormalityKey('a1'))).dy,
+        closeTo(tester.getTopLeft(find.byKey(ShiftHandoverScreen.machineStateKey('a1'))).dy, 0.5),
+        reason: 'wide, two fields of one machine line share a row',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('at 900 the handover is still narrow: section anchors in the header, no pinned bar, '
+        'and the one act inline inside the scrolled form at a 44px target', (tester) async {
+      await _pump(tester, at: _handoverAddress, width: 900, drafted: true, height: 1000);
+
+      // The Shell's rail leaves a 640px box (608 of content), under the form's
+      // 900px two-column point: the anchors are the way through the form and
+      // nothing is pinned.
+      expect(find.byKey(ShiftHandoverScreen.submitBarKey), findsNothing);
+      expect(find.byKey(ShiftHandoverScreen.anchorsKey), findsOneWidget);
+      final submit = find.byKey(ShiftHandoverScreen.submitKey);
+      expect(
+        find.descendant(of: find.byKey(ShiftHandoverScreen.loadedKey), matching: submit),
+        findsOneWidget,
+        reason: 'narrow, the act is inside the form rather than a bar under it',
+      );
+      expect(tester.getSize(submit).height, greaterThanOrEqualTo(AppTouchTarget.min));
       expect(tester.takeException(), isNull);
     });
 
@@ -291,13 +372,38 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('at a text scale of 2, at 1280 and at 700, nothing overflows, the fields are '
-        'still there and the act is still reachable', (tester) async {
-      for (final width in [1280.0, 700.0]) {
+    testWidgets('at a text scale of 2, at 1280, 900 and at 700, nothing overflows, the narrow shape '
+        'is taken, the fields are still there and the act is still reachable', (tester) async {
+      for (final width in [1280.0, 900.0, 700.0]) {
         await _pump(tester, at: _handoverAddress, width: width, drafted: true, textScale: 2, height: 1400);
         expect(tester.takeException(), isNull, reason: 'handover at $width x2');
+        // At 2x the form's 900px two-column point is 1800, so even the widest
+        // box here (1020 — the 1100 page inside the Shell's content area at a
+        // 1280 window) is narrow: the anchors are drawn and nothing is pinned.
+        // Compare a raw `AppBreakpoints.formTwoColumn`, which paints the wide
+        // bar at 1280 over fields that are stacked — the exact bug #379 and
+        // #381 shipped.
+        expect(
+          find.byKey(ShiftHandoverScreen.anchorsKey),
+          findsOneWidget,
+          reason: 'handover anchors at $width x2',
+        );
+        expect(
+          find.byKey(ShiftHandoverScreen.submitBarKey),
+          findsNothing,
+          reason: 'handover has no pinned bar at $width x2',
+        );
         // A field of the first machine line, and the one act.
         expect(find.byKey(ShiftHandoverScreen.machineStateKey('a1')), findsOneWidget);
+        // The field grid is stacked as well: 'State' and 'Abnormality' share a
+        // row only when the box beats the 900 point *at the reader's scale*.
+        // A raw `AppBreakpoints.formTwoColumn` here keeps them side by side at
+        // 2x, half a row each, which is the clipping #379/#381 shipped.
+        expect(
+          tester.getTopLeft(find.byKey(ShiftHandoverScreen.machineAbnormalityKey('a1'))).dy,
+          greaterThan(tester.getBottomLeft(find.byKey(ShiftHandoverScreen.machineStateKey('a1'))).dy),
+          reason: 'handover fields stacked at $width x2',
+        );
         final submit = find.byKey(ShiftHandoverScreen.submitKey);
         await tester.ensureVisible(submit);
         await tester.pumpAndSettle();
@@ -323,8 +429,17 @@ void main() {
     // One test per box rather than one loop: `pumpApp` reuses the app's own
     // state between pumps, so a dialog left open in one case would still be
     // over the next case's board.
+    //
+    // **900 is a sheet, and that is measured rather than assumed.** The
+    // acknowledge dialog is a `DialogPage` on a route nested inside the Shell, so
+    // the box it is handed is the content area, not the window: at a 900 window
+    // that box is 640 (the rail takes 260), under `AppBreakpoints.dialogSheet`'s
+    // 700. It reports "surfaceW=640 frameW=640" — the same number as the page
+    // frame beneath it. Left as it is: the address is the dialog's (ADR-0019) and
+    // moving it out from under the Shell is not a presentation change.
     for (final (width, textScale, sheet) in [
       (1280.0, 1.0, false),
+      (900.0, 1.0, true),
       (700.0, 1.0, true),
       (1280.0, 2.0, true),
     ]) {

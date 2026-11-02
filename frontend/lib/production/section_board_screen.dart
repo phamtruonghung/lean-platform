@@ -238,8 +238,9 @@ class _ShiftCounts extends StatelessWidget {
 
   /// One tile's floor width. Four `AppTouchTarget.min`s, so two tiles fit the
   /// narrowest page box the Shell hands a Screen (440 − 2×16 = 408) and four
-  /// fit the widest (988), which is why the row is two or four and never three:
-  /// a run of three over a fourth tile leaves the last one alone on its row.
+  /// fit this Screen's widest one (`AppLayout.pageWidth` 900 − 2×`Spacing.lg`
+  /// = 868). That is why the row is two or four and never three: a run of three
+  /// over a fourth tile leaves the last one alone on its row.
   static const double tileFloor = AppTouchTarget.min * 4;
 
   int _counted(String exception) =>
