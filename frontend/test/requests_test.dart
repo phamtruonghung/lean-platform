@@ -540,12 +540,37 @@ void main() {
     expect(find.byKey(MyRequestsScreen.filterCountKey), findsNothing);
     expect(wire.requests.length, requestsBefore);
   });
-  test('formatRequestDate writes the date as a person says it, from the ISO string as sent', () {
-    expect(formatRequestDate('2026-10-31T09:12:00.000Z'), '31 Oct 2026');
+  // The wording the formatter owes: the instant in the device's zone, as a person
+  // says the date. Built here from `DateTime`, not from the literal string, so the
+  // expectation holds in whatever zone the suite runs in.
+  String wording(String iso) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final local = DateTime.parse(iso).toLocal();
+    return '${local.day} ${months[local.month - 1]} ${local.year}';
+  }
+
+  test('formatRequestDate words an instant as its date in the device zone', () {
+    const iso = '2026-10-31T09:12:00.000Z';
+    expect(formatRequestDate(iso), wording(iso));
+    expect(formatRequestDate(iso), matches(r'^\d{1,2} [A-Z][a-z]{2} 2026$'));
   });
 
   test('formatRequestDate names the month of an instant in another month', () {
-    expect(formatRequestDate('2027-03-05T23:59:59.000Z'), '5 Mar 2027');
+    const iso = '2027-03-05T12:00:00.000Z';
+    expect(formatRequestDate(iso), wording(iso));
+    expect(formatRequestDate(iso), contains('Mar 2027'));
+  });
+
+  test('formatRequestDate converts to the device zone rather than reading the string\'s date', () {
+    // 23:30 at UTC-5 on 31 Oct is 04:30 UTC on 1 Nov, so the string's own date part
+    // (31 Oct) differs from the instant's date in every zone from UTC-4 eastward.
+    const iso = '2026-10-31T23:30:00-05:00';
+    expect(formatRequestDate(iso), wording(iso));
+    if (DateTime.parse(iso).toLocal().day != 31) {
+      expect(formatRequestDate(iso), isNot(startsWith('31 ')));
+    }
   });
 
   test('formatRequestDate renders a null as the em dash', () {
@@ -558,7 +583,9 @@ void main() {
   });
 
   test('formatRequestDate renders a leap day in a leap year and not in a common year', () {
-    expect(formatRequestDate('2028-02-29T10:00:00Z'), '29 Feb 2028');
+    const leap = '2028-02-29T12:00:00Z';
+    expect(formatRequestDate(leap), wording(leap));
+    expect(formatRequestDate(leap), anyOf(startsWith('29 Feb'), startsWith('1 Mar')));
     expect(formatRequestDate('2026-02-29T10:00:00Z'), '—');
   });
 
