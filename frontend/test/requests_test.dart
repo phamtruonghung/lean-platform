@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/maintenance/my_requests_screen.dart';
+import 'package:lean_platform/maintenance/request.dart';
 import 'package:lean_platform/maintenance/request_accept_dialog.dart';
 import 'package:lean_platform/maintenance/request_decline_dialog.dart';
 import 'package:lean_platform/maintenance/request_duplicate_dialog.dart';
@@ -28,6 +29,7 @@ import 'package:lean_platform/maintenance/requests_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/app_table.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 import 'harness.dart';
 
@@ -537,5 +539,240 @@ void main() {
     expect(find.byKey(MyRequestsScreen.rowKey('202')), findsOneWidget);
     expect(find.byKey(MyRequestsScreen.filterCountKey), findsNothing);
     expect(wire.requests.length, requestsBefore);
+  });
+  // The wording the formatter owes: the instant in the device's zone, as a person
+  // says the date. Built here from `DateTime`, not from the literal string, so the
+  // expectation holds in whatever zone the suite runs in.
+  String wording(String iso) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final local = DateTime.parse(iso).toLocal();
+    return '${local.day} ${months[local.month - 1]} ${local.year}';
+  }
+
+  test('formatRequestDate words an instant as its date in the device zone', () {
+    const iso = '2026-10-31T09:12:00.000Z';
+    expect(formatRequestDate(iso), wording(iso));
+    expect(formatRequestDate(iso), matches(r'^\d{1,2} [A-Z][a-z]{2} 2026$'));
+  });
+
+  test('formatRequestDate names the month of an instant in another month', () {
+    const iso = '2027-03-05T12:00:00.000Z';
+    expect(formatRequestDate(iso), wording(iso));
+    expect(formatRequestDate(iso), contains('Mar 2027'));
+  });
+
+  test('formatRequestDate converts to the device zone rather than reading the string\'s date', () {
+    // 23:30 at UTC-5 on 31 Oct is 04:30 UTC on 1 Nov, so the string's own date part
+    // (31 Oct) differs from the instant's date in every zone from UTC-4 eastward.
+    const iso = '2026-10-31T23:30:00-05:00';
+    expect(formatRequestDate(iso), wording(iso));
+    if (DateTime.parse(iso).toLocal().day != 31) {
+      expect(formatRequestDate(iso), isNot(startsWith('31 ')));
+    }
+  });
+
+  test('formatRequestDate renders a null as the em dash', () {
+    expect(formatRequestDate(null), '—');
+  });
+
+  test('formatRequestDate renders a day that does not exist in its month as the em dash', () {
+    expect(formatRequestDate('2026-02-31T00:00:00Z'), '—');
+    expect(formatRequestDate('2026-04-31T00:00:00Z'), '—');
+  });
+
+  test('formatRequestDate renders a leap day in a leap year and not in a common year', () {
+    const leap = '2028-02-29T12:00:00Z';
+    expect(formatRequestDate(leap), wording(leap));
+    expect(formatRequestDate(leap), anyOf(startsWith('29 Feb'), startsWith('1 Mar')));
+    expect(formatRequestDate('2026-02-29T10:00:00Z'), '—');
+  });
+
+  test('formatRequestDate renders a string that is not a date as the em dash', () {
+    expect(formatRequestDate('not a date'), '—');
+    expect(formatRequestDate('2026-13-40T00:00:00Z'), '—');
+  });
+
+  testWidgets('marking a duplicate stays disabled until a surviving Request is chosen',
+      (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10', canWrite: true)]},
+      requests: {
+        '1': [
+          requestJson('101', 'MR-101', 'Pump is noisy'),
+          requestJson('102', 'MR-102', 'Pump is making a noise'),
+        ],
+      },
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/requests',
+    );
+
+    await tapIn(tester, find.byKey(RequestsScreen.duplicateKey('101')));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<FilledButton>(find.byKey(RequestDuplicateDialog.submitKey)).onPressed,
+      isNull,
+    );
+
+    await tapIn(tester, find.byKey(RequestDuplicateDialog.candidateKey('102')));
+    expect(
+      tester.widget<FilledButton>(find.byKey(RequestDuplicateDialog.submitKey)).onPressed,
+      isNotNull,
+    );
+  });
+
+  group('the registers at 1280 wide', () {
+    const triageScope = {
+      'everywhere': false,
+      'grants': [
+        {'orgUnitId': '10', 'siteId': '1', 'canWrite': true},
+      ],
+    };
+
+    Future<FakeWire> pumpQueue(
+      WidgetTester tester, {
+      Map<String, dynamic>? scope = triageScope,
+      List<Map<String, dynamic>>? requests,
+    }) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 900);
+      addTearDown(tester.view.reset);
+      final wire = wireWith(
+        role: Roles.supervisor,
+        orgUnitScope: scope,
+        requests: {
+          '1': requests ??
+              [
+                requestJson('101', 'MR-101', 'Pump is noisy',
+                    productionStopped: true, reportedAt: DateTime.utc(2026, 10, 31, 9)),
+              ],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/requests',
+      );
+      return wire;
+    }
+
+    testWidgets('the triage queue draws a band and a table row', (tester) async {
+      await pumpQueue(tester);
+      expect(find.byType(AppTableHeader), findsOneWidget);
+      expect(find.byType(AppTableRow), findsOneWidget);
+    });
+
+    testWidgets('Accept is inline and Decline and Mark duplicate are only in the kebab',
+        (tester) async {
+      await pumpQueue(tester);
+      expect(find.byKey(RequestsScreen.acceptKey('101')), findsOneWidget);
+      expect(find.byKey(RequestsScreen.declineKey('101')), findsNothing);
+      expect(find.byKey(RequestsScreen.duplicateKey('101')), findsNothing);
+
+      await tapIn(tester, find.byKey(RequestsScreen.rowActionsKey('101')));
+      expect(find.byKey(RequestsScreen.declineKey('101')), findsOneWidget);
+      expect(find.byKey(RequestsScreen.duplicateKey('101')), findsOneWidget);
+    });
+
+    testWidgets('Accept and the kebab are enabled, disabled while an accept is in flight, '
+        'and enabled again', (tester) async {
+      final wire = await pumpQueue(
+        tester,
+        requests: [
+          requestJson('101', 'MR-101', 'Pump is noisy'),
+          requestJson('102', 'MR-102', 'Belt is slipping'),
+        ],
+      );
+      wire.requestAcceptGate = Completer<void>();
+
+      VoidCallback? accept(String id) =>
+          tester.widget<FilledButton>(find.byKey(RequestsScreen.acceptKey(id))).onPressed;
+      VoidCallback? kebab(String id) =>
+          tester.widget<IconButton>(find.byKey(RequestsScreen.rowActionsKey(id))).onPressed;
+
+      expect(accept('101'), isNotNull);
+      expect(accept('102'), isNotNull);
+      expect(kebab('101'), isNotNull);
+      expect(kebab('102'), isNotNull);
+
+      await tapIn(tester, find.byKey(RequestsScreen.acceptKey('101')));
+      await tester.pumpAndSettle();
+      await tapIn(tester, find.byKey(RequestAcceptDialog.submitKey));
+
+      expect(accept('101'), isNull);
+      expect(accept('102'), isNull);
+      expect(kebab('101'), isNull);
+      expect(kebab('102'), isNull);
+
+      wire.requestAcceptGate!.complete();
+      await tester.pumpAndSettle();
+      expect(accept('102'), isNotNull);
+      expect(kebab('102'), isNotNull);
+    });
+
+    testWidgets('a caller who cannot triage has no Accept and no kebab', (tester) async {
+      await pumpQueue(tester, scope: const {'everywhere': false, 'grants': []});
+      expect(find.byType(AppTableRow), findsOneWidget);
+      expect(find.byKey(RequestsScreen.acceptKey('101')), findsNothing);
+      expect(find.byKey(RequestsScreen.rowActionsKey('101')), findsNothing);
+    });
+
+    testWidgets('a production-stopped Request says so in its row', (tester) async {
+      await pumpQueue(tester);
+      expect(find.text('Production is stopped'), findsOneWidget);
+    });
+
+    testWidgets('the Raised column shows the date as a person says it', (tester) async {
+      await pumpQueue(tester);
+      expect(find.text('31 Oct 2026'), findsOneWidget);
+      expect(find.byKey(AppTableHeader.labelKey('Raised')), findsOneWidget);
+    });
+
+    testWidgets('My requests draws a band and a row, with the outcome behind a toggle',
+        (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 900);
+      addTearDown(tester.view.reset);
+      final wire = wireWith(
+        role: Roles.operator,
+        orgUnitScope: {'everywhere': false, 'grants': [scopeGrantJson('10')]},
+        myRequests: {
+          '1': [
+            requestJson('101', 'MR-101', 'Pump is noisy',
+                status: 'accepted',
+                reportedAt: DateTime.utc(2026, 10, 31, 9),
+                workOrder: requestWorkOrderJson('900', 'WO-900')),
+            requestJson('102', 'MR-102', 'Belt is slipping',
+                status: 'rejected', rejectionReason: 'Already scheduled'),
+            requestJson('103', 'MR-103', 'Light is out'),
+          ],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/my-requests',
+      );
+
+      expect(find.byType(AppTableHeader), findsOneWidget);
+      expect(find.byType(AppTableRow), findsNWidgets(3));
+      expect(find.text('31 Oct 2026'), findsOneWidget);
+      expect(find.text('Became Work order WO-900'), findsNothing);
+      expect(find.text('Declined: Already scheduled'), findsNothing);
+      expect(find.byKey(MyRequestsScreen.outcomeKey('103')), findsNothing);
+
+      await tapIn(tester, find.byKey(MyRequestsScreen.outcomeKey('101')));
+      expect(find.text('Became Work order WO-900'), findsOneWidget);
+      await tapIn(tester, find.byKey(MyRequestsScreen.outcomeKey('102')));
+      expect(find.text('Declined: Already scheduled'), findsOneWidget);
+    });
   });
 }

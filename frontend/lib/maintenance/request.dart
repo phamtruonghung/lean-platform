@@ -162,3 +162,50 @@ class Request {
     return wire;
   }
 }
+
+const List<String> _monthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/// The date a Request was raised, as a person says it: `31 Oct 2026`.
+///
+/// The instant the server sent is converted to the device's zone and its date
+/// worded there, the way `formatEnteredAt` (`kpi/kpi_catalogue.dart`) words a
+/// timestamp: a plant's terminals are set to the plant's zone, so the device's
+/// zone is the plant's and the date is the plant's. This words a timestamp; it is
+/// not a Screen deriving "today" from the device clock (design-language §13), and
+/// nothing here is relative to now.
+///
+/// The unknown value is `—`, never a blank and never a date: a null, a string that
+/// is not an ISO instant, and one whose date does not exist (`2026-02-31`, which
+/// `DateTime.tryParse` would quietly roll over to March) all render it. Existence
+/// is checked on a `DateTime.utc` built from the string's own date part.
+String formatRequestDate(String? reportedAt) {
+  if (reportedAt == null) return '—';
+  final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(reportedAt);
+  if (match == null) return '—';
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final day = int.parse(match.group(3)!);
+  final written = DateTime.utc(year, month, day);
+  if (written.year != year || written.month != month || written.day != day) return '—';
+  final instant = DateTime.tryParse(reportedAt);
+  if (instant == null) return '—';
+  final local = instant.toLocal();
+  return '${local.day} ${_monthNames[local.month - 1]} ${local.year}';
+}
+
+/// Every month label [formatRequestDate] can produce, for a column that must be
+/// wide enough for the widest of them.
+const List<String> requestDateMonths = _monthNames;

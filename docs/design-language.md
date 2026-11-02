@@ -211,6 +211,14 @@ AppPageFrame(maxWidth)                 // 900 by default; a table/board page nam
 `AppToolbar` ships in this card (#386). A Screen that has not adopted it yet still
 composes its own filter row in that slot, at the same spacing.
 
+**Where the toolbar sits is decided by what it narrows.** The ten maintenance
+registers (#388) put the filter in one `AppToolbar` immediately above the rows it
+narrows, inside the list's own state: the term is that list's own `setState`, so it
+belongs with the rows rather than up in the header. A Site selector, which must
+still be reachable when the register is empty, stays in the header's own `below`.
+Assets is the one Screen that puts both there — Site and `Show retired` in a single
+`AppToolbar` — because both narrow what the register lists.
+
 Spacing is a `Spacing` value everywhere, and these are the values:
 
 | between | value |
@@ -248,7 +256,14 @@ entries below, is a part some of them are built from, not a sixth.
 ### The register: a list of records that are read across
 
 A column-label band plus rows. This is the Work orders table, the KPI matrices,
-and the shape the maintenance registers are moving towards.
+and the ten maintenance registers: Assets, Parts, Stores, one Store's stock,
+Meters, Job plans, PM schedules, Downtime, the Requests triage queue and My
+requests. They have arrived (#388). One thing about them a later slice does not
+get to re-derive: **a register's cells carry the values its card carries, in the
+same order, and the band's labels are the only content the register adds.** A
+field is not dropped for the sake of a narrower row and not invented to fill one;
+if a value cannot be compared down a column, it goes behind the disclosure below
+rather than into a column of sentences.
 
 **The band** is `AppTableHeader`, shipped in this card (#386). Fill
 `tableHeaderFill`; a 1px `edge` hairline under it; `labelMedium` 12 at **w600 in
@@ -257,9 +272,8 @@ and the shape the maintenance registers are moving towards.
 Destination-group device, and the labels are the domain's own words ("WO#", "Org
 Unit"). A band is never a row: it has no hover and no tap.
 
-Today's `_WorkOrderTableHeader` is private to its Screen and differs from this: it
-sets `colorScheme.onSurface` at w700 with 0.2 letter spacing. The row above is the
-target, and Work orders adopts it in its own slice.
+Today's `_WorkOrderTableHeader` is gone: Work orders adopted this band in its own
+slice (#409), so the band a reader sees there is the primitive, not a private copy.
 
 **A row** is `AppTableRow`, shipped in this card (#386): **32px when the row's own
 `onTap` is null, `AppTouchTarget.min` (44) when it is set.** The primitive floors
@@ -300,10 +314,42 @@ make the column's edge move with the window.
 **Below the table, a card per record.** A register of five columns or fewer
 becomes a card per record below `AppBreakpoints.registerTable` (700) of box width.
 A wider register states its own larger breakpoint and says why in its own file.
-Work orders' 800 is the existing example: at 700 of box its WO# still
+Work orders' 800 is the first of them: at 700 of box its WO# still
 ellipsized, and at 750 "Assignee" and "Actions" ran together, so it chose 800 by
 rendering the Screen at each width. Its location, in the Screen rather than in
 `AppBreakpoints`, is a deliberate deviation, not a precedent to copy silently.
+
+Five more state their own, each because its columns and not its taste made 700
+clip. **Meters** and **PM schedules** keep 960, the page's own width: eight and
+seven columns whose measured kind, number and action columns take about 470 and
+180 of the 904 a 960 box gives, which at 700 of box would leave the flex cells
+nothing. **Downtime** and **My requests** keep 900, seven columns each, where the
+measured columns take about 500 of the 844 a 900 box gives and the flex cells
+share the about 344 that is left. **Requests**, the triage queue, keeps 960 for
+eight columns: its date, state, urgency and three actions take about 450 of 904,
+and the four flex columns share the other 450 over 13 shares — about 35 a share,
+enough for `MR-BUC-2026-00001` at the length it really is. Each number lives in its
+own Screen with its own argument, which is the shape Work orders set.
+
+**A record's prose sits behind one press beneath its own row.** A register keeps
+one comparable row shape, and what a record says that no column can hold — a Job
+plan's steps, a PM schedule's rules, a Downtime stop's description, what became of
+a Request — is a `RowDisclosure` (`frontend/lib/maintenance/row_disclosure.dart`)
+under the row it belongs to: collapsed by default, expanded by one press on a
+toggle that is `AppTouchTarget.min` in both directions, labelled for a screen
+reader and pressable from one, and moving in 160ms or not at all under
+`MediaQuery.disableAnimationsOf`. Four Screens spend it: Job plans, PM schedules,
+Downtime and My requests. The alternative was refused rather than unconsidered:
+a card per record below the band and a table above it is one Screen with two row
+shapes to keep in step, which is the thing a register exists to end.
+
+**A Screen one level below a register shows the relationship as a crumb above its
+title, never as a second navigation surface.** One Store's stock is reached from
+the Stores register, and its page opens with `Stores ›` above the Store's own
+name: a real affordance back to the register, a `TextButton` at
+`AppTouchTarget.min` with `Back to Stores` as its semantics label, and the
+parent's own word for its own Destination rather than a new one. The crumb says
+where the page sits; the sidebar keeps saying where the Module is.
 
 Read against section 2, this is concrete. A register measures the box it is handed
 — the page's box less its inset, 32 at the `Spacing.lg` (16) each side of section
@@ -518,15 +564,28 @@ own text-scale factor, so the class holds the copy that header points at until i
 adopts `AppBreakpoints.effective`.
 
 `AppBreakpoints` ships in this card (#386), in `theme.dart`; the five numbers are
-named there and this section argues them (#398 added the two dialog rows). Three are pinned by a test today:
+named there and this section argues them (#398 added the two dialog rows). Four are
+pinned by a test today:
 `headerActionsWrap` (560), which is the same number as
 `AppPageHeader.wrapBreakpoint` and is pinned at its edge by
 `test/app_page_header_test.dart`; `toolbarWrap` (640) by
 `test/app_toolbar_test.dart`; and `detailTwoColumn` (1000) by
-`test/app_section_grid_test.dart`. The other two are named but spent by nothing
-yet: `registerTable` (700) belongs to a register of five columns or fewer, and
-`formTwoColumn` (900) to a form's field grid; each is pinned by the test of the
-Screen that adopts it. Work orders is deliberately not on 700: its seven columns
+`test/app_section_grid_test.dart`. Of the last two, `registerTable` (700) is now
+spent: it is the default of a register of five columns or fewer, and the ten
+maintenance registers (#388) pin it — and their own larger numbers — in
+`test/maintenance_catalogue_registers_test.dart`,
+`test/maintenance_schedule_registers_test.dart` and
+`test/maintenance_triage_queues_test.dart`. What those three pin, per Screen, is
+one figure and six claims: the window at which the cards give way to the band, the
+band's own 32px, a band label and its cells within 1px on every row (left edge for
+a start-aligned column, right edge for an end-aligned one), a stated row height,
+the number column's shared right edge in tabular figures, and one stated card's
+measured height — with nothing overflowing at twice the text. `formTwoColumn` (900)
+is still named and spent by nothing: the maintenance forms it was argued for are
+dialogs, whose box is 420 to 640 wide (section 11), so their field grid never
+reaches 900 and the number waits for a form's field grid that adopts it — pinned
+then, at its edge, by that Screen's own test. Work orders is
+deliberately not on 700: its seven columns
 keep their own 800, argued in section 6, and its own tests cover both sides of
 that number. Home's grid carries a private `_CardGrid.twoColumnWidth` of 640,
 read from its own `LayoutBuilder`; that is the same 640 already in the class,
@@ -541,7 +600,7 @@ reader's text size and the box does not, so the same box needs the wrap sooner
 was a rule that the next Screen would have had to rediscover. The class exists so
 there is one place that reads the box and one that reads the text scale. A number
 is pinned by the widget that spends it, at its edge (the paragraph above names
-which three are pinned today and which two wait for the Screen that spends them).
+which are pinned today and which one still waits for the Screen that spends it).
 
 Against section 2, the five numbers sort the three common windows. Every primitive
 measures the box it is handed, which is the page's box less its inset — 16 each
@@ -871,7 +930,7 @@ Screen's own slice.
 This section is a **written convention, not a widget.** The client has no `intl`
 dependency (`frontend/pubspec.yaml` lists none), so a helper that took a locale
 and a pattern would be the first of its kind and would pull a package in to format
-a date the plant reads one way. What there is today is three hand-rolled
+a date the plant reads one way. What there is today is four hand-rolled
 formatters, read for this section rather than imitated blind:
 
 | file | what it formats |
@@ -879,9 +938,10 @@ formatters, read for this section rather than imitated blind:
 | `kpi/kpi_catalogue.dart:368` `formatEnteredAt` | a timestamp as `YYYY-MM-DD HH:MM` in the device's zone |
 | `production/handover_format.dart:6, :16, :25` | `formatClock` (`HH:mm`, `—` when null), `formatMinutes` (`1 h 35 min`), `formatPercent` (one decimal) |
 | `people/worked_hours.dart:85` `formatWorkedMinutes` | minutes as `7h 30m` |
+| `maintenance/request.dart` `formatRequestDate` | a timestamp's date, worded `31 Oct 2026` in the device's zone the way `formatEnteredAt` words a timestamp; `—` for a null, a string that is not an instant, and a date that does not exist (`2026-02-31`) (#388) |
 
 Where a rule below has no helper, the adopting slice owes one, in the module that
-needs it, written the same way and tested the same way; there is no fourth
+needs it, written the same way and tested the same way; there is no fifth
 formatter in this card.
 
 ### Dates and times
@@ -937,7 +997,12 @@ fact is `0`. The two mean different things: zero downtime and unmeasured downtim
 are not the same report, and a blank cell is read as a rendering bug.
 `maintenance/tier_board.dart:157` already does this (`'—'` when `value` is null,
 with a comment saying never `0` for an unmeasured KPI) and
-`production/handover_format.dart:8` does it for a missing time. This is §7's four
+`production/handover_format.dart:7` does it for a missing time. A register's cell
+follows it too: an unknown Reason, Reported by or Raised by is `—` and never an
+empty cell, which is the ruling the maintenance registers had to make (#388) — the
+cell is built from `name ?? '—'`, where the card this replaced dropped its `Text`
+behind a null-conditional and left the slot looking blank
+(`downtime_screen.dart:374-377` at the tree #388 forked from). This is §7's four
 states at the scale of one cell: **loading** is a skeleton, **none exist** is `—`,
 and **a fact** is the figure.
 

@@ -8,12 +8,25 @@
 ///
 /// This is a dialog, not a Screen and not a Destination — CONTEXT.md's own
 /// Screen entry says a dialog inside a Screen is not a Screen.
+///
+/// The form width (520): one sentence and one optional date-time field. It is not
+/// the decision width (420), which is for a question with no fields; the field
+/// and its helper line want the room, and the 480 this used to set inside an
+/// `AlertDialog`'s content left the title and the action row at a width the
+/// platform chose. Closing is the honest end of a stop, not a destruction, so the
+/// act is a primary action, not a destructive one.
+///
+/// A dismiss that is disabled while the request is in flight stays disabled, and
+/// so does `Esc` then: `AppDialog` runs the dismiss action, which does nothing
+/// while it is null. The `AlertDialog` this replaces let `Esc` pop the route
+/// mid-request.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_date_time_field.dart';
 import 'downtime_bloc.dart';
 import 'downtime_event.dart';
@@ -25,9 +38,15 @@ class DowntimeCloseDialog extends StatefulWidget {
   final DowntimeEvent downtimeEvent;
 
   static const ValueKey<String> endedAtKey = ValueKey<String>('downtime-close-ended-at');
-  static const ValueKey<String> submitKey = ValueKey<String>('downtime-close-submit');
-  static const ValueKey<String> dismissKey = ValueKey<String>('downtime-close-dismiss');
   static const ValueKey<String> failureKey = ValueKey<String>('downtime-close-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'downtime-close-submit';
+  static const String _dismissId = 'downtime-close-dismiss';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get dismissKey => AppDialog.actionKey(_dismissId);
 
   @override
   State<DowntimeCloseDialog> createState() => _DowntimeCloseDialogState();
@@ -47,8 +66,8 @@ class _DowntimeCloseDialogState extends State<DowntimeCloseDialog> {
       _failure = null;
     });
     context.read<DowntimeBloc>().add(
-          DowntimeCloseConfirmed(downtimeEventId: widget.downtimeEvent.id, endedAt: _endedAt),
-        );
+      DowntimeCloseConfirmed(downtimeEventId: widget.downtimeEvent.id, endedAt: _endedAt),
+    );
   }
 
   void _onDowntimeChanged(BuildContext context, DowntimeState state) {
@@ -65,58 +84,55 @@ class _DowntimeCloseDialogState extends State<DowntimeCloseDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<DowntimeBloc, DowntimeState>(
       listener: _onDowntimeChanged,
-      child: AlertDialog(
-        title: Text('Close the stop for ${widget.downtimeEvent.assetName}?'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'The machine is running again. The server records how long it was down.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                AppDateTimeField(
-                  key: DowntimeCloseDialog.endedAtKey,
-                  name: 'downtime-close-ended-at',
-                  label: 'Ended at (optional)',
-                  helperText: 'Leave blank to record now.',
-                  value: _endedAt,
-                  optional: true,
-                  enabled: !_awaiting,
-                  onChanged: (value) => setState(() => _endedAt = value),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: DowntimeCloseDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Close the stop for ${widget.downtimeEvent.assetName}?',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: DowntimeCloseDialog.dismissKey,
+          AppDialogAction(
+            id: DowntimeCloseDialog._dismissId,
+            label: 'Keep it open',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Keep it open'),
           ),
-          FilledButton(
-            key: DowntimeCloseDialog.submitKey,
+          AppDialogAction(
+            id: DowntimeCloseDialog._submitId,
+            label: 'Close this stop',
             onPressed: _awaiting ? null : _submit,
-            child: const Text('Close this stop'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'The machine is running again. The server records how long it was down.',
+              style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+            ),
+            const SizedBox(height: Spacing.md),
+            AppDateTimeField(
+              key: DowntimeCloseDialog.endedAtKey,
+              name: 'downtime-close-ended-at',
+              label: 'Ended at (optional)',
+              helperText: 'Leave blank to record now.',
+              value: _endedAt,
+              optional: true,
+              enabled: !_awaiting,
+              onChanged: (value) => setState(() => _endedAt = value),
+            ),
+            if (_failure != null)
+              Padding(
+                key: DowntimeCloseDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

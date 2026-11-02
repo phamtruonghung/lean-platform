@@ -8,12 +8,17 @@
 /// The dialog never lets a lower reading pass silently: on a cumulative meter
 /// the "counter was reset" choice is the only way a smaller number is offered,
 /// and the server refuses one that goes down without it.
+///
+/// The form width (520), which is the width it already set: a reading, a note
+/// and, on a cumulative meter, a labelled checkbox with its explanation — a
+/// short form with no columns of its own.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'meter.dart';
 import 'meters_bloc.dart';
 
@@ -25,8 +30,14 @@ class ReadingFormDialog extends StatefulWidget {
   static const ValueKey<String> readingKey = ValueKey<String>('reading-form-reading');
   static const ValueKey<String> noteKey = ValueKey<String>('reading-form-note');
   static const ValueKey<String> rolloverKey = ValueKey<String>('reading-form-rollover');
-  static const ValueKey<String> submitKey = ValueKey<String>('reading-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('reading-form-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'reading-form-submit';
+  static const String _cancelId = 'reading-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('reading-form-failure');
 
   static Future<void> open(BuildContext context, {required AssetMeter meter}) {
@@ -71,13 +82,13 @@ class _ReadingFormDialogState extends State<ReadingFormDialog> {
       _failure = null;
     });
     context.read<MetersBloc>().add(
-          MeterReadingConfirmed(
-            meterId: widget.meter.id,
-            reading: _readingValue!,
-            isRollover: widget.meter.isCumulative && _rollover,
-            note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-          ),
-        );
+      MeterReadingConfirmed(
+        meterId: widget.meter.id,
+        reading: _readingValue!,
+        isRollover: widget.meter.isCumulative && _rollover,
+        note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+      ),
+    );
   }
 
   void _onMetersChanged(BuildContext context, MetersState state) {
@@ -94,97 +105,85 @@ class _ReadingFormDialogState extends State<ReadingFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+    final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
     final meter = widget.meter;
     final isRollover = meter.isCumulative && _rollover;
     return BlocListener<MetersBloc, MetersState>(
       listener: _onMetersChanged,
-      child: AlertDialog(
-        title: Text('Record a reading on ${meter.name}'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${meter.assetName} (${meter.assetCode}) · ${meter.code}',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.xs),
-                Text(
-                  'Accumulated use so far: ${meter.accumulatedLabel}',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ReadingFormDialog.readingKey,
-                  controller: _reading,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: isRollover
-                        ? 'What the new counter reads now'
-                        : 'What the counter reads',
-                    helperText: isRollover
-                        ? 'The accumulated use is carried forward into the offset; the new counter usually reads 0.'
-                        : 'In ${meter.uomCode}, exactly as the counter shows.',
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ReadingFormDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (meter.isCumulative) ...[
-                  const SizedBox(height: Spacing.xs),
-                  CheckboxListTile(
-                    key: ReadingFormDialog.rolloverKey,
-                    value: _rollover,
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    onChanged: _awaiting ? null : (value) => setState(() => _rollover = value ?? false),
-                    title: const Text('The counter was reset or replaced'),
-                    subtitle: const Text(
-                      'Carries the accumulated use into the offset and records this as the new counter\'s start.',
-                    ),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: ReadingFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Record a reading on ${meter.name}',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: ReadingFormDialog.cancelKey,
+          AppDialogAction(
+            id: ReadingFormDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: ReadingFormDialog.submitKey,
+          AppDialogAction(
+            id: ReadingFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : (isRollover ? 'Record rollover' : 'Record reading'),
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (isRollover ? 'Record rollover' : 'Record reading')),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${meter.assetName} (${meter.assetCode}) · ${meter.code}', style: muted),
+            const SizedBox(height: Spacing.xs),
+            Text('Accumulated use so far: ${meter.accumulatedLabel}', style: muted),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ReadingFormDialog.readingKey,
+              controller: _reading,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: isRollover ? 'What the new counter reads now' : 'What the counter reads',
+                helperText: isRollover
+                    ? 'The accumulated use is carried forward into the offset; the new counter usually reads 0.'
+                    : 'In ${meter.uomCode}, exactly as the counter shows.',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ReadingFormDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              decoration: const InputDecoration(
+                labelText: 'Note (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (meter.isCumulative) ...[
+              const SizedBox(height: Spacing.xs),
+              CheckboxListTile(
+                key: ReadingFormDialog.rolloverKey,
+                value: _rollover,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: _awaiting ? null : (value) => setState(() => _rollover = value ?? false),
+                title: const Text('The counter was reset or replaced'),
+                subtitle: const Text(
+                  'Carries the accumulated use into the offset and records this as the new counter\'s start.',
+                ),
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: ReadingFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

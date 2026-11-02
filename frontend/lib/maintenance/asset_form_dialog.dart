@@ -17,6 +17,13 @@
 /// The four field controls are shared between both paths on purpose (issue
 /// #173, user story 22) — one `TextField`/`DropdownButtonFormField` set, not
 /// two copies that could drift apart in labels, options or validation.
+///
+/// **Adding is the wide dialog (640), correcting is the form (520).** Adding
+/// carries an `OrgUnitChooser`, a tree with its own Site picker and its own
+/// rows, which is content with its own columns; a correction is the four
+/// fields and one line of text, which is a short form. Both are the same
+/// widget, so the size follows [_isCorrecting] rather than being a second
+/// dialog.
 library;
 
 import 'package:flutter/material.dart';
@@ -26,6 +33,7 @@ import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'asset.dart';
 import 'assets_bloc.dart';
 import 'org_unit_chooser.dart';
@@ -41,8 +49,14 @@ class AssetFormDialog extends StatefulWidget {
   static const ValueKey<String> nameKey = ValueKey<String>('asset-form-name');
   static const ValueKey<String> typeKey = ValueKey<String>('asset-form-type');
   static const ValueKey<String> criticalityKey = ValueKey<String>('asset-form-criticality');
-  static const ValueKey<String> submitKey = ValueKey<String>('asset-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('asset-form-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'asset-form-submit';
+  static const String _cancelId = 'asset-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('asset-form-failure');
   static const ValueKey<String> chosenKey = ValueKey<String>('asset-form-chosen');
 
@@ -152,24 +166,24 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
     final asset = widget.asset;
     if (asset == null) {
       context.read<AssetsBloc>().add(
-            AssetAddConfirmed(
-              orgUnitId: _orgUnit!.id,
-              code: _code.text.trim(),
-              name: _name.text.trim(),
-              assetType: _type!.wire,
-              criticality: _criticality.wire,
-            ),
-          );
+        AssetAddConfirmed(
+          orgUnitId: _orgUnit!.id,
+          code: _code.text.trim(),
+          name: _name.text.trim(),
+          assetType: _type!.wire,
+          criticality: _criticality.wire,
+        ),
+      );
     } else {
       context.read<AssetsBloc>().add(
-            AssetCorrectionConfirmed(
-              assetId: asset.id,
-              code: _code.text.trim(),
-              name: _name.text.trim(),
-              assetType: _type!.wire,
-              criticality: _criticality.wire,
-            ),
-          );
+        AssetCorrectionConfirmed(
+          assetId: asset.id,
+          code: _code.text.trim(),
+          name: _name.text.trim(),
+          assetType: _type!.wire,
+          criticality: _criticality.wire,
+        ),
+      );
     }
   }
 
@@ -243,7 +257,7 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return MultiBlocListener(
       listeners: [
         BlocListener<AssetsBloc, AssetsState>(listener: _onAssetsChanged),
@@ -257,125 +271,120 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
             listener: _onOrgUnitSiteChanged,
           ),
       ],
-      child: AlertDialog(
-        title: Text(_isCorrecting ? 'Correct details' : 'Add an Asset'),
-        content: SizedBox(
-          width: 620,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: AssetFormDialog.codeKey,
-                  controller: _code,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Code',
-                    helperText: 'Unique across the whole Platform, not just this Site.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: AssetFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<AssetType>(
-                        key: AssetFormDialog.typeKey,
-                        initialValue: _type,
-                        decoration: const InputDecoration(
-                          labelText: 'Kind',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (final type in AssetType.values)
-                            DropdownMenuItem<AssetType>(value: type, child: Text(type.label)),
-                        ],
-                        onChanged: _awaiting ? null : (value) => setState(() => _type = value),
-                      ),
-                    ),
-                    const SizedBox(width: Spacing.md),
-                    Expanded(
-                      child: DropdownButtonFormField<Criticality>(
-                        key: AssetFormDialog.criticalityKey,
-                        initialValue: _criticality,
-                        decoration: const InputDecoration(
-                          labelText: 'Criticality',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (final level in Criticality.values)
-                            DropdownMenuItem<Criticality>(value: level, child: Text(level.label)),
-                        ],
-                        onChanged: _awaiting
-                            ? null
-                            : (value) => setState(() => _criticality = value ?? _criticality),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Spacing.lg),
-                if (_isCorrecting)
-                  // No Org Unit chooser here (issue #173): where an Asset
-                  // sits is its own action, with its own two-Org-Unit rule
-                  // (issue #171) and its own transaction — this dialog only
-                  // ever carries one.
-                  Text(
-                    'Where this Asset sits is changed with its own "Change Org Unit…" action.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  )
-                else ...[
-                  OrgUnitChooser(
-                    selectedId: _orgUnit?.id,
-                    enabled: !_awaiting,
-                    onSelected: (node) => setState(() => _orgUnit = node),
-                  ),
-                  if (_orgUnit != null)
-                    Padding(
-                      key: AssetFormDialog.chosenKey,
-                      padding: const EdgeInsets.only(top: Spacing.sm),
-                      child: Text(
-                        'This Asset will sit at ${_orgUnit!.name}.',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: AssetFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: _isCorrecting ? 'Correct details' : 'Add an Asset',
+        size: _isCorrecting ? AppDialogSize.form : AppDialogSize.wide,
         actions: [
-          TextButton(
-            key: AssetFormDialog.cancelKey,
+          AppDialogAction(
+            id: AssetFormDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: AssetFormDialog.submitKey,
+          AppDialogAction(
+            id: AssetFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : (_isCorrecting ? 'Save' : 'Add Asset'),
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (_isCorrecting ? 'Save' : 'Add Asset')),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: AssetFormDialog.codeKey,
+              controller: _code,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Code',
+                helperText: 'Unique across the whole Platform, not just this Site.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: AssetFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<AssetType>(
+                    key: AssetFormDialog.typeKey,
+                    initialValue: _type,
+                    decoration: const InputDecoration(
+                      labelText: 'Kind',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final type in AssetType.values)
+                        DropdownMenuItem<AssetType>(value: type, child: Text(type.label)),
+                    ],
+                    onChanged: _awaiting ? null : (value) => setState(() => _type = value),
+                  ),
+                ),
+                const SizedBox(width: Spacing.md),
+                Expanded(
+                  child: DropdownButtonFormField<Criticality>(
+                    key: AssetFormDialog.criticalityKey,
+                    initialValue: _criticality,
+                    decoration: const InputDecoration(
+                      labelText: 'Criticality',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final level in Criticality.values)
+                        DropdownMenuItem<Criticality>(value: level, child: Text(level.label)),
+                    ],
+                    onChanged: _awaiting
+                        ? null
+                        : (value) => setState(() => _criticality = value ?? _criticality),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.lg),
+            if (_isCorrecting)
+              // No Org Unit chooser here (issue #173): where an Asset
+              // sits is its own action, with its own two-Org-Unit rule
+              // (issue #171) and its own transaction — this dialog only
+              // ever carries one.
+              Text(
+                'Where this Asset sits is changed with its own "Change Org Unit…" action.',
+                style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+              )
+            else ...[
+              OrgUnitChooser(
+                selectedId: _orgUnit?.id,
+                enabled: !_awaiting,
+                onSelected: (node) => setState(() => _orgUnit = node),
+              ),
+              if (_orgUnit != null)
+                Padding(
+                  key: AssetFormDialog.chosenKey,
+                  padding: const EdgeInsets.only(top: Spacing.sm),
+                  child: Text(
+                    'This Asset will sit at ${_orgUnit!.name}.',
+                    style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+                  ),
+                ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: AssetFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

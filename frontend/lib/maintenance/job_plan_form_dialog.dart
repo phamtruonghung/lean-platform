@@ -10,6 +10,12 @@
 /// The Skill picker reads the same People catalogue the skills feature already
 /// reads (`PeopleApi.fetchSkills`) — no second source is invented for it. A
 /// step that requires no Skill simply omits `skillId` on the wire.
+///
+/// The wide dialog (640): beside its own fields it carries a growing list of
+/// steps, each a row with its own columns (step number, instruction, Skill,
+/// hours), which is content with columns of its own. The 620 this used to set
+/// inside an `AlertDialog`'s content left the title and the action row at a width
+/// the platform chose; `AppDialog` states it once.
 library;
 
 import 'package:flutter/material.dart';
@@ -19,6 +25,7 @@ import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'job_plan.dart';
 import 'job_plans_bloc.dart';
@@ -31,19 +38,29 @@ class JobPlanFormDialog extends StatefulWidget {
   static const ValueKey<String> nameKey = ValueKey<String>('job-plan-form-name');
   static const ValueKey<String> descriptionKey = ValueKey<String>('job-plan-form-description');
   static const ValueKey<String> workTypeKey = ValueKey<String>('job-plan-form-work-type');
-  static const ValueKey<String> estimatedHoursKey = ValueKey<String>('job-plan-form-estimated-hours');
-  static const ValueKey<String> requiresShutdownKey =
-      ValueKey<String>('job-plan-form-requires-shutdown');
+  static const ValueKey<String> estimatedHoursKey = ValueKey<String>(
+    'job-plan-form-estimated-hours',
+  );
+  static const ValueKey<String> requiresShutdownKey = ValueKey<String>(
+    'job-plan-form-requires-shutdown',
+  );
   static const ValueKey<String> safetyNoteKey = ValueKey<String>('job-plan-form-safety-note');
   static const ValueKey<String> addTaskKey = ValueKey<String>('job-plan-form-add-task');
-  static const ValueKey<String> submitKey = ValueKey<String>('job-plan-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('job-plan-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('job-plan-form-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'job-plan-form-submit';
+  static const String _cancelId = 'job-plan-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
   static const ValueKey<String> skillsFailedKey = ValueKey<String>('job-plan-form-skills-failed');
 
   static ValueKey<String> taskStepKey(int index) => ValueKey<String>('job-plan-task-step-$index');
   static ValueKey<String> taskInstructionKey(int index) =>
       ValueKey<String>('job-plan-task-instruction-$index');
+
   /// The step's own Skill picker field name — the one string
   /// [taskSkillKey] and [taskSkillSuggestionKey] are both derived from, so
   /// neither can drift from what the field itself is built with, and two
@@ -63,7 +80,8 @@ class JobPlanFormDialog extends StatefulWidget {
       AppSearchField.suggestionKey(_taskSkillFieldName(index), skillId);
   static ValueKey<String> taskEstimatedHoursKey(int index) =>
       ValueKey<String>('job-plan-task-hours-$index');
-  static ValueKey<String> removeTaskKey(int index) => ValueKey<String>('job-plan-task-remove-$index');
+  static ValueKey<String> removeTaskKey(int index) =>
+      ValueKey<String>('job-plan-task-remove-$index');
 
   /// Opens the form over the catalogue — the same explicit Bloc hand-off
   /// every dialog in this Module uses, `showDialog`'s route sitting outside
@@ -73,10 +91,8 @@ class JobPlanFormDialog extends StatefulWidget {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => BlocProvider<JobPlansBloc>.value(
-        value: bloc,
-        child: const JobPlanFormDialog(),
-      ),
+      builder: (dialogContext) =>
+          BlocProvider<JobPlansBloc>.value(value: bloc, child: const JobPlanFormDialog()),
     );
   }
 
@@ -143,10 +159,10 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
   }
 
   _TaskDraft _newTask() => _TaskDraft(
-        stepNo: TextEditingController(text: '${_tasks.length + 1}'),
-        instruction: TextEditingController(),
-        estimatedHours: TextEditingController(),
-      );
+    stepNo: TextEditingController(text: '${_tasks.length + 1}'),
+    instruction: TextEditingController(),
+    estimatedHours: TextEditingController(),
+  );
 
   Future<void> _loadSkills() async {
     setState(() {
@@ -187,7 +203,8 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
   /// optional; a step with no instruction is not a step.
   bool get _complete {
     if (_code.text.trim().isEmpty || _name.text.trim().isEmpty) return false;
-    if (_estimatedHours.text.trim().isNotEmpty && _parseOptionalNumber(_estimatedHours.text) == null) {
+    if (_estimatedHours.text.trim().isNotEmpty &&
+        _parseOptionalNumber(_estimatedHours.text) == null) {
       return false;
     }
     for (final task in _tasks) {
@@ -217,25 +234,25 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
     final description = _description.text.trim();
     final safetyNote = _safetyNote.text.trim();
     context.read<JobPlansBloc>().add(
-          JobPlanCreateConfirmed(
-            code: _code.text.trim(),
-            name: _name.text.trim(),
-            workType: _workType.wire,
-            description: description.isEmpty ? null : description,
-            estimatedHours: _parseOptionalNumber(_estimatedHours.text),
-            requiresShutdown: _requiresShutdown,
-            safetyNote: safetyNote.isEmpty ? null : safetyNote,
-            tasks: [
-              for (final task in _tasks)
-                JobPlanTaskDraft(
-                  stepNo: int.parse(task.stepNo.text.trim()),
-                  instruction: task.instruction.text.trim(),
-                  skillId: task.skillId,
-                  estimatedHours: _parseOptionalNumber(task.estimatedHours.text),
-                ),
-            ],
-          ),
-        );
+      JobPlanCreateConfirmed(
+        code: _code.text.trim(),
+        name: _name.text.trim(),
+        workType: _workType.wire,
+        description: description.isEmpty ? null : description,
+        estimatedHours: _parseOptionalNumber(_estimatedHours.text),
+        requiresShutdown: _requiresShutdown,
+        safetyNote: safetyNote.isEmpty ? null : safetyNote,
+        tasks: [
+          for (final task in _tasks)
+            JobPlanTaskDraft(
+              stepNo: int.parse(task.stepNo.text.trim()),
+              instruction: task.instruction.text.trim(),
+              skillId: task.skillId,
+              estimatedHours: _parseOptionalNumber(task.estimatedHours.text),
+            ),
+        ],
+      ),
+    );
   }
 
   void _onJobPlansChanged(BuildContext context, JobPlansState state) {
@@ -252,164 +269,162 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<JobPlansBloc, JobPlansState>(
       listener: _onJobPlansChanged,
-      child: AlertDialog(
-        title: const Text('Add a Job plan'),
-        content: SizedBox(
-          width: 620,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: JobPlanFormDialog.codeKey,
-                  controller: _code,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Code', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: JobPlanFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<WorkType>(
-                  key: JobPlanFormDialog.workTypeKey,
-                  initialValue: _workType,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Kind of work',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final choice in jobPlanWorkTypes)
-                      DropdownMenuItem<WorkType>(value: choice, child: Text(choice.label)),
-                  ],
-                  onChanged:
-                      _awaiting ? null : (value) => setState(() => _workType = value!),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: JobPlanFormDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: JobPlanFormDialog.estimatedHoursKey,
-                  controller: _estimatedHours,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Estimated hours (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.sm),
-                SwitchListTile(
-                  key: JobPlanFormDialog.requiresShutdownKey,
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Requires a shutdown'),
-                  value: _requiresShutdown,
-                  onChanged:
-                      _awaiting ? null : (value) => setState(() => _requiresShutdown = value),
-                ),
-                const SizedBox(height: Spacing.sm),
-                TextField(
-                  key: JobPlanFormDialog.safetyNoteKey,
-                  controller: _safetyNote,
-                  enabled: !_awaiting,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Safety note (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.lg),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text('Steps', style: theme.textTheme.titleSmall),
-                    ),
-                    TextButton.icon(
-                      key: JobPlanFormDialog.addTaskKey,
-                      onPressed: _awaiting ? null : _addTask,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add a step'),
-                    ),
-                  ],
-                ),
-                if (_skillsStatus == _SkillsStatus.failed)
-                  Padding(
-                    key: JobPlanFormDialog.skillsFailedKey,
-                    padding: const EdgeInsets.only(bottom: Spacing.sm),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _skillsFailure ?? 'The skill catalogue could not be read.',
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: theme.colorScheme.error),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: _awaiting ? null : _loadSkills,
-                          child: const Text('Try again'),
-                        ),
-                      ],
-                    ),
-                  ),
-                for (var index = 0; index < _tasks.length; index++)
-                  _TaskFields(
-                    key: ObjectKey(_tasks[index]),
-                    index: index,
-                    task: _tasks[index],
-                    skills: _skills,
-                    skillsReady: _skillsStatus == _SkillsStatus.ready,
-                    enabled: !_awaiting,
-                    canRemove: _tasks.length > 1,
-                    onChanged: () => setState(() {}),
-                    onSkillChanged: (skillId) => setState(() => _tasks[index].skillId = skillId),
-                    onRemove: () => _removeTask(index),
-                  ),
-                if (_failure != null)
-                  Padding(
-                    key: JobPlanFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Add a Job plan',
+        size: AppDialogSize.wide,
         actions: [
-          TextButton(
-            key: JobPlanFormDialog.cancelKey,
+          AppDialogAction(
+            id: JobPlanFormDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: JobPlanFormDialog.submitKey,
+          AppDialogAction(
+            id: JobPlanFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : 'Add plan',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Add plan'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: JobPlanFormDialog.codeKey,
+              controller: _code,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Code', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: JobPlanFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<WorkType>(
+              key: JobPlanFormDialog.workTypeKey,
+              initialValue: _workType,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Kind of work',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final choice in jobPlanWorkTypes)
+                  DropdownMenuItem<WorkType>(value: choice, child: Text(choice.label)),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _workType = value!),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: JobPlanFormDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Description (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: JobPlanFormDialog.estimatedHoursKey,
+              controller: _estimatedHours,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Estimated hours (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.sm),
+            SwitchListTile(
+              key: JobPlanFormDialog.requiresShutdownKey,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Requires a shutdown'),
+              value: _requiresShutdown,
+              onChanged: _awaiting ? null : (value) => setState(() => _requiresShutdown = value),
+            ),
+            const SizedBox(height: Spacing.sm),
+            TextField(
+              key: JobPlanFormDialog.safetyNoteKey,
+              controller: _safetyNote,
+              enabled: !_awaiting,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Safety note (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Steps',
+                    style: AppTypography.dense(context)
+                        ?.copyWith(fontWeight: FontWeight.w600, color: palette.textPrimary),
+                  ),
+                ),
+                TextButton.icon(
+                  key: JobPlanFormDialog.addTaskKey,
+                  onPressed: _awaiting ? null : _addTask,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add a step'),
+                ),
+              ],
+            ),
+            if (_skillsStatus == _SkillsStatus.failed)
+              Padding(
+                key: JobPlanFormDialog.skillsFailedKey,
+                padding: const EdgeInsets.only(bottom: Spacing.sm),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _skillsFailure ?? 'The skill catalogue could not be read.',
+                        style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _awaiting ? null : _loadSkills,
+                      child: const Text('Try again'),
+                    ),
+                  ],
+                ),
+              ),
+            for (var index = 0; index < _tasks.length; index++)
+              _TaskFields(
+                key: ObjectKey(_tasks[index]),
+                index: index,
+                task: _tasks[index],
+                skills: _skills,
+                skillsReady: _skillsStatus == _SkillsStatus.ready,
+                enabled: !_awaiting,
+                canRemove: _tasks.length > 1,
+                onChanged: () => setState(() {}),
+                onSkillChanged: (skillId) => setState(() => _tasks[index].skillId = skillId),
+                onRemove: () => _removeTask(index),
+              ),
+            if (_failure != null)
+              Padding(
+                key: JobPlanFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -470,7 +485,10 @@ class _TaskFields extends StatelessWidget {
                   enabled: enabled,
                   keyboardType: TextInputType.number,
                   onChanged: (_) => onChanged(),
-                  decoration: const InputDecoration(labelText: 'Step', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Step',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
               const SizedBox(width: Spacing.sm),

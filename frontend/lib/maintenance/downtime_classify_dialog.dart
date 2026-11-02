@@ -11,6 +11,16 @@
 ///
 /// This is a dialog, not a Screen and not a Destination — CONTEXT.md's own
 /// Screen entry says a dialog inside a Screen is not a Screen.
+///
+/// The form width (520): a reason picker and a three-line note in one column,
+/// no fields with columns of their own. The 480 this used to set inside an
+/// `AlertDialog`'s content left the title and the action row at a width the
+/// platform chose.
+///
+/// A dismiss that is disabled while the request is in flight stays disabled, and
+/// so does `Esc` then: `AppDialog` runs the dismiss action, which does nothing
+/// while it is null. The `AlertDialog` this replaces let `Esc` pop the route
+/// mid-request.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,6 +28,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'downtime_bloc.dart';
 import 'downtime_event.dart';
 import 'maintenance_api.dart';
@@ -29,12 +40,19 @@ class DowntimeClassifyDialog extends StatefulWidget {
   final DowntimeEvent downtimeEvent;
 
   static const ValueKey<String> reasonKey = ValueKey<String>('downtime-classify-reason');
-  static const ValueKey<String> reasonsFailedKey =
-      ValueKey<String>('downtime-classify-reasons-failed');
+  static const ValueKey<String> reasonsFailedKey = ValueKey<String>(
+    'downtime-classify-reasons-failed',
+  );
   static const ValueKey<String> descriptionKey = ValueKey<String>('downtime-classify-description');
-  static const ValueKey<String> submitKey = ValueKey<String>('downtime-classify-submit');
-  static const ValueKey<String> dismissKey = ValueKey<String>('downtime-classify-dismiss');
   static const ValueKey<String> failureKey = ValueKey<String>('downtime-classify-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'downtime-classify-submit';
+  static const String _dismissId = 'downtime-classify-dismiss';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get dismissKey => AppDialog.actionKey(_dismissId);
 
   @override
   State<DowntimeClassifyDialog> createState() => _DowntimeClassifyDialogState();
@@ -114,12 +132,12 @@ class _DowntimeClassifyDialogState extends State<DowntimeClassifyDialog> {
     });
     final description = _description.text.trim();
     context.read<DowntimeBloc>().add(
-          DowntimeClassifyConfirmed(
-            downtimeEventId: widget.downtimeEvent.id,
-            downtimeReasonId: _reason!.id,
-            description: description.isEmpty ? null : description,
-          ),
-        );
+      DowntimeClassifyConfirmed(
+        downtimeEventId: widget.downtimeEvent.id,
+        downtimeReasonId: _reason!.id,
+        description: description.isEmpty ? null : description,
+      ),
+    );
   }
 
   void _onDowntimeChanged(BuildContext context, DowntimeState state) {
@@ -136,65 +154,62 @@ class _DowntimeClassifyDialogState extends State<DowntimeClassifyDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final requiresComment = _reason?.requiresComment ?? false;
     return BlocListener<DowntimeBloc, DowntimeState>(
       listener: _onDowntimeChanged,
-      child: AlertDialog(
-        title: Text('Classify the stop for ${widget.downtimeEvent.assetName}'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _ReasonField(
-                  status: _reasonsStatus,
-                  reasons: _reasons,
-                  failure: _reasonsFailure,
-                  selectedId: _reason?.id,
-                  enabled: !_awaiting,
-                  onRetry: _loadReasons,
-                  onChanged: (reason) => setState(() => _reason = reason),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: DowntimeClassifyDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: requiresComment ? 'Description (required)' : 'Description (optional)',
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: DowntimeClassifyDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Classify the stop for ${widget.downtimeEvent.assetName}',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: DowntimeClassifyDialog.dismissKey,
+          AppDialogAction(
+            id: DowntimeClassifyDialog._dismissId,
+            label: 'Keep it unclassified',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Keep it unclassified'),
           ),
-          FilledButton(
-            key: DowntimeClassifyDialog.submitKey,
+          AppDialogAction(
+            id: DowntimeClassifyDialog._submitId,
+            label: 'Classify',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Classify'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ReasonField(
+              status: _reasonsStatus,
+              reasons: _reasons,
+              failure: _reasonsFailure,
+              selectedId: _reason?.id,
+              enabled: !_awaiting,
+              onRetry: _loadReasons,
+              onChanged: (reason) => setState(() => _reason = reason),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: DowntimeClassifyDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: requiresComment ? 'Description (required)' : 'Description (optional)',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: DowntimeClassifyDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -221,13 +236,17 @@ class _ReasonField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _ReasonsStatus.loading:
         return const SizedBox(
           height: 48,
           child: Center(
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         );
       case _ReasonsStatus.failed:
@@ -237,7 +256,7 @@ class _ReasonField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The Downtime reasons could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],

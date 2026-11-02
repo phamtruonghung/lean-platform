@@ -3,13 +3,18 @@
 /// catalogue — a value with a known set, never typed (ADR-0023) — and the
 /// server is the one that refuses a movement that would take the shelf below
 /// zero, reporting its part-naming message back through the Bloc so the dialog
-/// stays open.
+/// stays open.///
+/// The form width (520): a part, a quantity and a reason are three fields and
+/// nothing with its own columns. The 420 this used to set inside an
+/// `AlertDialog`'s content left the title and the action row at a width the
+/// platform chose; `AppDialog` states it once for all three.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'part.dart';
 import 'store_stock_bloc.dart';
 
@@ -23,9 +28,15 @@ class ReceiveDialog extends StatefulWidget {
   static const ValueKey<String> partKey = ValueKey<String>('receive-part');
   static const ValueKey<String> quantityKey = ValueKey<String>('receive-quantity');
   static const ValueKey<String> reasonKey = ValueKey<String>('receive-reason');
-  static const ValueKey<String> submitKey = ValueKey<String>('receive-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('receive-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('receive-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'receive-submit';
+  static const String _cancelId = 'receive-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
 
   /// Opens the form over the store's stock. `showDialog` builds its route
   /// under the Navigator, which is not a descendant of the route-scoped
@@ -77,12 +88,12 @@ class _ReceiveDialogState extends State<ReceiveDialog> {
       _failure = null;
     });
     context.read<StoreStockBloc>().add(
-          StockReceiveConfirmed(
-            partId: _partId!,
-            quantity: _parsedQuantity!,
-            reason: _reason.text.trim().isEmpty ? null : _reason.text.trim(),
-          ),
-        );
+      StockReceiveConfirmed(
+        partId: _partId!,
+        quantity: _parsedQuantity!,
+        reason: _reason.text.trim().isEmpty ? null : _reason.text.trim(),
+      ),
+    );
   }
 
   void _onChanged(BuildContext context, StoreStockState state) {
@@ -99,79 +110,79 @@ class _ReceiveDialogState extends State<ReceiveDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<StoreStockBloc, StoreStockState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: const Text('Receive stock'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  key: ReceiveDialog.partKey,
-                  initialValue: _partId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Part', border: OutlineInputBorder()),
-                  items: [
-                    for (final part in widget.parts)
-                      DropdownMenuItem<String>(
-                        value: part.id,
-                        child: Text(
-                          '${part.partNo} · ${part.description}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _partId = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ReceiveDialog.quantityKey,
-                  controller: _quantity,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Quantity', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ReceiveDialog.reasonKey,
-                  controller: _reason,
-                  enabled: !_awaiting,
-                  decoration: const InputDecoration(
-                    labelText: 'Reason (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: ReceiveDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
+      child: AppDialog(
+        title: 'Receive stock',
+        size: AppDialogSize.form,
+        actions: [
+          AppDialogAction(
+            id: ReceiveDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: ReceiveDialog._submitId,
+            label: _awaiting ? 'Receiving…' : 'Receive',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              key: ReceiveDialog.partKey,
+              initialValue: _partId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Part', border: OutlineInputBorder()),
+              items: [
+                for (final part in widget.parts)
+                  DropdownMenuItem<String>(
+                    value: part.id,
                     child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                      '${part.partNo} · ${part.description}',
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
               ],
+              onChanged: _awaiting ? null : (value) => setState(() => _partId = value),
             ),
-          ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ReceiveDialog.quantityKey,
+              controller: _quantity,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Quantity',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ReceiveDialog.reasonKey,
+              controller: _reason,
+              enabled: !_awaiting,
+              decoration: const InputDecoration(
+                labelText: 'Reason (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: ReceiveDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
         ),
-        actions: [
-          TextButton(
-            key: ReceiveDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: ReceiveDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Receiving…' : 'Receive'),
-          ),
-        ],
       ),
     );
   }

@@ -7,12 +7,22 @@
 ///
 /// This is a dialog, not a Screen and not a Destination — CONTEXT.md's own
 /// Screen entry says a dialog inside a Screen is not a Screen.
+///
+/// The decision width (420): one question and the required reason in a text box.
+/// Declining is a decision, not a destruction: the Request is kept with its reason
+/// and the requester reads it on My requests, so the act is a primary action and
+/// not a destructive one. Submit stays disabled until the reason says something.
+///
+/// While a request is in flight the dismiss is disabled, as it always was, and so is
+/// `Esc`: `AppDialog` runs the dismiss action, which does nothing while it is null.
+/// The `AlertDialog` this replaces let `Esc` pop the route mid-request.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'request.dart';
 import 'requests_bloc.dart';
 
@@ -23,9 +33,15 @@ class RequestDeclineDialog extends StatefulWidget {
   final Request request;
 
   static const ValueKey<String> reasonKey = ValueKey<String>('request-decline-reason');
-  static const ValueKey<String> submitKey = ValueKey<String>('request-decline-submit');
-  static const ValueKey<String> dismissKey = ValueKey<String>('request-decline-dismiss');
   static const ValueKey<String> failureKey = ValueKey<String>('request-decline-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'request-decline-submit';
+  static const String _dismissId = 'request-decline-dismiss';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get dismissKey => AppDialog.actionKey(_dismissId);
 
   @override
   State<RequestDeclineDialog> createState() => _RequestDeclineDialogState();
@@ -52,8 +68,8 @@ class _RequestDeclineDialogState extends State<RequestDeclineDialog> {
       _failure = null;
     });
     context.read<RequestsBloc>().add(
-          RequestDeclineConfirmed(requestId: widget.request.id, reason: _reason.text.trim()),
-        );
+      RequestDeclineConfirmed(requestId: widget.request.id, reason: _reason.text.trim()),
+    );
   }
 
   void _onRequestsChanged(BuildContext context, RequestsState state) {
@@ -70,54 +86,51 @@ class _RequestDeclineDialogState extends State<RequestDeclineDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<RequestsBloc, RequestsState>(
       listener: _onRequestsChanged,
-      child: AlertDialog(
-        title: Text('Decline ${widget.request.requestNo}?'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: RequestDeclineDialog.reasonKey,
-                  controller: _reason,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Why is this being declined?',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: RequestDeclineDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Decline ${widget.request.requestNo}?',
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: RequestDeclineDialog.dismissKey,
+          AppDialogAction(
+            id: RequestDeclineDialog._dismissId,
+            label: 'Keep it waiting',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Keep it waiting'),
           ),
-          FilledButton(
-            key: RequestDeclineDialog.submitKey,
+          AppDialogAction(
+            id: RequestDeclineDialog._submitId,
+            label: 'Decline this Request',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Decline this Request'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: RequestDeclineDialog.reasonKey,
+              controller: _reason,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Why is this being declined?',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: RequestDeclineDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

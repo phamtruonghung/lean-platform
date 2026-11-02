@@ -25,6 +25,8 @@ import 'package:lean_platform/maintenance/downtime_close_dialog.dart';
 import 'package:lean_platform/maintenance/downtime_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/app_table.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 import 'harness.dart';
@@ -398,5 +400,156 @@ void main() {
     expect(find.byKey(DowntimeScreen.rowKey('301')), findsOneWidget);
     expect(find.byKey(DowntimeScreen.filterCountKey), findsNothing);
     expect(wire.requests.length, requestsBefore);
+  });
+  testWidgets('a failed reasons read blocks the classify dialog\'s submit', (tester) async {
+    final wire = wireWith(
+      role: Roles.supervisor,
+      orgUnitScope: _writeGrant,
+      downtime: {
+        '1': [downtimeJson('500')],
+      },
+      downtimeReasonsStatus: 500,
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/downtime',
+    );
+
+    await tapIn(tester, find.byKey(DowntimeScreen.classifyKey('500')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(DowntimeClassifyDialog.reasonsFailedKey), findsOneWidget);
+    final submit = tester.widget<FilledButton>(find.byKey(DowntimeClassifyDialog.submitKey));
+    expect(submit.onPressed, isNull);
+  });
+
+  group('the register at 1280 wide', () {
+    void wide(WidgetTester tester) {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 900);
+      addTearDown(tester.view.reset);
+    }
+
+    Future<FakeWire> pumpRegister(
+      WidgetTester tester, {
+      Map<String, dynamic>? scope = _writeGrant,
+      List<Map<String, dynamic>>? events,
+    }) async {
+      wide(tester);
+      final wire = wireWith(
+        role: Roles.supervisor,
+        orgUnitScope: scope,
+        downtime: {
+          '1': events ??
+              [
+                downtimeJson('500', status: 'open', description: 'Belt snapped on line 2'),
+              ],
+        },
+      );
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '/downtime',
+      );
+      return wire;
+    }
+
+    testWidgets('draws a band and a table row, 52 tall', (tester) async {
+      await pumpRegister(tester);
+      expect(find.byType(AppTableHeader), findsOneWidget);
+      expect(find.byType(AppTableRow), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(DowntimeScreen.rowKey('500'))).height,
+        AppTouchTarget.min + 2 * Spacing.xs,
+      );
+    });
+
+    testWidgets('an open unclassified row has Close inline and Classify only in the kebab',
+        (tester) async {
+      await pumpRegister(tester);
+      expect(find.byKey(DowntimeScreen.closeKey('500')), findsOneWidget);
+      expect(find.byKey(DowntimeScreen.classifyKey('500')), findsNothing);
+
+      await tapIn(tester, find.byKey(DowntimeScreen.rowActionsKey('500')));
+      expect(find.byKey(DowntimeScreen.classifyKey('500')), findsOneWidget);
+    });
+
+    testWidgets('Close and the kebab are enabled, disabled while a close is in flight, and enabled again',
+        (tester) async {
+      final wire = await pumpRegister(
+        tester,
+        events: [
+          downtimeJson('500', status: 'open'),
+          downtimeJson('501', status: 'open', assetId: '8', assetCode: 'CONV-2', assetName: 'Conveyor 2'),
+        ],
+      );
+      wire.downtimeCloseGate = Completer<void>();
+
+      VoidCallback? close(String id) =>
+          tester.widget<FilledButton>(find.byKey(DowntimeScreen.closeKey(id))).onPressed;
+      VoidCallback? kebab(String id) =>
+          tester.widget<IconButton>(find.byKey(DowntimeScreen.rowActionsKey(id))).onPressed;
+
+      expect(close('500'), isNotNull);
+      expect(close('501'), isNotNull);
+      expect(kebab('500'), isNotNull);
+      expect(kebab('501'), isNotNull);
+
+      await tapIn(tester, find.byKey(DowntimeScreen.closeKey('500')));
+      await tester.pumpAndSettle();
+      await tapIn(tester, find.byKey(DowntimeCloseDialog.submitKey));
+
+      expect(close('501'), isNull);
+      expect(kebab('501'), isNull);
+      expect(close('500'), isNull);
+      expect(kebab('500'), isNull);
+
+      wire.downtimeCloseGate!.complete();
+      await tester.pumpAndSettle();
+      expect(close('501'), isNotNull);
+      expect(kebab('501'), isNotNull);
+    });
+
+    testWidgets('a caller who cannot act has neither Close nor the kebab', (tester) async {
+      await pumpRegister(tester, scope: const {'everywhere': false, 'grants': []});
+      expect(find.byType(AppTableRow), findsOneWidget);
+      expect(find.byKey(DowntimeScreen.closeKey('500')), findsNothing);
+      expect(find.byKey(DowntimeScreen.rowActionsKey('500')), findsNothing);
+    });
+
+    testWidgets('a closed unclassified row has the kebab alone, and a closed classified row nothing',
+        (tester) async {
+      await pumpRegister(
+        tester,
+        events: [
+          downtimeJson('500', status: 'unclassified'),
+          downtimeJson('501',
+              status: 'closed', downtimeReasonId: '3', downtimeReasonName: 'Electrical'),
+        ],
+      );
+      expect(find.byKey(DowntimeScreen.closeKey('500')), findsNothing);
+      expect(find.byKey(DowntimeScreen.rowActionsKey('500')), findsOneWidget);
+      expect(find.byKey(DowntimeScreen.closeKey('501')), findsNothing);
+      expect(find.byKey(DowntimeScreen.rowActionsKey('501')), findsNothing);
+    });
+
+    testWidgets('a description is behind the disclosure, and a row without one has no toggle',
+        (tester) async {
+      await pumpRegister(
+        tester,
+        events: [
+          downtimeJson('500', description: 'Belt snapped on line 2'),
+          downtimeJson('501', assetId: '8', assetCode: 'CONV-2', assetName: 'Conveyor 2'),
+        ],
+      );
+      expect(find.text('Belt snapped on line 2'), findsNothing);
+      expect(find.byKey(DowntimeScreen.detailsKey('501')), findsNothing);
+
+      await tapIn(tester, find.byKey(DowntimeScreen.detailsKey('500')));
+      expect(find.text('Belt snapped on line 2'), findsOneWidget);
+    });
   });
 }

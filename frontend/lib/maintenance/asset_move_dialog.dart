@@ -21,6 +21,7 @@ import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'asset.dart';
 import 'assets_bloc.dart';
 import 'org_unit_chooser.dart';
@@ -34,8 +35,14 @@ class AssetMoveDialog extends StatefulWidget {
   final Asset asset;
 
   static const ValueKey<String> chosenKey = ValueKey<String>('asset-move-chosen');
-  static const ValueKey<String> submitKey = ValueKey<String>('asset-move-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('asset-move-cancel');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'asset-move-submit';
+  static const String _cancelId = 'asset-move-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_cancelId);
 
   /// Opens the dialog over the register. `showDialog` builds its route under
   /// the Navigator, which is not a descendant of the route-scoped
@@ -85,8 +92,8 @@ class _AssetMoveDialogState extends State<AssetMoveDialog> {
   void _submit() {
     if (!_complete) return;
     context.read<AssetsBloc>().add(
-          AssetOrgUnitChanged(assetId: widget.asset.id, orgUnitId: _chosen!.id),
-        );
+      AssetOrgUnitChanged(assetId: widget.asset.id, orgUnitId: _chosen!.id),
+    );
     Navigator.of(context).pop();
   }
 
@@ -101,7 +108,7 @@ class _AssetMoveDialogState extends State<AssetMoveDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return MultiBlocListener(
       listeners: [
         BlocListener<OrgUnitPickerBloc, OrgUnitPickerState>(
@@ -109,57 +116,54 @@ class _AssetMoveDialogState extends State<AssetMoveDialog> {
           listener: _onSiteChanged,
         ),
       ],
-      child: AlertDialog(
-        title: const Text('Change where this Asset sits'),
-        content: SizedBox(
-          width: 620,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${widget.asset.name} (${widget.asset.code}) sits at '
-                  '${widget.asset.orgUnitName} now.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.lg),
-                OrgUnitChooser(
-                  // The Org Unit it is at is shown as the standing choice, so
-                  // the tree reads as "this one, or another".
-                  selectedId: widget.asset.orgUnitId,
-                  title: 'Move it to',
-                  description: 'Where this Asset will sit. It decides who may '
-                      'raise and close work against it; work already recorded '
-                      'against it stays where it happened.',
-                  onSelected: (node) => setState(() => _chosen = node),
-                ),
-                if (_chosen != null)
-                  Padding(
-                    key: AssetMoveDialog.chosenKey,
-                    padding: const EdgeInsets.only(top: Spacing.sm),
-                    child: Text(
-                      'This Asset will sit at ${_chosen!.name}.',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Change where this Asset sits',
+        size: AppDialogSize.wide,
         actions: [
-          TextButton(
-            key: AssetMoveDialog.cancelKey,
+          AppDialogAction(
+            id: AssetMoveDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: AssetMoveDialog.submitKey,
+          AppDialogAction(
+            id: AssetMoveDialog._submitId,
+            label: 'Change Org Unit',
             onPressed: _complete ? _submit : null,
-            child: const Text('Change Org Unit'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${widget.asset.name} (${widget.asset.code}) sits at '
+              '${widget.asset.orgUnitName} now.',
+              style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+            ),
+            const SizedBox(height: Spacing.lg),
+            OrgUnitChooser(
+              // The Org Unit it is at is shown as the standing choice, so
+              // the tree reads as "this one, or another".
+              selectedId: widget.asset.orgUnitId,
+              title: 'Move it to',
+              description:
+                  'Where this Asset will sit. It decides who may '
+                  'raise and close work against it; work already recorded '
+                  'against it stays where it happened.',
+              onSelected: (node) => setState(() => _chosen = node),
+            ),
+            if (_chosen != null)
+              Padding(
+                key: AssetMoveDialog.chosenKey,
+                padding: const EdgeInsets.only(top: Spacing.sm),
+                child: Text(
+                  'This Asset will sit at ${_chosen!.name}.',
+                  style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

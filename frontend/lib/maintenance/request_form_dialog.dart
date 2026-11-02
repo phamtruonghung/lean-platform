@@ -8,6 +8,15 @@
 ///
 /// Raised against whatever Site the list screen is already showing — there is
 /// no Site selector of its own, mirroring `WorkOrderFormDialog`.
+///
+/// The form width (520): an Asset search field, a summary, an urgency, a checkbox
+/// and a three-line note in one column, with nothing of its own columns. The 560
+/// this used to set inside an `AlertDialog`'s content left the title and the action
+/// row at a width the platform chose.
+///
+/// While a request is in flight the dismiss is disabled, as it always was, and so is
+/// `Esc`: `AppDialog` runs the dismiss action, which does nothing while it is null.
+/// The `AlertDialog` this replaces let `Esc` pop the route mid-request.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'asset.dart';
 import 'maintenance_api.dart';
@@ -47,12 +57,19 @@ class RequestFormDialog extends StatefulWidget {
   static const ValueKey<String> assetsFailedKey = ValueKey<String>('request-form-assets-failed');
   static const ValueKey<String> summaryKey = ValueKey<String>('request-form-summary');
   static const ValueKey<String> urgencyKey = ValueKey<String>('request-form-urgency');
-  static const ValueKey<String> productionStoppedKey =
-      ValueKey<String>('request-form-production-stopped');
+  static const ValueKey<String> productionStoppedKey = ValueKey<String>(
+    'request-form-production-stopped',
+  );
   static const ValueKey<String> descriptionKey = ValueKey<String>('request-form-description');
-  static const ValueKey<String> submitKey = ValueKey<String>('request-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('request-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('request-form-failure');
+
+  /// The two actions' keys are the shell's own (`AppDialog.actionKey`), named
+  /// for this dialog's use of them: a `ValueKey` is equal by value, so these
+  /// find exactly the buttons `AppDialog` keyed.
+  static const String _submitId = 'request-form-submit';
+  static const String _dismissId = 'request-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
 
   @override
   State<RequestFormDialog> createState() => _RequestFormDialogState();
@@ -131,15 +148,15 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
     });
     final description = _description.text.trim();
     context.read<MyRequestsBloc>().add(
-          RequestRaiseConfirmed(
-            siteId: widget.siteId,
-            assetId: _assetId!,
-            summary: _summary.text.trim(),
-            urgency: _urgency!.wire,
-            productionStopped: _productionStopped,
-            description: description.isEmpty ? null : description,
-          ),
-        );
+      RequestRaiseConfirmed(
+        siteId: widget.siteId,
+        assetId: _assetId!,
+        summary: _summary.text.trim(),
+        urgency: _urgency!.wire,
+        productionStopped: _productionStopped,
+        description: description.isEmpty ? null : description,
+      ),
+    );
   }
 
   void _onMyRequestsChanged(BuildContext context, MyRequestsState state) {
@@ -156,96 +173,91 @@ class _RequestFormDialogState extends State<RequestFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocListener<MyRequestsBloc, MyRequestsState>(
       listener: _onMyRequestsChanged,
-      child: AlertDialog(
-        title: const Text('Raise a Request'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _AssetField(
-                  status: _assetsStatus,
-                  assets: _assets,
-                  failure: _assetsFailure,
-                  selectedId: _assetId,
-                  enabled: !_awaiting,
-                  onRetry: () => _loadAssets(widget.siteId),
-                  onChanged: (id) => setState(() => _assetId = id),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: RequestFormDialog.summaryKey,
-                  controller: _summary,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Summary',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<RequestUrgency>(
-                  key: RequestFormDialog.urgencyKey,
-                  initialValue: _urgency,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Urgency', border: OutlineInputBorder()),
-                  items: [
-                    for (final urgency in RequestUrgency.values)
-                      DropdownMenuItem<RequestUrgency>(value: urgency, child: Text(urgency.label)),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _urgency = value),
-                ),
-                const SizedBox(height: Spacing.sm),
-                CheckboxListTile(
-                  key: RequestFormDialog.productionStoppedKey,
-                  value: _productionStopped,
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: const Text('Production is stopped right now'),
-                  onChanged:
-                      _awaiting ? null : (value) => setState(() => _productionStopped = value ?? false),
-                ),
-                const SizedBox(height: Spacing.sm),
-                TextField(
-                  key: RequestFormDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: RequestFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Raise a Request',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: RequestFormDialog.cancelKey,
+          AppDialogAction(
+            id: RequestFormDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: RequestFormDialog.submitKey,
+          AppDialogAction(
+            id: RequestFormDialog._submitId,
+            label: 'Raise',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: const Text('Raise'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _AssetField(
+              status: _assetsStatus,
+              assets: _assets,
+              failure: _assetsFailure,
+              selectedId: _assetId,
+              enabled: !_awaiting,
+              onRetry: () => _loadAssets(widget.siteId),
+              onChanged: (id) => setState(() => _assetId = id),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: RequestFormDialog.summaryKey,
+              controller: _summary,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Summary', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<RequestUrgency>(
+              key: RequestFormDialog.urgencyKey,
+              initialValue: _urgency,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Urgency', border: OutlineInputBorder()),
+              items: [
+                for (final urgency in RequestUrgency.values)
+                  DropdownMenuItem<RequestUrgency>(value: urgency, child: Text(urgency.label)),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _urgency = value),
+            ),
+            const SizedBox(height: Spacing.sm),
+            CheckboxListTile(
+              key: RequestFormDialog.productionStoppedKey,
+              value: _productionStopped,
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text('Production is stopped right now'),
+              onChanged: _awaiting
+                  ? null
+                  : (value) => setState(() => _productionStopped = value ?? false),
+            ),
+            const SizedBox(height: Spacing.sm),
+            TextField(
+              key: RequestFormDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Description (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: RequestFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -282,13 +294,17 @@ class _AssetField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     switch (status) {
       case _AssetsStatus.loading:
         return const SizedBox(
           height: 48,
           child: Center(
-            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
         );
       case _AssetsStatus.failed:
@@ -298,7 +314,7 @@ class _AssetField extends StatelessWidget {
           children: [
             Text(
               failure ?? 'The Assets could not be read.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+              style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
             TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
           ],
