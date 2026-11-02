@@ -21,6 +21,11 @@
 ///   label that names the currency, and the period reads §13's way.
 /// - **The Employee detail** is a summary card first, then two sections side by
 ///   side at a 1280 window and stacked at 700.
+/// - **The states** are the shared ones (#103): `SkeletonList`/`SkeletonDetail`
+///   while a read is in flight and `PlatformEmptyState` for a Site list that is
+///   empty — never a bare spinner or a lone `Text`. The wire's two gates
+///   (`sitesGate`, `employeeDetailGate`) hold those reads open so the loading
+///   state is a thing this file can measure.
 ///
 /// The app is pumped through the real router with the wire faked, as the
 /// Module's own tests do; nothing here reaches into a Bloc. The app's real fonts
@@ -28,6 +33,8 @@
 /// content — in `flutter_test`'s placeholder font every glyph is a square, and a
 /// width measured there is a property of the placeholder rather than of the app.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +51,8 @@ import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_detail_section.dart';
 import 'package:lean_platform/widgets/app_table.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
+import 'package:lean_platform/widgets/skeleton_list.dart';
 
 import 'harness.dart';
 
@@ -210,6 +219,31 @@ void main() {
             reason: 'Accounts at $width: the register drew the wrong shape');
       });
     }
+
+    testWidgets('at 1280px with twice the text the cards come back, both chips intact',
+        (tester) async {
+      await _pumpAt(tester, location: Routes.accounts, width: 1280, textScale: 2, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'Accounts at 1280 x2');
+
+      // 988 of box against 900 x 2 = 1800: the register takes its own narrow
+      // branch and the row becomes a card, rather than a four-column table
+      // squeezed into half the width it was measured for (§10, #379/#381).
+      expect(find.byType(AppTableHeader), findsNothing,
+          reason: 'Accounts at 1280 x2: a table was drawn at twice the text');
+      final row = find.byKey(AccountsScreen.rowKey('7'));
+      expect(row, findsOneWidget, reason: 'Accounts at 1280 x2: no row');
+      expect(tester.getSize(row).height, greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'Accounts at 1280 x2: the row lost its tap target');
+      for (final chip in ['Supervisor', 'Active']) {
+        final chipFinder = find.descendant(of: row, matching: find.text(chip));
+        expect(chipFinder, findsOneWidget,
+            reason: 'Accounts at 1280 x2: "$chip" is not a chip on the row');
+        // Both chips stay inside the card's own box rather than running off it.
+        expect(tester.getBottomRight(chipFinder).dx,
+            lessThanOrEqualTo(tester.getBottomRight(row).dx),
+            reason: 'Accounts at 1280 x2: the "$chip" chip runs past the row');
+      }
+    });
   });
 
   group('the Approval queue is a decision surface', () {
@@ -237,9 +271,30 @@ void main() {
         );
       });
     }
+
+    testWidgets('at 1280px with twice the text both decisions are still on the row',
+        (tester) async {
+      await _pumpAt(tester, location: Routes.approvals, width: 1280, textScale: 2, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'Approval queue at 1280 x2');
+
+      final reject = find.byKey(ApprovalQueueScreen.rejectKey('7'));
+      final admit = find.byKey(ApprovalQueueScreen.admitKey('7'));
+      expect(reject, findsOneWidget, reason: 'Approval queue at 1280 x2: no Reject');
+      expect(admit, findsOneWidget, reason: 'Approval queue at 1280 x2: no Admit');
+      // The decision surface keeps deciding at twice the text: neither control
+      // drops under the tap floor, and neither runs out of the window.
+      expect(tester.getSize(reject).height, greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'Approval queue at 1280 x2: Reject is under the tap floor');
+      expect(tester.getSize(admit).height, greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'Approval queue at 1280 x2: Admit is under the tap floor');
+      expect(tester.getTopLeft(reject).dx, lessThan(tester.getTopLeft(admit).dx),
+          reason: 'Approval queue at 1280 x2: the two decisions are out of order');
+      expect(tester.getBottomRight(admit).dx, lessThanOrEqualTo(1280),
+          reason: 'Approval queue at 1280 x2: a decision runs past the window');
+    });
   });
 
-  group('the Org Units tree holds at 700', () {
+  group('the Org Units tree holds at 700 and at 1280', () {
     testWidgets('at 700px the tree row is a tap target and its count is on its own line',
         (tester) async {
       await _pumpAt(tester, location: Routes.orgUnits, width: 700);
@@ -264,14 +319,63 @@ void main() {
       );
     });
 
-    testWidgets('at 1280px an expanded branch states the count it has read', (tester) async {
+    testWidgets('at 1280px the expanded branch states its count on its own line, under the name',
+        (tester) async {
       await _pumpAt(tester, location: Routes.orgUnits, width: 1280);
       expect(tester.takeException(), isNull, reason: 'Org Units at 1280');
       // The fixture's Assembly holds two Org Units. Expanding it is what makes
       // the count a measured fact rather than an assumption (§13).
       await tapIn(tester, find.byKey(OrgUnitsScreen.expandKey('10')));
-      expect(find.text('2 below'), findsOneWidget,
+
+      final name = find.textContaining('Assembly');
+      final count = find.text('2 below');
+      expect(count, findsOneWidget,
           reason: 'Org Units at 1280: an expanded branch does not state its count');
+      expect(
+        tester.getTopLeft(count).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(name).dy - 1),
+        reason: 'Org Units at 1280: the count is not on a line of its own',
+      );
+      expect(
+        tester.getTopLeft(count).dx,
+        closeTo(tester.getTopLeft(name).dx, 1.5),
+        reason: 'Org Units at 1280: the count does not start at the name\'s own left edge',
+      );
+      // The indent is the only thing that grows with depth: a child's name
+      // starts inside its parent's, and the row's own action still holds the
+      // tap floor and stays inside the page.
+      expect(
+        tester.getTopLeft(find.textContaining('Line 1')).dx,
+        greaterThan(tester.getTopLeft(name).dx),
+        reason: 'Org Units at 1280: a child row is not drawn under its parent',
+      );
+      final retire = find.byKey(OrgUnitsScreen.retireKey('10'));
+      expect(tester.getSize(retire).height, greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'Org Units at 1280: Retire is under the tap floor');
+      expect(tester.getBottomRight(retire).dx, lessThanOrEqualTo(1280),
+          reason: 'Org Units at 1280: the row runs past the window');
+    });
+
+    testWidgets('at 1280px with twice the text the row keeps both its name and its action',
+        (tester) async {
+      await _pumpAt(tester, location: Routes.orgUnits, width: 1280, textScale: 2, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'Org Units at 1280 x2');
+      await tapIn(tester, find.byKey(OrgUnitsScreen.expandKey('10')));
+
+      final name = find.textContaining('Assembly');
+      final count = find.text('2 below');
+      expect(count, findsOneWidget,
+          reason: 'Org Units at 1280 x2: the count is lost at twice the text');
+      expect(
+        tester.getTopLeft(count).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(name).dy - 1),
+        reason: 'Org Units at 1280 x2: the count is squeezed onto the name\'s line',
+      );
+      final retire = find.byKey(OrgUnitsScreen.retireKey('10'));
+      expect(tester.getSize(retire).height, greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'Org Units at 1280 x2: Retire is under the tap floor');
+      expect(tester.getBottomRight(retire).dx, lessThanOrEqualTo(1280),
+          reason: 'Org Units at 1280 x2: the row runs past the window');
     });
   });
 
@@ -288,7 +392,34 @@ void main() {
         expect(find.text('1 Jan 2026 – 1 Apr 2026'), findsOneWidget,
             reason: 'Cost rates at $width: the period is not worded as a date');
 
-        if (width < 1280) return; // the card lays its amount out beside the label
+        if (width < 1280) {
+          // Below 1280 the register is one card per rate. The same three rules
+          // still hold — the figure sits at the card's own right edge, in
+          // tabular figures, and carries its own unit because a card has no
+          // column label to put it in (§13).
+          expect(find.byType(AppTableHeader), findsNothing,
+              reason: 'Cost rates at $width: a table was drawn too narrow');
+          final cardAmount = find.text('30.0 USD');
+          expect(cardAmount, findsOneWidget,
+              reason: 'Cost rates at $width: the card does not carry the amount with its unit');
+          expect(
+            tester.widget<Text>(cardAmount).style?.fontFeatures,
+            contains(const FontFeature.tabularFigures()),
+            reason: 'Cost rates at $width: the amount is not in tabular figures',
+          );
+          final card = find.byKey(CostRatesScreen.rowKey('900'));
+          expect(
+            tester.getBottomRight(cardAmount).dx,
+            closeTo(tester.getBottomRight(card).dx - Spacing.md, 1.5),
+            reason: 'Cost rates at $width: the amount is not at the card\'s own right edge',
+          );
+          expect(
+            tester.getSize(find.byKey(CostRatesScreen.correctKey('900'))).height,
+            greaterThanOrEqualTo(AppTouchTarget.min),
+            reason: 'Cost rates at $width: Correct is under the tap floor',
+          );
+          return;
+        }
 
         final amount = find.text('30.0');
         expect(amount, findsOneWidget, reason: 'Cost rates at $width: no bare figure in the column');
@@ -326,10 +457,101 @@ void main() {
         contains(const FontFeature.tabularFigures()),
         reason: 'Product costs at 1280: the amount is not in tabular figures',
       );
-      expect(find.textContaining('Amount (USD)'), findsOneWidget,
+      // The label names the unit, and the figure ends on the label's own right
+      // edge — one column spec builds both, so they cannot drift apart (§6).
+      final label = find.textContaining('Amount (USD)');
+      expect(label, findsOneWidget,
           reason: 'Product costs at 1280: the column label does not name the currency');
+      expect(
+        tester.getBottomRight(amount).dx,
+        closeTo(tester.getBottomRight(label).dx, 1.5),
+        reason: 'Product costs at 1280: the figure does not end on its own column edge',
+      );
       expect(find.text('From 1 Jan 2026'), findsOneWidget,
           reason: 'Product costs at 1280: the open period is not worded as a date');
+    });
+
+    for (final width in _widths) {
+      if (width >= 1280) continue;
+      testWidgets('product costs at ${width.toInt()}px: the card keeps the figure end-aligned',
+          (tester) async {
+        await _pumpAt(tester, location: Routes.productCosts, width: width);
+        expect(tester.takeException(), isNull, reason: 'Product costs at $width');
+
+        expect(find.byKey(ProductCostsScreen.rowKey('950')), findsOneWidget,
+            reason: 'Product costs at $width: no row');
+        expect(find.text('From 1 Jan 2026'), findsOneWidget,
+            reason: 'Product costs at $width: the open period is not worded as a date');
+        expect(find.byType(AppTableHeader), findsNothing,
+            reason: 'Product costs at $width: a table was drawn too narrow');
+
+        final amount = find.text('5.0 USD');
+        expect(amount, findsOneWidget,
+            reason: 'Product costs at $width: the card does not carry the amount with its unit');
+        expect(
+          tester.widget<Text>(amount).style?.fontFeatures,
+          contains(const FontFeature.tabularFigures()),
+          reason: 'Product costs at $width: the amount is not in tabular figures',
+        );
+        final card = find.byKey(ProductCostsScreen.rowKey('950'));
+        expect(
+          tester.getBottomRight(amount).dx,
+          closeTo(tester.getBottomRight(card).dx - Spacing.md, 1.5),
+          reason: 'Product costs at $width: the amount is not at the card\'s own right edge',
+        );
+        expect(
+          tester.getSize(find.byKey(ProductCostsScreen.reviseKey('950'))).height,
+          greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'Product costs at $width: Revise is under the tap floor',
+        );
+      });
+    }
+
+    testWidgets('cost rates at 1280px with twice the text are cards, the figure still end-aligned',
+        (tester) async {
+      await _pumpAt(tester, location: Routes.costRates, width: 1280, textScale: 2, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'Cost rates at 1280 x2');
+      // 988 of box against 700 x 2 = 1400: cards, never a five-column table
+      // drawn at half the width it was measured for (§10, #379/#381).
+      expect(find.byType(AppTableHeader), findsNothing,
+          reason: 'Cost rates at 1280 x2: a table was drawn at twice the text');
+      final amount = find.text('30.0 USD');
+      expect(amount, findsOneWidget, reason: 'Cost rates at 1280 x2: no amount on the card');
+      expect(
+        tester.widget<Text>(amount).style?.fontFeatures,
+        contains(const FontFeature.tabularFigures()),
+        reason: 'Cost rates at 1280 x2: the amount is not in tabular figures',
+      );
+      final card = find.byKey(CostRatesScreen.rowKey('900'));
+      expect(
+        tester.getBottomRight(amount).dx,
+        closeTo(tester.getBottomRight(card).dx - Spacing.md, 1.5),
+        reason: 'Cost rates at 1280 x2: the amount is not at the card\'s own right edge',
+      );
+      for (final key in [CostRatesScreen.correctKey('900'), CostRatesScreen.reviseKey('900')]) {
+        expect(tester.getSize(find.byKey(key)).height, greaterThanOrEqualTo(AppTouchTarget.min),
+            reason: 'Cost rates at 1280 x2: an action is under the tap floor');
+      }
+    });
+
+    testWidgets('product costs at 1280px with twice the text are cards too', (tester) async {
+      await _pumpAt(tester, location: Routes.productCosts, width: 1280, textScale: 2, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'Product costs at 1280 x2');
+      expect(find.byType(AppTableHeader), findsNothing,
+          reason: 'Product costs at 1280 x2: a table was drawn at twice the text');
+      final amount = find.text('5.0 USD');
+      expect(amount, findsOneWidget, reason: 'Product costs at 1280 x2: no amount on the card');
+      expect(
+        tester.widget<Text>(amount).style?.fontFeatures,
+        contains(const FontFeature.tabularFigures()),
+        reason: 'Product costs at 1280 x2: the amount is not in tabular figures',
+      );
+      final card = find.byKey(ProductCostsScreen.rowKey('950'));
+      expect(
+        tester.getBottomRight(amount).dx,
+        closeTo(tester.getBottomRight(card).dx - Spacing.md, 1.5),
+        reason: 'Product costs at 1280 x2: the amount is not at the card\'s own right edge',
+      );
     });
   });
 
@@ -342,8 +564,9 @@ void main() {
       final sections = find.byType(AppDetailSection);
       expect(sections, findsAtLeastNWidgets(2), reason: 'Employee detail at 1280: no section pair');
       // Two columns: the second section starts to the right of the first, on
-      // the same line — `AppSectionGrid`'s 1000 of box, which a 1040 frame at a
-      // 1280 window reaches.
+      // the same line. The choice is made on the page's own box — 1020 at a
+      // 1280 window, before the list's `Spacing.lg` inset — read through
+      // `AppBreakpoints.effective` inside `_SectionPair`, never from the window.
       expect(
         tester.getTopLeft(sections.at(1)).dx,
         greaterThan(tester.getTopRight(sections.at(0)).dx - 1),
@@ -387,6 +610,81 @@ void main() {
         greaterThan(tester.getBottomRight(sections.at(0)).dy - 1),
         reason: 'Employee detail at 1280 x2: two sections still share a row at twice the text',
       );
+    });
+  });
+
+  group('the states these Screens show', () {
+    testWidgets('org units with no Site yet says so through the shared empty state',
+        (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 1200);
+      addTearDown(tester.view.reset);
+      final wire = FakeWire(sites: []);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: Routes.orgUnits,
+      );
+
+      expect(tester.takeException(), isNull, reason: 'Org Units with no Site');
+      // "There are no Sites yet." is the sentence this branch has always shown;
+      // it is now the shared empty state's title rather than a lone `Text`
+      // (§9's state vocabulary, #103).
+      expect(find.byType(PlatformEmptyState), findsOneWidget,
+          reason: 'Org Units with no Site: not the shared empty state');
+      expect(find.byKey(OrgUnitsScreen.emptySitesKey), findsOneWidget,
+          reason: 'Org Units with no Site: the empty state lost its Key');
+      expect(find.text('There are no Sites yet.'), findsOneWidget,
+          reason: 'Org Units with no Site: the copy changed');
+    });
+
+    testWidgets('org units loads both its panels as the shared skeleton, never a spinner',
+        (tester) async {
+      final wire = _wire()..sitesGate = Completer<void>();
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 1200);
+      addTearDown(tester.view.reset);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: Routes.orgUnits,
+      );
+
+      expect(find.byType(SkeletonList), findsOneWidget,
+          reason: 'Org Units: the Site panel does not load as the shared skeleton');
+      expect(find.byType(CircularProgressIndicator), findsNothing,
+          reason: 'Org Units: a bare spinner is still a loading state');
+
+      wire.sitesGate!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(SkeletonList), findsNothing,
+          reason: 'Org Units: the skeleton stayed after the Site list arrived');
+    });
+
+    testWidgets('the Employee detail loads as the shared skeleton, never a spinner',
+        (tester) async {
+      final wire = _wire()..employeeDetailGate = Completer<void>();
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 1200);
+      addTearDown(tester.view.reset);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: '${Routes.directory}/7',
+      );
+
+      expect(find.byType(SkeletonDetail), findsOneWidget,
+          reason: 'Employee detail: the loading state is not the shared skeleton');
+      expect(find.byType(CircularProgressIndicator), findsNothing,
+          reason: 'Employee detail: a bare spinner is still the loading state');
+
+      wire.employeeDetailGate!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(SkeletonDetail), findsNothing,
+          reason: 'Employee detail: the skeleton stayed after the record arrived');
     });
   });
 }

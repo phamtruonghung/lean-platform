@@ -49,6 +49,7 @@ import '../theme.dart';
 import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/failure_state.dart';
+import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
@@ -123,7 +124,11 @@ class EmployeeDetailScreen extends StatelessWidget {
 
     return Scaffold(
       body: switch (state) {
-        EmployeeDetailLoading() => const Center(child: CircularProgressIndicator()),
+        // The shared loading vocabulary (#103): a detail record's own ghost —
+        // its summary card, then its field rows — rather than a spinner, the
+        // same `SkeletonDetail` the Maintenance and Quality detail pages show
+        // (`design-language.md`:537).
+        EmployeeDetailLoading() => const SkeletonDetail(maxWidth: EmployeeDetailScreen.maxWidth),
         EmployeeDetailUnavailable(message: final message) => PlatformFailureState(
             key: failedKey,
             title: 'This record could not be read',

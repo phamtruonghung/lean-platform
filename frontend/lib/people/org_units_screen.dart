@@ -70,6 +70,7 @@ import '../widgets/app_toolbar.dart';
 import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
+import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
@@ -87,6 +88,18 @@ class OrgUnitsScreen extends StatefulWidget {
   final bool isAdmin;
 
   static const double maxWidth = 900;
+
+  /// How tall the two reading panels' placeholder is, in logical pixels.
+  ///
+  /// The page is a `ListView`, so a child is handed an unbounded main axis and
+  /// a nested `SkeletonList` — itself a scroll view — cannot measure itself
+  /// against that. The height is therefore stated here, and it is the
+  /// `SkeletonList`'s own geometry rather than a guess: one placeholder card is
+  /// its `Spacing.lg` padding twice, the 40px avatar row, a `Spacing.md` gap and
+  /// an 11px bar, with `Spacing.sm` between cards. Nothing in it is text, so the
+  /// reader's text scale cannot make it overflow.
+  static const double _panelSkeletonHeight =
+      3 * (2 * Spacing.lg + 40 + Spacing.md + 11) + 2 * Spacing.sm;
 
   /// The `name` `AppSearchField.fieldKey`/`.suggestionKey` are seeded with —
   /// kept in one place so [searchFieldKey] and [searchSuggestionKey] can
@@ -222,8 +235,17 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                   ],
                 ),
                 const SizedBox(height: Spacing.lg),
+                // The shared loading vocabulary (#103): ghost rows where the
+                // Site's own tree is about to be, never a spinner.
                 if (pickerState.sitesStatus == SitesStatus.loading)
-                  const Center(child: CircularProgressIndicator())
+                  const SizedBox(
+                    height: OrgUnitsScreen._panelSkeletonHeight,
+                    child: SkeletonList(
+                      rows: 3,
+                      maxWidth: OrgUnitsScreen.maxWidth,
+                      padding: EdgeInsets.zero,
+                    ),
+                  )
                 else if (pickerState.sitesStatus == SitesStatus.failed)
                   PlatformFailureState(
                     key: OrgUnitsScreen.sitesFailureKey,
@@ -234,10 +256,14 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                         context.read<OrgUnitPickerBloc>().add(const OrgUnitPickerStarted()),
                   )
                 else if (pickerState.sites.isEmpty)
-                  Text(
-                    'There are no Sites yet.',
+                  // The shared empty state (#103), so "no Sites yet" reads the
+                  // same here as on every other register — the sentence this
+                  // branch has always shown is its title, unchanged.
+                  const PlatformEmptyState.noneExist(
                     key: OrgUnitsScreen.emptySitesKey,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    title: 'There are no Sites yet.',
+                    message: 'An administrator adds the first Site; every Org Unit sits beneath one.',
+                    icon: Icons.add_business_outlined,
                   )
                 else ...[
                   if (siteId != null) ...[
@@ -377,7 +403,16 @@ class _Tree extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.rootsLoading) {
-      return const Center(child: CircularProgressIndicator());
+      // The same ghost the Site panel shows while it reads (#103): the tree is
+      // an `AppListCard` of rows, so its placeholder is three of them.
+      return const SizedBox(
+        height: OrgUnitsScreen._panelSkeletonHeight,
+        child: SkeletonList(
+          rows: 3,
+          maxWidth: OrgUnitsScreen.maxWidth,
+          padding: EdgeInsets.zero,
+        ),
+      );
     }
     if (state.rootsFailure != null) {
       return PlatformFailureState(
