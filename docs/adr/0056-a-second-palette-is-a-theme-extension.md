@@ -104,12 +104,12 @@ anything that is not text to 3:1.
 | Pair | Ratio |
 |------|-------|
 | `textPrimary` `#F1F5F9` on card `#1E293B` / canvas `#0F172A` | 13.35 / 16.30 |
-| `textPrimary` on surfaceMuted `#334155` / dialog and menu `#253349` | 9.45 / 11.63 |
+| `textPrimary` on surfaceMuted `#334155` / surfaceContainerHigh `#253349` (the theme's default dialog and menu surface) | 9.45 / 11.63 |
 | `textPrimary` on a hovered row (over card `#2C3C53` / over canvas `#1F2C44`) | 10.21 / 12.76 |
 | `textMuted` `#CBD5E1` on card / canvas | 9.85 / 12.02 |
-| `textMuted` on surfaceMuted / dialog / hovered row (card, canvas) | 6.97 / 8.58 / 7.53, 9.42 |
-| `colorScheme.error` `#F87171` on card / canvas / dialog | 5.29 / 6.45 / 4.61 |
-| `actionPrimary` (`primary`) `#93C5FD` on card / canvas / dialog | 8.11 / 9.90 / 7.06 |
+| `textMuted` on surfaceMuted / surfaceContainerHigh / hovered row (card, canvas) | 6.97 / 8.58 / 7.53, 9.42 |
+| `colorScheme.error` `#F87171` on card / canvas / surfaceContainerHigh | 5.29 / 6.45 / 4.61 |
+| `actionPrimary` (`primary`) `#93C5FD` on card / canvas / surfaceContainerHigh | 8.11 / 9.90 / 7.06 |
 | `onActionPrimary` `#0F172A` on `actionPrimary` | 9.90 |
 | `onPrimaryContainer` `#DBEAFE` on `primaryContainer` `#1E3A8A` | 8.49 |
 | `navSelectedForeground` (`actionPrimary`) on `navSelectedBackground` | 5.74 |
@@ -125,9 +125,19 @@ anything that is not text to 3:1.
 | status danger: `#FCA5A5` on `#7F1D1D` | 5.28 |
 | status danger / success / warning as plain text on a card | 7.71 / 10.42 / 8.67 |
 | `edge` (hairline) `#6B7D96` on card / canvas | 3.48 / 4.25 |
-| `outline` (a control's rim) `#94A3B8` on card / canvas / dialog | 5.71 / 6.96 / 4.97 |
+| `outline` (a control's rim) `#94A3B8` on card / canvas / surfaceContainerHigh | 5.71 / 6.96 / 4.97 |
 | `focusRing` (`actionPrimary`) on card / canvas | 8.11 / 9.90 |
 | `navSelectedAccent` on the selected Destination's fill | 5.74 |
+
+**A dialog's surface is the widget's own choice.** The `surfaceContainerHigh`
+(`raised`, `#253349`) column above is the theme's default — what a bare
+`AlertDialog`, a menu or a date picker wears. `AppDialog`
+(`frontend/lib/widgets/app_dialog.dart`) pins `backgroundColor: palette.card`
+instead, and it is what every dialog the maintenance Screens open is built from,
+so those dialogs draw the card's own pairs: `textPrimary` on `card` 13.35 dark /
+10.36 light, `textMuted` on `card` 9.85 / 7.58. The Modules that still open a
+bare `AlertDialog` keep the column above. Both readings clear 4.5:1 either way,
+so this is a labelling correction, not a palette change.
 
 **Warning reads as orange, not brown.** `#FDBA74` (orange-300) is the bright member
 of its pair, on `#431407` (orange-950), which is dark enough not to read as a

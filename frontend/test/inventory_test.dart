@@ -20,6 +20,8 @@ import 'package:lean_platform/maintenance/store_stock_screen.dart';
 import 'package:lean_platform/maintenance/stores_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
+import 'package:lean_platform/widgets/failure_state.dart';
 import 'harness.dart';
 
 void main() {
@@ -155,6 +157,144 @@ void main() {
     );
 
     expect(find.text('Not available to you'), findsOneWidget);
+  });
+
+  testWidgets('an empty parts catalogue says so plainly', (tester) async {
+    final wire = FakeWire(parts: []);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/parts',
+    );
+
+    expect(find.byKey(PartsScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(PartsScreen.failedKey), findsNothing);
+    // The key alone would survive a private copy of the state widget; the
+    // Shared one is the claim, so assert the type the Platform draws.
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.text('No parts yet'), findsOneWidget);
+  });
+
+  testWidgets('a failed parts read explains itself and the retry works', (tester) async {
+    final wire = FakeWire(partsStatus: 503);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/parts',
+    );
+
+    expect(find.byKey(PartsScreen.failedKey), findsOneWidget);
+    expect(find.byKey(PartsScreen.emptyKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
+    expect(find.text('The parts catalogue is unavailable.'), findsOneWidget);
+
+    wire.partsStatus = 200;
+    wire.parts = [partJson('7', 'BRG-6204', 'Bearing, 6204')];
+    await tapIn(tester, find.byKey(PartsScreen.retryKey));
+
+    expect(find.byKey(PartsScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.text('BRG-6204'), findsOneWidget);
+  });
+
+  testWidgets('an empty stores list says so plainly', (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      stores: {'1': []},
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/stores',
+    );
+
+    expect(find.byKey(StoresScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(StoresScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.text('No stores yet'), findsOneWidget);
+  });
+
+  testWidgets('a failed stores read explains itself and the retry works', (tester) async {
+    final wire = FakeWire(
+      sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      storesStatus: 503,
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/stores',
+    );
+
+    expect(find.byKey(StoresScreen.failedKey), findsOneWidget);
+    expect(find.byKey(StoresScreen.emptyKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
+    expect(find.text('The stores are unavailable.'), findsOneWidget);
+
+    wire.storesStatus = 200;
+    wire.stores = {
+      '1': [storeJson('7', 'A-STORE', 'Main store')],
+    };
+    await tapIn(tester, find.byKey(StoresScreen.retryKey));
+
+    expect(find.byKey(StoresScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.byKey(StoresScreen.rowKey('7')), findsOneWidget);
+  });
+
+  testWidgets('an empty shelf says so plainly, and not as a failure', (tester) async {
+    final wire = FakeWire(
+      storeRows: {'7': storeJson('7', 'A-STORE', 'Main store')},
+      stock: {'7': []},
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/stores/7',
+    );
+
+    expect(find.byKey(StoreStockScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(StoreStockScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.text('Nothing on the shelf'), findsOneWidget);
+  });
+
+  testWidgets('a failed stock read explains itself and the retry works', (tester) async {
+    final wire = FakeWire(
+      storeRows: {'7': storeJson('7', 'A-STORE', 'Main store')},
+      storeStockStatus: 503,
+    );
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/stores/7',
+    );
+
+    expect(find.byKey(StoreStockScreen.failedKey), findsOneWidget);
+    expect(find.byKey(StoreStockScreen.emptyKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
+    expect(find.text('That store could not be read.'), findsOneWidget);
+
+    wire.storeStockStatus = 200;
+    wire.stock = {
+      '7': [stockLevelJson('3', 'BRG-6204', 'Bearing, 6204', 14)],
+    };
+    await tapIn(tester, find.byKey(StoreStockScreen.retryKey));
+
+    expect(find.byKey(StoreStockScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.byKey(StoreStockScreen.rowKey('3')), findsOneWidget);
   });
 
   // Issue #191: a register is narrowed by text, not by scrolling. Each Screen
