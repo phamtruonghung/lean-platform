@@ -89,3 +89,18 @@ class ThemeModeCubit extends Cubit<ThemeMode> {
         ThemeMode.system => 'system',
       };
 }
+
+/// Whether [mode] puts the dark palette on screen, read against what the
+/// browser asks for ([platformBrightness]).
+///
+/// `ThemeMode.system` is not itself either palette, so every surface that draws
+/// the palette toggle (issue #415) has to answer this question the same way.
+/// One answer, here, beside the cubit that owns the mode — rather than the same
+/// three-armed `switch` repeated in the router's two builders.
+extension ThemeModePalette on ThemeMode {
+  bool isDarkPalette(Brightness platformBrightness) => switch (this) {
+        ThemeMode.dark => true,
+        ThemeMode.light => false,
+        ThemeMode.system => platformBrightness == Brightness.dark,
+      };
+}

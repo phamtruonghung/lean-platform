@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import '../app_version.dart';
 import '../people_api.dart';
 import '../theme.dart';
+import '../widgets/palette_toggle.dart';
 import 'change_password_dialog.dart';
 import 'destinations.dart';
 
@@ -77,7 +78,9 @@ class PlatformShell extends StatelessWidget {
   static const ValueKey<String> changePasswordKey =
       ValueKey<String>('platform-shell-change-password');
 
-  /// The account menu's `Dark palette` item (issue #366).
+  /// The account menu's `Dark palette` item (issue #366), and — since issue
+  /// #415 — the same switch drawn beside sign-out through
+  /// `PaletteToggle.buttonKey`.
   static const ValueKey<String> themeToggleKey =
       ValueKey<String>('platform-shell-theme-toggle');
 
@@ -456,6 +459,14 @@ class _AccountFooter extends StatelessWidget {
       icon: const Icon(Icons.logout, size: 20),
       color: theme.colorScheme.onSurfaceVariant,
     );
+    // The palette switch, beside sign-out (issue #415). The menu item below is
+    // still there; this is the visible route to the same cubit, because a
+    // setting a person has to find under their own name is one they report as
+    // missing.
+    final paletteToggle = PaletteToggle(
+      darkPalette: darkPalette,
+      onPressed: onToggleDarkPalette,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -467,7 +478,10 @@ class _AccountFooter extends StatelessWidget {
             vertical: Spacing.sm,
           ),
           child: collapsed
-              ? Column(mainAxisSize: MainAxisSize.min, children: [menu(avatar), signOut])
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [menu(avatar), paletteToggle, signOut],
+                )
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,6 +518,7 @@ class _AccountFooter extends StatelessWidget {
                             ),
                           ),
                         ),
+                        paletteToggle,
                         signOut,
                       ],
                     ),
