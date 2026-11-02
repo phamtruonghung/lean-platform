@@ -14,10 +14,13 @@
 /// width pinned here would be a property of that placeholder (the reason
 /// `register_geometry_support.dart` does the same).
 ///
-/// **Why a fixed instant.** The board says how far through a shift the reader is,
-/// which is the one thing on either Screen derived from a clock. `SectionBoardScreen.now`
-/// is that clock, so the words are a fact of the fixture — 2026-05-05T23:00Z to
-/// 2026-05-06T07:00Z, read at 02:00Z — rather than of the hour the suite ran.
+/// **Why the clock is asserted separately.** The board says how far through a
+/// shift the reader is, the one thing on either Screen derived from a clock. These
+/// tests go through the router, so they read the real clock and assert the bar's
+/// presence and geometry rather than its words; the words belong to
+/// `formatShiftProgress` / `shiftProgressFraction`, asserted as a unit at a fixed
+/// instant below (`SectionBoardScreen.now` is the injection point for a caller
+/// that needs it).
 library;
 
 import 'package:flutter/material.dart';
@@ -36,9 +39,6 @@ import 'harness.dart';
 const String _section = '30';
 const String _boardAddress = '/production/sections/$_section/board?date=2026-05-05';
 const String _handoverAddress = '/production/sections/$_section/handover/500?date=2026-05-05';
-
-/// The instant the board is read at: two hours into the second shift.
-final DateTime _now = DateTime.utc(2026, 5, 6, 2);
 
 Map<String, dynamic> _machineLine(String assetId, String code, String name, String state) => {
       'id': 'ml-$assetId',
