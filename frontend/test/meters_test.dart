@@ -27,6 +27,8 @@ import 'package:lean_platform/maintenance/work_order_detail_screen.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
+import 'package:lean_platform/widgets/failure_state.dart';
 import 'harness.dart';
 
 /// A supervisor holding a write Grant at Org Unit 10 — the caller every meter
@@ -47,6 +49,7 @@ FakeWire wireWith({
   List<Map<String, dynamic>>? jobPlans,
   Map<String, List<Map<String, dynamic>>>? workOrders,
   Map<String, List<Map<String, dynamic>>>? workOrderTasks,
+  int metersStatus = 200,
 }) =>
     FakeWire(
       role: role,
@@ -57,6 +60,7 @@ FakeWire wireWith({
       },
       assets: assets ?? {'1': []},
       meters: meters,
+      metersStatus: metersStatus,
       pmSchedules: pmSchedules,
       jobPlans: jobPlans,
       workOrders: workOrders,
@@ -348,6 +352,50 @@ void main() {
     expect(taskId, 't1');
     expect(body['reading'], 4.2);
     expect(find.text('Reading 4.2'), findsOneWidget);
+  });
+
+  testWidgets('an empty Meters list says so plainly', (tester) async {
+    final wire = wireWith(meters: {'1': []});
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/meters',
+    );
+
+    expect(find.byKey(MetersScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(MetersScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.text('No meters yet'), findsOneWidget);
+  });
+
+  testWidgets('a failed Meters load explains itself and the retry works', (tester) async {
+    final wire = wireWith(metersStatus: 503);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/meters',
+    );
+
+    expect(find.byKey(MetersScreen.failedKey), findsOneWidget);
+    expect(find.byKey(MetersScreen.emptyKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
+    expect(find.text('The meters are unavailable.'), findsOneWidget);
+
+    wire.metersStatus = 200;
+    wire.meters = {
+      '1': [
+        meterJson('5', 'RUN-HRS', 'Running hours', assetId: '7', accumulatedUse: 900, latestReading: 900),
+      ],
+    };
+    await tapIn(tester, find.byKey(MetersScreen.retryKey));
+
+    expect(find.byKey(MetersScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.byKey(MetersScreen.rowKey('5')), findsOneWidget);
   });
 
   // Issue #191: a register is narrowed by text, not by scrolling. Each Screen
