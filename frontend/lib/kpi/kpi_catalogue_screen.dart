@@ -9,6 +9,23 @@
 /// "Today" is the server's: the read carries no `date`, so `review_date` is the
 /// Site's own today and the Today column is that day's judgement.
 ///
+/// **The definition is on the page, not in a tooltip (issue #395).** This is the
+/// Screen a reader comes to in order to understand a number, so the KPI column
+/// carries all three of the things that define one: the code at w600, the title
+/// beneath it in `textMuted`, and — when the catalogue has one — the Power BI
+/// value measure that produces the reading, at the 12px floor. A reader who has
+/// to hover to find out what "MTU_OEE" means is reading a table, not a catalogue.
+/// The measure is a line of text, so it wraps rather than clipping at any width
+/// or text size.
+///
+/// **The band and the row are different things.** The column labels sit on the
+/// `tableHeaderFill` band every register uses (see `MatrixHeaderRow`), and every
+/// body row is 44px tall or taller because the whole row is one link — the
+/// pointer and keyboard affordances below are what say so, since a hover band on
+/// a row that could not be clicked would be a lie. A keyboard reader gets a 2px
+/// `focusRing` drawn as a foreground decoration, so focus moves no pixel of
+/// layout and no cell changes width as the ring appears.
+///
 /// **Add KPI is offered only with write authority** (`canWrite`, read at the
 /// router from `/me`'s `orgUnitScope.canWriteSomewhere`, as every other Screen
 /// does). The server is still the gate: its 403 renders as its own sentence in
@@ -20,6 +37,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
+import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
@@ -209,7 +227,12 @@ class _LoadedState extends State<_Loaded> {
 // Column weights shared by the header and the rows, so they line up.
 const int _kpiFlex = 4;
 const int _unitFlex = 1;
-const int _directionFlex = 1;
+// `Direction` is the longest label and the shortest word: one flex of a 988px
+// content box is 62px, and 12px text needs 55 of them plus the cell's own gap —
+// so a single flex wraps the label's one word onto a second line and doubles the
+// band's height (measured at 64 for a 32px band). Two flexes hold it on one line
+// down to the narrowest window the catalogue is a matrix at (issue #395).
+const int _directionFlex = 2;
 const int _grainFlex = 2;
 const int _todayFlex = 2;
 
@@ -226,49 +249,95 @@ final List<MatrixColumn> _columns = [
   _column(_todayFlex, 'Today'),
 ];
 
-class _KpiRowTile extends StatelessWidget {
+class _KpiRowTile extends StatefulWidget {
   const _KpiRowTile({required this.kpi, required this.siteId});
 
   final KpiRow kpi;
   final String siteId;
 
+  @override
+  State<_KpiRowTile> createState() => _KpiRowTileState();
+}
+
+class _KpiRowTileState extends State<_KpiRowTile> {
+  /// Whether the row's own ink well holds keyboard focus — the ring below is
+  /// drawn from this, and only under a traditional highlight mode so a click
+  /// never leaves one behind.
+  bool _focused = false;
+
+  KpiRow get kpi => widget.kpi;
+
   String _target(KpiTarget? target) => target == null ? '—' : formatTarget(kpi, target.target);
+
+  /// The colour and weight a review state is read in. Colour is the second
+  /// carrier, never the only one: the word is always there beside it, so a
+  /// reader who cannot tell the two tints apart loses nothing (the review
+  /// matrix's own icon set, which this column has no room for, is the legend).
+  TextStyle? _todayStyle(BuildContext context) => switch (kpi.review?.status) {
+        ReviewStatus.met => AppTypography.dense(context)
+            ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.success), fontWeight: FontWeight.w600),
+        ReviewStatus.missed => AppTypography.dense(context)
+            ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger), fontWeight: FontWeight.w600),
+        _ => AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
+      };
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final body = theme.textTheme.bodyMedium;
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final floor = AppTypography.floor(context);
+    final muted = dense?.copyWith(color: palette.textMuted);
     Widget cell(int flex, String column, Widget child) =>
         matrixCell(flex: flex, key: KpiCatalogueScreen.cellKey(kpi.kpiId, column), child: child);
-    return InkWell(
-      key: KpiCatalogueScreen.rowKey(kpi.kpiId),
-      onTap: () => context.go(Routes.kpiTargets(kpi.kpiId, siteId: siteId)),
-      child: Padding(
-        padding: matrixRowPadding,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            matrixCell(
-              flex: _kpiFlex,
-              key: KpiCatalogueScreen.cellKey(kpi.kpiId, 'KPI'),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(kpi.kpi, style: body?.copyWith(fontWeight: FontWeight.w600)),
-                  Text(
-                    kpi.title,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
+    final showRing =
+        _focused && FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+    final measure = kpi.valueMeasure;
+
+    return Container(
+      // A foreground decoration paints the ring over the row's own bounds and
+      // takes no part in layout: focus moves no pixel and no column resizes.
+      foregroundDecoration: showRing
+          ? BoxDecoration(border: Border.all(color: palette.focusRing, width: 2))
+          : null,
+      child: InkWell(
+        key: KpiCatalogueScreen.rowKey(kpi.kpiId),
+        onTap: () => context.go(Routes.kpiTargets(kpi.kpiId, siteId: widget.siteId)),
+        hoverColor: palette.rowHoverFill,
+        splashFactory: NoSplash.splashFactory,
+        hoverDuration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 200),
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: Padding(
+          padding: matrixRowPadding,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              matrixCell(
+                flex: _kpiFlex,
+                key: KpiCatalogueScreen.cellKey(kpi.kpiId, 'KPI'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(kpi.kpi, style: dense?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(kpi.title, style: muted),
+                    if (measure != null && measure.isNotEmpty)
+                      Text('Value measure: $measure', style: floor?.copyWith(color: palette.textMuted)),
+                  ],
+                ),
               ),
-            ),
-            cell(_unitFlex, 'Unit', Text(kpi.unit.isEmpty ? '—' : kpi.unit, style: body)),
-            cell(_directionFlex, 'Direction', Text(kpi.direction, style: body)),
-            cell(_grainFlex, 'Daily', Text(_target(kpi.daily), style: body)),
-            cell(_grainFlex, 'Weekly', Text(_target(kpi.weekly), style: body)),
-            cell(_grainFlex, 'Monthly', Text(_target(kpi.monthly), style: body)),
-            cell(_todayFlex, 'Today', Text(KpiCatalogueScreen.todayLabel(kpi.review), style: body)),
-          ],
+              cell(_unitFlex, 'Unit', Text(kpi.unit.isEmpty ? '—' : kpi.unit, style: muted)),
+              cell(_directionFlex, 'Direction', Text(kpi.direction, style: muted)),
+              cell(_grainFlex, 'Daily', Text(_target(kpi.daily), style: dense)),
+              cell(_grainFlex, 'Weekly', Text(_target(kpi.weekly), style: dense)),
+              cell(_grainFlex, 'Monthly', Text(_target(kpi.monthly), style: dense)),
+              cell(
+                _todayFlex,
+                'Today',
+                Text(KpiCatalogueScreen.todayLabel(kpi.review), style: _todayStyle(context)),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -11,12 +11,20 @@
 /// when left blank, `decimals` is an int. Direction is chosen (`>=` or `<=`),
 /// never typed; a seeded KPI may carry `<` or `>`, which this form does not
 /// offer for a new one.
+///
+/// **The shell is `AppDialog`** (`widgets/app_dialog.dart`, #398) at the
+/// document's `form` width, adopted in #395: the width is the surface's, so the
+/// title, the six fields and the action row share one left and right edge, and at
+/// a narrow box or twice the text it becomes a sheet instead of a squeezed card.
+/// The fields, their keys and helper text, the enable conditions and the inline
+/// failure line are unchanged; only the shell moved.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'kpi_catalogue.dart';
 import 'kpi_catalogue_bloc.dart';
 
@@ -29,8 +37,10 @@ class AddKpiDialog extends StatefulWidget {
   static const ValueKey<String> directionKey = ValueKey<String>('add-kpi-direction');
   static const ValueKey<String> decimalsKey = ValueKey<String>('add-kpi-decimals');
   static const ValueKey<String> valueMeasureKey = ValueKey<String>('add-kpi-value-measure');
-  static const ValueKey<String> submitKey = ValueKey<String>('add-kpi-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('add-kpi-cancel');
+  static const String submitId = 'add-kpi-submit';
+  static const String cancelId = 'add-kpi-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('add-kpi-failure');
 
   static const List<String> directions = ['>=', '<='];
@@ -124,109 +134,113 @@ class _AddKpiDialogState extends State<AddKpiDialog> {
     final decimalsText = _decimals.text.trim();
     return BlocListener<KpiCatalogueBloc, KpiCatalogueState>(
       listener: _onCatalogueChanged,
-      child: AlertDialog(
-        title: const Text('Add KPI'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: AddKpiDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'KPI', helperText: 'The code, e.g. OEE', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: AddKpiDialog.titleKey,
-                  controller: _title,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: AddKpiDialog.unitKey,
-                  controller: _unit,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Unit (optional)', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: AddKpiDialog.directionKey,
-                  initialValue: _direction,
-                  decoration: const InputDecoration(
-                    labelText: 'Direction',
-                    helperText: '>= is met at or above the Target, <= at or below it',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final direction in AddKpiDialog.directions)
-                      DropdownMenuItem<String>(value: direction, child: Text(direction)),
-                  ],
-                  onChanged: _awaiting
-                      ? null
-                      : (value) {
-                          if (value != null) setState(() => _direction = value);
-                        },
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: AddKpiDialog.decimalsKey,
-                  controller: _decimals,
-                  enabled: !_awaiting,
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Decimals',
-                    helperText: 'A whole number from 0 to 6',
-                    errorText: decimalsText.isNotEmpty && _decimalsValue == null
-                        ? 'Decimals must be a whole number from 0 to 6'
-                        : null,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: AddKpiDialog.valueMeasureKey,
-                  controller: _valueMeasure,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Value measure (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: AddKpiDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Add KPI',
+        // A short form of six fields, by the document's own table.
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: AddKpiDialog.cancelKey,
+          AppDialogAction(
+            id: AddKpiDialog.cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: AddKpiDialog.submitKey,
+          AppDialogAction(
+            id: AddKpiDialog.submitId,
+            label: _awaiting ? 'Adding…' : 'Add',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Adding…' : 'Add'),
           ),
         ],
+        // The content area is the dialog's only scroller, so the form is a
+        // plain column here; its own scroll view would nest two.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: AddKpiDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                  labelText: 'KPI',
+                  helperText: 'The code, e.g. OEE',
+                  border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: AddKpiDialog.titleKey,
+              controller: _title,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: AddKpiDialog.unitKey,
+              controller: _unit,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                  labelText: 'Unit (optional)', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: AddKpiDialog.directionKey,
+              initialValue: _direction,
+              decoration: const InputDecoration(
+                labelText: 'Direction',
+                helperText: '>= is met at or above the Target, <= at or below it',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final direction in AddKpiDialog.directions)
+                  DropdownMenuItem<String>(value: direction, child: Text(direction)),
+              ],
+              onChanged: _awaiting
+                  ? null
+                  : (value) {
+                      if (value != null) setState(() => _direction = value);
+                    },
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: AddKpiDialog.decimalsKey,
+              controller: _decimals,
+              enabled: !_awaiting,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Decimals',
+                helperText: 'A whole number from 0 to 6',
+                errorText: decimalsText.isNotEmpty && _decimalsValue == null
+                    ? 'Decimals must be a whole number from 0 to 6'
+                    : null,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: AddKpiDialog.valueMeasureKey,
+              controller: _valueMeasure,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Value measure (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: AddKpiDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

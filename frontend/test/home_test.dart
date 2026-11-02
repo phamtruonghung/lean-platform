@@ -373,53 +373,57 @@ void main() {
     return wire;
   }
 
-  testWidgets('the cards sit side by side at one size, and the next row starts where the first did',
+  testWidgets('each Module group lays its cards two across, one left edge, and groups stack',
       (tester) async {
     await pumpWideAdminHome(tester);
 
-    // Section order: what is assigned to you (its context line is the long
-    // one in this fixture, since this Account carries no Employee link), the
-    // two Work order cards, Approvals, then Training to confirm (issue #289),
-    // which is alone in the last row.
-    final myActionsSize = tester.getSize(find.byKey(HomeScreen.myActionsCardKey));
-    final openOrdersSize = tester.getSize(find.byKey(HomeScreen.openWorkOrdersCardKey));
-    final approvalsSize = tester.getSize(find.byKey(HomeScreen.approvalsCardKey));
-    final unassignedSize = tester.getSize(find.byKey(HomeScreen.unassignedCardKey));
+    // Three Module groups (#395), in card order: Actions (one card), Maintenance
+    // (the Work order pair), People (Approvals, then Training to confirm).
+    final myActions = tester.getRect(find.byKey(HomeScreen.myActionsCardKey));
+    final openOrders = tester.getRect(find.byKey(HomeScreen.openWorkOrdersCardKey));
+    final unassigned = tester.getRect(find.byKey(HomeScreen.unassignedCardKey));
+    final approvals = tester.getRect(find.byKey(HomeScreen.approvalsCardKey));
+    final training = tester.getRect(find.byKey(HomeScreen.trainingToConfirmCardKey));
 
     // Equal widths within a row: two columns of the same 900px page.
-    expect(openOrdersSize.width, myActionsSize.width);
-    expect(approvalsSize.width, unassignedSize.width);
-    expect(approvalsSize.width, myActionsSize.width);
+    expect(unassigned.width, openOrders.width);
+    expect(training.width, approvals.width);
+    expect(approvals.width, openOrders.width);
 
     // Equal heights within a row, although one card's context line is three
     // times the length of its neighbour's — a row shares the height of its
     // tallest card rather than leaving a ragged bottom edge.
-    expect(openOrdersSize.height, myActionsSize.height);
+    expect(unassigned.height, openOrders.height);
+    expect(training.height, approvals.height);
 
-    // The second row starts at the same left edge the first one did, and above
-    // it: no card is islanded in the middle of a row, which is exactly what
-    // the three independent `Wrap`s this replaced produced.
-    final firstRowLeft = tester.getTopLeft(find.byKey(HomeScreen.myActionsCardKey)).dx;
-    final secondRowLeft = tester.getTopLeft(find.byKey(HomeScreen.unassignedCardKey)).dx;
-    expect(secondRowLeft, firstRowLeft);
-    expect(
-      tester.getTopLeft(find.byKey(HomeScreen.approvalsCardKey)).dx,
-      tester.getTopLeft(find.byKey(HomeScreen.openWorkOrdersCardKey)).dx,
-    );
-    expect(
-      tester.getTopLeft(find.byKey(HomeScreen.unassignedCardKey)).dy,
-      greaterThan(tester.getTopLeft(find.byKey(HomeScreen.myActionsCardKey)).dy),
-    );
+    // One left edge: each row's first card starts where the page's content does,
+    // and the second column sits right of the first at the same top.
+    expect(openOrders.left, myActions.left);
+    expect(approvals.left, myActions.left);
+    expect(unassigned.left, greaterThan(openOrders.right));
+    expect(unassigned.top, openOrders.top);
+    expect(training.left, greaterThan(approvals.right));
+    expect(training.top, approvals.top);
+
+    // Groups stack in card order, and each heading sits above its own first card.
+    expect(openOrders.top, greaterThan(myActions.bottom));
+    expect(approvals.top, greaterThan(unassigned.bottom));
+    final maintenanceHeading = tester.getRect(find.byKey(HomeScreen.groupKey('Maintenance')));
+    expect(maintenanceHeading.left, myActions.left);
+    expect(maintenanceHeading.bottom, lessThan(openOrders.top));
+    expect(tester.getRect(find.byKey(HomeScreen.groupKey('People'))).left, myActions.left);
   });
 
-  testWidgets('a lone card fills its own row rather than sitting at a column width',
+  testWidgets("a group's lone card fills its row rather than sitting at a column width",
       (tester) async {
-    // An administrator's Home carries five cards (#289): two full rows, and
-    // Training to confirm alone in the third.
+    // An administrator's Home carries five cards (#289) in three groups: the
+    // Actions group holds one, so it takes the whole row; Maintenance and
+    // People hold two each.
     await pumpWideAdminHome(tester);
 
     // Half of Home's 900px page would be ~420px; the whole content box is 852.
-    expect(tester.getSize(find.byKey(HomeScreen.trainingToConfirmCardKey)).width, greaterThan(800));
+    expect(tester.getSize(find.byKey(HomeScreen.myActionsCardKey)).width, greaterThan(800));
+    expect(tester.getSize(find.byKey(HomeScreen.trainingToConfirmCardKey)).width, lessThan(500));
   });
 
   testWidgets('a narrow page lays the cards out in one column', (tester) async {
@@ -536,15 +540,16 @@ void main() {
     addTearDown(mouse.removePointer);
     await mouse.addPointer(location: Offset.zero);
     await tester.pump();
+    final ink = find.descendant(of: card, matching: find.byType(InkWell));
     final material = tester.renderObject(
-      find.descendant(of: find.ancestor(of: card, matching: find.byType(Card)), matching: find.byType(Material)).first,
+      find.descendant(of: find.descendant(of: card, matching: find.byType(Card)), matching: find.byType(Material)).first,
     );
     expect(material, isNot(paints..rrect(color: palette.rowHoverFill)));
 
     await mouse.moveTo(tester.getCenter(card));
     await tester.pumpAndSettle();
     expect(material, paints..rrect(color: palette.rowHoverFill));
-    expect(tester.widget<InkWell>(card).hoverColor, palette.rowHoverFill);
+    expect(tester.widget<InkWell>(ink).hoverColor, palette.rowHoverFill);
   });
 
   testWidgets('a keyboard focus draws a two pixel ring and moves nothing', (tester) async {
@@ -553,7 +558,7 @@ void main() {
     await pumpOneAndZero(tester);
     final palette = AppColors.of(tester.element(find.byType(Scaffold).first));
     final key = HomeScreen.openWorkOrdersCardKey;
-    final cardOf = find.ancestor(of: find.byKey(key), matching: find.byType(Card));
+    final cardOf = find.descendant(of: find.byKey(key), matching: find.byType(Card));
 
     RoundedRectangleBorder shape() => tester.widget<Card>(cardOf).shape! as RoundedRectangleBorder;
     expect(tester.widget<Card>(cardOf).shape, isNull);
@@ -563,9 +568,10 @@ void main() {
     for (var i = 0; i < 80 && !focused; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
-      focused = Focus.of(
-        tester.element(find.descendant(of: find.byKey(key), matching: find.byType(Padding)).first),
-      ).hasPrimaryFocus;
+      // The ring itself is the signal: `AppStatTile` draws it by swapping the
+      // card's shape when its own ink well takes keyboard focus, so the ring
+      // appearing *is* the tile having focus — no widget-internal node read.
+      focused = tester.widget<Card>(cardOf).shape != null;
     }
     expect(focused, isTrue, reason: 'Tab never reached the card');
 
@@ -577,7 +583,8 @@ void main() {
   testWidgets('the hover fade is 200ms, nothing under reduced motion, and there is no ink ripple',
       (tester) async {
     await pumpOneAndZero(tester);
-    final tile = tester.widget<InkWell>(find.byKey(HomeScreen.myActionsCardKey));
+    Finder tileOf(Key key) => find.descendant(of: find.byKey(key), matching: find.byType(InkWell));
+    final tile = tester.widget<InkWell>(tileOf(HomeScreen.myActionsCardKey));
     expect(tile.hoverDuration, const Duration(milliseconds: 200));
     // A ripple runs far longer than the 150-250ms a tile's motion is held to,
     // and takes no notice of the reduced-motion setting.
@@ -587,7 +594,7 @@ void main() {
         const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await tester.pumpAndSettle();
-    expect(tester.widget<InkWell>(find.byKey(HomeScreen.myActionsCardKey)).hoverDuration,
+    expect(tester.widget<InkWell>(tileOf(HomeScreen.myActionsCardKey)).hoverDuration,
         Duration.zero);
   });
 
@@ -602,5 +609,144 @@ void main() {
     ]) {
       expect(tester.getRect(find.byKey(key)).right, lessThanOrEqualTo(320));
     }
+  });
+
+  // Issue #395: the page's two-column switch now reads the text scale as well as
+  // the box (`AppBreakpoints.effective`), so these three cases pin the geometry
+  // a reader can measure at the two ends of the width range and at twice the
+  // text — not that the page merely renders.
+
+  /// Home for an administrator at [size] and [textScale], wires settled.
+  Future<void> pumpHomeAt(WidgetTester tester, Size size, {double textScale = 1.0}) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = size;
+    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final wire = wireWith(
+      workOrders: {
+        '1': [workOrderJson('101', 'WO-101', 'Belt is slipping')],
+      },
+      queue: [pendingJson('7', 'new@b.c', DateTime.now())],
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('at a 1280px window the groups still run two across, one column per pair',
+      (tester) async {
+    await pumpHomeAt(tester, const Size(1280, 1600));
+
+    final openOrders = tester.getRect(find.byKey(HomeScreen.openWorkOrdersCardKey));
+    final unassigned = tester.getRect(find.byKey(HomeScreen.unassignedCardKey));
+    final approvals = tester.getRect(find.byKey(HomeScreen.approvalsCardKey));
+
+    // A pair shares a row: same top, the second card starting right of the
+    // first — and the next group begins below both of them.
+    expect(unassigned.top, openOrders.top);
+    expect(unassigned.left, greaterThan(openOrders.right));
+    expect(approvals.left, openOrders.left);
+    expect(approvals.top, greaterThan(unassigned.bottom));
+
+    // Home's page is still 900 wide inside a 1280 window, however much room the
+    // Shell gives it: the page is capped, so the content box is the same width
+    // as it was at 1200.
+    expect(openOrders.left, approvals.left);
+    expect(unassigned.right - openOrders.left, lessThanOrEqualTo(900));
+  });
+
+  testWidgets('at a 700px window every card is one column wide and stacked', (tester) async {
+    await pumpHomeAt(tester, const Size(700, 2000));
+
+    final myActions = tester.getRect(find.byKey(HomeScreen.myActionsCardKey));
+    final openOrders = tester.getRect(find.byKey(HomeScreen.openWorkOrdersCardKey));
+    final unassigned = tester.getRect(find.byKey(HomeScreen.unassignedCardKey));
+
+    // One column: one left edge, one width, each card under the one before it.
+    expect(openOrders.left, myActions.left);
+    expect(unassigned.left, myActions.left);
+    expect(openOrders.width, myActions.width);
+    expect(unassigned.width, myActions.width);
+    expect(openOrders.top, greaterThan(myActions.bottom));
+    expect(unassigned.top, greaterThan(openOrders.bottom));
+
+    // Nothing runs off the page, and every group heading keeps the same edge.
+    expect(unassigned.right, lessThanOrEqualTo(700));
+    expect(tester.getTopLeft(find.byKey(HomeScreen.groupKey('Maintenance'))).dx, myActions.left);
+  });
+
+  testWidgets('at twice the text a 1280px window gives one column, and nothing is lost',
+      (tester) async {
+    await pumpHomeAt(tester, const Size(1280, 2400), textScale: 2.0);
+
+    final openOrders = tester.getRect(find.byKey(HomeScreen.openWorkOrdersCardKey));
+    final unassigned = tester.getRect(find.byKey(HomeScreen.unassignedCardKey));
+    final approvals = tester.getRect(find.byKey(HomeScreen.approvalsCardKey));
+
+    // 852px of content at 200% text is compared against 640 * 2 = 1280, so the
+    // pair stacks instead of squeezing two tiles into one row.
+    expect(unassigned.top, greaterThan(openOrders.bottom));
+    expect(unassigned.left, openOrders.left);
+    expect(openOrders.width, unassigned.width);
+    expect(approvals.top, greaterThan(unassigned.bottom));
+
+    // Every card and every heading is still on the page, and nothing overflowed.
+    expect(tester.takeException(), isNull);
+    for (final key in [
+      HomeScreen.myActionsCardKey,
+      HomeScreen.openWorkOrdersCardKey,
+      HomeScreen.unassignedCardKey,
+      HomeScreen.approvalsCardKey,
+      HomeScreen.trainingToConfirmCardKey,
+    ]) {
+      expect(find.byKey(key), findsOneWidget);
+      expect(tester.getRect(find.byKey(key)).right, lessThanOrEqualTo(1280));
+    }
+  });
+
+  testWidgets('every count at zero says nothing is waiting, once every section has loaded',
+      (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 1400);
+    addTearDown(tester.view.reset);
+    final wire = wireWith(
+      // A linked Employee, so the assigned-to-you section is a real zero rather
+      // than the "no Employee record" wording it has its own card for.
+      employeeDetails: {'me': employeeDetailJson('9', 'E-9', 'A B')},
+    );
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client);
+
+    expect(find.byKey(HomeScreen.nothingWaitingKey), findsOneWidget);
+    // The tiles stay: the counts and the links are still why the page exists.
+    expect(find.byKey(HomeScreen.myActionsCardKey), findsOneWidget);
+    expect(find.byKey(HomeScreen.openWorkOrdersCardKey), findsOneWidget);
+    // And the line sits under the header, above the first group's heading.
+    expect(
+      tester.getTopLeft(find.byKey(HomeScreen.nothingWaitingKey)).dy,
+      lessThan(tester.getTopLeft(find.byKey(HomeScreen.groupKey('Actions'))).dy),
+    );
+  });
+
+  testWidgets('one count above zero withdraws the nothing-waiting line', (tester) async {
+    await pumpOneAndZero(tester);
+
+    expect(find.byKey(HomeScreen.nothingWaitingKey), findsNothing);
+  });
+
+  testWidgets('a section still in flight withdraws it too — the page cannot claim nothing awaits',
+      (tester) async {
+    final wire = wireWith(queue: [])..workOrdersGate = Completer<void>();
+    await pumpApp(tester, gateway: FakeAuthGateway(accessToken: 'a-token'), client: wire.client,
+        settle: false);
+
+    // The sections that have answered are all zero, but one has not answered
+    // yet — so the page says nothing rather than claiming nothing is waiting.
+    expect(find.byKey(HomeScreen.nothingWaitingKey), findsNothing);
+
+    wire.workOrdersGate!.complete();
+    await tester.pumpAndSettle();
+    // This Account has no Employee record to own an Action, and nothing else is
+    // pending: the line appears once the last read answers, because it is true.
+    expect(find.byKey(HomeScreen.nothingWaitingKey), findsOneWidget);
   });
 }

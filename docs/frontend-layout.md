@@ -91,11 +91,14 @@ investigation" for one the server put further down its own order.
 
 ## 4. A matrix Screen's header and body rows share one column spec
 
-A Screen whose rows are columns (the two KPI Screens, #363) states its columns
+A Screen whose rows are columns (the KPI catalogue — the KPI review became a
+tiled grid in #365 and is not a matrix) states its columns
 once, as a list, and builds the header row and every body row's cells from it
 (`lib/kpi/kpi_matrix.dart`): the same `Expanded` weights, the same row padding, the
 same cell gap. A header label and its cells then start at the same x by
-construction, and the header row is the first row of the `AppListCard`.
+construction, and the header row is the first row of the `AppListCard` — since
+#395 on the register's own `tableHeaderFill` band, so a catalogue's labels and a
+register's read as the same kind of thing.
 
 ## 5. A list of records is a register or a catalogue, and it says which
 

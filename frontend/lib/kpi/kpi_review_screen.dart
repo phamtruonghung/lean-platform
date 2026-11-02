@@ -26,6 +26,36 @@
 /// The value a reviewer read off the chart (`observed`) has no field here: the
 /// brief for this Screen does not ask for one, and the entries go out with
 /// `observed: null`.
+///
+/// **The header says whose day it is (issue #395).** The title is the shared
+/// `AppPageHeader`'s, so it wears the page's one title style; under it a line
+/// names the Site and the day again, because a person with one Site never saw the
+/// Site selector and so never saw whose day they were judging. The Site selector
+/// and the Day field sit beneath the header's hairline, on the page's own left
+/// edge.
+///
+/// **The icon set is taught, not guessed.** Three judgement icons and their
+/// colours are a puzzle on first use, so the legend under the filter names all
+/// three — the outline icon, the word the stored Review is written with, and the
+/// colour that means it. Colour is never the only carrier: the word is beside
+/// every icon, in the legend and in the saved line.
+///
+/// **The matrix is rows of equal-height cells.** Each row is at most four
+/// `Expanded` cells in an `IntrinsicHeight`, so the cells of a row share one
+/// width and one height and the eye reads a band; the count per row is the
+/// #374 rule (four at 1080, three at 820, two at 560), now compared at the
+/// reader's text scale so twice the text drops to fewer columns rather than
+/// squeezing a cell until its judgements cannot be pressed. A cell's name is
+/// `AppTypography.dense` at w600 and everything it says about the KPI is the 12px
+/// floor — the reference board's density, with the name one weight above its
+/// metadata rather than one size above it.
+///
+/// **Both popups are `AppDialog`** (`widgets/app_dialog.dart`, #398): the note
+/// popup is a `form` width and the read-only popup a `decision` width, both
+/// becoming sheets at a narrow box or a large text size, with `Esc` cancelling,
+/// focus trapped and restored, and the actions in the document's order. Their
+/// fields, validators, keys, enable conditions and dismissal policy are
+/// unchanged.
 library;
 
 import 'package:flutter/material.dart';
@@ -33,8 +63,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -74,10 +106,26 @@ class KpiReviewScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('kpi-review-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('kpi-review-retry');
   static const ValueKey<String> emptyKey = ValueKey<String>('kpi-review-empty');
+  /// The Screen's title. It is `AppPageHeader`'s title text now, and this key sits
+  /// on the header itself, so the name every caller and test knows still finds the
+  /// page's header (#395).
   static const ValueKey<String> headingKey = ValueKey<String>('kpi-review-heading');
   static ValueKey<String> rowKey(int kpiId) => ValueKey<String>('kpi-review-row-$kpiId');
 
   static const ValueKey<String> noMatchKey = ValueKey<String>('kpi-review-no-match');
+
+  /// The line under the title that says which Site and which day this matrix is
+  /// for (issue #395), and the legend of the three judgement icons.
+  static const ValueKey<String> siteDayKey = ValueKey<String>('kpi-review-site-day');
+  static const ValueKey<String> legendKey = ValueKey<String>('kpi-review-legend');
+  static ValueKey<String> legendItemKey(String status) =>
+      ValueKey<String>('kpi-review-legend-$status');
+
+  /// A note popup's own actions, by the id `AppDialog` keys them with.
+  static String noteSaveId(int kpiId) => 'kpi-review-note-save-$kpiId';
+  static String noteCancelId(int kpiId) => 'kpi-review-note-cancel-$kpiId';
+  static String noteEditId(int kpiId) => 'kpi-review-note-edit-$kpiId';
+  static String noteCloseId(int kpiId) => 'kpi-review-note-close-$kpiId';
 
   /// The sentence naming changed KPIs the filter hides, beside Save.
   static const ValueKey<String> hiddenChangesKey = ValueKey<String>('kpi-review-hidden-changes');
@@ -92,14 +140,14 @@ class KpiReviewScreen extends StatelessWidget {
   /// The popup that asks for the note, and its field, confirm and cancel.
   static ValueKey<String> noteDialogKey(int kpiId) => ValueKey<String>('kpi-review-note-dialog-$kpiId');
   static ValueKey<String> noteKey(int kpiId) => ValueKey<String>('kpi-review-note-$kpiId');
-  static ValueKey<String> noteSaveKey(int kpiId) => ValueKey<String>('kpi-review-note-save-$kpiId');
-  static ValueKey<String> noteCancelKey(int kpiId) => ValueKey<String>('kpi-review-note-cancel-$kpiId');
+  static ValueKey<String> noteSaveKey(int kpiId) => AppDialog.actionKey(noteSaveId(kpiId));
+  static ValueKey<String> noteCancelKey(int kpiId) => AppDialog.actionKey(noteCancelId(kpiId));
 
   /// The cell's note icon, and the read-only popup it opens.
   static ValueKey<String> notePopupKey(int kpiId) => ValueKey<String>('kpi-review-note-popup-$kpiId');
   static ValueKey<String> noteReadDialogKey(int kpiId) => ValueKey<String>('kpi-review-note-read-$kpiId');
-  static ValueKey<String> noteEditKey(int kpiId) => ValueKey<String>('kpi-review-note-edit-$kpiId');
-  static ValueKey<String> noteCloseKey(int kpiId) => ValueKey<String>('kpi-review-note-close-$kpiId');
+  static ValueKey<String> noteEditKey(int kpiId) => AppDialog.actionKey(noteEditId(kpiId));
+  static ValueKey<String> noteCloseKey(int kpiId) => AppDialog.actionKey(noteCloseId(kpiId));
   static ValueKey<String> noteClearsKey(int kpiId) => ValueKey<String>('kpi-review-note-clears-$kpiId');
   static ValueKey<String> noTargetHintKey(int kpiId) => ValueKey<String>('kpi-review-no-target-$kpiId');
 
@@ -260,61 +308,88 @@ class _LoadedState extends State<_Loaded> {
         !changes.any(_noteTooShort);
     final reviewDate = review?.reviewDate;
     final lastDate = DateTime.tryParse(state.siteToday ?? reviewDate ?? '');
+    final siteName = [
+      for (final site in state.sites)
+        if (site.id == state.siteId) site.name,
+    ];
     return Center(
       child: AppPageFrame(
         maxWidth: KpiReviewScreen.maxWidth,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
-            Text(
-              reviewDate == null ? 'KPI Review' : 'KPI Review for $reviewDate',
+            AppPageHeader(
               key: KpiReviewScreen.headingKey,
-              style: theme.textTheme.headlineSmall,
-            ),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              'Judge each KPI of the MTU line against its Daily Target: met, missed or not measured.',
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: Spacing.md),
-            Wrap(
-              spacing: Spacing.md,
-              runSpacing: Spacing.md,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (state.sites.length > 1)
-                  SizedBox(
-                    width: 280,
-                    child: DropdownButtonFormField<String>(
-                      key: KpiReviewScreen.siteKey,
-                      initialValue: state.siteId,
-                      isDense: true,
-                      decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                      items: [
-                        for (final site in state.sites)
-                          DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-                      ],
-                      onChanged: (siteId) {
-                        if (siteId == null) return;
-                        context.read<KpiReviewBloc>().add(KpiReviewSiteSelected(siteId));
-                      },
-                    ),
+              title: reviewDate == null ? 'KPI Review' : 'KPI Review for $reviewDate',
+              description:
+                  'Judge each KPI of the MTU line against its Daily Target: met, missed or not measured.',
+              // The title names the day; this line names the Site the day belongs
+              // to, which the Screen never said when the person has one Site and
+              // so never saw the selector (issue #395).
+              below: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.place_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(width: Spacing.xs),
+                      Flexible(
+                        child: Text(
+                          siteName.isEmpty
+                              ? (reviewDate ?? '')
+                              : '${siteName.first}${reviewDate == null ? '' : ' · $reviewDate'}',
+                          key: KpiReviewScreen.siteDayKey,
+                          style: AppTypography.floor(context)
+                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                    ],
                   ),
-                if (reviewDate != null && lastDate != null)
-                  SizedBox(
-                    width: 220,
-                    child: AppDateField(
-                      name: KpiReviewScreen.dateName,
-                      label: 'Day',
-                      value: reviewDate,
-                      firstDate: KpiReviewScreen.firstReviewDate,
-                      lastDate: lastDate,
-                      onChanged: (date) {
-                        if (date != null) context.read<KpiReviewBloc>().add(ReviewDateSelected(date));
-                      },
-                    ),
+                  const SizedBox(height: Spacing.md),
+                  Wrap(
+                    spacing: Spacing.md,
+                    runSpacing: Spacing.md,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (state.sites.length > 1)
+                        SizedBox(
+                          width: 280,
+                          child: DropdownButtonFormField<String>(
+                            key: KpiReviewScreen.siteKey,
+                            initialValue: state.siteId,
+                            isDense: true,
+                            decoration:
+                                const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                            items: [
+                              for (final site in state.sites)
+                                DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                            ],
+                            onChanged: (siteId) {
+                              if (siteId == null) return;
+                              context.read<KpiReviewBloc>().add(KpiReviewSiteSelected(siteId));
+                            },
+                          ),
+                        ),
+                      if (reviewDate != null && lastDate != null)
+                        SizedBox(
+                          width: 220,
+                          child: AppDateField(
+                            name: KpiReviewScreen.dateName,
+                            label: 'Day',
+                            value: reviewDate,
+                            firstDate: KpiReviewScreen.firstReviewDate,
+                            lastDate: lastDate,
+                            onChanged: (date) {
+                              if (date != null) {
+                                context.read<KpiReviewBloc>().add(ReviewDateSelected(date));
+                              }
+                            },
+                          ),
+                        ),
+                    ],
                   ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: Spacing.lg),
             if (state.isLoadingReview || review == null)
@@ -336,7 +411,9 @@ class _LoadedState extends State<_Loaded> {
                 shown: matches.length,
                 total: review.rows.length,
               ),
-              const SizedBox(height: Spacing.lg),
+              const SizedBox(height: Spacing.md),
+              const _JudgementLegend(),
+              const SizedBox(height: Spacing.md),
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: KpiReviewScreen.noMatchKey,
@@ -409,7 +486,16 @@ class _LoadedState extends State<_Loaded> {
   }
 }
 
-/// How many cells fit across [width]: the matrix's four, three, two or one.
+/// How many cells fit across a box of [width] at a text scale of 1: the
+/// matrix's four, three, two or one.
+///
+/// These three numbers are what makes four-across reachable at all (issue #374):
+/// 1080 is four cells of 261 plus three 12px gaps, which a 1200px page holds as
+/// 1168 of content; 820 is three of them; 560 is two. They are compared against
+/// the box **at the reader's text scale** (`AppBreakpoints.effective`), so twice
+/// the text drops to fewer columns instead of squeezing a cell until its
+/// judgement row cannot be pressed (#379, #381 — the bug that shipped twice when
+/// a breakpoint read the box as it is).
 int _gridColumns(double width) => switch (width) {
       >= 1080 => 4,
       >= 820 => 3,
@@ -417,7 +503,53 @@ int _gridColumns(double width) => switch (width) {
       _ => 1,
     };
 
+/// The legend of the three judgements: the icon a cell draws, and the word the
+/// stored Review is written with (issue #395).
+///
+/// A cell's judgement is an icon and its colour, and an icon set nobody has been
+/// taught is a puzzle on first use. The legend is the teaching: filled or outline,
+/// what each one means, in the palette's own meaning colours — and the word beside
+/// every icon, so the set never depends on telling a tint apart.
+class _JudgementLegend extends StatelessWidget {
+  const _JudgementLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final floor = AppTypography.floor(context)?.copyWith(color: colors.onSurfaceVariant);
+    return Wrap(
+      key: KpiReviewScreen.legendKey,
+      spacing: Spacing.lg,
+      runSpacing: Spacing.xs,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final status in ReviewStatus.all)
+          Row(
+            key: KpiReviewScreen.legendItemKey(status),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_judgementIcons(colors, status).$2, size: 16, color: _judgementIcons(colors, status).$3),
+              const SizedBox(width: Spacing.xs),
+              Text(ReviewStatus.label(status), style: floor),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
 /// The tiled matrix: equal-width cells, so the columns line up.
+///
+/// **Rows of `Expanded` cells, not a `Wrap` of sized ones (issue #395).** A
+/// `Wrap` cannot stretch a run, so the last row of a three-across matrix was
+/// always short — and every cell in a row was its own height, because nothing
+/// tied them together. Chunking into rows of `Expanded` cells fixes the widths by
+/// construction (no floor-to-double rounding to defend), and an `IntrinsicHeight`
+/// per row makes the cells of one row share the height of the tallest — the shape
+/// a matrix of judgements needs, since the eye reads a row as one band.
+///
+/// The count per row is unchanged from #374: `_gridColumns`, at the reader's text
+/// scale, decides four, three, two or one.
 class _ReviewGrid extends StatelessWidget {
   const _ReviewGrid({required this.cells});
 
@@ -427,15 +559,32 @@ class _ReviewGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = _gridColumns(constraints.maxWidth);
-        // Floored: a width that rounds up would overflow the run by a fraction
-        // of a pixel and drop its last cell onto the next one.
-        final width = ((constraints.maxWidth - Spacing.md * (columns - 1)) / columns).floorToDouble();
-        return Wrap(
-          spacing: Spacing.md,
-          runSpacing: Spacing.md,
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        // The box divided by the text scale is the same comparison as
+        // `AppBreakpoints.effective` (a threshold times the scale), stated once
+        // for a function that answers in column counts.
+        final columns = _gridColumns(constraints.maxWidth / (scale < 1 ? 1 : scale));
+        final rows = <List<Widget>>[];
+        for (var index = 0; index < cells.length; index += columns) {
+          rows.add(cells.sublist(index, (index + columns).clamp(0, cells.length)));
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final cell in cells) SizedBox(width: width, child: cell),
+            for (var index = 0; index < rows.length; index++) ...[
+              if (index > 0) const SizedBox(height: Spacing.md),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var column = 0; column < rows[index].length; column++) ...[
+                      if (column > 0) const SizedBox(width: Spacing.md),
+                      Expanded(child: rows[index][column]),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         );
       },
@@ -481,6 +630,7 @@ class _ReviewCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final targetText = _targetText(row);
     final saved = row.status == null
         ? null
@@ -489,7 +639,10 @@ class _ReviewCell extends StatelessWidget {
             if (row.appUser != null) row.appUser!,
             if (row.enteredAt != null) formatEnteredAt(row.enteredAt!),
           ].join(' · ');
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    // 12px floor for everything the cell says about the KPI, 14px w600 for its
+    // name: the reference board's density, with the name one weight above the
+    // metadata rather than one size above it (issue #395).
+    final floor = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     return Card(
       key: KpiReviewScreen.rowKey(row.kpiId),
       margin: EdgeInsets.zero,
@@ -497,15 +650,19 @@ class _ReviewCell extends StatelessWidget {
         padding: const EdgeInsets.all(Spacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(row.title, style: theme.textTheme.bodyLarge),
+            Text(
+              row.title,
+              style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: Spacing.xs),
-            Text(targetText == null ? 'No target' : 'Daily target: $targetText', style: muted),
+            Text(targetText == null ? 'No target' : 'Daily target: $targetText', style: floor),
             if (targetText == null)
               Text(
                 KpiReviewScreen.noTargetHint,
                 key: KpiReviewScreen.noTargetHintKey(row.kpiId),
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                style: floor?.copyWith(color: theme.colorScheme.error),
               ),
             const SizedBox(height: Spacing.sm),
             Row(
@@ -521,7 +678,7 @@ class _ReviewCell extends StatelessWidget {
                   ),
               ],
             ),
-            if (saved != null) Text(saved, key: KpiReviewScreen.savedStateKey(row.kpiId), style: muted),
+            if (saved != null) Text(saved, key: KpiReviewScreen.savedStateKey(row.kpiId), style: floor),
           ],
         ),
       ),
@@ -572,42 +729,42 @@ class _NoteDialogState extends State<_NoteDialog> {
     final targetText = _targetText(widget.row);
     final note = _note.text.trim();
     final tooShort = note.length < KpiReviewScreen.minNoteLength;
-    return AlertDialog(
+    return AppDialog(
       key: KpiReviewScreen.noteDialogKey(kpiId),
-      title: Text(widget.row.title),
-      scrollable: true,
-      content: SizedBox(
-        width: 420,
-        child: TextField(
-          key: KpiReviewScreen.noteKey(kpiId),
-          controller: _note,
-          autofocus: true,
-          minLines: 3,
-          maxLines: 6,
-          onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(
-            labelText: targetText == null ? 'Why was it missed?' : 'Why was the Target ($targetText) missed?',
-            errorText: tooShort
-                ? 'A note of at least ${KpiReviewScreen.minNoteLength} characters is required '
-                    'when a KPI is missed (${note.length} so far).'
-                : null,
-            errorMaxLines: 3,
-            border: const OutlineInputBorder(),
-          ),
-        ),
-      ),
+      // The title is the KPI being judged; the field's own label names the Target
+      // that was missed, so the shell adds no description on top of it.
+      title: widget.row.title,
+      size: AppDialogSize.form,
       actions: [
-        TextButton(
-          key: KpiReviewScreen.noteCancelKey(kpiId),
+        AppDialogAction(
+          id: KpiReviewScreen.noteCancelId(kpiId),
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
         ),
-        FilledButton(
-          key: KpiReviewScreen.noteSaveKey(kpiId),
+        AppDialogAction(
+          id: KpiReviewScreen.noteSaveId(kpiId),
+          label: 'Confirm',
           onPressed: tooShort ? null : () => Navigator.of(context).pop(note),
-          child: const Text('Confirm'),
         ),
       ],
+      child: TextField(
+        key: KpiReviewScreen.noteKey(kpiId),
+        controller: _note,
+        autofocus: true,
+        minLines: 3,
+        maxLines: 6,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          labelText: targetText == null ? 'Why was it missed?' : 'Why was the Target ($targetText) missed?',
+          errorText: tooShort
+              ? 'A note of at least ${KpiReviewScreen.minNoteLength} characters is required '
+                  'when a KPI is missed (${note.length} so far).'
+              : null,
+          errorMaxLines: 3,
+          border: const OutlineInputBorder(),
+        ),
+      ),
     );
   }
 }
@@ -625,7 +782,6 @@ class _ReadNoteDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final targetText = _targetText(row);
     // A draft the person typed is not the server's, so it names nobody.
     final isSaved = row.note != null && row.note!.trim() == note;
@@ -633,44 +789,43 @@ class _ReadNoteDialog extends StatelessWidget {
       if (isSaved && row.appUser != null) row.appUser!,
       if (isSaved && row.enteredAt != null) formatEnteredAt(row.enteredAt!),
     ].join(' · ');
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    return AlertDialog(
+    final floor = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
+    return AppDialog(
       key: KpiReviewScreen.noteReadDialogKey(row.kpiId),
-      title: Text(row.title),
-      scrollable: true,
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(targetText == null ? 'No target' : 'Daily target: $targetText', style: muted),
-            const SizedBox(height: Spacing.sm),
-            Text(note, style: theme.textTheme.bodyMedium),
-            if (author.isNotEmpty) ...[
-              const SizedBox(height: Spacing.sm),
-              Text(author, style: muted),
-            ],
-            if (status != ReviewStatus.missed) ...[
-              const SizedBox(height: Spacing.sm),
-              Text(KpiReviewScreen.clearsNoteText, key: KpiReviewScreen.noteClearsKey(row.kpiId), style: muted),
-            ],
-          ],
-        ),
-      ),
+      title: row.title,
+      // Reading one note is a decision-width dialog: no fields, two actions.
+      size: AppDialogSize.decision,
       actions: [
-        TextButton(
-          key: KpiReviewScreen.noteCloseKey(row.kpiId),
+        AppDialogAction(
+          id: KpiReviewScreen.noteCloseId(row.kpiId),
+          label: 'Close',
+          kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Close'),
         ),
         if (canEdit)
-          FilledButton(
-            key: KpiReviewScreen.noteEditKey(row.kpiId),
+          AppDialogAction(
+            id: KpiReviewScreen.noteEditId(row.kpiId),
+            label: 'Edit',
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Edit'),
           ),
       ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(targetText == null ? 'No target' : 'Daily target: $targetText', style: floor),
+          const SizedBox(height: Spacing.sm),
+          Text(note, style: AppTypography.dense(context)),
+          if (author.isNotEmpty) ...[
+            const SizedBox(height: Spacing.sm),
+            Text(author, style: floor),
+          ],
+          if (status != ReviewStatus.missed) ...[
+            const SizedBox(height: Spacing.sm),
+            Text(KpiReviewScreen.clearsNoteText, key: KpiReviewScreen.noteClearsKey(row.kpiId), style: floor),
+          ],
+        ],
+      ),
     );
   }
 }

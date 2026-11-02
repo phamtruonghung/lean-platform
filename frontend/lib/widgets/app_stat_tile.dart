@@ -2,11 +2,8 @@
 /// context, and, when it is given somewhere to go, a link.
 ///
 /// **It is `home_screen.dart`'s private tile, lifted** so that a second Module
-/// can spend it. Home does not adopt it in this card: the private `_HomeCard`
-/// survives until its own slice, which is why the two shapes are temporarily
-/// byte-similar. Keeping both for one card is deliberate, because it makes the
-/// Home change a single reviewable diff with its own golden rather than a side
-/// effect of introducing a primitive.
+/// can spend it, and Home adopts it in its own slice (#395), which is why the two
+/// shapes are byte-similar no longer: the private `_HomeCard` is gone.
 ///
 /// **[onTap] rather than a route string.** The tile is a presentation widget and
 /// its caller owns the navigation; that is what makes it testable without a

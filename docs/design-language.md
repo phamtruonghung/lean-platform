@@ -375,6 +375,16 @@ and its numerics align. If the reader finds a record by name and then does
 something to it, it is a catalogue. `docs/frontend-layout.md` section 5 says the
 same in shorter form, and a Screen's own doc comment names which it is.
 
+**A catalogue that a reader comes to in order to understand a record carries its
+definition on the page (added by #395, the KPI catalogue).** The KPI catalogue's
+first column holds the code at w600, the title under it in `muted`, and — when the
+record has one — the Power BI value measure that produces the number, on the 12px
+floor. A definition a reader has to hover to find is a tooltip, not a definition.
+Two consequences worth copying: the measure is a line of text, so it wraps rather
+than clipping at any width or text size; and a column label wide enough to wrap
+(one word longer than its `flex` gives it) doubles a header band's height, which
+is why the catalogue's `Direction` column takes two flexes rather than one.
+
 ### The detail
 
 A summary card first (the record's identifying fields), then `AppDetailSection`s
@@ -457,7 +467,11 @@ tile (`_iconTileSize`, 40), a label, a figure, a caption. The figure is
 `headlineLarge` w700 when there is something to read, and a quiet `titleMedium`
 w400 `textMuted` when it is zero (`_countStyle`). The figure sits `Spacing.xs`
 under its label. A quiet figure measures 7.58:1 light and 9.85:1 dark on a card
-(section 9). Home's tile survives this card and is adopted in its own slice.
+(section 9). Home's tile survives #386 and is adopted in its own slice, which is
+#395: the private `_HomeCard` is gone and every tile on Home is this widget. The
+slice that adopts it also decides how tiles are *grouped*, which this section
+does not: Home groups them by the Module that owns each card's Destination
+(section 5's order), one heading and one two-across grid per group.
 
 ### The form
 
@@ -643,8 +657,10 @@ deliberately not on 700: its seven columns
 keep their own 800, argued in section 6, and its own tests cover both sides of
 that number. Home's grid carries a private `_CardGrid.twoColumnWidth` of 640,
 read from its own `LayoutBuilder`; that is the same 640 already in the class,
-spent by Home's grid — and it compares without the text scale, the one place that
-does not yet follow the rule above, until its own slice adopts the class.
+spent by Home's grid. **As of #395 it compares through `AppBreakpoints.effective`**
+like every other number in this section, so twice the text drops Home's grid to one
+column instead of squeezing two tiles past legibility; its own slice was the change
+this paragraph used to wait for, and its own test pins both sides.
 
 **Why it is written once.** The bug shipped twice. #105 was the window-versus-box
 confusion of section 2, in the Work orders table. #379 was the header's wrap
@@ -689,9 +705,13 @@ accidental: 112 are an `AlertDialog` — the one that is not is
 `platform/dialog_page.dart`, the route — 110 put a `SizedBox` directly in
 `content:`, and each chose its own number.
 `AppDialog` (`widgets/app_dialog.dart`, shipped in #398) is the shell they
-will move onto, one slice at a time; `AppConfirmDialog` is its destructive form.
-Nothing in `lib/` has adopted either yet, and no existing dialog changes in the
-card that ships them.
+move onto one slice at a time; `AppConfirmDialog` is its destructive form. The KPI
+module is the first to adopt it (#395): `add_kpi_dialog.dart` and
+`change_target_dialog.dart` at the `form` width, and the KPI review's own note
+popup (`form`) and read-only note popup (`decision`). Their fields, keys,
+validators, enable conditions and dismissal policy did not change; only the shell
+did, which is what an adoption is. Each remaining module names its own dialogs in
+its own slice.
 
 ### The four widths
 

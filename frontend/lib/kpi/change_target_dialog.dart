@@ -12,6 +12,14 @@
 ///
 /// **A blank Target is "no target from that date on"** and goes out as
 /// `target: null` — the key is always present, never `''` and never omitted.
+///
+/// **The shell is `AppDialog`** (`widgets/app_dialog.dart`, #398) at the
+/// document's `form` width, adopted in #395, with the append-only rule as its
+/// description under the title. The fields, the date picker and its gates, the
+/// refusal and failure lines and the enable conditions are unchanged; only the
+/// shell and the width moved (a 420px `SizedBox` inside an `AlertDialog` became
+/// the surface's own 520, by the document's own table: a short form of four
+/// controls up to about six fields is a `form`).
 library;
 
 import 'package:flutter/material.dart';
@@ -19,6 +27,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import 'kpi_targets_bloc.dart';
 
 class ChangeTargetDialog extends StatefulWidget {
@@ -32,8 +41,10 @@ class ChangeTargetDialog extends StatefulWidget {
   static ValueKey<String> get validFromKey => AppDateField.fieldKey(validFromName);
   static const ValueKey<String> targetKey = ValueKey<String>('change-target-target');
   static const ValueKey<String> noteKey = ValueKey<String>('change-target-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('change-target-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('change-target-cancel');
+  static const String submitId = 'change-target-submit';
+  static const String cancelId = 'change-target-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(cancelId);
   static const ValueKey<String> failureKey = ValueKey<String>('change-target-failure');
   static const ValueKey<String> validFromRefusalKey = ValueKey<String>('change-target-valid-from-refusal');
 
@@ -129,98 +140,94 @@ class _ChangeTargetDialogState extends State<ChangeTargetDialog> {
     final today = DateTime.tryParse(widget.siteToday);
     return BlocListener<KpiTargetsBloc, KpiTargetsState>(
       listener: _onTargetsChanged,
-      child: AlertDialog(
-        title: const Text('Change Target'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  ChangeTargetDialog.rule,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: ChangeTargetDialog.grainKey,
-                  initialValue: _grain,
-                  decoration: const InputDecoration(labelText: 'Grain', border: OutlineInputBorder()),
-                  items: [
-                    for (final grain in ChangeTargetDialog.grains)
-                      DropdownMenuItem<String>(value: grain, child: Text(grain)),
-                  ],
-                  onChanged: _awaiting
-                      ? null
-                      : (value) {
-                          if (value != null) setState(() => _grain = value);
-                        },
-                ),
-                const SizedBox(height: Spacing.md),
-                AppDateField(
-                  name: ChangeTargetDialog.validFromName,
-                  label: 'Valid from',
-                  helperText: 'Today at this Site is ${widget.siteToday}; a Target starts today or later.',
-                  value: _validFrom,
-                  firstDate: today,
-                  enabled: !_awaiting,
-                  onChanged: (value) => setState(() => _validFrom = value),
-                ),
-                if (refusal != null)
-                  Padding(
-                    key: ChangeTargetDialog.validFromRefusalKey,
-                    padding: const EdgeInsets.only(top: Spacing.sm),
-                    child: Text(refusal, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
-                  ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ChangeTargetDialog.targetKey,
-                  controller: _target,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Target',
-                    helperText: 'Leave blank for no target from that date on.',
-                    errorText: _targetInvalid ? 'The Target must be a number, or blank for no target' : null,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ChangeTargetDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(labelText: 'Note (optional)', border: OutlineInputBorder()),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: ChangeTargetDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Change Target',
+        // The append-only rule is the dialog's own description, under the title
+        // where a reader meets it before the fields.
+        description: ChangeTargetDialog.rule,
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: ChangeTargetDialog.cancelKey,
+          AppDialogAction(
+            id: ChangeTargetDialog.cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: ChangeTargetDialog.submitKey,
+          AppDialogAction(
+            id: ChangeTargetDialog.submitId,
+            label: _awaiting ? 'Saving…' : 'Change Target',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Change Target'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              key: ChangeTargetDialog.grainKey,
+              initialValue: _grain,
+              decoration: const InputDecoration(labelText: 'Grain', border: OutlineInputBorder()),
+              items: [
+                for (final grain in ChangeTargetDialog.grains)
+                  DropdownMenuItem<String>(value: grain, child: Text(grain)),
+              ],
+              onChanged: _awaiting
+                  ? null
+                  : (value) {
+                      if (value != null) setState(() => _grain = value);
+                    },
+            ),
+            const SizedBox(height: Spacing.md),
+            AppDateField(
+              name: ChangeTargetDialog.validFromName,
+              label: 'Valid from',
+              helperText: 'Today at this Site is ${widget.siteToday}; a Target starts today or later.',
+              value: _validFrom,
+              firstDate: today,
+              enabled: !_awaiting,
+              onChanged: (value) => setState(() => _validFrom = value),
+            ),
+            if (refusal != null)
+              Padding(
+                key: ChangeTargetDialog.validFromRefusalKey,
+                padding: const EdgeInsets.only(top: Spacing.sm),
+                child: Text(refusal,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
+              ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ChangeTargetDialog.targetKey,
+              controller: _target,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Target',
+                helperText: 'Leave blank for no target from that date on.',
+                errorText: _targetInvalid ? 'The Target must be a number, or blank for no target' : null,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ChangeTargetDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(labelText: 'Note (optional)', border: OutlineInputBorder()),
+            ),
+            if (_failure != null)
+              Padding(
+                key: ChangeTargetDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

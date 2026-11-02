@@ -15,34 +15,40 @@
 /// role gate mirrors the same role set `router.dart` already checks before
 /// letting that Destination's own route through.
 ///
-/// **The cards are one grid (issue #188).** Before this, each of the three
-/// sections rendered its own `Wrap` of fixed 260px cards, so an administrator's
-/// four cards arrived as one card, then two, then one — a ragged grid with most
-/// of a row empty twice, and a grouping whose only cue was a 16px gap against
-/// the 12px between cards. They are now one grid of equal cells, two columns on
-/// a wide page and one on a narrow one, in section order: what is assigned to
-/// you, then the work summary, then Approvals. The sections still read, fail and
-/// load independently — a section that cannot be read says so across the grid
-/// rather than taking the Screen with it — and nothing about a card's own
-/// content, count or Destination changed.
+/// **The cards are one grid per Module (issue #188, regrouped by #395).**
+/// Before #188 each of the three sections rendered its own `Wrap` of fixed
+/// 260px cards, so an administrator's four cards arrived as one card, then two,
+/// then one — a ragged grid with most of a row empty twice. #188 made them one
+/// grid of equal cells, two columns on a wide page and one on a narrow one, but
+/// left the five cards in one undifferentiated block. #395 groups them by the
+/// Module that owns each card's Destination, in the order the cards already
+/// had: **Actions** (what is assigned to you), **Maintenance** (the Work order
+/// pair) and **People** (Accounts awaiting Approval, Training to confirm). The
+/// grouping is by Module because that is what the cards already are — one
+/// Destination each, and a Destination already belongs to a Module — so the
+/// headings add no new vocabulary to the page. Within a group the cells are
+/// the same grid #188 built; a section that cannot be read still says so across
+/// its own group rather than taking the Screen with it.
 ///
-/// **Identity (issue #375).** Home was the Screen with the least of it: a
-/// greeting, a line of small print and four identical boxes. It now has a
-/// header — the greeting as the Screen's title, `email · role` beneath it, and a
-/// hairline rule under both, all on the `Spacing.xl` inset the alignment test
-/// pins — and each card is a stat tile (see [_HomeCard]): an icon tile, the
-/// label, the count at the top of the pinned type scale, the caption, and a
-/// chevron that says the whole tile is a link. A count of zero is deliberately
-/// quieter than a real one.
+/// **Identity (issues #375 and #395).** Home was the Screen with the least of
+/// it: a greeting, a line of small print and four identical boxes. It now sets
+/// its title in the shared `AppPageHeader` — the greeting as the Screen's
+/// title, `email · role` as its description, the header's own hairline under
+/// both — and each card is an `AppStatTile`, the primitive lifted out of this
+/// file in #386: an icon tile, the label, the count at the top of the pinned
+/// type scale, the caption, and a chevron that says the whole tile is a link.
+/// A count of zero is deliberately quieter than a real one. This file's
+/// private `_HomeCard` is gone; `AppStatTile` was lifted from it and is
+/// byte-identical in behaviour, which is why the geometry and focus tests in
+/// `home_test.dart` still hold.
 ///
-/// **The grid stays flat, with no grouping headings.** #375 allowed headings
-/// only if they were honest, and they cannot be. `home_test.dart`'s geometry
-/// test pins rows that cross section lines — [Assigned to you, Open work orders]
-/// and [Awaiting assignment, Accounts awaiting Approval] — and #289 kept those
-/// pairings on purpose. A heading over the Work order cards would have to split
-/// that Work order pair across two rows, or leave one heading in the middle of a
-/// row. There is no place for a heading that does not change the rows that test
-/// pins, so there is none.
+/// **The zero state (issue #395).** When every section this role earns has
+/// loaded and every count is zero, the page says so in one line under the
+/// header — "Nothing is waiting on you." — rather than leaving a reader to add
+/// up five quiet zeros. The tiles stay: the counts and the links are still the
+/// page's purpose, and a person with nothing waiting still wants to know which
+/// pages they can reach. The line is only drawn once every section has loaded;
+/// a section still in flight, or one that failed, says its own thing instead.
 library;
 
 import 'package:flutter/material.dart';
@@ -54,6 +60,8 @@ import 'people_api.dart';
 import 'platform/router.dart';
 import 'theme.dart';
 import 'widgets/app_page_frame.dart';
+import 'widgets/app_page_header.dart';
+import 'widgets/app_stat_tile.dart';
 import 'widgets/failure_state.dart';
 import 'widgets/skeleton_list.dart';
 
@@ -64,8 +72,17 @@ class HomeScreen extends StatelessWidget {
 
   static const double maxWidth = 900;
 
-  /// The hairline between the header and the grid (issue #375).
-  static const ValueKey<String> headerRuleKey = ValueKey<String>('home-header-rule');
+  /// The header's hairline (issue #375). The rule is now `AppPageHeader`'s own,
+  /// which is the same `Divider` at the same left edge; the name is kept so the
+  /// key every test and reader knows still finds it.
+  static const ValueKey<String> headerRuleKey = AppPageHeader.ruleKey;
+
+  /// The one line that says nothing is waiting (issue #395).
+  static const ValueKey<String> nothingWaitingKey = ValueKey<String>('home-nothing-waiting');
+
+  /// One Module's heading over its group of tiles.
+  static ValueKey<String> groupKey(String module) => ValueKey<String>('home-group-$module');
+
   static const ValueKey<String> openWorkOrdersCardKey = ValueKey<String>('home-open-work-orders');
   static const ValueKey<String> unassignedCardKey = ValueKey<String>('home-unassigned-work-orders');
   static const ValueKey<String> approvalsCardKey = ValueKey<String>('home-approvals');
@@ -75,6 +92,9 @@ class HomeScreen extends StatelessWidget {
   static const ValueKey<String> workRetryKey = ValueKey<String>('home-work-retry');
   static const ValueKey<String> approvalsRetryKey = ValueKey<String>('home-approvals-retry');
   static const ValueKey<String> myActionsRetryKey = ValueKey<String>('home-my-actions-retry');
+
+  /// What the page says when every count it shows is zero.
+  static const String nothingWaiting = 'Nothing is waiting on you.';
 
   @override
   Widget build(BuildContext context) {
@@ -96,16 +116,70 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+/// One Module's share of Home: its heading and the cells beneath it.
+class _ModuleGroup {
+  const _ModuleGroup({required this.name, required this.cells});
+
+  final String name;
+  final List<Widget> cells;
+}
+
 class _HomeBody extends StatelessWidget {
   const _HomeBody({required this.account, required this.state});
 
   final AccountActive account;
   final HomeReady state;
 
+  /// The groups this role earns, in the order the cards have always had: what
+  /// is assigned to *you* first (the one card a person is personally on the
+  /// hook for, and the reason most people open Home at all), then the Work
+  /// order pair, then the People pair. A Module with no section read for this
+  /// role contributes no group at all rather than an empty heading.
+  List<_ModuleGroup> _groups(BuildContext context) => [
+        if (state.myActions != null)
+          _ModuleGroup(name: 'Actions', cells: _myActionsCells(context, state.myActions!)),
+        if (state.workSummary != null)
+          _ModuleGroup(name: 'Maintenance', cells: _workSummaryCells(context, state.workSummary!)),
+        if (state.approvals != null || state.trainingToConfirm != null)
+          _ModuleGroup(
+            name: 'People',
+            cells: [
+              if (state.approvals != null) ..._approvalsCells(context, state.approvals!),
+              if (state.trainingToConfirm != null)
+                ..._trainingToConfirmCells(context, state.trainingToConfirm!),
+            ],
+          ),
+      ];
+
+  /// Whether every number the page shows is zero *and* every section has
+  /// loaded. A section still in flight, or one that failed, answers false: the
+  /// page cannot claim nothing is waiting while it does not know.
+  bool get _everythingZero {
+    var sawOne = false;
+    for (final count in [
+      if (state.myActions != null) _countOf(state.myActions, (d) => d.openCount),
+      if (state.workSummary != null)
+        _countOf(state.workSummary, (d) => d.openCount + d.unassignedCount),
+      if (state.approvals != null) _countOf(state.approvals, (d) => d),
+      if (state.trainingToConfirm != null) _countOf(state.trainingToConfirm, (d) => d),
+    ]) {
+      if (count == null || count != 0) return false;
+      sawOne = true;
+    }
+    return sawOne;
+  }
+
+  /// A section's own number, or null while it is loading or has failed.
+  static int? _countOf<T>(HomeSectionState<T>? section, int Function(T data) count) =>
+      switch (section) {
+        HomeSectionLoaded<T>(:final data) => count(data),
+        _ => null,
+      };
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final palette = AppColors.of(context);
+    final groups = _groups(context);
     return Center(
       child: AppPageFrame(
         maxWidth: HomeScreen.maxWidth,
@@ -114,65 +188,58 @@ class _HomeBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // The Screen's title. It stays `headlineSmall`: #372 caps a
-              // Screen's title at 1.3x its body, so the weight is what makes
-              // it a title, not its size. A real header to a screen reader,
-              // not just a larger line of text.
-              Semantics(
-                header: true,
-                child: Text(
-                  'Welcome, ${account.displayName}',
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                '${account.email} · ${account.role}',
-                style: AppTypography.body(context)?.copyWith(color: palette.textMuted),
+              // The Screen's title, in the shared header: the greeting as the
+              // title (`headlineSmall`, a real header to a screen reader), the
+              // Account's own `email · role` under it, and the header's hairline
+              // under both — the same left edge for all three.
+              AppPageHeader(
+                title: 'Welcome, ${account.displayName}',
+                description: '${account.email} · ${account.role}',
               ),
               const SizedBox(height: Spacing.lg),
-              // A hairline under the header. A `Divider` spans the content box,
-              // so it starts at the title's own left edge.
-              Divider(
-                key: HomeScreen.headerRuleKey,
-                height: 1,
-                thickness: 1,
-                color: palette.cardBorder,
-              ),
-              const SizedBox(height: Spacing.xl),
-              // What is assigned to *you* comes first: it is the one card on
-              // this Screen a person is personally on the hook for, and the
-              // reason most people open Home at all.
-              //
-              // The old no-cards empty state (#99 user story 6) is gone with
-              // it: the Actions Destination carries no `roles` set (ADR-0032),
-              // so every role that can reach Home earns this card and there is
-              // no longer a role whose Home has nothing on it. An Account with
-              // no work to show now reads "Assigned to you — 0", which says
-              // more than "nothing is waiting on you" did.
-              // No no-cards branch any more: it was #99 user story 6, and the
-              // Actions card above retired it — every role that can reach Home
-              // earns at least that one (`HomeReady.earnsNoCards` says so in
-              // the negative).
-              //
-              // One grid, in section order (issue #188). The sections stay
-              // separate reads — each contributes the cells it has — and a
-              // section that is still loading or has failed contributes a cell
-              // that spans the row, so one unavailable read never takes the
-              // page's other cards with it.
-              _CardGrid(
-                cells: [
-                  if (state.myActions != null) ..._myActionsCells(context, state.myActions!),
-                  if (state.workSummary != null) ..._workSummaryCells(context, state.workSummary!),
-                  if (state.approvals != null) ..._approvalsCells(context, state.approvals!),
-                  // Last, so the first rows an existing role saw keep their
-                  // place and pairing (issue #289).
-                  if (state.trainingToConfirm != null) ..._trainingToConfirmCells(context, state.trainingToConfirm!),
-                ],
-              ),
+              if (_everythingZero) ...[
+                Text(
+                  HomeScreen.nothingWaiting,
+                  key: HomeScreen.nothingWaitingKey,
+                  style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+                ),
+                const SizedBox(height: Spacing.lg),
+              ],
+              for (var index = 0; index < groups.length; index++) ...[
+                if (index > 0) const SizedBox(height: Spacing.xl),
+                _GroupHeading(name: groups[index].name),
+                const SizedBox(height: Spacing.md),
+                _CardGrid(cells: groups[index].cells),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A Module's name over its own group of tiles: `titleSmall` at w600 in
+/// `textMuted` (14px, the Dense body's own size, so no heading here outgrows
+/// the text under it — #367's 1.3x rule), sentence case. Uppercase is the
+/// Shell's Destination-group device and is deliberately not repeated inside a
+/// page.
+class _GroupHeading extends StatelessWidget {
+  const _GroupHeading({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      child: Text(
+        name,
+        key: HomeScreen.groupKey(name),
+        style: Theme.of(context)
+            .textTheme
+            .titleSmall
+            ?.copyWith(fontWeight: FontWeight.w600, color: AppColors.of(context).textMuted),
       ),
     );
   }
@@ -216,7 +283,7 @@ List<Widget> _myActionsCells(BuildContext context, HomeSectionState<HomeMyAction
           icon: Icons.assignment_ind_outlined,
           label: 'Assigned to you',
           count: data.openCount,
-          context_: data.hasEmployeeLink
+          caption: data.hasEmployeeLink
               ? 'Open Actions whose owner is you'
               : 'Your Account is not linked to an Employee record, so no Action can be '
                   'assigned to you — link one under Accounts',
@@ -259,7 +326,7 @@ List<Widget> _trainingToConfirmCells(BuildContext context, HomeSectionState<int>
           icon: Icons.school_outlined,
           label: 'Training to confirm',
           count: data,
-          context_: 'Training records sent to you that you have not answered',
+          caption: 'Training records sent to you that you have not answered',
           destination: Routes.trainingToConfirm,
         ),
       ],
@@ -301,7 +368,7 @@ List<Widget> _workSummaryCells(BuildContext context, HomeSectionState<HomeWorkSu
           icon: Icons.build_outlined,
           label: 'Open work orders',
           count: data.openCount,
-          context_: 'Raised and not yet complete',
+          caption: 'Raised and not yet complete',
           destination: Routes.workOrders,
         ),
         _HomeCard(
@@ -315,7 +382,7 @@ List<Widget> _workSummaryCells(BuildContext context, HomeSectionState<HomeWorkSu
           // caveat is no longer true and must go. The wording still differs
           // from an administrator's: a scoped Account's number is complete
           // across its Grants, not across the Site, and the card says so.
-          context_: data.unassignedScopedToGrants
+          caption: data.unassignedScopedToGrants
               ? 'On the Org Units granted to you, and everything beneath them'
               : 'Open, with nobody holding them yet',
           destination: Routes.workOrders,
@@ -324,7 +391,8 @@ List<Widget> _workSummaryCells(BuildContext context, HomeSectionState<HomeWorkSu
   };
 }
 
-/// The administrator-only section: Accounts nobody has decided about yet.
+/// The People Module's approvals section: Accounts nobody has decided about
+/// yet (administrators only).
 List<Widget> _approvalsCells(BuildContext context, HomeSectionState<int> section) {
   return switch (section) {
     HomeSectionLoading<int>() => [
@@ -355,23 +423,26 @@ List<Widget> _approvalsCells(BuildContext context, HomeSectionState<int> section
           icon: Icons.how_to_reg_outlined,
           label: 'Accounts awaiting Approval',
           count: data,
-          context_: 'Waiting to be admitted',
+          caption: 'Waiting to be admitted',
           destination: Routes.approvals,
         ),
       ],
   };
 }
 
-/// The one grid Home's cards are laid out in (issue #188).
+/// The one grid a Module group's cards are laid out in (issue #188).
 ///
 /// **Two columns on a wide page, one on a narrow one.** [wideColumns] is spent
-/// when the box this grid actually receives is at least [twoColumnWidth] wide,
-/// which is the point below which a card's own context line starts wrapping to
-/// three lines. Reading the box's width rather than the window's is deliberate:
-/// it is the same input `WorkOrdersScreen` reads (its own `narrowBreakpoint`
-/// doc comment has the full account of what reading the window instead cost),
-/// and the Shell's rail breakpoint is a fact about the window, not about the
-/// space this body has.
+/// when the box this grid actually receives reaches [twoColumnWidth] *at the
+/// reader's text scale* (`AppBreakpoints.effective`), which is the point below
+/// which a card's own context line starts wrapping to three lines. Reading the
+/// box's width rather than the window's is deliberate: it is the same input
+/// `WorkOrdersScreen` reads (its own `narrowBreakpoint` doc comment has the full
+/// account of what reading the window instead cost), and the Shell's rail
+/// breakpoint is a fact about the window, not about the space this body has.
+/// **The text scale is counted as of #395**: at 200% text the same box holds
+/// half the words, so the grid drops to one column sooner rather than squeezing
+/// two cards past legibility (the class of bug #379 and #381).
 ///
 /// **Every row is full.** The cells are chunked into rows of [wideColumns] and
 /// each row is an `Expanded`-per-cell `Row`, so no row is ever partly filled —
@@ -403,7 +474,8 @@ class _CardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= twoColumnWidth ? wideColumns : 1;
+        final twoWide = constraints.maxWidth >= AppBreakpoints.effective(context, twoColumnWidth);
+        final columns = twoWide ? wideColumns : 1;
         final rows = <List<Widget>>[];
         var row = <Widget>[];
         for (final cell in cells) {
@@ -426,7 +498,7 @@ class _CardGrid extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (var index = 0; index < rows.length; index++) ...[
+            for (var index = 0; index < rows.length; index++) ... [
               if (index > 0) const SizedBox(height: Spacing.md),
               _CardRow(cells: rows[index]),
             ],
@@ -462,7 +534,7 @@ class _CardRow extends StatelessWidget {
 }
 
 /// A cell that takes the whole row rather than one column. A section that is
-/// loading or has failed says so across the grid, so its own placeholder or
+/// loading or has failed says so across its group, so its own placeholder or
 /// failure keeps its place in the order without being squeezed into a column
 /// beside cards that are fine.
 class _SpanningCell extends StatelessWidget {
@@ -474,38 +546,24 @@ class _SpanningCell extends StatelessWidget {
   Widget build(BuildContext context) => child;
 }
 
-/// One stat tile: an icon tile, a label, a count, a line of context, and a
-/// link to the Destination that serves it (issue #101's own shape) — never a
-/// trend, a target or a percentage against a goal, which is #76's tier board.
+/// One card on Home: an `AppStatTile` pointed at a Destination.
 ///
-/// **It fills the cell it is given (issue #188).** It is as wide as its row's
-/// cell and as tall as its row's tallest card.
+/// The tile itself is `widgets/app_stat_tile.dart` — lifted from the private
+/// class this file carried (#386) and adopted here in #395, so the shape has one
+/// definition rather than two byte-similar ones. What this wrapper adds is the
+/// only thing Home knows that the tile does not: a route string rather than a
+/// callback, because a card states *where* it goes and Home is the only Screen
+/// that renders these five links.
 ///
-/// **Its shape (issue #375).** The top row is a rounded-square icon tile and,
-/// at the far end, a chevron; beneath it, at the card's own padding edge, the
-/// eyebrow label, the count and the context line. The text is stacked under the
-/// icon rather than set beside it because `page_alignment_test.dart` requires
-/// the left-most text in a Home card to sit within 20px of the card's edge, and
-/// that table is not changed to suit a tile. The count is `headlineLarge`, the
-/// top of the pinned type scale (#372): the `display*` roles are outside it. A
-/// count of zero is quieter ([_countStyle]); the card keeps its label, caption
-/// and link. The icon tile reuses [AppPalette.navSelectedBackground] and
-/// [AppPalette.navSelectedForeground], a pair `palette_contrast_test.dart`
-/// already measures in both palettes, rather than adding a token.
-///
-/// **Hover and focus.** The tile fills with [AppPalette.rowHoverFill] under a
-/// pointer. The theme's `focusColor` is only a 12% overlay on an `InkWell`,
-/// which is not a ring, so a keyboard focus also draws a 2px
-/// [AppPalette.focusRing] by swapping the `Card`'s `shape` — a change that
-/// moves no pixel of layout, so a row's cards keep their equal heights. A
-/// pointer focus draws none, so a click does not leave a ring behind.
-class _HomeCard extends StatefulWidget {
+/// A null `destination` would mean the card is not a link at all; none of
+/// Home's five is that, so the chevron and the pointer are always there.
+class _HomeCard extends StatelessWidget {
   const _HomeCard({
     required this.cardKey,
     required this.icon,
     required this.label,
     required this.count,
-    required this.context_,
+    required this.caption,
     required this.destination,
   });
 
@@ -513,101 +571,22 @@ class _HomeCard extends StatefulWidget {
   final IconData icon;
   final String label;
   final int count;
-  final String context_;
 
-  /// The Destination this card carries to, as a route. A card states where it
-  /// goes rather than how, so the same card shape can serve any of them.
+  /// The line of context under the count — `AppStatTile`'s own `caption`.
+  final String caption;
+
   final String destination;
 
   @override
-  State<_HomeCard> createState() => _HomeCardState();
-}
-
-/// The icon tile's side, and its corner radius. No `AppRadius` token suits a
-/// 40px square (`card`'s 14 is proportioned for a whole card), so the radius is
-/// local to this tile.
-const double _iconTileSize = 40;
-const double _iconTileRadius = 10;
-
-/// The count's own style: the top of the type scale and bold when there is
-/// something to read, and a quiet muted `titleMedium` at regular weight when
-/// there is nothing. `textMuted` is a token the palette contrast test already
-/// measures at 4.5:1 on a card.
-TextStyle? _countStyle(BuildContext context, int count) {
-  final textTheme = Theme.of(context).textTheme;
-  if (count == 0) {
-    return textTheme.titleMedium?.copyWith(
-      fontWeight: FontWeight.w400,
-      color: AppColors.of(context).textMuted,
-    );
-  }
-  return textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w700);
-}
-
-class _HomeCardState extends State<_HomeCard> {
-  bool _focused = false;
-
-  @override
   Widget build(BuildContext context) {
-    final palette = AppColors.of(context);
-    final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
-    final showRing =
-        _focused && FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
-    return Card(
-      margin: EdgeInsets.zero,
-      // Null leaves the theme's hairline shape in force.
-      shape: showRing
-          ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              side: BorderSide(color: palette.focusRing, width: 2),
-            )
-          : null,
-      child: InkWell(
-        key: widget.cardKey,
-        onTap: () => context.go(widget.destination),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        hoverColor: palette.rowHoverFill,
-        splashFactory: NoSplash.splashFactory,
-        // The one fade on this tile, 200ms and skipped when the person has
-        // asked for reduced motion. The ink ripple is off altogether: it runs
-        // far longer than that and takes no notice of the setting.
-        hoverDuration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 200),
-        onFocusChange: (focused) => setState(() => _focused = focused),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: _iconTileSize,
-                    height: _iconTileSize,
-                    decoration: BoxDecoration(
-                      color: palette.navSelectedBackground,
-                      borderRadius: BorderRadius.circular(_iconTileRadius),
-                    ),
-                    child: Icon(widget.icon, color: palette.navSelectedForeground),
-                  ),
-                  const Spacer(),
-                  // Decorative: the tile is already one link.
-                  ExcludeSemantics(
-                    child: Icon(Icons.chevron_right, color: palette.textMuted),
-                  ),
-                ],
-              ),
-              const SizedBox(height: Spacing.md),
-              Text(widget.label, style: muted),
-              const SizedBox(height: Spacing.xs),
-              Text('${widget.count}', style: _countStyle(context, widget.count)),
-              const SizedBox(height: Spacing.xs),
-              Text(widget.context_, style: muted),
-            ],
-          ),
-        ),
-      ),
+    return AppStatTile(
+      key: cardKey,
+      icon: icon,
+      label: label,
+      figure: '$count',
+      caption: caption,
+      quiet: count == 0,
+      onTap: () => context.go(destination),
     );
   }
 }
