@@ -19,6 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 
@@ -34,8 +35,10 @@ class NonconformanceConcessionDialog extends StatefulWidget {
   static const ValueKey<String> referenceKey =
       ValueKey<String>('nonconformance-concession-reference');
   static const ValueKey<String> noteKey = ValueKey<String>('nonconformance-concession-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('nonconformance-concession-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-concession-cancel');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('nonconformance-concession-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-concession-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('nonconformance-concession-failure');
   static const ValueKey<String> refusedKey = ValueKey<String>('nonconformance-concession-refused');
 
@@ -118,95 +121,100 @@ class _NonconformanceConcessionDialogState extends State<NonconformanceConcessio
     // decision made before `/me` answered would be a decision made on a
     // half-known Account. The server refuses either way; this says why.
     if (!holdsQualityAuthority(context, record.orgUnitId)) {
-      return AlertDialog(
+      return AppDialog(
         key: NonconformanceConcessionDialog.refusedKey,
-        content: const Text(
-          'Granting a Concession needs Quality authority at this Non-conformance\'s Org Unit.',
-        ),
+        title: 'Cannot grant it',
+        size: AppDialogSize.decision,
+        description:
+            'Granting a Concession needs Quality authority at this Non-conformance\'s Org Unit.',
+        actions: [
+          AppDialogAction(
+            id: 'nonconformance-concession-refused-close',
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Grant a Concession'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Accepting the product as it is needs Quality authority, and your name stays '
-                  'on ${record.issueNo}.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceConcessionDialog.quantityKey,
-                  controller: _quantity,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Quantity accepted as it is',
-                    helperText: 'At most ${_number(record.undispositionedQuantity)} $unit.',
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceConcessionDialog.referenceKey,
-                  controller: _reference,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Reference',
-                    helperText: 'The deviation or approval number it is granted under.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceConcessionDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 3,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    helperText: 'Why the product is acceptable as it is.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: NonconformanceConcessionDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Grant a Concession',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: NonconformanceConcessionDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-concession-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: NonconformanceConcessionDialog.submitKey,
+          AppDialogAction(
+            id: 'nonconformance-concession-submit',
+            label: 'Grant it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Grant it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Accepting the product as it is needs Quality authority, and your name stays '
+              'on ${record.issueNo}.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceConcessionDialog.quantityKey,
+              controller: _quantity,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Quantity accepted as it is',
+                helperText: 'At most ${_number(record.undispositionedQuantity)} $unit.',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceConcessionDialog.referenceKey,
+              controller: _reference,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Reference',
+                helperText: 'The deviation or approval number it is granted under.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceConcessionDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Note',
+                helperText: 'Why the product is acceptable as it is.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: NonconformanceConcessionDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

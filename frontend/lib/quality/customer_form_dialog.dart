@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'customer.dart';
 import 'customers_bloc.dart';
 
@@ -36,8 +37,8 @@ class CustomerFormDialog extends StatefulWidget {
   static const ValueKey<String> nameKey = ValueKey<String>('customer-form-name');
   static const ValueKey<String> emailKey = ValueKey<String>('customer-form-email');
   static const ValueKey<String> activeKey = ValueKey<String>('customer-form-active');
-  static const ValueKey<String> submitKey = ValueKey<String>('customer-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('customer-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('customer-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('customer-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('customer-form-failure');
 
   /// Opens the form over the Customer list. `showDialog` builds its route
@@ -153,84 +154,81 @@ class _CustomerFormDialogState extends State<CustomerFormDialog> {
     final theme = Theme.of(context);
     return BlocListener<CustomersBloc, CustomersState>(
       listener: _onCustomersChanged,
-      child: AlertDialog(
-        title: Text(_isCorrection ? 'Correct Customer' : 'Add Customer'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: CustomerFormDialog.codeKey,
-                  controller: _code,
-                  // A code is the one field a correction cannot rewrite.
-                  enabled: !_isCorrection && !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Code',
-                    border: const OutlineInputBorder(),
-                    helperText: _isCorrection ? 'A Customer\'s code cannot be corrected' : null,
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: CustomerFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: CustomerFormDialog.emailKey,
-                  controller: _email,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Contact email (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_isCorrection) ...[
-                  const SizedBox(height: Spacing.md),
-                  SwitchListTile(
-                    key: CustomerFormDialog.activeKey,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active'),
-                    value: _isActive,
-                    onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: CustomerFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: _isCorrection ? 'Correct Customer' : 'Add Customer',
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: CustomerFormDialog.cancelKey,
+          AppDialogAction(
+            id: 'customer-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: CustomerFormDialog.submitKey,
+          AppDialogAction(
+            id: 'customer-form-submit',
+            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Customer'),
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Customer')),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: CustomerFormDialog.codeKey,
+              controller: _code,
+              // A code is the one field a correction cannot rewrite.
+              enabled: !_isCorrection && !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Code',
+                border: const OutlineInputBorder(),
+                helperText: _isCorrection ? 'A Customer\'s code cannot be corrected' : null,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: CustomerFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: CustomerFormDialog.emailKey,
+              controller: _email,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Contact email (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_isCorrection) ...[
+              const SizedBox(height: Spacing.md),
+              SwitchListTile(
+                key: CustomerFormDialog.activeKey,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                value: _isActive,
+                onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: CustomerFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

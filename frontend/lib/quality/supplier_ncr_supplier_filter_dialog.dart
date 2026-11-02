@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'supplier.dart';
 import 'supplier_ncrs_bloc.dart';
@@ -28,9 +29,10 @@ class SupplierNcrSupplierFilterDialog extends StatelessWidget {
   /// same device `NonconformanceLinkConcernDialog.fieldName` uses.
   static const String fieldName = 'supplier-ncr-filter-supplier';
 
-  static const ValueKey<String> allSuppliersKey =
-      ValueKey<String>('supplier-ncrs-filter-all-suppliers');
-  static const ValueKey<String> cancelKey = ValueKey<String>('supplier-ncrs-filter-cancel');
+  static final ValueKey<String> allSuppliersKey =
+      AppDialog.actionKey('supplier-ncrs-supplier-filter-all');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('supplier-ncrs-supplier-filter-cancel');
 
   static ValueKey<String> get supplierFieldKey => AppSearchField.fieldKey(fieldName);
 
@@ -67,62 +69,63 @@ class SupplierNcrSupplierFilterDialog extends StatelessWidget {
       return null;
     }
 
-    return AlertDialog(
-      title: const Text('Filter by Supplier'),
-      content: SizedBox(
-        width: 460,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Choose the Supplier whose supplier NCRs you want to read, or clear back to '
-              'every Supplier.',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: Spacing.md),
-            AppSearchField<Supplier>(
-              name: fieldName,
-              label: 'Supplier',
-              helperText: 'By name or code.',
-              value: chosen(),
-              fetchSuggestions: (term) async {
-                final needle = term.trim().toLowerCase();
-                return [
-                  for (final supplier in loaded?.suppliers ?? const <Supplier>[])
-                    if (supplier.code.toLowerCase().contains(needle) ||
-                        supplier.name.toLowerCase().contains(needle))
-                      supplier,
-                ];
-              },
-              idOf: (supplier) => supplier.id,
-              displayStringFor: (supplier) => supplier.summary,
-              suggestionBuilder: (context, supplier) => Text(
-                supplier.summary,
-                style: theme.textTheme.bodyMedium,
-              ),
-              onChanged: (supplier) => _pick(context, supplier),
-              onSelected: (supplier) => _pick(context, supplier),
-            ),
-          ],
-        ),
-      ),
+    return AppDialog(
+      title: 'Filter by Supplier',
+      size: AppDialogSize.picker,
+      // Clearing is this dialog's own act (the primary, right-most); Cancel is
+      // the dismiss, which is what `Esc` runs.
       actions: [
-        TextButton(
-          key: allSuppliersKey,
+        AppDialogAction(
+          id: 'supplier-ncrs-supplier-filter-cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        AppDialogAction(
+          id: 'supplier-ncrs-supplier-filter-all',
+          label: 'All Suppliers',
           onPressed: () {
             context.read<SupplierNcrsBloc>().add(const SupplierNcrsFiltersCleared());
             Navigator.of(context).pop();
           },
-          child: const Text('All Suppliers'),
-        ),
-        TextButton(
-          key: cancelKey,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
         ),
       ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Choose the Supplier whose supplier NCRs you want to read, or clear back to '
+            'every Supplier.',
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: Spacing.md),
+          AppSearchField<Supplier>(
+            name: fieldName,
+            label: 'Supplier',
+            helperText: 'By name or code.',
+            value: chosen(),
+            fetchSuggestions: (term) async {
+              final needle = term.trim().toLowerCase();
+              return [
+                for (final supplier in loaded?.suppliers ?? const <Supplier>[])
+                  if (supplier.code.toLowerCase().contains(needle) ||
+                      supplier.name.toLowerCase().contains(needle))
+                    supplier,
+              ];
+            },
+            idOf: (supplier) => supplier.id,
+            displayStringFor: (supplier) => supplier.summary,
+            suggestionBuilder: (context, supplier) => Text(
+              supplier.summary,
+              style: theme.textTheme.bodyMedium,
+            ),
+            onChanged: (supplier) => _pick(context, supplier),
+            onSelected: (supplier) => _pick(context, supplier),
+          ),
+        ],
+      ),
     );
   }
 

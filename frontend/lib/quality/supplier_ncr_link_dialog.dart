@@ -19,6 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/failure_state.dart';
 import 'supplier_ncr_detail_bloc.dart';
 import 'supplier_ncr.dart';
@@ -32,8 +33,8 @@ class SupplierNcrLinkDialog extends StatefulWidget {
 
   static const ValueKey<String> candidateKey = ValueKey<String>('supplier-ncr-link-candidate');
   static const ValueKey<String> loadingKey = ValueKey<String>('supplier-ncr-link-loading');
-  static const ValueKey<String> submitKey = ValueKey<String>('supplier-ncr-link-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('supplier-ncr-link-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('supplier-ncr-link-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('supplier-ncr-link-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('supplier-ncr-link-failure');
   static const ValueKey<String> candidatesFailedKey =
       ValueKey<String>('supplier-ncr-link-candidates-failed');
@@ -126,92 +127,89 @@ class _SupplierNcrLinkDialogState extends State<SupplierNcrLinkDialog> {
 
     return BlocListener<SupplierNcrDetailBloc, SupplierNcrDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Link a Non-conformance'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'A Non-conformance that already exists'
-                  '${widget.supplierNcr.productName == null ? '' : ' for ${widget.supplierNcr.productName}'}'
-                  ' can be linked to this supplier NCR, instead of recording a second one for the '
-                  'same problem.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                if (_loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Spacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_loadFailure != null)
-                  PlatformFailureState(
-                    key: SupplierNcrLinkDialog.candidatesFailedKey,
-                    title: 'The Non-conformances could not be read',
-                    message: _loadFailure!,
-                    retryKey: SupplierNcrLinkDialog.candidatesRetryKey,
-                    onRetry: _loadCandidates,
-                  )
-                else if (_candidates.isEmpty)
-                  Text(
-                    'No Non-conformance has been recorded for this Product yet, so there is '
-                    'nothing to link. Record one from this supplier NCR instead.',
-                    key: SupplierNcrLinkDialog.noneKey,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    key: SupplierNcrLinkDialog.candidateKey,
-                    initialValue: _chosenId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'The Non-conformance that controls it',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final candidate in _candidates)
-                        DropdownMenuItem<String>(
-                          value: candidate.id,
-                          child: Text(
-                            '${candidate.issueNo} · ${NonconformanceStatus.label(candidate.status)}'
-                            '${candidate.lotRef == null ? '' : ' · ${candidate.lotRef}'}',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _chosenId = value),
-                  ),
-                if (_failure != null)
-                  Padding(
-                    key: SupplierNcrLinkDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Link a Non-conformance',
+        size: AppDialogSize.picker,
         actions: [
-          TextButton(
-            key: SupplierNcrLinkDialog.cancelKey,
+          AppDialogAction(
+            id: 'supplier-ncr-link-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SupplierNcrLinkDialog.submitKey,
+          AppDialogAction(
+            id: 'supplier-ncr-link-submit',
+            label: _awaiting ? 'Linking…' : 'Link it',
             onPressed: _chosenId == null || _awaiting ? null : _submit,
-            child: Text(_awaiting ? 'Linking…' : 'Link it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'A Non-conformance that already exists'
+              '${widget.supplierNcr.productName == null ? '' : ' for ${widget.supplierNcr.productName}'}'
+              ' can be linked to this supplier NCR, instead of recording a second one for the '
+              'same problem.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.md),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.md),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_loadFailure != null)
+              PlatformFailureState(
+                key: SupplierNcrLinkDialog.candidatesFailedKey,
+                title: 'The Non-conformances could not be read',
+                message: _loadFailure!,
+                retryKey: SupplierNcrLinkDialog.candidatesRetryKey,
+                onRetry: _loadCandidates,
+              )
+            else if (_candidates.isEmpty)
+              Text(
+                'No Non-conformance has been recorded for this Product yet, so there is '
+                'nothing to link. Record one from this supplier NCR instead.',
+                key: SupplierNcrLinkDialog.noneKey,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: SupplierNcrLinkDialog.candidateKey,
+                initialValue: _chosenId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'The Non-conformance that controls it',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final candidate in _candidates)
+                    DropdownMenuItem<String>(
+                      value: candidate.id,
+                      child: Text(
+                        '${candidate.issueNo} · ${NonconformanceStatus.label(candidate.status)}'
+                        '${candidate.lotRef == null ? '' : ' · ${candidate.lotRef}'}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _chosenId = value),
+              ),
+            if (_failure != null)
+              Padding(
+                key: SupplierNcrLinkDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 
@@ -27,8 +28,10 @@ class NonconformanceCancelDialog extends StatefulWidget {
 
   static const ValueKey<String> loadingKey = ValueKey<String>('nonconformance-cancel-loading');
   static const ValueKey<String> noteKey = ValueKey<String>('nonconformance-cancel-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('nonconformance-cancel-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-cancel-dismiss');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('nonconformance-cancel-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-cancel-dismiss');
   static const ValueKey<String> failureKey = ValueKey<String>('nonconformance-cancel-failure');
   static const ValueKey<String> refusedKey = ValueKey<String>('nonconformance-cancel-refused');
 
@@ -84,78 +87,91 @@ class _NonconformanceCancelDialogState extends State<NonconformanceCancelDialog>
     // the API refuses with a 409 — said at the address rather than left to a
     // form that cannot succeed.
     if (!holdsQualityAuthority(context, record.orgUnitId)) {
-      return AlertDialog(
+      return AppDialog(
         key: NonconformanceCancelDialog.refusedKey,
-        content: const Text(
-          'Cancelling a Non-conformance needs Quality authority at its Org Unit.',
-        ),
+        title: 'Cannot cancel it',
+        size: AppDialogSize.decision,
+        description: 'Cancelling a Non-conformance needs Quality authority at its Org Unit.',
+        actions: [
+          AppDialogAction(
+            id: 'nonconformance-cancel-refused-close',
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
     if (!record.canBeCancelled) {
-      return AlertDialog(
+      return AppDialog(
         key: NonconformanceCancelDialog.refusedKey,
-        content: const Text(
-          'A Non-conformance that is closed or already cancelled cannot be cancelled.',
-        ),
+        title: 'Cannot cancel it',
+        size: AppDialogSize.decision,
+        description: 'A Non-conformance that is closed or already cancelled cannot be cancelled.',
+        actions: [
+          AppDialogAction(
+            id: 'nonconformance-cancel-refused-close',
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Cancel this Non-conformance'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${widget.nonconformance.issueNo} will be cancelled rather than dealt with. A '
-                  'cancelled Non-conformance accepts no further Dispositions or quantity changes.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceCancelDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 3,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    helperText: 'Why it should never have been recorded.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: NonconformanceCancelDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Cancel this Non-conformance',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: NonconformanceCancelDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-cancel-dismiss',
+            label: 'Leave it alone',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Leave it alone'),
           ),
-          FilledButton(
-            key: NonconformanceCancelDialog.submitKey,
+          AppDialogAction(
+            id: 'nonconformance-cancel-submit',
+            label: 'Cancel it',
+            kind: AppDialogActionKind.destructive,
             onPressed: _complete ? _submit : null,
-            child: const Text('Cancel it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${widget.nonconformance.issueNo} will be cancelled rather than dealt with. A '
+              'cancelled Non-conformance accepts no further Dispositions or quantity changes.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceCancelDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Note',
+                helperText: 'Why it should never have been recorded.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: NonconformanceCancelDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

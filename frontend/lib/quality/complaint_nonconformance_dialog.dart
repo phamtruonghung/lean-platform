@@ -21,6 +21,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/failure_state.dart';
 import 'complaint_detail_bloc.dart';
 import 'customer_complaint.dart';
@@ -36,8 +37,8 @@ class ComplaintNonconformanceDialog extends StatefulWidget {
   static const ValueKey<String> loadingKey = ValueKey<String>('complaint-nc-loading');
   static const ValueKey<String> defectCodeKey = ValueKey<String>('complaint-nc-defect-code');
   static const ValueKey<String> containmentKey = ValueKey<String>('complaint-nc-containment');
-  static const ValueKey<String> submitKey = ValueKey<String>('complaint-nc-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('complaint-nc-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('complaint-nc-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('complaint-nc-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('complaint-nc-failure');
   static const ValueKey<String> codesFailedKey = ValueKey<String>('complaint-nc-codes-failed');
   static const ValueKey<String> codesRetryKey = ValueKey<String>('complaint-nc-codes-retry');
@@ -153,118 +154,115 @@ class _ComplaintNonconformanceDialogState extends State<ComplaintNonconformanceD
 
     return BlocListener<ComplaintDetailBloc, ComplaintDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Control the product'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'A Non-conformance is recorded at ${complaint.orgUnitName} for '
-                  '${complaint.productName}, found by the customer.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ComplaintNonconformanceDialog.quantityKey,
-                  controller: _quantity,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Quantity affected',
-                    helperText: 'How much product is in question, in the Product\'s own unit.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                if (complaint.defectCodeId != null)
-                  TextFormField(
-                    key: ComplaintNonconformanceDialog.defectCodeKey,
-                    initialValue: '${complaint.defectCodeName} · ${complaint.defectCodeCode}',
-                    enabled: false,
-                    decoration: const InputDecoration(
-                      labelText: 'Defect code',
-                      helperText: 'The complaint\'s own Defect code is carried onto the record.',
-                      border: OutlineInputBorder(),
-                    ),
-                  )
-                else if (_loadingCodes)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Spacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_codesFailure != null)
-                  PlatformFailureState(
-                    key: ComplaintNonconformanceDialog.codesFailedKey,
-                    title: 'The Defect codes could not be read',
-                    message: _codesFailure!,
-                    retryKey: ComplaintNonconformanceDialog.codesRetryKey,
-                    onRetry: _loadCodes,
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    key: ComplaintNonconformanceDialog.defectCodeKey,
-                    initialValue: _defectCodeId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Defect code',
-                      helperText: 'This complaint carries none, so choose the one to record '
-                          'it against.',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final code in _codes)
-                        DropdownMenuItem<String>(
-                          value: code.id,
-                          child: Text('${code.name} · ${code.code}',
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _defectCodeId = value),
-                  ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ComplaintNonconformanceDialog.containmentKey,
-                  controller: _containment,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Immediate containment (optional)',
-                    helperText: 'What was done at once. Recording it makes the record contained.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: ComplaintNonconformanceDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Control the product',
+        size: AppDialogSize.picker,
         actions: [
-          TextButton(
-            key: ComplaintNonconformanceDialog.cancelKey,
+          AppDialogAction(
+            id: 'complaint-nc-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: ComplaintNonconformanceDialog.submitKey,
+          AppDialogAction(
+            id: 'complaint-nc-submit',
+            label: _awaiting ? 'Recording…' : 'Record it',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Recording…' : 'Record it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'A Non-conformance is recorded at ${complaint.orgUnitName} for '
+              '${complaint.productName}, found by the customer.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ComplaintNonconformanceDialog.quantityKey,
+              controller: _quantity,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Quantity affected',
+                helperText: 'How much product is in question, in the Product\'s own unit.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            if (complaint.defectCodeId != null)
+              TextFormField(
+                key: ComplaintNonconformanceDialog.defectCodeKey,
+                initialValue: '${complaint.defectCodeName} · ${complaint.defectCodeCode}',
+                enabled: false,
+                decoration: const InputDecoration(
+                  labelText: 'Defect code',
+                  helperText: 'The complaint\'s own Defect code is carried onto the record.',
+                  border: OutlineInputBorder(),
+                ),
+              )
+            else if (_loadingCodes)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.md),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_codesFailure != null)
+              PlatformFailureState(
+                key: ComplaintNonconformanceDialog.codesFailedKey,
+                title: 'The Defect codes could not be read',
+                message: _codesFailure!,
+                retryKey: ComplaintNonconformanceDialog.codesRetryKey,
+                onRetry: _loadCodes,
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: ComplaintNonconformanceDialog.defectCodeKey,
+                initialValue: _defectCodeId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Defect code',
+                  helperText: 'This complaint carries none, so choose the one to record '
+                      'it against.',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final code in _codes)
+                    DropdownMenuItem<String>(
+                      value: code.id,
+                      child: Text('${code.name} · ${code.code}',
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _defectCodeId = value),
+              ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ComplaintNonconformanceDialog.containmentKey,
+              controller: _containment,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Immediate containment (optional)',
+                helperText: 'What was done at once. Recording it makes the record contained.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: ComplaintNonconformanceDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

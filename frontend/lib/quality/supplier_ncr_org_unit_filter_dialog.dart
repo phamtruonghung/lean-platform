@@ -20,13 +20,15 @@ import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../widgets/app_dialog.dart';
 import 'supplier_ncrs_bloc.dart';
 
 class SupplierNcrOrgUnitFilterDialog extends StatelessWidget {
   const SupplierNcrOrgUnitFilterDialog({super.key});
 
-  static const ValueKey<String> allOrgUnitsKey = ValueKey<String>('supplier-ncrs-filter-all');
-  static const ValueKey<String> cancelKey = ValueKey<String>('supplier-ncrs-filter-cancel');
+  static final ValueKey<String> allOrgUnitsKey =
+      AppDialog.actionKey('supplier-ncrs-filter-all');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('supplier-ncrs-filter-cancel');
 
   /// Opens the filter over the register. `showDialog` builds its route under the
   /// Navigator, which is not a descendant of the route-scoped
@@ -58,10 +60,30 @@ class SupplierNcrOrgUnitFilterDialog extends StatelessWidget {
     final state = context.watch<SupplierNcrsBloc>().state;
     final selectedId = state is SupplierNcrsLoaded ? state.filters.orgUnitId : null;
 
-    return AlertDialog(
-      title: const Text('Filter by Org Unit'),
-      content: SizedBox(
-        width: 420,
+    return AppDialog(
+      title: 'Filter by Org Unit',
+      size: AppDialogSize.decision,
+      // Clearing is this dialog's own act (the primary, right-most); Cancel is
+      // the dismiss, which is what `Esc` runs.
+      actions: [
+        AppDialogAction(
+          id: 'supplier-ncrs-filter-cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        AppDialogAction(
+          id: 'supplier-ncrs-filter-all',
+          label: 'All Org Units',
+          onPressed: () {
+            context.read<SupplierNcrsBloc>().add(const SupplierNcrsFiltersCleared());
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
+      // The chooser is a tree with a scroll of its own, so it is given a height
+      // and the dialog's own content area scrolls around it.
+      child: SizedBox(
         height: 420,
         child: OrgUnitChooser(
           selectedId: selectedId,
@@ -79,21 +101,6 @@ class SupplierNcrOrgUnitFilterDialog extends StatelessWidget {
           },
         ),
       ),
-      actions: [
-        TextButton(
-          key: allOrgUnitsKey,
-          onPressed: () {
-            context.read<SupplierNcrsBloc>().add(const SupplierNcrsFiltersCleared());
-            Navigator.of(context).pop();
-          },
-          child: const Text('All Org Units'),
-        ),
-        TextButton(
-          key: cancelKey,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-      ],
     );
   }
 }

@@ -37,6 +37,7 @@ import '../people/people.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'defect_code.dart';
 import 'nonconformance.dart';
@@ -65,8 +66,8 @@ class NonconformanceFormDialog extends StatefulWidget {
   static const ValueKey<String> descriptionKey = ValueKey<String>('nonconformance-form-description');
   static const ValueKey<String> containmentKey = ValueKey<String>('nonconformance-form-containment');
   static const ValueKey<String> detectedAtKey = ValueKey<String>('nonconformance-form-detected-at');
-  static const ValueKey<String> submitKey = ValueKey<String>('nonconformance-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('nonconformance-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('nonconformance-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('nonconformance-form-failure');
   static const ValueKey<String> assetsFailedKey =
       ValueKey<String>('nonconformance-form-assets-failed');
@@ -278,12 +279,23 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
       child: BlocListener<OrgUnitPickerBloc, OrgUnitPickerState>(
         listenWhen: (previous, current) => previous.siteId != current.siteId,
         listener: (context, state) => _onOrgUnitSiteChanged(),
-        child: AlertDialog(
-          title: const Text('Record a Non-conformance'),
-          content: SizedBox(
-            width: 640,
-            child: SingleChildScrollView(
-              child: Column(
+        child: AppDialog(
+          title: 'Record a Non-conformance',
+          size: AppDialogSize.wide,
+          actions: [
+            AppDialogAction(
+              id: 'nonconformance-form-cancel',
+              label: 'Cancel',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+            ),
+            AppDialogAction(
+              id: 'nonconformance-form-submit',
+              label: 'Record it',
+              onPressed: _complete && !_awaiting ? _submit : null,
+            ),
+          ],
+          child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -523,20 +535,6 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     ),
                 ],
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              key: NonconformanceFormDialog.cancelKey,
-              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: NonconformanceFormDialog.submitKey,
-              onPressed: _complete && !_awaiting ? _submit : null,
-              child: const Text('Record it'),
-            ),
-          ],
         ),
       ),
     );

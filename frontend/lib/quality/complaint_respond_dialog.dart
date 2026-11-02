@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'complaint_detail_bloc.dart';
 import 'customer_complaint.dart';
 
@@ -22,8 +23,8 @@ class ComplaintRespondDialog extends StatefulWidget {
 
   static const ValueKey<String> noteKey = ValueKey<String>('complaint-respond-note');
   static const ValueKey<String> loadingKey = ValueKey<String>('complaint-respond-loading');
-  static const ValueKey<String> submitKey = ValueKey<String>('complaint-respond-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('complaint-respond-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('complaint-respond-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('complaint-respond-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('complaint-respond-failure');
 
   @override
@@ -73,61 +74,58 @@ class _ComplaintRespondDialogState extends State<ComplaintRespondDialog> {
     final theme = Theme.of(context);
     return BlocListener<ComplaintDetailBloc, ComplaintDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Answer the customer'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'What was said back to ${widget.complaint.customerName} about '
-                  '${widget.complaint.complaintNo}. This closes the complaint.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ComplaintRespondDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 3,
-                  maxLines: 6,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'The response',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: ComplaintRespondDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Answer the customer',
+        size: AppDialogSize.picker,
         actions: [
           // `DialogPage` is not barrier-dismissible, so a dialog that refuses
           // its own request still needs a way out of its own.
-          TextButton(
-            key: ComplaintRespondDialog.cancelKey,
+          AppDialogAction(
+            id: 'complaint-respond-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: ComplaintRespondDialog.submitKey,
+          AppDialogAction(
+            id: 'complaint-respond-submit',
+            label: _awaiting ? 'Closing…' : 'Close the complaint',
             onPressed: _note.text.trim().isEmpty || _awaiting ? null : _submit,
-            child: Text(_awaiting ? 'Closing…' : 'Close the complaint'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'What was said back to ${widget.complaint.customerName} about '
+              '${widget.complaint.complaintNo}. This closes the complaint.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ComplaintRespondDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 3,
+              maxLines: 6,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'The response',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: ComplaintRespondDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

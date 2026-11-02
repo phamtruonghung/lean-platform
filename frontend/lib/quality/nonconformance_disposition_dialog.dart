@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 
@@ -36,8 +37,10 @@ class NonconformanceDispositionDialog extends StatefulWidget {
   static const ValueKey<String> minutesKey =
       ValueKey<String>('nonconformance-disposition-minutes');
   static const ValueKey<String> noteKey = ValueKey<String>('nonconformance-disposition-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('nonconformance-disposition-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-disposition-cancel');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('nonconformance-disposition-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-disposition-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('nonconformance-disposition-failure');
 
   @override
@@ -132,106 +135,102 @@ class _NonconformanceDispositionDialogState extends State<NonconformanceDisposit
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Record a Disposition'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${record.issueNo} has ${_number(_undecided)} $unit still undecided. Deal with '
-                  'some of it here.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: NonconformanceDispositionDialog.kindKey,
-                  initialValue: _kind,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Disposition',
-                    helperText: 'Scrap, rework, or back to the supplier.',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final kind in DispositionType.choices)
-                      DropdownMenuItem<String>(
-                        value: kind,
-                        child: Text(DispositionType.label(kind)),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _kind = value ?? _kind),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceDispositionDialog.quantityKey,
-                  controller: _quantity,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Quantity',
-                    helperText: 'At most ${_number(_undecided)} $unit.',
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                if (_kind == DispositionType.rework) ...[
-                  const SizedBox(height: Spacing.md),
-                  TextField(
-                    key: NonconformanceDispositionDialog.minutesKey,
-                    controller: _minutes,
-                    enabled: !_awaiting,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Rework minutes',
-                      helperText: 'How long the rework took, for cost of poor quality.',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceDispositionDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
-                    helperText: 'What was done with it.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: NonconformanceDispositionDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Record a Disposition',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: NonconformanceDispositionDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-disposition-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: NonconformanceDispositionDialog.submitKey,
+          AppDialogAction(
+            id: 'nonconformance-disposition-submit',
+            label: 'Record it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Record it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${record.issueNo} has ${_number(_undecided)} $unit still undecided. Deal with '
+              'some of it here.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: NonconformanceDispositionDialog.kindKey,
+              initialValue: _kind,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Disposition',
+                helperText: 'Scrap, rework, or back to the supplier.',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final kind in DispositionType.choices)
+                  DropdownMenuItem<String>(
+                    value: kind,
+                    child: Text(DispositionType.label(kind)),
+                  ),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _kind = value ?? _kind),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceDispositionDialog.quantityKey,
+              controller: _quantity,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Quantity',
+                helperText: 'At most ${_number(_undecided)} $unit.',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            if (_kind == DispositionType.rework) ...[
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: NonconformanceDispositionDialog.minutesKey,
+                controller: _minutes,
+                enabled: !_awaiting,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Rework minutes',
+                  helperText: 'How long the rework took, for cost of poor quality.',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceDispositionDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Note (optional)',
+                helperText: 'What was done with it.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: NonconformanceDispositionDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

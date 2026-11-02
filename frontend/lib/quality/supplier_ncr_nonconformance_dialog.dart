@@ -24,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/failure_state.dart';
 import 'defect_code.dart';
 import 'product.dart';
@@ -45,8 +46,8 @@ class SupplierNcrNonconformanceDialog extends StatefulWidget {
       ValueKey<String>('supplier-ncr-nc-products-retry');
   static const ValueKey<String> defectCodeKey = ValueKey<String>('supplier-ncr-nc-defect-code');
   static const ValueKey<String> containmentKey = ValueKey<String>('supplier-ncr-nc-containment');
-  static const ValueKey<String> submitKey = ValueKey<String>('supplier-ncr-nc-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('supplier-ncr-nc-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('supplier-ncr-nc-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('supplier-ncr-nc-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('supplier-ncr-nc-failure');
   static const ValueKey<String> codesFailedKey = ValueKey<String>('supplier-ncr-nc-codes-failed');
   static const ValueKey<String> codesRetryKey = ValueKey<String>('supplier-ncr-nc-codes-retry');
@@ -204,163 +205,160 @@ class _SupplierNcrNonconformanceDialogState extends State<SupplierNcrNonconforma
 
     return BlocListener<SupplierNcrDetailBloc, SupplierNcrDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Control the material'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'A Non-conformance is recorded at ${ncr.orgUnitName}'
-                  '${productName == null ? '' : ' for $productName'}, found at goods-in.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SupplierNcrNonconformanceDialog.quantityKey,
-                  controller: _quantity,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Quantity affected',
-                    helperText: 'How much material is in question, in the unit it came in.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                if (ncr.productId != null)
-                  TextFormField(
-                    key: SupplierNcrNonconformanceDialog.productKey,
-                    initialValue: '$productName · ${ncr.productCode}',
-                    enabled: false,
-                    decoration: const InputDecoration(
-                      labelText: 'Product',
-                      helperText: "The supplier NCR's own Product is carried onto the record.",
-                      border: OutlineInputBorder(),
-                    ),
-                  )
-                else if (_loadingProducts)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Spacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_productsFailure != null)
-                  PlatformFailureState(
-                    key: SupplierNcrNonconformanceDialog.productsFailedKey,
-                    title: 'The Products could not be read',
-                    message: _productsFailure!,
-                    retryKey: SupplierNcrNonconformanceDialog.productsRetryKey,
-                    onRetry: _loadProducts,
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    key: SupplierNcrNonconformanceDialog.productKey,
-                    initialValue: _productId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Product',
-                      helperText: 'This supplier NCR names none, so choose what the lot was for.',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final product in _products)
-                        DropdownMenuItem<String>(
-                          value: product.id,
-                          child: Text('${product.name} · ${product.code}',
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _productId = value),
-                  ),
-                const SizedBox(height: Spacing.md),
-                if (ncr.defectCodeId != null)
-                  TextFormField(
-                    key: SupplierNcrNonconformanceDialog.defectCodeKey,
-                    initialValue: '${ncr.defectCodeName} · ${ncr.defectCodeCode}',
-                    enabled: false,
-                    decoration: const InputDecoration(
-                      labelText: 'Defect code',
-                      helperText: "The supplier NCR's own Defect code is carried onto the record.",
-                      border: OutlineInputBorder(),
-                    ),
-                  )
-                else if (_loadingCodes)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Spacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_codesFailure != null)
-                  PlatformFailureState(
-                    key: SupplierNcrNonconformanceDialog.codesFailedKey,
-                    title: 'The Defect codes could not be read',
-                    message: _codesFailure!,
-                    retryKey: SupplierNcrNonconformanceDialog.codesRetryKey,
-                    onRetry: _loadCodes,
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    key: SupplierNcrNonconformanceDialog.defectCodeKey,
-                    initialValue: _defectCodeId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Defect code',
-                      helperText: 'This supplier NCR carries none, so choose the one to record '
-                          'it against.',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final code in _codes)
-                        DropdownMenuItem<String>(
-                          value: code.id,
-                          child: Text('${code.name} · ${code.code}',
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _defectCodeId = value),
-                  ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SupplierNcrNonconformanceDialog.containmentKey,
-                  controller: _containment,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Immediate containment (optional)',
-                    helperText: 'What was done at once. Recording it makes the record contained.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: SupplierNcrNonconformanceDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Control the material',
+        size: AppDialogSize.picker,
         actions: [
-          TextButton(
-            key: SupplierNcrNonconformanceDialog.cancelKey,
+          AppDialogAction(
+            id: 'supplier-ncr-nc-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SupplierNcrNonconformanceDialog.submitKey,
+          AppDialogAction(
+            id: 'supplier-ncr-nc-submit',
+            label: _awaiting ? 'Recording…' : 'Record it',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Recording…' : 'Record it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'A Non-conformance is recorded at ${ncr.orgUnitName}'
+              '${productName == null ? '' : ' for $productName'}, found at goods-in.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SupplierNcrNonconformanceDialog.quantityKey,
+              controller: _quantity,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Quantity affected',
+                helperText: 'How much material is in question, in the unit it came in.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            if (ncr.productId != null)
+              TextFormField(
+                key: SupplierNcrNonconformanceDialog.productKey,
+                initialValue: '$productName · ${ncr.productCode}',
+                enabled: false,
+                decoration: const InputDecoration(
+                  labelText: 'Product',
+                  helperText: "The supplier NCR's own Product is carried onto the record.",
+                  border: OutlineInputBorder(),
+                ),
+              )
+            else if (_loadingProducts)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.md),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_productsFailure != null)
+              PlatformFailureState(
+                key: SupplierNcrNonconformanceDialog.productsFailedKey,
+                title: 'The Products could not be read',
+                message: _productsFailure!,
+                retryKey: SupplierNcrNonconformanceDialog.productsRetryKey,
+                onRetry: _loadProducts,
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: SupplierNcrNonconformanceDialog.productKey,
+                initialValue: _productId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Product',
+                  helperText: 'This supplier NCR names none, so choose what the lot was for.',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final product in _products)
+                    DropdownMenuItem<String>(
+                      value: product.id,
+                      child: Text('${product.name} · ${product.code}',
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _productId = value),
+              ),
+            const SizedBox(height: Spacing.md),
+            if (ncr.defectCodeId != null)
+              TextFormField(
+                key: SupplierNcrNonconformanceDialog.defectCodeKey,
+                initialValue: '${ncr.defectCodeName} · ${ncr.defectCodeCode}',
+                enabled: false,
+                decoration: const InputDecoration(
+                  labelText: 'Defect code',
+                  helperText: "The supplier NCR's own Defect code is carried onto the record.",
+                  border: OutlineInputBorder(),
+                ),
+              )
+            else if (_loadingCodes)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.md),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_codesFailure != null)
+              PlatformFailureState(
+                key: SupplierNcrNonconformanceDialog.codesFailedKey,
+                title: 'The Defect codes could not be read',
+                message: _codesFailure!,
+                retryKey: SupplierNcrNonconformanceDialog.codesRetryKey,
+                onRetry: _loadCodes,
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: SupplierNcrNonconformanceDialog.defectCodeKey,
+                initialValue: _defectCodeId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Defect code',
+                  helperText: 'This supplier NCR carries none, so choose the one to record '
+                      'it against.',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final code in _codes)
+                    DropdownMenuItem<String>(
+                      value: code.id,
+                      child: Text('${code.name} · ${code.code}',
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _defectCodeId = value),
+              ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SupplierNcrNonconformanceDialog.containmentKey,
+              controller: _containment,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Immediate containment (optional)',
+                helperText: 'What was done at once. Recording it makes the record contained.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: SupplierNcrNonconformanceDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

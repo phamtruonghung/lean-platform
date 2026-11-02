@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'supplier_ncr.dart';
 import 'supplier_ncr_detail_bloc.dart';
 
@@ -33,8 +34,10 @@ class SupplierNcrDispositionDialog extends StatefulWidget {
       ValueKey<String>('supplier-ncr-disposition-currency');
   static const ValueKey<String> loadingKey =
       ValueKey<String>('supplier-ncr-disposition-loading');
-  static const ValueKey<String> submitKey = ValueKey<String>('supplier-ncr-disposition-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('supplier-ncr-disposition-cancel');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('supplier-ncr-disposition-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('supplier-ncr-disposition-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('supplier-ncr-disposition-failure');
 
   @override
@@ -107,97 +110,94 @@ class _SupplierNcrDispositionDialogState extends State<SupplierNcrDispositionDia
     final theme = Theme.of(context);
     return BlocListener<SupplierNcrDetailBloc, SupplierNcrDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Decide the material'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'What happens to ${widget.supplierNcr.quantityLabel} that came from '
-                  '${widget.supplierNcr.supplierName} on ${widget.supplierNcr.ncrNo}.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: SupplierNcrDispositionDialog.dispositionKey,
-                  initialValue: _disposition,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Disposition',
-                    helperText: 'What the plant decided happens to the received material.',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final disposition in SupplierNcrDisposition.values)
-                      DropdownMenuItem<String>(
-                        value: disposition,
-                        child: Text(
-                          SupplierNcrDisposition.label(disposition),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged:
-                      _awaiting ? null : (value) => setState(() => _disposition = value!),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SupplierNcrDispositionDialog.costKey,
-                  controller: _cost,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Cost recovered (optional)',
-                    helperText: 'What was clawed back from the Supplier. Leave it blank when '
-                        'nothing was claimed.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SupplierNcrDispositionDialog.currencyKey,
-                  controller: _currency,
-                  enabled: !_awaiting,
-                  maxLength: 3,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Currency',
-                    helperText: 'Three letters, the currency the cost recovered is in.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: SupplierNcrDispositionDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Decide the material',
+        size: AppDialogSize.picker,
         actions: [
           // `DialogPage` is not barrier-dismissible, so a dialog that refuses
           // its own request still needs a way out of its own.
-          TextButton(
-            key: SupplierNcrDispositionDialog.cancelKey,
+          AppDialogAction(
+            id: 'supplier-ncr-disposition-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SupplierNcrDispositionDialog.submitKey,
+          AppDialogAction(
+            id: 'supplier-ncr-disposition-submit',
+            label: _awaiting ? 'Saving…' : 'Record the disposition',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Record the disposition'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'What happens to ${widget.supplierNcr.quantityLabel} that came from '
+              '${widget.supplierNcr.supplierName} on ${widget.supplierNcr.ncrNo}.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: SupplierNcrDispositionDialog.dispositionKey,
+              initialValue: _disposition,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Disposition',
+                helperText: 'What the plant decided happens to the received material.',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final disposition in SupplierNcrDisposition.values)
+                  DropdownMenuItem<String>(
+                    value: disposition,
+                    child: Text(
+                      SupplierNcrDisposition.label(disposition),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged:
+                  _awaiting ? null : (value) => setState(() => _disposition = value!),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SupplierNcrDispositionDialog.costKey,
+              controller: _cost,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Cost recovered (optional)',
+                helperText: 'What was clawed back from the Supplier. Leave it blank when '
+                    'nothing was claimed.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SupplierNcrDispositionDialog.currencyKey,
+              controller: _currency,
+              enabled: !_awaiting,
+              maxLength: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Currency',
+                helperText: 'Three letters, the currency the cost recovered is in.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: SupplierNcrDispositionDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

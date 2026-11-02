@@ -26,6 +26,7 @@ import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -137,43 +138,49 @@ class _ProductRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
+    final palette = AppColors.of(context);
+    return ConstrainedBox(
       key: ProductsScreen.rowKey(product.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
+      constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
                     // The unit of measure is on the row rather than only in the
                     // form: it is what a quantity of this Product is read in,
                     // and the reason the field is a choice at all (ADR-0023).
-                    '${product.name} · ${product.code} · ${product.uomName}',
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
+                    child: DisclosingText(
+                      '${product.name} · ${product.code} · ${product.uomName}',
+                      style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+                    ),
                   ),
-                ),
-                if (!product.isActive) ...[
-                  const SizedBox(width: Spacing.sm),
-                  StatusChip(
-                    key: ProductsScreen.inactiveChipKey(product.id),
-                    label: 'Inactive',
-                    tone: StatusTone.neutral,
-                  ),
+                  if (!product.isActive) ...[
+                    const SizedBox(width: Spacing.sm),
+                    StatusChip(
+                      key: ProductsScreen.inactiveChipKey(product.id),
+                      label: 'Inactive',
+                      tone: StatusTone.neutral,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          if (isAdmin)
-            OutlinedButton(
-              key: ProductsScreen.correctKey(product.id),
-              onPressed: isMutating ? null : () => ProductFormDialog.open(context, product: product),
-              child: const Text('Correct'),
-            ),
-        ],
+            if (isAdmin)
+              OutlinedButton(
+                key: ProductsScreen.correctKey(product.id),
+                onPressed:
+                    isMutating ? null : () => ProductFormDialog.open(context, product: product),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Correct'),
+              ),
+          ],
+        ),
       ),
     );
   }

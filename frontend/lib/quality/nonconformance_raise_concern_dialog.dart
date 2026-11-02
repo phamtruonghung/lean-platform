@@ -27,6 +27,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../actions/actions.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 
@@ -42,8 +43,10 @@ class NonconformanceRaiseConcernDialog extends StatefulWidget {
       ValueKey<String>('nonconformance-raise-concern-description');
   static const ValueKey<String> priorityKey =
       ValueKey<String>('nonconformance-raise-concern-priority');
-  static const ValueKey<String> submitKey = ValueKey<String>('nonconformance-raise-concern-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-raise-concern-cancel');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('nonconformance-raise-concern-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-raise-concern-cancel');
   static const ValueKey<String> failureKey =
       ValueKey<String>('nonconformance-raise-concern-failure');
 
@@ -112,88 +115,85 @@ class _NonconformanceRaiseConcernDialogState extends State<NonconformanceRaiseCo
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Raise a Concern'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${record.issueNo} is recorded at ${record.orgUnitName}, and the Concern is raised '
-                  'there — a problem is solved where it happened.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceRaiseConcernDialog.titleKey,
-                  controller: _title,
-                  enabled: !_awaiting,
-                  maxLines: 1,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'What is the problem to solve?',
-                    helperText: 'The Concern is read in the action log, so say the problem, not the '
-                        'product.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceRaiseConcernDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Anything known yet',
-                    helperText: 'Optional. The Non-conformance itself is already linked as evidence.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<int>(
-                  key: NonconformanceRaiseConcernDialog.priorityKey,
-                  initialValue: _priority,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority',
-                    helperText: '1 is worst.',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final entry in actionPriorityLabels.entries)
-                      DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _priority = value ?? 3),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: NonconformanceRaiseConcernDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Raise a Concern',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: NonconformanceRaiseConcernDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-raise-concern-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: NonconformanceRaiseConcernDialog.submitKey,
+          AppDialogAction(
+            id: 'nonconformance-raise-concern-submit',
+            label: 'Raise it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Raise it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${record.issueNo} is recorded at ${record.orgUnitName}, and the Concern is raised '
+              'there — a problem is solved where it happened.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceRaiseConcernDialog.titleKey,
+              controller: _title,
+              enabled: !_awaiting,
+              maxLines: 1,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'What is the problem to solve?',
+                helperText: 'The Concern is read in the action log, so say the problem, not the '
+                    'product.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceRaiseConcernDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Anything known yet',
+                helperText: 'Optional. The Non-conformance itself is already linked as evidence.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<int>(
+              key: NonconformanceRaiseConcernDialog.priorityKey,
+              initialValue: _priority,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Priority',
+                helperText: '1 is worst.',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final entry in actionPriorityLabels.entries)
+                  DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _priority = value ?? 3),
+            ),
+            if (_failure != null)
+              Padding(
+                key: NonconformanceRaiseConcernDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
