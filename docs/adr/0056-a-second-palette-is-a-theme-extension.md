@@ -129,14 +129,15 @@ anything that is not text to 3:1.
 | `focusRing` (`actionPrimary`) on card / canvas | 8.11 / 9.90 |
 | `navSelectedAccent` on the selected Destination's fill | 5.74 |
 
-**A dialog's own surface is `card`, not `surfaceContainerHigh`.** The
-`surfaceContainerHigh` (`raised`, `#253349`) column above is the theme's default
-— what a bare `AlertDialog`, a menu or a date picker wears. Every dialog this
-app opens is an `AppDialog`, which pins `backgroundColor: palette.card`
-(`frontend/lib/widgets/app_dialog.dart`), so the pairs it draws are the card's
-own: `textPrimary` on `card` 13.35 dark / 10.36 light, `textMuted` on `card` 9.85 /
-7.58. Both clear 4.5:1 either way, so nothing here is a palette change — only a
-reminder that the dialog column describes the theme default, not an `AppDialog`.
+**A dialog's surface is the widget's own choice.** The `surfaceContainerHigh`
+(`raised`, `#253349`) column above is the theme's default — what a bare
+`AlertDialog`, a menu or a date picker wears. `AppDialog`
+(`frontend/lib/widgets/app_dialog.dart`) pins `backgroundColor: palette.card`
+instead, and it is what every dialog the maintenance Screens open is built from,
+so those dialogs draw the card's own pairs: `textPrimary` on `card` 13.35 dark /
+10.36 light, `textMuted` on `card` 9.85 / 7.58. The Modules that still open a
+bare `AlertDialog` keep the column above. Both readings clear 4.5:1 either way,
+so this is a labelling correction, not a palette change.
 
 **Warning reads as orange, not brown.** `#FDBA74` (orange-300) is the bright member
 of its pair, on `#431407` (orange-950), which is dark enough not to read as a
