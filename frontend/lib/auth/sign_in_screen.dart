@@ -16,6 +16,15 @@
 /// placement. There is no gradient, photograph, customer logo or statistic —
 /// the panel says only what is true of the Platform.
 ///
+/// **The front door carries the palette switch (issue #415).** The dark palette
+/// has existed since #366, but its only control was inside the Shell's account
+/// menu — and sign-in is drawn outside the Shell, so the page the site opens on
+/// offered no way to change it. The same [PaletteToggle] the Shell's footer now
+/// draws sits in this Screen's heading row, above the form. The Screen still
+/// decides nothing: [darkPalette] and [onToggleDarkPalette] are handed in by
+/// the router, which is where `ThemeMode.system` meets the browser's own
+/// preference.
+///
 /// The width is read from the box this Screen is laid out in
 /// (`LayoutBuilder`), not the window, the way every other responsive Screen
 /// here reads it; there is no Shell around sign-in to take a share of it.
@@ -27,10 +36,22 @@ import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/palette_toggle.dart';
 import 'auth_error_messages.dart';
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({
+    super.key,
+    required this.darkPalette,
+    required this.onToggleDarkPalette,
+  });
+
+  /// Whether the dark palette is the one on screen, so [PaletteToggle] can name
+  /// the other one (issue #415).
+  final bool darkPalette;
+
+  /// Switches to the other palette. The Screen decides nothing about which.
+  final VoidCallback onToggleDarkPalette;
 
   /// The width at which the identity panel appears beside the form.
   static const double twoPanelWidth = 900;
@@ -188,10 +209,23 @@ class _SignInScreenState extends State<SignInScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // A real heading to a screen reader, not just larger text.
-          Semantics(
-            header: true,
-            child: Text('Sign in', style: Theme.of(context).textTheme.headlineSmall),
+          // A real heading to a screen reader, not just larger text. The
+          // palette switch rides in the same row (issue #415): the one control
+          // this Screen owns that is not part of signing in, and in reach
+          // whether or not the form has been filled in.
+          Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text('Sign in', style: Theme.of(context).textTheme.headlineSmall),
+                ),
+              ),
+              PaletteToggle(
+                darkPalette: widget.darkPalette,
+                onPressed: widget.onToggleDarkPalette,
+              ),
+            ],
           ),
           const SizedBox(height: Spacing.lg),
           TextFormField(

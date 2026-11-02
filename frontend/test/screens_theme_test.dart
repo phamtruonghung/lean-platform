@@ -9,7 +9,10 @@ void main() {
   testWidgets('SignInScreen sits on the canvas background and keeps its copy',
       (WidgetTester tester) async {
     await tester.pumpWidget(
-      MaterialApp(theme: buildAppTheme(), home: const SignInScreen()),
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: SignInScreen(darkPalette: false, onToggleDarkPalette: () {}),
+      ),
     );
 
     final context = tester.element(find.byType(Scaffold));

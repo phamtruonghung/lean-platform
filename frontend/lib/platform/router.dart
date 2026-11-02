@@ -482,7 +482,16 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
     routes: [
       GoRoute(
         path: Routes.signIn,
-        builder: (context, state) => const SignInScreen(),
+        // The front door carries the palette switch (issue #415): the same
+        // value-and-callback pair the Shell gets below, from the one cubit
+        // that owns the mode.
+        builder: (context, state) => SignInScreen(
+          darkPalette:
+              context.watch<ThemeModeCubit>().state.isDarkPalette(MediaQuery.platformBrightnessOf(context)),
+          onToggleDarkPalette: () => context
+              .read<ThemeModeCubit>()
+              .toggle(MediaQuery.platformBrightnessOf(context)),
+        ),
       ),
       GoRoute(
         path: Routes.awaitingApproval,
@@ -632,15 +641,12 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
             // Supabase directly (issue #38): the Bloc is the only place the
             // session is resolved, so it must also be the only place it ends.
             onSignOut: () => context.read<AccountBloc>().add(const AccountSignOutRequested()),
-            // The palette toggle (issue #366). The Shell is handed a value and
-            // a callback so it needs no provider of its own. The check mark
-            // follows the palette actually on screen, which for
-            // `ThemeMode.system` is the browser's own preference.
-            darkPalette: switch (themeMode) {
-              ThemeMode.dark => true,
-              ThemeMode.light => false,
-              ThemeMode.system => platformBrightness == Brightness.dark,
-            },
+            // The palette toggle (issue #366), now also drawn in the footer
+            // beside sign-out (issue #415). The Shell is handed a value and a
+            // callback so it needs no provider of its own. The check mark and
+            // the button's icon follow the palette actually on screen, which
+            // for `ThemeMode.system` is the browser's own preference.
+            darkPalette: themeMode.isDarkPalette(platformBrightness),
             onToggleDarkPalette: () =>
                 context.read<ThemeModeCubit>().toggle(platformBrightness),
             child: child,
