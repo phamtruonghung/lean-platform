@@ -546,6 +546,18 @@ const List<Destination> platformDestinations = [
     path: Routes.complaints,
     group: DestinationGroupNames.quality,
   ),
+  // The slide show (issue #419): the Quality issues chosen for the Site, one
+  // picture at a time. Filed here, beside the two registers it draws from,
+  // because it is the same records read differently — a wall rather than a
+  // list. Offered to every approved Account for the same reason the registers
+  // are: what it shows is what the Site's registers show, and the server
+  // decides both (ADR-0009).
+  Destination(
+    label: 'Slide show',
+    icon: Icons.slideshow_outlined,
+    path: Routes.slideShow,
+    group: DestinationGroupNames.quality,
+  ),
   // The Supplier list and the supplier NCRs (issue #215) — the same surface
   // turned outward, filed beside the Customer pair for the same reasons: a
   // supplier NCR is a quality record (the baseline's own table is in the

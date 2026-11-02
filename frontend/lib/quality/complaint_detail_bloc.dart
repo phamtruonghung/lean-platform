@@ -14,6 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import 'customer_complaint.dart';
+import 'issue_image.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
 
@@ -62,6 +63,16 @@ class ComplaintLinkConfirmed extends ComplaintDetailEvent {
 
   final String id;
   final String nonconformanceId;
+}
+
+/// Puts this complaint on its Site's slide show, or takes it off (issue #419) —
+/// the detail Screen's own switch. The record is re-read afterwards so the
+/// switch, the register row and the wall all agree.
+class ComplaintSlideShowToggled extends ComplaintDetailEvent {
+  const ComplaintSlideShowToggled({required this.id, required this.chosen});
+
+  final String id;
+  final bool chosen;
 }
 
 sealed class ComplaintDetailState {
@@ -125,6 +136,7 @@ class ComplaintDetailBloc extends Bloc<ComplaintDetailEvent, ComplaintDetailStat
     on<ComplaintRespondConfirmed>(_onRespondConfirmed);
     on<ComplaintNonconformanceConfirmed>(_onNonconformanceConfirmed);
     on<ComplaintLinkConfirmed>(_onLinkConfirmed);
+    on<ComplaintSlideShowToggled>(_onSlideShowToggled);
   }
 
   final QualityApi _api;
@@ -229,6 +241,31 @@ class ComplaintDetailBloc extends Bloc<ComplaintDetailEvent, ComplaintDetailStat
         event.id,
         nonconformanceId: event.nonconformanceId,
       );
+      emit(ComplaintDetailLoaded(complaint: complaint));
+    } on QualityApiException catch (error) {
+      final settled = state;
+      if (settled is! ComplaintDetailLoaded) return;
+      emit(settled.copyWith(isMutating: false, mutationFailure: error.message));
+    }
+  }
+
+  Future<void> _onSlideShowToggled(
+    ComplaintSlideShowToggled event,
+    Emitter<ComplaintDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! ComplaintDetailLoaded || current.isMutating) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(mutationFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isMutating: true, mutationFailure: null));
+    try {
+      await _api.setSlideShowChoice(token, IssueKind.complaint, event.id, event.chosen);
+      final complaint = await _api.fetchComplaint(token, event.id);
       emit(ComplaintDetailLoaded(complaint: complaint));
     } on QualityApiException catch (error) {
       final settled = state;

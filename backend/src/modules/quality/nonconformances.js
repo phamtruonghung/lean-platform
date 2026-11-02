@@ -217,6 +217,10 @@ const NONCONFORMANCE_COLUMNS = `
   qi.immediate_containment, qi.recorded_by_account_id,
   qi.closed_at,
   qi.created_at, qi.updated_at,
+  -- The slide show's own two columns on the record (issue #419): a supervisor
+  -- chooses an issue where they already are, and the register row carries the
+  -- toggle's answer so it does not have to fetch anything to draw it.
+  qi.in_slide_show, qi.slide_show_position,
   qi.org_unit_id, ou.name AS org_unit_name, ou.path AS org_unit_path,
   ou.site_id, s.code AS site_code, s.name AS site_name,
   qi.product_id, p.code AS product_code, p.name AS product_name,
@@ -550,6 +554,14 @@ function toNonconformance(
     // Disposition, or when a holder of Quality authority cancelled it
     // (issue #206). The baseline's own CHECK is why both states carry one.
     closedAt: row.closed_at ?? null,
+    // Whether this record is on the Site's slide show, and where in it
+    // (issue #419). A null position means chosen but not yet ordered, which the
+    // show plays after the ordered ones.
+    inSlideShow: row.in_slide_show === true,
+    slideShowPosition:
+      row.slide_show_position === null || row.slide_show_position === undefined
+        ? null
+        : Number(row.slide_show_position),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     quantityChanges,

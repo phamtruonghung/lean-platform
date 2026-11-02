@@ -24,6 +24,7 @@ import '../platform/auth_gateway.dart';
 import 'customer.dart';
 import 'customer_complaint.dart';
 import 'defect_code.dart';
+import 'issue_image.dart';
 import 'product.dart';
 import 'quality_api.dart';
 
@@ -97,6 +98,17 @@ class ComplaintRecordConfirmed extends ComplaintsEvent {
   final bool isWarranty;
 }
 
+/// Put this complaint on the Site's slide show, or take it off
+/// (`PUT /api/quality/slide-show/complaint/:id`) — the register row's own
+/// toggle, added by issue #419. The row is re-read afterwards, for the reason
+/// `NonconformanceSlideShowToggled` gives for the same choice.
+class ComplaintSlideShowToggled extends ComplaintsEvent {
+  const ComplaintSlideShowToggled({required this.id, required this.chosen});
+
+  final String id;
+  final bool chosen;
+}
+
 sealed class ComplaintsState {
   const ComplaintsState();
 }
@@ -123,6 +135,8 @@ class ComplaintsLoaded extends ComplaintsState {
     required this.defectCodes,
     this.isRecording = false,
     this.recordFailure,
+    this.slideShowPending = const {},
+    this.slideShowFailure,
   });
 
   final List<Site> sites;
@@ -149,6 +163,12 @@ class ComplaintsLoaded extends ComplaintsState {
   /// open so the caller can fix the one field that was wrong.
   final String? recordFailure;
 
+  /// The rows whose slide-show toggle is in flight (issue #419).
+  final Set<String> slideShowPending;
+
+  /// Why the last toggle did not land, in the API's own words.
+  final String? slideShowFailure;
+
   Site? get site {
     for (final site in sites) {
       if (site.id == siteId) return site;
@@ -163,6 +183,8 @@ class ComplaintsLoaded extends ComplaintsState {
     bool? truncated,
     bool? isRecording,
     String? recordFailure,
+    Set<String>? slideShowPending,
+    String? slideShowFailure,
   }) =>
       ComplaintsLoaded(
         sites: sites,
@@ -177,6 +199,8 @@ class ComplaintsLoaded extends ComplaintsState {
         // Always overwritten, never carried forward — the same rule
         // `NonconformancesLoaded.copyWith` gives its own failure.
         recordFailure: recordFailure,
+        slideShowPending: slideShowPending ?? this.slideShowPending,
+        slideShowFailure: slideShowFailure,
       );
 }
 
@@ -196,6 +220,7 @@ class ComplaintsBloc extends Bloc<ComplaintsEvent, ComplaintsState> {
     on<ComplaintsStatusFilterChanged>(_onStatusFilterChanged);
     on<ComplaintsFiltersCleared>(_onFiltersCleared);
     on<ComplaintRecordConfirmed>(_onRecordConfirmed);
+    on<ComplaintSlideShowToggled>(_onSlideShowToggled);
   }
 
   final QualityApi _api;
@@ -415,6 +440,48 @@ class ComplaintsBloc extends Bloc<ComplaintsEvent, ComplaintsState> {
       );
     } on QualityApiException catch (error) {
       emit(ComplaintsUnavailable(message: error.message));
+    }
+  }
+
+  /// The register row's slide-show toggle (issue #419) — the complaint's half
+  /// of `NonconformancesBloc._onSlideShowToggled`, row by row for the same
+  /// reason.
+  Future<void> _onSlideShowToggled(
+    ComplaintSlideShowToggled event,
+    Emitter<ComplaintsState> emit,
+  ) async {
+    final current = state;
+    if (current is! ComplaintsLoaded) return;
+    if (current.slideShowPending.contains(event.id)) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(slideShowFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(
+      slideShowPending: {...current.slideShowPending, event.id},
+    ));
+    try {
+      await _api.setSlideShowChoice(token, IssueKind.complaint, event.id, event.chosen);
+      final row = await _api.fetchComplaint(token, event.id);
+      final settled = state;
+      if (settled is! ComplaintsLoaded) return;
+      emit(settled.copyWith(
+        complaints: [
+          for (final complaint in settled.complaints)
+            if (complaint.id == event.id) row else complaint,
+        ],
+        slideShowPending: {...settled.slideShowPending}..remove(event.id),
+      ));
+    } on QualityApiException catch (error) {
+      final settled = state;
+      if (settled is! ComplaintsLoaded) return;
+      emit(settled.copyWith(
+        slideShowPending: {...settled.slideShowPending}..remove(event.id),
+        slideShowFailure: error.message,
+      ));
     }
   }
 }

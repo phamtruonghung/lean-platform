@@ -28,6 +28,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../actions/actions.dart';
 import '../platform/auth_gateway.dart';
+import 'issue_image.dart';
 import 'nonconformance.dart';
 import 'quality_api.dart';
 
@@ -143,6 +144,15 @@ class NonconformanceConcernLinked extends NonconformanceDetailEvent {
   final String concernId;
 }
 
+/// Puts this Non-conformance on its Site's slide show, or takes it off
+/// (issue #419) — the detail Screen's own switch.
+class NonconformanceDetailSlideShowToggled extends NonconformanceDetailEvent {
+  const NonconformanceDetailSlideShowToggled({required this.id, required this.chosen});
+
+  final String id;
+  final bool chosen;
+}
+
 sealed class NonconformanceDetailState {
   const NonconformanceDetailState();
 }
@@ -244,6 +254,7 @@ class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, Nonconfor
     on<NonconformanceCancelled>(_onCancelled);
     on<NonconformanceConcernRaised>(_onConcernRaised);
     on<NonconformanceConcernLinked>(_onConcernLinked);
+    on<NonconformanceDetailSlideShowToggled>(_onSlideShowToggled);
   }
 
   final QualityApi _api;
@@ -587,6 +598,32 @@ class NonconformanceDetailBloc extends Bloc<NonconformanceDetailEvent, Nonconfor
       // The whole record comes back from every write, history included, so the
       // Screen never has to patch its own copy.
       emit(settled.copyWith(nonconformance: updated, isMutating: false));
+    } on QualityApiException catch (error) {
+      final settled = state;
+      if (settled is! NonconformanceDetailLoaded) return;
+      emit(settled.copyWith(isMutating: false, mutationFailure: error.message));
+    }
+  }
+
+  /// The detail Screen's slide-show switch (issue #419): choose or unchoose the
+  /// record, then re-read it so the switch and the register row agree.
+  Future<void> _onSlideShowToggled(
+    NonconformanceDetailSlideShowToggled event,
+    Emitter<NonconformanceDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformanceDetailLoaded || current.isMutating) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(mutationFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(isMutating: true, mutationFailure: null));
+    try {
+      await _api.setSlideShowChoice(token, IssueKind.nonconformance, event.id, event.chosen);
+      await _read(emit);
     } on QualityApiException catch (error) {
       final settled = state;
       if (settled is! NonconformanceDetailLoaded) return;

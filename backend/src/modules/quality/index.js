@@ -93,6 +93,11 @@ const customerComplaintRoutes = require('./customer-complaint-routes');
 const supplierRoutes = require('./supplier-routes');
 const supplierNcrRoutes = require('./supplier-ncr-routes');
 const floorRoutes = require('./floor-routes');
+// Pictures of an issue, and the Site's slide show of the chosen ones
+// (issue #419). Two files: the four image addresses are mounted for both record
+// kinds, and the show has its own three.
+const issueImageRoutes = require('./issue-image-routes');
+const slideShowRoutes = require('./slide-show-routes');
 // This Module's own contribution to the tier board's registry (issue #216),
 // beside the routers rather than among them: it is data src/index.js spreads
 // into the assembled registry, not a piece of the HTTP surface.
@@ -107,6 +112,8 @@ router.use(customerComplaintRoutes);
 router.use(supplierRoutes);
 router.use(supplierNcrRoutes);
 router.use(floorRoutes);
+router.use(issueImageRoutes);
+router.use(slideShowRoutes);
 
 module.exports = {
   router,

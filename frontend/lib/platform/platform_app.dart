@@ -8,6 +8,7 @@ import '../actions/actions_api.dart';
 import '../people_api.dart';
 import '../production/production_api.dart';
 import '../quality/quality_api.dart';
+import '../quality/quality_photo_picker.dart';
 import '../safety/safety_api.dart';
 import '../theme.dart';
 import '../widgets/signature_file_picker.dart';
@@ -31,6 +32,7 @@ class PlatformApp extends StatefulWidget {
     required this.kpiApi,
     this.floorDeviceGateway = const ConfiguredFloorDeviceGateway(),
     this.signatureFilePicker,
+    this.qualityPhotoPicker,
     this.initialLocation,
   });
 
@@ -67,6 +69,10 @@ class PlatformApp extends StatefulWidget {
   /// web); a widget test supplies one that answers without a browser.
   final SignatureFilePicker? signatureFilePicker;
 
+  /// How a person chooses a picture of a Quality issue (issue #419) — the same
+  /// seam as [signatureFilePicker], and supplied by a test for the same reason.
+  final QualityPhotoPicker? qualityPhotoPicker;
+
   /// Supplied only by tests; always null in production.
   final String? initialLocation;
 
@@ -78,6 +84,7 @@ class _PlatformAppState extends State<PlatformApp> {
   late final AccountBloc _accountBloc;
   late final GoRouter _router;
   late final SignatureFilePicker _signatureFilePicker;
+  late final QualityPhotoPicker _qualityPhotoPicker;
   late final ThemeModeCubit _themeModeCubit;
 
   // Built once, not per rebuild: a mode change rebuilds `MaterialApp.router`,
@@ -91,6 +98,7 @@ class _PlatformAppState extends State<PlatformApp> {
     // Built exactly once: building either in build() would recreate the
     // router on every rebuild and destroy navigation history.
     _signatureFilePicker = widget.signatureFilePicker ?? createSignatureFilePicker();
+    _qualityPhotoPicker = widget.qualityPhotoPicker ?? createQualityPhotoPicker();
     _accountBloc = AccountBloc(authGateway: widget.authGateway, peopleApi: widget.peopleApi);
     _themeModeCubit = ThemeModeCubit();
     _lightTheme = buildAppTheme();
@@ -122,6 +130,7 @@ class _PlatformAppState extends State<PlatformApp> {
         RepositoryProvider<KpiApi>.value(value: widget.kpiApi),
         RepositoryProvider<FloorDeviceGateway>.value(value: widget.floorDeviceGateway),
         RepositoryProvider<SignatureFilePicker>.value(value: _signatureFilePicker),
+        RepositoryProvider<QualityPhotoPicker>.value(value: _qualityPhotoPicker),
       ],
       child: MultiBlocProvider(
         providers: [

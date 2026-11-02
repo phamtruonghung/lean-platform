@@ -39,6 +39,7 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_banner.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
@@ -52,6 +53,7 @@ import 'defect_code.dart';
 import 'nonconformance.dart';
 import 'nonconformance_org_unit_filter_dialog.dart';
 import 'nonconformances_bloc.dart';
+import 'slide_show_toggle.dart';
 
 class NonconformancesScreen extends StatelessWidget {
   const NonconformancesScreen({super.key});
@@ -97,6 +99,14 @@ class NonconformancesScreen extends StatelessWidget {
   /// The way into one record, right-most on its row (new in #390).
   static ValueKey<String> rowOpenKey(String id) => ValueKey<String>('nonconformance-open-$id');
 
+  /// The row's slide-show toggle (issue #419).
+  static ValueKey<String> slideShowKey(String id) =>
+      ValueKey<String>('nonconformance-slide-show-$id');
+
+  /// The banner a refused slide-show toggle renders in.
+  static const ValueKey<String> slideShowFailureKey =
+      ValueKey<String>('nonconformance-slide-show-failure');
+
   /// A row's height: the 44 of the controls it holds, plus [Spacing.xs] either
   /// side of the row's own padding.
   static const double rowHeight = AppTouchTarget.min + 2 * Spacing.xs;
@@ -111,6 +121,14 @@ class NonconformancesScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Header(state: state),
+            if (state is NonconformancesLoaded && state.slideShowFailure != null)
+              _SlideShowFailure(
+                message: state.slideShowFailure!,
+                maxWidth: maxWidth,
+                onDismiss: () => context
+                    .read<NonconformancesBloc>()
+                    .add(const NonconformancesRefreshed()),
+              ),
             Expanded(
               child: switch (state) {
                 NonconformancesLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -500,7 +518,11 @@ double _openColumnWidth(BuildContext context) {
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,
   )..layout();
-  return painter.width + 2 * Spacing.xl + Spacing.sm;
+  // The Open button, then the slide-show toggle beside it (issue #419): a
+  // 44-px control and the [Spacing.xs] that separates the two. Without the
+  // extra room the cell's Row overflows, which is what a table does when a
+  // control is added to a column measured for one button.
+  return painter.width + 2 * Spacing.xl + Spacing.sm + AppTouchTarget.min + Spacing.xs;
 }
 
 /// The register's one column spec, spent by the band and by every row.
@@ -616,13 +638,27 @@ class _NonconformanceTableRow extends StatelessWidget {
           ),
           _shrinkWrapTargets(
             context,
-            OutlinedButton(
-              key: NonconformancesScreen.rowOpenKey(row.id),
-              onPressed: () => context.go('${Routes.nonConformances}/${row.id}'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
-              ),
-              child: const Text('Open'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SlideShowToggle(
+                  key: NonconformancesScreen.slideShowKey(row.id),
+                  inSlideShow: row.inSlideShow,
+                  busy: _slideShowPending(context, row.id),
+                  onChanged: (chosen) => context.read<NonconformancesBloc>().add(
+                        NonconformanceSlideShowToggled(id: row.id, chosen: chosen),
+                      ),
+                ),
+                const SizedBox(width: Spacing.xs),
+                OutlinedButton(
+                  key: NonconformancesScreen.rowOpenKey(row.id),
+                  onPressed: () => context.go('${Routes.nonConformances}/${row.id}'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  child: const Text('Open'),
+                ),
+              ],
             ),
           ),
         ],
@@ -699,13 +735,30 @@ class _NonconformanceCard extends StatelessWidget {
                 style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
               ),
               const SizedBox(height: Spacing.sm),
-              OutlinedButton(
-                key: NonconformancesScreen.rowOpenKey(row.id),
-                onPressed: () => context.go('${Routes.nonConformances}/${row.id}'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
-                ),
-                child: const Text('Open'),
+              Row(
+                // Open first, at the card's own left padding: that is what
+                // tells a card apart from a table row (issue #390's geometry
+                // test measures exactly that edge), and the slide-show toggle
+                // follows it rather than pushing it right.
+                children: [
+                  OutlinedButton(
+                    key: NonconformancesScreen.rowOpenKey(row.id),
+                    onPressed: () => context.go('${Routes.nonConformances}/${row.id}'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    child: const Text('Open'),
+                  ),
+                  const SizedBox(width: Spacing.xs),
+                  SlideShowToggle(
+                    key: NonconformancesScreen.slideShowKey(row.id),
+                    inSlideShow: row.inSlideShow,
+                    busy: _slideShowPending(context, row.id),
+                    onChanged: (chosen) => context.read<NonconformancesBloc>().add(
+                          NonconformanceSlideShowToggled(id: row.id, chosen: chosen),
+                        ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -728,3 +781,45 @@ StatusTone _severityTone(String severity) => switch (severity) {
 /// person writes a count of pieces.
 String _number(double value) =>
     value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toString();
+
+/// Whether this row's slide-show request is in flight (issue #419). A row that
+/// is waiting shows it rather than looking stuck; `select` keeps the rebuild to
+/// the one row that changed.
+bool _slideShowPending(BuildContext context, String id) =>
+    context.select<NonconformancesBloc, bool>((bloc) {
+      final state = bloc.state;
+      return state is NonconformancesLoaded && state.slideShowPending.contains(id);
+    });
+
+/// A refused slide-show toggle, above the register (design-language §12): the
+/// act failed and the row that caused it may have scrolled away, so the
+/// sentence goes where the page's own banner goes rather than beside one row.
+class _SlideShowFailure extends StatelessWidget {
+  const _SlideShowFailure({
+    required this.message,
+    required this.maxWidth,
+    required this.onDismiss,
+  });
+
+  final String message;
+  final double maxWidth;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AppPageFrame(
+        maxWidth: maxWidth,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
+          child: AppBanner(
+            key: NonconformancesScreen.slideShowFailureKey,
+            tone: StatusTone.danger,
+            message: message,
+            onDismiss: onDismiss,
+          ),
+        ),
+      ),
+    );
+  }
+}

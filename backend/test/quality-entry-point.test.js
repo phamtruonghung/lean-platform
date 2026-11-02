@@ -181,17 +181,24 @@ function declaredRoutes(router) {
   return declared;
 }
 
-test('the router carries the Product, Defect code, Non-conformance, Customer, complaint, Supplier, supplier NCR and floor paths, and nothing else', () => {
+test('the router carries the Product, Defect code, Non-conformance, Customer, complaint, Supplier, supplier NCR, floor, picture and slide-show paths, and nothing else', () => {
   assert.deepStrictEqual(declaredRoutes(quality.router).sort(), [
+    'DELETE /complaints/:id/images/:imageId',
+    'DELETE /nonconformances/:id/images/:imageId',
     'GET /complaints/:id',
+    'GET /complaints/:id/images',
+    'GET /complaints/:id/images/:imageId',
     'GET /customers',
     'GET /defect-codes',
     'GET /floor/defect-codes',
     'GET /floor/products',
     'GET /nonconformances/:id',
+    'GET /nonconformances/:id/images',
+    'GET /nonconformances/:id/images/:imageId',
     'GET /products',
     'GET /sites/:siteId/complaints',
     'GET /sites/:siteId/nonconformances',
+    'GET /sites/:siteId/slide-show',
     'GET /sites/:siteId/supplier-ncrs',
     'GET /supplier-ncrs/:id',
     'GET /suppliers',
@@ -200,6 +207,7 @@ test('the router carries the Product, Defect code, Non-conformance, Customer, co
     'PATCH /nonconformances/:id',
     'PATCH /products/:id',
     'PATCH /suppliers/:id',
+    'POST /complaints/:id/images',
     'POST /complaints/:id/link',
     'POST /complaints/:id/nonconformance',
     'POST /complaints/:id/respond',
@@ -209,6 +217,7 @@ test('the router carries the Product, Defect code, Non-conformance, Customer, co
     'POST /nonconformances/:id/cancel',
     'POST /nonconformances/:id/concession',
     'POST /nonconformances/:id/dispositions',
+    'POST /nonconformances/:id/images',
     'POST /nonconformances/:id/lower-severity',
     'POST /nonconformances/:id/quantity',
     'POST /nonconformances/:id/reopen',
@@ -220,6 +229,10 @@ test('the router carries the Product, Defect code, Non-conformance, Customer, co
     'POST /supplier-ncrs/:id/disposition',
     'POST /supplier-ncrs/:id/link',
     'POST /supplier-ncrs/:id/nonconformance',
-    'POST /suppliers'
+    'POST /suppliers',
+    // Issue #419: a picture per issue, and the Site's slide show of the
+    // chosen ones.
+    'PUT /sites/:siteId/slide-show/order',
+    'PUT /slide-show/:kind/:id'
   ]);
 });
