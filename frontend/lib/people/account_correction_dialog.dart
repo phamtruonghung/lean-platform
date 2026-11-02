@@ -14,8 +14,6 @@
 /// who came to add one Org Unit must not silently lose the four already there.
 library;
 
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -23,6 +21,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/destinations.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
 import 'org_unit_picker.dart';
@@ -38,8 +37,8 @@ class AccountCorrectionDialog extends StatefulWidget {
   static const ValueKey<String> reactivationNoticeKey =
       ValueKey<String>('correction-reactivation');
   static const ValueKey<String> failureKey = ValueKey<String>('correction-failure');
-  static const ValueKey<String> submitKey = ValueKey<String>('correction-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('correction-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('correction-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('correction-cancel');
   static ValueKey<String> roleKey(String role) => ValueKey<String>('correction-role-$role');
 
   /// Opens the correction over the list.
@@ -129,12 +128,28 @@ class _AccountCorrectionDialogState extends State<AccountCorrectionDialog> {
     return BlocConsumer<AccountsBloc, AccountsState>(
       listener: _onAccountsChanged,
       builder: (context, state) {
-        return AlertDialog(
-          title: const Text('Change role and Grants'),
-          content: SizedBox(
-            width: math.max(280, math.min(MediaQuery.sizeOf(context).width - 160, 880)),
-            child: SingleChildScrollView(
-              child: Column(
+        return AppDialog(
+          title: 'Change role and Grants',
+          size: AppDialogSize.wide,
+          // `child` last, as `sort_child_properties_last` requires. The 880 the
+          // old `SizedBox` computed is now the shell's own `wide` width, whose
+          // inner panes are `Expanded` and shrink with it (#398, #392).
+          actions: [
+            AppDialogAction(
+              id: 'correction-cancel',
+              label: 'Cancel',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+            ),
+            AppDialogAction(
+              id: 'correction-submit',
+              label: _awaiting ? 'Saving…' : 'Save',
+              onPressed: _awaiting ? null : _submit,
+            ),
+          ],
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -208,20 +223,7 @@ class _AccountCorrectionDialogState extends State<AccountCorrectionDialog> {
                     ),
                 ],
               ),
-            ),
           ),
-          actions: [
-            TextButton(
-              key: AccountCorrectionDialog.cancelKey,
-              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: AccountCorrectionDialog.submitKey,
-              onPressed: _awaiting ? null : _submit,
-              child: Text(_awaiting ? 'Saving…' : 'Save'),
-            ),
-          ],
         );
       },
     );

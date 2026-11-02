@@ -53,6 +53,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
 import 'job_role.dart';
@@ -67,8 +68,8 @@ class EmployeeAssignmentDialog extends StatefulWidget {
   static const ValueKey<String> siteKey = ValueKey<String>('employee-assignment-site');
   static const ValueKey<String> jobRoleKey = ValueKey<String>('employee-assignment-job-role');
   static const ValueKey<String> effectiveFromKey = ValueKey<String>('employee-assignment-effective-from');
-  static const ValueKey<String> submitKey = ValueKey<String>('employee-assignment-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('employee-assignment-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('employee-assignment-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('employee-assignment-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('employee-assignment-failure');
   static ValueKey<String> expandKey(String id) => ValueKey<String>('employee-assignment-expand-$id');
   static ValueKey<String> orgUnitKey(String id) => ValueKey<String>('employee-assignment-org-unit-$id');
@@ -153,12 +154,26 @@ class _EmployeeAssignmentDialogState extends State<EmployeeAssignmentDialog> {
 
     return BlocListener<EmployeeDetailBloc, EmployeeDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text('Assign ${widget.employee.displayName} to an Org Unit'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
+      child: AppDialog(
+        title: 'Assign ${widget.employee.displayName} to an Org Unit',
+        size: AppDialogSize.form,
+        // `child` last, as `sort_child_properties_last` requires.
+        actions: [
+          AppDialogAction(
+            id: 'employee-assignment-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: 'employee-assignment-submit',
+            label: _awaiting ? 'Assigning…' : 'Assign',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -202,21 +217,8 @@ class _EmployeeAssignmentDialogState extends State<EmployeeAssignmentDialog> {
                     ),
                   ),
               ],
-            ),
           ),
         ),
-        actions: [
-          TextButton(
-            key: EmployeeAssignmentDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: EmployeeAssignmentDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Assigning…' : 'Assign'),
-          ),
-        ],
       ),
     );
   }

@@ -69,7 +69,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Reject this Account?'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
     await tester.pumpAndSettle();
 
     expect(find.text('Reject this Account?'), findsNothing);

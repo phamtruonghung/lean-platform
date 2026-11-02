@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'accounts_bloc.dart';
 import 'employee_link_picker.dart';
 import 'employee_ref.dart';
@@ -20,8 +21,8 @@ class AccountEmployeeDialog extends StatefulWidget {
   final ManagedAccount account;
 
   static const ValueKey<String> failureKey = ValueKey<String>('account-employee-failure');
-  static const ValueKey<String> submitKey = ValueKey<String>('account-employee-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('account-employee-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('account-employee-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('account-employee-cancel');
 
   /// Opens the correction over the list — the same explicit Bloc hand-off
   /// every dialog in this Module uses, `showDialog`'s route sitting outside
@@ -82,12 +83,26 @@ class _AccountEmployeeDialogState extends State<AccountEmployeeDialog> {
     return BlocConsumer<AccountsBloc, AccountsState>(
       listener: _onAccountsChanged,
       builder: (context, state) {
-        return AlertDialog(
-          title: const Text('Change Employee link'),
-          content: SizedBox(
-            width: 460,
-            child: SingleChildScrollView(
-              child: Column(
+        return AppDialog(
+          title: 'Change Employee link',
+          size: AppDialogSize.form,
+          // `child` last, as `sort_child_properties_last` requires.
+          actions: [
+            AppDialogAction(
+              id: 'account-employee-cancel',
+              label: 'Cancel',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+            ),
+            AppDialogAction(
+              id: 'account-employee-submit',
+              label: _awaiting ? 'Saving…' : 'Save',
+              onPressed: _awaiting ? null : _submit,
+            ),
+          ],
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -114,20 +129,7 @@ class _AccountEmployeeDialogState extends State<AccountEmployeeDialog> {
                     ),
                 ],
               ),
-            ),
           ),
-          actions: [
-            TextButton(
-              key: AccountEmployeeDialog.cancelKey,
-              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: AccountEmployeeDialog.submitKey,
-              onPressed: _awaiting ? null : _submit,
-              child: Text(_awaiting ? 'Saving…' : 'Save'),
-            ),
-          ],
         );
       },
     );

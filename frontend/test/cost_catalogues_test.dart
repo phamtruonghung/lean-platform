@@ -70,12 +70,15 @@ void main() {
     await openCostRates(tester, wire);
 
     expect(find.byType(CostRatesScreen), findsOneWidget);
-    // The amount, its currency and the rate type in the plant's own words.
-    expect(find.textContaining('Labour, per hour · 30.0 USD'), findsOneWidget);
-    expect(find.textContaining('Labour, per hour · 36.0 USD'), findsOneWidget);
-    // Each row carries its period, and the closed one says so.
-    expect(find.textContaining('2026-01-01 to 2026-04-01'), findsOneWidget);
-    expect(find.textContaining('From 2026-04-01'), findsOneWidget);
+    // The amount and its currency on the row, the rate type in the plant's own
+    // words — two facts, two places on the register's own row (#392).
+    expect(find.text('30.0 USD'), findsOneWidget);
+    expect(find.text('36.0 USD'), findsOneWidget);
+    expect(find.text('Labour, per hour'), findsNWidgets(2));
+    // Each row carries its period, worded the way a person says a date (§13),
+    // and the closed one says so.
+    expect(find.text('1 Jan 2026 – 1 Apr 2026'), findsOneWidget);
+    expect(find.text('From 1 Apr 2026'), findsOneWidget);
     expect(find.byKey(CostRatesScreen.closedChipKey('900')), findsOneWidget);
     expect(find.byKey(CostRatesScreen.closedChipKey('901')), findsNothing);
     expect(find.byKey(CostRatesScreen.addKey), findsOneWidget);
@@ -125,7 +128,8 @@ void main() {
     expect(sent.containsKey('effectiveTo'), isFalse);
 
     expect(find.byType(CostRateFormDialog), findsNothing);
-    expect(find.textContaining('Machine downtime, per hour · 95.0 USD'), findsOneWidget);
+    expect(find.text('95.0 USD'), findsOneWidget);
+    expect(find.text('Machine downtime, per hour'), findsOneWidget);
     expect(find.textContaining('Line 1 · Org Unit'), findsOneWidget);
   });
 
@@ -156,7 +160,7 @@ void main() {
     expect(wire.costRatePatches.single.$1, '900');
     expect(wire.costRatePatches.single.$2, {'amount': 31.5});
     expect(find.byType(CostRateFormDialog), findsNothing);
-    expect(find.textContaining('Labour, per hour · 31.5 USD'), findsOneWidget);
+    expect(find.text('31.5 USD'), findsOneWidget);
 
     // Closing it is the same correction, setting the day it stops applying.
     await tapIn(tester, find.byKey(CostRatesScreen.correctKey('900')));
@@ -199,8 +203,8 @@ void main() {
     expect(wire.costRateRevisions.single.$2['effectiveFrom'], isA<String>());
 
     // Both periods are on the page afterwards: the old amount is still readable.
-    expect(find.textContaining('Labour, per hour · 30.0 USD'), findsOneWidget);
-    expect(find.textContaining('Labour, per hour · 36.0 USD'), findsOneWidget);
+    expect(find.text('30.0 USD'), findsOneWidget);
+    expect(find.text('36.0 USD'), findsOneWidget);
     expect(find.byKey(CostRatesScreen.closedChipKey('900')), findsOneWidget);
   });
 
@@ -234,7 +238,7 @@ void main() {
     await openCostRates(tester, wire);
 
     // The catalogue itself is perfectly readable — only the writes close.
-    expect(find.textContaining('Labour, per hour · 22.5 USD'), findsOneWidget);
+    expect(find.text('22.5 USD'), findsOneWidget);
 
     await tapIn(tester, find.byKey(CostRatesScreen.addKey));
     expect(find.byKey(CostRateFormDialog.scopesFailureKey), findsOneWidget);
@@ -251,7 +255,7 @@ void main() {
     );
     await openCostRates(tester, wire);
 
-    expect(find.textContaining('Labour, per hour · 22.5 USD'), findsOneWidget);
+    expect(find.text('22.5 USD'), findsOneWidget);
     expect(find.byKey(CostRatesScreen.addKey), findsNothing);
     expect(find.byKey(CostRatesScreen.correctKey('900')), findsNothing);
     expect(find.byKey(CostRatesScreen.reviseKey('900')), findsNothing);
@@ -273,10 +277,12 @@ void main() {
     await openProductCosts(tester, wire);
 
     expect(find.byType(ProductCostsScreen), findsOneWidget);
-    expect(find.textContaining('Gearbox · PRD-1 · 5.0 USD'), findsOneWidget);
-    expect(find.textContaining('Gearbox · PRD-1 · 6.0 USD'), findsOneWidget);
-    expect(find.text('2026-01-01 to 2026-06-01'), findsOneWidget);
-    expect(find.text('From 2026-06-01'), findsOneWidget);
+    expect(find.text('Gearbox · PRD-1'), findsNWidgets(2));
+    expect(find.text('5.0 USD'), findsOneWidget);
+    expect(find.text('6.0 USD'), findsOneWidget);
+    // §13's own wording: `31 Jan 2026`, never `2026-01-31`.
+    expect(find.text('1 Jan 2026 – 1 Jun 2026'), findsOneWidget);
+    expect(find.text('From 1 Jun 2026'), findsOneWidget);
     expect(find.byKey(ProductCostsScreen.closedChipKey('950')), findsOneWidget);
     expect(find.byKey(ProductCostsScreen.closedChipKey('951')), findsNothing);
   });
@@ -314,7 +320,7 @@ void main() {
     expect(sent['effectiveFrom'], isA<String>());
 
     expect(find.byType(ProductCostFormDialog), findsNothing);
-    expect(find.textContaining('Gearbox · PRD-1 · 4.25 EUR'), findsOneWidget);
+    expect(find.text('4.25 EUR'), findsOneWidget);
   });
 
   testWidgets('correcting a standard cost sends only the changed field, and the Product is not offered',
@@ -337,7 +343,7 @@ void main() {
 
     expect(wire.productCostPatches.single.$1, '950');
     expect(wire.productCostPatches.single.$2, {'standardCost': 5.5});
-    expect(find.textContaining('Gearbox · PRD-1 · 5.5 USD'), findsOneWidget);
+    expect(find.text('5.5 USD'), findsOneWidget);
   });
 
   testWidgets('revising a standard cost opens a new period and leaves the old one readable',
@@ -357,8 +363,8 @@ void main() {
     expect(wire.productCostRevisions.single.$1, '950');
     expect(wire.productCostRevisions.single.$2['standardCost'], 6);
 
-    expect(find.textContaining('Gearbox · PRD-1 · 5.0 USD'), findsOneWidget);
-    expect(find.textContaining('Gearbox · PRD-1 · 6.0 USD'), findsOneWidget);
+    expect(find.text('5.0 USD'), findsOneWidget);
+    expect(find.text('6.0 USD'), findsOneWidget);
     expect(find.byKey(ProductCostsScreen.closedChipKey('950')), findsOneWidget);
   });
 
@@ -371,7 +377,7 @@ void main() {
     );
     await openProductCosts(tester, wire);
 
-    expect(find.textContaining('Gearbox · PRD-1 · 4.25 USD'), findsOneWidget);
+    expect(find.text('4.25 USD'), findsOneWidget);
     expect(find.byKey(ProductCostsScreen.addKey), findsNothing);
     expect(find.byKey(ProductCostsScreen.correctKey('950')), findsNothing);
     expect(find.byKey(ProductCostsScreen.reviseKey('950')), findsNothing);

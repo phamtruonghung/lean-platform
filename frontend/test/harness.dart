@@ -4178,6 +4178,10 @@ class FakeWire {
   List<Map<String, dynamic>> sites;
   int sitesStatus;
 
+  /// A test holds this open to see the Org Units page's own loading state —
+  /// see [employeeDetailGate].
+  Completer<void>? sitesGate;
+
   /// `GET /api/people/timezones` (issue #123/#127, ADR-0023) — the whole
   /// list `SiteFormDialog` fetches once when it opens. A test asserting the
   /// fetch happened only once reads [requests] for
@@ -4300,6 +4304,12 @@ class FakeWire {
   Map<String, Map<String, dynamic>> employeeDetails;
   int employeeDetailStatus;
   String employeeDetailMessage;
+
+  /// A test holds this open to see the Employee detail's own loading state —
+  /// the device `assetsGate`/`approvalGate` already give the Maintenance and
+  /// People registers: `..employeeDetailGate = Completer<void>()`, assert on
+  /// the skeleton, then `complete()` and settle.
+  Completer<void>? employeeDetailGate;
 
   /// `GET /api/people/job-roles`.
   List<Map<String, dynamic>> jobRoles;
@@ -8538,6 +8548,8 @@ class FakeWire {
         // (GET /employees/me is matched before :id could ever swallow it).
         if (path.startsWith('/api/people/employees/')) {
           final id = path.substring('/api/people/employees/'.length);
+          // A test can hold the read open to see the Screen's own loading state.
+          if (employeeDetailGate != null) await employeeDetailGate!.future;
           if (employeeDetailStatus != 200) {
             return http.Response(jsonEncode({'message': employeeDetailMessage}), employeeDetailStatus);
           }
@@ -9272,6 +9284,7 @@ class FakeWire {
           return http.Response(jsonEncode({'site': created}), 201);
         }
         if (path == '/api/people/sites') {
+          if (sitesGate != null) await sitesGate!.future;
           if (sitesStatus != 200) {
             return http.Response(jsonEncode({'message': 'Sites are unavailable.'}), sitesStatus);
           }

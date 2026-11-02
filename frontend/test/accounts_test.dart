@@ -151,7 +151,22 @@ void main() {
     );
 
     expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
-    expect(find.text('Supervisor · Active'), findsOneWidget);
+    // The role and the standing are two chips on the card, as they are two
+    // columns on the table (#392) — never one combined sentence.
+    expect(
+      find.descendant(
+        of: find.byKey(AccountsScreen.rowKey('7')),
+        matching: find.text('Supervisor'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(AccountsScreen.rowKey('7')),
+        matching: find.text('Active'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Ho Chi Minh › Assembly · View and edit'), findsOneWidget);
     expect(
       find.text('Acts everywhere, in every Site. No Org Unit Grants, and none needed.'),
@@ -247,8 +262,8 @@ void main() {
       'a pending Account appears with Standing reading Awaiting Approval, and rows are ordered '
       'pending first, then by email', (tester) async {
     // The Standing cell asserted below ('Awaiting Approval' alone) is the
-    // wide table's own separate column (issue #120) — the narrow card folds
-    // role and standing into one combined string instead.
+    // register's own separate column (#392) — the card carries the same word as
+    // a chip.
     goWide(tester);
     await openAccounts(
       tester,
@@ -388,9 +403,8 @@ void main() {
 
   testWidgets('changing the role and the Grant set sends the whole set, and the list shows it',
       (tester) async {
-    // The Role cell asserted below ('Engineer' alone) is the wide table's own
-    // separate column (issue #120) — the narrow card folds role and standing
-    // into one combined string instead.
+    // The Role cell asserted below ('Engineer' alone) is the register's own
+    // separate column (#392) — the card carries it as the same chip.
     goWide(tester);
     final wire = _plant(accounts: [
       accountJson('7', 'admitted@b.c',
@@ -582,15 +596,15 @@ void main() {
 
   testWidgets('deactivating asks first, and reactivating does not', (tester) async {
     // The Standing cell asserted below ('Deactivated'/'Active' alone) is the
-    // wide table's own separate column (issue #120) — the narrow card folds
-    // role and standing into one combined string instead.
+    // register's own separate column (#392) — the card carries the same word as
+    // a chip.
     goWide(tester);
     final wire = _plant(accounts: [accountJson('7', 'admitted@b.c')]);
     await openAccounts(tester, wire);
 
     await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
     expect(find.text('Deactivate this Account?'), findsOneWidget);
-    await tapIn(tester, find.widgetWithText(TextButton, 'Cancel'));
+    await tapIn(tester, find.widgetWithText(OutlinedButton, 'Cancel'));
     expect(wire.activations, isEmpty);
 
     await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));

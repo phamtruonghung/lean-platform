@@ -23,6 +23,26 @@
 /// (`resolve_cost_rate`), and `GET /api/people/cost-rates/resolution` is what
 /// answers that question. Re-spelling the fallback here, over a list of rows,
 /// is exactly the second implementation the ticket rules out.
+///
+/// **It is a register, not a catalogue (issue #392, `design-language.md` §5 and
+/// §6).** A rate is read *across*: two rates are compared by their amount and by
+/// when each applied, and neither comparison is possible when the amount sits
+/// inside a sentence beside the rate's kind. So the page says its columns once,
+/// as [_columns], and builds both the band and every row's cells from that list
+/// — which is what makes the header label and the cells beneath it start at the
+/// same x by construction. Above [narrowBreakpoint] of content width the table
+/// is drawn; below it one card per rate. The breakpoint is read from the box a
+/// `LayoutBuilder` hands the list, never from the window, and scaled by the
+/// reader's text size (§10; the class of bug #379 and #381).
+///
+/// **Money is the one place alignment is not a taste call (§6, §13).** The
+/// amount column is end-aligned in tabular figures, so a column of rates
+/// compares down its right edge and its digits line up inside that edge, and the
+/// unit lives in the column *label* — `Amount (EUR)` — rather than being
+/// repeated on every cell. Where the catalogue cannot name one unit the label
+/// says only `Amount` and each cell carries its own, because a multiplier
+/// (`× 1.5`) is dimensionless: a header claiming EUR over a column of
+/// multipliers would be a lie the reader cannot see.
 library;
 
 import 'package:flutter/material.dart';
@@ -30,9 +50,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
-import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -48,7 +69,14 @@ class CostRatesScreen extends StatelessWidget {
   /// the same shape `JobRolesScreen.isAdmin` follows.
   final bool isAdmin;
 
-  static const double maxWidth = AppLayout.pageWidth;
+  /// A register's width, not a catalogue's: five columns and two actions are
+  /// read across, and the money column wants the room (§6).
+  static const double maxWidth = 1100;
+
+  /// Five columns or fewer, so `AppBreakpoints.registerTable` (700) is the
+  /// number, read through [AppBreakpoints.effective] and never asked of the
+  /// window.
+  static const double narrowBreakpoint = AppBreakpoints.registerTable;
 
   static const ValueKey<String> addKey = ValueKey<String>('cost-rates-add');
   static const ValueKey<String> failedKey = ValueKey<String>('cost-rates-failed');
@@ -130,17 +158,7 @@ class _Loaded extends StatelessWidget {
                 onAction: isAdmin ? () => _add(context) : null,
               )
             else
-              AppListCard(
-                rows: [
-                  for (final costRate in state.costRates)
-                    _CostRateRow(
-                      costRate: costRate,
-                      isAdmin: isAdmin,
-                      isMutating: state.isMutating,
-                      scopes: state.scopes,
-                    ),
-                ],
-              ),
+              _Register(state: state, isAdmin: isAdmin),
           ],
         ),
       ),
@@ -148,8 +166,255 @@ class _Loaded extends StatelessWidget {
   }
 }
 
-class _CostRateRow extends StatelessWidget {
-  const _CostRateRow({
+/// The one column spec: [AppTableHeader] and every [AppTableRow] are built from
+/// it, so a label and its cells start at the same x.
+List<AppTableColumn> _columns(BuildContext context, List<CostRate> rows) => [
+      const AppTableColumn('Rate', flex: 4),
+      AppTableColumn(
+        _amountColumnLabel(rows),
+        width: _amountColumnWidth(context, rows),
+        align: AppColumnAlign.end,
+      ),
+      const AppTableColumn('Scope', flex: 5),
+      const AppTableColumn('Period', flex: 5),
+      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+    ];
+
+/// Whether the column can name one unit for every row: true only when every
+/// rate is money in the same currency. A multiplier makes it false — `× 1.5`
+/// is dimensionless, and §13 puts the unit on the label only when the label's
+/// unit is true of every cell under it.
+bool _oneUnit(List<CostRate> rows) =>
+    rows.every((row) => !costRateIsMultiplier(row.rateType)) &&
+    rows.map((row) => row.currency).toSet().length == 1;
+
+String _amountColumnLabel(List<CostRate> rows) =>
+    _oneUnit(rows) ? 'Amount (${rows.first.currency})' : 'Amount';
+
+/// The figure a cell shows: the bare amount where the column carries the unit,
+/// and the amount with its own unit where it cannot.
+String _amountCell(CostRate row, {required bool oneUnit}) => oneUnit
+    ? (costRateIsMultiplier(row.rateType) ? '× ${row.amount}' : '${row.amount}')
+    : row.amountLabel;
+
+/// The amount column: the widest figure in the list, plus the slot's own
+/// gutter. Measured rather than guessed, so a four-figure rate is not clipped
+/// and a three-figure one does not leave a gulf.
+double _amountColumnWidth(BuildContext context, List<CostRate> rows) {
+  final oneUnit = _oneUnit(rows);
+  var widest = 0.0;
+  for (final row in rows) {
+    final width = _measure(
+      context,
+      _amountCell(row, oneUnit: oneUnit),
+      AppTableRow.numberStyle(context),
+    );
+    if (width > widest) widest = width;
+  }
+  final header = _measure(
+    context,
+    _amountColumnLabel(rows),
+    Theme.of(context).textTheme.labelMedium,
+  );
+  return (widest > header ? widest : header) + 2 * Spacing.sm;
+}
+
+/// Correct and Revise side by side, at the 44px floor each button states for
+/// itself, plus the slot's gutter. The button's own horizontal padding is
+/// [Spacing.xl] a side — `OutlinedButton`'s default, and what the quality
+/// registers measure for the same reason (#390).
+double _actionsColumnWidth(BuildContext context) {
+  final label = Theme.of(context).textTheme.labelLarge;
+  final correct = _measure(context, 'Correct', label) + 2 * Spacing.xl;
+  final revise = _measure(context, 'Revise', label) + 2 * Spacing.xl;
+  return correct + Spacing.sm + revise + 2 * Spacing.sm;
+}
+
+double _measure(BuildContext context, String text, TextStyle? style) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width;
+}
+
+class _Register extends StatelessWidget {
+  const _Register({required this.state, required this.isAdmin});
+
+  final CostRatesLoaded state;
+  final bool isAdmin;
+
+  @override
+  Widget build(BuildContext context) {
+    // The box this list actually got, scaled by the reader's text size (§10) —
+    // never the window.
+    return LayoutBuilder(
+      builder: (context, box) {
+        final narrow =
+            box.maxWidth < AppBreakpoints.effective(context, CostRatesScreen.narrowBreakpoint);
+        final columns = _columns(context, state.costRates);
+        final oneUnit = _oneUnit(state.costRates);
+
+        if (narrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var index = 0; index < state.costRates.length; index++) ...[
+                if (index > 0) const SizedBox(height: Spacing.sm),
+                _CostRateCard(
+                  costRate: state.costRates[index],
+                  isAdmin: isAdmin,
+                  isMutating: state.isMutating,
+                  scopes: state.scopes,
+                ),
+              ],
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppTableHeader(columns: columns),
+            for (final costRate in state.costRates)
+              _CostRateTableRow(
+                columns: columns,
+                costRate: costRate,
+                oneUnit: oneUnit,
+                isAdmin: isAdmin,
+                isMutating: state.isMutating,
+                scopes: state.scopes,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The framework's padded tap target is lifted on the row's buttons: each one
+/// states its own [AppTouchTarget.min] through `minimumSize`, and the padded
+/// target would add height to a row that already carries the 44.
+Widget _shrinkWrapTargets(BuildContext context, Widget child) => Theme(
+      data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      child: child,
+    );
+
+class _CostRateTableRow extends StatelessWidget {
+  const _CostRateTableRow({
+    required this.columns,
+    required this.costRate,
+    required this.oneUnit,
+    required this.isAdmin,
+    required this.isMutating,
+    required this.scopes,
+  });
+
+  final List<AppTableColumn> columns;
+  final CostRate costRate;
+  final bool oneUnit;
+  final bool isAdmin;
+  final bool isMutating;
+  final List<CostRateScope> scopes;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final row = costRate;
+
+    return KeyedSubtree(
+      key: CostRatesScreen.rowKey(row.id),
+      child: AppTableRow(
+        columns: columns,
+        cells: [
+          DisclosingText(costRateTypeLabel(row.rateType), style: dense?.copyWith(color: palette.textPrimary)),
+          Text(
+            _amountCell(row, oneUnit: oneUnit),
+            style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
+            maxLines: 1,
+            softWrap: false,
+          ),
+          DisclosingText(row.scopeLabel, style: dense?.copyWith(color: palette.textMuted)),
+          _periodCell(context, row),
+          _shrinkWrapTargets(
+            context,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isAdmin) ...[
+                  OutlinedButton(
+                    key: CostRatesScreen.correctKey(row.id),
+                    onPressed: isMutating
+                        ? null
+                        : () => CostRateFormDialog.open(
+                              context,
+                              mode: CostRateFormMode.correct,
+                              scopes: scopes,
+                              costRate: row,
+                            ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    child: const Text('Correct'),
+                  ),
+                  const SizedBox(width: Spacing.sm),
+                  OutlinedButton(
+                    key: CostRatesScreen.reviseKey(row.id),
+                    onPressed: isMutating
+                        ? null
+                        : () => CostRateFormDialog.open(
+                              context,
+                              mode: CostRateFormMode.revise,
+                              scopes: scopes,
+                              costRate: row,
+                            ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    child: const Text('Revise'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The period, with the closed chip beside it. One function for both shapes, so
+/// the table row and the card say the same thing about the same record.
+Widget _periodCell(BuildContext context, CostRate row) {
+  final dense = AppTypography.dense(context);
+  final palette = AppColors.of(context);
+  return _shrinkWrapTargets(
+    context,
+    Wrap(
+      spacing: Spacing.sm,
+      runSpacing: Spacing.xs,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        DisclosingText(row.periodLabel, style: dense?.copyWith(color: palette.textMuted)),
+        if (!row.isCurrent)
+          StatusChip(
+            key: CostRatesScreen.closedChipKey(row.id),
+            label: 'Closed',
+            tone: StatusTone.neutral,
+          ),
+      ],
+    ),
+  );
+}
+
+/// One rate as a card, for a box that cannot hold five columns: the same four
+/// facts stacked, and the same two actions. A narrow box is a narrow box, not a
+/// reason to drop what a reader decides on (§6).
+class _CostRateCard extends StatelessWidget {
+  const _CostRateCard({
     required this.costRate,
     required this.isAdmin,
     required this.isMutating,
@@ -163,73 +428,84 @@ class _CostRateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      key: CostRatesScreen.rowKey(costRate.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
+    final dense = AppTypography.dense(context);
+    final floor = AppTypography.floor(context);
+    final palette = AppColors.of(context);
+    final row = costRate;
+
+    return Card(
+      key: CostRatesScreen.rowKey(row.id),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '${costRateTypeLabel(costRate.rateType)} · ${costRate.amountLabel}',
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ),
-                    if (!costRate.isCurrent) ...[
-                      const SizedBox(width: Spacing.sm),
-                      StatusChip(
-                        key: CostRatesScreen.closedChipKey(costRate.id),
-                        label: 'Closed',
-                        tone: StatusTone.neutral,
-                      ),
-                    ],
-                  ],
+                Expanded(
+                  child: Text(
+                    costRateTypeLabel(row.rateType),
+                    style: dense?.copyWith(color: palette.textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const SizedBox(height: Spacing.xs),
+                const SizedBox(width: Spacing.sm),
+                // Outside a column the figure carries its own unit (§13).
                 Text(
-                  '${costRate.scopeLabel} · ${costRate.periodLabel}',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  row.amountLabel,
+                  style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
+                  maxLines: 1,
                 ),
               ],
             ),
-          ),
-          if (isAdmin) ...[
-            OutlinedButton(
-              key: CostRatesScreen.correctKey(costRate.id),
-              onPressed: isMutating
-                  ? null
-                  : () => CostRateFormDialog.open(
-                        context,
-                        mode: CostRateFormMode.correct,
-                        scopes: scopes,
-                        costRate: costRate,
-                      ),
-              child: const Text('Correct'),
-            ),
-            const SizedBox(width: Spacing.sm),
-            OutlinedButton(
-              key: CostRatesScreen.reviseKey(costRate.id),
-              onPressed: isMutating
-                  ? null
-                  : () => CostRateFormDialog.open(
-                        context,
-                        mode: CostRateFormMode.revise,
-                        scopes: scopes,
-                        costRate: costRate,
-                      ),
-              child: const Text('Revise'),
-            ),
+            const SizedBox(height: Spacing.xs),
+            Text(row.scopeLabel, style: floor?.copyWith(color: palette.textMuted)),
+            const SizedBox(height: Spacing.xxs),
+            _periodCell(context, row),
+            if (isAdmin) ...[
+              const SizedBox(height: Spacing.sm),
+              Wrap(
+                spacing: Spacing.sm,
+                runSpacing: Spacing.sm,
+                children: [
+                  OutlinedButton(
+                    key: CostRatesScreen.correctKey(row.id),
+                    onPressed: isMutating
+                        ? null
+                        : () => CostRateFormDialog.open(
+                              context,
+                              mode: CostRateFormMode.correct,
+                              scopes: scopes,
+                              costRate: row,
+                            ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    child: const Text('Correct'),
+                  ),
+                  OutlinedButton(
+                    key: CostRatesScreen.reviseKey(row.id),
+                    onPressed: isMutating
+                        ? null
+                        : () => CostRateFormDialog.open(
+                              context,
+                              mode: CostRateFormMode.revise,
+                              scopes: scopes,
+                              costRate: row,
+                            ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    child: const Text('Revise'),
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

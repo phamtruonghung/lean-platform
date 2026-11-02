@@ -27,6 +27,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
@@ -68,8 +69,8 @@ class EmployeeSkillFormDialog extends StatefulWidget {
   static const ValueKey<String> expiresOnKey = ValueKey<String>('employee-skill-form-expires-on');
   static const ValueKey<String> evidenceRefKey = ValueKey<String>('employee-skill-form-evidence-ref');
   static const ValueKey<String> noteKey = ValueKey<String>('employee-skill-form-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('employee-skill-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('employee-skill-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('employee-skill-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('employee-skill-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('employee-skill-form-failure');
 
   /// Opens the dialog over the detail Screen — the same explicit Bloc
@@ -178,16 +179,28 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
 
     return BlocListener<EmployeeDetailBloc, EmployeeDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text(
-          _isReassessment
-              ? 'Re-assess ${widget.existing!.name} for ${widget.employee.displayName}'
-              : 'Record a skill for ${widget.employee.displayName}',
-        ),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
+      child: AppDialog(
+        title: _isReassessment
+            ? 'Re-assess ${widget.existing!.name} for ${widget.employee.displayName}'
+            : 'Record a skill for ${widget.employee.displayName}',
+        size: AppDialogSize.form,
+        // `child` last, as `sort_child_properties_last` requires.
+        actions: [
+          AppDialogAction(
+            id: 'employee-skill-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: 'employee-skill-form-submit',
+            label: _awaiting ? 'Saving…' : 'Save',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -299,21 +312,8 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                     ),
                   ),
               ],
-            ),
           ),
         ),
-        actions: [
-          TextButton(
-            key: EmployeeSkillFormDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: EmployeeSkillFormDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Save'),
-          ),
-        ],
       ),
     );
   }

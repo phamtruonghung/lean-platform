@@ -25,6 +25,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'org_unit_admin_bloc.dart';
 
 class OrgUnitImportDialog extends StatefulWidget {
@@ -33,8 +34,8 @@ class OrgUnitImportDialog extends StatefulWidget {
   final String siteId;
 
   static const ValueKey<String> payloadKey = ValueKey<String>('org-unit-import-payload');
-  static const ValueKey<String> submitKey = ValueKey<String>('org-unit-import-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('org-unit-import-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('org-unit-import-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('org-unit-import-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('org-unit-import-failure');
   static const ValueKey<String> parseFailureKey = ValueKey<String>('org-unit-import-parse-failure');
   static ValueKey<String> rowErrorKey(int row) => ValueKey<String>('org-unit-import-row-error-$row');
@@ -124,12 +125,26 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
       child: Builder(
         builder: (context) {
           final state = context.watch<OrgUnitAdminBloc>().state;
-          return AlertDialog(
-            title: const Text('Import a branch'),
-            content: SizedBox(
-              width: 520,
-              child: SingleChildScrollView(
-                child: Column(
+          return AppDialog(
+            title: 'Import a branch',
+            size: AppDialogSize.form,
+            // `child` last, as `sort_child_properties_last` requires.
+            actions: [
+              AppDialogAction(
+                id: 'org-unit-import-cancel',
+                label: 'Cancel',
+                kind: AppDialogActionKind.dismiss,
+                onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+              ),
+              AppDialogAction(
+                id: 'org-unit-import-submit',
+                label: _awaiting ? 'Importing…' : 'Import',
+                onPressed: _awaiting ? null : _submit,
+              ),
+            ],
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -188,21 +203,8 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
                         ),
                     ],
                   ],
-                ),
               ),
             ),
-            actions: [
-              TextButton(
-                key: OrgUnitImportDialog.cancelKey,
-                onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                key: OrgUnitImportDialog.submitKey,
-                onPressed: _awaiting ? null : _submit,
-                child: Text(_awaiting ? 'Importing…' : 'Import'),
-              ),
-            ],
           );
         },
       ),

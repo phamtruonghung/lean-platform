@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'directory_bloc.dart';
 import 'employment_type.dart';
 
@@ -23,8 +24,8 @@ class EmployeeFormDialog extends StatefulWidget {
   static const ValueKey<String> lastNameKey = ValueKey<String>('employee-form-last-name');
   static const ValueKey<String> employmentTypeKey = ValueKey<String>('employee-form-employment-type');
   static const ValueKey<String> workEmailKey = ValueKey<String>('employee-form-work-email');
-  static const ValueKey<String> submitKey = ValueKey<String>('employee-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('employee-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('employee-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('employee-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('employee-form-failure');
 
   /// Opens the form over the Directory. `showDialog` builds its route under
@@ -110,12 +111,27 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
     final theme = Theme.of(context);
     return BlocListener<DirectoryBloc, DirectoryState>(
       listener: _onDirectoryChanged,
-      child: AlertDialog(
-        title: const Text('Add Employee'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
+      child: AppDialog(
+        title: 'Add Employee',
+        size: AppDialogSize.form,
+        // `child` last, as `sort_child_properties_last` requires (and #398's
+        // own note records for every migrated dialog).
+        actions: [
+          AppDialogAction(
+            id: 'employee-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: 'employee-form-submit',
+            label: _awaiting ? 'Adding…' : 'Add Employee',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -187,21 +203,8 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                     ),
                   ),
               ],
-            ),
           ),
         ),
-        actions: [
-          TextButton(
-            key: EmployeeFormDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: EmployeeFormDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Adding…' : 'Add Employee'),
-          ),
-        ],
       ),
     );
   }

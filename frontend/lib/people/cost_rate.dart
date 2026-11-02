@@ -18,6 +18,8 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import 'period_format.dart';
+
 /// The four scope types the schema accepts, verbatim from `cost_rates`' own
 /// CHECK — one place for them, the same reason `employmentTypes` is a single
 /// list rather than a copy inside every dialog that offers one.
@@ -159,8 +161,9 @@ class CostRate {
   String get amountLabel =>
       costRateIsMultiplier(rateType) ? '× $amount' : '$amount $currency';
 
-  /// The period as a row reads it. An open period says so rather than showing
-  /// a blank second date, which reads as missing data.
-  String get periodLabel =>
-      effectiveTo == null ? 'From $effectiveFrom' : '$effectiveFrom to $effectiveTo';
+  /// The period as a row reads it, worded the way a person says a date
+  /// (`docs/design-language.md` §13 — `31 Jan 2026`, never `2026-01-31`). An
+  /// open period says `From …` rather than showing a blank second date, which
+  /// reads as missing data.
+  String get periodLabel => formatPeriod(from: effectiveFrom, to: effectiveTo);
 }

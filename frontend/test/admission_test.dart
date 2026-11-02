@@ -11,6 +11,7 @@ import 'package:lean_platform/home_screen.dart';
 import 'package:lean_platform/people/admission_dialog.dart';
 import 'package:lean_platform/people/employee_link_picker.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/widgets/app_dialog.dart';
 
 import 'approval_queue_test.dart' show openApprovals;
 import 'harness.dart'
@@ -250,8 +251,16 @@ void main() {
     );
     await _openDecision(tester, wire);
 
-    expect(find.textContaining('EMP-40'), findsOneWidget);
-    expect(find.textContaining('Jane Doe'), findsOneWidget);
+    // Scoped to the dialog: the queue row underneath now names the same
+    // suggestion as a chip (#392), so an unscoped `textContaining` finds two.
+    expect(
+      find.descendant(of: find.byType(AppDialog), matching: find.textContaining('EMP-40')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: find.byType(AppDialog), matching: find.textContaining('Jane Doe')),
+      findsOneWidget,
+    );
 
     await chooseRole(tester, Roles.operator);
     await tester.tap(find.byKey(AdmissionDialog.submitKey));
@@ -285,7 +294,12 @@ void main() {
     await tapIn(tester, find.byKey(EmployeeLinkPicker.resultKey('41')));
 
     expect(find.textContaining('Alex Rios'), findsOneWidget);
-    expect(find.textContaining('Jane Doe'), findsNothing);
+    // The picker cleared its own suggestion; the chip on the queue row behind
+    // this dialog is a different widget and is not what this asserts (#392).
+    expect(
+      find.descendant(of: find.byType(AppDialog), matching: find.textContaining('Jane Doe')),
+      findsNothing,
+    );
 
     await chooseRole(tester, Roles.operator);
     await tester.tap(find.byKey(AdmissionDialog.submitKey));
