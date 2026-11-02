@@ -48,6 +48,7 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_banner.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
 import '../widgets/app_table.dart';
@@ -59,6 +60,7 @@ import '../widgets/status_chip.dart';
 import 'complaint_org_unit_filter_dialog.dart';
 import 'complaints_bloc.dart';
 import 'customer_complaint.dart';
+import 'slide_show_toggle.dart';
 
 class ComplaintsScreen extends StatelessWidget {
   const ComplaintsScreen({super.key});
@@ -97,6 +99,12 @@ class ComplaintsScreen extends StatelessWidget {
   /// keyboard reaches only by tabbing through everything before it.
   static ValueKey<String> rowOpenKey(String id) => ValueKey<String>('complaint-open-$id');
 
+  /// The row's slide-show toggle (issue #418), and the banner a refused toggle
+  /// renders in.
+  static ValueKey<String> slideShowKey(String id) => ValueKey<String>('complaint-slide-show-$id');
+  static const ValueKey<String> slideShowFailureKey =
+      ValueKey<String>('complaint-slide-show-failure');
+
   /// The row's height: a control is 44 and the row pads it by [Spacing.xs]
   /// either side. A card row carries the same controls, so the two agree.
   static const double rowHeight = AppTouchTarget.min + 2 * Spacing.xs;
@@ -111,6 +119,13 @@ class ComplaintsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Header(state: state),
+            if (state is ComplaintsLoaded && state.slideShowFailure != null)
+              _SlideShowFailure(
+                message: state.slideShowFailure!,
+                maxWidth: maxWidth,
+                onDismiss: () =>
+                    context.read<ComplaintsBloc>().add(const ComplaintsRefreshed()),
+              ),
             Expanded(
               child: switch (state) {
                 ComplaintsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
@@ -394,7 +409,9 @@ double _openColumnWidth(BuildContext context) {
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,
   )..layout();
-  return painter.width + 2 * Spacing.xl + Spacing.sm;
+  // The Open button and the slide-show toggle beside it (issue #418); see
+  // `nonconformances_screen.dart`'s own note on the same measurement.
+  return painter.width + 2 * Spacing.xl + Spacing.sm + AppTouchTarget.min + Spacing.xs;
 }
 
 /// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
@@ -527,13 +544,27 @@ class _ComplaintTableRow extends StatelessWidget {
           ),
           _shrinkWrapTargets(
             context,
-            OutlinedButton(
-              key: ComplaintsScreen.rowOpenKey(row.id),
-              onPressed: () => context.go('${Routes.complaints}/${row.id}'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
-              ),
-              child: const Text('Open'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SlideShowToggle(
+                  key: ComplaintsScreen.slideShowKey(row.id),
+                  inSlideShow: row.inSlideShow,
+                  busy: _slideShowPending(context, row.id),
+                  onChanged: (chosen) => context.read<ComplaintsBloc>().add(
+                        ComplaintSlideShowToggled(id: row.id, chosen: chosen),
+                      ),
+                ),
+                const SizedBox(width: Spacing.xs),
+                OutlinedButton(
+                  key: ComplaintsScreen.rowOpenKey(row.id),
+                  onPressed: () => context.go('${Routes.complaints}/${row.id}'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  child: const Text('Open'),
+                ),
+              ],
             ),
           ),
         ],
@@ -606,15 +637,71 @@ class _ComplaintCard extends StatelessWidget {
                 style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
               ),
               const SizedBox(height: Spacing.sm),
-              OutlinedButton(
-                key: ComplaintsScreen.rowOpenKey(row.id),
-                onPressed: () => context.go('${Routes.complaints}/${row.id}'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
-                ),
-                child: const Text('Open'),
+              Row(
+                // Open at the card's own left padding first, then the slide-show
+                // toggle; see `nonconformances_screen.dart`'s note on the same
+                // row.
+                children: [
+                  OutlinedButton(
+                    key: ComplaintsScreen.rowOpenKey(row.id),
+                    onPressed: () => context.go('${Routes.complaints}/${row.id}'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    child: const Text('Open'),
+                  ),
+                  const SizedBox(width: Spacing.xs),
+                  SlideShowToggle(
+                    key: ComplaintsScreen.slideShowKey(row.id),
+                    inSlideShow: row.inSlideShow,
+                    busy: _slideShowPending(context, row.id),
+                    onChanged: (chosen) => context.read<ComplaintsBloc>().add(
+                          ComplaintSlideShowToggled(id: row.id, chosen: chosen),
+                        ),
+                  ),
+                ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Whether this row's slide-show request is in flight (issue #418) — the
+/// complaint's half of `NonconformancesScreen`'s own helper, and `select` for
+/// the same reason: only the row that changed rebuilds.
+bool _slideShowPending(BuildContext context, String id) =>
+    context.select<ComplaintsBloc, bool>((bloc) {
+      final state = bloc.state;
+      return state is ComplaintsLoaded && state.slideShowPending.contains(id);
+    });
+
+/// A refused slide-show toggle, above the register (design-language §12).
+class _SlideShowFailure extends StatelessWidget {
+  const _SlideShowFailure({
+    required this.message,
+    required this.maxWidth,
+    required this.onDismiss,
+  });
+
+  final String message;
+  final double maxWidth;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AppPageFrame(
+        maxWidth: maxWidth,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.md),
+          child: AppBanner(
+            key: ComplaintsScreen.slideShowFailureKey,
+            tone: StatusTone.danger,
+            message: message,
+            onDismiss: onDismiss,
           ),
         ),
       ),

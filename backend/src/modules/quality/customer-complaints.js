@@ -152,6 +152,9 @@ const COMPLAINT_COLUMNS = `
   to_char(cc.response_due_at AT TIME ZONE s.timezone, 'YYYY-MM-DD') AS response_due_date,
   cc.first_response_at, cc.is_warranty, cc.claim_cost, cc.currency,
   cc.closed_at, cc.response_note, cc.created_at, cc.updated_at,
+  -- The slide show's own two columns (issue #418); see nonconformances.js's own
+  -- note on the same pair.
+  cc.in_slide_show, cc.slide_show_position,
   -- The two facts a reader asks about a deadline: whether it has been missed by
   -- a complaint that is still being worked, and by how many days a reply is (or
   -- was) late.
@@ -217,6 +220,11 @@ function toComplaint(row) {
     currency: row.currency,
     closedAt: row.closed_at ?? null,
     responseNote: row.response_note ?? null,
+    inSlideShow: row.in_slide_show === true,
+    slideShowPosition:
+      row.slide_show_position === null || row.slide_show_position === undefined
+        ? null
+        : Number(row.slide_show_position),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     // The Non-conformance that controls the product this complaint is about —

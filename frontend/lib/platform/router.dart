@@ -122,6 +122,8 @@ import '../quality/complaints_bloc.dart';
 import '../quality/complaints_screen.dart';
 import '../quality/customers_bloc.dart';
 import '../quality/customers_screen.dart';
+import '../quality/slide_show_bloc.dart';
+import '../quality/slide_show_screen.dart';
 import '../quality/supplier_ncr_detail_bloc.dart';
 import '../quality/supplier_ncr_detail_screen.dart';
 import '../quality/supplier_ncr_disposition_dialog.dart';
@@ -299,6 +301,12 @@ abstract final class Routes {
   /// three writes a reader makes from it (`/:id/respond`,
   /// `/:id/nonconformance`, `/:id/link`) — all addressed, per ADR-0021.
   static const String complaints = '/complaints';
+
+  /// The Quality slide show (issue #418): one Site's chosen Non-conformances
+  /// and customer complaints, one picture at a time. Its own address because
+  /// it is a Screen a supervisor leaves open on a wall — bookmarked, linked,
+  /// and reached without going through a register.
+  static const String slideShow = '/slide-show';
 
   /// The Supplier list (issue #215), at its own address so it can be linked to
   /// or bookmarked. Defining and correcting a Supplier are dialogs over it
@@ -1215,6 +1223,26 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const CustomersStarted()),
                 child: CustomersScreen(isAdmin: account.account.role == Roles.admin),
+              );
+            },
+          ),
+          // The slide show (issue #418). Its own Bloc beside the route, created
+          // once: the Site, the running order and the play state are the
+          // Screen's whole memory, and leaving the Screen should forget them.
+          // The Screen's keys are wrapped here rather than inside it so the
+          // Bloc is the one the route created.
+          GoRoute(
+            path: Routes.slideShow,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const SizedBox.shrink();
+              return BlocProvider<SlideShowBloc>(
+                create: (context) => SlideShowBloc(
+                  qualityApi: context.read<QualityApi>(),
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const SlideShowStarted()),
+                child: const SlideShowShortcuts(child: SlideShowScreen()),
               );
             },
           ),

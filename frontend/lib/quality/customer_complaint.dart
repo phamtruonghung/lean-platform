@@ -141,6 +141,7 @@ class CustomerComplaint {
     this.isWarranty = false,
     this.closedAt,
     this.responseNote,
+    this.inSlideShow = false,
     this.nonconformance,
   });
 
@@ -175,6 +176,7 @@ class CustomerComplaint {
         isWarranty: json['isWarranty'] == true,
         closedAt: json['closedAt'] as String?,
         responseNote: json['responseNote'] as String?,
+        inSlideShow: json['inSlideShow'] == true,
         nonconformance: json['nonconformance'] == null
             ? null
             : ComplaintNonconformance.fromJson(
@@ -236,6 +238,9 @@ class CustomerComplaint {
   final String? firstResponseAt;
   final bool isWarranty;
   final String? closedAt;
+
+  /// Whether this complaint is on its Site's slide show (issue #418).
+  final bool inSlideShow;
 
   /// What was said back, written when the complaint was closed. Required to
   /// close one at all (customer-complaints.js), which is the whole point of

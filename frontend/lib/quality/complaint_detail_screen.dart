@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -43,6 +44,12 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'complaint_detail_bloc.dart';
 import 'customer_complaint.dart';
+import 'issue_image.dart';
+import 'issue_images_bloc.dart';
+import 'issue_images_section.dart';
+import 'quality_api.dart';
+import 'quality_photo_picker.dart';
+import 'slide_show_toggle.dart';
 
 class ComplaintDetailScreen extends StatelessWidget {
   const ComplaintDetailScreen({super.key, required this.complaintId});
@@ -58,6 +65,9 @@ class ComplaintDetailScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('complaint-detail-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('complaint-detail-retry');
   static const ValueKey<String> backKey = ValueKey<String>('complaint-detail-back');
+
+  /// The slide-show switch on this record (issue #418).
+  static const ValueKey<String> slideShowKey = ValueKey<String>('complaint-detail-slide-show');
   static const ValueKey<String> statusKey = ValueKey<String>('complaint-detail-status');
   static const ValueKey<String> overdueKey = ValueKey<String>('complaint-detail-overdue');
   static const ValueKey<String> failureKey = ValueKey<String>('complaint-detail-failure');
@@ -176,6 +186,13 @@ class _Loaded extends StatelessWidget {
                   sections: [
                     _ControlSection(complaint: complaint),
                     _ResponseSection(complaint: complaint),
+                  ],
+                ),
+                const SizedBox(height: Spacing.md),
+                _SectionRows(
+                  wide: wide,
+                  sections: [
+                    _PicturesSection(complaint: complaint),
                   ],
                 ),
                 if (failure != null)
@@ -345,6 +362,21 @@ class _SummaryCard extends StatelessWidget {
                 fact('Type', row.typeLabel),
               ],
             ),
+            const SizedBox(height: Spacing.sm),
+            // The slide-show switch, beside the record's own facts (issue #418)
+            // — see `nonconformance_detail_screen.dart` for the same choice.
+            SlideShowToggle(
+              key: ComplaintDetailScreen.slideShowKey,
+              expanded: true,
+              inSlideShow: row.inSlideShow,
+              busy: context.select<ComplaintDetailBloc, bool>((bloc) {
+                final state = bloc.state;
+                return state is ComplaintDetailLoaded && state.isMutating;
+              }),
+              onChanged: (chosen) => context.read<ComplaintDetailBloc>().add(
+                    ComplaintSlideShowToggled(id: row.id, chosen: chosen),
+                  ),
+            ),
           ],
         ),
       ),
@@ -480,6 +512,33 @@ class _ResponseSection extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// The complaint's pictures (issue #418): the section, with a Bloc of its own
+/// per record — the same one the Non-conformance detail Screen uses.
+class _PicturesSection extends StatelessWidget {
+  const _PicturesSection({required this.complaint});
+
+  final CustomerComplaint complaint;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider<IssueImagesBloc>(
+      create: (context) => IssueImagesBloc(
+        qualityApi: context.read<QualityApi>(),
+        authGateway: context.read<AuthGateway>(),
+        kind: IssueKind.complaint,
+        issueId: complaint.id,
+      )..add(const IssueImagesStarted()),
+      child: Builder(
+        builder: (context) => IssueImagesSection(
+          bloc: context.read<IssueImagesBloc>(),
+          canWrite: true,
+          picker: context.read<QualityPhotoPicker>(),
+        ),
+      ),
     );
   }
 }

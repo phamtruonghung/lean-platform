@@ -373,6 +373,25 @@ grant one and their name stays on the record.
 _Avoid_: Deviation (that is permission granted before the product is made),
 waiver, use-as-is approval
 
+**Picture**:
+A photograph of the problem, kept against the Non-conformance or the Customer
+complaint it belongs to and shown on that record's own Screen with an optional
+caption. A defect is visual — "flash on the mating face" means something only to
+someone who can see the face — so a Picture is the part of the record the words
+cannot carry. It is bounded on purpose: JPEG, PNG or WebP, at most 5 MiB, no
+longer than 1600 px on its longest edge, held in the Platform's own database and
+deleted with the record it was taken for. It is not a document and not a file
+store.
+_Avoid_: Image, photo, attachment, document, upload
+
+**Slide show**:
+The Quality issues chosen for one Site, played on a screen on the floor one
+Picture at a time, for as long as somebody leaves it running. It is a chosen set
+rather than a report: a person puts an issue on the wall from its register or its
+own Screen, and sets the order from the show itself. An issue with no Picture
+cannot be chosen, because a slide is a Picture.
+_Avoid_: Slideshow, slides, carousel, kiosk mode, display board
+
 ### Safety
 
 **Safety incident**:

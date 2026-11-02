@@ -45,6 +45,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -56,8 +57,14 @@ import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'defect_code.dart';
+import 'issue_image.dart';
+import 'issue_images_bloc.dart';
+import 'issue_images_section.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
+import 'quality_api.dart';
+import 'quality_photo_picker.dart';
+import 'slide_show_toggle.dart';
 
 class NonconformanceDetailScreen extends StatelessWidget {
   const NonconformanceDetailScreen({super.key, required this.nonconformanceId});
@@ -69,6 +76,10 @@ class NonconformanceDetailScreen extends StatelessWidget {
   static const double maxWidth = 1040;
 
   static const ValueKey<String> backKey = ValueKey<String>('nonconformance-back');
+
+  /// The slide-show switch on this record (issue #418).
+  static const ValueKey<String> slideShowKey =
+      ValueKey<String>('nonconformance-detail-slide-show');
   static const ValueKey<String> statusKey = ValueKey<String>('nonconformance-detail-status');
   static const ValueKey<String> severityKey = ValueKey<String>('nonconformance-detail-severity');
   static const ValueKey<String> filedKey = ValueKey<String>('nonconformance-detail-filed');
@@ -261,6 +272,13 @@ class _Loaded extends StatelessWidget {
                           _CorrectionsSection(row: row),
                         ],
                       ),
+                      const SizedBox(height: Spacing.md),
+                      _SectionRows(
+                        wide: wide,
+                        sections: [
+                          _PicturesSection(row: row),
+                        ],
+                      ),
                       if (state.mutationFailure != null)
                         Padding(
                           key: NonconformanceDetailScreen.failureKey,
@@ -433,6 +451,23 @@ class _SummaryCard extends StatelessWidget {
                   value: row.filedAgainst,
                 ),
               ],
+            ),
+            const SizedBox(height: Spacing.sm),
+            // The slide-show switch belongs beside the record's own facts
+            // rather than in a card of its own (issue #418): it is a fact about
+            // this record, and a separate card pushed every section below it
+            // down the page.
+            SlideShowToggle(
+              key: NonconformanceDetailScreen.slideShowKey,
+              expanded: true,
+              inSlideShow: row.inSlideShow,
+              busy: context.select<NonconformanceDetailBloc, bool>((bloc) {
+                final state = bloc.state;
+                return state is NonconformanceDetailLoaded && state.isMutating;
+              }),
+              onChanged: (chosen) => context.read<NonconformanceDetailBloc>().add(
+                    NonconformanceDetailSlideShowToggled(id: row.id, chosen: chosen),
+                  ),
             ),
           ],
         ),
@@ -920,3 +955,30 @@ StatusTone _severityTone(String severity) => switch (severity) {
 /// A quantity without a trailing `.0` — 12, not 12.0.
 String _number(double value) =>
     value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toString();
+
+/// The record's pictures (issue #418) — the shared section with a Bloc of its
+/// own for this record.
+class _PicturesSection extends StatelessWidget {
+  const _PicturesSection({required this.row});
+
+  final Nonconformance row;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider<IssueImagesBloc>(
+      create: (context) => IssueImagesBloc(
+        qualityApi: context.read<QualityApi>(),
+        authGateway: context.read<AuthGateway>(),
+        kind: IssueKind.nonconformance,
+        issueId: row.id,
+      )..add(const IssueImagesStarted()),
+      child: Builder(
+        builder: (context) => IssueImagesSection(
+          bloc: context.read<IssueImagesBloc>(),
+          canWrite: true,
+          picker: context.read<QualityPhotoPicker>(),
+        ),
+      ),
+    );
+  }
+}

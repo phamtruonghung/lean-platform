@@ -22,6 +22,7 @@ import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import 'defect_code.dart';
+import 'issue_image.dart';
 import 'nonconformance.dart';
 import 'product.dart';
 import 'quality_api.dart';
@@ -130,6 +131,20 @@ class NonconformanceRecordConfirmed extends NonconformancesEvent {
   final String? detectedAt;
 }
 
+/// Put this Non-conformance on the Site's slide show, or take it off
+/// (`PUT /api/quality/slide-show/nonconformance/:id`) — the register row's own
+/// toggle, added by issue #418.
+///
+/// The row is re-read afterwards rather than patched in place: the API's answer
+/// carries the flag and nothing else, and the register's own row is the
+/// authority on what the toggle should now say.
+class NonconformanceSlideShowToggled extends NonconformancesEvent {
+  const NonconformanceSlideShowToggled({required this.id, required this.chosen});
+
+  final String id;
+  final bool chosen;
+}
+
 sealed class NonconformancesState {
   const NonconformancesState();
 }
@@ -155,6 +170,8 @@ class NonconformancesLoaded extends NonconformancesState {
     required this.defectCodes,
     this.isRecording = false,
     this.recordFailure,
+    this.slideShowPending = const {},
+    this.slideShowFailure,
   });
 
   final List<Site> sites;
@@ -180,6 +197,14 @@ class NonconformancesLoaded extends NonconformancesState {
   /// open so the caller can fix the one field that was wrong.
   final String? recordFailure;
 
+  /// The rows whose slide-show toggle is in flight (issue #418), so the row's
+  /// own control can show it is working rather than look stuck.
+  final Set<String> slideShowPending;
+
+  /// Why the last toggle did not land, in the API's own words. Shown above the
+  /// register, because the row that caused it may have scrolled away.
+  final String? slideShowFailure;
+
   Site? get site {
     for (final site in sites) {
       if (site.id == siteId) return site;
@@ -194,6 +219,8 @@ class NonconformancesLoaded extends NonconformancesState {
     bool? truncated,
     bool? isRecording,
     String? recordFailure,
+    Set<String>? slideShowPending,
+    String? slideShowFailure,
   }) =>
       NonconformancesLoaded(
         sites: sites,
@@ -207,6 +234,8 @@ class NonconformancesLoaded extends NonconformancesState {
         // Always overwritten, never carried forward — the same rule
         // `ProductsLoaded.copyWith` gives its own failure.
         recordFailure: recordFailure,
+        slideShowPending: slideShowPending ?? this.slideShowPending,
+        slideShowFailure: slideShowFailure,
       );
 }
 
@@ -230,6 +259,7 @@ class NonconformancesBloc extends Bloc<NonconformancesEvent, NonconformancesStat
     on<NonconformancesDateRangeChanged>(_onDateRangeChanged);
     on<NonconformancesFiltersCleared>(_onFiltersCleared);
     on<NonconformanceRecordConfirmed>(_onRecordConfirmed);
+    on<NonconformanceSlideShowToggled>(_onSlideShowToggled);
   }
 
   final QualityApi _api;
@@ -511,6 +541,52 @@ class NonconformancesBloc extends Bloc<NonconformancesEvent, NonconformancesStat
       final settled = state;
       if (settled is! NonconformancesLoaded) return;
       emit(settled.copyWith(isRecording: false, recordFailure: error.message));
+    }
+  }
+
+  /// The register row's slide-show toggle (issue #418): put the record on the
+  /// Site's show, or take it off, then re-read the row so the control says what
+  /// the server says.
+  ///
+  /// Only the one row is re-read, not the whole register: a toggle is a small
+  /// change to a record the caller is looking at, and redrawing the list would
+  /// throw away their scroll position for it.
+  Future<void> _onSlideShowToggled(
+    NonconformanceSlideShowToggled event,
+    Emitter<NonconformancesState> emit,
+  ) async {
+    final current = state;
+    if (current is! NonconformancesLoaded) return;
+    if (current.slideShowPending.contains(event.id)) return;
+
+    final token = _auth.currentAccessToken;
+    if (token == null) {
+      emit(current.copyWith(slideShowFailure: signedOutMessage));
+      return;
+    }
+
+    emit(current.copyWith(
+      slideShowPending: {...current.slideShowPending, event.id},
+    ));
+    try {
+      await _api.setSlideShowChoice(token, IssueKind.nonconformance, event.id, event.chosen);
+      final row = await _api.fetchNonconformance(token, event.id);
+      final settled = state;
+      if (settled is! NonconformancesLoaded) return;
+      emit(settled.copyWith(
+        nonconformances: [
+          for (final nonconformance in settled.nonconformances)
+            if (nonconformance.id == event.id) row else nonconformance,
+        ],
+        slideShowPending: {...settled.slideShowPending}..remove(event.id),
+      ));
+    } on QualityApiException catch (error) {
+      final settled = state;
+      if (settled is! NonconformancesLoaded) return;
+      emit(settled.copyWith(
+        slideShowPending: {...settled.slideShowPending}..remove(event.id),
+        slideShowFailure: error.message,
+      ));
     }
   }
 }

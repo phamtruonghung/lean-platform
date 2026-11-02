@@ -37,6 +37,8 @@ in the table that holds it. **It is not a file-storage capability** — no
 documents, no scans, no certificates, no attachment on any record — and the
 test that guards the rule is strengthened rather than deleted: a second table
 with a `bytea` column fails the suite and has to argue for itself.
+*(ADR-0059 is the first to argue for itself: a picture of a Quality issue, on
+the same terms — bounded, single-purpose, in the table that holds it.)*
 
 **The table is append-only: one row per image ever applied, and no row is ever
 written twice.** The current Signature is the newest *kept* row with nothing

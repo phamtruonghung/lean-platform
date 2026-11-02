@@ -26,6 +26,8 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 import 'package:lean_platform/quality/quality_api.dart';
+import 'package:lean_platform/quality/quality_photo.dart';
+import 'package:lean_platform/quality/quality_photo_picker.dart';
 import 'package:lean_platform/kpi/kpi_api.dart';
 import 'package:lean_platform/production/production_api.dart';
 import 'package:lean_platform/safety/safety_api.dart';
@@ -66,6 +68,25 @@ Future<void> loadAppFonts() async {
   await loader.load();
   _fontsLoaded = true;
 }
+
+/// A real, decodable 1×1 PNG — the bytes every picture address in [FakeWire]
+/// answers with (issue #418).
+///
+/// A fixture rather than a placeholder string because `Image.memory` decodes
+/// its argument: garbage bytes throw inside the widget, which a widget test
+/// sees as a rendering exception rather than as the picture it asked for. 67
+/// bytes is the whole of a transparent single pixel.
+final Uint8List onePixelPng = Uint8List.fromList(const <int>[
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, //
+  0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+  0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+  0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+  0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+  0x42, 0x60, 0x82,
+]);
 
 // `selfId` is '1' by default, and the fixtures that have to avoid it live in
 // the calling test files rather than here: they use ids '7'/'8'/'9'/'10'+, so
@@ -5366,9 +5387,177 @@ class FakeWire {
     return stored;
   }
 
+  // -------------------------------------------------------------------------
+  // Pictures of a Quality issue, and the Site's slide show (issue #418).
+  //
+  // Their own section rather than branches inside the two registers' blocks:
+  // the picture addresses hang off the same records, and the show is a Site
+  // read, so putting them here keeps `_qualityPictures` the one place that
+  // knows the four shapes and lets the existing register handlers stay as they
+  // are. `issueImages` is what each record holds, keyed `<kind>:<id>`; a test
+  // seeds it, or uploads into it.
+  // -------------------------------------------------------------------------
+
+  /// The pictures each record holds, keyed `'<kind>:<id>'`.
+  final Map<String, List<Map<String, dynamic>>> issueImages = {};
+
+  /// The bytes every picture address answers with. One picture's worth is
+  /// enough for a widget test, and a real PNG so `Image.memory` can decode it.
+  Uint8List issueImageBytes = onePixelPng;
+
+  /// One Site's chosen issues, as `GET /sites/:siteId/slide-show` sends them.
+  List<Map<String, dynamic>> slideShowIssues = [];
+
+  int slideShowStatus = 200;
+  String slideShowMessage = 'The slide show is unavailable.';
+  int uploadImageStatus = 201;
+  String uploadImageMessage = 'that picture is 9000000 bytes; the most a slide can hold is 5242880';
+  int slideShowChoiceStatus = 200;
+  String slideShowChoiceMessage = "Outside the caller's granted Org Units";
+  int deleteImageStatus = 204;
+
+  /// What was sent, for a test that asks what the Screen asked for.
+  final List<(String, String, String?)> uploadImageRequests = [];
+
+  /// (kind, id, chosen) for every slide-show toggle.
+  final List<(String, String, bool)> slideShowChoiceRequests = [];
+
+  /// The ordered list every `PUT .../slide-show/order` sent.
+  final List<List<Map<String, dynamic>>> slideShowOrderRequests = [];
+
+  http.Response? _qualityPictures(http.Request request) {
+    final path = request.url.path;
+    final method = request.method;
+
+    // One picture's bytes, and its removal: `.../:id/images/:imageId`.
+    final imageAddress = RegExp(
+      r'^/api/quality/(nonconformances|complaints)/([^/]+)/images/([^/]+)$',
+    ).firstMatch(path);
+    if (imageAddress != null) {
+      final id = imageAddress.group(3)!;
+      if (method == 'GET') {
+        return http.Response.bytes(issueImageBytes, 200, headers: {'content-type': 'image/png'});
+      }
+      if (method == 'DELETE') {
+        if (deleteImageStatus != 204) {
+          return http.Response(jsonEncode({'message': "Outside the caller's granted Org Units"}), deleteImageStatus);
+        }
+        final key = '${_kindOf(imageAddress.group(1)!)}:${imageAddress.group(2)!}';
+        issueImages[key] = [
+          for (final image in issueImages[key] ?? const <Map<String, dynamic>>[])
+            if (image['id'] != id) image,
+        ];
+        return http.Response('', 204);
+      }
+    }
+
+    // The list and the upload: `.../:id/images`.
+    final listAddress = RegExp(
+      r'^/api/quality/(nonconformances|complaints)/([^/]+)/images$',
+    ).firstMatch(path);
+    if (listAddress != null) {
+      final key = '${_kindOf(listAddress.group(1)!)}:${listAddress.group(2)!}';
+      if (method == 'GET') {
+        return http.Response(jsonEncode({'images': issueImages[key] ?? const []}), 200);
+      }
+      if (method == 'POST') {
+        uploadImageRequests.add((
+          _kindOf(listAddress.group(1)!),
+          listAddress.group(2)!,
+          request.url.queryParameters['caption'],
+        ));
+        if (uploadImageStatus != 201) {
+          return http.Response(jsonEncode({'message': uploadImageMessage}), uploadImageStatus);
+        }
+        final rows = [...(issueImages[key] ?? const <Map<String, dynamic>>[])];
+        final image = {
+          'id': '${rows.length + 1}',
+          'kind': _kindOf(listAddress.group(1)!),
+          'contentType': request.headers['content-type'] ?? 'image/png',
+          'width': 800,
+          'height': 600,
+          'bytes': request.bodyBytes.length,
+          'caption': request.url.queryParameters['caption'],
+          'createdAt': '2026-11-02T08:00:00.000Z',
+        };
+        issueImages[key] = [...rows, image];
+        return http.Response(jsonEncode({'image': image}), 201);
+      }
+    }
+
+    // The order the show plays in.
+    final orderAddress = RegExp(r'^/api/quality/sites/([^/]+)/slide-show/order$').firstMatch(path);
+    if (orderAddress != null && method == 'PUT') {
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      final slides = (body['slides'] as List<dynamic>).cast<Map<String, dynamic>>();
+      slideShowOrderRequests.add(slides);
+      final reordered = [
+        for (var index = 0; index < slides.length; index++)
+          for (final issue in slideShowIssues)
+            if (issue['kind'] == slides[index]['kind'] && issue['id'] == slides[index]['id'])
+              {...issue, 'position': index + 1},
+      ];
+      slideShowIssues = reordered;
+      return http.Response(jsonEncode({'siteId': orderAddress.group(1), 'issues': slideShowIssues}), 200);
+    }
+
+    // One Site's show.
+    final showAddress = RegExp(r'^/api/quality/sites/([^/]+)/slide-show$').firstMatch(path);
+    if (showAddress != null && method == 'GET') {
+      slideShowSiteRequests.add(showAddress.group(1)!);
+      if (slideShowStatus != 200) {
+        return http.Response(jsonEncode({'message': slideShowMessage}), slideShowStatus);
+      }
+      return http.Response(
+        jsonEncode({'siteId': showAddress.group(1), 'issues': slideShowIssues}),
+        200,
+      );
+    }
+
+    // Choose an issue, or take it off the wall.
+    final choiceAddress =
+        RegExp(r'^/api/quality/slide-show/(nonconformance|complaint)/([^/]+)$').firstMatch(path);
+    if (choiceAddress != null && method == 'PUT') {
+      final kind = choiceAddress.group(1)!;
+      final id = choiceAddress.group(2)!;
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      final chosen = body['chosen'] == true;
+      slideShowChoiceRequests.add((kind, id, chosen));
+      if (slideShowChoiceStatus != 200) {
+        return http.Response(jsonEncode({'message': slideShowChoiceMessage}), slideShowChoiceStatus);
+      }
+      // The record's own flag is what the register row and the detail Screen
+      // re-read, so the fake moves it too — otherwise a Screen that re-reads
+      // (as the real one does) would answer the old value and the test would
+      // be asserting a lie.
+      if (kind == 'nonconformance') {
+        final row = nonconformanceById(id);
+        if (row != null) _replaceNonconformance(id, {...row, 'inSlideShow': chosen});
+      } else {
+        final row = complaintById(id);
+        if (row != null) _replaceComplaint(id, {...row, 'inSlideShow': chosen});
+      }
+      return http.Response(
+        jsonEncode({'kind': kind, 'id': id, 'inSlideShow': chosen, 'position': chosen ? 1 : null}),
+        200,
+      );
+    }
+
+    return null;
+  }
+
+  String _kindOf(String pathSegment) =>
+      pathSegment == 'nonconformances' ? 'nonconformance' : 'complaint';
+
+  /// The siteId of every `GET .../slide-show`, so a test can prove which Site
+  /// the wall asked about.
+  final List<String> slideShowSiteRequests = [];
+
   http.Client get client => MockClient((request) async {
         final path = request.url.path;
         requests.add('${request.method} $path');
+        final pictureAnswer = _qualityPictures(request);
+        if (pictureAnswer != null) return pictureAnswer;
         if (path == '/api/maintenance/floor/work-orders') {
           floorReads.add(request.headers['x-floor-device'] ?? '');
           if (floorGate != null) await floorGate!.future;
@@ -10645,6 +10834,37 @@ class FakeSignatureFilePicker implements SignatureFilePicker {
   }
 }
 
+/// A [QualityPhotoPicker] that answers with whatever the test says the person
+/// chose (null: they chose nothing, a thrown exception: the file was not a
+/// picture), and counts how often it was asked (issue #418).
+class FakeQualityPhotoPicker implements QualityPhotoPicker {
+  FakeQualityPhotoPicker({this.chosen, this.refusal});
+
+  PickedPhoto? chosen;
+
+  /// Thrown instead of answering, when a test is about a refused file.
+  QualityPhotoException? refusal;
+
+  int asked = 0;
+
+  @override
+  Future<PickedPhoto?> pickPhoto() async {
+    asked += 1;
+    if (refusal != null) throw refusal!;
+    return chosen;
+  }
+}
+
+/// A picture the fake picker can hand back: the harness's real 1×1 PNG, so a
+/// thumbnail built from it actually decodes.
+PickedPhoto fakePickedPhoto({String contentType = 'image/png', Uint8List? bytes}) =>
+    PickedPhoto(
+      bytes: bytes ?? onePixelPng,
+      contentType: contentType,
+      width: 1,
+      height: 1,
+    );
+
 class FakeAuthGateway implements AuthGateway {
   FakeAuthGateway({String? accessToken}) : _token = accessToken;
 
@@ -10767,6 +10987,7 @@ Future<void> pumpApp(
   required http.Client client,
   FloorDeviceGateway? floorDeviceGateway,
   SignatureFilePicker? signatureFilePicker,
+  QualityPhotoPicker? qualityPhotoPicker,
   String? initialLocation,
   bool settle = true,
 }) async {
@@ -10791,6 +11012,8 @@ Future<void> pumpApp(
       floorDeviceGateway: floorDeviceGateway ?? FakeFloorDeviceGateway(),
       // The file input a browser would show, faked: a test says what was chosen.
       signatureFilePicker: signatureFilePicker ?? FakeSignatureFilePicker(),
+      // Issue #418's own file input, faked at the same seam.
+      qualityPhotoPicker: qualityPhotoPicker ?? FakeQualityPhotoPicker(),
       initialLocation: initialLocation,
     ),
   );

@@ -181,7 +181,7 @@ test('no view references an attachments relation', async () => {
   assert.deepStrictEqual(rows, []);
 });
 
-test('employee_signatures is the only table in the schema with a bytea column', async () => {
+test('exactly two named tables carry a bytea column', async () => {
   const { rows } = await pool.query(
     `SELECT c.table_name, c.column_name
        FROM information_schema.columns c
@@ -191,7 +191,15 @@ test('employee_signatures is the only table in the schema with a bytea column', 
         AND c.table_schema NOT IN ('pg_catalog', 'information_schema')
       ORDER BY c.table_name, c.column_name`
   );
-  assert.deepStrictEqual(rows, [{ table_name: 'employee_signatures', column_name: 'image' }]);
+  // Two, and both named. ADR-0052 made the Signature the schema's one image;
+  // ADR-0059 records the second — a picture of a Quality issue — and the reason
+  // it is a bounded picture rather than a file store. The assertion stays an
+  // exact list rather than a count, so a third exception has to be argued in an
+  // ADR before it can pass.
+  assert.deepStrictEqual(rows, [
+    { table_name: 'employee_signatures', column_name: 'image' },
+    { table_name: 'quality_issue_images', column_name: 'image' }
+  ]);
 });
 
 test('no directory_user_id column exists anywhere in the schema', async () => {

@@ -451,6 +451,7 @@ class Nonconformance {
     required this.dispositions,
     required this.corrections,
     required this.concerns,
+    this.inSlideShow = false,
   });
 
   factory Nonconformance.fromJson(Map<String, dynamic> json) => Nonconformance(
@@ -488,6 +489,10 @@ class Nonconformance {
         shiftCode: json['shiftCode'] as String?,
         shiftName: json['shiftName'] as String?,
         closedAt: json['closedAt'] as String?,
+        // Issue #418: whether this record is on its Site's slide show. Older
+        // fixtures and any response from before the column existed read as
+        // "not chosen", which is the column's own default.
+        inSlideShow: json['inSlideShow'] == true,
         quantityChanges: [
           for (final change in (json['quantityChanges'] as List<dynamic>? ?? const []))
             QuantityChange.fromJson(change as Map<String, dynamic>),
@@ -570,6 +575,11 @@ class Nonconformance {
   /// had a Disposition, or when a holder of Quality authority cancelled it
   /// (issue #206). Null while either has still to happen.
   final String? closedAt;
+
+  /// Whether this record is on its Site's slide show (issue #418) — the flag
+  /// the register row's toggle and the detail Screen's switch both read and
+  /// write.
+  final bool inSlideShow;
 
   final List<QuantityChange> quantityChanges;
 

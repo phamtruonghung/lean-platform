@@ -41,6 +41,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -48,6 +49,7 @@ import '../maintenance/maintenance.dart';
 import 'customer.dart';
 import 'customer_complaint.dart';
 import 'defect_code.dart';
+import 'issue_image.dart';
 import 'nonconformance.dart';
 import 'product.dart';
 import 'supplier.dart';
@@ -1267,6 +1269,183 @@ class QualityApi {
     try {
       final answer = jsonDecode(response.body) as Map<String, dynamic>;
       return SupplierNcr.fromJson(answer['supplierNcr'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Pictures of an issue, and the Site's slide show (issue #418)
+  // -------------------------------------------------------------------------
+  //
+  // The picture addresses hang off the record itself
+  // (`/api/quality/nonconformances/:id/images` and `/complaints/:id/images`,
+  // the same four under each), and the show is per Site — the same scope its
+  // registers use. [IssueKind] names both facts once so a caller never
+  // assembles a path by hand.
+
+  String _picturePath(String kind, String issueId) =>
+      '/api/quality/${IssueKind.path(kind)}/$issueId/images';
+
+  /// One issue's pictures, oldest first — metadata only. The bytes come from
+  /// [fetchIssueImageBytes], one picture at a time, so a register of thumbnails
+  /// is not a six-megabyte JSON response.
+  Future<List<IssueImage>> fetchIssueImages(
+    String accessToken,
+    String kind,
+    String issueId,
+  ) async {
+    final path = _picturePath(kind, issueId);
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final row in body['images'] as List<dynamic>)
+          IssueImage.fromJson(row as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Stores one picture against an issue, sent as the request body with its own
+  /// `Content-Type` — the shape `image-file.js` reads.
+  ///
+  /// The API refuses a body that is not one of the three formats (415 or 400),
+  /// one whose bytes disagree with its declared type (400), one over a 1600 px
+  /// edge or 5 MiB (413), and a caller without a write Grant reaching the
+  /// record's Org Unit (403) — each with its own sentence, which is what the
+  /// form shows.
+  Future<IssueImage> uploadIssueImage(
+    String accessToken,
+    String kind,
+    String issueId, {
+    required Uint8List bytes,
+    required String contentType,
+    String? caption,
+  }) async {
+    final path = _picturePath(kind, issueId);
+    final trimmed = caption?.trim();
+    final uri = Uri.parse(path).replace(
+      queryParameters: trimmed == null || trimmed.isEmpty ? null : {'caption': trimmed},
+    );
+    final response = await _send(
+      () => _client.post(
+        uri,
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': contentType},
+        body: bytes,
+      ),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return IssueImage.fromJson(body['image'] as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One picture's bytes, for `Image.memory`.
+  Future<Uint8List> fetchIssueImageBytes(
+    String accessToken,
+    String kind,
+    String issueId,
+    String imageId,
+  ) async {
+    final path = '${_picturePath(kind, issueId)}/$imageId';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return response.bodyBytes;
+  }
+
+  /// Removes one picture. 404 for one that is not there or is another issue's.
+  Future<void> deleteIssueImage(
+    String accessToken,
+    String kind,
+    String issueId,
+    String imageId,
+  ) async {
+    final path = '${_picturePath(kind, issueId)}/$imageId';
+    await _send(
+      () => _client.delete(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+  }
+
+  /// Puts one issue on the Site's slide show, or takes it off
+  /// (`PUT /api/quality/slide-show/:kind/:id`).
+  Future<SlideChoice> setSlideShowChoice(
+    String accessToken,
+    String kind,
+    String issueId,
+    bool chosen,
+  ) async {
+    final path = '/api/quality/slide-show/$kind/$issueId';
+    final response = await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'chosen': chosen}),
+      ),
+      path,
+    );
+    try {
+      return SlideChoice.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      throw QualityApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// One Site's chosen issues, in the show's own order, each with its pictures
+  /// (`GET /api/quality/sites/:siteId/slide-show`) — the same `canSeeSite` the
+  /// registers ask, so an issue nobody at the Site may see is in nobody's show.
+  Future<List<SlideIssue>> fetchSlideShow(String accessToken, String siteId) async {
+    final path = '/api/quality/sites/$siteId/slide-show';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    return _readSlideIssues(response.body);
+  }
+
+  /// The order the show plays in, position 1 first
+  /// (`PUT /api/quality/sites/:siteId/slide-show/order`).
+  ///
+  /// Every entry must already be chosen and belong to [siteId]; the API refuses
+  /// the whole list (409) if one is not, rather than half-writing an order.
+  Future<List<SlideIssue>> setSlideShowOrder(
+    String accessToken,
+    String siteId,
+    List<({String kind, String id})> slides,
+  ) async {
+    final path = '/api/quality/sites/$siteId/slide-show/order';
+    final response = await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'slides': [
+            for (final slide in slides) {'kind': slide.kind, 'id': slide.id},
+          ],
+        }),
+      ),
+      path,
+    );
+    return _readSlideIssues(response.body);
+  }
+
+  List<SlideIssue> _readSlideIssues(String body) {
+    try {
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      return [
+        for (final row in decoded['issues'] as List<dynamic>)
+          SlideIssue.fromJson(row as Map<String, dynamic>),
+      ];
     } catch (error) {
       throw QualityApiException('The API answered with something this app could not read: $error');
     }
