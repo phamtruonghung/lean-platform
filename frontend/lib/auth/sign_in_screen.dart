@@ -36,6 +36,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_form_submit.dart';
 import '../widgets/palette_toggle.dart';
 import 'auth_error_messages.dart';
 
@@ -203,87 +204,94 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Widget _form(BuildContext context) {
     const buttonSize = Size.fromHeight(_touchTarget);
-    return Form(
-      key: _formKey,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // A real heading to a screen reader, not just larger text. The
-          // palette switch rides in the same row (issue #415): the one control
-          // this Screen owns that is not part of signing in, and in reach
-          // whether or not the form has been filled in.
-          Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text('Sign in', style: Theme.of(context).textTheme.headlineSmall),
+    // `Enter` in either field signs in (issue #401): the form's primary
+    // action is the one a reader has typed toward, and the rule lives in the
+    // one widget every form on the Platform shares. Null while a request is
+    // in flight, the same null the button's own `onPressed` carries.
+    return AppFormSubmit(
+      onSubmit: _submitting ? null : _signIn,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // A real heading to a screen reader, not just larger text. The
+            // palette switch rides in the same row (issue #415): the one control
+            // this Screen owns that is not part of signing in, and in reach
+            // whether or not the form has been filled in.
+            Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text('Sign in', style: Theme.of(context).textTheme.headlineSmall),
+                  ),
                 ),
-              ),
-              PaletteToggle(
-                darkPalette: widget.darkPalette,
-                onPressed: widget.onToggleDarkPalette,
-              ),
-            ],
-          ),
-          const SizedBox(height: Spacing.lg),
-          TextFormField(
-            controller: _emailController,
-            decoration: const InputDecoration(labelText: 'Email'),
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            validator: (value) =>
-                (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
-          ),
-          const SizedBox(height: Spacing.md),
-          TextFormField(
-            controller: _passwordController,
-            decoration: const InputDecoration(labelText: 'Password'),
-            obscureText: true,
-            autofillHints: const [AutofillHints.password],
-            validator: (value) =>
-                (value == null || value.length < 6) ? 'At least 6 characters' : null,
-          ),
-          if (_error != null) ...[
+                PaletteToggle(
+                  darkPalette: widget.darkPalette,
+                  onPressed: widget.onToggleDarkPalette,
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.lg),
+            TextFormField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Email'),
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              validator: (value) =>
+                  (value == null || !value.contains('@')) ? 'Enter a valid email' : null,
+            ),
             const SizedBox(height: Spacing.md),
-            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          ],
-          const SizedBox(height: Spacing.lg),
-          FilledButton(
-            style: FilledButton.styleFrom(minimumSize: buttonSize),
-            onPressed: _submitting ? null : _signIn,
-            child: const Text('Sign in'),
-          ),
-          const SizedBox(height: Spacing.sm),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(minimumSize: buttonSize),
-            onPressed: _submitting ? null : _signUp,
-            child: const Text('Create an account'),
-          ),
-          const SizedBox(height: Spacing.md),
-          const Row(
-            children: [
-              Expanded(child: Divider()),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: Spacing.sm),
-                child: Text('or'),
-              ),
-              Expanded(child: Divider()),
+            TextFormField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              validator: (value) =>
+                  (value == null || value.length < 6) ? 'At least 6 characters' : null,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: Spacing.md),
+              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
-          ),
-          const SizedBox(height: Spacing.md),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(minimumSize: buttonSize),
-            onPressed: _submitting ? null : _signInWithGoogle,
-            icon: const Icon(Icons.login),
-            label: const Text('Continue with Google'),
-          ),
-          if (_submitting) ...[
+            const SizedBox(height: Spacing.lg),
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: buttonSize),
+              onPressed: _submitting ? null : _signIn,
+              child: const Text('Sign in'),
+            ),
+            const SizedBox(height: Spacing.sm),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(minimumSize: buttonSize),
+              onPressed: _submitting ? null : _signUp,
+              child: const Text('Create an account'),
+            ),
             const SizedBox(height: Spacing.md),
-            const Center(child: CircularProgressIndicator()),
+            const Row(
+              children: [
+                Expanded(child: Divider()),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: Spacing.sm),
+                  child: Text('or'),
+                ),
+                Expanded(child: Divider()),
+              ],
+            ),
+            const SizedBox(height: Spacing.md),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(minimumSize: buttonSize),
+              onPressed: _submitting ? null : _signInWithGoogle,
+              icon: const Icon(Icons.login),
+              label: const Text('Continue with Google'),
+            ),
+            if (_submitting) ...[
+              const SizedBox(height: Spacing.md),
+              const Center(child: CircularProgressIndicator()),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

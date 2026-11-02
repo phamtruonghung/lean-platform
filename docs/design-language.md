@@ -612,6 +612,61 @@ None of these is a taste. Each has a measured reason or a standard behind it.
   ignores that setting. Home's `_HomeCard` is the example of all three.
 - **Contrast**, the table below, every pair measured.
 
+### The keyboard: where `Tab` goes, and what `Enter` and `Esc` mean
+
+One policy, so a reader who never touches the pointer meets the same rules on
+every Screen (issue #401). Each line names the code that holds it, because a rule
+written only here is a rule nobody can be held to.
+
+- **Every control a keyboard can reach is a stop, in reading order.** A register
+  row that opens a record is the stop — the row's own `InkWell`, wrapped in
+  `AppFocusRing` — and the controls inside it come next. Nothing that only a
+  pointer can operate is left in a page: rows, tiles, Destinations and dialog
+  actions all activate on `Enter` or `Space`.
+- **The focus ring is one widget.** `AppFocusRing` draws 2px of
+  `AppPalette.focusRing` over a control's own bounds as a
+  `foregroundDecoration`, so focus moves no pixel of layout, and only under
+  `FocusHighlightMode.traditional`, so a click leaves no ring behind. A
+  Destination, a tappable row and the skip control all wear it. The two surfaces
+  that already drew their own ring from the same token (`AppStatTile`'s card
+  shape, the KPI catalogue's row) are unchanged and equivalent.
+- **`Esc` is the dialog's.** `AppDialog` maps it to `DismissIntent` and runs the
+  dialog's own dismiss action — not a blind pop — and with that action disabled
+  it does nothing, exactly like the button (§11).
+- **Focus is trapped while a dialog is open, and given back when it closes.**
+  The dialog is a focus scope of its own and the route restores focus to the
+  control that opened it (§11). A dialog is the one place a trap is correct.
+- **`Enter` in a single-line field submits that form's primary action.**
+  `AppFormSubmit` wraps a form (`SignInScreen` and `ChangePasswordDialog` today)
+  and handles the key only when the focus is inside a single-line `EditableText`,
+  so a multi-line field keeps its newline and a focused button keeps its own
+  action — `Enter` on a button is that button's activation, never the form's
+  primary. The rule is a `Focus.onKeyEvent` rather than a `Shortcuts` layer
+  because a `Shortcuts` layer between a focused button and the app's own
+  shortcuts swallows the button's activation (measured: the button stopped
+  firing). `onSubmitted` stays as well, for a soft keyboard's own action key; on
+  a hardware `Enter` in the pinned image it is not reached, and this is.
+- **The skip control comes before the Shell's own chrome.** "Skip to content" is
+  drawn at the top-left of the Shell in a `Stack`, invisible until it takes
+  focus (`Opacity` 0 plus `IgnorePointer`, so it never eats a click on the brand
+  mark) and 44px when it does. Activating it moves focus to the first control the
+  Screen offers, so a reader does not walk the Destinations to reach the page.
+- **The current Destination says so.** The selected item is a
+  `Semantics(container: true, selected: …)` node — the shape Flutter's own
+  `NavigationRail` uses — so the tint, the weight and the 3px mark are not the
+  only carriers of "you are here".
+
+**What the keyboard cannot do yet, measured.** The Shell wraps its Screens
+through a `ShellRoute`, so each Screen is a `Navigator` route with its own focus
+scope, and Flutter creates a route scope with
+`TraversalEdgeBehavior.closedLoop`: `Tab` inside a Screen cycles that Screen's
+own controls and never reaches the sidebar. Read on `/work-orders` in the pinned
+image, sixteen presses visited the register's ten controls and returned to the
+first. Handing the page's edge to the Shell needs
+`MaterialPage(traversalEdgeBehavior: TraversalEdgeBehavior.parentScope)` on the
+routes, which go_router builds from `builder:` — a router-wide change with its
+own card, deliberately not folded into this one.
+
 ## 9. Contrast, measured
 
 WCAG 2.x relative luminance, the formula in `frontend/test/contrast.dart`,
