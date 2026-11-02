@@ -219,9 +219,8 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
+                    style: AppTypography.dense(context)
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                   ),
                 ),
               ],
@@ -283,7 +282,7 @@ class _RequestsListState extends State<_RequestsList> {
         final narrow =
             constraints.maxWidth <
             AppBreakpoints.effective(context, RequestsScreen.narrowBreakpoint);
-        final columns = _columns(context, canTriage: widget.canTriage, requests: matches);
+        final columns = _columns(context, canTriage: widget.canTriage, requests: widget.requests);
         return Center(
           child: AppPageFrame(
             maxWidth: RequestsScreen.maxWidth,
@@ -387,6 +386,10 @@ double _bandLabelWidth(BuildContext context, String label) => _widest(
 /// of the cell into the band. Every measured column is sized to its widest
 /// possible content or its band label, whichever is wider, plus the slot's
 /// `Spacing.sm` gutter. A caller who cannot triage has no Actions column at all.
+///
+/// [requests] is every Request the Screen holds, never the filtered few on screen:
+/// a measured width that followed the filter would move the whole band, and every
+/// label with it, each time a term hid the widest record.
 List<AppTableColumn> _columns(
   BuildContext context, {
   required bool canTriage,
@@ -522,9 +525,8 @@ class _RequestTableRow extends StatelessWidget {
             '${request.assetName} (${request.assetCode}) · ${request.orgUnitName}',
             style: muted,
           ),
-          request.reporterName == null
-              ? const SizedBox.shrink()
-              : DisclosingText(request.reporterName!, style: muted),
+          // An unknown value is the em dash, never a blank (design-language §13).
+          DisclosingText(request.reporterName ?? '—', style: muted),
           Text(
             formatRequestDate(request.reportedAt),
             maxLines: 1,
@@ -657,10 +659,9 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final state = context.watch<RequestsBloc>().state;
     final busy = state is RequestsLoaded && state.isTriaging;
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
 
     return Card(
       key: RequestsScreen.rowKey(request.id),
@@ -679,7 +680,10 @@ class _RequestCard extends StatelessWidget {
                     children: [
                       Text(request.requestNo, style: muted),
                       const SizedBox(height: Spacing.xxs),
-                      Text(request.summary, style: theme.textTheme.titleSmall),
+                      Text(
+                        request.summary,
+                        style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: Spacing.xxs),
                       Text(
                         '${request.assetName} (${request.assetCode}) · ${request.orgUnitName}',
@@ -704,16 +708,19 @@ class _RequestCard extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.warning_amber_outlined, size: 16, color: theme.colorScheme.error),
+                      Icon(
+                        Icons.warning_amber_outlined,
+                        size: 16,
+                        color: AppColors.of(context).statusDanger,
+                      ),
                       const SizedBox(width: Spacing.xxs),
                       // Flexible, so at a large text size the words wrap inside the
                       // card rather than running past its edge.
                       Flexible(
                         child: Text(
                           'Production is stopped',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.error,
-                          ),
+                          style: AppTypography.floor(context)
+                              ?.copyWith(color: AppColors.of(context).statusDanger),
                         ),
                       ),
                     ],

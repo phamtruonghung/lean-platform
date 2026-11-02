@@ -273,9 +273,8 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
+                    style: AppTypography.dense(context)
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                   ),
                 ),
               ],
@@ -605,7 +604,6 @@ class _AssetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: EdgeInsets.only(left: depth * Spacing.xl),
       child: Card(
@@ -624,7 +622,7 @@ class _AssetRow extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, box) {
                   final meta = [
-                    Text(asset.orgUnitName, style: theme.textTheme.bodyMedium),
+                    Text(asset.orgUnitName, style: AppTypography.dense(context)),
                     Chip(label: Text(asset.criticalityLabel), visualDensity: VisualDensity.compact),
                   ];
                   final info = Column(
@@ -636,13 +634,14 @@ class _AssetRow extends StatelessWidget {
                             child: Text(
                               asset.name,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleSmall?.copyWith(
+                              style: AppTypography.dense(context)?.copyWith(
+                                fontWeight: FontWeight.w500,
                                 // A retired Asset must read as retired at a
                                 // glance, not only through the chip beside
                                 // it — a strikethrough survives even where
                                 // the chip has scrolled out of view.
                                 decoration: asset.isActive ? null : TextDecoration.lineThrough,
-                                color: asset.isActive ? null : theme.colorScheme.onSurfaceVariant,
+                                color: asset.isActive ? null : AppColors.of(context).textMuted,
                               ),
                             ),
                           ),
@@ -659,9 +658,8 @@ class _AssetRow extends StatelessWidget {
                       const SizedBox(height: Spacing.xxs),
                       Text(
                         '${asset.code} · ${asset.typeLabel}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        style: AppTypography.floor(context)
+                            ?.copyWith(color: AppColors.of(context).textMuted),
                       ),
                     ],
                   );
@@ -1105,15 +1103,14 @@ class _AssetsEmpty extends StatelessWidget {
                 color: theme.colorScheme.outline,
               ),
               const SizedBox(height: Spacing.md),
-              Text('No Assets on the register yet', style: theme.textTheme.titleMedium),
+              Text('No Assets on the register yet', style: AppTypography.body(context)),
               const SizedBox(height: Spacing.sm),
               Text(
                 'Nothing has been recorded at this Site. Add a machine and it '
                 'can be worked on the same day.',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: AppTypography.dense(context)
+                    ?.copyWith(color: AppColors.of(context).textMuted),
               ),
             ],
           ),
@@ -1142,14 +1139,13 @@ class _AssetsFailed extends StatelessWidget {
             children: [
               Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.outline),
               const SizedBox(height: Spacing.md),
-              Text('The register could not be read', style: theme.textTheme.titleMedium),
+              Text('The register could not be read', style: AppTypography.body(context)),
               const SizedBox(height: Spacing.sm),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: AppTypography.dense(context)
+                    ?.copyWith(color: AppColors.of(context).textMuted),
               ),
               const SizedBox(height: Spacing.md),
               FilledButton.tonal(

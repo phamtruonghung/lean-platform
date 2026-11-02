@@ -210,9 +210,8 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
+                    style: AppTypography.dense(context)
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                   ),
                 ),
               ],
@@ -506,8 +505,7 @@ class _MeterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final state = context.watch<MetersBloc>().state;
     final busy = state is MetersLoaded && state.isMutating;
 
@@ -526,7 +524,10 @@ class _MeterCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${meter.name} (${meter.code})', style: theme.textTheme.titleSmall),
+                      Text(
+                        '${meter.name} (${meter.code})',
+                        style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: Spacing.xxs),
                       Text(
                         '${meter.assetName} (${meter.assetCode}) · ${meter.orgUnitName}',

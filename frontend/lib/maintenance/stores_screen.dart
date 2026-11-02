@@ -189,7 +189,6 @@ class _StoresListState extends State<_StoresList> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingStores;
@@ -268,9 +267,8 @@ class _StoresListState extends State<_StoresList> {
                             const SizedBox(height: Spacing.md),
                             Text(
                               'Tapping a store shows what is on its shelf.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                              style: AppTypography.floor(context)
+                                  ?.copyWith(color: AppColors.of(context).textMuted),
                             ),
                           ],
                         ),

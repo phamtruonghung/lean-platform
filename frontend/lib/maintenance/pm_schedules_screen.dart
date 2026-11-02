@@ -228,9 +228,8 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
+                    style: AppTypography.dense(context)
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                   ),
                 ),
               ],
@@ -550,8 +549,7 @@ class _PmScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final state = context.watch<PmSchedulesBloc>().state;
     final busy = state is PmSchedulesLoaded && state.isMutating;
 
@@ -570,7 +568,10 @@ class _PmScheduleCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(schedule.jobPlanName, style: theme.textTheme.titleSmall),
+                      Text(
+                        schedule.jobPlanName,
+                        style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: Spacing.xxs),
                       Text(
                         '${schedule.assetName} (${schedule.assetCode}) · ${schedule.orgUnitName}',

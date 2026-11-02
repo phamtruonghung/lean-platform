@@ -225,7 +225,6 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: DowntimeScreen.maxWidth,
@@ -234,7 +233,7 @@ class _Truncated extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
             'There are more downtime events than this list shows.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
           ),
         ),
       ),
@@ -269,9 +268,8 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
+                    style: AppTypography.dense(context)
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                   ),
                 ),
               ],
@@ -542,12 +540,9 @@ class _DowntimeTableRow extends StatelessWidget {
             maxLines: 1,
             style: dense?.copyWith(color: palette.textPrimary),
           ),
-          event.downtimeReasonName == null
-              ? const SizedBox.shrink()
-              : DisclosingText(event.downtimeReasonName!, style: muted),
-          event.reporterName == null
-              ? const SizedBox.shrink()
-              : DisclosingText(event.reporterName!, style: muted),
+          // An unknown value is the em dash, never a blank (design-language §13).
+          DisclosingText(event.downtimeReasonName ?? '—', style: muted),
+          DisclosingText(event.reporterName ?? '—', style: muted),
           details,
           if (canAct) shrinkWrapTargets(_DowntimeRowActions(event: event)),
         ],
@@ -663,8 +658,7 @@ class _DowntimeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final state = context.watch<DowntimeBloc>().state;
     final busy = state is DowntimeLoaded && state.isActing;
 
@@ -683,7 +677,10 @@ class _DowntimeCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(event.assetName, style: theme.textTheme.titleSmall),
+                      Text(
+                        event.assetName,
+                        style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: Spacing.xxs),
                       Text('${event.assetCode} · ${event.orgUnitName}', style: muted),
                     ],

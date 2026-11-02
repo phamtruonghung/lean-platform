@@ -311,7 +311,6 @@ class _StockRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       key: StoreStockScreen.rowKey(level.partId),
       padding: const EdgeInsets.all(Spacing.md),
@@ -321,18 +320,17 @@ class _StockRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(level.partNo, style: theme.textTheme.bodyMedium),
+                Text(level.partNo, style: AppTypography.dense(context)),
                 const SizedBox(height: 2),
                 Text(
                   level.description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTypography.floor(context)
+                      ?.copyWith(color: AppColors.of(context).textMuted),
                 ),
               ],
             ),
           ),
-          Text('${level.quantity} ${level.uomCode}', style: theme.textTheme.titleMedium),
+          Text('${level.quantity} ${level.uomCode}', style: AppTypography.body(context)),
         ],
       ),
     );

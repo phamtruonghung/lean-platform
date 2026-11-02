@@ -180,17 +180,17 @@ const List<String> _monthNames = [
 
 /// The date a Request was raised, as a person says it: `31 Oct 2026`.
 ///
-/// The date part is taken from the ISO string the server sent, as written. It is
-/// never read through the device's zone, because the device clock is not the
-/// plant's (design-language §13, ADR-0048). One consequence is stated rather than
-/// hidden: `reported_at` is a UTC instant and this read sends no plant day with
-/// it, so for a Site east of UTC the date shown is the day before the plant's own
-/// from the plant's midnight until UTC's midnight, that is, for the hours before
-/// UTC midnight, as many hours a day as the Site's offset (seven at UTC+7).
+/// The instant the server sent is converted to the device's zone and its date
+/// worded there, the way `formatEnteredAt` (`kpi/kpi_catalogue.dart`) words a
+/// timestamp: a plant's terminals are set to the plant's zone, so the device's
+/// zone is the plant's and the date is the plant's. This words a timestamp; it is
+/// not a Screen deriving "today" from the device clock (design-language §13), and
+/// nothing here is relative to now.
 ///
-/// The unknown value is `—`, never a blank and never a date: a null, and a string
-/// that does not begin with a calendar date that exists (`2026-02-31` does not),
-/// both render it. Existence is checked on a `DateTime.utc`, which reads no zone.
+/// The unknown value is `—`, never a blank and never a date: a null, a string that
+/// is not an ISO instant, and one whose date does not exist (`2026-02-31`, which
+/// `DateTime.tryParse` would quietly roll over to March) all render it. Existence
+/// is checked on a `DateTime.utc` built from the string's own date part.
 String formatRequestDate(String? reportedAt) {
   if (reportedAt == null) return '—';
   final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(reportedAt);
@@ -198,9 +198,12 @@ String formatRequestDate(String? reportedAt) {
   final year = int.parse(match.group(1)!);
   final month = int.parse(match.group(2)!);
   final day = int.parse(match.group(3)!);
-  final date = DateTime.utc(year, month, day);
-  if (date.year != year || date.month != month || date.day != day) return '—';
-  return '$day ${_monthNames[month - 1]} $year';
+  final written = DateTime.utc(year, month, day);
+  if (written.year != year || written.month != month || written.day != day) return '—';
+  final instant = DateTime.tryParse(reportedAt);
+  if (instant == null) return '—';
+  final local = instant.toLocal();
+  return '${local.day} ${_monthNames[local.month - 1]} ${local.year}';
 }
 
 /// Every month label [formatRequestDate] can produce, for a column that must be

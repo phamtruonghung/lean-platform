@@ -182,9 +182,8 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
+                    style: AppTypography.dense(context)
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                   ),
                 ),
               ],
@@ -432,13 +431,17 @@ class _JobPlanTableRow extends StatelessWidget {
                     ),
             ),
             toggle,
-            plan.estimatedHours == null
-                ? const SizedBox.shrink()
-                : Text(
-                    '${plan.estimatedHours}',
-                    maxLines: 1,
-                    style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
-                  ),
+            // No estimate is unknown, so the em dash, never a blank (design-language
+            // §13). The Shutdown cell beside it stays empty for a plan that needs
+            // none: that is a known "no", shown by the marker's absence as the
+            // card shows it.
+            Text(
+              plan.estimatedHours == null ? '—' : '${plan.estimatedHours}',
+              maxLines: 1,
+              style: AppTableRow.numberStyle(context)?.copyWith(
+                color: plan.estimatedHours == null ? palette.textMuted : palette.textPrimary,
+              ),
+            ),
             plan.requiresShutdown
                 ? DisclosingText('Requires a shutdown', style: muted)
                 : const SizedBox.shrink(),
@@ -487,8 +490,7 @@ class _JobPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final state = context.watch<JobPlansBloc>().state;
     final busy = state is JobPlansLoaded && state.isMutating;
 
@@ -507,7 +509,10 @@ class _JobPlanCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(plan.name, style: theme.textTheme.titleSmall),
+                      Text(
+                        plan.name,
+                        style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: Spacing.xxs),
                       Text('${plan.code} · ${plan.workTypeLabel}', style: muted),
                     ],
@@ -524,7 +529,7 @@ class _JobPlanCard extends StatelessWidget {
             ),
             if (plan.description != null && plan.description!.isNotEmpty) ...[
               const SizedBox(height: Spacing.sm),
-              Text(plan.description!, style: theme.textTheme.bodyMedium),
+              Text(plan.description!, style: AppTypography.dense(context)),
             ],
             if (plan.requiresShutdown || plan.estimatedHours != null) ...[
               const SizedBox(height: Spacing.xs),
@@ -574,8 +579,7 @@ class _JobPlanTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     return Padding(
       key: JobPlansScreen.taskKey(plan.id, task.id),
       padding: const EdgeInsets.only(bottom: Spacing.xs),
@@ -587,7 +591,7 @@ class _JobPlanTaskRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(task.instruction, style: theme.textTheme.bodyMedium),
+                Text(task.instruction, style: AppTypography.dense(context)),
                 if (task.hasSkill)
                   Text('Requires ${task.skillName}', style: muted)
                 else

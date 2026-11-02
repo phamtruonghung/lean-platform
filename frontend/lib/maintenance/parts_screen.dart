@@ -273,7 +273,6 @@ class _PartRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       key: PartsScreen.rowKey(part.id),
       padding: const EdgeInsets.all(Spacing.md),
@@ -283,18 +282,20 @@ class _PartRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(part.partNo, style: theme.textTheme.bodyMedium),
+                Text(part.partNo, style: AppTypography.dense(context)),
                 const SizedBox(height: 2),
                 Text(
                   part.description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTypography.floor(context)
+                      ?.copyWith(color: AppColors.of(context).textMuted),
                 ),
               ],
             ),
           ),
-          Text(part.uomCode, style: theme.textTheme.labelLarge),
+          Text(
+            part.uomCode,
+            style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );

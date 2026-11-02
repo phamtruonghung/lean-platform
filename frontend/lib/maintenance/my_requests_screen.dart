@@ -62,9 +62,12 @@ class MyRequestsScreen extends StatelessWidget {
   /// for the two flex columns over their 7 shares: about 50px a share, so a summary
   /// of about 200px and an Asset of about 150, enough for their band labels and for
   /// `DisclosingText` to disclose the rest. All of these widths are real-font
-  /// estimates worked by hand, not renders; the test font is about twice as wide.
-  /// Below 900 the measured columns leave the flex ones too little, and in the test
-  /// font they overflow outright, so the register is drawn only from 900.
+  /// estimates worked by hand, not renders. Below 900 the measured columns leave
+  /// the flex ones too little, so the register is drawn only from 900; measured in
+  /// the app's own font at a 900 box the band and every row fit, while in
+  /// `flutter_test`'s placeholder font, about twice as wide, they overflow by
+  /// 9.9px there — which is why the tests that pin this register load the app's
+  /// own fonts.
   static const double narrowBreakpoint = 900;
 
   /// The toggle that opens a register row's outcome.
@@ -232,9 +235,8 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
+                    style: AppTypography.dense(context)
+                        ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                   ),
                 ),
               ],
@@ -295,7 +297,7 @@ class _MyRequestsListState extends State<_MyRequestsList> {
         final narrow =
             constraints.maxWidth <
             AppBreakpoints.effective(context, MyRequestsScreen.narrowBreakpoint);
-        final columns = _columns(context, requests: matches);
+        final columns = _columns(context, requests: widget.requests);
         return Center(
           child: AppPageFrame(
             maxWidth: MyRequestsScreen.maxWidth,
@@ -399,6 +401,10 @@ double _bandLabelWidth(BuildContext context, String label) => _widest(
 /// outcome behind a toggle; the raised date is the register's own. Every measured
 /// column is sized to its widest possible content or its band label, whichever is
 /// wider, plus the slot's `Spacing.sm` gutter.
+///
+/// [requests] is every Request the Screen holds, never the filtered few on screen:
+/// a measured width that followed the filter would move the whole band, and every
+/// label with it, each time a term hid the widest record.
 List<AppTableColumn> _columns(BuildContext context, {required List<Request> requests}) {
   double sized(double content, String label) {
     final bandLabel = _bandLabelWidth(context, label);
@@ -546,8 +552,7 @@ class _MyRequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final workOrder = request.workOrder;
 
     return Card(
@@ -567,7 +572,10 @@ class _MyRequestCard extends StatelessWidget {
                     children: [
                       Text(request.requestNo, style: muted),
                       const SizedBox(height: Spacing.xxs),
-                      Text(request.summary, style: theme.textTheme.titleSmall),
+                      Text(
+                        request.summary,
+                        style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: Spacing.xxs),
                       Text(
                         '${request.assetName} (${request.assetCode}) · ${request.urgencyLabel}',
@@ -584,12 +592,12 @@ class _MyRequestCard extends StatelessWidget {
               const SizedBox(height: Spacing.sm),
               Row(
                 children: [
-                  Icon(Icons.build_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(Icons.build_outlined, size: 16, color: AppColors.of(context).textMuted),
                   const SizedBox(width: Spacing.xs),
                   Expanded(
                     child: Text(
                       'Became Work order ${workOrder.workOrderNo}',
-                      style: theme.textTheme.bodyMedium,
+                      style: AppTypography.dense(context),
                     ),
                   ),
                 ],
