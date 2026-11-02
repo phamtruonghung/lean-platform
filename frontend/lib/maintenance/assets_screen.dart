@@ -41,6 +41,7 @@ import '../widgets/app_page_header.dart';
 import '../widgets/app_table.dart';
 import '../widgets/app_toolbar.dart';
 import '../widgets/disclosing_text.dart';
+import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
 import 'asset.dart';
@@ -136,12 +137,25 @@ class AssetsScreen extends StatelessWidget {
           Expanded(
             child: switch (state) {
               AssetsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
-              AssetsUnavailable(message: final message) => _AssetsFailed(message: message),
+              AssetsUnavailable(message: final message) => PlatformFailureState(
+                key: AssetsScreen.failedKey,
+                title: 'The register could not be read',
+                message: message,
+                retryKey: AssetsScreen.retryKey,
+                onRetry: () => context.read<AssetsBloc>().add(const AssetsStarted()),
+              ),
               AssetsLoaded(isLoadingAssets: true) => const SkeletonList(
                 rows: 4,
                 maxWidth: maxWidth,
               ),
-              AssetsLoaded(assets: final assets) when assets.isEmpty => const _AssetsEmpty(),
+              AssetsLoaded(assets: final assets) when assets.isEmpty =>
+                const PlatformEmptyState.noneExist(
+                  key: AssetsScreen.emptyKey,
+                  title: 'No Assets on the register yet',
+                  message: 'Nothing has been recorded at this Site. Add a machine and it '
+                      'can be worked on the same day.',
+                  icon: Icons.precision_manufacturing_outlined,
+                ),
               AssetsLoaded(
                 assets: final assets,
                 mutatingAssetId: final mutatingAssetId,
@@ -1075,85 +1089,6 @@ class _ParentOption extends StatelessWidget {
               style: AppTypography.dense(context)
                   ?.copyWith(color: AppColors.of(context).textPrimary),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AssetsEmpty extends StatelessWidget {
-  const _AssetsEmpty();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: AssetsScreen.emptyKey,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.precision_manufacturing_outlined,
-                size: 48,
-                color: theme.colorScheme.outline,
-              ),
-              const SizedBox(height: Spacing.md),
-              Text('No Assets on the register yet', style: AppTypography.body(context)),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                'Nothing has been recorded at this Site. Add a machine and it '
-                'can be worked on the same day.',
-                textAlign: TextAlign.center,
-                style: AppTypography.dense(context)
-                    ?.copyWith(color: AppColors.of(context).textMuted),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AssetsFailed extends StatelessWidget {
-  const _AssetsFailed({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: AssetsScreen.failedKey,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              Text('The register could not be read', style: AppTypography.body(context)),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: AppTypography.dense(context)
-                    ?.copyWith(color: AppColors.of(context).textMuted),
-              ),
-              const SizedBox(height: Spacing.md),
-              FilledButton.tonal(
-                key: AssetsScreen.retryKey,
-                onPressed: () => context.read<AssetsBloc>().add(const AssetsStarted()),
-                child: const Text('Try again'),
-              ),
-            ],
           ),
         ),
       ),

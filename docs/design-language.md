@@ -997,11 +997,12 @@ fact is `0`. The two mean different things: zero downtime and unmeasured downtim
 are not the same report, and a blank cell is read as a rendering bug.
 `maintenance/tier_board.dart:157` already does this (`'—'` when `value` is null,
 with a comment saying never `0` for an unmeasured KPI) and
-`production/handover_format.dart:8` does it for a missing time. A register's cell
+`production/handover_format.dart:7` does it for a missing time. A register's cell
 follows it too: an unknown Reason, Reported by or Raised by is `—` and never an
 empty cell, which is the ruling the maintenance registers had to make (#388) — the
-cell is built from `name ?? '—'` rather than from a `SizedBox.shrink()`, which is
-what left the slot empty before. This is §7's four
+cell is built from `name ?? '—'`, where the card this replaced dropped its `Text`
+behind a null-conditional and left the slot looking blank
+(`downtime_screen.dart:374-377` at the tree #388 forked from). This is §7's four
 states at the scale of one cell: **loading** is a skeleton, **none exist** is `—`,
 and **a fact** is the figure.
 

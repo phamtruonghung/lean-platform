@@ -931,17 +931,6 @@ void main() {
 
   testWidgets('a move to another Site takes the row off this register and says where it went',
       (tester) async {
-    // A taller surface than the default 800x600 (issue #171's own test only):
-    // a caller with two Sites gets the register's Site chooser as well, and
-    // once this move empties the register the empty state — whose content is
-    // not scrollable — is 44px taller than what is left of the window. That is
-    // a pre-existing shape of `_AssetsEmpty` at a short height, not something
-    // this ticket changes, and the claim under test here is the notice and the
-    // row, not the layout of an empty state.
-    tester.view.devicePixelRatio = 1.0;
-    tester.view.physicalSize = const Size(800, 1000);
-    addTearDown(tester.view.reset);
-
     final wire = wireWith(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh'), siteJson('2', 'DNA', 'Da Nang')],
       orgUnits: {
