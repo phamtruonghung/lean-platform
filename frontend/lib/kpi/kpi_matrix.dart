@@ -56,21 +56,50 @@ Widget matrixCell({required int flex, required Widget child, Key? key}) =>
     );
 
 /// The header row: one `Expanded` cell per column, labelled in the shared style.
+///
+/// **It is a band, not a row (issue #395).** It used to be a row of labels in
+/// the same weight and nearly the same colour as the cells beneath it, so the
+/// catalogue read as a table whose first line happened to be words. It now
+/// spends the two things `AppTableHeader` spends for the same reason — a fill
+/// (`tableHeaderFill`) and a weight (w600, in `textMuted`, the pair that
+/// measures 6.50:1 on the band in the light palette and 6.97:1 in dark) — so the
+/// KPI catalogue and every maintenance register have one band, not two. It
+/// draws no bottom rule of its own: `AppListCard` already puts a hairline
+/// between this row and the first body row, and a second one would read as a
+/// 2px line.
+///
+/// Each label is a header to a screen reader, which the plain row it replaced
+/// was not.
 class MatrixHeaderRow extends StatelessWidget {
   const MatrixHeaderRow({super.key, required this.columns});
 
   final List<MatrixColumn> columns;
 
+  /// The band's own minimum height — the same 32 a register's band holds, so a
+  /// catalogue and a register start their first row at the same y.
+  static const double bandHeight = 32;
+
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600);
-    return Padding(
+    final palette = AppColors.of(context);
+    final style = Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: palette.textMuted,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        );
+    return Container(
+      constraints: const BoxConstraints(minHeight: bandHeight),
+      decoration: BoxDecoration(color: palette.tableHeaderFill),
       padding: matrixRowPadding,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           for (final column in columns)
-            matrixCell(flex: column.flex, key: column.headerKey, child: Text(column.label, style: style)),
+            matrixCell(
+              flex: column.flex,
+              key: column.headerKey,
+              child: Semantics(header: true, child: Text(column.label, style: style)),
+            ),
         ],
       ),
     );

@@ -946,7 +946,11 @@ void main() {
     for (final i in [1, 2, 3]) {
       expect(cells[i].top, cells[0].top, reason: 'cell ${i + 1} shares the first row');
       expect(cells[i].left, greaterThan(cells[i - 1].right), reason: 'cell ${i + 1} sits right of cell $i');
-      expect(cells[i].width, cells[0].width, reason: 'cell ${i + 1} is as wide as the first');
+      // Equal to within a pixel: the cells are `Expanded`, so the layout
+      // distributes the row's leftover width by cumulative offsets and two
+      // siblings can differ by a fraction of a floating-point pixel (#395
+      // replaced the floored fixed width with flex).
+      expect(cells[i].width, closeTo(cells[0].width, 1), reason: 'cell ${i + 1} is as wide as the first');
     }
     for (final i in [0, 1, 2, 3]) {
       expect(cells[4].top, greaterThan(cells[i].bottom), reason: 'the fifth cell starts the second row');
@@ -961,7 +965,11 @@ void main() {
     for (final i in [1, 2]) {
       expect(cells[i].top, cells[0].top, reason: 'cell ${i + 1} shares the first row');
       expect(cells[i].left, greaterThan(cells[i - 1].right), reason: 'cell ${i + 1} sits right of cell $i');
-      expect(cells[i].width, cells[0].width, reason: 'cell ${i + 1} is as wide as the first');
+      // Equal to within a pixel: the cells are `Expanded`, so the layout
+      // distributes the row's leftover width by cumulative offsets and two
+      // siblings can differ by a fraction of a floating-point pixel (#395
+      // replaced the floored fixed width with flex).
+      expect(cells[i].width, closeTo(cells[0].width, 1), reason: 'cell ${i + 1} is as wide as the first');
     }
     expect(cells[3].top, greaterThan(cells[0].bottom), reason: 'the fourth cell starts the second row');
     expect(cells[3].left, cells[0].left, reason: 'the second row starts at the first column');
@@ -975,7 +983,7 @@ void main() {
 
     expect(cells[1].top, cells[0].top, reason: 'the second cell shares the first row');
     expect(cells[1].left, greaterThan(cells[0].right), reason: 'the second cell sits right of the first');
-    expect(cells[1].width, cells[0].width, reason: 'the second cell is as wide as the first');
+    expect(cells[1].width, closeTo(cells[0].width, 1), reason: 'the second cell is as wide as the first');
     expect(cells[2].top, greaterThan(cells[0].bottom), reason: 'the third cell starts the second row');
     expect(cells[2].left, cells[0].left, reason: 'the second row starts at the first column');
     expect(cells[3].top, cells[2].top, reason: 'the fourth cell shares the second row');
@@ -989,7 +997,11 @@ void main() {
     for (final i in [1, 2, 3]) {
       expect(cells[i].top, greaterThan(cells[i - 1].bottom), reason: 'cell ${i + 1} starts below cell $i');
       expect(cells[i].left, cells[0].left, reason: 'the columns line up');
-      expect(cells[i].width, cells[0].width, reason: 'cell ${i + 1} is as wide as the first');
+      // Equal to within a pixel: the cells are `Expanded`, so the layout
+      // distributes the row's leftover width by cumulative offsets and two
+      // siblings can differ by a fraction of a floating-point pixel (#395
+      // replaced the floored fixed width with flex).
+      expect(cells[i].width, closeTo(cells[0].width, 1), reason: 'cell ${i + 1} is as wide as the first');
     }
   });
 }
