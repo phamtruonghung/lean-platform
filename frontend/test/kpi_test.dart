@@ -14,8 +14,11 @@ import 'package:lean_platform/kpi/kpi_review_screen.dart';
 import 'package:lean_platform/kpi/kpi_targets_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/router.dart';
+import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_date_field.dart';
+import 'package:lean_platform/widgets/app_dialog.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/app_table.dart';
 import 'package:lean_platform/widgets/empty_state.dart';
 import 'harness.dart';
 
@@ -1003,5 +1006,203 @@ void main() {
       // replaced the floored fixed width with flex).
       expect(cells[i].width, closeTo(cells[0].width, 1), reason: 'cell ${i + 1} is as wide as the first');
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Issue #395: the geometry this slice adds, measured at both ends of the width
+  // range and at twice the text — the three cases the design law names.
+
+  /// Opens a KPI page at [size] and at [textScale], with the wire settled.
+  Future<void> openAt(
+    WidgetTester tester,
+    FakeWire wire,
+    String location, {
+    Size size = const Size(1280, 1600),
+    double textScale = 1,
+  }) async {
+    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await _open(tester, wire, location, size: size);
+  }
+
+  testWidgets('the catalogue band is 32 tall and its rows start under it, on one left edge',
+      (tester) async {
+    await openAt(tester, _wire(), Routes.kpi);
+
+    final band = tester.getRect(find.byKey(KpiCatalogueScreen.headerRowKey));
+    // A band, not a row: its 32px minimum holds, and it is shorter than a body
+    // row — which is 44 or more because the whole row is one link. (Heights are
+    // not pinned to the pixel: the test font sets every glyph a full em wide, so
+    // a label that fits in 55px of Roboto wraps here. The lefts below are the
+    // font-independent claim.)
+    expect(band.height, greaterThanOrEqualTo(32));
+    final row = tester.getRect(find.byKey(KpiCatalogueScreen.rowKey(1)));
+    expect(row.top, greaterThanOrEqualTo(band.bottom), reason: 'the first row starts under the band');
+    expect(band.height, lessThan(row.height), reason: 'the band is chrome, not data');
+    expect(row.height, greaterThanOrEqualTo(44), reason: 'the whole row is one link');
+
+    // Every column's label and its first cell start on the same x.
+    for (final column in ['KPI', 'Unit', 'Direction', 'Daily', 'Weekly', 'Monthly', 'Today']) {
+      expect(
+        tester.getRect(find.byKey(KpiCatalogueScreen.cellKey(1, column))).left,
+        closeTo(tester.getRect(find.byKey(KpiCatalogueScreen.columnHeaderKey(column))).left, 0.5),
+        reason: column,
+      );
+    }
+  });
+
+  testWidgets('the catalogue names the Power BI value measure inside the KPI cell, and it wraps',
+      (tester) async {
+    final wire = _wire(kpis: [
+      kpiCatalogueRowJson(9, 'OEE', 'Overall equipment effectiveness',
+          unit: '%', valueMeasure: 'MTU_OEE'),
+    ]);
+    await openAt(tester, wire, Routes.kpi);
+
+    final measure = find.text('Value measure: MTU_OEE');
+    expect(measure, findsOneWidget, reason: 'the definition is on the page, not a tooltip');
+    final label = tester.getRect(measure);
+    final cell = tester.getRect(find.byKey(KpiCatalogueScreen.cellKey(9, 'KPI')));
+    expect(label.right, lessThanOrEqualTo(cell.right + 0.5), reason: 'the line stays inside its column');
+  });
+
+  testWidgets('the catalogue holds at a 700px window: every row present, nothing past the page',
+      (tester) async {
+    await openAt(tester, _wire(), Routes.kpi, size: const Size(700, 2000));
+
+    expect(tester.takeException(), isNull);
+    final row = tester.getRect(find.byKey(KpiCatalogueScreen.rowKey(1)));
+    for (final id in [1, 2, 3]) {
+      final rect = tester.getRect(find.byKey(KpiCatalogueScreen.rowKey(id)));
+      expect(rect.left, row.left, reason: 'KPI $id keeps the one left edge');
+      expect(rect.right, lessThanOrEqualTo(700), reason: 'KPI $id stays on the page');
+    }
+    expect(find.byKey(KpiCatalogueScreen.headerRowKey), findsOneWidget);
+  });
+
+  testWidgets('the catalogue holds at twice the text: nothing clipped, every cell still placed',
+      (tester) async {
+    await openAt(tester, _wire(), Routes.kpi, textScale: 2);
+
+    expect(tester.takeException(), isNull);
+    for (final id in [1, 2, 3]) {
+      expect(find.byKey(KpiCatalogueScreen.rowKey(id)), findsOneWidget, reason: 'KPI $id');
+    }
+    // Nothing is lost at 2x: the Today cell still says its word and still sits
+    // inside the page.
+    expect(find.text('Met'), findsOneWidget);
+    expect(tester.getRect(find.byKey(KpiCatalogueScreen.cellKey(1, 'Today'))).right,
+        lessThanOrEqualTo(1280));
+  });
+
+  testWidgets('the targets history is a 32px register under its band at 1280', (tester) async {
+    await openAt(tester, _wire(), Routes.kpiTargets(3));
+
+    final band = find.byType(AppTableHeader);
+    expect(band, findsOneWidget, reason: 'six columns fit 868px of content');
+    final bandRect = tester.getRect(band);
+    expect(bandRect.height, greaterThanOrEqualTo(32), reason: 'a band is at least 32');
+
+    final row = tester.getRect(find.byKey(KpiTargetsScreen.historyRowKey(12)));
+    expect(row.top, greaterThanOrEqualTo(bandRect.bottom));
+    // 32 is the floor a row nobody can tap holds; a cell that wraps grows it.
+    expect(row.height, greaterThanOrEqualTo(32));
+
+    // The Target column ends on one edge in the band and in every row.
+    final targetHeader = tester.getRect(find.byKey(AppTableHeader.labelKey(KpiTargetsScreen.targetLabel)));
+    for (final id in [12, 11]) {
+      final cell = tester.getRect(
+          find.descendant(of: find.byKey(KpiTargetsScreen.historyRowKey(id)), matching: find.byType(Text)).at(2));
+      expect(cell.right, closeTo(targetHeader.right, 1), reason: 'entry $id');
+    }
+    // The current-in-force block is a card of sentences, still one row per grain.
+    expect(find.byKey(KpiTargetsScreen.currentRowKey('Weekly')), findsOneWidget);
+  });
+
+  testWidgets('the targets history becomes labelled cards at a 700px window', (tester) async {
+    await openAt(tester, _wire(), Routes.kpiTargets(3), size: const Size(700, 2000));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(AppTableHeader), findsNothing, reason: 'six columns cannot hold 604px');
+    final card = tester.getRect(find.byKey(KpiTargetsScreen.historyCardKey(12)));
+    expect(card.left, tester.getRect(find.byKey(KpiTargetsScreen.historyCardKey(11))).left);
+    expect(card.right, lessThanOrEqualTo(700));
+    // Each field is labelled in the card, so nothing is lost with the band gone.
+    for (final label in [
+      KpiTargetsScreen.validFromLabel,
+      KpiTargetsScreen.grainLabel,
+      KpiTargetsScreen.targetLabel,
+      KpiTargetsScreen.noteLabel,
+      KpiTargetsScreen.enteredByLabel,
+      KpiTargetsScreen.enteredAtLabel,
+    ]) {
+      expect(find.text(label), findsWidgets, reason: label);
+    }
+    expect(find.text('after the retrofit'), findsOneWidget);
+  });
+
+  testWidgets('the targets history is cards at twice the text too, and nothing overflows',
+      (tester) async {
+    await openAt(tester, _wire(), Routes.kpiTargets(3), textScale: 2);
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(AppTableHeader), findsNothing,
+        reason: '868px of content at 2x is compared against 860 * 2');
+    expect(find.byKey(KpiTargetsScreen.historyCardKey(12)), findsOneWidget);
+    expect(find.text('after the retrofit'), findsOneWidget);
+    expect(tester.getRect(find.byKey(KpiTargetsScreen.historyCardKey(12))).right, lessThanOrEqualTo(1280));
+  });
+
+  testWidgets('the review header names the Site and the day, and the legend teaches the icons',
+      (tester) async {
+    await openAt(tester, _wire(), Routes.kpiReview);
+
+    expect(find.text('MTU plant · 2026-10-30'), findsOneWidget);
+    final siteDay = tester.getRect(find.byKey(KpiReviewScreen.siteDayKey));
+    final title = tester.getRect(find.text('KPI Review for 2026-10-30'));
+    // The line's icon sits at the header's own left edge; its text follows one
+    // icon and one `Spacing.xs` in, which is the whole point of the glyph.
+    expect(siteDay.left - title.left, closeTo(16 + Spacing.xs, 0.5),
+        reason: 'the header keeps one left edge');
+    expect(siteDay.top, greaterThan(title.bottom));
+
+    expect(find.byKey(KpiReviewScreen.legendKey), findsOneWidget);
+    for (final status in ['met', 'missed', 'not_measured']) {
+      expect(find.byKey(KpiReviewScreen.legendItemKey(status)), findsOneWidget, reason: status);
+    }
+    // The legend sits under the filter and above the first cell.
+    final legend = tester.getRect(find.byKey(KpiReviewScreen.legendKey));
+    expect(legend.bottom, lessThan(tester.getRect(find.byKey(KpiReviewScreen.rowKey(1))).top));
+  });
+
+  testWidgets('a row of review cells shares one height at 1280', (tester) async {
+    await openAt(tester, _wire(reviewRows: _targetedRows(4)), Routes.kpiReview);
+    final cells = _cellRects(tester, 4);
+
+    expect(cells[1].top, cells[0].top);
+    expect(cells[1].height, cells[0].height, reason: 'one row is one band');
+    expect(cells[2].height, cells[0].height);
+    expect(cells[3].top, greaterThan(cells[0].bottom));
+  });
+
+  testWidgets('at twice the text the review matrix is one column, and the note popup is a sheet',
+      (tester) async {
+    await openAt(tester, _wire(reviewRows: _targetedRows(3)), Routes.kpiReview, textScale: 2);
+
+    final cells = _cellRects(tester, 3);
+    for (final i in [1, 2]) {
+      expect(cells[i].top, greaterThan(cells[i - 1].bottom),
+          reason: 'cell ${i + 1} starts below cell $i at 2x');
+      expect(cells[i].left, cells[0].left);
+    }
+    expect(tester.takeException(), isNull);
+
+    // The popup follows the dialog's own rule: a sheet at a large text size.
+    await tapIn(tester, find.byKey(KpiReviewScreen.statusKey(1, 'missed')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppDialog.sheetKey), findsOneWidget);
+    expect(find.byKey(KpiReviewScreen.noteKey(1)), findsOneWidget);
+    await tester.tapAt(const Offset(4, 4));
+    await tester.pumpAndSettle();
   });
 }

@@ -12,13 +12,13 @@
 /// by construction, and the Screen used to say so in a doc comment while showing
 /// six unlabelled columns of plain text over a header that looked like another
 /// row. It now reads the way the record behaves: a card of what is in force
-/// today, per grain, each row one sentence at a 32px rhythm; then a register
-/// whose band is the shared `AppTableHeader`, whose rows are `AppTableRow` at 32
-/// each, whose Target column ends on a shared right edge in tabular figures, and
-/// whose caption states the rule in words — an entry is never edited, a later one
-/// supersedes it. There is exactly one write affordance on the Screen (Change
-/// Target) and no edit or delete anywhere, which is what an append-only record
-/// should offer.
+/// today, per grain, each row one sentence on the 32px rhythm; then a register
+/// whose band is the shared `AppTableHeader`, whose rows are `AppTableRow`'s
+/// (32px at the minimum, taller only if a cell wraps), whose Target column ends
+/// on a shared right edge in tabular figures, and whose caption states the rule
+/// in words — an entry is never edited, a later one supersedes it. There is
+/// exactly one write affordance on the Screen (Change Target) and no edit or
+/// delete anywhere, which is what an append-only record should offer.
 ///
 /// **Seven columns of ledger need a box, or they become cards.** Below
 /// [tableWidth] (at the reader's text scale — `AppBreakpoints.effective`) six
@@ -283,7 +283,11 @@ const int _grainFlex = 2;
 const int _targetFlex = 2;
 const int _noteFlex = 3;
 const int _byFlex = 2;
-const int _atFlex = 2;
+// A stamp is `YYYY-MM-DD HH:MM`, the longest fixed value in the ledger: two
+// flexes of 868px of content is 130px, which 14px tabular figures just fill, so
+// the stamp wrapped to two lines and made every row 48 instead of 32. Three
+// flexes hold it on one line (issue #395).
+const int _atFlex = 3;
 
 /// The one column spec the band and every table row are built from, so a label
 /// and its cells start (or end) on the same edge by construction.

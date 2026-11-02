@@ -227,7 +227,12 @@ class _LoadedState extends State<_Loaded> {
 // Column weights shared by the header and the rows, so they line up.
 const int _kpiFlex = 4;
 const int _unitFlex = 1;
-const int _directionFlex = 1;
+// `Direction` is the longest label and the shortest word: one flex of a 988px
+// content box is 62px, and 12px text needs 55 of them plus the cell's own gap —
+// so a single flex wraps the label's one word onto a second line and doubles the
+// band's height (measured at 64 for a 32px band). Two flexes hold it on one line
+// down to the narrowest window the catalogue is a matrix at (issue #395).
+const int _directionFlex = 2;
 const int _grainFlex = 2;
 const int _todayFlex = 2;
 
