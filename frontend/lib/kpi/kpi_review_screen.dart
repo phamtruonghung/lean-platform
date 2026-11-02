@@ -106,6 +106,9 @@ class KpiReviewScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('kpi-review-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('kpi-review-retry');
   static const ValueKey<String> emptyKey = ValueKey<String>('kpi-review-empty');
+  /// The Screen's title. It is `AppPageHeader`'s title text now, and this key sits
+  /// on the header itself, so the name every caller and test knows still finds the
+  /// page's header (#395).
   static const ValueKey<String> headingKey = ValueKey<String>('kpi-review-heading');
   static ValueKey<String> rowKey(int kpiId) => ValueKey<String>('kpi-review-row-$kpiId');
 
@@ -316,6 +319,7 @@ class _LoadedState extends State<_Loaded> {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
+              key: KpiReviewScreen.headingKey,
               title: reviewDate == null ? 'KPI Review' : 'KPI Review for $reviewDate',
               description:
                   'Judge each KPI of the MTU line against its Daily Target: met, missed or not measured.',
