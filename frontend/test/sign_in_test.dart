@@ -4,11 +4,14 @@
 /// What these tests claim: which of the two renders at a given width, and
 /// where the boundary is; that the copy, the three buttons' 44px touch targets,
 /// the autofill hints, pasting, validation and the placement of a refusal
-/// survive both layouts, in both palettes; and that 320px neither overflows nor
+/// survive both layouts, in both palettes; that the palette switch rides in the
+/// form card's heading row, above the fields, in both layouts and in both
+/// palettes (issue #415); and that 320px neither overflows nor
 /// strands anything out of reach. They mount the Screen alone over a recording
 /// `AuthGateway` rather than the whole app, because the Screen is the unit and
 /// its layout does not depend on the router. Not claimed: that the real
-/// gateways sign anyone in — `local_auth_test.dart` proves that.
+/// gateways sign anyone in — `local_auth_test.dart` proves that, and that the
+/// switch actually repaints the app is `theme_mode_test.dart`'s.
 library;
 
 import 'package:flutter/material.dart';
@@ -19,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lean_platform/auth/sign_in_screen.dart';
 import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/palette_toggle.dart';
 
 /// Records what the Screen asked of it, and refuses on demand.
 class RecordingAuthGateway implements AuthGateway {
@@ -50,19 +54,42 @@ class RecordingAuthGateway implements AuthGateway {
   Future<void> signOut() async {}
 }
 
+/// What the Screen asked of its palette switch (issue #415). The Screen holds
+/// no mode of its own — it is handed whether the dark palette is on and told
+/// what a tap means — so this records both halves as the Screen saw them.
+class PaletteToggleSpy {
+  PaletteToggleSpy({this.darkPalette = false});
+
+  /// What the Screen was told is on screen.
+  final bool darkPalette;
+
+  /// How many times the Screen asked to switch.
+  int taps = 0;
+
+  VoidCallback get onToggle => () => taps += 1;
+}
+
 Future<RecordingAuthGateway> pumpSignIn(
   WidgetTester tester,
   Size size, {
   Brightness brightness = Brightness.light,
+  PaletteToggleSpy? palette,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   final gateway = RecordingAuthGateway();
+  final toggle = palette ?? PaletteToggleSpy();
   await tester.pumpWidget(
     RepositoryProvider<AuthGateway>.value(
       value: gateway,
-      child: MaterialApp(theme: buildAppTheme(brightness), home: const SignInScreen()),
+      child: MaterialApp(
+        theme: buildAppTheme(brightness),
+        home: SignInScreen(
+          darkPalette: toggle.darkPalette,
+          onToggleDarkPalette: toggle.onToggle,
+        ),
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -263,4 +290,53 @@ void main() {
       expect(tester.getTopLeft(message).dy, greaterThan(tester.getBottomLeft(_field('Password')).dy));
     });
   }
+
+  // The palette switch on the front door (issue #415). What these claim: the
+  // one control the Screen owns that is not signing in is drawn in both
+  // layouts, inside the form card, above the first field, at least 44px tall;
+  // that it names the palette a tap would bring; and that tapping it asks the
+  // caller to switch and does nothing else — the Screen holds no mode.
+  for (final size in const [Size(1200, 900), Size(375, 812), Size(320, 568)]) {
+    testWidgets('the palette switch is in the form card, above the fields, at ${size.width.round()}px',
+        (tester) async {
+      await pumpSignIn(tester, size);
+
+      final toggle = find.byKey(PaletteToggle.buttonKey);
+      expect(toggle, findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.ensureVisible(toggle);
+      await tester.pump();
+      final box = tester.getRect(toggle);
+      final card = tester.getRect(find.byKey(SignInScreen.formCardKey));
+      expect(card.contains(box.center), isTrue, reason: 'the switch rides in the card');
+      expect(box.height, greaterThanOrEqualTo(44));
+      expect(box.width, greaterThanOrEqualTo(44));
+      expect(box.bottom, lessThanOrEqualTo(tester.getTopLeft(_field('Email')).dy),
+          reason: 'the heading row sits above the first field');
+    });
+  }
+
+  testWidgets('the switch names the palette a tap would bring, in both palettes', (tester) async {
+    await pumpSignIn(tester, const Size(375, 812));
+    expect(find.byIcon(Icons.dark_mode_outlined), findsOneWidget);
+    expect(find.byTooltip(PaletteToggle.toDarkTooltip), findsOneWidget);
+    expect(find.byIcon(Icons.light_mode_outlined), findsNothing);
+
+    await pumpSignIn(tester, const Size(375, 812), palette: PaletteToggleSpy(darkPalette: true));
+    expect(find.byIcon(Icons.light_mode_outlined), findsOneWidget);
+    expect(find.byTooltip(PaletteToggle.toLightTooltip), findsOneWidget);
+    expect(find.byIcon(Icons.dark_mode_outlined), findsNothing);
+  });
+
+  testWidgets('a tap asks the caller to switch the palette, and signs nobody in', (tester) async {
+    final palette = PaletteToggleSpy();
+    final gateway = await pumpSignIn(tester, const Size(375, 812), palette: palette);
+
+    await tester.tap(find.byKey(PaletteToggle.buttonKey));
+    await tester.pumpAndSettle();
+
+    expect(palette.taps, 1);
+    expect(gateway.calls, isEmpty);
+  });
 }
