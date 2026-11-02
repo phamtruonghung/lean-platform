@@ -23,9 +23,9 @@
 ///   side at a 1280 window and stacked at 700.
 /// - **The states** are the shared ones (#103): `SkeletonList`/`SkeletonDetail`
 ///   while a read is in flight and `PlatformEmptyState` for a Site list that is
-///   empty — never a bare spinner or a lone `Text`. The wire's two gates
-///   (`sitesGate`, `employeeDetailGate`) hold those reads open so the loading
-///   state is a thing this file can measure.
+///   empty — never a bare spinner or a lone `Text`. The wire's three gates
+///   (`sitesGate`, `orgUnitTreeGate`, `employeeDetailGate`) hold those reads
+///   open so the loading state is a thing this file can measure.
 ///
 /// The app is pumped through the real router with the wire faked, as the
 /// Module's own tests do; nothing here reaches into a Bloc. The app's real fonts
@@ -661,6 +661,43 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SkeletonList), findsNothing,
           reason: 'Org Units: the skeleton stayed after the Site list arrived');
+    });
+
+    testWidgets("the Org Unit tree's roots load as the shared skeleton, never a spinner",
+        (tester) async {
+      // The Site panel's own skeleton is pinned by the case above; this is the
+      // tree's, whose placeholder a bare `CircularProgressIndicator` could
+      // replace with the whole suite still green (S6's own review, #392).
+      final wire = _wire()..orgUnitTreeGate = Completer<void>();
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 1200);
+      addTearDown(tester.view.reset);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: wire.client,
+        initialLocation: Routes.orgUnits,
+      );
+
+      // One Site, so the picker opens it by itself: the Site panel has
+      // finished reading, and the only loading state left on the page is the
+      // tree's own.
+      expect(wire.orgUnitRequests, contains(('1', null)),
+          reason: "Org Units: the tree never asked for its Site's roots");
+      expect(find.byType(SkeletonList), findsOneWidget,
+          reason: "Org Units: the tree's roots do not load as the shared skeleton");
+      expect(find.byType(CircularProgressIndicator), findsNothing,
+          reason: 'Org Units: a bare spinner is still a loading state');
+
+      wire.orgUnitTreeGate!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(SkeletonList), findsNothing,
+          reason: 'Org Units: the tree skeleton stayed after the roots arrived');
+      // The row's own control, not its prose: `_TreeRow` draws `name · code`,
+      // so the row is proved arrived by the `Key` it is found by everywhere
+      // else in the suite.
+      expect(find.byKey(OrgUnitsScreen.expandKey('10')), findsOneWidget,
+          reason: "Org Units: the tree's own rows did not arrive after the roots");
     });
 
     testWidgets('the Employee detail loads as the shared skeleton, never a spinner',

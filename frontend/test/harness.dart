@@ -4182,6 +4182,16 @@ class FakeWire {
   /// see [employeeDetailGate].
   Completer<void>? sitesGate;
 
+  /// `GET /api/people/sites/:id/org-units` **at the root level** — the tree's
+  /// own read, gated the same way [sitesGate] gates the Site list, so a test
+  /// can see what the tree shows while its roots are still in flight.
+  ///
+  /// Only the root read is gated: that is the one the Screen draws its own
+  /// placeholder for, and until this gate existed a bare spinner put in its
+  /// place went unnoticed by the whole suite (#392). A child level's read is
+  /// left ungated because nothing asserts on it.
+  Completer<void>? orgUnitTreeGate;
+
   /// `GET /api/people/timezones` (issue #123/#127, ADR-0023) — the whole
   /// list `SiteFormDialog` fetches once when it opens. A test asserting the
   /// fetch happened only once reads [requests] for
@@ -9402,6 +9412,11 @@ class FakeWire {
           final siteId = path.split('/')[4];
           final parentId = request.url.queryParameters['parentId'];
           orgUnitRequests.add((siteId, parentId));
+          // The tree's own root read, held open on request — the device
+          // [sitesGate] gives the Site list (issue #392).
+          if (orgUnitTreeGate != null && parentId == null) {
+            await orgUnitTreeGate!.future;
+          }
           if (orgUnitsStatus != 200) {
             return http.Response(
               jsonEncode({'message': 'The tree is unavailable.'}),
