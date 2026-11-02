@@ -180,6 +180,31 @@ Finder _cellIn(Key row, int index) => find.descendant(
       matching: find.byKey(AppTableRow.cellKey(index)),
     );
 
+/// The card path, measured rather than assumed.
+///
+/// A register's card is a `Card` padded by `Spacing.md` with its Open control a
+/// child of that padding — so the control's left edge is [Spacing.md] in from
+/// the card's. That number is what separates a card from a table row: the same
+/// control in the table sits in the end-aligned action column, a column's width
+/// away from the left edge. A presence check alone cannot tell the two apart,
+/// which is how a breakpoint that ignores the reader's text scale stayed green
+/// through #379 and #381.
+void _expectCardRow(WidgetTester tester, _Register register, String where) {
+  final card = find.byKey(register.rowKey(register.id));
+  expect(card, findsOneWidget, reason: '${register.name} $where: no card for the record');
+  final open = find.byKey(register.openKey(register.id));
+  expect(open, findsOneWidget, reason: '${register.name} $where: no Open control');
+  expect(
+    tester.getTopLeft(open).dx,
+    closeTo(tester.getTopLeft(card).dx + Spacing.md, 1.5),
+    reason: '${register.name} $where: the Open control is not inside the card\'s own '
+        '${Spacing.md.toInt()}px padding (a table row puts it at the far right)',
+  );
+  expect(tester.getSize(open).height, greaterThanOrEqualTo(AppTouchTarget.min),
+      reason: '${register.name} $where: the Open control is under '
+          '${AppTouchTarget.min.toInt()}');
+}
+
 void main() {
   setUpAll(loadAppFonts);
 
@@ -250,20 +275,28 @@ void main() {
 
         expect(find.byType(AppTableHeader), findsNothing,
             reason: '${register.name} at $width: a table was drawn in a box that cannot hold it');
-        expect(find.byKey(register.rowKey(register.id)), findsOneWidget);
         expect(find.text(register.cardSentence), findsWidgets);
-        expect(find.byKey(register.openKey(register.id)), findsOneWidget);
+        _expectCardRow(tester, register, 'at ${width.toInt()}');
         expect(tester.takeException(), isNull);
       });
     }
 
-    testWidgets('${register.name}: at twice the text, at 1280 and at 700, nothing overflows and the '
+    testWidgets('${register.name}: at twice the text, at 1280 and at 700, it is a card and the '
         'Open control is still reachable', (tester) async {
       for (final width in [1280.0, 700.0]) {
         await _pump(tester, location: register.location, width: width, textScale: 2);
         expect(tester.takeException(), isNull, reason: '${register.name} at $width x2');
+
+        // The register compares `AppBreakpoints.effective(...)`, i.e. its own
+        // breakpoint scaled by the reader's text setting, so twice the text
+        // must move it below the box it is handed: at 1280 the page box is
+        // 1020, under `900 x 2`. A raw constant leaves 1020 > 900 and draws the
+        // six-column table into a box that cannot hold it — #379/#381 exactly.
+        expect(find.byType(AppTableHeader), findsNothing,
+            reason: '${register.name} at $width x2: a table was drawn at twice the text');
+        _expectCardRow(tester, register, 'at ${width.toInt()} x2');
+
         final open = find.byKey(register.openKey(register.id));
-        expect(open, findsOneWidget, reason: '${register.name}: Open at $width x2');
         await tester.ensureVisible(open);
         await tester.pumpAndSettle();
         expect(open.hitTestable(), findsOneWidget,
@@ -320,9 +353,36 @@ void main() {
       expect(tester.takeException(), isNull);
 
       for (final width in [1280.0, 700.0]) {
-        await _pump(tester, location: location, width: width, height: 1600, textScale: 2);
+        // A taller surface at twice the text, so both of the first pair are
+        // built and their rectangles can be compared: the page is a `ListView`,
+        // and a section that was never laid out proves nothing.
+        await _pump(tester, location: location, width: width, height: 2000, textScale: 2);
         expect(tester.takeException(), isNull, reason: '$name at $width x2');
-        expect(find.byKey(summaryKey), findsOneWidget, reason: '$name: summary at $width x2');
+
+        final summary = find.byKey(summaryKey);
+        expect(summary, findsOneWidget, reason: '$name: summary at $width x2');
+        final sections = find.byType(AppDetailSection);
+        expect(sections, findsAtLeastNWidgets(2), reason: '$name at $width x2: no section pair');
+        expect(
+          tester.getTopLeft(sections.at(0)).dy,
+          greaterThan(tester.getBottomRight(summary).dy - 1),
+          reason: '$name at $width x2: a section is drawn above the summary card',
+        );
+
+        // Twice the text doubles `AppBreakpoints.detailTwoColumn` to 2000, so
+        // neither a 1020px page box nor a 640px one can hold two columns: the
+        // pair must stack. Two sections on one row here is the breakpoint
+        // comparison that ignored the reader's own text setting.
+        expect(
+          tester.getTopLeft(sections.at(1)).dy,
+          greaterThan(tester.getBottomRight(sections.at(0)).dy - 1),
+          reason: '$name at $width x2: two sections share a row at twice the text',
+        );
+        expect(
+          tester.getTopLeft(sections.at(1)).dx,
+          closeTo(tester.getTopLeft(sections.at(0)).dx, 1.0),
+          reason: '$name at $width x2: the stacked sections do not share a left edge',
+        );
       }
     });
   }
@@ -377,15 +437,35 @@ void main() {
       });
     }
 
-    testWidgets('$name: at twice the text nothing overflows and the action is reachable',
+    testWidgets('$name: at twice the text nothing overflows and the action still ends the card',
         (tester) async {
-      await _pump(tester, location: location, width: 700, textScale: 2);
-      expect(tester.takeException(), isNull);
-      final action = find.byKey(actionKey(id));
-      expect(action, findsOneWidget);
-      await tester.ensureVisible(action);
-      await tester.pumpAndSettle();
-      expect(action.hitTestable(), findsOneWidget);
+      for (final width in [1280.0, 700.0]) {
+        await _pump(tester, location: location, width: width, textScale: 2);
+        expect(tester.takeException(), isNull, reason: '$name at $width x2');
+
+        // The same measurement the 1x cases make, at the reader's text scale:
+        // a catalogue row is not allowed to grow a second line that carries the
+        // action off the card's own right edge.
+        final card = find.byType(AppListCard);
+        expect(card, findsOneWidget, reason: '$name at $width x2: no catalogue card');
+        final row = find.byKey(rowKey(id));
+        expect(row, findsOneWidget, reason: '$name at $width x2: no row');
+        expect(tester.getSize(row).height, greaterThanOrEqualTo(AppTouchTarget.min),
+            reason: '$name at $width x2: a row that holds a control is under '
+                '${AppTouchTarget.min.toInt()}');
+
+        final action = find.byKey(actionKey(id));
+        expect(action, findsOneWidget);
+        expect(
+          tester.getBottomRight(action).dx,
+          closeTo(tester.getBottomRight(card).dx - Spacing.lg, 1.5),
+          reason: '$name at $width x2: the action is not against the card\'s own right edge',
+        );
+        await tester.ensureVisible(action);
+        await tester.pumpAndSettle();
+        expect(action.hitTestable(), findsOneWidget,
+            reason: '$name at $width x2: the action is not reachable');
+      }
     });
   }
 }
