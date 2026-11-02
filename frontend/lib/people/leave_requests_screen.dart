@@ -158,67 +158,116 @@ class _LeaveRequestRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final palette = AppColors.of(context);
+    final muted = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     final decisionNote = request.decisionNote;
     final note = request.note;
     final address = '${Routes.leaveRequests}/${request.id}';
+
+    final record = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${request.employee.displayName} · ${request.leaveTypeName}',
+          style: AppTypography.dense(context)?.copyWith(
+            color: palette.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: Spacing.xs),
+        // The state and the days on one line: the chip carries the state's own
+        // word, the sentence beside it the run of days it covers.
+        Wrap(
+          spacing: Spacing.sm,
+          runSpacing: Spacing.xs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            StatusChip(
+              label: request.statusLabel,
+              tone: leaveRequestStatusTone(request.status),
+            ),
+            Text('${request.periodLabel} · ${request.daysLabel}', style: muted),
+          ],
+        ),
+        if (note != null && note.isNotEmpty) ...[
+          const SizedBox(height: Spacing.xs),
+          Text('Note: $note', style: muted),
+        ],
+        if (decisionNote != null && decisionNote.isNotEmpty) ...[
+          const SizedBox(height: Spacing.xs),
+          Text('Decision note: $decisionNote', style: muted),
+        ],
+      ],
+    );
+
+    final actions = <Widget>[
+      if (request.canDecide) ...[
+        OutlinedButton(
+          key: LeaveRequestsScreen.approveKey(request.id),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
+          onPressed: isMutating ? null : () => context.go('$address/approve'),
+          child: const Text('Approve'),
+        ),
+        OutlinedButton(
+          key: LeaveRequestsScreen.rejectKey(request.id),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
+          onPressed: isMutating ? null : () => context.go('$address/reject'),
+          child: const Text('Reject'),
+        ),
+      ],
+      if (request.canCancel)
+        OutlinedButton(
+          key: LeaveRequestsScreen.cancelKey(request.id),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
+          onPressed: isMutating ? null : () => context.go('$address/cancel'),
+          child: const Text('Cancel request'),
+        ),
+    ];
+
     return Padding(
       key: LeaveRequestsScreen.rowKey(request.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            // The box, scaled by the reader's text size (`AppBreakpoints.effective`),
+            // never the window: at 2x the three decisions do not fit beside the
+            // record, and squeezing them is how a row loses its text instead.
+            if (box.maxWidth < AppBreakpoints.effective(context, AppBreakpoints.toolbarWrap)) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  record,
+                  if (actions.isNotEmpty) ...[
+                    const SizedBox(height: Spacing.sm),
+                    Wrap(spacing: Spacing.sm, runSpacing: Spacing.sm, children: actions),
+                  ],
+                ],
+              );
+            }
+            return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '${request.employee.displayName} · ${request.leaveTypeName}',
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ),
-                    const SizedBox(width: Spacing.sm),
-                    StatusChip(
-                      label: request.statusLabel,
-                      tone: leaveRequestStatusTone(request.status),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Spacing.xs),
-                Text('${request.periodLabel} · ${request.daysLabel}', style: muted),
-                if (note != null && note.isNotEmpty) Text('Note: $note', style: muted),
-                if (decisionNote != null && decisionNote.isNotEmpty)
-                  Text('Decision note: $decisionNote', style: muted),
+                Expanded(child: record),
+                if (actions.isNotEmpty) ...[
+                  const SizedBox(width: Spacing.md),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < actions.length; i++) ...[
+                        if (i > 0) const SizedBox(width: Spacing.sm),
+                        actions[i],
+                      ],
+                    ],
+                  ),
+                ],
               ],
-            ),
-          ),
-          if (request.canDecide) ...[
-            OutlinedButton(
-              key: LeaveRequestsScreen.approveKey(request.id),
-              onPressed: isMutating ? null : () => context.go('$address/approve'),
-              child: const Text('Approve'),
-            ),
-            const SizedBox(width: Spacing.sm),
-            OutlinedButton(
-              key: LeaveRequestsScreen.rejectKey(request.id),
-              onPressed: isMutating ? null : () => context.go('$address/reject'),
-              child: const Text('Reject'),
-            ),
-          ],
-          if (request.canCancel) ...[
-            const SizedBox(width: Spacing.sm),
-            OutlinedButton(
-              key: LeaveRequestsScreen.cancelKey(request.id),
-              onPressed: isMutating ? null : () => context.go('$address/cancel'),
-              child: const Text('Cancel request'),
-            ),
-          ],
-        ],
+            );
+          },
+        ),
       ),
     );
   }
