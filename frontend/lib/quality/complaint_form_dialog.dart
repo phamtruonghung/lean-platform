@@ -23,6 +23,7 @@ import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import 'complaints_bloc.dart';
 
 class ComplaintFormDialog extends StatefulWidget {
@@ -40,8 +41,8 @@ class ComplaintFormDialog extends StatefulWidget {
   static const ValueKey<String> warrantyKey = ValueKey<String>('complaint-form-warranty');
   static const ValueKey<String> descriptionKey = ValueKey<String>('complaint-form-description');
   static const ValueKey<String> chosenOrgUnitKey = ValueKey<String>('complaint-form-org-unit');
-  static const ValueKey<String> submitKey = ValueKey<String>('complaint-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('complaint-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('complaint-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('complaint-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('complaint-form-failure');
 
   @override
@@ -122,161 +123,158 @@ class _ComplaintFormDialogState extends State<ComplaintFormDialog> {
 
     return BlocListener<ComplaintsBloc, ComplaintsState>(
       listener: _onComplaintsChanged,
-      child: AlertDialog(
-        title: const Text('Record a customer complaint'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  key: ComplaintFormDialog.customerKey,
-                  initialValue: _customerId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Customer',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final customer in loaded?.customers ?? const [])
-                      DropdownMenuItem<String>(
-                        value: customer.id,
-                        child: Text(customer.summary, overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _customerId = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: ComplaintFormDialog.productKey,
-                  initialValue: _productId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Product',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final product in loaded?.products ?? const [])
-                      DropdownMenuItem<String>(
-                        value: product.id,
-                        child: Text('${product.name} · ${product.code}',
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _productId = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String?>(
-                  key: ComplaintFormDialog.defectCodeKey,
-                  initialValue: _defectCodeId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Defect code (optional)',
-                    helperText: 'What the customer says is wrong. A Non-conformance recorded '
-                        'from this complaint carries it.',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text('Not known yet')),
-                    for (final code in loaded?.defectCodes ?? const [])
-                      DropdownMenuItem<String?>(
-                        value: code.id,
-                        child: Text('${code.name} · ${code.code}', overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _defectCodeId = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ComplaintFormDialog.quantityKey,
-                  controller: _quantity,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Quantity (optional)',
-                    helperText: 'In the Product\'s own unit of measure.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                AppDateField(
-                  key: ComplaintFormDialog.responseDueKey,
-                  name: 'complaint-response-due',
-                  label: 'Response due (optional)',
-                  helperText: 'The day the customer was promised an answer.',
-                  value: _responseDueDate,
-                  optional: true,
-                  enabled: !_awaiting,
-                  onChanged: (value) => setState(() => _responseDueDate = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ComplaintFormDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 4,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'What the customer said',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                SwitchListTile(
-                  key: ComplaintFormDialog.warrantyKey,
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Warranty claim'),
-                  value: _isWarranty,
-                  onChanged: _awaiting ? null : (value) => setState(() => _isWarranty = value),
-                ),
-                const SizedBox(height: Spacing.lg),
-                OrgUnitChooser(
-                  selectedId: _orgUnit?.id,
-                  enabled: !_awaiting,
-                  showSitePicker: false,
-                  title: 'Who answers it',
-                  description: 'Choose the Org Unit that will answer this complaint. This is '
-                      'what decides who may act on it.',
-                  onSelected: (node) => setState(() => _orgUnit = node),
-                ),
-                if (_orgUnit != null)
-                  Padding(
-                    key: ComplaintFormDialog.chosenOrgUnitKey,
-                    padding: const EdgeInsets.only(top: Spacing.sm),
-                    child: Text(
-                      'This complaint will be filed at ${_orgUnit!.name}.',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                if (_failure != null)
-                  Padding(
-                    key: ComplaintFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Record a customer complaint',
+        size: AppDialogSize.picker,
         actions: [
-          TextButton(
-            key: ComplaintFormDialog.cancelKey,
+          AppDialogAction(
+            id: 'complaint-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: ComplaintFormDialog.submitKey,
+          AppDialogAction(
+            id: 'complaint-form-submit',
+            label: _awaiting ? 'Saving…' : 'Record it',
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Record it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              key: ComplaintFormDialog.customerKey,
+              initialValue: _customerId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Customer',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final customer in loaded?.customers ?? const [])
+                  DropdownMenuItem<String>(
+                    value: customer.id,
+                    child: Text(customer.summary, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _customerId = value),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: ComplaintFormDialog.productKey,
+              initialValue: _productId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Product',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final product in loaded?.products ?? const [])
+                  DropdownMenuItem<String>(
+                    value: product.id,
+                    child: Text('${product.name} · ${product.code}',
+                        overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _productId = value),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String?>(
+              key: ComplaintFormDialog.defectCodeKey,
+              initialValue: _defectCodeId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Defect code (optional)',
+                helperText: 'What the customer says is wrong. A Non-conformance recorded '
+                    'from this complaint carries it.',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('Not known yet')),
+                for (final code in loaded?.defectCodes ?? const [])
+                  DropdownMenuItem<String?>(
+                    value: code.id,
+                    child: Text('${code.name} · ${code.code}', overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _defectCodeId = value),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ComplaintFormDialog.quantityKey,
+              controller: _quantity,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Quantity (optional)',
+                helperText: 'In the Product\'s own unit of measure.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            AppDateField(
+              key: ComplaintFormDialog.responseDueKey,
+              name: 'complaint-response-due',
+              label: 'Response due (optional)',
+              helperText: 'The day the customer was promised an answer.',
+              value: _responseDueDate,
+              optional: true,
+              enabled: !_awaiting,
+              onChanged: (value) => setState(() => _responseDueDate = value),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ComplaintFormDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 4,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'What the customer said',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            SwitchListTile(
+              key: ComplaintFormDialog.warrantyKey,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Warranty claim'),
+              value: _isWarranty,
+              onChanged: _awaiting ? null : (value) => setState(() => _isWarranty = value),
+            ),
+            const SizedBox(height: Spacing.lg),
+            OrgUnitChooser(
+              selectedId: _orgUnit?.id,
+              enabled: !_awaiting,
+              showSitePicker: false,
+              title: 'Who answers it',
+              description: 'Choose the Org Unit that will answer this complaint. This is '
+                  'what decides who may act on it.',
+              onSelected: (node) => setState(() => _orgUnit = node),
+            ),
+            if (_orgUnit != null)
+              Padding(
+                key: ComplaintFormDialog.chosenOrgUnitKey,
+                padding: const EdgeInsets.only(top: Spacing.sm),
+                child: Text(
+                  'This complaint will be filed at ${_orgUnit!.name}.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+            if (_failure != null)
+              Padding(
+                key: ComplaintFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

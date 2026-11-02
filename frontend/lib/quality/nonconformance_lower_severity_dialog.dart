@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'defect_code.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
@@ -30,10 +31,10 @@ class NonconformanceLowerSeverityDialog extends StatefulWidget {
   static const ValueKey<String> severityKey =
       ValueKey<String>('nonconformance-lower-severity-value');
   static const ValueKey<String> noteKey = ValueKey<String>('nonconformance-lower-severity-note');
-  static const ValueKey<String> submitKey =
-      ValueKey<String>('nonconformance-lower-severity-submit');
-  static const ValueKey<String> cancelKey =
-      ValueKey<String>('nonconformance-lower-severity-cancel');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('nonconformance-lower-severity-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-lower-severity-cancel');
   static const ValueKey<String> failureKey =
       ValueKey<String>('nonconformance-lower-severity-failure');
   static const ValueKey<String> refusedKey =
@@ -101,100 +102,105 @@ class _NonconformanceLowerSeverityDialogState extends State<NonconformanceLowerS
     // Read here, in a build, for the reason the Screen reads it there: a value
     // frozen when the route first built would answer for a half-known Account.
     if (!holdsQualityAuthority(context, record.orgUnitId)) {
-      return AlertDialog(
+      return AppDialog(
         key: NonconformanceLowerSeverityDialog.refusedKey,
-        content: const Text(
-          'Lowering a severity needs Quality authority at this Non-conformance\'s Org Unit.',
-        ),
+        title: 'Cannot lower it',
+        size: AppDialogSize.decision,
+        description:
+            'Lowering a severity needs Quality authority at this Non-conformance\'s Org Unit.',
+        actions: [
+          AppDialogAction(
+            id: 'nonconformance-lower-severity-refused-close',
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Lower the severity'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${record.issueNo} is ${record.severityLabel.toLowerCase()} severity, and its '
-                  'Defect code starts at ${DefectSeverity.label(record.defectCodeDefaultSeverity).toLowerCase()}.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                if (offerable.isEmpty)
-                  Text(
-                    'This Non-conformance is already at the lightest severity.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  )
-                else
-                  DropdownButtonFormField<String?>(
-                    key: NonconformanceLowerSeverityDialog.severityKey,
-                    initialValue: _severity,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Lower the severity to',
-                      helperText: 'Lowering what the Defect code says needs Quality authority.',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('Leave the severity alone'),
-                      ),
-                      for (final severity in offerable)
-                        DropdownMenuItem<String?>(
-                          value: severity,
-                          child: Text(DefectSeverity.label(severity)),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _severity = value),
-                  ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceLowerSeverityDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 3,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    helperText: 'Why it is less bad than the Defect code says.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: NonconformanceLowerSeverityDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Lower the severity',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: NonconformanceLowerSeverityDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-lower-severity-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: NonconformanceLowerSeverityDialog.submitKey,
+          AppDialogAction(
+            id: 'nonconformance-lower-severity-submit',
+            label: 'Lower it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Lower it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${record.issueNo} is ${record.severityLabel.toLowerCase()} severity, and its '
+              'Defect code starts at ${DefectSeverity.label(record.defectCodeDefaultSeverity).toLowerCase()}.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            if (offerable.isEmpty)
+              Text(
+                'This Non-conformance is already at the lightest severity.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              )
+            else
+              DropdownButtonFormField<String?>(
+                key: NonconformanceLowerSeverityDialog.severityKey,
+                initialValue: _severity,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Lower the severity to',
+                  helperText: 'Lowering what the Defect code says needs Quality authority.',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Leave the severity alone'),
+                  ),
+                  for (final severity in offerable)
+                    DropdownMenuItem<String?>(
+                      value: severity,
+                      child: Text(DefectSeverity.label(severity)),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _severity = value),
+              ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceLowerSeverityDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Note',
+                helperText: 'Why it is less bad than the Defect code says.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: NonconformanceLowerSeverityDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

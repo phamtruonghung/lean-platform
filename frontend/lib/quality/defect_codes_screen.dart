@@ -31,6 +31,7 @@ import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -149,66 +150,70 @@ class _DefectCodeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final code = row.code;
 
-    return Padding(
+    return ConstrainedBox(
       key: DefectCodesScreen.rowKey(code.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
-        children: [
-          Expanded(
-            // The tree's own indentation, one step per level beneath a parent.
-            child: Padding(
-              padding: EdgeInsets.only(left: row.depth * DefectCodesScreen.indentPerDepth),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          '${code.name} · ${code.code}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium,
+      constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              // The tree's own indentation, one step per level beneath a parent.
+              child: Padding(
+                padding: EdgeInsets.only(left: row.depth * DefectCodesScreen.indentPerDepth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DisclosingText(
+                            '${code.name} · ${code.code}',
+                            style: AppTypography.dense(context)
+                                ?.copyWith(color: palette.textPrimary),
+                          ),
                         ),
-                      ),
-                      if (!code.isActive) ...[
-                        const SizedBox(width: Spacing.sm),
-                        StatusChip(
-                          key: DefectCodesScreen.inactiveChipKey(code.id),
-                          label: 'Inactive',
-                          tone: StatusTone.neutral,
-                        ),
+                        if (!code.isActive) ...[
+                          const SizedBox(width: Spacing.sm),
+                          StatusChip(
+                            key: DefectCodesScreen.inactiveChipKey(code.id),
+                            label: 'Inactive',
+                            tone: StatusTone.neutral,
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  // Where it sits and what it carries: the parent by name
-                  // (indentation alone says nothing once a row is read on its
-                  // own), the category it is grouped under (CONTEXT.md keeps
-                  // that distinct from the code itself), and the severity a
-                  // Non-conformance recorded against it starts at.
-                  Text(
-                    '${row.parentName == null ? 'Top level' : 'Under ${row.parentName}'} · '
-                    '${DefectCategory.label(code.category)} · '
-                    'starts at ${DefectSeverity.label(code.defaultSeverity)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelMedium
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
+                    ),
+                    // Where it sits and what it carries: the parent by name
+                    // (indentation alone says nothing once a row is read on its
+                    // own), the category it is grouped under (CONTEXT.md keeps
+                    // that distinct from the code itself), and the severity a
+                    // Non-conformance recorded against it starts at.
+                    DisclosingText(
+                      '${row.parentName == null ? 'Top level' : 'Under ${row.parentName}'} · '
+                      '${DefectCategory.label(code.category)} · '
+                      'starts at ${DefectSeverity.label(code.defaultSeverity)}',
+                      style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          if (isAdmin)
-            OutlinedButton(
-              key: DefectCodesScreen.correctKey(code.id),
-              onPressed: isMutating ? null : () => DefectCodeFormDialog.open(context, defectCode: code),
-              child: const Text('Correct'),
-            ),
-        ],
+            if (isAdmin)
+              OutlinedButton(
+                key: DefectCodesScreen.correctKey(code.id),
+                onPressed:
+                    isMutating ? null : () => DefectCodeFormDialog.open(context, defectCode: code),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Correct'),
+              ),
+          ],
+        ),
       ),
     );
   }

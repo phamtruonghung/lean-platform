@@ -16,6 +16,21 @@
 /// from. The API's own `?search=` is exercised by `quality_api_test.dart`; a
 /// caller who wants the server to narrow a list they do not hold uses that
 /// address.
+///
+/// **This is a catalogue, not a register (issue #390).** A reader comes here to
+/// find one Customer by name or code and then do something to them, so the page
+/// is `AppListCard` of rows — one line naming the Customer in `dense` /
+/// `textPrimary`, the state chip beside it, the one act at the row's far end —
+/// rather than a table whose columns are compared down the page. Its third
+/// pattern column, "count of use", is **not** drawn: no read this Screen calls
+/// carries how many complaints a Customer has (`GET /api/quality/customers`
+/// returns the record alone), and inventing a count from a register this page
+/// never loads would be a number a reader would act on and be wrong about. A
+/// count appears here the day the read carries one.
+///
+/// The row's name line is `DisclosingText`: the summary is user text, and at a
+/// narrow box or twice the reader's text it clips — it says so rather than
+/// ending in an ellipsis nobody can open.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,6 +42,7 @@ import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -204,37 +220,46 @@ class _CustomerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
+    final palette = AppColors.of(context);
+    return ConstrainedBox(
       key: CustomersScreen.rowKey(customer.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: Spacing.md,
-        runSpacing: Spacing.sm,
-        children: [
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: Spacing.sm,
-            runSpacing: Spacing.xxs,
-            children: [
-              Text(customer.summary, style: theme.textTheme.bodyMedium),
-              if (!customer.isActive)
-                StatusChip(
-                  key: CustomersScreen.inactiveChipKey(customer.id),
-                  label: 'Inactive',
-                  tone: StatusTone.neutral,
-                ),
-            ],
-          ),
-          if (isAdmin)
-            OutlinedButton(
-              key: CustomersScreen.correctKey(customer.id),
-              onPressed: isMutating ? null : () => CustomerFormDialog.open(context, customer: customer),
-              child: const Text('Correct'),
+      constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DisclosingText(
+                      customer.summary,
+                      style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+                    ),
+                  ),
+                  if (!customer.isActive) ...[
+                    const SizedBox(width: Spacing.sm),
+                    StatusChip(
+                      key: CustomersScreen.inactiveChipKey(customer.id),
+                      label: 'Inactive',
+                      tone: StatusTone.neutral,
+                    ),
+                  ],
+                ],
+              ),
             ),
-        ],
+            if (isAdmin)
+              OutlinedButton(
+                key: CustomersScreen.correctKey(customer.id),
+                onPressed:
+                    isMutating ? null : () => CustomerFormDialog.open(context, customer: customer),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Correct'),
+              ),
+          ],
+        ),
       ),
     );
   }

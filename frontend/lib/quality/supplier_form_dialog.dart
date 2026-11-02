@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'supplier.dart';
 import 'suppliers_bloc.dart';
 
@@ -36,8 +37,8 @@ class SupplierFormDialog extends StatefulWidget {
   static const ValueKey<String> nameKey = ValueKey<String>('supplier-form-name');
   static const ValueKey<String> emailKey = ValueKey<String>('supplier-form-email');
   static const ValueKey<String> activeKey = ValueKey<String>('supplier-form-active');
-  static const ValueKey<String> submitKey = ValueKey<String>('supplier-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('supplier-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('supplier-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('supplier-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('supplier-form-failure');
 
   /// Opens the form over the Supplier list. `showDialog` builds its route
@@ -153,84 +154,81 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
     final theme = Theme.of(context);
     return BlocListener<SuppliersBloc, SuppliersState>(
       listener: _onSuppliersChanged,
-      child: AlertDialog(
-        title: Text(_isCorrection ? 'Correct Supplier' : 'Add Supplier'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: SupplierFormDialog.codeKey,
-                  controller: _code,
-                  // A code is the one field a correction cannot rewrite.
-                  enabled: !_isCorrection && !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Code',
-                    border: const OutlineInputBorder(),
-                    helperText: _isCorrection ? 'A Supplier\'s code cannot be corrected' : null,
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SupplierFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SupplierFormDialog.emailKey,
-                  controller: _email,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Contact email (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_isCorrection) ...[
-                  const SizedBox(height: Spacing.md),
-                  SwitchListTile(
-                    key: SupplierFormDialog.activeKey,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active'),
-                    value: _isActive,
-                    onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: SupplierFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: _isCorrection ? 'Correct Supplier' : 'Add Supplier',
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: SupplierFormDialog.cancelKey,
+          AppDialogAction(
+            id: 'supplier-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SupplierFormDialog.submitKey,
+          AppDialogAction(
+            id: 'supplier-form-submit',
+            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Supplier'),
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Supplier')),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: SupplierFormDialog.codeKey,
+              controller: _code,
+              // A code is the one field a correction cannot rewrite.
+              enabled: !_isCorrection && !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Code',
+                border: const OutlineInputBorder(),
+                helperText: _isCorrection ? 'A Supplier\'s code cannot be corrected' : null,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SupplierFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SupplierFormDialog.emailKey,
+              controller: _email,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Contact email (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_isCorrection) ...[
+              const SizedBox(height: Spacing.md),
+              SwitchListTile(
+                key: SupplierFormDialog.activeKey,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                value: _isActive,
+                onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: SupplierFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

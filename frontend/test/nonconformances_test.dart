@@ -413,6 +413,16 @@ void main() {
     // The dialog closed, and the record on screen is the one the server
     // answered with: the new count and both history rows.
     expect(find.byKey(NonconformanceQuantityDialog.submitKey), findsNothing);
+    // The page is a scrolling list and `tapIn` aligned the increase control with
+    // the top of the viewport, so the record's summary card is now above it.
+    // Scroll back to the top before reading the record's own facts — what a
+    // reader does, and what makes this an assertion about the page rather than
+    // about which rows happened to be on screen.
+    await tester.drag(
+      find.byKey(NonconformanceDetailScreen.contentKey),
+      const Offset(0, 2000),
+    );
+    await tester.pumpAndSettle();
     expect(_textOf(tester, NonconformanceDetailScreen.quantityKey), '26 EA');
     expect(_textOf(tester, NonconformanceDetailScreen.changeKey('701-2')), contains('20 → 26 EA'));
   });

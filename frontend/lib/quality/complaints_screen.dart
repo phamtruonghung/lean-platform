@@ -20,6 +20,25 @@
 /// its own face: the server marks it ([CustomerComplaint.isOverdue]) and the
 /// row renders that as a chip, because the one thing a reader must not have to
 /// work out from two dates is who is waiting.
+///
+/// **The register is a table above [narrowBreakpoint] of its own content width,
+/// and the card below it (issue #390).** Six columns — the number, who
+/// complained about what, the tone chips, the day an answer is owed, what
+/// controls the product, and the way in — are more than the five
+/// [AppBreakpoints.registerTable] (700) was measured for, and at a 1280px window
+/// this page is handed 988px of box, so the number this Screen states is 900:
+/// the table is drawn when the box really can hold six columns, and a card per
+/// complaint below it. At twice the reader's text the same 988px box is under
+/// 1800, so the cards come back sooner rather than squeezing six columns past
+/// legibility (design-language §10 — the class of bug #379 and #381).
+///
+/// **Every cell that can hold unbounded user text discloses it.** The customer
+/// and product line, the due line and the control line are free text, so at a
+/// 1280 window they clip and `DisclosingText` says so in a tooltip, in a long
+/// press and to a screen reader. Nothing is silently truncated, and nothing a
+/// reader decides on is reachable only through the pointer: the record's own
+/// number is the first column, the row is the tap target, and the Open action is
+/// the right-most cell.
 library;
 
 import 'package:flutter/material.dart';
@@ -31,6 +50,8 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -43,6 +64,12 @@ class ComplaintsScreen extends StatelessWidget {
   const ComplaintsScreen({super.key});
 
   static const double maxWidth = 1100;
+
+  /// The content width (at a text scale of 1) at or above which the register is
+  /// a table of six columns; below it, one card per complaint. Measured from the
+  /// box the list is handed, never the window, and scaled by the reader's text
+  /// size through [AppBreakpoints.effective].
+  static const double narrowBreakpoint = 900;
 
   static const ValueKey<String> recordKey = ValueKey<String>('complaints-record');
   static const ValueKey<String> siteKey = ValueKey<String>('complaints-site');
@@ -64,6 +91,15 @@ class ComplaintsScreen extends StatelessWidget {
   static ValueKey<String> rowDueKey(String id) => ValueKey<String>('complaint-due-$id');
   static ValueKey<String> rowControlledKey(String id) =>
       ValueKey<String>('complaint-controlled-$id');
+
+  /// The way into one complaint, right-most on its row. New in #390: the row
+  /// used to be the only way in, which is a target a pointer has to find and a
+  /// keyboard reaches only by tabbing through everything before it.
+  static ValueKey<String> rowOpenKey(String id) => ValueKey<String>('complaint-open-$id');
+
+  /// The row's height: a control is 44 and the row pads it by [Spacing.xs]
+  /// either side. A card row carries the same controls, so the two agree.
+  static const double rowHeight = AppTouchTarget.min + 2 * Spacing.xs;
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +198,9 @@ class _Header extends StatelessWidget {
                       : () => context.go('${Routes.complaints}/new'),
                   icon: const Icon(Icons.add),
                   label: const Text('Record a complaint'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
                 ),
             ],
             below: loaded == null ? null : _Filters(loaded: loaded),
@@ -211,6 +250,9 @@ class _Filters extends StatelessWidget {
           onPressed: () => ComplaintOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
           icon: const Icon(Icons.account_tree_outlined),
           label: Text(filters.orgUnitName ?? 'All Org Units'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+          ),
         ),
         SizedBox(
           width: 190,
@@ -237,6 +279,9 @@ class _Filters extends StatelessWidget {
             key: ComplaintsScreen.clearFiltersKey,
             onPressed: () =>
                 context.read<ComplaintsBloc>().add(const ComplaintsFiltersCleared()),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+            ),
             child: Text('Clear filters', style: theme.textTheme.bodyMedium),
           ),
       ],
@@ -251,7 +296,7 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ComplaintsScreen.maxWidth,
@@ -261,7 +306,7 @@ class _Truncated extends StatelessWidget {
           child: Text(
             'There are more complaints than this list shows. Narrow it by Org Unit or by status '
             'to see the rest.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
         ),
       ),
@@ -299,6 +344,101 @@ class _Empty extends StatelessWidget {
   }
 }
 
+/// The number column: a complaint number is a fixed-width code — `CC-2026-00001`
+/// — so the column is measured to fit one at the reader's text scale rather than
+/// taking a share of the flex, and the number is never the value that clips.
+double _numberColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    text: TextSpan(text: 'CC-2026-00001', style: AppTypography.dense(context)),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width + Spacing.sm + 8;
+}
+
+/// A chip's own width in the reader's text scale: its label, the compact chip's
+/// padding either side, and the slot's gutter.
+double _chipWidth(BuildContext context, String label) {
+  final painter = TextPainter(
+    text: TextSpan(text: label, style: Theme.of(context).textTheme.labelLarge),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width + Spacing.xxl + Spacing.sm;
+}
+
+/// The State column: wide enough for the status chip and one marking beside it,
+/// which is the commonest pair (a complaint that is open *and* past due). A row
+/// that carries all three marks — open, past due and a warranty claim — wraps the
+/// third onto a second line inside the same cell and grows, rather than the
+/// column being sized for a combination most rows do not have.
+double _stateColumnWidth(BuildContext context) {
+  var widestStatus = 0.0;
+  for (final status in ComplaintStatus.values) {
+    final width = _chipWidth(context, ComplaintStatus.label(status));
+    if (width > widestStatus) widestStatus = width;
+  }
+  final overdue = _chipWidth(context, 'Past due');
+  final warranty = _chipWidth(context, 'Warranty');
+  return widestStatus + Spacing.xs + (overdue > warranty ? overdue : warranty);
+}
+
+/// The Actions column: the one Open button's label, the button's own horizontal
+/// padding either side ([Spacing.xl]) and the slot's gutter.
+double _openColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    text: TextSpan(text: 'Open', style: Theme.of(context).textTheme.labelLarge),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width + 2 * Spacing.xl + Spacing.sm;
+}
+
+/// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
+/// built from this list, so a band label and its cells start at the same x.
+List<AppTableColumn> _columns(BuildContext context) => [
+      AppTableColumn('Complaint', width: _numberColumnWidth(context)),
+      const AppTableColumn('Customer and product', flex: 4),
+      AppTableColumn('State', width: _stateColumnWidth(context)),
+      const AppTableColumn('Response due', flex: 3),
+      const AppTableColumn('Control', flex: 4),
+      AppTableColumn('Actions', width: _openColumnWidth(context), align: AppColumnAlign.end),
+    ];
+
+/// The numbering a reader scans for, and the sentence the row is read as: who
+/// complained, about which Product, and against which Defect code. One string,
+/// because that is how the record is spoken about on the floor.
+String _subject(CustomerComplaint row) =>
+    '${row.customerName} · ${row.productName}'
+    '${row.defectCodeName == null ? '' : ' · ${row.defectCodeName}'}';
+
+/// What controls the product, or the absence of a control — the two answers this
+/// register is read for.
+String _control(CustomerComplaint row) => row.nonconformance == null
+    ? 'No Non-conformance controls this product yet'
+    : 'Controlled by ${row.nonconformance!.issueNo}';
+
+/// The tone chips a complaint carries: its state, and the two markings that
+/// change what a reader should do next.
+List<Widget> _marks(BuildContext context, CustomerComplaint row) => [
+      StatusChip(
+        key: ComplaintsScreen.rowStatusKey(row.id),
+        label: row.statusLabel,
+        tone: row.statusTone,
+      ),
+      if (row.isOverdue)
+        StatusChip(
+          key: ComplaintsScreen.rowOverdueKey(row.id),
+          label: 'Past due',
+          tone: StatusTone.danger,
+        ),
+      if (row.isWarranty)
+        const StatusChip(label: 'Warranty', tone: StatusTone.info),
+    ];
+
 class _Register extends StatelessWidget {
   const _Register({required this.rows});
 
@@ -306,32 +446,118 @@ class _Register extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: AppPageFrame(
-        maxWidth: ComplaintsScreen.maxWidth,
-        child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: rows.length,
-          itemBuilder: (context, index) => _ComplaintRow(complaint: rows[index]),
-        ),
+    // The box this Screen actually got from its parent, scaled by the reader's
+    // text size (design-language §10) — never the window.
+    return LayoutBuilder(
+      builder: (context, box) {
+        final narrow =
+            box.maxWidth < AppBreakpoints.effective(context, ComplaintsScreen.narrowBreakpoint);
+        final columns = _columns(context);
+        return Center(
+          child: AppPageFrame(
+            maxWidth: ComplaintsScreen.maxWidth,
+            child: narrow
+                ? ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    itemCount: rows.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                    itemBuilder: (context, index) => _ComplaintCard(complaint: rows[index]),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    children: [
+                      AppTableHeader(columns: columns),
+                      for (final row in rows)
+                        _ComplaintTableRow(columns: columns, complaint: row),
+                    ],
+                  ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The framework's padded tap target is lifted on the chips and the buttons: each
+/// control states its own [AppTouchTarget.min] through `minimumSize`, and the
+/// padded target would add height to a row that is already 44.
+Widget _shrinkWrapTargets(BuildContext context, Widget child) => Theme(
+      data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      child: child,
+    );
+
+class _ComplaintTableRow extends StatelessWidget {
+  const _ComplaintTableRow({required this.columns, required this.complaint});
+
+  final List<AppTableColumn> columns;
+  final CustomerComplaint complaint;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final row = complaint;
+
+    return KeyedSubtree(
+      key: ComplaintsScreen.rowKey(row.id),
+      child: AppTableRow(
+        columns: columns,
+        onTap: () => context.go('${Routes.complaints}/${row.id}'),
+        cells: [
+          DisclosingText(row.complaintNo, style: dense?.copyWith(color: palette.textMuted)),
+          DisclosingText(_subject(row), style: dense?.copyWith(color: palette.textPrimary)),
+          _shrinkWrapTargets(
+            context,
+            Wrap(
+              spacing: Spacing.xs,
+              runSpacing: Spacing.xxs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: _marks(context, row),
+            ),
+          ),
+          DisclosingText(
+            row.dueLabel,
+            key: ComplaintsScreen.rowDueKey(row.id),
+            style: dense?.copyWith(color: row.isOverdue ? palette.statusDanger : palette.textMuted),
+          ),
+          DisclosingText(
+            _control(row),
+            key: ComplaintsScreen.rowControlledKey(row.id),
+            style: dense?.copyWith(color: palette.textPrimary),
+          ),
+          _shrinkWrapTargets(
+            context,
+            OutlinedButton(
+              key: ComplaintsScreen.rowOpenKey(row.id),
+              onPressed: () => context.go('${Routes.complaints}/${row.id}'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ComplaintRow extends StatelessWidget {
-  const _ComplaintRow({required this.complaint});
+/// One complaint as a card, for a box that cannot hold six columns. The same
+/// facts as the table row, stacked, because a narrow box is a narrow box rather
+/// than a reason to drop what a reader decides on.
+class _ComplaintCard extends StatelessWidget {
+  const _ComplaintCard({required this.complaint});
 
   final CustomerComplaint complaint;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final row = complaint;
 
     return Card(
       key: ComplaintsScreen.rowKey(row.id),
-      margin: const EdgeInsets.only(bottom: Spacing.sm),
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: () => context.go('${Routes.complaints}/${row.id}'),
         child: Padding(
@@ -346,47 +572,47 @@ class _ComplaintRow extends StatelessWidget {
                 runSpacing: Spacing.xxs,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text(row.complaintNo, style: theme.textTheme.labelMedium),
-                  StatusChip(
-                    key: ComplaintsScreen.rowStatusKey(row.id),
-                    label: row.statusLabel,
-                    tone: row.statusTone,
+                  Text(
+                    row.complaintNo,
+                    style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                   ),
-                  if (row.isOverdue)
-                    StatusChip(
-                      key: ComplaintsScreen.rowOverdueKey(row.id),
-                      label: 'Past due',
-                      tone: StatusTone.danger,
-                    ),
-                  if (row.isWarranty)
-                    const StatusChip(label: 'Warranty', tone: StatusTone.info),
                 ],
               ),
               const SizedBox(height: Spacing.xs),
               Text(
-                '${row.customerName} · ${row.productName}'
-                '${row.defectCodeName == null ? '' : ' · ${row.defectCodeName}'}',
-                style: theme.textTheme.titleMedium,
+                _subject(row),
+                style: AppTypography.dense(context)
+                    ?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: Spacing.xs),
+              Wrap(
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xxs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: _marks(context, row),
               ),
               const SizedBox(height: Spacing.xxs),
               Text(
                 row.dueLabel,
                 key: ComplaintsScreen.rowDueKey(row.id),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: row.isOverdue
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.onSurfaceVariant,
+                style: AppTypography.floor(context)?.copyWith(
+                  color: row.isOverdue ? palette.statusDanger : palette.textMuted,
                 ),
               ),
               const SizedBox(height: Spacing.xxs),
               Text(
-                // The control that exists, or the absence of one — the two
-                // answers this register is read for.
-                row.nonconformance == null
-                    ? 'No Non-conformance controls this product yet'
-                    : 'Controlled by ${row.nonconformance!.issueNo}',
+                _control(row),
                 key: ComplaintsScreen.rowControlledKey(row.id),
-                style: theme.textTheme.bodyMedium,
+                style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+              ),
+              const SizedBox(height: Spacing.sm),
+              OutlinedButton(
+                key: ComplaintsScreen.rowOpenKey(row.id),
+                onPressed: () => context.go('${Routes.complaints}/${row.id}'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Open'),
               ),
             ],
           ),

@@ -31,6 +31,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../actions/actions.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -48,8 +49,10 @@ class NonconformanceLinkConcernDialog extends StatefulWidget {
 
   static const ValueKey<String> loadingKey =
       ValueKey<String>('nonconformance-link-concern-loading');
-  static const ValueKey<String> submitKey = ValueKey<String>('nonconformance-link-concern-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-link-concern-cancel');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('nonconformance-link-concern-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-link-concern-cancel');
   static const ValueKey<String> failureKey =
       ValueKey<String>('nonconformance-link-concern-failure');
   static const ValueKey<String> loadFailedKey =
@@ -170,94 +173,90 @@ class _NonconformanceLinkConcernDialogState extends State<NonconformanceLinkConc
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Link it to a Concern'),
-        content: SizedBox(
-          width: 520,
-          child: _loadFailure != null
-              ? PlatformFailureState(
-                  key: NonconformanceLinkConcernDialog.loadFailedKey,
-                  title: 'The action log could not be read',
-                  message: _loadFailure!,
-                  retryKey: NonconformanceLinkConcernDialog.retryKey,
-                  onRetry: _load,
-                )
-              : _concerns == null
-                  ? const SizedBox(
-                      height: 120,
-                      child: SkeletonList(rows: 3, maxWidth: 520),
-                    )
-                  : SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${record.issueNo} becomes one of the occurrences this Concern answers. '
-                            'The Concern keeps the Non-conformance it was raised from.',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: Spacing.md),
-                          if (_concerns!.isEmpty)
-                            Text(
-                              key: NonconformanceLinkConcernDialog.emptyKey,
-                              'This Site has no open Concern to link it to. Raise one instead.',
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                            )
-                          else
-                            AppSearchField<Action>(
-                              name: NonconformanceLinkConcernDialog.fieldName,
-                              label: 'Concern',
-                              helperText: 'By its number or its title.',
-                              value: _picked,
-                              enabled: !_awaiting,
-                              fetchSuggestions: _suggestions,
-                              idOf: (concern) => concern.id,
-                              displayStringFor: (concern) =>
-                                  '${concern.actionNo} · ${concern.title}',
-                              suggestionBuilder: (context, concern) => Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(concern.title, style: theme.textTheme.bodyMedium),
-                                  Text(
-                                    '${concern.actionNo} · ${concern.statusLabel} · '
-                                    '${concern.orgUnitName}',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              onChanged: (concern) => setState(() => _picked = concern),
-                              onSelected: (concern) => setState(() => _picked = concern),
-                            ),
-                          if (_failure != null)
-                            Padding(
-                              key: NonconformanceLinkConcernDialog.failureKey,
-                              padding: const EdgeInsets.only(top: Spacing.md),
-                              child: Text(
-                                _failure!,
-                                style: theme.textTheme.bodyMedium
-                                    ?.copyWith(color: theme.colorScheme.error),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-        ),
+      child: AppDialog(
+        title: 'Link it to a Concern',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: NonconformanceLinkConcernDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-link-concern-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: NonconformanceLinkConcernDialog.submitKey,
+          AppDialogAction(
+            id: 'nonconformance-link-concern-submit',
+            label: 'Link it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Link it'),
           ),
         ],
+        child: _loadFailure != null
+            ? PlatformFailureState(
+                key: NonconformanceLinkConcernDialog.loadFailedKey,
+                title: 'The action log could not be read',
+                message: _loadFailure!,
+                retryKey: NonconformanceLinkConcernDialog.retryKey,
+                onRetry: _load,
+              )
+            : _concerns == null
+                ? const SizedBox(
+                    height: 120,
+                    child: SkeletonList(rows: 3, maxWidth: 520),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${record.issueNo} becomes one of the occurrences this Concern answers. '
+                        'The Concern keeps the Non-conformance it was raised from.',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: Spacing.md),
+                      if (_concerns!.isEmpty)
+                        Text(
+                          key: NonconformanceLinkConcernDialog.emptyKey,
+                          'This Site has no open Concern to link it to. Raise one instead.',
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        )
+                      else
+                        AppSearchField<Action>(
+                          name: NonconformanceLinkConcernDialog.fieldName,
+                          label: 'Concern',
+                          helperText: 'By its number or its title.',
+                          value: _picked,
+                          enabled: !_awaiting,
+                          fetchSuggestions: _suggestions,
+                          idOf: (concern) => concern.id,
+                          displayStringFor: (concern) => '${concern.actionNo} · ${concern.title}',
+                          suggestionBuilder: (context, concern) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(concern.title, style: theme.textTheme.bodyMedium),
+                              Text(
+                                '${concern.actionNo} · ${concern.statusLabel} · '
+                                '${concern.orgUnitName}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                          onChanged: (concern) => setState(() => _picked = concern),
+                          onSelected: (concern) => setState(() => _picked = concern),
+                        ),
+                      if (_failure != null)
+                        Padding(
+                          key: NonconformanceLinkConcernDialog.failureKey,
+                          padding: const EdgeInsets.only(top: Spacing.md),
+                          child: Text(
+                            _failure!,
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(color: theme.colorScheme.error),
+                          ),
+                        ),
+                    ],
+                  ),
       ),
     );
   }

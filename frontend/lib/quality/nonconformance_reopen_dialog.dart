@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 
@@ -27,8 +28,10 @@ class NonconformanceReopenDialog extends StatefulWidget {
 
   static const ValueKey<String> loadingKey = ValueKey<String>('nonconformance-reopen-loading');
   static const ValueKey<String> noteKey = ValueKey<String>('nonconformance-reopen-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('nonconformance-reopen-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-reopen-cancel');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('nonconformance-reopen-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-reopen-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('nonconformance-reopen-failure');
   static const ValueKey<String> refusedKey = ValueKey<String>('nonconformance-reopen-refused');
 
@@ -84,76 +87,90 @@ class _NonconformanceReopenDialogState extends State<NonconformanceReopenDialog>
     // says so at the address rather than letting a refresh land on a form that
     // cannot succeed.
     if (!holdsQualityAuthority(context, record.orgUnitId)) {
-      return AlertDialog(
+      return AppDialog(
         key: NonconformanceReopenDialog.refusedKey,
-        content: const Text(
-          'Reopening a Non-conformance needs Quality authority at its Org Unit.',
-        ),
+        title: 'Cannot reopen it',
+        size: AppDialogSize.decision,
+        description: 'Reopening a Non-conformance needs Quality authority at its Org Unit.',
+        actions: [
+          AppDialogAction(
+            id: 'nonconformance-reopen-refused-close',
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
     if (!record.canBeReopened) {
-      return AlertDialog(
+      return AppDialog(
         key: NonconformanceReopenDialog.refusedKey,
-        content: const Text('Only a closed Non-conformance can be reopened.'),
+        title: 'Cannot reopen it',
+        size: AppDialogSize.decision,
+        description: 'Only a closed Non-conformance can be reopened.',
+        actions: [
+          AppDialogAction(
+            id: 'nonconformance-reopen-refused-close',
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Reopen this Non-conformance'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${widget.nonconformance.issueNo} is closed. Reopening it puts it back to '
-                  'dispositioned, and its closing time goes with it.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceReopenDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 3,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    helperText: 'Why it is being reopened.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: NonconformanceReopenDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Reopen this Non-conformance',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: NonconformanceReopenDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-reopen-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: NonconformanceReopenDialog.submitKey,
+          AppDialogAction(
+            id: 'nonconformance-reopen-submit',
+            label: 'Reopen it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Reopen it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${widget.nonconformance.issueNo} is closed. Reopening it puts it back to '
+              'dispositioned, and its closing time goes with it.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceReopenDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Note',
+                helperText: 'Why it is being reopened.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: NonconformanceReopenDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

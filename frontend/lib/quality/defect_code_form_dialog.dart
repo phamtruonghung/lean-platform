@@ -28,6 +28,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'defect_code.dart';
 import 'defect_codes_bloc.dart';
 
@@ -49,8 +50,8 @@ class DefectCodeFormDialog extends StatefulWidget {
   static const ValueKey<String> severityKey = ValueKey<String>('defect-code-form-severity');
   static const ValueKey<String> parentKey = ValueKey<String>('defect-code-form-parent');
   static const ValueKey<String> activeKey = ValueKey<String>('defect-code-form-active');
-  static const ValueKey<String> submitKey = ValueKey<String>('defect-code-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('defect-code-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('defect-code-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('defect-code-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('defect-code-form-failure');
 
   /// Opens the form over the Defect code tree. `showDialog` builds its route
@@ -182,132 +183,129 @@ class _DefectCodeFormDialogState extends State<DefectCodeFormDialog> {
     final theme = Theme.of(context);
     return BlocListener<DefectCodesBloc, DefectCodesState>(
       listener: _onDefectCodesChanged,
-      child: AlertDialog(
-        title: Text(_isCorrection ? 'Correct Defect code' : 'Add Defect code'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: DefectCodeFormDialog.codeKey,
-                  controller: _code,
-                  // A code is the one field a correction cannot rewrite.
-                  enabled: !_isCorrection && !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Code',
-                    border: const OutlineInputBorder(),
-                    helperText: _isCorrection ? 'A Defect code cannot be corrected' : null,
+      child: AppDialog(
+        title: _isCorrection ? 'Correct Defect code' : 'Add Defect code',
+        size: AppDialogSize.decision,
+        actions: [
+          AppDialogAction(
+            id: 'defect-code-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: 'defect-code-form-submit',
+            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Defect code'),
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: DefectCodeFormDialog.codeKey,
+              controller: _code,
+              // A code is the one field a correction cannot rewrite.
+              enabled: !_isCorrection && !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Code',
+                border: const OutlineInputBorder(),
+                helperText: _isCorrection ? 'A Defect code cannot be corrected' : null,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: DefectCodeFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: DefectCodeFormDialog.categoryKey,
+              initialValue: _category,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Category',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final category in DefectCategory.values)
+                  DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(DefectCategory.label(category)),
                   ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: DefectCodeFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: DefectCodeFormDialog.categoryKey,
-                  initialValue: _category,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    border: OutlineInputBorder(),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _category = value!),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: DefectCodeFormDialog.severityKey,
+              initialValue: _severity,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Default severity',
+                border: OutlineInputBorder(),
+                helperText: 'What a Non-conformance recorded against this code starts at',
+              ),
+              items: [
+                for (final severity in DefectSeverity.values)
+                  DropdownMenuItem<String>(
+                    value: severity,
+                    child: Text(DefectSeverity.label(severity)),
                   ),
-                  items: [
-                    for (final category in DefectCategory.values)
-                      DropdownMenuItem<String>(
-                        value: category,
-                        child: Text(DefectCategory.label(category)),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _category = value!),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _severity = value!),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String?>(
+              key: DefectCodeFormDialog.parentKey,
+              initialValue: _parentId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Parent',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('No parent — top level'),
                 ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: DefectCodeFormDialog.severityKey,
-                  initialValue: _severity,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Default severity',
-                    border: OutlineInputBorder(),
-                    helperText: 'What a Non-conformance recorded against this code starts at',
-                  ),
-                  items: [
-                    for (final severity in DefectSeverity.values)
-                      DropdownMenuItem<String>(
-                        value: severity,
-                        child: Text(DefectSeverity.label(severity)),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _severity = value!),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String?>(
-                  key: DefectCodeFormDialog.parentKey,
-                  initialValue: _parentId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Parent',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('No parent — top level'),
-                    ),
-                    for (final code in _parentChoices)
-                      DropdownMenuItem<String?>(
-                        value: code.id,
-                        child: Text(
-                          '${code.name} (${code.code})',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _parentId = value),
-                ),
-                if (_isCorrection) ...[
-                  const SizedBox(height: Spacing.md),
-                  SwitchListTile(
-                    key: DefectCodeFormDialog.activeKey,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active'),
-                    value: _isActive,
-                    onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: DefectCodeFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
+                for (final code in _parentChoices)
+                  DropdownMenuItem<String?>(
+                    value: code.id,
                     child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                      '${code.name} (${code.code})',
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
               ],
+              onChanged: _awaiting ? null : (value) => setState(() => _parentId = value),
             ),
-          ),
+            if (_isCorrection) ...[
+              const SizedBox(height: Spacing.md),
+              SwitchListTile(
+                key: DefectCodeFormDialog.activeKey,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                value: _isActive,
+                onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: DefectCodeFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
         ),
-        actions: [
-          TextButton(
-            key: DefectCodeFormDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: DefectCodeFormDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Defect code')),
-          ),
-        ],
       ),
     );
   }

@@ -19,6 +19,16 @@
 /// the server marks it ([SupplierNcr.isOverdue]) and the row renders that as a
 /// chip, because the one thing a reader must not have to work out from two dates
 /// is who owes an answer.
+///
+/// **Seven columns above [narrowBreakpoint] of content width, a card below it
+/// (issue #390).** An NCR carries two facts a complaint does not — what was
+/// decided about the material, and when an answer is owed — so the register is
+/// one column wider than the complaint register's six and states 900 of box for
+/// the same reason: at a 1280px window the list is handed 988px, which holds
+/// seven columns if the three unbounded ones disclose what they clip. They do:
+/// the supplier line, the disposition line, the answer date and the control line
+/// are all `DisclosingText`. At twice the reader's text the same box is under
+/// 1800 and the cards come back (design-language §10).
 library;
 
 import 'package:flutter/material.dart';
@@ -30,6 +40,8 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -43,6 +55,11 @@ class SupplierNcrsScreen extends StatelessWidget {
   const SupplierNcrsScreen({super.key});
 
   static const double maxWidth = 1100;
+
+  /// The content width (at a text scale of 1) at or above which the register is
+  /// a table of seven columns; below it, one card per NCR. Read from the box the
+  /// list is handed, never the window, and scaled by the reader's text size.
+  static const double narrowBreakpoint = 900;
 
   static const ValueKey<String> recordKey = ValueKey<String>('supplier-ncrs-record');
   static const ValueKey<String> siteKey = ValueKey<String>('supplier-ncrs-site');
@@ -70,6 +87,13 @@ class SupplierNcrsScreen extends StatelessWidget {
       ValueKey<String>('supplier-ncr-disposition-$id');
   static ValueKey<String> rowControlledKey(String id) =>
       ValueKey<String>('supplier-ncr-controlled-$id');
+
+  /// The way into one NCR, right-most on its row (new in #390).
+  static ValueKey<String> rowOpenKey(String id) => ValueKey<String>('supplier-ncr-open-$id');
+
+  /// A row's height: the 44 of the controls it holds, plus [Spacing.xs] either
+  /// side of the row's own padding.
+  static const double rowHeight = AppTouchTarget.min + 2 * Spacing.xs;
 
   @override
   Widget build(BuildContext context) {
@@ -111,9 +135,9 @@ class SupplierNcrsScreen extends StatelessWidget {
   }
 }
 
-/// Asks the register to re-read whenever the Screen is entered (issue #183):
-/// the `ShellRoute` creates `SupplierNcrsBloc` once and keeps it alive while a
-/// caller reads an NCR and comes back, so a Screen that only read on
+/// Asks the register to re-read whenever the Screen is entered (issue #183): the
+/// `ShellRoute` creates `SupplierNcrsBloc` once and keeps it alive while a caller
+/// reads an NCR and comes back, so a Screen that only read on
 /// `SupplierNcrsStarted` painted the list as it was when they left.
 class _RefreshOnMount extends StatefulWidget {
   const _RefreshOnMount({required this.child});
@@ -168,6 +192,9 @@ class _Header extends StatelessWidget {
                       : () => context.go('${Routes.supplierNcrs}/new'),
                   icon: const Icon(Icons.add),
                   label: const Text('Record a supplier NCR'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
                 ),
             ],
             below: loaded == null ? null : _Filters(loaded: loaded),
@@ -217,12 +244,18 @@ class _Filters extends StatelessWidget {
           onPressed: () => SupplierNcrSupplierFilterDialog.open(context),
           icon: const Icon(Icons.local_shipping_outlined),
           label: Text(filters.supplierName ?? 'All Suppliers'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+          ),
         ),
         OutlinedButton.icon(
           key: SupplierNcrsScreen.orgUnitFilterKey,
           onPressed: () => SupplierNcrOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
           icon: const Icon(Icons.account_tree_outlined),
           label: Text(filters.orgUnitName ?? 'All Org Units'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+          ),
         ),
         SizedBox(
           width: 190,
@@ -249,6 +282,9 @@ class _Filters extends StatelessWidget {
             key: SupplierNcrsScreen.clearFiltersKey,
             onPressed: () =>
                 context.read<SupplierNcrsBloc>().add(const SupplierNcrsFiltersCleared()),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+            ),
             child: Text('Clear filters', style: theme.textTheme.bodyMedium),
           ),
       ],
@@ -263,7 +299,7 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: SupplierNcrsScreen.maxWidth,
@@ -273,7 +309,7 @@ class _Truncated extends StatelessWidget {
           child: Text(
             'There are more supplier NCRs than this list shows. Narrow it by Supplier or by '
             'status to see the rest.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
         ),
       ),
@@ -311,6 +347,101 @@ class _Empty extends StatelessWidget {
   }
 }
 
+/// A chip's own width at the reader's text scale: its label, the compact chip's
+/// padding either side, and the slot's gutter.
+double _chipWidth(BuildContext context, String label) {
+  final painter = TextPainter(
+    text: TextSpan(text: label, style: Theme.of(context).textTheme.labelLarge),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width + Spacing.xxl + Spacing.sm;
+}
+
+/// The number column: `SN-2026-00001` is a fixed-width code, so the column is
+/// measured to it rather than taking a share of the flex.
+double _numberColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    text: TextSpan(text: 'SN-2026-00001', style: AppTypography.dense(context)),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width + Spacing.sm + 8;
+}
+
+/// The State column carries the state chip and, on a row that is late, the
+/// "Past due" chip beside it, so it is the two widest labels plus the
+/// [Spacing.xs] between them.
+double _stateColumnWidth(BuildContext context) {
+  var widestStatus = 0.0;
+  for (final status in SupplierNcrStatus.values) {
+    final width = _chipWidth(context, SupplierNcrStatus.label(status));
+    if (width > widestStatus) widestStatus = width;
+  }
+  return widestStatus + Spacing.xs + _chipWidth(context, 'Past due');
+}
+
+double _openColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    text: TextSpan(text: 'Open', style: Theme.of(context).textTheme.labelLarge),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width + 2 * Spacing.xl + Spacing.sm;
+}
+
+/// The register's one column spec, spent by the band and by every row.
+List<AppTableColumn> _columns(BuildContext context) => [
+      AppTableColumn('NCR', width: _numberColumnWidth(context)),
+      const AppTableColumn('Supplier and product', flex: 4),
+      AppTableColumn('State', width: _stateColumnWidth(context)),
+      const AppTableColumn('Disposition', flex: 3),
+      const AppTableColumn('Answer due', flex: 2),
+      const AppTableColumn('Control', flex: 3),
+      AppTableColumn('Actions', width: _openColumnWidth(context), align: AppColumnAlign.end),
+    ];
+
+Widget _shrinkWrapTargets(BuildContext context, Widget child) => Theme(
+      data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      child: child,
+    );
+
+/// Who sent the bad lot, and what it was: the Supplier, then the Product and the
+/// Defect code the NCR names, each only when the record carries it.
+String _subject(SupplierNcr row) {
+  final product = row.productName;
+  return '${row.supplierName}${product == null ? '' : ' · $product'}'
+      '${row.defectCodeName == null ? '' : ' · ${row.defectCodeName}'}';
+}
+
+/// The answer for the material, and what was clawed back: the two facts the Cost
+/// pillar is built on.
+String _dispositionLabel(SupplierNcr row) =>
+    '${row.dispositionLabel} · ${row.costRecoveredLabel}';
+
+/// The control that exists, or the absence of one — the two answers this
+/// register is read for.
+String _control(SupplierNcr row) => row.nonconformance == null
+    ? 'No Non-conformance controls this lot yet'
+    : 'Controlled by ${row.nonconformance!.issueNo}';
+
+List<Widget> _marks(SupplierNcr row) => [
+      StatusChip(
+        key: SupplierNcrsScreen.rowStatusKey(row.id),
+        label: row.statusLabel,
+        tone: row.statusTone,
+      ),
+      if (row.isOverdue)
+        StatusChip(
+          key: SupplierNcrsScreen.rowOverdueKey(row.id),
+          label: 'Past due',
+          tone: StatusTone.danger,
+        ),
+    ];
+
 class _Register extends StatelessWidget {
   const _Register({required this.rows});
 
@@ -318,33 +449,108 @@ class _Register extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: AppPageFrame(
-        maxWidth: SupplierNcrsScreen.maxWidth,
-        child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: rows.length,
-          itemBuilder: (context, index) => _SupplierNcrRow(supplierNcr: rows[index]),
-        ),
+    return LayoutBuilder(
+      builder: (context, box) {
+        final narrow =
+            box.maxWidth < AppBreakpoints.effective(context, SupplierNcrsScreen.narrowBreakpoint);
+        final columns = _columns(context);
+        return Center(
+          child: AppPageFrame(
+            maxWidth: SupplierNcrsScreen.maxWidth,
+            child: narrow
+                ? ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    itemCount: rows.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
+                    itemBuilder: (context, index) => _SupplierNcrCard(supplierNcr: rows[index]),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                    children: [
+                      AppTableHeader(columns: columns),
+                      for (final row in rows)
+                        _SupplierNcrTableRow(columns: columns, supplierNcr: row),
+                    ],
+                  ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SupplierNcrTableRow extends StatelessWidget {
+  const _SupplierNcrTableRow({required this.columns, required this.supplierNcr});
+
+  final List<AppTableColumn> columns;
+  final SupplierNcr supplierNcr;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final row = supplierNcr;
+
+    return KeyedSubtree(
+      key: SupplierNcrsScreen.rowKey(row.id),
+      child: AppTableRow(
+        columns: columns,
+        onTap: () => context.go('${Routes.supplierNcrs}/${row.id}'),
+        cells: [
+          DisclosingText(row.ncrNo, style: dense?.copyWith(color: palette.textMuted)),
+          DisclosingText(_subject(row), style: dense?.copyWith(color: palette.textPrimary)),
+          _shrinkWrapTargets(
+            context,
+            Row(mainAxisSize: MainAxisSize.min, children: _marks(row)),
+          ),
+          DisclosingText(
+            _dispositionLabel(row),
+            key: SupplierNcrsScreen.rowDispositionKey(row.id),
+            style: dense?.copyWith(color: palette.textPrimary),
+          ),
+          DisclosingText(
+            row.dueLabel,
+            key: SupplierNcrsScreen.rowDueKey(row.id),
+            style: dense?.copyWith(color: row.isOverdue ? palette.statusDanger : palette.textMuted),
+          ),
+          DisclosingText(
+            _control(row),
+            key: SupplierNcrsScreen.rowControlledKey(row.id),
+            style: dense?.copyWith(color: palette.textPrimary),
+          ),
+          _shrinkWrapTargets(
+            context,
+            OutlinedButton(
+              key: SupplierNcrsScreen.rowOpenKey(row.id),
+              onPressed: () => context.go('${Routes.supplierNcrs}/${row.id}'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SupplierNcrRow extends StatelessWidget {
-  const _SupplierNcrRow({required this.supplierNcr});
+/// One NCR as a card, for a box that cannot hold seven columns. A `Wrap` of the
+/// chips, not a `Row`: the chips grow per ticket and a long supplier name would
+/// overflow a Row at the test surface.
+class _SupplierNcrCard extends StatelessWidget {
+  const _SupplierNcrCard({required this.supplierNcr});
 
   final SupplierNcr supplierNcr;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final row = supplierNcr;
-    final product = row.productName;
 
     return Card(
       key: SupplierNcrsScreen.rowKey(row.id),
-      margin: const EdgeInsets.only(bottom: Spacing.sm),
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: () => context.go('${Routes.supplierNcrs}/${row.id}'),
         child: Padding(
@@ -352,67 +558,58 @@ class _SupplierNcrRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // A `Wrap`, not a `Row`: the chips grow per ticket and a long
-              // supplier name would overflow a Row at the test surface.
-              Wrap(
-                spacing: Spacing.xs,
-                runSpacing: Spacing.xxs,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(row.ncrNo, style: theme.textTheme.labelMedium),
-                  StatusChip(
-                    key: SupplierNcrsScreen.rowStatusKey(row.id),
-                    label: row.statusLabel,
-                    tone: row.statusTone,
-                  ),
-                  if (row.isOverdue)
-                    StatusChip(
-                      key: SupplierNcrsScreen.rowOverdueKey(row.id),
-                      label: 'Past due',
-                      tone: StatusTone.danger,
-                    ),
-                ],
-              ),
-              const SizedBox(height: Spacing.xs),
-              Text(
-                '${row.supplierName}${product == null ? '' : ' · $product'}'
-                '${row.defectCodeName == null ? '' : ' · ${row.defectCodeName}'}',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: Spacing.xxs),
-              Text(
-                row.dueLabel,
-                key: SupplierNcrsScreen.rowDueKey(row.id),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: row.isOverdue
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: Spacing.xxs),
               Wrap(
                 spacing: Spacing.xs,
                 runSpacing: Spacing.xxs,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
-                    // The answer for the material, and what was clawed back:
-                    // the two facts the Cost pillar is built on.
-                    '${row.dispositionLabel} · ${row.costRecoveredLabel}',
-                    key: SupplierNcrsScreen.rowDispositionKey(row.id),
-                    style: theme.textTheme.bodyMedium,
+                    row.ncrNo,
+                    style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                   ),
                 ],
               ),
+              const SizedBox(height: Spacing.xs),
+              Text(
+                _subject(row),
+                style: AppTypography.dense(context)
+                    ?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: Spacing.xs),
+              Wrap(
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xxs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: _marks(row),
+              ),
               const SizedBox(height: Spacing.xxs),
               Text(
-                // The control that exists, or the absence of one — the two
-                // answers this register is read for.
-                row.nonconformance == null
-                    ? 'No Non-conformance controls this lot yet'
-                    : 'Controlled by ${row.nonconformance!.issueNo}',
+                row.dueLabel,
+                key: SupplierNcrsScreen.rowDueKey(row.id),
+                style: AppTypography.floor(context)?.copyWith(
+                  color: row.isOverdue ? palette.statusDanger : palette.textMuted,
+                ),
+              ),
+              const SizedBox(height: Spacing.xxs),
+              Text(
+                _dispositionLabel(row),
+                key: SupplierNcrsScreen.rowDispositionKey(row.id),
+                style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+              ),
+              const SizedBox(height: Spacing.xxs),
+              Text(
+                _control(row),
                 key: SupplierNcrsScreen.rowControlledKey(row.id),
-                style: theme.textTheme.bodyMedium,
+                style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+              ),
+              const SizedBox(height: Spacing.sm),
+              OutlinedButton(
+                key: SupplierNcrsScreen.rowOpenKey(row.id),
+                onPressed: () => context.go('${Routes.supplierNcrs}/${row.id}'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Open'),
               ),
             ],
           ),

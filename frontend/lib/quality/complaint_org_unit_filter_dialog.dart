@@ -20,13 +20,15 @@ import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../widgets/app_dialog.dart';
 import 'complaints_bloc.dart';
 
 class ComplaintOrgUnitFilterDialog extends StatelessWidget {
   const ComplaintOrgUnitFilterDialog({super.key});
 
-  static const ValueKey<String> allOrgUnitsKey = ValueKey<String>('complaints-filter-all');
-  static const ValueKey<String> cancelKey = ValueKey<String>('complaints-filter-cancel');
+  static final ValueKey<String> allOrgUnitsKey =
+      AppDialog.actionKey('complaints-filter-all');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('complaints-filter-cancel');
 
   /// Opens the filter over the register. `showDialog` builds its route under the
   /// Navigator, which is not a descendant of the route-scoped
@@ -58,10 +60,31 @@ class ComplaintOrgUnitFilterDialog extends StatelessWidget {
     final state = context.watch<ComplaintsBloc>().state;
     final selectedId = state is ComplaintsLoaded ? state.filters.orgUnitId : null;
 
-    return AlertDialog(
-      title: const Text('Filter by Org Unit'),
-      content: SizedBox(
-        width: 420,
+    return AppDialog(
+      title: 'Filter by Org Unit',
+      size: AppDialogSize.decision,
+      // Clearing is this dialog's own act, so it is the primary and sits
+      // right-most; Cancel is the dismiss, which is what `Esc` runs.
+      actions: [
+        AppDialogAction(
+          id: 'complaints-filter-cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        AppDialogAction(
+          id: 'complaints-filter-all',
+          label: 'All Org Units',
+          onPressed: () {
+            context.read<ComplaintsBloc>().add(const ComplaintsFiltersCleared());
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
+      // The chooser is a tree with a scroll of its own, so it is given a height
+      // and the dialog's own content area scrolls around it. The width is the
+      // dialog's business now, not a `SizedBox` here.
+      child: SizedBox(
         height: 420,
         child: OrgUnitChooser(
           selectedId: selectedId,
@@ -79,21 +102,6 @@ class ComplaintOrgUnitFilterDialog extends StatelessWidget {
           },
         ),
       ),
-      actions: [
-        TextButton(
-          key: allOrgUnitsKey,
-          onPressed: () {
-            context.read<ComplaintsBloc>().add(const ComplaintsFiltersCleared());
-            Navigator.of(context).pop();
-          },
-          child: const Text('All Org Units'),
-        ),
-        TextButton(
-          key: cancelKey,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-      ],
     );
   }
 }

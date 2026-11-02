@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'defect_code.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
@@ -38,7 +39,8 @@ class NonconformanceUpdateDialog extends StatefulWidget {
   static const ValueKey<String> containmentKey =
       ValueKey<String>('nonconformance-update-containment');
   static const ValueKey<String> containKey = ValueKey<String>('nonconformance-update-contain');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-update-cancel');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-update-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('nonconformance-update-failure');
 
   @override
@@ -117,105 +119,110 @@ class _NonconformanceUpdateDialogState extends State<NonconformanceUpdateDialog>
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Raise severity or contain it'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${row.issueNo} is ${row.severityLabel.toLowerCase()} severity and '
-                  '${row.statusLabel.toLowerCase()}.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                if (offerable.isEmpty)
-                  Text(
-                    'This Non-conformance is already at the worst severity, so there is nothing '
-                    'to raise it to.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  )
-                else ...[
-                  DropdownButtonFormField<String?>(
-                    key: NonconformanceUpdateDialog.severityKey,
-                    initialValue: _severity,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Raise the severity to',
-                      helperText: 'Severity can be raised here; lowering it is a later decision.',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('Leave the severity alone'),
-                      ),
-                      for (final severity in offerable)
-                        DropdownMenuItem<String?>(
-                          value: severity,
-                          child: Text(DefectSeverity.label(severity)),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _severity = value),
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton(
-                      key: NonconformanceUpdateDialog.raiseKey,
-                      onPressed: _severity == null || _awaiting ? null : _raise,
-                      child: const Text('Raise it'),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: Spacing.lg),
-                TextField(
-                  key: NonconformanceUpdateDialog.containmentKey,
-                  controller: _containment,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Immediate containment',
-                    helperText: 'What was done at once. Recording it makes this contained.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.sm),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton(
-                    key: NonconformanceUpdateDialog.containKey,
-                    onPressed: _containment.text.trim().isEmpty || _awaiting ? null : _contain,
-                    child: const Text('Record containment'),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: NonconformanceUpdateDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Raise severity or contain it',
+        size: AppDialogSize.wide,
+        // The two writes live in the content rather than in the action row:
+        // each has its own enabled condition on the field above it, so they sit
+        // where their field is. The one action is the way out.
         actions: [
-          TextButton(
-            key: NonconformanceUpdateDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-update-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${row.issueNo} is ${row.severityLabel.toLowerCase()} severity and '
+              '${row.statusLabel.toLowerCase()}.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            if (offerable.isEmpty)
+              Text(
+                'This Non-conformance is already at the worst severity, so there is nothing '
+                'to raise it to.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              )
+            else ...[
+              DropdownButtonFormField<String?>(
+                key: NonconformanceUpdateDialog.severityKey,
+                initialValue: _severity,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Raise the severity to',
+                  helperText: 'Severity can be raised here; lowering it is a later decision.',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Leave the severity alone'),
+                  ),
+                  for (final severity in offerable)
+                    DropdownMenuItem<String?>(
+                      value: severity,
+                      child: Text(DefectSeverity.label(severity)),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _severity = value),
+              ),
+              const SizedBox(height: Spacing.sm),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  key: NonconformanceUpdateDialog.raiseKey,
+                  onPressed: _severity == null || _awaiting ? null : _raise,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  child: const Text('Raise it'),
+                ),
+              ),
+            ],
+            const SizedBox(height: Spacing.lg),
+            TextField(
+              key: NonconformanceUpdateDialog.containmentKey,
+              controller: _containment,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Immediate containment',
+                helperText: 'What was done at once. Recording it makes this contained.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.sm),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                key: NonconformanceUpdateDialog.containKey,
+                onPressed: _containment.text.trim().isEmpty || _awaiting ? null : _contain,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Record containment'),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: NonconformanceUpdateDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

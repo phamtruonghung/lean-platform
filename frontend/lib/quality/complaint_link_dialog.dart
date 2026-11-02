@@ -19,6 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/failure_state.dart';
 import 'complaint_detail_bloc.dart';
 import 'customer_complaint.dart';
@@ -32,8 +33,8 @@ class ComplaintLinkDialog extends StatefulWidget {
 
   static const ValueKey<String> candidateKey = ValueKey<String>('complaint-link-candidate');
   static const ValueKey<String> loadingKey = ValueKey<String>('complaint-link-loading');
-  static const ValueKey<String> submitKey = ValueKey<String>('complaint-link-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('complaint-link-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('complaint-link-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('complaint-link-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('complaint-link-failure');
   static const ValueKey<String> candidatesFailedKey =
       ValueKey<String>('complaint-link-candidates-failed');
@@ -126,91 +127,88 @@ class _ComplaintLinkDialogState extends State<ComplaintLinkDialog> {
 
     return BlocListener<ComplaintDetailBloc, ComplaintDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Link a Non-conformance'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'A Non-conformance that already exists for ${widget.complaint.productName} can '
-                  'be linked to this complaint, instead of recording a second one for the same '
-                  'problem.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                if (_loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Spacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_loadFailure != null)
-                  PlatformFailureState(
-                    key: ComplaintLinkDialog.candidatesFailedKey,
-                    title: 'The Non-conformances could not be read',
-                    message: _loadFailure!,
-                    retryKey: ComplaintLinkDialog.candidatesRetryKey,
-                    onRetry: _loadCandidates,
-                  )
-                else if (_candidates.isEmpty)
-                  Text(
-                    'No Non-conformance has been recorded for this Product yet, so there is '
-                    'nothing to link. Record one from this complaint instead.',
-                    key: ComplaintLinkDialog.noneKey,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    key: ComplaintLinkDialog.candidateKey,
-                    initialValue: _chosenId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'The Non-conformance that controls it',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final candidate in _candidates)
-                        DropdownMenuItem<String>(
-                          value: candidate.id,
-                          child: Text(
-                            '${candidate.issueNo} · ${NonconformanceStatus.label(candidate.status)}'
-                            '${candidate.lotRef == null ? '' : ' · ${candidate.lotRef}'}',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _chosenId = value),
-                  ),
-                if (_failure != null)
-                  Padding(
-                    key: ComplaintLinkDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Link a Non-conformance',
+        size: AppDialogSize.picker,
         actions: [
-          TextButton(
-            key: ComplaintLinkDialog.cancelKey,
+          AppDialogAction(
+            id: 'complaint-link-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: ComplaintLinkDialog.submitKey,
+          AppDialogAction(
+            id: 'complaint-link-submit',
+            label: _awaiting ? 'Linking…' : 'Link it',
             onPressed: _chosenId == null || _awaiting ? null : _submit,
-            child: Text(_awaiting ? 'Linking…' : 'Link it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'A Non-conformance that already exists for ${widget.complaint.productName} can '
+              'be linked to this complaint, instead of recording a second one for the same '
+              'problem.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.md),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.md),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_loadFailure != null)
+              PlatformFailureState(
+                key: ComplaintLinkDialog.candidatesFailedKey,
+                title: 'The Non-conformances could not be read',
+                message: _loadFailure!,
+                retryKey: ComplaintLinkDialog.candidatesRetryKey,
+                onRetry: _loadCandidates,
+              )
+            else if (_candidates.isEmpty)
+              Text(
+                'No Non-conformance has been recorded for this Product yet, so there is '
+                'nothing to link. Record one from this complaint instead.',
+                key: ComplaintLinkDialog.noneKey,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: ComplaintLinkDialog.candidateKey,
+                initialValue: _chosenId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'The Non-conformance that controls it',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final candidate in _candidates)
+                    DropdownMenuItem<String>(
+                      value: candidate.id,
+                      child: Text(
+                        '${candidate.issueNo} · ${NonconformanceStatus.label(candidate.status)}'
+                        '${candidate.lotRef == null ? '' : ' · ${candidate.lotRef}'}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _chosenId = value),
+              ),
+            if (_failure != null)
+              Padding(
+                key: ComplaintLinkDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

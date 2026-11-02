@@ -31,6 +31,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../maintenance/maintenance.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/failure_state.dart';
 import 'product.dart';
 import 'products_bloc.dart';
@@ -46,8 +47,8 @@ class ProductFormDialog extends StatefulWidget {
   static const ValueKey<String> nameKey = ValueKey<String>('product-form-name');
   static const ValueKey<String> uomKey = ValueKey<String>('product-form-uom');
   static const ValueKey<String> activeKey = ValueKey<String>('product-form-active');
-  static const ValueKey<String> submitKey = ValueKey<String>('product-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('product-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('product-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('product-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('product-form-failure');
   static const ValueKey<String> unitsFailedKey = ValueKey<String>('product-form-units-failed');
   static const ValueKey<String> unitsRetryKey = ValueKey<String>('product-form-units-retry');
@@ -205,113 +206,110 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     final theme = Theme.of(context);
     return BlocListener<ProductsBloc, ProductsState>(
       listener: _onProductsChanged,
-      child: AlertDialog(
-        title: Text(_isCorrection ? 'Correct Product' : 'Add Product'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: ProductFormDialog.codeKey,
-                  controller: _code,
-                  // A code is the one field a correction cannot rewrite.
-                  enabled: !_isCorrection && !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Code',
-                    border: const OutlineInputBorder(),
-                    helperText: _isCorrection ? 'A Product\'s code cannot be corrected' : null,
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ProductFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                if (_isCorrection)
-                  TextFormField(
-                    key: ProductFormDialog.uomKey,
-                    initialValue: widget.product!.uomName,
-                    enabled: false,
-                    decoration: InputDecoration(
-                      labelText: 'Unit of measure',
-                      border: const OutlineInputBorder(),
-                      helperText: 'A Product\'s unit of measure cannot be corrected',
-                    ),
-                  )
-                else if (_loadingUnits)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Spacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_unitsFailure != null)
-                  PlatformFailureState(
-                    key: ProductFormDialog.unitsFailedKey,
-                    title: 'The units of measure could not be read',
-                    message: _unitsFailure!,
-                    retryKey: ProductFormDialog.unitsRetryKey,
-                    onRetry: _loadUnits,
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    key: ProductFormDialog.uomKey,
-                    initialValue: _uomCode,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Unit of measure',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      for (final unit in _units)
-                        DropdownMenuItem<String>(
-                          value: unit.code,
-                          child: Text(unit.label, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _uomCode = value),
-                  ),
-                if (_isCorrection) ...[
-                  const SizedBox(height: Spacing.md),
-                  SwitchListTile(
-                    key: ProductFormDialog.activeKey,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active'),
-                    value: _isActive,
-                    onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: ProductFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: _isCorrection ? 'Correct Product' : 'Add Product',
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: ProductFormDialog.cancelKey,
+          AppDialogAction(
+            id: 'product-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: ProductFormDialog.submitKey,
+          AppDialogAction(
+            id: 'product-form-submit',
+            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Product'),
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Product')),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: ProductFormDialog.codeKey,
+              controller: _code,
+              // A code is the one field a correction cannot rewrite.
+              enabled: !_isCorrection && !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Code',
+                border: const OutlineInputBorder(),
+                helperText: _isCorrection ? 'A Product\'s code cannot be corrected' : null,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: ProductFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            if (_isCorrection)
+              TextFormField(
+                key: ProductFormDialog.uomKey,
+                initialValue: widget.product!.uomName,
+                enabled: false,
+                decoration: InputDecoration(
+                  labelText: 'Unit of measure',
+                  border: const OutlineInputBorder(),
+                  helperText: 'A Product\'s unit of measure cannot be corrected',
+                ),
+              )
+            else if (_loadingUnits)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Spacing.md),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_unitsFailure != null)
+              PlatformFailureState(
+                key: ProductFormDialog.unitsFailedKey,
+                title: 'The units of measure could not be read',
+                message: _unitsFailure!,
+                retryKey: ProductFormDialog.unitsRetryKey,
+                onRetry: _loadUnits,
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: ProductFormDialog.uomKey,
+                initialValue: _uomCode,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Unit of measure',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final unit in _units)
+                    DropdownMenuItem<String>(
+                      value: unit.code,
+                      child: Text(unit.label, overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _uomCode = value),
+              ),
+            if (_isCorrection) ...[
+              const SizedBox(height: Spacing.md),
+              SwitchListTile(
+                key: ProductFormDialog.activeKey,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                value: _isActive,
+                onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: ProductFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

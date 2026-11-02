@@ -27,6 +27,7 @@ import '../widgets/app_filter_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -204,37 +205,46 @@ class _SupplierRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
+    final palette = AppColors.of(context);
+    return ConstrainedBox(
       key: SuppliersScreen.rowKey(supplier.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: Spacing.md,
-        runSpacing: Spacing.sm,
-        children: [
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: Spacing.sm,
-            runSpacing: Spacing.xxs,
-            children: [
-              Text(supplier.summary, style: theme.textTheme.bodyMedium),
-              if (!supplier.isActive)
-                StatusChip(
-                  key: SuppliersScreen.inactiveChipKey(supplier.id),
-                  label: 'Inactive',
-                  tone: StatusTone.neutral,
-                ),
-            ],
-          ),
-          if (isAdmin)
-            OutlinedButton(
-              key: SuppliersScreen.correctKey(supplier.id),
-              onPressed: isMutating ? null : () => SupplierFormDialog.open(context, supplier: supplier),
-              child: const Text('Correct'),
+      constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DisclosingText(
+                      supplier.summary,
+                      style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+                    ),
+                  ),
+                  if (!supplier.isActive) ...[
+                    const SizedBox(width: Spacing.sm),
+                    StatusChip(
+                      key: SuppliersScreen.inactiveChipKey(supplier.id),
+                      label: 'Inactive',
+                      tone: StatusTone.neutral,
+                    ),
+                  ],
+                ],
+              ),
             ),
-        ],
+            if (isAdmin)
+              OutlinedButton(
+                key: SuppliersScreen.correctKey(supplier.id),
+                onPressed:
+                    isMutating ? null : () => SupplierFormDialog.open(context, supplier: supplier),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Correct'),
+              ),
+          ],
+        ),
       ),
     );
   }

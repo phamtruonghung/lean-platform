@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'nonconformance.dart';
 import 'nonconformance_detail_bloc.dart';
 
@@ -32,8 +33,10 @@ class NonconformanceQuantityDialog extends StatefulWidget {
   static const ValueKey<String> loadingKey = ValueKey<String>('nonconformance-quantity-loading');
   static const ValueKey<String> quantityKey = ValueKey<String>('nonconformance-quantity-value');
   static const ValueKey<String> noteKey = ValueKey<String>('nonconformance-quantity-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('nonconformance-quantity-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('nonconformance-quantity-cancel');
+  static final ValueKey<String> submitKey =
+      AppDialog.actionKey('nonconformance-quantity-submit');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('nonconformance-quantity-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('nonconformance-quantity-failure');
 
   @override
@@ -106,73 +109,69 @@ class _NonconformanceQuantityDialogState extends State<NonconformanceQuantityDia
 
     return BlocListener<NonconformanceDetailBloc, NonconformanceDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Increase the affected quantity'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${widget.nonconformance.issueNo} currently covers '
-                  '${_number(widget.nonconformance.quantityAffected)} $unit. It can only grow.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceQuantityDialog.quantityKey,
-                  controller: _quantity,
-                  enabled: !_awaiting,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'New affected quantity',
-                    helperText: 'More than ${_number(widget.nonconformance.quantityAffected)} '
-                        '$unit, or nothing at all.',
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: NonconformanceQuantityDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
-                    helperText: 'Why it changed — "sorting the bin found eight more".',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: NonconformanceQuantityDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Increase the affected quantity',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: NonconformanceQuantityDialog.cancelKey,
+          AppDialogAction(
+            id: 'nonconformance-quantity-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: NonconformanceQuantityDialog.submitKey,
+          AppDialogAction(
+            id: 'nonconformance-quantity-submit',
+            label: 'Increase it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Increase it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${widget.nonconformance.issueNo} currently covers '
+              '${_number(widget.nonconformance.quantityAffected)} $unit. It can only grow.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceQuantityDialog.quantityKey,
+              controller: _quantity,
+              enabled: !_awaiting,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'New affected quantity',
+                helperText: 'More than ${_number(widget.nonconformance.quantityAffected)} '
+                    '$unit, or nothing at all.',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: NonconformanceQuantityDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Note (optional)',
+                helperText: 'Why it changed — "sorting the bin found eight more".',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: NonconformanceQuantityDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
