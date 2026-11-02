@@ -25,6 +25,20 @@
 /// Org Unit browsing reuses `OrgUnitPickerBloc`, the same Bloc
 /// `AttendancePickerScreen`'s own `_OrgUnitBrowser` already drives for a
 /// single-select choice over the same tree.
+///
+/// **A decision row, and the filters under the title's own rule** (issue #393,
+/// `docs/design-language.md` sections 1, 6, 8 and 12). The two filters and the
+/// window now live in `AppPageHeader.below`, so the title, the filters and the
+/// first row share one left edge and the readers' eye has one line to follow
+/// down the page; before this pass the filters were three free-standing rows
+/// under the description. Each entry is a row of the catalogue rather than a
+/// `ListTile`: the shift and its production day on the first line, the Org Unit
+/// and Site on the second, the sheet's own state as a `StatusChip` (Not opened
+/// yet reads `danger` — there is no record at all — where Started, not yet
+/// confirmed reads `warning`), and the act at the row's end. Below
+/// `AppBreakpoints.toolbarWrap` of box, or at a text size that makes the same
+/// box that narrow, the chip and the act drop under the shift name rather than
+/// squeezing it.
 library;
 
 import 'package:flutter/material.dart';
@@ -34,13 +48,24 @@ import 'package:go_router/go_router.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
+import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
+import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'attendance.dart';
 import 'attendance_to_confirm_bloc.dart';
 import 'org_unit_picker_bloc.dart';
+
+/// The height a `SkeletonList` is given when it stands in for a list inside a
+/// page that is itself scrolling: the placeholder scrolls its own rows, so it
+/// needs a bounded box where the page hands out an unbounded one.
+const double _skeletonHeight = 288;
 
 class AttendanceToConfirmScreen extends StatelessWidget {
   const AttendanceToConfirmScreen({super.key});
@@ -48,8 +73,10 @@ class AttendanceToConfirmScreen extends StatelessWidget {
   static const double maxWidth = 720;
 
   static const ValueKey<String> failureKey = ValueKey<String>('attendance-to-confirm-failure');
+  static const ValueKey<String> retryKey = ValueKey<String>('attendance-to-confirm-retry');
   static const ValueKey<String> emptyKey = ValueKey<String>('attendance-to-confirm-empty');
   static const ValueKey<String> loadingKey = ValueKey<String>('attendance-to-confirm-loading');
+  static const ValueKey<String> catalogueKey = ValueKey<String>('attendance-to-confirm-entries');
   static const ValueKey<String> orgUnitChosenKey = ValueKey<String>('attendance-to-confirm-org-unit-chosen');
   static const ValueKey<String> orgUnitClearKey = ValueKey<String>('attendance-to-confirm-org-unit-clear');
   static const ValueKey<String> orgUnitBrowseToggleKey = ValueKey<String>('attendance-to-confirm-org-unit-toggle');
@@ -58,6 +85,8 @@ class AttendanceToConfirmScreen extends StatelessWidget {
   static ValueKey<String> orgUnitRowKey(String id) => ValueKey<String>('attendance-to-confirm-org-unit-$id');
   static ValueKey<String> entryKey(String shiftInstanceId) =>
       ValueKey<String>('attendance-to-confirm-entry-$shiftInstanceId');
+  static ValueKey<String> openKey(String shiftInstanceId) =>
+      ValueKey<String>('attendance-to-confirm-open-$shiftInstanceId');
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +120,6 @@ class _WorklistBodyState extends State<_WorklistBody> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final state = context.watch<AttendanceToConfirmBloc>().state;
     final bloc = context.read<AttendanceToConfirmBloc>();
 
@@ -102,70 +130,145 @@ class _WorklistBodyState extends State<_WorklistBody> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
-              const AppPageHeader(
+              AppPageHeader(
                 title: 'Attendance to confirm',
                 description:
                     "Past shifts whose sheet is missing or hasn't been confirmed yet, "
                     'oldest first, across the Org Units you can confirm one at.',
-              ),
-              const SizedBox(height: Spacing.lg),
-              _OrgUnitFilter(
-                state: state,
-                bloc: bloc,
-                browsing: _browsingOrgUnit,
-                onToggleBrowse: () => setState(() => _browsingOrgUnit = !_browsingOrgUnit),
-                onCleared: () => setState(() => _browsingOrgUnit = false),
-              ),
-              const SizedBox(height: Spacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppDateField(
-                      key: AttendanceToConfirmScreen.fromFieldKey,
-                      name: 'attendance-to-confirm-from',
-                      label: 'From',
-                      value: state.from,
-                      optional: true,
-                      onChanged: (value) => bloc.add(AttendanceToConfirmFromChosen(value)),
+                below: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _OrgUnitFilter(
+                      state: state,
+                      bloc: bloc,
+                      browsing: _browsingOrgUnit,
+                      onToggleBrowse: () => setState(() => _browsingOrgUnit = !_browsingOrgUnit),
+                      onCleared: () => setState(() => _browsingOrgUnit = false),
                     ),
-                  ),
-                  const SizedBox(width: Spacing.md),
-                  Expanded(
-                    child: AppDateField(
-                      key: AttendanceToConfirmScreen.toFieldKey,
-                      name: 'attendance-to-confirm-to',
-                      label: 'To',
-                      value: state.to,
-                      optional: true,
-                      onChanged: (value) => bloc.add(AttendanceToConfirmToChosen(value)),
-                    ),
-                  ),
-                ],
+                    const SizedBox(height: Spacing.md),
+                    _WindowFields(state: state, bloc: bloc),
+                  ],
+                ),
               ),
               const SizedBox(height: Spacing.lg),
               if (state.failure != null)
-                Text(
-                  state.failure!,
+                PlatformFailureState(
                   key: AttendanceToConfirmScreen.failureKey,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                  title: 'The worklist could not be read',
+                  message: state.failure!,
+                  retryKey: AttendanceToConfirmScreen.retryKey,
+                  // The same read again: `_reload` reads the Org Unit and the
+                  // window off the state, so a retry asks for nothing the
+                  // caller has not already asked for.
+                  onRetry: () => bloc.add(const AttendanceToConfirmStarted()),
                 )
               else if (state.isLoading)
-                const Center(
-                  key: AttendanceToConfirmScreen.loadingKey,
-                  child: CircularProgressIndicator(),
+                // Bounded, because `SkeletonList` scrolls its own rows and this
+                // page's ListView hands out no height of its own.
+                SizedBox(
+                  height: _skeletonHeight,
+                  child: const SkeletonList(
+                    key: AttendanceToConfirmScreen.loadingKey,
+                    rows: 4,
+                    maxWidth: AttendanceToConfirmScreen.maxWidth,
+                  ),
                 )
               else if (state.entries.isEmpty)
-                Text(
-                  'Nothing to confirm here.',
-                  key: AttendanceToConfirmScreen.emptyKey,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                )
+                _EmptyQueue(state: state)
               else
-                for (final entry in state.entries) _EntryRow(entry: entry),
+                AppListCard(
+                  key: AttendanceToConfirmScreen.catalogueKey,
+                  rows: [
+                    for (final entry in state.entries) _EntryRow(entry: entry),
+                  ],
+                ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The worklist's empty state, in the variant the read earned (#393).
+///
+/// With no filter — [AttendanceToConfirmState]'s own default, and the state a
+/// reader lands in — an empty worklist is the good news this Screen exists to
+/// deliver: everything this caller could confirm already was. With a From/To
+/// window or an Org Unit chosen it may only be outside the window, and "every
+/// past shift you can confirm has a confirmed sheet" would then be a claim
+/// about a set the reader is not looking at. That case is `noneMatched`, whose
+/// resolving act is to widen or clear the filter, not to look for a record to
+/// create.
+class _EmptyQueue extends StatelessWidget {
+  const _EmptyQueue({required this.state});
+
+  final AttendanceToConfirmState state;
+
+  bool get _filtered => state.from != null || state.to != null || state.orgUnitId != null;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_filtered) {
+      return PlatformEmptyState.noneExist(
+        key: AttendanceToConfirmScreen.emptyKey,
+        title: 'Nothing to confirm here.',
+        message: 'Every past shift you can confirm has a confirmed sheet.',
+        icon: Icons.fact_check_outlined,
+      );
+    }
+    return PlatformEmptyState.noneMatched(
+      key: AttendanceToConfirmScreen.emptyKey,
+      title: 'Nothing to confirm here.',
+      message: 'No shift in this window needs confirming. Widen the window, or clear the Org Unit.',
+      icon: Icons.fact_check_outlined,
+    );
+  }
+}
+
+/// The two bounds of the window. One row when the box can hold them side by
+/// side, stacked when it cannot — read from the box, and from the box scaled by
+/// the reader's text size (`AppBreakpoints.effective`), never from the window.
+class _WindowFields extends StatelessWidget {
+  const _WindowFields({required this.state, required this.bloc});
+
+  final AttendanceToConfirmState state;
+  final AttendanceToConfirmBloc bloc;
+
+  @override
+  Widget build(BuildContext context) {
+    final from = AppDateField(
+      key: AttendanceToConfirmScreen.fromFieldKey,
+      name: 'attendance-to-confirm-from',
+      label: 'From',
+      value: state.from,
+      optional: true,
+      onChanged: (value) => bloc.add(AttendanceToConfirmFromChosen(value)),
+    );
+    final to = AppDateField(
+      key: AttendanceToConfirmScreen.toFieldKey,
+      name: 'attendance-to-confirm-to',
+      label: 'To',
+      value: state.to,
+      optional: true,
+      onChanged: (value) => bloc.add(AttendanceToConfirmToChosen(value)),
+    );
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (box.maxWidth < AppBreakpoints.effective(context, AppBreakpoints.toolbarWrap)) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [from, const SizedBox(height: Spacing.md), to],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: from),
+            const SizedBox(width: Spacing.md),
+            Expanded(child: to),
+          ],
+        );
+      },
     );
   }
 }
@@ -187,7 +290,7 @@ class _OrgUnitFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     if (state.orgUnitId != null) {
       return Row(
         children: [
@@ -195,17 +298,26 @@ class _OrgUnitFilter extends StatelessWidget {
             child: Text(
               'Org Unit: ${state.orgUnitName}',
               key: AttendanceToConfirmScreen.orgUnitChosenKey,
-              style: theme.textTheme.titleMedium,
+              style: AppTypography.dense(context)?.copyWith(
+                color: palette.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          IconButton(
-            key: AttendanceToConfirmScreen.orgUnitClearKey,
-            tooltip: 'Clear',
-            icon: const Icon(Icons.close),
-            onPressed: () {
-              bloc.add(const AttendanceToConfirmOrgUnitCleared());
-              onCleared();
-            },
+          SizedBox(
+            width: AppTouchTarget.min,
+            height: AppTouchTarget.min,
+            child: IconButton(
+              key: AttendanceToConfirmScreen.orgUnitClearKey,
+              tooltip: 'Clear',
+              iconSize: 18,
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.close),
+              onPressed: () {
+                bloc.add(const AttendanceToConfirmOrgUnitCleared());
+                onCleared();
+              },
+            ),
           ),
         ],
       );
@@ -214,11 +326,15 @@ class _OrgUnitFilter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        OutlinedButton.icon(
-          key: AttendanceToConfirmScreen.orgUnitBrowseToggleKey,
-          onPressed: onToggleBrowse,
-          icon: const Icon(Icons.account_tree_outlined),
-          label: Text(browsing ? 'Hide Org Units' : 'Filter by Org Unit'),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            key: AttendanceToConfirmScreen.orgUnitBrowseToggleKey,
+            style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
+            onPressed: onToggleBrowse,
+            icon: const Icon(Icons.account_tree_outlined, size: 18),
+            label: Text(browsing ? 'Hide Org Units' : 'Filter by Org Unit'),
+          ),
         ),
         if (browsing) ...[
           const SizedBox(height: Spacing.sm),
@@ -290,48 +406,58 @@ class _OrgUnitRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
     return Padding(
       padding: EdgeInsets.only(left: row.depth * Spacing.lg),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 32,
-            height: 32,
-            child: row.isLoadingChildren
-                ? const Padding(
-                    padding: EdgeInsets.all(Spacing.sm),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : IconButton(
-                    padding: EdgeInsets.zero,
-                    iconSize: 18,
-                    tooltip: row.isExpanded ? 'Collapse' : 'Expand',
-                    onPressed: () => context.read<OrgUnitPickerBloc>().add(
-                          row.isExpanded
-                              ? OrgUnitPickerCollapsed(row.node.id)
-                              : OrgUnitPickerExpanded(row.node.id),
-                        ),
-                    icon: Icon(row.isExpanded ? Icons.expand_more : Icons.chevron_right),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+        child: Row(
+          children: [
+            SizedBox(
+              width: AppTouchTarget.min,
+              height: AppTouchTarget.min,
+              child: row.isLoadingChildren
+                  ? const Padding(
+                      padding: EdgeInsets.all(Spacing.md),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 18,
+                      tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                      onPressed: () => context.read<OrgUnitPickerBloc>().add(
+                            row.isExpanded
+                                ? OrgUnitPickerCollapsed(row.node.id)
+                                : OrgUnitPickerExpanded(row.node.id),
+                          ),
+                      icon: Icon(row.isExpanded ? Icons.expand_more : Icons.chevron_right),
+                    ),
+            ),
+            Expanded(
+              child: InkWell(
+                key: AttendanceToConfirmScreen.orgUnitRowKey(row.node.id),
+                onTap: () => bloc.add(
+                  AttendanceToConfirmOrgUnitChosen(orgUnitId: row.node.id, orgUnitName: row.node.name),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+                  child: Text(
+                    row.node.name,
+                    style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
                   ),
-          ),
-          Expanded(
-            child: InkWell(
-              key: AttendanceToConfirmScreen.orgUnitRowKey(row.node.id),
-              onTap: () => bloc.add(
-                AttendanceToConfirmOrgUnitChosen(orgUnitId: row.node.id, orgUnitName: row.node.name),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
-                child: Text(row.node.name),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
+/// One shift that needs a decision: the shift instance and its production day,
+/// what it belongs to, what state its sheet is in, and the act — the sheet's own
+/// address, which is also what tapping the row does.
 class _EntryRow extends StatelessWidget {
   const _EntryRow({required this.entry});
 
@@ -339,14 +465,81 @@ class _EntryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListTile(
+    final palette = AppColors.of(context);
+    final missing = entry.sheetState == 'missing';
+    final label = attendanceSheetStateLabel(entry.sheetState);
+    void open() => context.go('${Routes.attendance}/${entry.shiftInstanceId}');
+
+    final state = StatusChip(
+      label: label,
+      // Not opened yet has no record behind it at all, which is the worse of
+      // the two gaps the worklist exists to close; both want a decision, so
+      // both stay inside the two "wants a decision" tones of the ladder.
+      tone: missing ? StatusTone.danger : StatusTone.warning,
+    );
+    final act = OutlinedButton(
+      key: AttendanceToConfirmScreen.openKey(entry.shiftInstanceId),
+      style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
+      onPressed: open,
+      child: const Text('Open sheet'),
+    );
+    final record = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${entry.shiftDefinitionName} · ${entry.productionDate}',
+          style: AppTypography.dense(context)?.copyWith(
+            color: palette.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: Spacing.xxs),
+        Text(
+          '${entry.orgUnitName} (${entry.siteName})',
+          style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+        ),
+      ],
+    );
+
+    return InkWell(
       key: AttendanceToConfirmScreen.entryKey(entry.shiftInstanceId),
-      title: Text('${entry.shiftDefinitionName} · ${entry.productionDate}'),
-      subtitle: Text('${entry.orgUnitName} (${entry.siteName}) — ${attendanceSheetStateLabel(entry.sheetState)}'),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => context.go('${Routes.attendance}/${entry.shiftInstanceId}'),
-      tileColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      onTap: open,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+          child: LayoutBuilder(
+            builder: (context, box) {
+              if (box.maxWidth < AppBreakpoints.effective(context, AppBreakpoints.toolbarWrap)) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    record,
+                    const SizedBox(height: Spacing.sm),
+                    Wrap(
+                      spacing: Spacing.sm,
+                      runSpacing: Spacing.sm,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [state, act],
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: record),
+                  const SizedBox(width: Spacing.md),
+                  state,
+                  const SizedBox(width: Spacing.sm),
+                  act,
+                ],
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 }

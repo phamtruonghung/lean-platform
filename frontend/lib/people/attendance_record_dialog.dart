@@ -11,12 +11,25 @@
 /// is already confirmed (ADR-0040: "a confirmed sheet can still be
 /// corrected") — this dialog does not know or care which; the Bloc's own
 /// `AttendanceRecordCorrected` handler makes no distinction either.
+///
+/// **Its shell is `AppDialog` at the `form` width** (issue #393,
+/// `docs/design-language.md` section 11): five fields and a note, so it takes
+/// the width a short form takes rather than a `SizedBox` of its own inside an
+/// `AlertDialog`. What did not change is everything the caller owns — the
+/// fields, their keys and labels, the reason field's own enable condition, the
+/// inline failure, what Save sends and that the dialog pops itself on success.
+/// What did change, and is stated here so it is not discovered: `Esc` now
+/// cancels, because `AppDialog` runs the dialog's own dismiss action where an
+/// `AlertDialog` left `Esc` inert, and the two action `Key`s are the shell's
+/// (`app-dialog-action-cancel` / `app-dialog-action-save`) — the accessors
+/// below are unchanged, so every test that finds them keeps finding them.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'attendance.dart';
 import 'attendance_sheet_bloc.dart';
 
@@ -37,8 +50,8 @@ class AttendanceRecordDialog extends StatefulWidget {
   static const ValueKey<String> overtimeMinutesFieldKey =
       ValueKey<String>('attendance-record-overtime-minutes');
   static const ValueKey<String> noteFieldKey = ValueKey<String>('attendance-record-note');
-  static const ValueKey<String> saveKey = ValueKey<String>('attendance-record-save');
-  static const ValueKey<String> cancelKey = ValueKey<String>('attendance-record-cancel');
+  static final ValueKey<String> saveKey = AppDialog.actionKey('save');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('attendance-record-failure');
 
   /// Opens the dialog over the sheet Screen — the same explicit Bloc hand-off
@@ -128,87 +141,84 @@ class _AttendanceRecordDialogState extends State<AttendanceRecordDialog> {
     final needsReason = attendanceStatusNeedsReason(_status);
     return BlocListener<AttendanceSheetBloc, AttendanceSheetState>(
       listener: _onStateChanged,
-      child: AlertDialog(
-        title: Text('Mark ${widget.record.displayName}'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  key: AttendanceRecordDialog.statusFieldKey,
-                  initialValue: _status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: [
-                    for (final status in attendanceStatuses)
-                      DropdownMenuItem(value: status, child: Text(attendanceStatusLabel(status))),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _status = value!),
-                ),
-                if (needsReason) ...[
-                  const SizedBox(height: Spacing.md),
-                  DropdownButtonFormField<String>(
-                    key: AttendanceRecordDialog.reasonFieldKey,
-                    initialValue: _absenceReasonId,
-                    decoration: const InputDecoration(labelText: 'Reason'),
-                    items: [
-                      for (final reason in widget.absenceReasons)
-                        DropdownMenuItem(value: reason.id, child: Text(reason.name)),
-                    ],
-                    onChanged: _awaiting ? null : (value) => setState(() => _absenceReasonId = value),
-                  ),
-                ] else ...[
-                  const SizedBox(height: Spacing.md),
-                  TextField(
-                    key: AttendanceRecordDialog.workedMinutesFieldKey,
-                    controller: _workedMinutes,
-                    enabled: !_awaiting,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Worked minutes'),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  TextField(
-                    key: AttendanceRecordDialog.overtimeMinutesFieldKey,
-                    controller: _overtimeMinutes,
-                    enabled: !_awaiting,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Overtime minutes'),
-                  ),
-                ],
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: AttendanceRecordDialog.noteFieldKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  decoration: const InputDecoration(labelText: 'Note (optional)'),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: AttendanceRecordDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Mark ${widget.record.displayName}',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: AttendanceRecordDialog.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: AttendanceRecordDialog.saveKey,
+          AppDialogAction(
+            id: 'save',
+            label: _awaiting ? 'Saving…' : 'Save',
             onPressed: _awaiting ? null : _submit,
-            child: Text(_awaiting ? 'Saving…' : 'Save'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              key: AttendanceRecordDialog.statusFieldKey,
+              initialValue: _status,
+              decoration: const InputDecoration(labelText: 'Status'),
+              items: [
+                for (final status in attendanceStatuses)
+                  DropdownMenuItem(value: status, child: Text(attendanceStatusLabel(status))),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _status = value!),
+            ),
+            if (needsReason) ...[
+              const SizedBox(height: Spacing.md),
+              DropdownButtonFormField<String>(
+                key: AttendanceRecordDialog.reasonFieldKey,
+                initialValue: _absenceReasonId,
+                decoration: const InputDecoration(labelText: 'Reason'),
+                items: [
+                  for (final reason in widget.absenceReasons)
+                    DropdownMenuItem(value: reason.id, child: Text(reason.name)),
+                ],
+                onChanged: _awaiting ? null : (value) => setState(() => _absenceReasonId = value),
+              ),
+            ] else ...[
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: AttendanceRecordDialog.workedMinutesFieldKey,
+                controller: _workedMinutes,
+                enabled: !_awaiting,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Worked minutes'),
+              ),
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: AttendanceRecordDialog.overtimeMinutesFieldKey,
+                controller: _overtimeMinutes,
+                enabled: !_awaiting,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Overtime minutes'),
+              ),
+            ],
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: AttendanceRecordDialog.noteFieldKey,
+              controller: _note,
+              enabled: !_awaiting,
+              decoration: const InputDecoration(labelText: 'Note (optional)'),
+            ),
+            if (_failure != null)
+              Padding(
+                key: AttendanceRecordDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
