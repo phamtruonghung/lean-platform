@@ -432,13 +432,18 @@ class _ShiftPosition extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (fraction != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(Spacing.xxs),
-            child: LinearProgressIndicator(
-              value: fraction,
-              minHeight: Spacing.xs,
-              color: palette.actionPrimary,
-              backgroundColor: palette.surfaceMuted,
+          // Decorative on top of the words beneath it, which say the same thing
+          // in a reader's own terms: announcing "progress 42 percent" and then
+          // "3 h in · 5 h to go" says it twice.
+          ExcludeSemantics(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(Spacing.xxs),
+              child: LinearProgressIndicator(
+                value: fraction,
+                minHeight: Spacing.xs,
+                color: palette.actionPrimary,
+                backgroundColor: palette.surfaceMuted,
+              ),
             ),
           ),
         if (fraction != null) const SizedBox(height: Spacing.xs),
