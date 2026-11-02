@@ -101,6 +101,15 @@ const _pages = <_Page>[
   _Page('/actions', 'lib/actions/actions_screen.dart', 'Actions', ''),
   _Page('/tier-board', 'lib/maintenance/tier_board_screen.dart', 'Tier board', ''),
   _Page('/skill-coverage', 'lib/people/skill_coverage_screen.dart', 'Skill coverage', ''),
+  // The Production Module (issue #389's design pass). Both Screens now set their
+  // title in an `AppPageHeader`, so both are audited here rather than excluded:
+  // the board's title is the Section's own name, and the handover's names the
+  // Section it belongs to. Its first card is the numbers section, whose rows sit
+  // at the card's own padding.
+  _Page('/production/sections/30/board?date=2026-05-05', 'lib/production/section_board_screen.dart',
+      'Self-Closing', 'Every shift of the production day'),
+  _Page('/production/sections/30/handover/500?date=2026-05-05', 'lib/production/shift_handover_screen.dart',
+      'Shift handover · Self-Closing', '2026-05-05 ·'),
   // The KPI Module's three Screens (ADR-0055). Reached from Insights and from a
   // catalogue row; each sets its title and rows in the usual frame. The Review's
   // title names its day, which is the fixture's `review_date`, and the Targets'
@@ -241,11 +250,6 @@ const _excluded = <String, String>{
       'reached by shift instance id; its rows are plain list items, not the audited card-row shape',
   'lib/people/attendance_picker_screen.dart':
       'a chooser (an Org Unit tree and a date field), not a browsable register of card rows',
-  'lib/production/section_board_screen.dart':
-      "reached by Section id; its title is the Section's own name, and at the Destination it is an "
-          'Org Unit chooser, not a register of card rows',
-  'lib/production/shift_handover_screen.dart':
-      "reached by Section and shift instance; its title is the Section's own handover, not a page heading",
 };
 
 /// One wire for every page in the table: each Screen finds the collection it
@@ -354,7 +358,44 @@ FakeWire _wire() => FakeWire(
         scheduledMinutes: 450,
         workedMinutes: 450,
       ),
+      // The Production Module (issue #389): one Section, one shift with no
+      // handover (the handover page opens its draft) and one submitted handover
+      // with a machine line, so the board renders its counts, a shift header and
+      // a machine tile rather than the empty state.
+      sectionAssets: {
+        '30': [sectionAssetJson('a1', 'PRESS-1', 'Press 1')],
+      },
+      sectionDays: {
+        '30': sectionDayJson(
+          '30',
+          shifts: [
+            sectionShiftJson('500', exceptions: const ['no_handover']),
+            sectionShiftJson('501', handover: _submittedHandover),
+          ],
+        ),
+      },
+      handovers: {_submittedHandover['id'] as String: _submittedHandover},
     );
+
+/// The one submitted handover the board's second shift carries (issue #389).
+final Map<String, dynamic> _submittedHandover = shiftHandoverJson(
+  'h501',
+  orgUnitId: '30',
+  shiftInstanceId: '501',
+  status: 'submitted',
+  authorDisplayName: 'B Team Leader',
+  snapshot: const {'oee': 0.82},
+  machineLines: [
+    {
+      'id': 'ml-a1',
+      'assetId': 'a1',
+      'assetCode': 'PRESS-1',
+      'assetName': 'Press 1',
+      'state': 'running',
+      'walked': false,
+    },
+  ],
+);
 
 /// The one KPI behind the three KPI pages' rows.
 final Map<String, dynamic> _kpi = kpiCatalogueRowJson(1, 'OEE', 'Overall equipment effectiveness', unit: '%');

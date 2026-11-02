@@ -418,6 +418,38 @@ for palette tokens. A tone is never invented for a legend: it comes from
 `StatusTone` and renders through `StatusChip`, the same widget the tiles and the
 registers use.
 
+### The shift board
+
+The Production Module's Section board (`/production/sections/:orgUnitId/board`,
+issue #389) is the board shape spent on a handful of records rather than on lanes,
+and it is written down because two things on it are rules rather than taste.
+
+**A board opens with its counts.** Four `AppStatTile`s above the first card — the
+day's shifts, and how many of them the server flagged `no_handover`,
+`unacknowledged` and `late` — because the first question a supervisor asks at a
+handover boundary is how the day went, not which shift is fourth. The row is two
+tiles wide below four tile-floors and four above, never three: a run of three over
+a fourth tile leaves the last one alone on its row (`frontend-layout.md`'s second
+trap). Each figure is a tally of exceptions the server already reported, never a
+second opinion about the day.
+
+**A shift card leads with its instance.** Its header names the shift
+(`titleSmall` w600) and holds every chip the server decided about that boundary —
+the handover's status, `Late`, and each exception — on one wrapping line, so a
+narrow box drops the chips under the name instead of squeezing it. Under it, a
+position bar across the shift's own two timestamps says where in the shift the
+reader is (`2 h 10 min in · 5 h 50 min to go`, `Starts in 3 h`, `Ended 25 min
+ago`), which is the reader's clock against the server's two instants and nothing
+else. The Section's name is the page's title: a shift card does not repeat it.
+
+**A machine tile is a tap floor, not a chip.** Tiles are `Spacing.sm` apart, each
+at least `AppTouchTarget.min` tall and four touch targets wide, carrying the
+Asset's own code and name and one `StatusChip` naming the state it was left in.
+The words are on the tile, which is why a board of tiles needs no page legend:
+`StatusTone` groups the states (running is `info`, down is the `warning` its own
+enum names, a planned state is `neutral`), and no reader is asked to read a hue
+with no word beside it.
+
 ### The stat tile
 
 `AppStatTile` (shipped in #386) generalises Home's private `_HomeCard`: an icon
@@ -454,10 +486,32 @@ field the person was about to fill. **The bar spans the page frame, not the
 window**: it is `AppPageFrame`'s own width, so a 900px form does not grow a submit
 bar 1020px wide.
 
+**Built as a sibling, which pays nothing.** The Shift handover (#389) is the first
+form to spend this: the page frame's child is a `Column` of an `Expanded` scroll
+view and the bar, so the viewport *ends* where the bar begins. A sibling cannot
+cover a row, which is stronger than paying for one — the bottom padding above is
+what an overlapping bar owes, not what this layout owes.
+
+**Below the form's two-column box, anchors instead, and Submit inline.** A bar at
+700px of box takes the scarcest thing a phone or a floor tablet has, vertical room,
+so the bar is not drawn there: the header carries one row of section anchors
+(`AppPageHeader.below`), each a 44px `TextButton` that brings its section to the
+top of the viewport with `Scrollable.ensureVisible` at 200ms — and with
+`Duration.zero` under `MediaQuery.disableAnimationsOf` — and Submit sits at the end
+of the form where it always did. There is one submit control in the tree either
+way: two would be two keys with one meaning.
+
+**The form remains a `SingleChildScrollView`-shaped page, not a lazy list.** A form
+is tens of rows, not thousands, and every row must be built for an anchor to have a
+context to scroll to.
+
 **It is a pattern here, not a primitive.** `AppDetailSection` already gives a form
 its sections, and a submit bar has exactly one consumer shape today, so it is
 specified here rather than added to the widget set. The slice that builds the first
-form decides whether it earns one.
+form decides whether it earns one: the Shift handover (#389) built it as a private
+`_SubmitBar` in the Production Module and did not lift it into `lib/widgets/` —
+one consumer is not a primitive, and the shared set belongs to the foundation
+slice, not to a module's design pass.
 
 ## 7. The four states, and where each is used
 

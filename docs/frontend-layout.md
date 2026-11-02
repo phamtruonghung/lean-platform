@@ -124,9 +124,13 @@ ADR-0057 records the decision. The primitives that make a register one column sp
 (`AppTableHeader`, `AppTableRow`) ship in #386, and a Screen adopts them in its own
 slice.
 
-A form's submit is a sticky bar at the bottom of the page's own viewport, and its
-list pays for the bar's height in bottom padding; the pattern is
-[`design-language.md`](design-language.md) section 6.
+A form's submit is a sticky bar at the bottom of the page's own viewport; the
+pattern is [`design-language.md`](design-language.md) section 6. It is built as a
+sibling of the scroll view inside the page frame's `Column`, so the viewport ends
+where the bar begins and nothing is hidden under it — the bottom padding the
+section also describes is only what an *overlapping* bar owes. Below the form's
+two-column box the bar is not drawn at all and the header carries section anchors
+instead, with Submit inline at the form's end.
 
 ## The two traps behind all of it
 
@@ -183,6 +187,11 @@ is only visible in a rendered tree (AGENTS.md §5's frontend seam).
   registers' own width rather than the catalogues' 900, and its Screen says so
   where the number is chosen. **The Training form (#292) is narrower, at 800** —
   a sheet of paper, about an A4 page at screen resolution, and its Screen says so.
+  **The Shift handover (#389) joins the CAPA report at 1100**: thirteen frozen
+  numbers in a grid and a machine line's pickers side by side are a form's width,
+  and its 1100 is what makes its field grid reach two columns at a 1280 window.
+  **The Section board (#389) keeps the default 900** — it is a page of cards, not a
+  table, and a shift card's tiles wrap inside whatever box they are handed.
 - **Goldens for every Screen.** `test/GOLDENS.md` scopes them to the Shell and the
   Work orders Screen: a golden per Screen fails on every ordinary content change and
   gets deleted. Geometry assertions catch this class without that cost.

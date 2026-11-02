@@ -10,6 +10,15 @@
 ///
 /// The Change points are not on the board's own read of the day, so the dialog
 /// reads the handover itself, the way `ActionFormDialog` reads its own Pillars.
+///
+/// **Its shell is `AppDialog`** (issue #389, the pattern F1/ADR-0058 wrote into
+/// `docs/design-language.md` §11): the width is the primitive's `wide` rather
+/// than a `SizedBox(460)` inside the content, the title and the action row are
+/// the width the author chose, the action row is ordered dismiss-then-primary
+/// with each action at 44px, focus is trapped and restored, `Esc` cancels, and
+/// at a 700px box or a text scale of 1.5 the whole thing is a bottom sheet. What
+/// the acknowledgement *records* — every key, every field, every Bloc event, the
+/// wording of every sentence — is unchanged.
 library;
 
 import 'package:flutter/material.dart';
@@ -17,6 +26,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'handover.dart';
 import 'handover_vocabulary.dart';
 import 'production_api.dart';
@@ -30,8 +40,14 @@ class HandoverAcknowledgeDialog extends StatefulWidget {
   static const ValueKey<String> loadingKey = ValueKey<String>('handover-acknowledge-loading');
   static const ValueKey<String> readFailureKey = ValueKey<String>('handover-acknowledge-read-failure');
   static const ValueKey<String> noteKey = ValueKey<String>('handover-acknowledge-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('handover-acknowledge-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('handover-acknowledge-cancel');
+
+  /// The two actions' keys, which `AppDialog` owns the shape of: the id names
+  /// the action, the primitive derives the `Key`. The accessors are unchanged,
+  /// so every caller and test that finds the control by them still does; the
+  /// values moved from `handover-acknowledge-submit` to
+  /// `app-dialog-action-handover-acknowledge-submit` (listed in the PR).
+  static final ValueKey<String> submitKey = AppDialog.actionKey('handover-acknowledge-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('handover-acknowledge-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('handover-acknowledge-failure');
   static ValueKey<String> resultKey(String changePointId) =>
       ValueKey<String>('handover-acknowledge-result-$changePointId');
@@ -222,21 +238,25 @@ class _HandoverAcknowledgeDialogState extends State<HandoverAcknowledgeDialog> {
 
     return BlocListener<SectionBoardBloc, SectionBoardState>(
       listener: _onBoardChanged,
-      child: AlertDialog(
-        title: const Text('Acknowledge the handover'),
-        content: SizedBox(width: 460, child: SingleChildScrollView(child: content)),
+      child: AppDialog(
+        title: 'Acknowledge the handover',
+        // A watch block per Change point, each with two fields, plus the note:
+        // content with its own shape rather than a six-field form (§11).
+        size: AppDialogSize.wide,
         actions: [
-          TextButton(
-            key: HandoverAcknowledgeDialog.cancelKey,
+          AppDialogAction(
+            id: 'handover-acknowledge-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: HandoverAcknowledgeDialog.submitKey,
+          AppDialogAction(
+            id: 'handover-acknowledge-submit',
+            label: _awaiting ? 'Acknowledging…' : 'Acknowledge',
             onPressed: handover == null || _awaiting ? null : _submit,
-            child: Text(_awaiting ? 'Acknowledging…' : 'Acknowledge'),
           ),
         ],
+        child: content,
       ),
     );
   }
