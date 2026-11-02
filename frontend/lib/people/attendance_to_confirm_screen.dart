@@ -174,12 +174,7 @@ class _WorklistBodyState extends State<_WorklistBody> {
                   ),
                 )
               else if (state.entries.isEmpty)
-                PlatformEmptyState.noneExist(
-                  key: AttendanceToConfirmScreen.emptyKey,
-                  title: 'Nothing to confirm here.',
-                  message: 'Every past shift you can confirm has a confirmed sheet.',
-                  icon: Icons.fact_check_outlined,
-                )
+                _EmptyQueue(state: state)
               else
                 AppListCard(
                   key: AttendanceToConfirmScreen.catalogueKey,
@@ -191,6 +186,42 @@ class _WorklistBodyState extends State<_WorklistBody> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The worklist's empty state, in the variant the read earned (#393).
+///
+/// With no filter — [AttendanceToConfirmState]'s own default, and the state a
+/// reader lands in — an empty worklist is the good news this Screen exists to
+/// deliver: everything this caller could confirm already was. With a From/To
+/// window or an Org Unit chosen it may only be outside the window, and "every
+/// past shift you can confirm has a confirmed sheet" would then be a claim
+/// about a set the reader is not looking at. That case is `noneMatched`, whose
+/// resolving act is to widen or clear the filter, not to look for a record to
+/// create.
+class _EmptyQueue extends StatelessWidget {
+  const _EmptyQueue({required this.state});
+
+  final AttendanceToConfirmState state;
+
+  bool get _filtered => state.from != null || state.to != null || state.orgUnitId != null;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_filtered) {
+      return PlatformEmptyState.noneExist(
+        key: AttendanceToConfirmScreen.emptyKey,
+        title: 'Nothing to confirm here.',
+        message: 'Every past shift you can confirm has a confirmed sheet.',
+        icon: Icons.fact_check_outlined,
+      );
+    }
+    return PlatformEmptyState.noneMatched(
+      key: AttendanceToConfirmScreen.emptyKey,
+      title: 'Nothing to confirm here.',
+      message: 'No shift in this window needs confirming. Widen the window, or clear the Org Unit.',
+      icon: Icons.fact_check_outlined,
     );
   }
 }

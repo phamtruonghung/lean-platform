@@ -562,7 +562,12 @@ The shape, which a Screen builds rather than a primitive (one consumer so far):
   than leaving a gutter, so a 1280px window has no empty strip beside the matrix.
 - **The page names its own frame width** when the register is read across
   (`AttendanceSheetScreen.maxWidth` is 1040, the Work order detail's number for the
-  same reason) — §2's default 900 would scroll on a wide screen for nothing.
+  same reason). Measured at a text scale of 1, the matrix needs 560.9px — a
+  108.4px name column plus 452.5px of columns — so it already fits inside a
+  900px window's 608px card and does not scroll there; the wider page is for a
+  1280px window, where it gives the matrix 988 and hands the slack to the name
+  column instead of leaving a gutter beside names that are the widest thing in
+  it.
 
 At a 700px window the Shell leaves the page 440 (§2), which is the box this shape
 exists for: the name column holds, and the columns scroll under it.
@@ -1135,14 +1140,20 @@ shows three tones shows three chips, labelled with that tone's word, rendered
 through `StatusChip`. A banner is the same: its tone is a colour and its message is
 the words.
 
-**When one tone covers several states, the legend names the word the cells carry.**
-The attendance sheet (#393) paints `success` for both `present` and `late`, `info`
-for a planned absence and for a training day, `danger` for an unplanned absence and
-`neutral` for somebody who was never scheduled — so its legend says **Present,
-Leave, Absent, Not recorded**, the four words a reader will find in the cells,
-rather than four enum names nobody on the floor uses. A `late` cell keeps its own
-word in the cell, which is what tells it apart from `present` without asking the
-legend to list six.
+**When one tone covers several states, the legend names the tone and the cell
+names the record.** The two word sets are not the same list, and that is the
+design: the legend answers "what does this colour mean here", the cell answers
+"what happened to this person". The attendance sheet (#393) paints `success` for
+both `present` and `late`, `info` for a planned absence and for a training day,
+`danger` for an unplanned absence and `neutral` for somebody who was never
+scheduled — so its legend says **Present, Leave, Absent, Not recorded**, one
+chip per tone, while the cells carry the record's own words: `Present`, `Late`,
+`Absent (planned)`, `Absent (unplanned)`, `Training`, `Not scheduled`. A `Late`
+cell is green under a *Present* chip because the question the colour answers is
+"were they here", and the word answers "were they on time"; `Absent (planned)`
+and `Training` are both `info` because both are time away from the line that was
+accounted for. A reader who needs the record reads the cell — the legend never
+replaces the cell's own word, and no cell relies on the legend to be understood.
 
 ## 14. What this document does not decide
 

@@ -160,8 +160,9 @@ const String _workedHours = '/directory/42/work-hours';
 const String _leave = '/leave-requests';
 const String _signature = '/me/signature';
 
-/// The widths the ticket names.
-const List<double> _widths = [700, 1280];
+/// The widths the ticket names: a phone-class window, the middle width a
+/// laptop gives a half-width pane, and a wide one.
+const List<double> _widths = [700, 900, 1280];
 
 void main() {
   setUpAll(loadAppFonts);
@@ -237,6 +238,49 @@ void main() {
         closeTo(tester.getTopLeft(card).dx, 1.5),
         reason: 'the sheet at 1280: the frozen column is not at the matrix left edge',
       );
+    });
+
+    testWidgets('at 900 the matrix fits, and the slack goes to the name column',
+        (tester) async {
+      // The narrow width first: the frozen column's own width there is its
+      // content's, because nothing is spare to give it.
+      await _pumpAt(tester, location: _sheet, width: 700);
+      final narrowFrozen =
+          tester.getSize(find.byKey(AttendanceSheetScreen.rowKey('1000'))).width;
+
+      await _pumpAt(tester, location: _sheet, width: 900);
+      expect(tester.takeException(), isNull, reason: 'the sheet at 900');
+
+      final matrix = find.byKey(AttendanceSheetScreen.matrixKey);
+      final row = find.byKey(AttendanceSheetScreen.rowKey('1000'));
+      final scrollable = tester.state<ScrollableState>(
+        find.descendant(of: matrix, matching: find.byType(Scrollable)),
+      );
+      // 900 of window leaves the page 640 and this card 608, while the matrix
+      // needs 560.9 at a text scale of 1 (a 108.4px name column plus 452.5px of
+      // columns) — so the middle width is where the sideways scroll stops. A
+      // breakpoint read off the window, or prose claiming this box still
+      // scrolls, is caught here.
+      expect(
+        scrollable.position.maxScrollExtent,
+        0,
+        reason: 'the sheet at 900: the columns still scroll',
+      );
+      // What the columns do not need goes to the frozen name column rather than
+      // to a gutter, so it is wider here than at 700, where it is only as wide
+      // as its content.
+      expect(
+        tester.getSize(row).width,
+        greaterThan(narrowFrozen + 1),
+        reason: 'the sheet at 900: the name column did not take the slack',
+      );
+      expect(
+        tester.getSize(row).height,
+        AppTouchTarget.min,
+        reason: 'the sheet at 900: the row is not the tap floor',
+      );
+      expect(find.byKey(AttendanceSheetScreen.legendKey), findsOneWidget,
+          reason: 'the sheet at 900: the legend is gone');
     });
 
     testWidgets('at twice the text the frozen column still holds, at 700 and at 1280',
@@ -334,6 +378,33 @@ void main() {
       expect(find.byKey(AttendancePickerScreen.catalogueKey), findsOneWidget);
     });
 
+    testWidgets('at 900 the action is back on the title row, and the shifts are reached',
+        (tester) async {
+      await _pumpAt(tester, location: _picker, width: 900, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'the picker at 900');
+
+      final title = find.byKey(AppPageHeader.titleKey);
+      final action = find.byKey(AttendancePickerScreen.toConfirmLinkKey);
+      // 900 of window gives the header 608, over the 560 it wraps at, so the
+      // middle width sits on the other side of that breakpoint from 700, where
+      // the action drops under the title. Compared on the title's own bottom
+      // edge rather than a hard-coded y.
+      expect(
+        tester.getTopLeft(action).dy,
+        lessThan(tester.getBottomLeft(title).dy),
+        reason: 'the picker at 900: the action dropped under the title',
+      );
+      expect(
+        tester.getSize(action).height,
+        greaterThanOrEqualTo(AppTouchTarget.min),
+        reason: 'the picker at 900: the action is under the tap floor',
+      );
+      await openShifts(tester);
+      expect(tester.takeException(), isNull, reason: 'the picker at 900 with shifts');
+      expect(find.byKey(AttendancePickerScreen.shiftRowKey('501')), findsOneWidget,
+          reason: 'the picker at 900: no shift row');
+    });
+
     testWidgets('at 700 the action wraps under the title, and at twice the text it still holds',
         (tester) async {
       for (final scale in [1.0, 2.0]) {
@@ -403,7 +474,7 @@ void main() {
       );
     });
 
-    testWidgets('a day with no shifts says so, and a failed read offers a retry',
+    testWidgets('a day with no shifts is the shared empty state, not a bare sentence',
         (tester) async {
       await _pumpAt(tester, location: _picker, width: 1280, wire: FakeWire(
         sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
@@ -415,6 +486,27 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'the picker with no shifts');
       expect(find.byKey(AttendancePickerScreen.emptyKey), findsOneWidget);
       expect(find.byType(PlatformEmptyState), findsOneWidget);
+      expect(find.byType(SkeletonList), findsNothing);
+    });
+
+    testWidgets('a failed read offers the shared retry, not a bare sentence',
+        (tester) async {
+      // Its own pump: the read has to fail on the way in, and a second pump on
+      // the same address would reuse the Screen's Bloc — the sheet's own
+      // failed-read case makes the same point.
+      await _pumpAt(tester, location: _picker, width: 1280, wire: FakeWire(
+        sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+        orgUnits: {
+          null: [orgUnitJson('10', 'Assembly')],
+        },
+        shiftInstancesStatus: 500,
+      ));
+      await openShifts(tester);
+      expect(tester.takeException(), isNull, reason: 'the picker after a failed read');
+      expect(find.byKey(AttendancePickerScreen.failureKey), findsOneWidget);
+      expect(find.byKey(AttendancePickerScreen.retryKey), findsOneWidget);
+      expect(find.byType(PlatformFailureState), findsOneWidget);
+      expect(find.byKey(AttendancePickerScreen.catalogueKey), findsNothing);
       expect(find.byType(SkeletonList), findsNothing);
     });
   });
@@ -454,6 +546,28 @@ void main() {
       );
     });
 
+    testWidgets('at 900 the row still takes the narrow shape', (tester) async {
+      await _pumpAt(tester, location: _toConfirm, width: 900, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'the queue at 900');
+      final row = find.byKey(AttendanceToConfirmScreen.entryKey('501'));
+      final act = find.byKey(AttendanceToConfirmScreen.openKey('501'));
+      final shift = find.descendant(of: row, matching: find.textContaining('Day shift'));
+      // 900 of window gives this row 608, under the 640 it splits at — the
+      // middle width is on the narrow side of the breakpoint, and it has to stay
+      // there from the box rather than drift to the inline shape as the window
+      // grows.
+      expect(
+        tester.getTopLeft(act).dy,
+        greaterThan(tester.getBottomLeft(shift).dy),
+        reason: 'the queue at 900: the act did not drop under the shift',
+      );
+      expect(
+        tester.getSize(act).height,
+        greaterThanOrEqualTo(AppTouchTarget.min),
+        reason: 'the queue at 900: the act is under the tap floor',
+      );
+    });
+
     testWidgets('at twice the text the row holds at 700 and at 1280', (tester) async {
       for (final width in _widths) {
         await _pumpAt(tester, location: _toConfirm, width: width, textScale: 2, height: 2400);
@@ -481,6 +595,37 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'the empty queue');
       expect(find.byKey(AttendanceToConfirmScreen.emptyKey), findsOneWidget);
       expect(find.byType(PlatformEmptyState), findsOneWidget);
+      // Nothing has been filtered, so this is the good-news story: nothing is
+      // outstanding anywhere this caller may act, not "your filter matched
+      // none".
+      expect(
+        tester.widget<PlatformEmptyState>(find.byKey(AttendanceToConfirmScreen.emptyKey)).variant,
+        EmptyStateVariant.noneExist,
+        reason: 'the unfiltered empty queue claimed a filter had matched nothing',
+      );
+    });
+
+    testWidgets('an empty queue inside a window is the none-matched variant',
+        (tester) async {
+      await _pumpAt(tester, location: _toConfirm, width: 1280, height: 2400, wire: FakeWire());
+      expect(tester.takeException(), isNull, reason: 'the empty queue');
+      // Narrow the window: an empty read now means "nothing in this window",
+      // which is a different story from "nothing is outstanding anywhere" — and
+      // only the second is what "every past shift has a confirmed sheet" says.
+      await tapIn(tester, find.byKey(AttendanceToConfirmScreen.fromFieldKey));
+      await tapIn(tester, find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'the empty queue, filtered');
+      expect(
+        tester.widget<PlatformEmptyState>(find.byKey(AttendanceToConfirmScreen.emptyKey)).variant,
+        EmptyStateVariant.noneMatched,
+        reason: 'a filtered empty queue still claimed every past shift was confirmed',
+      );
+      expect(
+        find.text('Every past shift you can confirm has a confirmed sheet.'),
+        findsNothing,
+        reason: 'a filtered empty queue kept the unfiltered sentence',
+      );
     });
   });
 
@@ -586,6 +731,24 @@ void main() {
         tester.getSize(narrowRow).height,
         greaterThan(AppTouchTarget.min),
         reason: 'leave at 700: the two-line row did not grow for its actions',
+      );
+    });
+
+    testWidgets('at 900 the decisions still drop under the record', (tester) async {
+      await _pumpAt(tester, location: _leave, width: 900, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'leave at 900');
+      final row = find.byKey(LeaveRequestsScreen.rowKey('2'));
+      final approve = find.byKey(LeaveRequestsScreen.approveKey('2'));
+      final name = find.descendant(of: row, matching: find.textContaining('Grace Hopper'));
+      expect(
+        tester.getTopLeft(approve).dy,
+        greaterThan(tester.getBottomLeft(name).dy),
+        reason: 'leave at 900: the decisions did not drop under the record',
+      );
+      expect(
+        tester.getSize(row).height,
+        greaterThan(AppTouchTarget.min),
+        reason: 'leave at 900: the two-line row did not grow for its actions',
       );
     });
 

@@ -2384,6 +2384,8 @@ class FakeWire {
     this.attendanceSheet,
     List<Map<String, dynamic>>? attendanceRecords,
     List<Map<String, dynamic>>? shiftInstances,
+    this.shiftInstancesStatus = 200,
+    this.shiftInstancesMessage = 'The shifts could not be read.',
     this.attendanceSheetStatus = 200,
     this.attendanceSheetMessage = 'The attendance sheet is unavailable.',
     this.confirmAttendanceSheetStatus = 200,
@@ -4554,6 +4556,11 @@ class FakeWire {
   /// Attendance picker's own listing. One day's worth, not keyed by Org Unit:
   /// the same one-scenario-at-a-time simplification [attendanceSheet] makes.
   List<Map<String, dynamic>> shiftInstances;
+
+  /// The status the shift-instances read answers with, and the message it
+  /// carries when it is not 200 — the picker's failed-read case.
+  int shiftInstancesStatus;
+  String shiftInstancesMessage;
 
   /// Every Org Unit id the picker asked for shifts at, in the order the
   /// requests reached the wire.
@@ -8941,6 +8948,12 @@ class FakeWire {
         if (path.startsWith('/api/people/org-units/') && path.endsWith('/shift-instances')) {
           final orgUnitId = path.split('/')[4];
           shiftInstanceRequests.add(orgUnitId);
+          if (shiftInstancesStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': shiftInstancesMessage}),
+              shiftInstancesStatus,
+            );
+          }
           return http.Response(jsonEncode({'shiftInstances': shiftInstances}), 200);
         }
         // The attendance sheet (issue #249) — GET .../attendance-sheet,

@@ -36,7 +36,7 @@
 /// sideways *inside* the frozen name column, which never moves. At a 700px
 /// window the Shell leaves the page 440 (section 2), so that is the box where
 /// this Screen is narrowest — the widget test scrolls it and finds the name
-/// where it was (`attendance_sheet_geometry_test.dart`).
+/// where it was (`people_attendance_geometry_test.dart`).
 ///
 /// **A cell's state is a tone and its word.** Present, Late, the two absences,
 /// Training and Not scheduled are painted through `StatusChip`, whose label is
@@ -82,10 +82,12 @@ class AttendanceSheetScreen extends StatelessWidget {
 
   /// The page's width. 1040 rather than the default 900 because this page is a
   /// matrix read across: the Work order detail names the same number for the
-  /// same reason (section 10), and at a 1280px window it is the width at which
-  /// the frozen name column and the four columns after it fit without
-  /// scrolling (measured: 1292 at a text scale of 1, so the default 900 page
-  /// would scroll 224px on a wide screen for nothing).
+  /// same reason (section 10). Measured at a text scale of 1, the matrix needs
+  /// 560.9px — a 108.4px name column plus 452.5px of columns — so it already
+  /// fits inside a 900px window's 608px card and does not scroll there. The
+  /// wider page is for the 1280px window, where it gives the matrix 988 and
+  /// hands the slack to the name column rather than leaving a gutter beside a
+  /// register whose names are the widest thing in it.
   static const double maxWidth = 1040;
 
   static const ValueKey<String> failedKey = ValueKey<String>('attendance-sheet-failed');
