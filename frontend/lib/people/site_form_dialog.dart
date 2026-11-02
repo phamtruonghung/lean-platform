@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/failure_state.dart';
 import 'org_unit.dart';
@@ -58,8 +59,8 @@ class SiteFormDialog extends StatefulWidget {
   static const ValueKey<String> timezoneRetryKey = ValueKey<String>('site-form-timezone-retry');
 
   static const ValueKey<String> countryCodeKey = ValueKey<String>('site-form-country-code');
-  static const ValueKey<String> submitKey = ValueKey<String>('site-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('site-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('site-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('site-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('site-form-failure');
 
   /// Opens the form over `OrgUnitsScreen` — the same explicit Bloc hand-off
@@ -234,12 +235,26 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
     return BlocListener<OrgUnitAdminBloc, OrgUnitAdminState>(
       listener: _onAdminChanged,
       child: BlocBuilder<OrgUnitAdminBloc, OrgUnitAdminState>(
-        builder: (context, state) => AlertDialog(
-          title: Text(widget.site == null ? 'Add Site' : 'Edit Site'),
-          content: SizedBox(
-            width: 420,
-            child: SingleChildScrollView(
-              child: Column(
+        builder: (context, state) => AppDialog(
+          title: widget.site == null ? 'Add Site' : 'Edit Site',
+          size: AppDialogSize.picker,
+          // `child` last, as `sort_child_properties_last` requires.
+          actions: [
+            AppDialogAction(
+              id: 'site-form-cancel',
+              label: 'Cancel',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+            ),
+            AppDialogAction(
+              id: 'site-form-submit',
+              label: _awaiting ? 'Saving…' : (widget.site == null ? 'Add Site' : 'Save'),
+              onPressed: _complete(state) && !_awaiting ? () => _submit(state) : null,
+            ),
+          ],
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -281,20 +296,7 @@ class _SiteFormDialogState extends State<SiteFormDialog> {
                     ),
                 ],
               ),
-            ),
           ),
-          actions: [
-            TextButton(
-              key: SiteFormDialog.cancelKey,
-              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: SiteFormDialog.submitKey,
-              onPressed: _complete(state) && !_awaiting ? () => _submit(state) : null,
-              child: Text(_awaiting ? 'Saving…' : (widget.site == null ? 'Add Site' : 'Save')),
-            ),
-          ],
         ),
       ),
     );

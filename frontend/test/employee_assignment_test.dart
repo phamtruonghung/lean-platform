@@ -124,7 +124,8 @@ void main() {
     // date — never edited away, per CONTEXT.md's own Assignment entry.
     expect(find.byKey(EmployeeDetailScreen.assignmentRowKey('99')), findsOneWidget);
     expect(find.byKey(EmployeeDetailScreen.currentAssignmentKey('99')), findsNothing);
-    expect(find.text('2024-01-01 – 2024-08-01'), findsOneWidget);
+    // §13's wording: `1 Jan 2024`, never `2024-01-01`.
+    expect(find.text('1 Jan 2024 – 1 Aug 2024'), findsOneWidget);
   });
 
   testWidgets('a refusal for want of write scope on the destination shows the API\'s own message',

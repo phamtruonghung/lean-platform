@@ -22,12 +22,18 @@ import 'package:go_router/go_router.dart';
 
 import '../platform/destinations.dart';
 import '../platform/router.dart';
+import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_filter_field.dart';
-import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'account_correction_dialog.dart';
 import 'account_employee_dialog.dart';
 import 'account_password_dialog.dart';
@@ -43,47 +49,37 @@ class AccountsScreen extends StatelessWidget {
   /// row ever offers an action on the caller's own Account (issue #53).
   final String selfAccountId;
 
-  static const double maxWidth = 960;
+  /// A register's width (#392, `design-language.md` §6): eight columns and the
+  /// fixed actions slot under them are read across, and 960 was what the
+  /// hand-rolled table used.
+  static const double maxWidth = 1100;
 
-  /// The breakpoint below which the list renders as one card per Account
-  /// rather than a table (issue #112, Decision A) — measured against this
-  /// Screen's own *content* width (`_AccountsList`'s own `LayoutBuilder`,
-  /// issue #120), not the browser window. It no longer shares its number with
-  /// `platform/shell.dart`'s rail breakpoint on purpose: that one is against
-  /// the window, correctly, since the Shell is the thing that owns the
-  /// window; this Screen only ever sees what the Shell hands it after its own
-  /// sidebar (260px expanded, 64px rail) is already subtracted, so the two
-  /// breakpoints answer different questions and coincidentally sharing a
-  /// number was the bug, not a feature to preserve. #99's own Implementation
-  /// Decisions freeze the Shell's 700px/260px/64px; this constant is free to
-  /// be whatever keeps the table legible on its own — the same reasoning
-  /// `WorkOrdersScreen.narrowBreakpoint`'s own doc comment records for #105.
+  /// The content width (at a text scale of 1) at or above which the register is a
+  /// table; below it, one card per Account.
   ///
-  /// 850, not 700 or 800: this table carries an eighth column
-  /// (`work_orders_screen.dart`'s table has seven) and a wider fixed actions
-  /// column (420px against that Screen's 232px), so less room is left for the
-  /// seven flexed columns (Name, Email, Role, Standing, Since, Grants,
-  /// Employee) at any given content width. Rendered in 50px steps from 700:
-  /// at 700–800px, every flexed header label wraps two or three lines deep
-  /// (`Standing` and `Employee` cramp to three lines at 800, the same
-  /// one-letter-per-line disaster #105 found); at 850px, `Name`, `Email`,
-  /// `Role` and `Since` are single-line and legible, and no column bleeds
-  /// into its neighbour. `Standing`, `Grants` and `Employee` still wrap to a
-  /// second line even at 850 and stay that way all the way to this Screen's
-  /// own 960px `maxWidth` ceiling (their header text plus the fixed actions
-  /// column simply do not both fit at any content width this table can
-  /// reach) — an accepted trade-off, the same shape as that Screen's own
-  /// Asset/Assignee ellipsis, since none of those three headers is how an
-  /// administrator identifies a row. The row data itself never wraps at any
-  /// sampled width, unlike the headers: every body cell already carries
-  /// `TextOverflow.ellipsis`, so a long email or display name is clipped
-  /// rather than pushed onto a second line. Chosen by rendering the actual
-  /// Screen at each width and reading it, not derived from the column
-  /// arithmetic.
-  static const double narrowBreakpoint = 850;
+  /// Measured against this Screen's own *content* width (`_AccountsList`'s own
+  /// `LayoutBuilder`, issue #120), never the browser window: this Screen only
+  /// ever sees what the Shell hands it after its own sidebar is subtracted, so a
+  /// window figure says nothing about the box this table is drawn in.
+  ///
+  /// **900, and read through [AppBreakpoints.effective]** — both halves changed
+  /// in #392. The old number was 850, chosen when the actions column was a fixed
+  /// 420-width box; it is now measured from the widest label it actually draws
+  /// (~300), so more of the box goes to the seven flexible columns, and at a 1280
+  /// window this page is handed 988 — every header label (`Standing`,
+  /// `Employee`, `Grants`) is single-line there. At 900 the leftover for the
+  /// names would be 283px across seven columns, which is clipped to nothing; that
+  /// is why the number moved up rather than down. And the comparison now
+  /// multiplies the breakpoint by the reader's text size: the same 988px box at
+  /// twice the text needs 1800, so the cards come back instead of squeezing eight
+  /// columns past legibility (§10; the bug class of #379 and #381, which this
+  /// line was one of).
+  static const double narrowBreakpoint = 900;
 
   static const ValueKey<String> noticeKey = ValueKey<String>('accounts-notice');
   static const ValueKey<String> retryKey = ValueKey<String>('accounts-retry');
+  static const ValueKey<String> failedKey = ValueKey<String>('accounts-failed');
+  static const ValueKey<String> emptyKey = ValueKey<String>('accounts-empty');
 
   /// Shared between the wide table row and the narrow card (issue #112,
   /// Decision A), so a test written against one Account's row does not need
@@ -146,8 +142,24 @@ class AccountsScreen extends StatelessWidget {
           Expanded(
             child: switch (state) {
               AccountsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
-              AccountsUnavailable(message: final message) => _AccountsFailed(message: message),
-              AccountsLoaded() when state.accounts.isEmpty => const _AccountsEmpty(),
+              AccountsUnavailable(message: final message) => PlatformFailureState(
+                  key: AccountsScreen.failedKey,
+                  title: 'The Accounts could not be loaded',
+                  message: message,
+                  retryKey: retryKey,
+                  onRetry: () => context.read<AccountsBloc>().add(const AccountsRequested()),
+                ),
+              // Nothing has ever been recorded here — the *none exist* variant,
+              // distinct from the filter's own *none matched* below (§7 of
+              // `docs/design-language.md`).
+              AccountsLoaded() when state.accounts.isEmpty => const PlatformEmptyState.noneExist(
+                  key: AccountsScreen.emptyKey,
+                  title: 'No Accounts yet',
+                  // Literally true now that every Account is listed here (issue
+                  // #112): nothing at all, not merely nothing admitted yet.
+                  message: 'Accounts appear here as soon as somebody signs in for the first time.',
+                  icon: Icons.badge_outlined,
+                ),
               AccountsLoaded() => _AccountsList(
                   accounts: state.accounts,
                   busyId: state.busyId,
@@ -329,7 +341,11 @@ class _AccountsListState extends State<_AccountsList> {
     // width.
     return LayoutBuilder(
       builder: (context, constraints) {
-        final narrow = constraints.maxWidth < AccountsScreen.narrowBreakpoint;
+        // The breakpoint times the reader's own text size (§10), read from the
+        // box this list was handed — never the window.
+        final narrow = constraints.maxWidth <
+            AppBreakpoints.effective(context, AccountsScreen.narrowBreakpoint);
+        final columns = _columns(context);
         return Center(
           child: AppPageFrame(
             maxWidth: AccountsScreen.maxWidth,
@@ -374,9 +390,13 @@ class _AccountsListState extends State<_AccountsList> {
                               padding: const EdgeInsets.fromLTRB(
                                   Spacing.lg, 0, Spacing.lg, Spacing.xl),
                               children: [
-                                const _AccountTableHeader(),
+                                // One column spec builds both the band and every
+                                // row's cells, so a label and its cells start at
+                                // the same x by construction (§6).
+                                AppTableHeader(columns: columns),
                                 for (final account in matches)
                                   _AccountTableRow(
+                                    columns: columns,
                                     account: account,
                                     busy: isBusy(account.id),
                                     isSelf: account.id == widget.selfAccountId,
@@ -393,96 +413,167 @@ class _AccountsListState extends State<_AccountsList> {
   }
 }
 
-/// The wide table's own fixed width for its trailing actions column — wide
-/// enough for "Deactivate"/"Reactivate" plus "Change" plus the Employee-link
-/// icon button (issue #116) side by side, or the self-row explanation, or the
-/// pending row's "Review in Approvals" link. Shared between
-/// [_AccountTableHeader]'s spacer and every [_AccountTableRow]'s own actions
-/// cell, matching `work_orders_screen.dart`'s own `_actionsColumnWidth` in
-/// spirit — wider than that Screen's own 232px since three controls together
-/// run longer than that Screen's own primary-plus-overflow pair.
-///
-/// The Employee link's own control deliberately lives here rather than in the
-/// Employee cell itself (a flex-sized column): that cell is narrow enough at
-/// ordinary widths that a button folded into it overflowed, where this fixed
-/// column has room to spare.
-const double _actionsColumnWidth = 420;
+/// The trailing actions column, measured from the widest controls a row can
+/// actually draw: `Reactivate` (the longer of Deactivate/Reactivate) plus
+/// `Change` plus the two icon buttons, each at its 44px floor, plus the gutters
+/// between them. Measured rather than fixed (it was a hand-set 420 before #392),
+/// so the seven flexible columns get every pixel the actions do not need — and
+/// at twice the reader's text the column grows with the labels instead of
+/// clipping them.
+double _actionsColumnWidth(BuildContext context) {
+  final label = Theme.of(context).textTheme.labelLarge;
+  final reactivate = _measure(context, 'Reactivate', label) + 2 * Spacing.xl;
+  final change = _measure(context, 'Change', label) + 2 * Spacing.xl;
+  // The two icon buttons are 48 apiece (an `IconButton`'s own default target),
+  // so the column is never asked to hold less than they are.
+  return reactivate +
+      change +
+      48 +
+      48 +
+      3 * Spacing.xs +
+      2 * Spacing.sm;
+}
 
-class _AccountTableHeader extends StatelessWidget {
-  const _AccountTableHeader();
+/// The register's one column spec: [AppTableHeader] and every
+/// [_AccountTableRow]'s cells are built from it, so a band label and its cells
+/// start at the same x.
+///
+/// The Employee link's own control deliberately lives in the actions column
+/// rather than in the Employee cell itself (a flex-sized column): that cell is
+/// narrow enough at ordinary widths that a button folded into it overflowed,
+/// where the measured actions column has room to spare.
+List<AppTableColumn> _columns(BuildContext context) => [
+      const AppTableColumn('Name', flex: 2),
+      const AppTableColumn('Email', flex: 3),
+      const AppTableColumn('Role', flex: 2),
+      const AppTableColumn('Standing', flex: 2),
+      const AppTableColumn('Since', flex: 2),
+      const AppTableColumn('Grants', flex: 2),
+      const AppTableColumn('Employee', flex: 2),
+      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+    ];
+
+double _measure(BuildContext context, String text, TextStyle? style) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width;
+}
+
+/// The tone a standing carries: an Account that may act reads as finished, one
+/// still waiting on an administrator reads as a decision owed, one turned away
+/// reads as wrong, and a deactivated one as deliberately out of the way
+/// (`status_tone.dart`'s five meanings). Written against the three fields rather
+/// than against [ManagedAccount.standing]'s wording, so a copy change cannot
+/// silently re-tone the column.
+StatusTone _standingTone(ManagedAccount account) {
+  if (account.isPending) return StatusTone.warning;
+  if (account.approvalStatus == ApprovalStatuses.rejected) return StatusTone.danger;
+  if (account.isApproved && account.isActive) return StatusTone.success;
+  return StatusTone.neutral;
+}
+
+/// The avatar block, the same one the Directory draws: initials from the name
+/// the Account signed up with, fitted rather than scaled so twice the reader's
+/// text shrinks them inside the circle.
+class _AccountAvatar extends StatelessWidget {
+  const _AccountAvatar({required this.displayName});
+
+  final String displayName;
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context)
-        .textTheme
-        .labelMedium
-        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
-    Widget label(String text, int flex) => Expanded(flex: flex, child: Text(text, style: style));
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-      child: Row(
-        children: [
-          label('Name', 2),
-          label('Email', 3),
-          label('Role', 2),
-          label('Standing', 2),
-          label('Since', 2),
-          label('Grants', 2),
-          label('Employee', 2),
-          SizedBox(width: _actionsColumnWidth, child: Text('Actions', style: style)),
-        ],
+    final words = displayName.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final initials = words.isEmpty
+        ? '·'
+        : words.length == 1
+            ? words.first.characters.first.toUpperCase()
+            : '${words.first.characters.first.toUpperCase()}'
+                '${words.last.characters.first.toUpperCase()}';
+    final theme = Theme.of(context);
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: theme.colorScheme.primaryContainer,
+      foregroundColor: theme.colorScheme.onPrimaryContainer,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.xs),
+          child: Text(
+            initials,
+            style: AppTypography.floor(context)?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
 class _AccountTableRow extends StatelessWidget {
-  const _AccountTableRow({required this.account, required this.busy, required this.isSelf});
+  const _AccountTableRow({
+    required this.columns,
+    required this.account,
+    required this.busy,
+    required this.isSelf,
+  });
 
+  final List<AppTableColumn> columns;
   final ManagedAccount account;
   final bool busy;
   final bool isSelf;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
 
-    Widget cell(String text, int flex, {TextStyle? style}) => Expanded(
-          flex: flex,
-          child: Padding(
-            padding: const EdgeInsets.only(right: Spacing.sm),
-            child: Text(text, overflow: TextOverflow.ellipsis, style: style),
-          ),
-        );
-
-    return Container(
+    return KeyedSubtree(
       key: AccountsScreen.rowKey(account.id),
-      constraints: const BoxConstraints(minHeight: 56),
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-      decoration:
-          BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant))),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          cell(account.displayName, 2, style: theme.textTheme.bodyMedium),
-          cell(account.email, 3, style: muted),
-          cell(roleLabel(account.role), 2, style: muted),
-          cell(account.standing, 2, style: muted),
-          cell(waitingFor(account.createdAt), 2, style: muted),
-          Expanded(
-            flex: 2,
-            child: Align(alignment: Alignment.centerLeft, child: _GrantsCell(account: account)),
+      child: AppTableRow(
+        columns: columns,
+        cells: [
+          Row(
+            children: [
+              _AccountAvatar(displayName: account.displayName),
+              const SizedBox(width: Spacing.sm),
+              Expanded(
+                child: DisclosingText(
+                  account.displayName,
+                  style: dense?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _EmployeeCell(account: account),
-            ),
+          DisclosingText(account.email, style: dense?.copyWith(color: palette.textMuted)),
+          // A role is one of five known words, so it is a chip rather than a
+          // sentence: the reader compares roles down the column, and a chip's
+          // fixed shape is what makes that comparison possible (#392).
+          Align(
+            alignment: Alignment.centerLeft,
+            child: StatusChip(label: roleLabel(account.role), tone: StatusTone.neutral),
           ),
-          SizedBox(
-            width: _actionsColumnWidth,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: StatusChip(label: account.standing, tone: _standingTone(account)),
+          ),
+          DisclosingText(
+            waitingFor(account.createdAt),
+            style: dense?.copyWith(color: palette.textMuted),
+          ),
+          Align(alignment: Alignment.centerLeft, child: _GrantsCell(account: account)),
+          Align(alignment: Alignment.centerLeft, child: _EmployeeCell(account: account)),
+          // The framework's padded tap target is lifted here: each control states
+          // its own floor, and the padded target would add height to a row that
+          // already carries the 44.
+          Theme(
+            data: Theme.of(context)
+                .copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
             child: _RowActions(account: account, busy: busy, isSelf: isSelf),
           ),
         ],
@@ -504,23 +595,18 @@ class _AccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return Card(
       key: AccountsScreen.rowKey(account.id),
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(Spacing.lg),
+        padding: const EdgeInsets.all(Spacing.md),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: theme.colorScheme.primaryContainer,
-                  foregroundColor: theme.colorScheme.onPrimaryContainer,
-                  child: const Icon(Icons.person_outline, size: 20),
-                ),
+                _AccountAvatar(displayName: account.displayName),
                 const SizedBox(width: Spacing.md),
                 Expanded(
                   child: Column(
@@ -528,18 +614,33 @@ class _AccountCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        account.email,
+                        account.displayName,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                        style: AppTypography.dense(context)?.copyWith(
+                          color: palette.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       Text(
-                        '${roleLabel(account.role)} · ${account.standing}',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        account.email,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                       ),
                     ],
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: Spacing.sm),
+            // The role and the standing are the two things a reader compares
+            // down this list, so both are chips here too — the same two widgets
+            // the table row draws, at the same two tones (#392).
+            Wrap(
+              spacing: Spacing.xs,
+              runSpacing: Spacing.xs,
+              children: [
+                StatusChip(label: roleLabel(account.role), tone: StatusTone.neutral),
+                StatusChip(label: account.standing, tone: _standingTone(account)),
               ],
             ),
             const SizedBox(height: Spacing.sm),
@@ -804,97 +905,19 @@ Future<void> _toggleActive(BuildContext context, ManagedAccount account) async {
   }
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Deactivate this Account?'),
-      content: Text(
-        '${account.email} will not be able to sign in. Nothing is deleted — '
-        'the role and the Org Unit Grants stay exactly as they are, and an '
-        'administrator can reactivate the Account at any time.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Deactivate'),
-        ),
-      ],
+    builder: (dialogContext) => AppConfirmDialog(
+      title: 'Deactivate this Account?',
+      description:
+          '${account.email} will not be able to sign in. Nothing is deleted — '
+          'the role and the Org Unit Grants stay exactly as they are, and an '
+          'administrator can reactivate the Account at any time.',
+      confirmLabel: 'Deactivate',
+      dismissLabel: 'Cancel',
+      onConfirm: () => Navigator.of(dialogContext).pop(true),
+      onDismiss: () => Navigator.of(dialogContext).pop(false),
     ),
   );
   if (confirmed ?? false) {
     bloc.add(AccountsActiveToggled(accountId: account.id, isActive: false));
-  }
-}
-
-class _AccountsEmpty extends StatelessWidget {
-  const _AccountsEmpty();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.badge_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              // Literally true now that every Account is listed here (issue
-              // #112): nothing at all, not merely nothing admitted yet.
-              Text('No Accounts yet', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                'Accounts appear here as soon as somebody signs in for the first time.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AccountsFailed extends StatelessWidget {
-  const _AccountsFailed({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.error),
-              const SizedBox(height: Spacing.md),
-              Text('The Accounts could not be loaded', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(message, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: Spacing.lg),
-              FilledButton.icon(
-                key: AccountsScreen.retryKey,
-                onPressed: () =>
-                    context.read<AccountsBloc>().add(const AccountsRequested()),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try again'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

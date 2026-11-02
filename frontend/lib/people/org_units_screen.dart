@@ -36,6 +36,22 @@
 /// to guess who holds write scope on a particular row, the same limitation
 /// `EmployeeAssignmentDialog`'s own header already accepts for `OrgUnitNode`
 /// carrying no read/write distinction.
+///
+/// **The page's own rhythm (#392, `design-language.md` §3, §5, §6).** The
+/// narrowing control and the two acting ones are one `AppToolbar`: the Site
+/// chooser leads, the actions sit at the far end, and below
+/// [AppBreakpoints.toolbarWrap] of box each takes its own line rather than
+/// shrinking past legibility. The tree below it is an `AppListCard` — a hairline
+/// between rows and none around the outside — and it holds at 700px because the
+/// row was built to: the indent is the *only* thing that grows with depth, the
+/// name is the one flexible slot, and the count sits on a second line under the
+/// name instead of beside it, so a narrow box loses no control and clips no
+/// label.
+///
+/// **A count is shown only where the tree has actually read the level.** A row
+/// whose children have been fetched says how many it holds (`3 below`); a branch
+/// nobody has opened says nothing at all, because a `0` there would be a number
+/// this client never measured — §13's nothing-versus-zero, one row at a time.
 library;
 
 import 'package:flutter/material.dart';
@@ -45,9 +61,15 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_confirm_dialog.dart';
+import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
 import '../widgets/app_search_field.dart';
+import '../widgets/app_toolbar.dart';
+import '../widgets/disclosing_text.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
 import '../widgets/status_chip.dart';
 import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
@@ -90,6 +112,12 @@ class OrgUnitsScreen extends StatefulWidget {
   static const ValueKey<String> emptySitesKey = ValueKey<String>('org-units-empty-sites');
   static const ValueKey<String> emptyTreeKey = ValueKey<String>('org-units-empty-tree');
   static const ValueKey<String> treeFailureKey = ValueKey<String>('org-units-tree-failed');
+  static const ValueKey<String> sitesFailureKey = ValueKey<String>('org-units-sites-failed');
+
+  /// The tree's own retry button — `PlatformFailureState` takes the key rather
+  /// than inventing one, so it is named here with the state it belongs to.
+  static const ValueKey<String> treeRetryKey = ValueKey<String>('org-units-tree-retry');
+  static const ValueKey<String> sitesRetryKey = ValueKey<String>('org-units-sites-retry');
   static const ValueKey<String> mutationFailureKey = ValueKey<String>('org-units-mutation-failed');
 
   static ValueKey<String> expandKey(String id) => ValueKey<String>('org-units-expand-$id');
@@ -197,8 +225,11 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                 if (pickerState.sitesStatus == SitesStatus.loading)
                   const Center(child: CircularProgressIndicator())
                 else if (pickerState.sitesStatus == SitesStatus.failed)
-                  _Failed(
+                  PlatformFailureState(
+                    key: OrgUnitsScreen.sitesFailureKey,
+                    title: 'The Sites could not be read',
                     message: pickerState.sitesFailure!,
+                    retryKey: OrgUnitsScreen.sitesRetryKey,
                     onRetry: () =>
                         context.read<OrgUnitPickerBloc>().add(const OrgUnitPickerStarted()),
                   )
@@ -209,26 +240,6 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   )
                 else ...[
-                  if (pickerState.sites.length > 1) ...[
-                    SizedBox(
-                      width: 280,
-                      child: DropdownButtonFormField<String>(
-                        key: OrgUnitsScreen.siteKey,
-                        initialValue: siteId,
-                        isDense: true,
-                        decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
-                        items: [
-                          for (final site in pickerState.sites)
-                            DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) return;
-                          context.read<OrgUnitPickerBloc>().add(OrgUnitPickerSiteSelected(value));
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: Spacing.md),
-                  ],
                   if (siteId != null) ...[
                     AppSearchField<OrgUnitNode>(
                       name: OrgUnitsScreen._searchFieldName,
@@ -246,16 +257,38 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                       displayStringFor: (orgUnit) => orgUnit.name,
                     ),
                     const SizedBox(height: Spacing.md),
-                    Wrap(
-                      spacing: Spacing.sm,
-                      runSpacing: Spacing.sm,
-                      children: [
+                    AppToolbar(
+                      filters: [
+                        if (pickerState.sites.length > 1)
+                          SizedBox(
+                            width: 280,
+                            child: DropdownButtonFormField<String>(
+                              key: OrgUnitsScreen.siteKey,
+                              initialValue: siteId,
+                              isDense: true,
+                              decoration:
+                                  const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                              items: [
+                                for (final site in pickerState.sites)
+                                  DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
+                              ],
+                              onChanged: (value) {
+                                if (value == null) return;
+                                context
+                                    .read<OrgUnitPickerBloc>()
+                                    .add(OrgUnitPickerSiteSelected(value));
+                              },
+                            ),
+                          ),
+                      ],
+                      actions: [
                         if (widget.isAdmin)
                           OutlinedButton.icon(
                             key: OrgUnitsScreen.addRootKey,
                             onPressed: adminState.isMutating
                                 ? null
-                                : () => OrgUnitFormDialog.open(context, siteId: siteId, parentId: null),
+                                : () =>
+                                    OrgUnitFormDialog.open(context, siteId: siteId, parentId: null),
                             icon: const Icon(Icons.add),
                             label: const Text('Add root Org Unit'),
                           ),
@@ -343,42 +376,41 @@ class _Tree extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     if (state.rootsLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (state.rootsFailure != null) {
-      return _Failed(
+      return PlatformFailureState(
+        key: OrgUnitsScreen.treeFailureKey,
+        title: 'The Org Unit tree could not be read',
         message: state.rootsFailure!,
+        retryKey: OrgUnitsScreen.treeRetryKey,
         onRetry: () => context
             .read<OrgUnitPickerBloc>()
             .add(OrgUnitPickerSiteSelected(state.siteId!)),
       );
     }
     if (state.rows.isEmpty) {
-      return Text(
-        'Nothing to browse in this Site yet.',
+      return const PlatformEmptyState.noneExist(
         key: OrgUnitsScreen.emptyTreeKey,
-        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        title: 'Nothing to browse in this Site yet.',
+        message: 'An administrator adds the first Org Unit, or imports a branch.',
+        icon: Icons.account_tree_outlined,
       );
     }
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Column(
-        // Stated, not defaulted (issue #195): a Column centres its
-        // cross axis, so a row that sizes to its own content would
-        // float to the middle of this card.
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final row in state.rows)
-            _TreeRow(
-              row: row,
-              siteId: siteId,
-              isRoot: state.rootIds.contains(row.node.id),
-              isMutating: isMutating,
-            ),
-        ],
-      ),
+    // One `AppListCard`, so a row and its neighbour are separated by the
+    // palette's own hairline and nothing wraps a row: every row keeps the `Key`
+    // it is found by (`AppListCard`'s own contract).
+    return AppListCard(
+      rows: [
+        for (final row in state.rows)
+          _TreeRow(
+            row: row,
+            siteId: siteId,
+            isRoot: state.rootIds.contains(row.node.id),
+            isMutating: isMutating,
+          ),
+      ],
     );
   }
 }
@@ -443,15 +475,31 @@ class _TreeRow extends StatelessWidget {
                       ),
               ),
               Expanded(
-                child: Text(
-                  '${node.name} · ${node.code}',
-                  overflow: TextOverflow.ellipsis,
-                  style: node.isActive
-                      ? theme.textTheme.bodyMedium
-                      : theme.textTheme.bodyMedium?.copyWith(
-                          decoration: TextDecoration.lineThrough,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DisclosingText(
+                      '${node.name} · ${node.code}',
+                      style: node.isActive
+                          ? theme.textTheme.bodyMedium
+                          : theme.textTheme.bodyMedium?.copyWith(
+                              decoration: TextDecoration.lineThrough,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                    ),
+                    // The count, only where the tree has actually read this
+                    // level — a branch nobody opened shows nothing rather than
+                    // a zero it never measured (§13's nothing-versus-zero). On
+                    // its own line, so a deep row at 700px loses no width to
+                    // it.
+                    if (row.childrenLoaded && row.childCount > 0)
+                      Text(
+                        '${row.childCount} below',
+                        style: AppTypography.floor(context)
+                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                  ],
                 ),
               ),
               if (!node.isActive)
@@ -508,22 +556,15 @@ class _TreeRow extends StatelessWidget {
     final bloc = context.read<OrgUnitAdminBloc>();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Retire this Org Unit?'),
-        content: Text(
-          '${node.name} will read as retired rather than deleted, and can be '
-          'reinstated at any time.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Retire'),
-          ),
-        ],
+      builder: (dialogContext) => AppConfirmDialog(
+        title: 'Retire this Org Unit?',
+        description:
+            '${node.name} will read as retired rather than deleted, and can be '
+            'reinstated at any time.',
+        confirmLabel: 'Retire',
+        dismissLabel: 'Cancel',
+        onConfirm: () => Navigator.of(dialogContext).pop(true),
+        onDismiss: () => Navigator.of(dialogContext).pop(false),
       ),
     );
     if (confirmed ?? false) {
@@ -531,31 +572,5 @@ class _TreeRow extends StatelessWidget {
         OrgUnitAdminActiveSet(orgUnitId: node.id, isActive: false, refreshParentId: refreshParentId),
       );
     }
-  }
-}
-
-class _Failed extends StatelessWidget {
-  const _Failed({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: OrgUnitsScreen.treeFailureKey,
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            const SizedBox(height: Spacing.sm),
-            TextButton(onPressed: onRetry, child: const Text('Try again')),
-          ],
-        ),
-      ),
-    );
   }
 }

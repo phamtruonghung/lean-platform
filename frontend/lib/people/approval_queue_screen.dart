@@ -6,17 +6,45 @@
 /// email address and a wait, and nothing else: an Account need not correspond
 /// to an Employee, so there is no name to show and inventing one would be a
 /// lie.
+///
+/// **It is a decision surface, so it is a register (#392, `design-language.md`
+/// §6).** A queue is worked down: the reader asks who is waiting, how long they
+/// have waited, and then acts, and a decision surface that hides its decision
+/// behind a row tap is a surface that has to be opened before it can be read.
+/// So a row carries the Account, what the request suggests it should be linked
+/// to, how long it has waited, and the two actions that end it — at the row's own
+/// far end, each at least [AppTouchTarget.min] tall, and disabled rather than
+/// hidden while a request is in flight. Above [narrowBreakpoint] of content
+/// width the table is drawn and below it one card per Account; the number is
+/// read from the box a `LayoutBuilder` hands the list and scaled by the reader's
+/// text size (§10).
+///
+/// **The role and the Site are not on the row, because they do not exist yet.**
+/// `GET /api/people/accounts/pending` (`service.js`'s `listPendingAccounts`)
+/// sends an id, an email address, the instant the Account was created and the
+/// Employee it suggests — a pending Account holds no role and no Grant until the
+/// admission that grants them, so a chip claiming one would be this client
+/// inventing a fact about a record it has not been told. What the row *can* say
+/// it says as chips, and what it cannot say it does not guess at: the role and
+/// the Org Units are chosen in `AdmissionDialog`, which is where a reader first
+/// has them to look at.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/app_filter_field.dart';
-import '../widgets/empty_state.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
+import '../widgets/status_chip.dart';
 import 'admission_dialog.dart';
 import 'approval_queue_bloc.dart';
 import 'pending_account.dart';
@@ -24,7 +52,15 @@ import 'pending_account.dart';
 class ApprovalQueueScreen extends StatelessWidget {
   const ApprovalQueueScreen({super.key});
 
-  static const double maxWidth = 900;
+  /// A register's width (#392).
+  static const double maxWidth = 1100;
+
+  /// The content width (at a text scale of 1) at or above which the queue is a
+  /// table; below it, one card per Account. Four columns of which one holds two
+  /// buttons is more than `AppBreakpoints.registerTable` (700) was measured for,
+  /// so this Screen states its own 900 and reads it through
+  /// [AppBreakpoints.effective].
+  static const double narrowBreakpoint = 900;
 
   /// The filter box's `name` (issue #191), seeding [filterFieldKey],
   /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
@@ -41,6 +77,15 @@ class ApprovalQueueScreen extends StatelessWidget {
   /// nothing here".
   static const ValueKey<String> noMatchKey = ValueKey<String>('approvals-no-match');
 
+  /// The failed read's retry button, kept at the same value it has always had —
+  /// `PlatformFailureState` takes the key rather than drawing one of its own.
+  static const ValueKey<String> retryKey = ValueKey<String>('approval-queue-retry');
+
+  static ValueKey<String> rejectKey(String accountId) =>
+      ValueKey<String>('approval-queue-reject-$accountId');
+  static ValueKey<String> admitKey(String accountId) =>
+      ValueKey<String>('approval-queue-admit-$accountId');
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ApprovalQueueBloc>().state;
@@ -55,9 +100,23 @@ class ApprovalQueueScreen extends StatelessWidget {
           Expanded(
             child: switch (state) {
               ApprovalQueueLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
-              ApprovalQueueUnavailable(message: final message) => _QueueFailed(message: message),
+              ApprovalQueueUnavailable(message: final message) => PlatformFailureState(
+                  key: const ValueKey<String>('approval-queue-failed'),
+                  title: 'The queue could not be loaded',
+                  message: message,
+                  retryKey: retryKey,
+                  onRetry: () =>
+                      context.read<ApprovalQueueBloc>().add(const ApprovalQueueRequested()),
+                ),
+              // Nothing has ever been asked for, which is the *none exist*
+              // variant — distinct from the filter's own *none matched* below
+              // (§7).
               ApprovalQueueLoaded(accounts: final accounts) when accounts.isEmpty =>
-                const _QueueEmpty(),
+                const PlatformEmptyState.noneExist(
+                  key: ValueKey<String>('approval-queue-empty'),
+                  title: 'Nobody is waiting',
+                  message: 'Every Account has been dealt with. New requests appear here.',
+                ),
               ApprovalQueueLoaded(
                 accounts: final accounts,
                 rejectingId: final rejectingId,
@@ -125,7 +184,7 @@ class _Notice extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: theme.textTheme.bodyMedium
+                    style: AppTypography.dense(context)
                         ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                   ),
                 ),
@@ -208,15 +267,10 @@ class _QueueListState extends State<_QueueList> {
                       message: 'Accounts are waiting, but none matches "${_term.trim()}". '
                           'Try a different email address, or clear the filter.',
                     )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-                      itemCount: matches.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: Spacing.sm),
-                      itemBuilder: (context, index) => _QueueRow(
-                        account: matches[index],
-                        rejecting: matches[index].id == widget.rejectingId,
-                        admitting: matches[index].id == widget.admittingId,
-                      ),
+                  : _Register(
+                      accounts: matches,
+                      rejectingId: widget.rejectingId,
+                      admittingId: widget.admittingId,
                     ),
             ),
           ],
@@ -226,65 +280,290 @@ class _QueueListState extends State<_QueueList> {
   }
 }
 
-class _QueueRow extends StatelessWidget {
-  const _QueueRow({required this.account, required this.rejecting, required this.admitting});
+/// The one column spec: the band and every row are built from it, so a label and
+/// its cells start at the same x.
+List<AppTableColumn> _columns(BuildContext context) => [
+      const AppTableColumn('Account', flex: 5),
+      const AppTableColumn('Suggested Employee', flex: 4),
+      const AppTableColumn('Waiting', flex: 3),
+      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+    ];
+
+/// Reject and Admit side by side at the 44px floor each states, plus gutters.
+/// Measured from the wider of the two labels *and* the two in-flight labels, so
+/// a row does not reflow the column the moment a request is dispatched.
+double _actionsColumnWidth(BuildContext context) {
+  final label = Theme.of(context).textTheme.labelLarge;
+  final reject = _measure(context, 'Rejecting…', label);
+  final rejectIdle = _measure(context, 'Reject', label);
+  final admit = _measure(context, 'Admitting…', label);
+  final admitIdle = _measure(context, 'Admit', label);
+  final rejectWidth = reject > rejectIdle ? reject : rejectIdle;
+  final admitWidth = admit > admitIdle ? admit : admitIdle;
+  return rejectWidth + admitWidth + 4 * Spacing.md + 2 * Spacing.sm;
+}
+
+double _measure(BuildContext context, String text, TextStyle? style) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width;
+}
+
+class _Register extends StatelessWidget {
+  const _Register({
+    required this.accounts,
+    required this.rejectingId,
+    required this.admittingId,
+  });
+
+  final List<PendingAccount> accounts;
+  final String? rejectingId;
+  final String? admittingId;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final narrow = box.maxWidth <
+            AppBreakpoints.effective(context, ApprovalQueueScreen.narrowBreakpoint);
+        final columns = _columns(context);
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+          children: [
+            if (!narrow) AppTableHeader(columns: columns),
+            for (var index = 0; index < accounts.length; index++) ...[
+              if (narrow && index > 0) const SizedBox(height: Spacing.sm),
+              if (narrow)
+                _QueueCard(
+                  account: accounts[index],
+                  rejecting: accounts[index].id == rejectingId,
+                  admitting: accounts[index].id == admittingId,
+                )
+              else
+                _QueueTableRow(
+                  columns: columns,
+                  account: accounts[index],
+                  rejecting: accounts[index].id == rejectingId,
+                  admitting: accounts[index].id == admittingId,
+                ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The framework's padded tap target is lifted on the row's buttons: each one
+/// states its own [AppTouchTarget.min] and the padded target would add height to
+/// a row that already carries the 44.
+Widget _shrinkWrapTargets(BuildContext context, Widget child) => Theme(
+      data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      child: child,
+    );
+
+/// The avatar block, the same one the Directory draws: the first letter of the
+/// address a waiting Account is known by, fitted rather than scaled so twice the
+/// reader's text shrinks it inside the circle.
+class _AccountAvatar extends StatelessWidget {
+  const _AccountAvatar({required this.email});
+
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final trimmed = email.trim();
+    final initial = trimmed.isEmpty ? '·' : trimmed.characters.first.toUpperCase();
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: theme.colorScheme.primaryContainer,
+      foregroundColor: theme.colorScheme.onPrimaryContainer,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.xs),
+          child: Text(
+            initial,
+            style: AppTypography.floor(context)?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// What the request suggests it should be linked to, as a chip: the link is the
+/// one thing about a waiting Account that has a shape other than "free text".
+/// No suggestion is `—` and never an empty cell (§13's nothing-versus-zero).
+Widget _suggestedCell(PendingAccount account) {
+  final suggestion = account.suggestedEmployee;
+  if (suggestion == null) return const Text('—');
+  return StatusChip(label: suggestion.label, tone: StatusTone.info);
+}
+
+class _QueueTableRow extends StatelessWidget {
+  const _QueueTableRow({
+    required this.columns,
+    required this.account,
+    required this.rejecting,
+    required this.admitting,
+  });
+
+  final List<AppTableColumn> columns;
+  final PendingAccount account;
+  final bool rejecting;
+  final bool admitting;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+
+    return KeyedSubtree(
+      key: ValueKey<String>('approval-queue-row-${account.id}'),
+      child: AppTableRow(
+        columns: columns,
+        cells: [
+          Row(
+            children: [
+              _AccountAvatar(email: account.email),
+              const SizedBox(width: Spacing.sm),
+              Expanded(
+                child: DisclosingText(
+                  account.email,
+                  style: dense?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          _suggestedCell(account),
+          DisclosingText(
+            waitingFor(account.waitingSince),
+            style: dense?.copyWith(color: palette.textMuted),
+          ),
+          _shrinkWrapTargets(
+            context,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton(
+                  key: ApprovalQueueScreen.rejectKey(account.id),
+                  onPressed: rejecting || admitting
+                      ? null
+                      : () => _confirmRejection(context, account),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  child: Text(rejecting ? 'Rejecting…' : 'Reject'),
+                ),
+                const SizedBox(width: Spacing.sm),
+                FilledButton(
+                  key: ApprovalQueueScreen.admitKey(account.id),
+                  onPressed: rejecting || admitting
+                      ? null
+                      : () => AdmissionDialog.open(context, account),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  child: Text(admitting ? 'Admitting…' : 'Admit'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One waiting Account as a card, for a box that cannot hold four columns — the
+/// same facts and the same two actions, stacked.
+class _QueueCard extends StatelessWidget {
+  const _QueueCard({
+    required this.account,
+    required this.rejecting,
+    required this.admitting,
+  });
 
   final PendingAccount account;
   final bool rejecting;
   final bool admitting;
 
-  static ValueKey<String> rejectKey(String accountId) =>
-      ValueKey<String>('approval-queue-reject-$accountId');
-
-  static ValueKey<String> admitKey(String accountId) =>
-      ValueKey<String>('approval-queue-admit-$accountId');
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+
     return Card(
+      key: ValueKey<String>('approval-queue-row-${account.id}'),
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(Spacing.lg),
-        child: Row(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: theme.colorScheme.primaryContainer,
-              foregroundColor: theme.colorScheme.onPrimaryContainer,
-              child: const Icon(Icons.person_outline, size: 20),
-            ),
-            const SizedBox(width: Spacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
+            Row(
+              children: [
+                _AccountAvatar(email: account.email),
+                const SizedBox(width: Spacing.sm),
+                Expanded(
+                  child: Text(
                     account.email,
+                    style: dense?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                   ),
-                  Text(
-                    waitingFor(account.waitingSince),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.xs),
+            Wrap(
+              spacing: Spacing.sm,
+              runSpacing: Spacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  waitingFor(account.waitingSince),
+                  style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+                ),
+                _suggestedCell(account),
+              ],
+            ),
+            const SizedBox(height: Spacing.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  key: ApprovalQueueScreen.rejectKey(account.id),
+                  onPressed: rejecting || admitting
+                      ? null
+                      : () => _confirmRejection(context, account),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: Spacing.md),
-            OutlinedButton(
-              key: rejectKey(account.id),
-              onPressed: rejecting || admitting ? null : () => _confirmRejection(context, account),
-              child: Text(rejecting ? 'Rejecting…' : 'Reject'),
-            ),
-            const SizedBox(width: Spacing.sm),
-            FilledButton(
-              key: admitKey(account.id),
-              onPressed:
-                  rejecting || admitting ? null : () => AdmissionDialog.open(context, account),
-              child: Text(admitting ? 'Admitting…' : 'Admit'),
+                  child: Text(rejecting ? 'Rejecting…' : 'Reject'),
+                ),
+                const SizedBox(width: Spacing.sm),
+                FilledButton(
+                  key: ApprovalQueueScreen.admitKey(account.id),
+                  onPressed: rejecting || admitting
+                      ? null
+                      : () => AdmissionDialog.open(context, account),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  child: Text(admitting ? 'Admitting…' : 'Admit'),
+                ),
+              ],
             ),
           ],
         ),
@@ -293,104 +572,29 @@ class _QueueRow extends StatelessWidget {
   }
 }
 
-/// Asks first, and sends nothing at all unless the answer is yes. The Bloc
-/// never sees an unconfirmed rejection — the event is only added below.
+/// Asks first, and sends nothing at all unless the answer is yes. The Bloc never
+/// sees an unconfirmed rejection — the event is only added below.
+///
+/// The shell is `AppConfirmDialog` (#398's pattern): one destructive action, a
+/// way out at the inline start, `Esc` cancels and initial focus is on the way
+/// out, so Enter on opening cannot turn somebody away.
 Future<void> _confirmRejection(BuildContext context, PendingAccount account) async {
   final bloc = context.read<ApprovalQueueBloc>();
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Reject this Account?'),
-      content: Text(
-        '${account.email} will not be let in to the Platform, and will be '
-        'told their request was turned down. An administrator can still admit '
-        'them later.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Reject'),
-        ),
-      ],
+    builder: (dialogContext) => AppConfirmDialog(
+      title: 'Reject this Account?',
+      description:
+          '${account.email} will not be let in to the Platform, and will be '
+          'told their request was turned down. An administrator can still admit '
+          'them later.',
+      confirmLabel: 'Reject',
+      dismissLabel: 'Cancel',
+      onConfirm: () => Navigator.of(dialogContext).pop(true),
+      onDismiss: () => Navigator.of(dialogContext).pop(false),
     ),
   );
   if (confirmed ?? false) {
     bloc.add(ApprovalQueueRejectionConfirmed(account.id));
-  }
-}
-
-class _QueueEmpty extends StatelessWidget {
-  const _QueueEmpty();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.inbox_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              Text('Nobody is waiting', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                'Every Account has been dealt with. New requests appear here.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QueueFailed extends StatelessWidget {
-  const _QueueFailed({required this.message});
-
-  static const ValueKey<String> retryKey = ValueKey<String>('approval-queue-retry');
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.error),
-              const SizedBox(height: Spacing.md),
-              Text('The queue could not be loaded', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(message, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: Spacing.lg),
-              FilledButton.icon(
-                key: retryKey,
-                onPressed: () => context
-                    .read<ApprovalQueueBloc>()
-                    .add(const ApprovalQueueRequested()),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try again'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

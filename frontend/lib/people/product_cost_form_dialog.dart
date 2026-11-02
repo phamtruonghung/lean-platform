@@ -22,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'product_cost.dart';
 import 'product_costs_bloc.dart';
@@ -60,8 +61,8 @@ class ProductCostFormDialog extends StatefulWidget {
   static const ValueKey<String> costKey = ValueKey<String>('product-cost-form-cost');
   static const ValueKey<String> currencyKey = ValueKey<String>('product-cost-form-currency');
   static const ValueKey<String> noteKey = ValueKey<String>('product-cost-form-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('product-cost-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('product-cost-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('product-cost-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('product-cost-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('product-cost-form-failure');
   static const ValueKey<String> productsFailureKey =
       ValueKey<String>('product-cost-form-products-failed');
@@ -258,12 +259,26 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
 
     return BlocListener<ProductCostsBloc, ProductCostsState>(
       listener: _onCatalogueChanged,
-      child: AlertDialog(
-        title: Text(_title),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
+      child: AppDialog(
+        title: _title,
+        size: AppDialogSize.form,
+        // `child` last, as `sort_child_properties_last` requires.
+        actions: [
+          AppDialogAction(
+            id: 'product-cost-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: 'product-cost-form-submit',
+            label: _awaiting ? 'Saving…' : _submitLabel,
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -398,21 +413,8 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                     ),
                   ),
               ],
-            ),
           ),
         ),
-        actions: [
-          TextButton(
-            key: ProductCostFormDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: ProductCostFormDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : _submitLabel),
-          ),
-        ],
       ),
     );
   }

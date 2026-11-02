@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
 import 'employment_type.dart';
@@ -30,8 +31,8 @@ class EmployeeCorrectionDialog extends StatefulWidget {
   static const ValueKey<String> employmentTypeKey =
       ValueKey<String>('employee-correction-employment-type');
   static const ValueKey<String> workEmailKey = ValueKey<String>('employee-correction-work-email');
-  static const ValueKey<String> submitKey = ValueKey<String>('employee-correction-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('employee-correction-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('employee-correction-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('employee-correction-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('employee-correction-failure');
 
   /// Opens the correction over the detail Screen. `showDialog` builds its
@@ -130,12 +131,26 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
     final theme = Theme.of(context);
     return BlocListener<EmployeeDetailBloc, EmployeeDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text('Correct ${widget.employee.displayName}\'s record'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
+      child: AppDialog(
+        title: 'Correct ${widget.employee.displayName}\'s record',
+        size: AppDialogSize.form,
+        // `child` last, as `sort_child_properties_last` requires.
+        actions: [
+          AppDialogAction(
+            id: 'employee-correction-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: 'employee-correction-submit',
+            label: _awaiting ? 'Saving…' : 'Save',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -207,21 +222,8 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
                     ),
                   ),
               ],
-            ),
           ),
         ),
-        actions: [
-          TextButton(
-            key: EmployeeCorrectionDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: EmployeeCorrectionDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Save'),
-          ),
-        ],
       ),
     );
   }

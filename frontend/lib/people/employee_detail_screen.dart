@@ -19,6 +19,24 @@
 /// at all can still see this action; an administrator with no Grant of their
 /// own still sees it too, since `canAct` already returns true for that role
 /// unconditionally (ADR-0010's own decision).
+///
+/// **A summary card, then sections (#392, `design-language.md` §6's "The
+/// detail").** The record opens with the four facts that identify a person —
+/// their initials, their name, their Employee number with the job role and
+/// employment type beside it, and whether they still work here — as one card,
+/// because those are the facts a reader confirms before reading anything else.
+/// The actions that write to the record are that card's footer, where the thing
+/// they act on is; the sections below it are `AppDetailSection`s in an
+/// `AppSectionGrid`, so Assignment history and Skills sit side by side once the
+/// box reaches [AppBreakpoints.detailTwoColumn] (1000, and this page names a 1040
+/// frame to reach it at a 1280 window) and stack below that. A section's own
+/// empty state is a sentence inside the section, with the `Key` it always had.
+///
+/// **A date is worded the way a person says it (§13).** The Assignment history
+/// reads `From 31 Jan 2026`, never `From 2026-01-31`: the two strings are the
+/// same sentence, and [formatPeriod] is the helper this module owes that rule —
+/// no `DateTime` is parsed out of a DATE column on the way, the same discipline
+/// `employee.dart`'s own header keeps for the wire's calendar strings.
 library;
 
 import 'package:flutter/material.dart';
@@ -28,7 +46,9 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/failure_state.dart';
 import '../widgets/status_chip.dart';
 import 'assignee_candidate.dart' show HeldSkill;
 import 'employee.dart';
@@ -38,6 +58,8 @@ import 'employee_departure_dialog.dart';
 import 'employee_signature_dialog.dart';
 import 'employee_detail_bloc.dart';
 import 'employee_skill_form_dialog.dart';
+import 'employment_type.dart';
+import 'period_format.dart';
 import 'skill.dart';
 
 class EmployeeDetailScreen extends StatelessWidget {
@@ -66,7 +88,11 @@ class EmployeeDetailScreen extends StatelessWidget {
   /// same reason.
   final bool canAssign;
 
-  static const double maxWidth = 700;
+  /// A detail page's width, not a catalogue's: at 1040 the page is handed 1020
+  /// at a 1280 window, which is over [AppBreakpoints.detailTwoColumn] (1000), so
+  /// the two sections share a row there. At a 900 window the same page has 640
+  /// and the sections stack (§6's own paragraph on this number).
+  static const double maxWidth = 1040;
 
   static const ValueKey<String> failedKey = ValueKey<String>('employee-detail-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('employee-detail-retry');
@@ -98,12 +124,30 @@ class EmployeeDetailScreen extends StatelessWidget {
     return Scaffold(
       body: switch (state) {
         EmployeeDetailLoading() => const Center(child: CircularProgressIndicator()),
-        EmployeeDetailUnavailable(message: final message) =>
-          _Failed(message: message, employeeId: employeeId),
+        EmployeeDetailUnavailable(message: final message) => PlatformFailureState(
+            key: failedKey,
+            title: 'This record could not be read',
+            message: message,
+            retryKey: retryKey,
+            onRetry: () => context
+                .read<EmployeeDetailBloc>()
+                .add(EmployeeDetailRequested(employeeId: employeeId)),
+          ),
         EmployeeDetailLoaded() => _Detail(state: state, isAdmin: isAdmin, canAssign: canAssign),
       },
     );
   }
+}
+
+/// The Org Unit this Employee currently sits in, read off the Assignments the
+/// wire already sent — the current one is the only place that name exists on
+/// this record (`EmployeeDetail` carries no `orgUnitName` of its own). `—` when
+/// there is no current Assignment at all, never a blank (§13).
+String _currentOrgUnit(EmployeeDetail employee) {
+  for (final assignment in employee.assignments) {
+    if (assignment.isCurrent) return assignment.orgUnitName;
+  }
+  return '—';
 }
 
 class _Detail extends StatelessWidget {
@@ -115,14 +159,25 @@ class _Detail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
     final theme = Theme.of(context);
     final employee = state.employee;
+
     return Center(
       child: AppPageFrame(
         maxWidth: EmployeeDetailScreen.maxWidth,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
-          children: [
+        // The box is the page's, before its `Spacing.lg` inset: at a 1280px
+        // window that is 1020, over [AppBreakpoints.detailTwoColumn]'s 1000, so
+        // the two sections sit side by side; they are themselves handed 988. It
+        // is the box, never the window, and it is compared at the reader's text
+        // scale, so twice the text puts the page back to one column (§10).
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final wide =
+                box.maxWidth >= AppBreakpoints.effective(context, AppBreakpoints.detailTwoColumn);
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
+              children: [
             if (state.notice != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: Spacing.md),
@@ -140,7 +195,7 @@ class _Detail extends StatelessWidget {
                       Expanded(
                         child: Text(
                           state.notice!,
-                          style: theme.textTheme.bodyMedium
+                          style: AppTypography.dense(context)
                               ?.copyWith(color: theme.colorScheme.onSecondaryContainer),
                         ),
                       ),
@@ -148,171 +203,398 @@ class _Detail extends StatelessWidget {
                   ),
                 ),
               ),
+            _SummaryCard(state: state, isAdmin: isAdmin, canAssign: canAssign),
+            const SizedBox(height: Spacing.md),
+            // Two sections side by side when the page's box reaches 1000, one
+            // above the other when it does not (`AppSectionGrid`'s own rule,
+            // made here on the page's box rather than on the sections' inset
+            // box — the same shape #390's detail pages use).
+            _SectionPair(
+              wide: wide,
+              first: AppDetailSection(
+                  title: 'Assignment history',
+                  children: [
+                    if (employee.assignments.isEmpty)
+                      Text(
+                        'No Assignment has been recorded.',
+                        key: EmployeeDetailScreen.noAssignmentsKey,
+                        style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+                      )
+                    else
+                      for (final assignment in employee.assignments)
+                        _AssignmentRow(assignment: assignment),
+                  ],
+                ),
+              second: AppDetailSection(
+                  title: 'Skills',
+                  trailing: isAdmin
+                      // Administrator only (issue #89) — `PUT .../skills/:skillId`
+                      // sits behind `requireAdmin`, not the destination-scoped
+                      // write `canAssign` gates the "Assign" action with
+                      // (skill-routes.js's own header, ADR-0010).
+                      ? OutlinedButton(
+                          key: EmployeeDetailScreen.recordSkillKey,
+                          onPressed: state.isMutating
+                              ? null
+                              : () => EmployeeSkillFormDialog.open(
+                                    context,
+                                    employee: employee,
+                                    skills: state.skills,
+                                  ),
+                          child: const Text('Record skill'),
+                        )
+                      : null,
+                  children: [
+                    if (employee.qualifications.isEmpty)
+                      Text(
+                        'No qualifications recorded.',
+                        key: EmployeeDetailScreen.noSkillsKey,
+                        style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+                      )
+                    else
+                      Wrap(
+                        spacing: Spacing.xs,
+                        runSpacing: Spacing.xs,
+                        children: [
+                          for (final skill in employee.qualifications)
+                            _SkillChip(
+                              skill: skill,
+                              isAdmin: isAdmin,
+                              employee: employee,
+                              catalogue: state.skills,
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+            ),
+          ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Two sections side by side when [wide], one above the other when not — at
+/// equal heights in the wide case, so the pair reads as one row rather than as
+/// two cards of different lengths.
+class _SectionPair extends StatelessWidget {
+  const _SectionPair({required this.wide, required this.first, required this.second});
+
+  final bool wide;
+  final Widget first;
+  final Widget second;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!wide) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [first, const SizedBox(height: Spacing.md), second],
+      );
+    }
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: first),
+          const SizedBox(width: Spacing.md),
+          Expanded(child: second),
+        ],
+      ),
+    );
+  }
+}
+
+/// The record's identifying facts, one card: who this is, the number and job
+/// role the plant knows them by, the Org Unit they sit in, whether they still
+/// work here — and, at its foot, every action that writes to the record, so
+/// nothing that changes the record is further from it than the card that names
+/// it.
+///
+/// The facts are a grid of two from [AppBreakpoints.formTwoColumn] (900) of box:
+/// below that (a 900 window hands this page 608) they stack one per line, which
+/// is also what twice the reader's text does to them.
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.state, required this.isAdmin, required this.canAssign});
+
+  final EmployeeDetailLoaded state;
+  final bool isAdmin;
+  final bool canAssign;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final theme = Theme.of(context);
+    final employee = state.employee;
+
+    final facts = <Widget>[
+      _Fact(label: 'Employee number', value: employee.employeeNo),
+      _Fact(label: 'Job role', value: employee.jobRoleName ?? 'No job role'),
+      _Fact(label: 'Org Unit', value: _currentOrgUnit(employee)),
+      _Fact(label: 'Employment', value: employmentTypeLabel(employee.employmentType)),
+      _Fact(
+        label: 'Hired',
+        value: employee.hiredOn == null ? '—' : formatWireDate(employee.hiredOn),
+      ),
+      _Fact(label: 'Work email', value: employee.workEmail ?? '—'),
+      if (employee.terminatedOn != null)
+        _Fact(label: 'Departed', value: formatWireDate(employee.terminatedOn)),
+    ];
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _Initials(displayName: employee.displayName),
+                const SizedBox(width: Spacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(employee.displayName, style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: Spacing.xs),
+                      // The page's own title, and the only one: at 18 against
+                      // this page's 14px body it is 1.29×, inside #367's
+                      // ceiling.
+                      Text(
+                        employee.displayName,
+                        style: theme.textTheme.headlineSmall?.copyWith(color: palette.textPrimary),
+                      ),
+                      const SizedBox(height: Spacing.xxs),
                       Text(
                         employee.jobRoleName == null
                             ? employee.employeeNo
                             : '${employee.employeeNo} · ${employee.jobRoleName}',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: Spacing.sm),
                 if (!employee.isActive)
                   StatusChip(
                     key: EmployeeDetailScreen.departedKey,
                     label: 'Departed',
                     tone: StatusTone.neutral,
-                  ),
+                  )
+                else
+                  const StatusChip(label: 'Active', tone: StatusTone.success),
               ],
             ),
-            // A Departed Employee cannot be assigned (issue #88's own
-            // criterion) — `createAssignment` (directory.js) itself refuses
-            // one with a 409, so the affordance is left off rather than
-            // offered and then always refused, the same "hide, don't
-            // disable-then-fail" rule `canPlaceAnAsset` already follows
-            // elsewhere.
-            if (isAdmin || (canAssign && employee.isActive)) ...[
-              const SizedBox(height: Spacing.sm),
-              Wrap(
-                spacing: Spacing.sm,
-                runSpacing: Spacing.xs,
-                children: [
-                  if (isAdmin) ...[
-                    OutlinedButton(
-                      key: EmployeeDetailScreen.correctKey,
-                      onPressed: state.isMutating
-                          ? null
-                          : () => EmployeeCorrectionDialog.open(context, employee),
-                      child: const Text('Correct record'),
-                    ),
-                    // A Departed Employee has no Signature to set (the server
-                    // answers 404), so the door is left off, as Assign is.
-                    if (employee.isActive)
-                      OutlinedButton(
-                        key: EmployeeDetailScreen.signatureKey,
-                        onPressed: state.isMutating
-                            ? null
-                            : () => EmployeeSignatureDialog.open(context, employee),
-                        child: const Text('Signature'),
+            const SizedBox(height: Spacing.lg),
+            LayoutBuilder(
+              builder: (context, box) {
+                final twoColumns = box.maxWidth >=
+                    AppBreakpoints.effective(context, AppBreakpoints.formTwoColumn);
+                if (!twoColumns) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var index = 0; index < facts.length; index++) ...[
+                        if (index > 0) const SizedBox(height: Spacing.sm),
+                        facts[index],
+                      ],
+                    ],
+                  );
+                }
+                final rows = <Widget>[];
+                for (var index = 0; index < facts.length; index += 2) {
+                  rows.add(
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: facts[index]),
+                          const SizedBox(width: Spacing.lg),
+                          Expanded(
+                            child: index + 1 < facts.length ? facts[index + 1] : const SizedBox.shrink(),
+                          ),
+                        ],
                       ),
-                    if (employee.isActive)
-                      OutlinedButton(
-                        key: EmployeeDetailScreen.departKey,
-                        onPressed: state.isMutating
-                            ? null
-                            : () => EmployeeDepartureDialog.open(context, employee),
-                        child: const Text('Record departure'),
-                      )
-                    else
-                      OutlinedButton(
-                        key: EmployeeDetailScreen.reinstateKey,
-                        onPressed: state.isMutating
-                            ? null
-                            : () => context
-                                .read<EmployeeDetailBloc>()
-                                .add(const EmployeeDetailReinstatementConfirmed()),
-                        child: const Text('Reinstate'),
-                      ),
-                  ],
-                  if (canAssign && employee.isActive)
-                    OutlinedButton(
-                      key: EmployeeDetailScreen.assignKey,
-                      onPressed: state.isMutating
-                          ? null
-                          : () => EmployeeAssignmentDialog.open(context, employee),
-                      child: const Text('Assign'),
                     ),
-                  // Worked hours (issue #263) is offered to every approved
-                  // Account, the same openness the directory detail route
-                  // itself has (see `worked_hours_screen.dart`'s own header):
-                  // the summary is an open read from the server, so no role
-                  // gate belongs on the door that leads to it.
-                  OutlinedButton(
-                    key: EmployeeDetailScreen.workedHoursKey,
-                    onPressed: () => context.go('${Routes.directory}/${employee.id}/work-hours'),
-                    child: const Text('Worked hours'),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: Spacing.xl),
-            Text('Assignment history', style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.sm),
-            if (employee.assignments.isEmpty)
-              Text(
-                'No Assignment has been recorded.',
-                key: EmployeeDetailScreen.noAssignmentsKey,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              )
-            else
-              Card(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  // Stated, not defaulted (issue #195): a Column centres its
-                  // cross axis, so a row that sizes to its own content would
-                  // float to the middle of this card.
+                  );
+                }
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final assignment in employee.assignments) _AssignmentRow(assignment: assignment),
+                    for (var index = 0; index < rows.length; index++) ...[
+                      if (index > 0) const SizedBox(height: Spacing.sm),
+                      rows[index],
+                    ],
                   ],
-                ),
-              ),
-            const SizedBox(height: Spacing.xl),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: Text('Skills', style: theme.textTheme.titleMedium)),
-                // Administrator only (issue #89) — `PUT .../skills/:skillId`
-                // sits behind `requireAdmin`, not the destination-scoped write
-                // `canAssign` gates the "Assign" action above with
-                // (skill-routes.js's own header, ADR-0010).
-                if (isAdmin)
-                  OutlinedButton(
-                    key: EmployeeDetailScreen.recordSkillKey,
-                    onPressed: state.isMutating
-                        ? null
-                        : () => EmployeeSkillFormDialog.open(
-                              context,
-                              employee: employee,
-                              skills: state.skills,
-                            ),
-                    child: const Text('Record skill'),
-                  ),
-              ],
+                );
+              },
             ),
-            const SizedBox(height: Spacing.sm),
-            if (employee.qualifications.isEmpty)
-              Text(
-                'No qualifications recorded.',
-                key: EmployeeDetailScreen.noSkillsKey,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              )
-            else
-              Wrap(
-                spacing: Spacing.xs,
-                runSpacing: Spacing.xs,
-                children: [
-                  for (final skill in employee.qualifications)
-                    _SkillChip(
-                      skill: skill,
-                      isAdmin: isAdmin,
-                      employee: employee,
-                      catalogue: state.skills,
-                    ),
-                ],
-              ),
+            _Actions(state: state, isAdmin: isAdmin, canAssign: canAssign, employee: employee),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One labelled fact: the label above the value, both on the palette's own
+/// tones. The label is `labelMedium` (w600 by the theme's own role) and the
+/// value is `dense`, so a reader scans the labels down one edge and the values
+/// down the next.
+class _Fact extends StatelessWidget {
+  const _Fact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: palette.textMuted),
+        ),
+        const SizedBox(height: Spacing.xxs),
+        Text(value, style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary)),
+      ],
+    );
+  }
+}
+
+/// The initials block, the same one the Directory draws, fitted rather than
+/// scaled so twice the reader's text shrinks it inside its circle.
+class _Initials extends StatelessWidget {
+  const _Initials({required this.displayName});
+
+  final String displayName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final words = displayName.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final initials = words.isEmpty
+        ? '·'
+        : words.length == 1
+            ? words.first.characters.first.toUpperCase()
+            : '${words.first.characters.first.toUpperCase()}'
+                '${words.last.characters.first.toUpperCase()}';
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: theme.colorScheme.primaryContainer,
+      foregroundColor: theme.colorScheme.onPrimaryContainer,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.xs),
+          child: Text(
+            initials,
+            style: AppTypography.dense(context)?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Every action that writes to the record, at the summary card's foot. Each one
+/// keeps the enable condition it has always had: hidden rather than
+/// shown-and-refused, which is the rule `canPlaceAnAsset` already follows.
+/// Wrapped, so a narrow card flows them onto further lines instead of dropping
+/// or clipping any of them.
+class _Actions extends StatelessWidget {
+  const _Actions({
+    required this.state,
+    required this.isAdmin,
+    required this.canAssign,
+    required this.employee,
+  });
+
+  final EmployeeDetailLoaded state;
+  final bool isAdmin;
+  final bool canAssign;
+  final EmployeeDetail employee;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!(isAdmin || (canAssign && employee.isActive))) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: Spacing.lg),
+      child: Wrap(
+        spacing: Spacing.sm,
+        runSpacing: Spacing.sm,
+        children: [
+          if (isAdmin) ...[
+            OutlinedButton(
+              key: EmployeeDetailScreen.correctKey,
+              onPressed: state.isMutating
+                  ? null
+                  : () => EmployeeCorrectionDialog.open(context, employee),
+              child: const Text('Correct record'),
+            ),
+            // A Departed Employee has no Signature to set (the server answers
+            // 404), so the door is left off, as Assign is.
+            if (employee.isActive)
+              OutlinedButton(
+                key: EmployeeDetailScreen.signatureKey,
+                onPressed: state.isMutating
+                    ? null
+                    : () => EmployeeSignatureDialog.open(context, employee),
+                child: const Text('Signature'),
+              ),
+            if (employee.isActive)
+              OutlinedButton(
+                key: EmployeeDetailScreen.departKey,
+                onPressed: state.isMutating
+                    ? null
+                    : () => EmployeeDepartureDialog.open(context, employee),
+                child: const Text('Record departure'),
+              )
+            else
+              OutlinedButton(
+                key: EmployeeDetailScreen.reinstateKey,
+                onPressed: state.isMutating
+                    ? null
+                    : () => context
+                        .read<EmployeeDetailBloc>()
+                        .add(const EmployeeDetailReinstatementConfirmed()),
+                child: const Text('Reinstate'),
+              ),
+          ],
+          // A Departed Employee cannot be assigned (issue #88's own criterion) —
+          // `createAssignment` (directory.js) itself refuses one with a 409, so
+          // the affordance is left off rather than offered and then always
+          // refused.
+          if (canAssign && employee.isActive)
+            OutlinedButton(
+              key: EmployeeDetailScreen.assignKey,
+              onPressed: state.isMutating
+                  ? null
+                  : () => EmployeeAssignmentDialog.open(context, employee),
+              child: const Text('Assign'),
+            ),
+          // Worked hours (issue #263) is offered to every approved Account, the
+          // same openness the directory detail route itself has (see
+          // `worked_hours_screen.dart`'s own header): the summary is an open read
+          // from the server, so no role gate belongs on the door that leads to
+          // it.
+          OutlinedButton(
+            key: EmployeeDetailScreen.workedHoursKey,
+            onPressed: () => context.go('${Routes.directory}/${employee.id}/work-hours'),
+            child: const Text('Worked hours'),
+          ),
+        ],
       ),
     );
   }
@@ -325,47 +607,42 @@ class _AssignmentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return Padding(
       key: EmployeeDetailScreen.assignmentRowKey(assignment.id),
-      padding: const EdgeInsets.all(Spacing.md),
+      padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        assignment.jobRoleName == null
-                            ? assignment.orgUnitName
-                            : '${assignment.orgUnitName} · ${assignment.jobRoleName}',
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ),
-                    if (assignment.isCurrent) ...[
-                      const SizedBox(width: Spacing.sm),
-                      StatusChip(
-                        key: EmployeeDetailScreen.currentAssignmentKey(assignment.id),
-                        label: 'Current',
-                        tone: StatusTone.info,
-                      ),
-                    ],
-                  ],
+                Text(
+                  assignment.jobRoleName == null
+                      ? assignment.orgUnitName
+                      : '${assignment.orgUnitName} · ${assignment.jobRoleName}',
+                  style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
                 ),
                 Text(
-                  assignment.effectiveTo == null
-                      ? 'From ${assignment.effectiveFrom}'
-                      : '${assignment.effectiveFrom} – ${assignment.effectiveTo}',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  // One sentence for both cases, worded §13's way: `From 31 Jan
+                  // 2026` while it holds, `31 Jan 2026 – 31 Dec 2026` once it is
+                  // closed.
+                  formatPeriod(from: assignment.effectiveFrom, to: assignment.effectiveTo),
+                  style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                 ),
               ],
             ),
           ),
+          if (assignment.isCurrent) ...[
+            const SizedBox(width: Spacing.sm),
+            StatusChip(
+              key: EmployeeDetailScreen.currentAssignmentKey(assignment.id),
+              label: 'Current',
+              tone: StatusTone.info,
+            ),
+          ],
         ],
       ),
     );
@@ -373,11 +650,11 @@ class _AssignmentRow extends StatelessWidget {
 }
 
 /// A held skill, drawn exactly the way `WorkOrderAssignDialog` already draws
-/// one (issue #62) — same chip shape, same "· Lapsed" suffix and error-tinted
-/// background, same `KeyedSubtree` wrapping only the lapsed case, so a test
-/// can assert "distinguished from current" by key rather than by colour. A
-/// lapsed qualification is shown, never left out (AC6): nothing here is
-/// evaluative, the same discipline ADR-0018 records for that dialog.
+/// one (issue #62) — same chip shape, same "· Lapsed" suffix, same
+/// `KeyedSubtree` wrapping only the lapsed case, so a test can assert
+/// "distinguished from current" by key rather than by colour. A lapsed
+/// qualification is shown, never left out (AC6): nothing here is evaluative, the
+/// same discipline ADR-0018 records for that dialog.
 ///
 /// Carries its own "Re-assess" action for an administrator (issue #89) — a
 /// lapsed chip is exactly the case re-assessing exists for, so the action is
@@ -398,12 +675,11 @@ class _SkillChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // A lapsed qualification is stated, not judged (issues #168/#169, and the
-    // same rule ADR-0018 records for the assign dialog: the colour and the
-    // trailing "· Lapsed" state a fact about what somebody holds, never a
-    // claim about what should happen to them). It used to wear the error
-    // container's red, which *was* a judgement — an expiry shown as a failure
-    // — so it is the neutral tone now, beside every other factual status in
-    // the Platform.
+    // same rule ADR-0018 records for the assign dialog: the tone and the
+    // trailing "· Lapsed" state a fact about what somebody holds, never a claim
+    // about what should happen to them). It used to wear the error container's
+    // red, which *was* a judgement — an expiry shown as a failure — so it is the
+    // neutral tone now, beside every other factual status in the Platform.
     final chip = skill.isLapsed
         ? StatusChip(
             key: EmployeeDetailScreen.skillChipKey(skill.skillId),
@@ -436,50 +712,6 @@ class _SkillChip extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Failed extends StatelessWidget {
-  const _Failed({required this.message, required this.employeeId});
-
-  final String message;
-  final String? employeeId;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: EmployeeDetailScreen.failedKey,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 48, color: theme.colorScheme.outline),
-              const SizedBox(height: Spacing.md),
-              Text('This record could not be read', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.sm),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: Spacing.md),
-              FilledButton.tonal(
-                key: EmployeeDetailScreen.retryKey,
-                onPressed: () => context
-                    .read<EmployeeDetailBloc>()
-                    .add(EmployeeDetailRequested(employeeId: employeeId)),
-                child: const Text('Try again'),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

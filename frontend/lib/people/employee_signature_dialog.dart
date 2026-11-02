@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/signature_file_picker.dart';
 import '../widgets/signature_pad.dart';
 import 'employee.dart';
@@ -32,7 +33,7 @@ class EmployeeSignatureDialog extends StatelessWidget {
   static const ValueKey<String> uploadKey = ValueKey<String>('employee-signature-upload');
   static const ValueKey<String> drawKey = ValueKey<String>('employee-signature-draw');
   static const ValueKey<String> removeKey = ValueKey<String>('employee-signature-remove');
-  static const ValueKey<String> closeKey = ValueKey<String>('employee-signature-close');
+  static final ValueKey<String> closeKey = AppDialog.actionKey('employee-signature-close');
   static const ValueKey<String> padKey = ValueKey<String>('employee-signature-pad');
   static const ValueKey<String> saveDrawnKey = ValueKey<String>('employee-signature-save-drawn');
   static const ValueKey<String> clearDrawnKey = ValueKey<String>('employee-signature-clear-drawn');
@@ -157,12 +158,21 @@ class _BodyState extends State<_Body> {
       );
     }
 
-    return AlertDialog(
-      title: Text('Signature of ${widget.employee.displayName}'),
-      content: SizedBox(
-        width: 460,
-        child: SingleChildScrollView(
-          child: Column(
+    return AppDialog(
+      title: 'Signature of ${widget.employee.displayName}',
+      size: AppDialogSize.form,
+      // `child` last, as `sort_child_properties_last` requires.
+      actions: [
+        AppDialogAction(
+          id: 'employee-signature-close',
+          label: 'Close',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: state.isWriting ? null : () => Navigator.of(context).pop(),
+        ),
+      ],
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -248,14 +258,6 @@ class _BodyState extends State<_Body> {
             ],
           ),
         ),
-      ),
-      actions: [
-        TextButton(
-          key: EmployeeSignatureDialog.closeKey,
-          onPressed: state.isWriting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
     );
   }
 }

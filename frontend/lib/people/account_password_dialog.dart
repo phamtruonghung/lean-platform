@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart' show PeopleApi;
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
 
@@ -22,8 +23,8 @@ class AccountPasswordDialog extends StatefulWidget {
 
   static const ValueKey<String> passwordFieldKey = ValueKey<String>('account-password-field');
   static const ValueKey<String> failureKey = ValueKey<String>('account-password-failure');
-  static const ValueKey<String> submitKey = ValueKey<String>('account-password-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('account-password-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('account-password-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('account-password-cancel');
 
   /// Opens the dialog over the list — the same explicit Bloc hand-off every
   /// dialog in this Module uses.
@@ -95,12 +96,26 @@ class _AccountPasswordDialogState extends State<AccountPasswordDialog> {
     return BlocConsumer<AccountsBloc, AccountsState>(
       listener: _onAccountsChanged,
       builder: (context, state) {
-        return AlertDialog(
-          title: const Text('Reset password'),
-          content: SizedBox(
-            width: 460,
-            child: SingleChildScrollView(
-              child: Column(
+        return AppDialog(
+          title: 'Reset password',
+          size: AppDialogSize.form,
+          // `child` last, as `sort_child_properties_last` requires.
+          actions: [
+            AppDialogAction(
+              id: 'account-password-cancel',
+              label: 'Cancel',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+            ),
+            AppDialogAction(
+              id: 'account-password-submit',
+              label: _awaiting ? 'Saving…' : 'Reset password',
+              onPressed: _awaiting ? null : _submit,
+            ),
+          ],
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -134,20 +149,7 @@ class _AccountPasswordDialogState extends State<AccountPasswordDialog> {
                     ),
                 ],
               ),
-            ),
           ),
-          actions: [
-            TextButton(
-              key: AccountPasswordDialog.cancelKey,
-              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: AccountPasswordDialog.submitKey,
-              onPressed: _awaiting ? null : _submit,
-              child: Text(_awaiting ? 'Saving…' : 'Reset password'),
-            ),
-          ],
         );
       },
     );

@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'org_unit.dart';
 import 'org_unit_admin_bloc.dart';
 
@@ -32,8 +33,8 @@ class OrgUnitFormDialog extends StatefulWidget {
   static const ValueKey<String> nameKey = ValueKey<String>('org-unit-form-name');
   static const ValueKey<String> unitTypeKey = ValueKey<String>('org-unit-form-unit-type');
   static const ValueKey<String> sortOrderKey = ValueKey<String>('org-unit-form-sort-order');
-  static const ValueKey<String> submitKey = ValueKey<String>('org-unit-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('org-unit-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('org-unit-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('org-unit-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('org-unit-form-failure');
 
   /// Opens the form over `OrgUnitsScreen` — the same explicit Bloc hand-off
@@ -113,12 +114,26 @@ class _OrgUnitFormDialogState extends State<OrgUnitFormDialog> {
     final theme = Theme.of(context);
     return BlocListener<OrgUnitAdminBloc, OrgUnitAdminState>(
       listener: _onAdminChanged,
-      child: AlertDialog(
-        title: Text(widget.parentId == null ? 'Add root Org Unit' : 'Add Org Unit'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
+      child: AppDialog(
+        title: widget.parentId == null ? 'Add root Org Unit' : 'Add Org Unit',
+        size: AppDialogSize.picker,
+        // `child` last, as `sort_child_properties_last` requires.
+        actions: [
+          AppDialogAction(
+            id: 'org-unit-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: 'org-unit-form-submit',
+            label: _awaiting ? 'Saving…' : 'Add Org Unit',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -174,21 +189,8 @@ class _OrgUnitFormDialogState extends State<OrgUnitFormDialog> {
                     ),
                   ),
               ],
-            ),
           ),
         ),
-        actions: [
-          TextButton(
-            key: OrgUnitFormDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: OrgUnitFormDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Add Org Unit'),
-          ),
-        ],
       ),
     );
   }

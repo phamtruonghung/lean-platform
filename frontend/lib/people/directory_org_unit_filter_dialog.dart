@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'directory_bloc.dart';
 import 'org_unit_picker_bloc.dart';
 
@@ -24,7 +25,7 @@ class DirectoryOrgUnitFilterDialog extends StatelessWidget {
   const DirectoryOrgUnitFilterDialog({super.key});
 
   static const ValueKey<String> siteKey = ValueKey<String>('directory-org-unit-filter-site');
-  static const ValueKey<String> allOrgUnitsKey = ValueKey<String>('directory-org-unit-filter-all');
+  static final ValueKey<String> allOrgUnitsKey = AppDialog.actionKey('directory-org-unit-filter-all');
   static const ValueKey<String> failureKey = ValueKey<String>('directory-org-unit-filter-failed');
   static ValueKey<String> expandKey(String id) =>
       ValueKey<String>('directory-org-unit-filter-expand-$id');
@@ -85,10 +86,28 @@ class DirectoryOrgUnitFilterDialog extends StatelessWidget {
       );
     }
 
-    return AlertDialog(
-      title: const Text('Filter by Org Unit'),
-      content: SizedBox(
-        width: 420,
+    return AppDialog(
+      title: 'Filter by Org Unit',
+      size: AppDialogSize.picker,
+      actions: [
+        AppDialogAction(
+          id: 'directory-org-unit-filter-all',
+          label: 'All Org Units',
+          onPressed: () {
+            context.read<DirectoryBloc>().add(const DirectoryOrgUnitFilterChanged());
+            Navigator.of(context).pop();
+          },
+        ),
+        AppDialogAction(
+          id: 'directory-org-unit-filter-cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+      // Height, not width: the tree below is an `Expanded` list, and the shell's
+      // own scroll view hands its child unbounded height (#398).
+      child: SizedBox(
         height: 420,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,17 +133,6 @@ class DirectoryOrgUnitFilterDialog extends StatelessWidget {
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          key: allOrgUnitsKey,
-          onPressed: () {
-            context.read<DirectoryBloc>().add(const DirectoryOrgUnitFilterChanged());
-            Navigator.of(context).pop();
-          },
-          child: const Text('All Org Units'),
-        ),
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-      ],
     );
   }
 }

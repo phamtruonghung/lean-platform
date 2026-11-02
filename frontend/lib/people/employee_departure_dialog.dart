@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import 'employee.dart';
 import 'employee_detail_bloc.dart';
 
@@ -20,8 +21,8 @@ class EmployeeDepartureDialog extends StatefulWidget {
   final EmployeeDetail employee;
 
   static const ValueKey<String> terminatedOnKey = ValueKey<String>('employee-departure-terminated-on');
-  static const ValueKey<String> submitKey = ValueKey<String>('employee-departure-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('employee-departure-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('employee-departure-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('employee-departure-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('employee-departure-failure');
 
   /// The second step (issue #116, ADR-0022), shown only when the departure
@@ -29,10 +30,10 @@ class EmployeeDepartureDialog extends StatefulWidget {
   /// by the time any of these three render, so none of them can block it.
   static const ValueKey<String> linkedAccountWarningKey =
       ValueKey<String>('employee-departure-linked-account-warning');
-  static const ValueKey<String> deactivateLinkedAccountKey =
-      ValueKey<String>('employee-departure-deactivate-linked-account');
-  static const ValueKey<String> skipDeactivationKey =
-      ValueKey<String>('employee-departure-skip-deactivation');
+  static final ValueKey<String> deactivateLinkedAccountKey =
+      AppDialog.actionKey('employee-departure-deactivate');
+  static final ValueKey<String> skipDeactivationKey =
+      AppDialog.actionKey('employee-departure-skip');
 
   /// Opens the dialog over the detail Screen — the same explicit Bloc hand-off
   /// every dialog in this Module uses, `showDialog`'s route sitting outside
@@ -124,24 +125,23 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
     final linkedAccount = _linkedAccount;
     return BlocListener<EmployeeDetailBloc, EmployeeDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text(
-          linkedAccount == null
-              ? 'Record that ${widget.employee.displayName} has left'
-              : 'Account still linked',
-        ),
-        content: linkedAccount == null
+      child: AppDialog(
+        title: linkedAccount == null
+            ? 'Record that ${widget.employee.displayName} has left'
+            : 'Account still linked',
+        size: AppDialogSize.picker,
+        // `child` last, as `sort_child_properties_last` requires.
+        actions: linkedAccount == null ? _departureActions() : _linkedAccountActions(),
+        child: linkedAccount == null
             ? _departureForm(theme)
             : _linkedAccountWarning(theme, linkedAccount),
-        actions: linkedAccount == null ? _departureActions() : _linkedAccountActions(),
       ),
     );
   }
 
   Widget _departureForm(ThemeData theme) => SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
+        width: double.infinity,
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -173,27 +173,26 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
                 ),
             ],
           ),
-        ),
       );
 
-  List<Widget> _departureActions() => [
-        TextButton(
-          key: EmployeeDepartureDialog.cancelKey,
+  List<AppDialogAction> _departureActions() => [
+        AppDialogAction(
+          id: 'employee-departure-cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
           onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
         ),
-        FilledButton(
-          key: EmployeeDepartureDialog.submitKey,
+        AppDialogAction(
+          id: 'employee-departure-submit',
+          label: _awaiting ? 'Recording…' : 'Record departure',
           onPressed: _awaiting ? null : _submit,
-          child: Text(_awaiting ? 'Recording…' : 'Record departure'),
         ),
       ];
 
   Widget _linkedAccountWarning(ThemeData theme, LinkedAccountSummary linkedAccount) => SizedBox(
         key: EmployeeDepartureDialog.linkedAccountWarningKey,
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
+        width: double.infinity,
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -216,19 +215,19 @@ class _EmployeeDepartureDialogState extends State<EmployeeDepartureDialog> {
                 ),
             ],
           ),
-        ),
       );
 
-  List<Widget> _linkedAccountActions() => [
-        TextButton(
-          key: EmployeeDepartureDialog.skipDeactivationKey,
+  List<AppDialogAction> _linkedAccountActions() => [
+        AppDialogAction(
+          id: 'employee-departure-skip',
+          label: 'Not now',
+          kind: AppDialogActionKind.dismiss,
           onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Not now'),
         ),
-        FilledButton(
-          key: EmployeeDepartureDialog.deactivateLinkedAccountKey,
+        AppDialogAction(
+          id: 'employee-departure-deactivate',
+          label: _awaiting ? 'Deactivating…' : 'Deactivate Account',
           onPressed: _awaiting ? null : _deactivateLinkedAccount,
-          child: Text(_awaiting ? 'Deactivating…' : 'Deactivate Account'),
         ),
       ];
 }

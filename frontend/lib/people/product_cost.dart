@@ -12,6 +12,8 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import 'period_format.dart';
+
 /// One Product a standard cost can be recorded against, as
 /// `GET /api/people/product-costs/products` sends it — the known set the form
 /// picks from rather than typing an id (ADR-0023).
@@ -83,6 +85,5 @@ class ProductCost {
   String get costLabel => '$standardCost $currency';
 
   /// See [CostRate.periodLabel] — the same reading, for the same reason.
-  String get periodLabel =>
-      effectiveTo == null ? 'From $effectiveFrom' : '$effectiveFrom to $effectiveTo';
+  String get periodLabel => formatPeriod(from: effectiveFrom, to: effectiveTo);
 }

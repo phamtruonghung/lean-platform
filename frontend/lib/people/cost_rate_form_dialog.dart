@@ -39,6 +39,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'cost_rate.dart';
 import 'cost_rates_bloc.dart';
@@ -81,8 +82,8 @@ class CostRateFormDialog extends StatefulWidget {
   static const ValueKey<String> amountKey = ValueKey<String>('cost-rate-form-amount');
   static const ValueKey<String> currencyKey = ValueKey<String>('cost-rate-form-currency');
   static const ValueKey<String> noteKey = ValueKey<String>('cost-rate-form-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('cost-rate-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('cost-rate-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('cost-rate-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cost-rate-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('cost-rate-form-failure');
   static const ValueKey<String> scopesFailureKey =
       ValueKey<String>('cost-rate-form-scopes-failed');
@@ -306,12 +307,26 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
 
     return BlocListener<CostRatesBloc, CostRatesState>(
       listener: _onCatalogueChanged,
-      child: AlertDialog(
-        title: Text(_title),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
+      child: AppDialog(
+        title: _title,
+        size: AppDialogSize.form,
+        // `child` last, as `sort_child_properties_last` requires.
+        actions: [
+          AppDialogAction(
+            id: 'cost-rate-form-cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: 'cost-rate-form-submit',
+            label: _awaiting ? 'Saving…' : _submitLabel,
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -526,21 +541,8 @@ class _CostRateFormDialogState extends State<CostRateFormDialog> {
                     ),
                   ),
               ],
-            ),
           ),
         ),
-        actions: [
-          TextButton(
-            key: CostRateFormDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: CostRateFormDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : _submitLabel),
-          ),
-        ],
       ),
     );
   }

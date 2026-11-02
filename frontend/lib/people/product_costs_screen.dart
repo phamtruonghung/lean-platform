@@ -7,6 +7,16 @@
 /// why the Destination is an administrator's while the Screen itself is not
 /// gated (`GET /api/people/product-costs` carries no admin and no Org Unit
 /// scope of its own).
+///
+/// **It is a register (issue #392, `design-language.md` §5, §6 and §13).** A
+/// standard cost is read across — what one unit is costed at is compared with
+/// the next unit's, and with what the same unit cost last quarter — so the page
+/// states its columns once ([_columns]) and builds the band and every row's
+/// cells from that list, and the money column is end-aligned in tabular figures
+/// under a label that names its currency, `Amount (EUR)`, with every cell a bare
+/// figure beneath it. Above [narrowBreakpoint] of content width the table is
+/// drawn and below it one card per cost; the number is read from the box a
+/// `LayoutBuilder` hands the list and scaled by the reader's text size (§10).
 library;
 
 import 'package:flutter/material.dart';
@@ -14,9 +24,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../status_tone.dart';
 import '../theme.dart';
-import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -30,7 +41,13 @@ class ProductCostsScreen extends StatelessWidget {
 
   final bool isAdmin;
 
-  static const double maxWidth = AppLayout.pageWidth;
+  /// A register's width, not a catalogue's (§6).
+  static const double maxWidth = 1100;
+
+  /// Four columns or fewer, so `AppBreakpoints.registerTable` (700) is the
+  /// number — read through [AppBreakpoints.effective], never asked of the
+  /// window.
+  static const double narrowBreakpoint = AppBreakpoints.registerTable;
 
   static const ValueKey<String> addKey = ValueKey<String>('product-costs-add');
   static const ValueKey<String> failedKey = ValueKey<String>('product-costs-failed');
@@ -112,17 +129,7 @@ class _Loaded extends StatelessWidget {
                 onAction: isAdmin ? () => _add(context) : null,
               )
             else
-              AppListCard(
-                rows: [
-                  for (final productCost in state.productCosts)
-                    _ProductCostRow(
-                      productCost: productCost,
-                      isAdmin: isAdmin,
-                      isMutating: state.isMutating,
-                      products: state.products,
-                    ),
-                ],
-              ),
+              _Register(state: state, isAdmin: isAdmin),
           ],
         ),
       ),
@@ -130,8 +137,239 @@ class _Loaded extends StatelessWidget {
   }
 }
 
-class _ProductCostRow extends StatelessWidget {
-  const _ProductCostRow({
+/// The one column spec: the band and every row are built from it, so a label
+/// and its cells start at the same x.
+List<AppTableColumn> _columns(BuildContext context, List<ProductCost> rows) => [
+      const AppTableColumn('Product', flex: 5),
+      AppTableColumn(
+        _amountColumnLabel(rows),
+        width: _amountColumnWidth(context, rows),
+        align: AppColumnAlign.end,
+      ),
+      const AppTableColumn('Period', flex: 5),
+      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+    ];
+
+/// Whether one currency is true of every row — §13 puts the unit on the label
+/// only when the label's unit holds for every cell under it.
+bool _oneUnit(List<ProductCost> rows) => rows.map((row) => row.currency).toSet().length == 1;
+
+String _amountColumnLabel(List<ProductCost> rows) =>
+    _oneUnit(rows) ? 'Amount (${rows.first.currency})' : 'Amount';
+
+/// The bare figure where the column names the unit, and the figure with its own
+/// unit where it cannot.
+String _amountCell(ProductCost row, {required bool oneUnit}) =>
+    oneUnit ? '${row.standardCost}' : row.costLabel;
+
+/// The amount column: the widest figure or label, plus the slot's gutter.
+double _amountColumnWidth(BuildContext context, List<ProductCost> rows) {
+  final oneUnit = _oneUnit(rows);
+  var widest = 0.0;
+  for (final row in rows) {
+    final width = _measure(context, _amountCell(row, oneUnit: oneUnit), AppTableRow.numberStyle(context));
+    if (width > widest) widest = width;
+  }
+  final header = _measure(context, _amountColumnLabel(rows), Theme.of(context).textTheme.labelMedium);
+  return (widest > header ? widest : header) + 2 * Spacing.sm;
+}
+
+/// Correct and Revise side by side at the 44px floor each states, plus the
+/// slot's gutter. The button's own horizontal padding is [Spacing.xl] a side —
+/// `OutlinedButton`'s default, and what the quality registers measure for the
+/// same reason (#390).
+double _actionsColumnWidth(BuildContext context) {
+  final label = Theme.of(context).textTheme.labelLarge;
+  final correct = _measure(context, 'Correct', label) + 2 * Spacing.xl;
+  final revise = _measure(context, 'Revise', label) + 2 * Spacing.xl;
+  return correct + Spacing.sm + revise + 2 * Spacing.sm;
+}
+
+/// The width of one line of [text] in [style], in the reader's own text size —
+/// a column measured in the metrics that will actually be drawn in it.
+double _measure(BuildContext context, String text, TextStyle? style) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width;
+}
+
+class _Register extends StatelessWidget {
+  const _Register({required this.state, required this.isAdmin});
+
+  final ProductCostsLoaded state;
+  final bool isAdmin;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final narrow = box.maxWidth <
+            AppBreakpoints.effective(context, ProductCostsScreen.narrowBreakpoint);
+        final columns = _columns(context, state.productCosts);
+        final oneUnit = _oneUnit(state.productCosts);
+
+        if (narrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var index = 0; index < state.productCosts.length; index++) ...[
+                if (index > 0) const SizedBox(height: Spacing.sm),
+                _ProductCostCard(
+                  productCost: state.productCosts[index],
+                  isAdmin: isAdmin,
+                  isMutating: state.isMutating,
+                  products: state.products,
+                ),
+              ],
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppTableHeader(columns: columns),
+            for (final productCost in state.productCosts)
+              _ProductCostTableRow(
+                columns: columns,
+                productCost: productCost,
+                oneUnit: oneUnit,
+                isAdmin: isAdmin,
+                isMutating: state.isMutating,
+                products: state.products,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The framework's padded tap target is lifted on the row's buttons: each one
+/// states its own [AppTouchTarget.min] and the padded target would add height
+/// to a row that already carries the 44.
+Widget _shrinkWrapTargets(BuildContext context, Widget child) => Theme(
+      data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      child: child,
+    );
+
+class _ProductCostTableRow extends StatelessWidget {
+  const _ProductCostTableRow({
+    required this.columns,
+    required this.productCost,
+    required this.oneUnit,
+    required this.isAdmin,
+    required this.isMutating,
+    required this.products,
+  });
+
+  final List<AppTableColumn> columns;
+  final ProductCost productCost;
+  final bool oneUnit;
+  final bool isAdmin;
+  final bool isMutating;
+  final List<CostableProduct> products;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final row = productCost;
+
+    return KeyedSubtree(
+      key: ProductCostsScreen.rowKey(row.id),
+      child: AppTableRow(
+        columns: columns,
+        cells: [
+          DisclosingText(row.productLabel, style: dense?.copyWith(color: palette.textPrimary)),
+          Text(
+            _amountCell(row, oneUnit: oneUnit),
+            style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
+            maxLines: 1,
+            softWrap: false,
+          ),
+          _periodCell(context, row),
+          _actions(context, row),
+        ],
+      ),
+    );
+  }
+
+  Widget _actions(BuildContext context, ProductCost row) => _shrinkWrapTargets(
+        context,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isAdmin) ...[
+              OutlinedButton(
+                key: ProductCostsScreen.correctKey(row.id),
+                onPressed: isMutating
+                    ? null
+                    : () => ProductCostFormDialog.open(
+                          context,
+                          mode: ProductCostFormMode.correct,
+                          products: products,
+                          productCost: row,
+                        ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Correct'),
+              ),
+              const SizedBox(width: Spacing.sm),
+              OutlinedButton(
+                key: ProductCostsScreen.reviseKey(row.id),
+                onPressed: isMutating
+                    ? null
+                    : () => ProductCostFormDialog.open(
+                          context,
+                          mode: ProductCostFormMode.revise,
+                          products: products,
+                          productCost: row,
+                        ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Revise'),
+              ),
+            ],
+          ],
+        ),
+      );
+}
+
+/// The period with the closed chip beside it — one function for both shapes, so
+/// the row and the card say the same thing about the same record.
+Widget _periodCell(BuildContext context, ProductCost row) {
+  final dense = AppTypography.dense(context);
+  final palette = AppColors.of(context);
+  return _shrinkWrapTargets(
+    context,
+    Wrap(
+      spacing: Spacing.sm,
+      runSpacing: Spacing.xs,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        DisclosingText(row.periodLabel, style: dense?.copyWith(color: palette.textMuted)),
+        if (!row.isCurrent)
+          StatusChip(
+            key: ProductCostsScreen.closedChipKey(row.id),
+            label: 'Closed',
+            tone: StatusTone.neutral,
+          ),
+      ],
+    ),
+  );
+}
+
+/// One cost as a card, for a box that cannot hold four columns: the same facts
+/// stacked and the same two actions.
+class _ProductCostCard extends StatelessWidget {
+  const _ProductCostCard({
     required this.productCost,
     required this.isAdmin,
     required this.isMutating,
@@ -145,73 +383,81 @@ class _ProductCostRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      key: ProductCostsScreen.rowKey(productCost.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
+    final dense = AppTypography.dense(context);
+    final palette = AppColors.of(context);
+    final row = productCost;
+
+    return Card(
+      key: ProductCostsScreen.rowKey(row.id),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '${productCost.productLabel} · ${productCost.costLabel}',
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ),
-                    if (!productCost.isCurrent) ...[
-                      const SizedBox(width: Spacing.sm),
-                      StatusChip(
-                        key: ProductCostsScreen.closedChipKey(productCost.id),
-                        label: 'Closed',
-                        tone: StatusTone.neutral,
-                      ),
-                    ],
-                  ],
+                Expanded(
+                  child: Text(
+                    row.productLabel,
+                    style: dense?.copyWith(color: palette.textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const SizedBox(height: Spacing.xs),
+                const SizedBox(width: Spacing.sm),
+                // Outside a column the figure carries its own unit (§13).
                 Text(
-                  productCost.periodLabel,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  row.costLabel,
+                  style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
+                  maxLines: 1,
                 ),
               ],
             ),
-          ),
-          if (isAdmin) ...[
-            OutlinedButton(
-              key: ProductCostsScreen.correctKey(productCost.id),
-              onPressed: isMutating
-                  ? null
-                  : () => ProductCostFormDialog.open(
-                        context,
-                        mode: ProductCostFormMode.correct,
-                        products: products,
-                        productCost: productCost,
-                      ),
-              child: const Text('Correct'),
-            ),
-            const SizedBox(width: Spacing.sm),
-            OutlinedButton(
-              key: ProductCostsScreen.reviseKey(productCost.id),
-              onPressed: isMutating
-                  ? null
-                  : () => ProductCostFormDialog.open(
-                        context,
-                        mode: ProductCostFormMode.revise,
-                        products: products,
-                        productCost: productCost,
-                      ),
-              child: const Text('Revise'),
-            ),
+            const SizedBox(height: Spacing.xs),
+            _periodCell(context, row),
+            if (isAdmin) ...[
+              const SizedBox(height: Spacing.sm),
+              Wrap(
+                spacing: Spacing.sm,
+                runSpacing: Spacing.sm,
+                children: [
+                  OutlinedButton(
+                    key: ProductCostsScreen.correctKey(row.id),
+                    onPressed: isMutating
+                        ? null
+                        : () => ProductCostFormDialog.open(
+                              context,
+                              mode: ProductCostFormMode.correct,
+                              products: products,
+                              productCost: row,
+                            ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    child: const Text('Correct'),
+                  ),
+                  OutlinedButton(
+                    key: ProductCostsScreen.reviseKey(row.id),
+                    onPressed: isMutating
+                        ? null
+                        : () => ProductCostFormDialog.open(
+                              context,
+                              mode: ProductCostFormMode.revise,
+                              products: products,
+                              productCost: row,
+                            ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    child: const Text('Revise'),
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

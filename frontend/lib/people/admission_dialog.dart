@@ -10,8 +10,6 @@
 /// (`backend/src/modules/people/authorization.js`).
 library;
 
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -19,6 +17,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/destinations.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'approval_queue_bloc.dart';
 import 'employee_link_picker.dart';
 import 'org_unit_picker.dart';
@@ -34,8 +33,8 @@ class AdmissionDialog extends StatefulWidget {
   static const ValueKey<String> adminWarningKey = ValueKey<String>('admission-admin-warning');
   static const ValueKey<String> noGrantsNoticeKey = ValueKey<String>('admission-no-grants');
   static const ValueKey<String> failureKey = ValueKey<String>('admission-failure');
-  static const ValueKey<String> submitKey = ValueKey<String>('admission-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('admission-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('admission-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('admission-cancel');
   static ValueKey<String> roleKey(String role) => ValueKey<String>('admission-role-$role');
 
   /// Opens the decision over the queue.
@@ -143,20 +142,30 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
     return BlocConsumer<ApprovalQueueBloc, ApprovalQueueState>(
       listener: _onQueueChanged,
       builder: (context, state) {
-        return AlertDialog(
-          title: const Text('Admit this Account'),
-          content: SizedBox(
-            // Two panes side by side need materially more than the 460 this
-            // dialog held when it was a role list alone. Bounded by the window
-            // so the dialog never overflows a narrow one — 800 wide is what a
-            // widget test's default surface gives, which this must fit inside.
-            // Floored at 280 (Material's own AlertDialog minimum) rather than
-            // left to go negative on a viewport narrower than 160: a negative
-            // SizedBox width is a hard constraint-assertion crash, not merely
-            // an overflow the way the old fixed 460 would have failed.
-            width: math.max(280, math.min(MediaQuery.sizeOf(context).width - 160, 880)),
-            child: SingleChildScrollView(
-              child: Column(
+        return AppDialog(
+          title: 'Admit this Account',
+          size: AppDialogSize.wide,
+          // `child` last, as `sort_child_properties_last` requires. The 880 the
+          // old box computed is now the shell's `wide` width (#398, #392); the
+          // Grant picker's two panes are `Expanded`, so they narrow with it.
+          actions: [
+            AppDialogAction(
+              id: 'admission-cancel',
+              label: 'Cancel',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+            ),
+            AppDialogAction(
+              id: 'admission-submit',
+              label: _awaiting ? 'Admitting…' : 'Admit',
+              // Disabled, not merely refused on tap: nothing is sent, and the
+              // reason is visible before anybody tries.
+              onPressed: _role == null || _awaiting ? null : _submit,
+            ),
+          ],
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -239,22 +248,7 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
                     ),
                 ],
               ),
-            ),
           ),
-          actions: [
-            TextButton(
-              key: AdmissionDialog.cancelKey,
-              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: AdmissionDialog.submitKey,
-              // Disabled, not merely refused on tap: nothing is sent, and the
-              // reason is visible before anybody tries.
-              onPressed: _role == null || _awaiting ? null : _submit,
-              child: Text(_awaiting ? 'Admitting…' : 'Admit'),
-            ),
-          ],
         );
       },
     );
