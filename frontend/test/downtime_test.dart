@@ -28,6 +28,8 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_table.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
+import 'package:lean_platform/widgets/failure_state.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 import 'harness.dart';
 
@@ -314,6 +316,8 @@ void main() {
 
     expect(find.byKey(DowntimeScreen.emptyKey), findsOneWidget);
     expect(find.byKey(DowntimeScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
     expect(find.text('Nothing is down'), findsOneWidget);
   });
 
@@ -332,6 +336,8 @@ void main() {
 
     expect(find.byKey(DowntimeScreen.failedKey), findsOneWidget);
     expect(find.byKey(DowntimeScreen.emptyKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
     expect(find.text('The downtime events are unavailable.'), findsOneWidget);
 
     wire.downtimeStatus = 200;
@@ -341,6 +347,7 @@ void main() {
     await tapIn(tester, find.byKey(DowntimeScreen.retryKey));
 
     expect(find.byKey(DowntimeScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
     expect(find.byKey(DowntimeScreen.rowKey('500')), findsOneWidget);
   });
 

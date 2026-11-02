@@ -31,6 +31,8 @@ import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
+import 'package:lean_platform/widgets/failure_state.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 import 'harness.dart';
 
@@ -345,6 +347,8 @@ void main() {
 
     expect(find.byKey(JobPlansScreen.emptyKey), findsOneWidget);
     expect(find.byKey(JobPlansScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
   });
 
   testWidgets('a failed Job plan load explains itself and the retry works', (tester) async {
@@ -357,6 +361,8 @@ void main() {
     );
 
     expect(find.byKey(JobPlansScreen.failedKey), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
     expect(find.text('The Job plans are unavailable.'), findsOneWidget);
 
     wire.jobPlansStatus = 200;
@@ -364,6 +370,7 @@ void main() {
     await tapIn(tester, find.byKey(JobPlansScreen.retryKey));
 
     expect(find.byKey(JobPlansScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
     expect(find.byKey(JobPlansScreen.rowKey('1')), findsOneWidget);
   });
 
@@ -396,6 +403,8 @@ void main() {
 
     expect(find.byKey(PmSchedulesScreen.emptyKey), findsOneWidget);
     expect(find.byKey(PmSchedulesScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
   });
 
   testWidgets('a failed PM schedule load explains itself and the retry works', (tester) async {
@@ -408,6 +417,8 @@ void main() {
     );
 
     expect(find.byKey(PmSchedulesScreen.failedKey), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
     expect(find.text('The PM schedules are unavailable.'), findsOneWidget);
 
     wire.pmSchedulesStatus = 200;
@@ -417,6 +428,7 @@ void main() {
     await tapIn(tester, find.byKey(PmSchedulesScreen.retryKey));
 
     expect(find.byKey(PmSchedulesScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
     expect(find.byKey(PmSchedulesScreen.rowKey('1')), findsOneWidget);
   });
 

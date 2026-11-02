@@ -30,6 +30,8 @@ import 'package:lean_platform/platform/access_denied_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/app_table.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
+import 'package:lean_platform/widgets/failure_state.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 import 'harness.dart';
 
@@ -387,6 +389,8 @@ void main() {
 
     expect(find.byKey(RequestsScreen.emptyKey), findsOneWidget);
     expect(find.byKey(RequestsScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
     expect(find.text('Nothing is waiting'), findsOneWidget);
   });
 
@@ -405,6 +409,8 @@ void main() {
 
     expect(find.byKey(RequestsScreen.failedKey), findsOneWidget);
     expect(find.byKey(RequestsScreen.emptyKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
     expect(find.text('The requests are unavailable.'), findsOneWidget);
 
     wire.requestsStatus = 200;
@@ -414,7 +420,50 @@ void main() {
     await tapIn(tester, find.byKey(RequestsScreen.retryKey));
 
     expect(find.byKey(RequestsScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
     expect(find.text('Pump is noisy'), findsOneWidget);
+  });
+
+  testWidgets('an empty My requests list says so plainly, and offers the raise', (tester) async {
+    final wire = wireWith(role: Roles.operator, myRequests: {'1': []});
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/my-requests',
+    );
+
+    expect(find.byKey(MyRequestsScreen.emptyKey), findsOneWidget);
+    expect(find.byKey(MyRequestsScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.text('Nothing raised yet'), findsOneWidget);
+  });
+
+  testWidgets('a failed My requests load explains itself and the retry works', (tester) async {
+    final wire = wireWith(role: Roles.operator, myRequestsStatus: 503);
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/my-requests',
+    );
+
+    expect(find.byKey(MyRequestsScreen.failedKey), findsOneWidget);
+    expect(find.byKey(MyRequestsScreen.emptyKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
+    expect(find.text('Your requests are unavailable.'), findsOneWidget);
+
+    wire.myRequestsStatus = 200;
+    wire.myRequests = {
+      '1': [requestJson('201', 'REQ-201', 'Belt is slipping')],
+    };
+    await tapIn(tester, find.byKey(MyRequestsScreen.retryKey));
+
+    expect(find.byKey(MyRequestsScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
+    expect(find.text('Belt is slipping'), findsOneWidget);
   });
 
   // Issue #191: a register is narrowed by text, not by scrolling. Each Screen

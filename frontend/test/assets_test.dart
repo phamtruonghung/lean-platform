@@ -27,6 +27,8 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_confirm_dialog.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/empty_state.dart';
+import 'package:lean_platform/widgets/failure_state.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
 import 'harness.dart';
 
@@ -110,6 +112,10 @@ void main() {
 
     expect(find.byKey(AssetsScreen.emptyKey), findsOneWidget);
     expect(find.byKey(AssetsScreen.failedKey), findsNothing);
+    // The key alone would survive a private copy: the Shared state is the
+    // claim, so assert the widget type the Platform actually draws.
+    expect(find.byType(PlatformEmptyState), findsOneWidget);
+    expect(find.byType(PlatformFailureState), findsNothing);
     expect(find.text('No Assets on the register yet'), findsOneWidget);
   });
 
@@ -124,6 +130,8 @@ void main() {
 
     expect(find.byKey(AssetsScreen.failedKey), findsOneWidget);
     expect(find.byKey(AssetsScreen.emptyKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsOneWidget);
+    expect(find.byType(PlatformEmptyState), findsNothing);
     expect(find.text('The register is unavailable.'), findsOneWidget);
 
     wire.assetsStatus = 200;
@@ -133,6 +141,7 @@ void main() {
     await tapIn(tester, find.byKey(AssetsScreen.retryKey));
 
     expect(find.byKey(AssetsScreen.failedKey), findsNothing);
+    expect(find.byType(PlatformFailureState), findsNothing);
     expect(find.text('Press 1'), findsOneWidget);
   });
 
