@@ -363,6 +363,25 @@ void main() {
       }
     });
 
+    testWidgets('at 1280 with twice the text the action drops under the title',
+        (tester) async {
+      await _pumpAt(tester, location: _picker, width: 1280, textScale: 2, height: 2400);
+      expect(tester.takeException(), isNull, reason: 'the picker at 1280 x2');
+      // 1020 of page against a 560 breakpoint at twice the text (1120): the box
+      // is over the raw number and under the scaled one, which is exactly the
+      // case #379/#381 shipped wrong — the action must wrap here. The shape is
+      // read off its x, not its y: a centred action in an unwrapped row can sit
+      // lower than the title's own top line, so only the left edge tells the two
+      // layouts apart.
+      final title = find.byKey(AppPageHeader.titleKey);
+      final action = find.byKey(AttendancePickerScreen.toConfirmLinkKey);
+      expect(
+        tester.getTopLeft(action).dx,
+        closeTo(tester.getTopLeft(title).dx, 1.5),
+        reason: 'the picker at 1280 x2: the action did not wrap at twice the text',
+      );
+    });
+
     testWidgets('the browser at 700 still reaches the shifts, and nothing overflows',
         (tester) async {
       await _pumpAt(tester, location: _picker, width: 700, height: 2400);
@@ -443,6 +462,16 @@ void main() {
             reason: 'the queue at $width x2: no entry');
         expect(find.byKey(AttendanceToConfirmScreen.openKey('501')), findsOneWidget,
             reason: 'the queue at $width x2: the act is lost');
+        // The shape, not just the presence: 988 of box at twice the text is an
+        // effective 494, under the 640 the row splits at, so the act drops under
+        // the shift rather than squeezing it (#379/#381's bug class).
+        final row = find.byKey(AttendanceToConfirmScreen.entryKey('501'));
+        final shift = find.descendant(of: row, matching: find.textContaining('Day shift'));
+        expect(
+          tester.getTopLeft(find.byKey(AttendanceToConfirmScreen.openKey('501'))).dy,
+          greaterThan(tester.getBottomLeft(shift).dy),
+          reason: 'the queue at $width x2: the row did not take the narrow shape',
+        );
       }
     });
 
@@ -569,6 +598,17 @@ void main() {
             reason: 'leave at $width x2: Approve is lost');
         expect(find.byKey(LeaveRequestsScreen.cancelKey('2')), findsOneWidget,
             reason: 'leave at $width x2: Cancel request is lost');
+        // The shape, not just the presence: 988 of box at twice the text is an
+        // effective 494, under the 640 the row splits at — so the decisions drop
+        // under the record. A breakpoint compared raw would keep them inline and
+        // still "pass" a presence-only check (#379/#381's bug class).
+        final row = find.byKey(LeaveRequestsScreen.rowKey('2'));
+        final name = find.descendant(of: row, matching: find.textContaining('Grace Hopper'));
+        expect(
+          tester.getTopLeft(find.byKey(LeaveRequestsScreen.approveKey('2'))).dy,
+          greaterThan(tester.getBottomLeft(name).dy),
+          reason: 'leave at $width x2: the decisions did not take the narrow shape',
+        );
       }
     });
   });
