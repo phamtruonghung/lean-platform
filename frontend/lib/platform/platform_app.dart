@@ -14,6 +14,7 @@ import '../theme.dart';
 import '../widgets/signature_file_picker.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
+import 'document_chrome.dart';
 import 'floor_device_gateway.dart';
 import 'router.dart';
 import 'session_error_screen.dart';
@@ -33,6 +34,7 @@ class PlatformApp extends StatefulWidget {
     this.floorDeviceGateway = const ConfiguredFloorDeviceGateway(),
     this.signatureFilePicker,
     this.qualityPhotoPicker,
+    this.documentChrome,
     this.initialLocation,
   });
 
@@ -73,6 +75,12 @@ class PlatformApp extends StatefulWidget {
   /// seam as [signatureFilePicker], and supplied by a test for the same reason.
   final QualityPhotoPicker? qualityPhotoPicker;
 
+  /// The document around the app — the tab's title and the browser's own
+  /// chrome colour (issue #399). Left null, the browser's document is used; a
+  /// widget test supplies one that records what it was told, because there is
+  /// no document on the VM it runs on.
+  final DocumentChrome? documentChrome;
+
   /// Supplied only by tests; always null in production.
   final String? initialLocation;
 
@@ -86,6 +94,7 @@ class _PlatformAppState extends State<PlatformApp> {
   late final SignatureFilePicker _signatureFilePicker;
   late final QualityPhotoPicker _qualityPhotoPicker;
   late final ThemeModeCubit _themeModeCubit;
+  late final DocumentChrome _documentChrome;
 
   // Built once, not per rebuild: a mode change rebuilds `MaterialApp.router`,
   // and rebuilding two `ThemeData`s each time would be work for no change.
@@ -104,10 +113,26 @@ class _PlatformAppState extends State<PlatformApp> {
     _lightTheme = buildAppTheme();
     _darkTheme = buildAppTheme(Brightness.dark);
     _router = buildRouter(accountBloc: _accountBloc, initialLocation: widget.initialLocation);
+    _documentChrome = widget.documentChrome ?? createDocumentChrome();
+    // **The tab's title is the router's, not a Screen's** (issue #399). The
+    // delegate notifies on every configuration change — a push, a pop, a
+    // `go`, a redirect the Account Bloc's own state caused — so one listener
+    // covers every way an address can change, including the dialog addresses
+    // ADR-0021 gives their own page. Written once here for the address the app
+    // opened on, so a reload of `/work-orders/42` is titled before anything
+    // else touches it.
+    _router.routerDelegate.addListener(_applyDocumentTitle);
+    _applyDocumentTitle();
   }
+
+  /// The address on top of the stack, as the title table names it (see
+  /// [documentTitle] in `router.dart`).
+  void _applyDocumentTitle() => _documentChrome
+      .setTitle(documentTitle(_router.routerDelegate.currentConfiguration.fullPath));
 
   @override
   void dispose() {
+    _router.routerDelegate.removeListener(_applyDocumentTitle);
     _router.dispose();
     _accountBloc.close();
     _themeModeCubit.close();
@@ -142,6 +167,11 @@ class _PlatformAppState extends State<PlatformApp> {
         ],
         child: BlocBuilder<ThemeModeCubit, ThemeMode>(
           builder: (context, themeMode) => MaterialApp.router(
+            // The name the platform switcher shows, and what the document says
+            // for the instant before the router titles the address — the same
+            // word `index.html` and `manifest.json` carry. Every address's own
+            // title is written through `DocumentChrome` (see
+            // `_applyDocumentTitle`); issue #399.
             title: 'Platform',
             debugShowCheckedModeBanner: false,
             theme: _lightTheme,
@@ -157,16 +187,63 @@ class _PlatformAppState extends State<PlatformApp> {
               // states: the caller's real URL stays intact underneath while
               // this renders on top, and no protected route ever gets built
               // while the state is unresolved.
-              return switch (account) {
-                AccountResolving() =>
-                  const Scaffold(body: Center(child: CircularProgressIndicator())),
-                AccountUnavailable(message: final message) => SessionErrorScreen(message: message),
-                _ => child ?? const SizedBox.shrink(),
-              };
+              return _PaletteThemeColor(
+                chrome: _documentChrome,
+                child: switch (account) {
+                  AccountResolving() =>
+                    const Scaffold(body: Center(child: CircularProgressIndicator())),
+                  AccountUnavailable(message: final message) => SessionErrorScreen(message: message),
+                  _ => child ?? const SizedBox.shrink(),
+                },
+              );
             },
           ),
         ),
       ),
     );
   }
+}
+
+/// Tells the browser which palette is on screen (issue #399), so an installed
+/// instance's own chrome — its address bar, a mobile browser's toolbar tint —
+/// is the colour of the page rather than a colour fixed at build time.
+///
+/// **Read off `Theme.of(context).brightness`, not off the palette extension's
+/// own `canvas`.** `MaterialApp` animates between the two themes, and
+/// `AppPalette.lerp` interpolates every field, so the extension's canvas during
+/// a switch is a colour neither palette names. Brightness picks one of the two
+/// palettes, so the document is written once per switch rather than once per
+/// frame of it — and the colour is always a token from `theme.dart`.
+///
+/// **Every way the palette can change arrives here**: the tray toggle, the
+/// account menu, a stored choice landing on a later frame, and the browser's
+/// own `prefers-color-scheme` while the mode is `system` — all of them rebuild
+/// the theme below `MaterialApp`, which is exactly what this widget watches.
+class _PaletteThemeColor extends StatefulWidget {
+  const _PaletteThemeColor({required this.chrome, required this.child});
+
+  final DocumentChrome chrome;
+  final Widget child;
+
+  @override
+  State<_PaletteThemeColor> createState() => _PaletteThemeColorState();
+}
+
+class _PaletteThemeColorState extends State<_PaletteThemeColor> {
+  /// The colour last handed to the document, so a rebuild that changed nothing
+  /// about the palette does not write the same attribute again.
+  Color? _applied;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final palette =
+        Theme.of(context).brightness == Brightness.dark ? AppPalette.dark : AppPalette.light;
+    if (palette.canvas == _applied) return;
+    _applied = palette.canvas;
+    widget.chrome.setThemeColor(palette.canvas);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

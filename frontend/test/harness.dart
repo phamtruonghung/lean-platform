@@ -23,6 +23,7 @@ import 'package:lean_platform/maintenance/maintenance_api.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/platform/document_chrome.dart';
 import 'package:lean_platform/platform/floor_device_gateway.dart';
 import 'package:lean_platform/platform/platform_app.dart';
 import 'package:lean_platform/quality/quality_api.dart';
@@ -10941,6 +10942,27 @@ class FakeQualityPhotoPicker implements QualityPhotoPicker {
   }
 }
 
+/// A [DocumentChrome] that records what the app told the browser's document to
+/// say (issue #399), in order — the tab's title per navigation, and the colour
+/// each palette handed over. There is no document on the Dart VM a widget test
+/// runs on, so this stands in for the browser's own.
+class RecordingDocumentChrome implements DocumentChrome {
+  /// Every title written, oldest first. `.last` is what the tab says now.
+  final List<String> titles = <String>[];
+
+  /// Every theme colour written, oldest first.
+  final List<Color> themeColors = <Color>[];
+
+  String get title => titles.isEmpty ? '' : titles.last;
+  Color? get themeColor => themeColors.isEmpty ? null : themeColors.last;
+
+  @override
+  void setTitle(String title) => titles.add(title);
+
+  @override
+  void setThemeColor(Color color) => themeColors.add(color);
+}
+
 /// A picture the fake picker can hand back: the harness's real 1×1 PNG, so a
 /// thumbnail built from it actually decodes.
 PickedPhoto fakePickedPhoto({String contentType = 'image/png', Uint8List? bytes}) =>
@@ -11074,6 +11096,7 @@ Future<void> pumpApp(
   FloorDeviceGateway? floorDeviceGateway,
   SignatureFilePicker? signatureFilePicker,
   QualityPhotoPicker? qualityPhotoPicker,
+  DocumentChrome? documentChrome,
   String? initialLocation,
   bool settle = true,
 }) async {
@@ -11100,6 +11123,9 @@ Future<void> pumpApp(
       signatureFilePicker: signatureFilePicker ?? FakeSignatureFilePicker(),
       // Issue #419's own file input, faked at the same seam.
       qualityPhotoPicker: qualityPhotoPicker ?? FakeQualityPhotoPicker(),
+      // The document around the app: a recorder, so a test can read what the
+      // tab was told after each navigation (issue #399).
+      documentChrome: documentChrome ?? RecordingDocumentChrome(),
       initialLocation: initialLocation,
     ),
   );

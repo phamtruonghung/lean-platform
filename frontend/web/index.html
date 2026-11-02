@@ -10,7 +10,23 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Platform">
+  <!-- The browser's own chrome before the app boots: the light palette's canvas
+       (`_PrimitivesLight.canvas` in lib/theme.dart). Once Flutter is running,
+       lib/platform/document_chrome.dart rewrites this to whichever palette is
+       on screen (issue #399) and leaves it alone until that changes. The
+       static value is what a first paint, a bookmark preview or a script-less
+       capture sees. -->
+  <meta name="theme-color" content="#F8FAFC">
   <link rel="manifest" href="manifest.json">
+  <!-- The tab's picture, and the icon an iOS home-screen shortcut uses. Both
+       are real files under `web/` (see `tool/regenerate_web_icons.sh`); they used
+       to be absent, so `/favicon.png` and `/icons/Icon-192.png` fell through
+       nginx's `try_files` to index.html and answered 200 with a page (issue
+       #399). -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <!-- What the tab says until the router titles it: `Platform`. Every address
+       is titled by the table in lib/platform/router.dart once the app runs. -->
   <title>Platform</title>
 </head>
 <body>

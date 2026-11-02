@@ -481,6 +481,133 @@ bool mayRecordCapaEffectiveness(BuildContext context, Capa capa) {
   return !isCapaTeamLeadAccount(context, capa);
 }
 
+/// What the browser tab says above every Screen (issue #399).
+///
+/// **One table, one place, keyed by the address's own declared path** — the
+/// `RouteMatchList.fullPath` the router reports for the route on top of the
+/// stack, which is the *pattern* (`/work-orders/:id`) rather than the address
+/// (`/work-orders/42`), so a row would still hold if an id changed every time.
+/// Adding a Screen means adding its row here, beside the `Routes` constant the
+/// `GoRoute` below spends; nothing per-Screen, and no Screen sets its own
+/// title.
+///
+/// **A dialog's address has no row, deliberately.** A transition dialog is an
+/// address of its own (ADR-0021) — `/leave-requests/new` is a page in the
+/// browser's history — and blanking the tab the moment one opens would be a
+/// worse title than the Screen's. [documentTitle] therefore falls back to the
+/// nearest enclosing Screen: it drops the last path segment and asks again, so
+/// `/leave-requests/:id/approve` reads `Leave requests` because
+/// `/leave-requests` does. Every dialog route below declares its address as a
+/// child of the Screen it belongs to for exactly this reason, and the two
+/// printing addresses that are siblings of the Shell (`/actions/capas/:id/report`,
+/// `/training/:id/form`) carry rows of their own because they are Screens.
+///
+/// **The label is the Screen's own heading**, wherever the Screen has one
+/// (`AppPageHeader(title: …)` — `Work orders`, `Approval queue`, `KPI
+/// catalogue`), so the tab and the page agree and neither drifts. Where the
+/// heading names a *record* rather than the Screen (`state.store.name`, a
+/// CAPA's title), the row names the Screen instead (`Store stock`, `CAPA`).
+const Map<String, String> _screenTitles = <String, String>{
+  // Reached without ever being a Destination.
+  '/sign-in': 'Sign in',
+  '/awaiting-approval': 'Awaiting approval',
+  '/change-password': 'Choose a new password',
+  '/floor': 'Floor',
+  '/actions/capas/:id/report': 'CAPA report',
+  '/training/:id/form': 'Training record form',
+  // The Shell's own Destinations and the Screens beneath them.
+  '/': 'Welcome',
+  '/directory': 'Directory',
+  '/directory/:id': 'Employee',
+  '/directory/:employeeId/work-hours': 'Worked hours',
+  '/attendance': 'Attendance',
+  '/attendance/to-confirm': 'Attendance to confirm',
+  '/attendance/:shiftInstanceId': 'Attendance sheet',
+  '/training': 'Training records',
+  '/training/to-confirm': 'Training to confirm',
+  '/training/:id': 'Training record',
+  '/me/signature': 'My signature',
+  '/job-roles': 'Job roles',
+  '/org-units': 'Org Units',
+  '/skills': 'Skills',
+  '/leave-requests': 'Leave requests',
+  '/cost-rates': 'Cost rates',
+  '/product-costs': 'Product standard costs',
+  '/products': 'Products',
+  '/defect-codes': 'Defect codes',
+  '/customers': 'Customers',
+  '/slide-show': 'Quality slide show',
+  '/complaints': 'Customer complaints',
+  '/complaints/:id': 'Customer complaint',
+  '/suppliers': 'Suppliers',
+  '/supplier-ncrs': 'Supplier NCRs',
+  '/supplier-ncrs/:id': 'Supplier NCR',
+  '/non-conformances': 'Non-conformances',
+  '/non-conformances/:id': 'Non-conformance',
+  '/production/sections': 'Shift handovers',
+  '/production/sections/:orgUnitId/board': 'Shift handovers',
+  '/production/sections/:orgUnitId/handover/:shiftInstanceId': 'Shift handover',
+  '/safety/incidents': 'Safety incidents',
+  '/safety/incidents/:id': 'Safety incident',
+  '/safety/observations': 'Safety observations',
+  '/safety/observations/:id': 'Safety observation',
+  '/safety/injury-types': 'Injury types',
+  '/safety/body-parts': 'Body parts',
+  '/skill-coverage': 'Skill coverage',
+  '/kpi': 'KPI catalogue',
+  '/kpi/review': 'KPI review',
+  '/kpi/:kpiId/targets': 'KPI targets',
+  '/tier-board': 'Tier board',
+  '/actions/capas': 'CAPAs',
+  '/actions': 'Actions',
+  '/actions/:id': 'Action',
+  '/actions/capas/:id': 'CAPA',
+  '/approvals': 'Approval queue',
+  '/assets': 'Assets',
+  '/parts': 'Parts',
+  '/stores': 'Stores',
+  '/stores/:id': 'Store stock',
+  '/work-orders': 'Work orders',
+  '/work-orders/:id': 'Work order',
+  '/my-requests': 'My requests',
+  '/requests': 'Triage queue',
+  '/downtime': 'Downtime',
+  '/pm-schedules': 'PM schedules',
+  '/meters': 'Meters',
+  '/job-plans': 'Job plans',
+  '/accounts': 'Accounts',
+};
+
+/// The app's own name, and the tail every title carries — the same word
+/// `index.html`'s `<title>` and `manifest.json`'s `name` hold, so a bookmark
+/// made before the app booted and one made after it read alike.
+const String _titleSuffix = 'Platform';
+
+/// What separates a Screen's own label from [_titleSuffix]. The middle dot is
+/// the one `Shift handover · ${…}` already uses between two names on a page.
+const String _titleSeparator = ' · ';
+
+/// The browser tab's title for the address whose **declared** path is
+/// [fullPath] — `RouteMatchList.fullPath`, e.g. `/work-orders/:id` for
+/// `/work-orders/42`.
+///
+/// A path with no row of its own is a dialog: the last segment is dropped and
+/// the enclosing Screen answers (see [_screenTitles]). An address the router
+/// could not match at all — an empty path, which `errorBuilder` renders as the
+/// not-found Screen — is the bare app name rather than a wrong Screen's.
+String documentTitle(String fullPath) {
+  var path = fullPath;
+  while (path.isNotEmpty) {
+    final label = _screenTitles[path];
+    if (label != null) return '$label$_titleSeparator$_titleSuffix';
+    final parent = path.lastIndexOf('/');
+    // `<= 0` rather than `< 0`: `/` and `` have no parent left to ask.
+    if (parent <= 0) break;
+    path = path.substring(0, parent);
+  }
+  return _titleSuffix;
+}
+
 GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}) {
   return GoRouter(
     initialLocation: initialLocation,
