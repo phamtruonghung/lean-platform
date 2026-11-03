@@ -1003,8 +1003,8 @@ does not change.** `AppDialog` is the surface *inside* the route, not a second r
 `DialogPage` stays the address and `AppDialog` is what its `builder` returns.
 
 The route has two populations today, both counted off the tree: **52**
-`DialogPage<void>(` pages in `platform/router.dart`, each an address, and **137**
-`showDialog` call sites across 68 files, each a dialog with no address of its
+`DialogPage<void>(` pages in `platform/router.dart`, each an address, and **84**
+`showDialog` call sites across 65 files, each a dialog with no address of its
 own. Both stay legal. A dialog that is not addressable (a filter picker, a
 confirmation inside a Screen that has no reason to survive a refresh) is a
 `showDialog` call that builds an `AppDialog`, and nothing is wrong with that.
@@ -1128,11 +1128,12 @@ message below `AppBreakpoints.headerActionsWrap` (560) of box, scaled by the tex
 ### One surface, not three
 
 The client's failure is not that it has no transient feedback; Flutter has one,
-and a `SnackBar` is in the tree twice. It is that there is nowhere stable to put
-a persistent one, so each Screen tints its own `Container`: **17 files outside
-`theme.dart` reach for the scheme's `errorContainer` or `secondaryContainer` by
-hand** (`grep -lE "errorContainer|secondaryContainer"`), in 17 slightly different
-spots. A second surface (`AppFeedback`, a snack wrapper) would be a third place for
+and a `SnackBar` appears in exactly two files (four call sites). It is that there
+is nowhere stable to put a persistent one, so each Screen tints its own
+`Container`: **17 files (15 Screens and 2 dialogs) outside `theme.dart` reach for
+the scheme's `errorContainer` or `secondaryContainer` by hand**
+(`grep -lE "errorContainer|secondaryContainer"`), in 17 slightly different spots.
+A second surface (`AppFeedback`, a snack wrapper) would be a third place for
 an outcome to land and a decision about which, per outcome, forever. One surface
 and the table above leaves no decision to make. The adoption of the 17 is each
 Screen's own slice.

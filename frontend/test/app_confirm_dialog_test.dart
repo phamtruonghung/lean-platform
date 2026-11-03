@@ -40,13 +40,14 @@ Future<void> _open(
   _Calls calls, {
   Size window = const Size(1280, 900),
   Brightness brightness = Brightness.light,
+  MaterialTapTargetSize tapTargetSize = MaterialTapTargetSize.padded,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = window;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
-      theme: buildAppTheme(brightness),
+      theme: buildAppTheme(brightness).copyWith(materialTapTargetSize: tapTargetSize),
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         body: Builder(
@@ -119,6 +120,40 @@ void main() {
     for (final key in [AppConfirmDialog.confirmKey, AppConfirmDialog.dismissKey]) {
       expect(tester.getSize(find.byKey(key)).height, greaterThanOrEqualTo(AppTouchTarget.min));
     }
+  });
+
+  // The case above passes even with `AppDialog`'s action floor deleted:
+  // `flutter_test` mounts on Android, where a Material button's `_InputPadding`
+  // already makes its target 48 tall, so it measures the framework and not the
+  // primitive. `shrinkWrap` lifts that padding, leaving the action's own
+  // `minimumSize` as the only thing that can hold 44. The control at the end is the
+  // dialog's own invoker: a bare `FilledButton` in the same app under the same
+  // theme, which no primitive wrapped, and it measures 40.
+  testWidgets('under shrinkWrap both actions keep 44 of their own, not the framework\'s padding',
+      (tester) async {
+    const shrinkWrap = MaterialTapTargetSize.shrinkWrap;
+    await _open(tester, _Calls(), tapTargetSize: shrinkWrap);
+    // The measurement only means anything if the tree really is in shrinkWrap:
+    // with the framework's `_InputPadding` in place a 48-tall button satisfies
+    // `>= AppTouchTarget.min` on its own.
+    expect(
+      Theme.of(tester.element(find.byKey(AppConfirmDialog.confirmKey))).materialTapTargetSize,
+      shrinkWrap,
+      reason: 'the case must be measured under shrinkWrap, or its 44 is the framework\'s',
+    );
+    for (final key in [AppConfirmDialog.confirmKey, AppConfirmDialog.dismissKey]) {
+      expect(tester.getSize(find.byKey(key)).height, greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'the action draws its own 44px, not Material padding');
+    }
+    // Control: a bare `FilledButton` in the same app under the same theme that no
+    // primitive wrapped. Were it still 48 the theme would not be in force.
+    expect(
+      tester.getSize(find.byKey(_invokerKey)).height,
+      lessThan(AppTouchTarget.min),
+      reason: 'a bare FilledButton in the same shrinkWrap theme measures 40, so the '
+          'framework\'s input padding is lifted and the 44 above can only be the action\'s '
+          'own minimumSize',
+    );
   });
 
   testWidgets('the destructive action is right-most, the dismiss is left of it, and tapping each calls its own',

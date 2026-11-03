@@ -64,7 +64,9 @@ AppDialog _dialog(
     );
 
 /// Mounts an app whose only control opens [build]'s dialog, with the window at
-/// [window] and the reader's text at [textScale], and opens it.
+/// [window] and the reader's text at [textScale], and opens it. The app's theme
+/// carries [tapTargetSize]; `padded` is the default, `shrinkWrap` is what shows a
+/// control's own height instead of the framework's input padding.
 Future<void> _open(
   WidgetTester tester,
   WidgetBuilder build, {
@@ -73,13 +75,14 @@ Future<void> _open(
   Brightness brightness = Brightness.light,
   FocusNode? invoker,
   bool settle = true,
+  MaterialTapTargetSize tapTargetSize = MaterialTapTargetSize.padded,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = window;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
-      theme: buildAppTheme(brightness),
+      theme: buildAppTheme(brightness).copyWith(materialTapTargetSize: tapTargetSize),
       debugShowCheckedModeBanner: false,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
@@ -344,6 +347,58 @@ void main() {
     await tester.tap(find.byKey(AppDialog.actionKey('cancel')));
     await tester.pump();
     expect(calls.dismiss, 1);
+  });
+
+  // The case above (and the trailing-control one below) passes even with
+  // `_ActionButton._minimum` deleted: `flutter_test` mounts on Android, where a
+  // Material button's `_InputPadding` already makes its target 48 tall, so they
+  // measure the framework and not `AppDialog`. `shrinkWrap` lifts that padding,
+  // leaving `_minimum` as the only thing that can hold 44. The control at the end
+  // is the dialog's own invoker: a bare `FilledButton` in the same app under the
+  // same theme, which no primitive wrapped, and it measures 40.
+  testWidgets('under shrinkWrap the 44 is the action\'s own floor, not the framework\'s input padding',
+      (tester) async {
+    const shrinkWrap = MaterialTapTargetSize.shrinkWrap;
+    final calls = _Calls();
+    await _open(
+      tester,
+      (_) => _dialog(calls, actions: [
+        AppDialogAction(
+            id: 'cancel',
+            label: 'Keep it open',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => calls.dismiss++),
+        AppDialogAction(
+            id: 'delete',
+            label: 'Delete it',
+            kind: AppDialogActionKind.destructive,
+            onPressed: () => calls.destructive++),
+        AppDialogAction(id: 'save', label: 'Move Work order', onPressed: () => calls.primary++),
+      ]),
+      tapTargetSize: shrinkWrap,
+    );
+    // The measurements below only mean anything if the tree really is in
+    // shrinkWrap: with the framework's `_InputPadding` in place a 48-tall button
+    // satisfies `>= AppTouchTarget.min` on its own.
+    expect(
+      Theme.of(tester.element(find.byKey(AppDialog.actionKey('save')))).materialTapTargetSize,
+      shrinkWrap,
+      reason: 'the case must be measured under shrinkWrap, or its 44 is the framework\'s',
+    );
+    for (final id in ['cancel', 'delete', 'save']) {
+      expect(tester.getSize(find.byKey(AppDialog.actionKey(id))).height,
+          greaterThanOrEqualTo(AppTouchTarget.min),
+          reason: 'the $id action draws its own 44px, not Material padding');
+    }
+    // Control: a bare `FilledButton` in the same app under the same theme that no
+    // primitive wrapped. Were it still 48 the theme would not be in force.
+    expect(
+      tester.getSize(find.byKey(_invokerKey)).height,
+      lessThan(AppTouchTarget.min),
+      reason: 'a bare FilledButton in the same shrinkWrap theme measures 40, so the '
+          'framework\'s input padding is lifted and the 44 above can only be the action\'s '
+          'own minimumSize',
+    );
   });
 
   testWidgets('dismiss sits left of primary, primary is right-most, and the caller\'s labels are verbatim',
