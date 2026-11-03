@@ -5,6 +5,20 @@
 /// order detail Screen gives: this is what a person links to when they want
 /// somebody else to look at one concern, and a dialog's address is not
 /// something you send to a colleague.
+///
+/// **The page rhythm** (issue #396's design pass): the page head is
+/// `AppPageHeader('Action')` with the two acts on the record — hand it up, call
+/// it off — at the row's far end, drawn above the state switch so a load and a
+/// failed read carry the same title row and back control as the record does.
+/// The record's own identity is the summary card's first line, never the page's
+/// title: the number, the title, the chips that say what kind of thing it is and
+/// how it stands, and the Concern it answers.
+///
+/// **What follows the summary** is one `AppDetailSection` per question a reader
+/// arrives with — where it stands, the cycle it is running, what answers it, the
+/// CAPA opened on it, and the record it was raised from — so every section has
+/// the same heading, the same hairline and the same gutter, and the Screen reads
+/// as one document rather than five stacked widgets.
 library;
 
 import 'package:flutter/material.dart' hide Action;
@@ -14,7 +28,9 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
@@ -33,6 +49,7 @@ class ActionDetailScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('action-detail-failed');
   static const ValueKey<String> loadedKey = ValueKey<String>('action-detail-loaded');
   static const ValueKey<String> backKey = ValueKey<String>('action-detail-back');
+  static const ValueKey<String> summaryKey = ValueKey<String>('action-detail-summary');
   static const ValueKey<String> measuresEmptyKey = ValueKey<String>('action-detail-measures-empty');
   static const ValueKey<String> measuresHintKey = ValueKey<String>('action-detail-measures-hint');
 
@@ -92,20 +109,101 @@ class ActionDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ActionDetailBloc>().state;
+    final loaded = state is ActionDetailLoaded ? state.action : null;
 
     return Scaffold(
-      body: switch (state) {
-        ActionDetailLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
-        ActionDetailUnavailable(message: final message) => PlatformFailureState(
-            key: failedKey,
-            title: 'That Action could not be read',
-            message: message,
-            retryKey: retryKey,
-            onRetry: () => context.read<ActionDetailBloc>().add(ActionDetailStarted(actionId)),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Head(action: loaded),
+          Expanded(
+            child: switch (state) {
+              ActionDetailLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
+              ActionDetailUnavailable(message: final message) => PlatformFailureState(
+                  key: failedKey,
+                  title: 'That Action could not be read',
+                  message: message,
+                  retryKey: retryKey,
+                  onRetry: () =>
+                      context.read<ActionDetailBloc>().add(ActionDetailStarted(actionId)),
+                ),
+              ActionDetailLoaded(action: final action, notice: final notice) =>
+                _ActionDetail(action: action, notice: notice),
+            },
           ),
-        ActionDetailLoaded(action: final action, notice: final notice) =>
-          _ActionDetail(action: action, notice: notice),
-      },
+        ],
+      ),
+    );
+  }
+}
+
+/// The page's own title row: the way back, `AppPageHeader('Action')`, and the
+/// two acts on the record when it is still live.
+///
+/// It sits above the state switch, so a load, a failed read and the record are
+/// told apart by their body and never by a missing page head (issue #391's
+/// design law 3), and the acts appear only once there is a record to act on —
+/// a control addressed at an Action that has not been read yet would be a
+/// button with nothing behind it.
+class _Head extends StatelessWidget {
+  const _Head({this.action});
+
+  final Action? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final loaded = action;
+    // Both offered while the Action is still live, and neither for one that has
+    // ended: a closed or cancelled record has nothing left to hand up or call
+    // off, and both addresses refuse it anyway (issues #179 and #180).
+    final live = loaded != null && !const {'done', 'cancelled'}.contains(loaded.status);
+    final id = loaded?.id;
+
+    return Center(
+      child: AppPageFrame(
+        maxWidth: ActionDetailScreen.maxWidth,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // `context.go`, never `maybePop`: every navigation in this
+              // Platform replaces the location rather than pushing a page, so
+              // there is nothing on the Navigator to pop (issue #183).
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  key: ActionDetailScreen.backKey,
+                  onPressed: () => context.go(Routes.actions),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to the action log'),
+                ),
+              ),
+              const SizedBox(height: Spacing.sm),
+              AppPageHeader(
+                title: 'Action',
+                actions: [
+                  if (live)
+                    TextButton(
+                      key: ActionDetailScreen.escalateKey,
+                      onPressed: () => context.go('${Routes.actions}/$id/escalate'),
+                      child: const Text('Hand it up…'),
+                    ),
+                  if (live)
+                    TextButton(
+                      key: ActionDetailScreen.cancelKey,
+                      onPressed: () => context.go('${Routes.actions}/$id/cancel'),
+                      child: const Text('Call it off…'),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -126,111 +224,54 @@ class _ActionDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ActionDetailScreen.maxWidth,
-        child: ListView(
+        // A `SingleChildScrollView`, not a `ListView`, deliberately: this is a
+        // document of a bounded number of sections, so every section is built
+        // and laid out whether or not it is on screen — which is what a test
+        // can read, and what a reader printing the page gets. A lazily-built
+        // list would leave the foot of the record out of the tree until
+        // somebody scrolled to it (the trade `capa_report_screen.dart` records
+        // for its own document).
+        child: SingleChildScrollView(
           key: ActionDetailScreen.loadedKey,
-          padding: const EdgeInsets.all(Spacing.xl),
-          children: [
-            // A `Wrap`, not a `Row`: the back label is a Destination's name and
-            // the status chip is a word, and together they are wider than an
-            // 800px window — where a `Row` overflows and a `Wrap` puts the chip
-            // on its own line. `spaceBetween` keeps the chip hard right at every
-            // width the app is used at.
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: Spacing.sm,
-              runSpacing: Spacing.sm,
+          // The page head above this view already pads its own top and the space
+          // beneath itself.
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SummaryCard(action: action, notice: notice),
+              const SizedBox(height: Spacing.md),
+            AppDetailSection(
+              title: 'Where it stands',
               children: [
-                // `context.go`, never `maybePop`: every navigation in this
-                // Platform replaces the location rather than pushing a page
-                // (Work orders, the Directory, this Module), so there is
-                // nothing on the Navigator to pop and `maybePop` is a button
-                // that does nothing at all — which is exactly how it behaved on
-                // the deployed stack (issue #183). WorkOrderDetailScreen's own
-                // "Back to Work orders" is the convention this copies.
-                TextButton.icon(
-                  key: ActionDetailScreen.backKey,
-                  onPressed: () => context.go(Routes.actions),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to the action log'),
+                _Fact(label: 'Org Unit', value: action.orgUnitName),
+                _Fact(label: 'Owner', value: action.ownerName ?? 'Nobody yet'),
+                _Fact(
+                  label: 'Raised by',
+                  value: action.raisedByName ?? 'An Account with no Employee record',
                 ),
-                StatusChip(
-                  label: action.statusLabel,
-                  tone: action.statusTone,
-                ),
+                _Fact(label: 'Due', value: action.dueDate ?? 'No due date'),
+                if (action.escalatedToOrgUnitName != null)
+                  _Fact(label: 'Escalated to', value: action.escalatedToOrgUnitName!),
+                if (action.closureNote != null)
+                  _Fact(label: 'Closing note', value: action.closureNote!),
               ],
             ),
             const SizedBox(height: Spacing.md),
-            Row(
-              children: [
-                // Expanded rather than a Spacer: the number is what gives way
-                // when the two actions beside it need the width, not the Row.
-                Expanded(
-                  child: Text(action.actionNo, style: theme.textTheme.labelLarge),
-                ),
-                // Both offered while the Action is still live, and neither for
-                // one that has ended: a closed or cancelled record has nothing
-                // left to hand up or call off, and both addresses refuse it
-                // anyway (issues #179 and #180).
-                if (!const {'done', 'cancelled'}.contains(action.status))
-                  TextButton(
-                    key: ActionDetailScreen.escalateKey,
-                    onPressed: () => context.go('${Routes.actions}/${action.id}/escalate'),
-                    child: const Text('Hand it up…'),
-                  ),
-                if (!const {'done', 'cancelled'}.contains(action.status))
-                  TextButton(
-                    key: ActionDetailScreen.cancelKey,
-                    onPressed: () => context.go('${Routes.actions}/${action.id}/cancel'),
-                    child: const Text('Call it off…'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: Spacing.xs),
-            Text(action.title, style: theme.textTheme.headlineSmall),
-            if (notice != null) ...[
-              const SizedBox(height: Spacing.sm),
-              Text(key: ActionDetailScreen.noticeKey, notice!, style: theme.textTheme.bodyMedium),
-            ],
-            const SizedBox(height: Spacing.sm),
-            Wrap(
-              spacing: Spacing.sm,
-              runSpacing: Spacing.sm,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                StatusChip(label: action.typeLabel, tone: action.statusTone),
-                if (action.pillarCode != null) Chip(label: Text('Pillar ${action.pillarCode}')),
-                Chip(label: Text(action.priorityLabel)),
-                if (action.isOverdue)
-                  StatusChip(label: 'Overdue by ${action.daysOverdue} days', tone: StatusTone.danger),
-              ],
-            ),
-            if (action.description != null) ...[
-              const SizedBox(height: Spacing.md),
-              Text(action.description!, style: theme.textTheme.bodyMedium),
-            ],
-            if (action.parent != null) ...[
-              const SizedBox(height: Spacing.md),
-              _Parent(parent: action.parent!),
-            ],
-            const SizedBox(height: Spacing.lg),
             _Cycle(action: action),
-            const SizedBox(height: Spacing.lg),
-            _Facts(action: action),
+            const SizedBox(height: Spacing.md),
+            _Measures(action: action),
             // The investigation this Concern has been turned into, if any
             // (issue #209) — only a Concern can be under one, because that is
             // what a CAPA is opened on.
             if (action.actionType == 'concern') ...[
-              const SizedBox(height: Spacing.lg),
+              const SizedBox(height: Spacing.md),
               _Capa(action: action),
             ],
-            const SizedBox(height: Spacing.lg),
-            _Measures(action: action),
-            const SizedBox(height: Spacing.lg),
+            const SizedBox(height: Spacing.md),
             // The evidence behind the Concern, at the foot of the record on
             // purpose: the cycle and the work answering it are what was asked
             // for first, and the source is what proves the problem is real. A
@@ -245,6 +286,77 @@ class _ActionDetail extends StatelessWidget {
               _SafetyObservationSource(action: action)
             else
               _Nonconformances(action: action),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The summary card: what the record *is*, before anything about how it is
+/// going — its own identity (number, title), the chips that say what kind of
+/// thing it is and how it stands, the description somebody wrote, and the
+/// Concern it answers when it answers one.
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.action, this.notice});
+
+  final Action action;
+  final String? notice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+
+    return Card(
+      key: ActionDetailScreen.summaryKey,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              action.actionNo,
+              style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+            ),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              action.title,
+              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: Spacing.sm),
+            Wrap(
+              spacing: Spacing.sm,
+              runSpacing: Spacing.sm,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                StatusChip(label: action.typeLabel, tone: action.statusTone),
+                StatusChip(label: action.statusLabel, tone: action.statusTone),
+                if (action.pillarCode != null) Chip(label: Text('Pillar ${action.pillarCode}')),
+                Chip(label: Text(action.priorityLabel)),
+                if (action.isOverdue)
+                  StatusChip(label: 'Overdue by ${action.daysOverdue} days', tone: StatusTone.danger),
+              ],
+            ),
+            if (action.description != null) ...[
+              const SizedBox(height: Spacing.md),
+              Text(action.description!, style: AppTypography.dense(context)),
+            ],
+            if (notice != null) ...[
+              const SizedBox(height: Spacing.sm),
+              Text(
+                notice!,
+                key: ActionDetailScreen.noticeKey,
+                style: AppTypography.dense(context),
+              ),
+            ],
+            if (action.parent != null) ...[
+              const SizedBox(height: Spacing.md),
+              _Parent(parent: action.parent!),
+            ],
           ],
         ),
       ),
@@ -264,40 +376,35 @@ class _Cycle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final muted = AppColors.of(context).textMuted;
     final current = action.currentCyclePhases;
-    final earlier = [for (final phase in action.phases) if (phase.cycle != action.currentCycle) phase];
+    final earlier = [
+      for (final phase in action.phases)
+        if (phase.cycle != action.currentCycle) phase
+    ];
     final openPhase = action.openPhase;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              'Cycle ${action.currentCycle}',
-              style: theme.textTheme.titleSmall,
-            ),
-            const Spacer(),
-            if (openPhase != null)
-              FilledButton.tonalIcon(
-                key: ActionDetailScreen.completePhaseKey,
-                onPressed: () => context.go(
-                  '${Routes.actions}/${action.id}/phases/${openPhase.phase}/complete',
-                ),
-                icon: const Icon(Icons.check_circle_outline),
-                label: Text('Complete the ${openPhase.phaseLabel}'),
+    return AppDetailSection(
+      title: 'Cycle ${action.currentCycle}',
+      trailing: openPhase == null
+          ? null
+          : FilledButton.tonalIcon(
+              key: ActionDetailScreen.completePhaseKey,
+              onPressed: () => context.go(
+                '${Routes.actions}/${action.id}/phases/${openPhase.phase}/complete',
               ),
-          ],
-        ),
-        const SizedBox(height: Spacing.sm),
+              icon: const Icon(Icons.check_circle_outline),
+              label: Text('Complete the ${openPhase.phaseLabel}'),
+            ),
+      children: [
         if (current.isEmpty)
           Text(
             'This Action has no phases left.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.dense(context)?.copyWith(color: muted),
           ),
         for (final phase in current) _PhaseRow(phase: phase),
         if (earlier.isNotEmpty) ...[
-          const SizedBox(height: Spacing.lg),
+          const SizedBox(height: Spacing.md),
           Text(
             key: ActionDetailScreen.cycleHistoryKey,
             'Earlier rounds',
@@ -320,7 +427,7 @@ class _PhaseRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.colorScheme.onSurfaceVariant;
+    final muted = AppColors.of(context).textMuted;
     return Padding(
       key: ActionDetailScreen.phaseKey(phase.cycle, phase.phase),
       padding: const EdgeInsets.symmetric(vertical: Spacing.xxs),
@@ -331,7 +438,7 @@ class _PhaseRow extends StatelessWidget {
             width: 90,
             child: Text(
               historical ? '${phase.phaseLabel} · ${phase.cycle}' : phase.phaseLabel,
-              style: theme.textTheme.bodyMedium?.copyWith(
+              style: AppTypography.dense(context)?.copyWith(
                 fontWeight: phase.isOpen ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -342,8 +449,8 @@ class _PhaseRow extends StatelessWidget {
               children: [
                 Text(
                   phase.note ?? (phase.isOpen ? 'Open — waiting on this' : 'No note recorded'),
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: phase.isOpen ? null : muted),
+                  style:
+                      AppTypography.dense(context)?.copyWith(color: phase.isOpen ? null : muted),
                 ),
                 Text(
                   [
@@ -364,31 +471,7 @@ class _PhaseRow extends StatelessWidget {
   }
 }
 
-class _Facts extends StatelessWidget {
-  const _Facts({required this.action});
-
-  final Action action;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Where it stands', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.sm),
-        _Fact(label: 'Org Unit', value: action.orgUnitName),
-        _Fact(label: 'Owner', value: action.ownerName ?? 'Nobody yet'),
-        _Fact(label: 'Raised by', value: action.raisedByName ?? 'An Account with no Employee record'),
-        _Fact(label: 'Due', value: action.dueDate ?? 'No due date'),
-        if (action.escalatedToOrgUnitName != null)
-          _Fact(label: 'Escalated to', value: action.escalatedToOrgUnitName!),
-        if (action.closureNote != null) _Fact(label: 'Closing note', value: action.closureNote!),
-      ],
-    );
-  }
-}
-
+/// One label and its value, as every detail Screen's sections read them.
 class _Fact extends StatelessWidget {
   const _Fact({required this.label, required this.value});
 
@@ -397,7 +480,7 @@ class _Fact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final muted = AppColors.of(context).textMuted;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Spacing.xxs),
       child: Row(
@@ -405,13 +488,9 @@ class _Fact extends StatelessWidget {
         children: [
           SizedBox(
             width: 180,
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
+            child: Text(label, style: AppTypography.floor(context)?.copyWith(color: muted)),
           ),
-          Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
+          Expanded(child: Text(value, style: AppTypography.dense(context))),
         ],
       ),
     );
@@ -427,22 +506,41 @@ class _Parent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final muted = AppColors.of(context).textMuted;
+    return InkWell(
       key: ActionDetailScreen.parentKey,
-      child: ListTile(
-        onTap: () => context.go('${Routes.actions}/${parent.id}'),
-        title: Text('Answers ${parent.actionNo}'),
-        subtitle: Text(parent.title),
-        trailing: StatusChip(label: parent.statusLabel, tone: parent.statusTone),
+      onTap: () => context.go('${Routes.actions}/${parent.id}'),
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Answers ${parent.actionNo}',
+                    style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: Spacing.xxs),
+                  Text(parent.title, style: AppTypography.floor(context)?.copyWith(color: muted)),
+                ],
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            StatusChip(label: parent.statusLabel, tone: parent.statusTone),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// The CAPA opened on this Concern (issue #209, ADR-0034), or the way to open
-/// one — and nothing at all when the caller holds no Quality authority, which
-/// is the rule ADR-0035 and issue #48 set: a CAPA is opened by judgement, not
-/// by anybody.
+/// The CAPA section (issue #209, ADR-0034): the investigation opened on this
+/// Concern, or the way to open one — and nothing at all when the caller holds
+/// no Quality authority, which is the rule ADR-0035 and issue #48 set: a CAPA is
+/// opened by judgement, not by anybody.
 ///
 /// A Concern that already has one shows it rather than the button, because a
 /// second is refused (409) and offering a control the server will refuse is a
@@ -454,7 +552,7 @@ class _Capa extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final muted = AppColors.of(context).textMuted;
     final capa = action.capa;
     // Read here, in a build, rather than passed in from the route: a value
     // computed when the route first built would freeze the Account state as it
@@ -462,44 +560,67 @@ class _Capa extends StatelessWidget {
     // be offered the act that authority gates (ADR-0035).
     final canOpen = holdsQualityAuthority(context, action.orgUnitId);
 
-    return Column(
+    return KeyedSubtree(
       key: ActionDetailScreen.capaKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('CAPA', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.xs),
-        Text(
-          'A formal 8D investigation opened on this Concern: its team, its problem description '
-          'and — as those slices land — its root causes and its effectiveness check. Its actions '
-          'are the ones below, recorded once in the action log and read there.',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: Spacing.sm),
-        if (capa != null)
-          Card(
-            key: ActionDetailScreen.capaLinkKey,
-            child: ListTile(
-              onTap: () => context.go('${Routes.actions}/capas/${capa.id}'),
-              title: Text('Under investigation: ${capa.capaNo}'),
-              subtitle: Text(action.title),
-              trailing: StatusChip(label: capa.statusLabel, tone: capa.statusTone),
-            ),
-          )
-        else if (canOpen)
-          FilledButton.tonal(
-            key: ActionDetailScreen.openCapaKey,
-            onPressed: () => context.go('${Routes.actions}/${action.id}/capa'),
-            child: const Text('Open a CAPA…'),
-          )
-        else
+      child: AppDetailSection(
+        title: 'CAPA',
+        children: [
           Text(
-            key: ActionDetailScreen.noCapaKey,
-            "Nobody has opened a CAPA on this Concern. Opening one needs Quality authority at "
-            "this Concern's Org Unit.",
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            'A formal 8D investigation opened on this Concern: its team, its problem description '
+            'and — as those slices land — its root causes and its effectiveness check. Its actions '
+            'are the ones below, recorded once in the action log and read there.',
+            style: AppTypography.floor(context)?.copyWith(color: muted),
           ),
-      ],
+          if (capa != null)
+            InkWell(
+              key: ActionDetailScreen.capaLinkKey,
+              onTap: () => context.go('${Routes.actions}/capas/${capa.id}'),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Under investigation: ${capa.capaNo}',
+                            style: AppTypography.dense(context)
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: Spacing.xxs),
+                          Text(
+                            action.title,
+                            style: AppTypography.floor(context)?.copyWith(color: muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: Spacing.sm),
+                    StatusChip(label: capa.statusLabel, tone: capa.statusTone),
+                  ],
+                ),
+              ),
+            )
+          else if (canOpen)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FilledButton.tonal(
+                key: ActionDetailScreen.openCapaKey,
+                onPressed: () => context.go('${Routes.actions}/${action.id}/capa'),
+                child: const Text('Open a CAPA…'),
+              ),
+            )
+          else
+            Text(
+              key: ActionDetailScreen.noCapaKey,
+              "Nobody has opened a CAPA on this Concern. Opening one needs Quality authority at "
+              "this Concern's Org Unit.",
+              style: AppTypography.dense(context)?.copyWith(color: muted),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -516,121 +637,137 @@ class _Measures extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final muted = AppColors.of(context).textMuted;
     final measures = action.measures;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            // `Expanded`, not a `Spacer`: the heading carries the counts, and
-            // at a narrow width it wraps rather than pushing the menu button
-            // off the edge.
-            Expanded(
-              child: Text(
-                key: ActionDetailScreen.measuresHeadingKey,
-                measures.isEmpty
-                    ? 'Measures'
-                    : 'Measures (${measures.length}, '
-                        '${action.countermeasureCount} of them countermeasures)',
-                style: theme.textTheme.titleSmall,
+
+    return KeyedSubtree(
+      key: ActionDetailScreen.measuresHeadingKey,
+      child: AppDetailSection(
+        title: measures.isEmpty
+            ? 'Measures'
+            : 'Measures (${measures.length}, '
+                '${action.countermeasureCount} of them countermeasures)',
+        // The kind is chosen by name rather than by a picker inside the form:
+        // the three words mean three different pieces of work, and a dropdown in
+        // the middle of a form invites the wrong one.
+        trailing: PopupMenuButton<String>(
+          key: ActionDetailScreen.addMeasureKey,
+          enabled: !action.isMeasure,
+          tooltip: 'Add a measure',
+          onSelected: (measureType) => context.go(
+            '${Routes.actions}/${action.id}/measures/$measureType/new',
+          ),
+          itemBuilder: (context) => [
+            for (final measureType in actionMeasureTypeOrder)
+              PopupMenuItem<String>(
+                key: ActionDetailScreen.addMeasureKindKey(measureType),
+                value: measureType,
+                child: Text('Add a ${actionTypeLabel(measureType).toLowerCase()}…'),
               ),
-            ),
-            // The kind is chosen by name rather than by a picker inside the
-            // form: the three words mean three different pieces of work, and a
-            // dropdown in the middle of a form invites the wrong one.
-            PopupMenuButton<String>(
-              key: ActionDetailScreen.addMeasureKey,
-              enabled: !action.isMeasure,
-              tooltip: 'Add a measure',
-              onSelected: (measureType) => context.go(
-                '${Routes.actions}/${action.id}/measures/$measureType/new',
-              ),
-              itemBuilder: (context) => [
-                for (final measureType in actionMeasureTypeOrder)
-                  PopupMenuItem<String>(
-                    key: ActionDetailScreen.addMeasureKindKey(measureType),
-                    value: measureType,
-                    child: Text('Add a ${actionTypeLabel(measureType).toLowerCase()}…'),
-                  ),
+          ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.sm, vertical: Spacing.xs),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.add),
+                SizedBox(width: Spacing.xs),
+                Text('Add a measure'),
               ],
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Spacing.sm, vertical: Spacing.xs),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.add),
-                    SizedBox(width: Spacing.xs),
-                    Text('Add a measure'),
-                  ],
-                ),
+            ),
+          ),
+        ),
+        children: [
+          if (measures.isNotEmpty)
+            // The sentence the deployed stack was missing (issue #183): a reader
+            // who has just been refused by the Act needs to be told what closes
+            // a measure, and that it is something they can go and do.
+            Text(
+              key: ActionDetailScreen.measuresHintKey,
+              'Each measure is an Action of its own: open one and run its own cycle to its Act, and '
+              'it counts as closed.',
+              style: AppTypography.floor(context)?.copyWith(color: muted),
+            ),
+          if (measures.isEmpty)
+            Text(
+              key: ActionDetailScreen.measuresEmptyKey,
+              action.isMeasure
+                  ? 'This Action answers no Concern of its own.'
+                  : 'Nothing answers this yet. A containment stops the effect now; a '
+                      'countermeasure removes the cause.',
+              style: AppTypography.dense(context)?.copyWith(color: muted),
+            ),
+          for (final measure in measures) _MeasureRow(measure: measure),
+        ],
+      ),
+    );
+  }
+}
+
+/// One measure as a row inside the Measures section: its title, the facts that
+/// place it, and — where the work is — the phase it is waiting on, offered at
+/// the measure's own address so it is one tap earlier than opening the record.
+class _MeasureRow extends StatelessWidget {
+  const _MeasureRow({required this.measure});
+
+  final Action measure;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = AppColors.of(context).textMuted;
+    return InkWell(
+      key: ActionDetailScreen.measureKey(measure.id),
+      onTap: () => context.go('${Routes.actions}/${measure.id}'),
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    measure.title,
+                    style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: Spacing.xxs),
+                  Text(
+                    [
+                      measure.typeLabel,
+                      measure.statusLabel,
+                      measure.ownerName ?? 'Nobody yet',
+                      // Two different facts, so both: when it is due and what
+                      // it is waiting on. (They used to be exclusive, which hid
+                      // the phase of exactly the measures a reader is most
+                      // likely to be looking for.)
+                      if (measure.isOverdue) 'overdue by ${measure.daysOverdue} days',
+                      if (measure.openPhase != null)
+                        'waiting on its ${measure.openPhase!.phaseLabel.toLowerCase()}',
+                    ].join(' · '),
+                    style: AppTypography.floor(context)?.copyWith(color: muted),
+                  ),
+                ],
               ),
             ),
+            const SizedBox(width: Spacing.sm),
+            // A measure waiting on a phase offers that phase's completion, at
+            // the measure's own Action — the same dialog it would get two taps
+            // later, one tap earlier, which is what the deployed stack's reader
+            // went looking for and did not find (issue #183).
+            if (measure.openPhase == null)
+              Icon(Icons.chevron_right, color: muted)
+            else
+              TextButton(
+                key: ActionDetailScreen.measureCompleteKey(measure.id),
+                onPressed: () => context.go(
+                  '${Routes.actions}/${measure.id}/phases/${measure.openPhase!.phase}/complete',
+                ),
+                child: Text('Complete the ${measure.openPhase!.phaseLabel}…'),
+              ),
           ],
         ),
-        if (measures.isNotEmpty) ...[
-          const SizedBox(height: Spacing.xs),
-          // The sentence the deployed stack was missing (issue #183): a reader
-          // who has just been refused by the Act needs to be told what closes a
-          // measure, and that it is something they can go and do.
-          Text(
-            key: ActionDetailScreen.measuresHintKey,
-            'Each measure is an Action of its own: open one and run its own cycle to its Act, and '
-            'it counts as closed.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ],
-        const SizedBox(height: Spacing.sm),
-        if (measures.isEmpty)
-          Text(
-            key: ActionDetailScreen.measuresEmptyKey,
-            action.isMeasure
-                ? 'This Action answers no Concern of its own.'
-                : 'Nothing answers this yet. A containment stops the effect now; a countermeasure '
-                    'removes the cause.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-        for (final measure in measures)
-          Card(
-            key: ActionDetailScreen.measureKey(measure.id),
-            margin: const EdgeInsets.only(bottom: Spacing.sm),
-            child: ListTile(
-              onTap: () => context.go('${Routes.actions}/${measure.id}'),
-              title: Text(measure.title),
-              // Where the work is, on the row itself: a measure waiting on a
-              // phase offers that phase's completion, addressed at the
-              // measure's own Action — the same dialog it would get two taps
-              // later, one tap earlier, which is what the deployed stack's
-              // reader went looking for and did not find (issue #183). A
-              // measure with nothing open still opens, with the chevron the
-              // register's own rows carry.
-              trailing: measure.openPhase == null
-                  ? const Icon(Icons.chevron_right)
-                  : TextButton(
-                      key: ActionDetailScreen.measureCompleteKey(measure.id),
-                      onPressed: () => context.go(
-                        '${Routes.actions}/${measure.id}/phases/'
-                        '${measure.openPhase!.phase}/complete',
-                      ),
-                      child: Text('Complete the ${measure.openPhase!.phaseLabel}…'),
-                    ),
-              subtitle: Text(
-                [
-                  measure.typeLabel,
-                  measure.statusLabel,
-                  measure.ownerName ?? 'Nobody yet',
-                  // Two different facts, so both: when it is due and what it is
-                  // waiting on. (They used to be exclusive, which hid the phase
-                  // of exactly the measures a reader is most likely to be
-                  // looking for.)
-                  if (measure.isOverdue) 'overdue by ${measure.daysOverdue} days',
-                  if (measure.openPhase != null)
-                    'waiting on its ${measure.openPhase!.phaseLabel.toLowerCase()}',
-                ].join(' · '),
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }
@@ -653,67 +790,96 @@ class _Nonconformances extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final muted = AppColors.of(context).textMuted;
     final occurrences = action.nonconformances;
+
+    return KeyedSubtree(
+      key: ActionDetailScreen.nonconformancesKey,
+      child: AppDetailSection(
+        title:
+            occurrences.isEmpty ? 'Non-conformances' : 'Non-conformances (${occurrences.length})',
+        children: [
+          Text(
+            'The occurrences this Concern answers. One problem that shows up several times stays '
+            'one Concern, so a further occurrence is linked here rather than raised as another.',
+            style: AppTypography.floor(context)?.copyWith(color: muted),
+          ),
+          if (occurrences.isEmpty)
+            Text(
+              key: ActionDetailScreen.noNonconformancesKey,
+              'No Non-conformance is linked to this Concern.',
+              style: AppTypography.dense(context)?.copyWith(color: muted),
+            ),
+          for (final occurrence in occurrences)
+            _NonconformanceRow(action: action, occurrence: occurrence),
+        ],
+      ),
+    );
+  }
+}
+
+class _NonconformanceRow extends StatelessWidget {
+  const _NonconformanceRow({required this.action, required this.occurrence});
+
+  final Action action;
+  final LinkedNonconformance occurrence;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = AppColors.of(context).textMuted;
     final live = !const {'done', 'cancelled'}.contains(action.status);
 
-    return Column(
-      key: ActionDetailScreen.nonconformancesKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          occurrences.isEmpty ? 'Non-conformances' : 'Non-conformances (${occurrences.length})',
-          style: theme.textTheme.titleSmall,
-        ),
-        const SizedBox(height: Spacing.xs),
-        Text(
-          'The occurrences this Concern answers. One problem that shows up several times stays one '
-          'Concern, so a further occurrence is linked here rather than raised as another.',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: Spacing.sm),
-        if (occurrences.isEmpty)
-          Text(
-            key: ActionDetailScreen.noNonconformancesKey,
-            'No Non-conformance is linked to this Concern.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-        for (final occurrence in occurrences)
-          Card(
-            key: ActionDetailScreen.nonconformanceKey(occurrence.id),
-            margin: const EdgeInsets.only(bottom: Spacing.sm),
-            child: ListTile(
-              onTap: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
-              title: Text(occurrence.issueNo),
-              subtitle: Text(
-                [
-                  occurrence.productLabel,
-                  occurrence.defectCodeLabel,
-                  occurrence.quantityLabel,
-                ].join(' · '),
+    return InkWell(
+      key: ActionDetailScreen.nonconformanceKey(occurrence.id),
+      onTap: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    occurrence.issueNo,
+                    style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: Spacing.xxs),
+                  Text(
+                    [
+                      occurrence.productLabel,
+                      occurrence.defectCodeLabel,
+                      occurrence.quantityLabel,
+                    ].join(' · '),
+                    style: AppTypography.floor(context)?.copyWith(color: muted),
+                  ),
+                ],
               ),
-              trailing: occurrence.isSource
-                  ? TextButton(
-                      key: ActionDetailScreen.raisedFromKey,
-                      onPressed: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
-                      child: const Text('Raised from this'),
-                    )
-                  // Offered only while the Concern is still live: a link on a
-                  // closed problem is history, and an ended Action is not
-                  // offered its own transition controls either.
-                  : live
-                      ? TextButton(
-                          key: ActionDetailScreen.unlinkNonconformanceKey(occurrence.id),
-                          onPressed: () => context.go(
-                            '${Routes.actions}/${action.id}/nonconformances/'
-                            '${occurrence.id}/unlink',
-                          ),
-                          child: const Text('Unlink…'),
-                        )
-                      : const Icon(Icons.chevron_right),
             ),
-          ),
-      ],
+            const SizedBox(width: Spacing.sm),
+            if (occurrence.isSource)
+              TextButton(
+                key: ActionDetailScreen.raisedFromKey,
+                onPressed: () => context.go('${Routes.nonConformances}/${occurrence.id}'),
+                child: const Text('Raised from this'),
+              )
+            // Offered only while the Concern is still live: a link on a closed
+            // problem is history, and an ended Action is not offered its own
+            // transition controls either.
+            else if (live)
+              TextButton(
+                key: ActionDetailScreen.unlinkNonconformanceKey(occurrence.id),
+                onPressed: () => context.go(
+                  '${Routes.actions}/${action.id}/nonconformances/${occurrence.id}/unlink',
+                ),
+                child: const Text('Unlink…'),
+              )
+            else
+              Icon(Icons.chevron_right, color: muted),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -776,35 +942,28 @@ class _SafetyObservationSource extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final muted = AppColors.of(context).textMuted;
     final observation = action.safetyObservation!;
 
-    return Column(
+    return KeyedSubtree(
       key: ActionDetailScreen.safetyObservationKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Safety observation', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.xs),
-        Text(
-          'The observation this Action was raised from — what was seen, and how bad it could '
-          'have been.',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: Spacing.sm),
-        Card(
-          child: ListTile(
-            onTap: () => context.go('${Routes.safetyObservations}/${observation.id}'),
-            title: Text(
-              _observationCategoryLabels[observation.category] ?? observation.category,
-            ),
-            subtitle: Text(
-              '${_observationTypeLabels[observation.observationType] ?? observation.observationType} '
-              '· ${_severityPotentialLabels[observation.severityPotential] ?? observation.severityPotential}',
-            ),
-            trailing: const Icon(Icons.chevron_right),
+      child: AppDetailSection(
+        title: 'Safety observation',
+        children: [
+          Text(
+            'The observation this Action was raised from — what was seen, and how bad it could '
+            'have been.',
+            style: AppTypography.floor(context)?.copyWith(color: muted),
           ),
-        ),
-      ],
+          _SourceRow(
+            onTap: () => context.go('${Routes.safetyObservations}/${observation.id}'),
+            title: _observationCategoryLabels[observation.category] ?? observation.category,
+            subtitle:
+                '${_observationTypeLabels[observation.observationType] ?? observation.observationType} '
+                '· ${_severityPotentialLabels[observation.severityPotential] ?? observation.severityPotential}',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -822,30 +981,53 @@ class _SafetyIncidentSource extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final muted = AppColors.of(context).textMuted;
     final incident = action.safetyIncident!;
 
-    return Column(
+    return KeyedSubtree(
       key: ActionDetailScreen.safetyIncidentKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Safety incident', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.xs),
-        Text(
-          'The incident this Concern was raised from — its number and its severity, never who '
-          'was hurt or their diagnosis.',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: Spacing.sm),
-        Card(
-          child: ListTile(
-            onTap: () => context.go('${Routes.safetyIncidents}/${incident.id}'),
-            title: Text(incident.incidentNo),
-            subtitle: Text(_severityLabels[incident.severityLevel] ?? incident.severityLevel),
-            trailing: const Icon(Icons.chevron_right),
+      child: AppDetailSection(
+        title: 'Safety incident',
+        children: [
+          Text(
+            'The incident this Concern was raised from — its number and its severity, never who '
+            'was hurt or their diagnosis.',
+            style: AppTypography.floor(context)?.copyWith(color: muted),
           ),
-        ),
-      ],
+          _SourceRow(
+            onTap: () => context.go('${Routes.safetyIncidents}/${incident.id}'),
+            title: incident.incidentNo,
+            subtitle: _severityLabels[incident.severityLevel] ?? incident.severityLevel,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One linked record inside a source section: a name, the facts beneath it, and
+/// the chevron that says the row opens something. A `ListTile` with no content
+/// padding, which is the row this Screen has always drawn for a source record —
+/// the section around it is what changed in this pass, not the row.
+class _SourceRow extends StatelessWidget {
+  const _SourceRow({required this.onTap, required this.title, required this.subtitle});
+
+  final VoidCallback onTap;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = AppColors.of(context).textMuted;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      onTap: onTap,
+      title: Text(
+        title,
+        style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(subtitle, style: AppTypography.floor(context)?.copyWith(color: muted)),
+      trailing: Icon(Icons.chevron_right, color: muted),
     );
   }
 }

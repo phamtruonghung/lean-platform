@@ -8,6 +8,13 @@
 /// put someone on it. It shares [ChangePasswordBloc]; on success it asks
 /// [AccountBloc] to re-read the Account, and the cleared flag is what lets the
 /// redirect leave.
+///
+/// **The composition** (issue #396): the same bounded 460px card every platform
+/// state uses, the title and its sentence in the shared `AppPageHeader` rhythm,
+/// the two fields at the card's own `Spacing.lg` gutter with the failure line
+/// under them, and the two actions in a `Wrap` so a narrow box stacks them
+/// instead of squeezing them. A form on a card is the one screen here that needs
+/// its `SingleChildScrollView`: at 200% text the card is taller than a phone.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../theme.dart';
+import '../widgets/app_page_header.dart';
 import 'account_bloc.dart';
 import 'auth_gateway.dart';
 import 'change_password_bloc.dart';
@@ -22,6 +30,7 @@ import 'change_password_bloc.dart';
 class ChangePasswordScreen extends StatelessWidget {
   const ChangePasswordScreen({super.key});
 
+  static const ValueKey<String> cardKey = ValueKey<String>('change-password-screen-card');
   static const ValueKey<String> currentFieldKey = ValueKey<String>('change-password-screen-current');
   static const ValueKey<String> newFieldKey = ValueKey<String>('change-password-screen-new');
   static const ValueKey<String> failureKey = ValueKey<String>('change-password-screen-failure');
@@ -78,7 +87,7 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return BlocConsumer<ChangePasswordBloc, ChangePasswordState>(
       listener: (context, state) {
         if (state is ChangePasswordSucceeded) {
@@ -96,20 +105,23 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(Spacing.xl),
                 child: Card(
+                  key: ChangePasswordScreen.cardKey,
+                  // A `Card`'s own 4px margin would inset the block off the
+                  // bound it was given; the padding is the block's, and the
+                  // margin is zero (issue #396).
+                  margin: EdgeInsets.zero,
                   child: Padding(
                     padding: const EdgeInsets.all(Spacing.xl),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('Choose a new password', style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: Spacing.sm),
-                        Text(
-                          'An administrator reset your password, so the one you were given is '
-                          'temporary. Choose your own to continue.',
-                          style: theme.textTheme.bodyMedium,
+                        const AppPageHeader(
+                          title: 'Choose a new password',
+                          description: 'An administrator reset your password, so the one you '
+                              'were given is temporary. Choose your own to continue.',
                         ),
-                        const SizedBox(height: Spacing.md),
+                        const SizedBox(height: Spacing.lg),
                         TextField(
                           key: ChangePasswordScreen.currentFieldKey,
                           controller: _current,
@@ -136,22 +148,28 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
                             padding: const EdgeInsets.only(top: Spacing.md),
                             child: Text(
                               failure,
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(color: theme.colorScheme.error),
+                              style: AppTypography.dense(context)
+                                  ?.copyWith(color: palette.statusDanger),
                             ),
                           ),
-                        const SizedBox(height: Spacing.md),
-                        FilledButton(
-                          key: ChangePasswordScreen.submitKey,
-                          onPressed: awaiting ? null : () => _submit(state),
-                          child: Text(awaiting ? 'Saving…' : 'Change password'),
-                        ),
-                        const SizedBox(height: Spacing.sm),
-                        OutlinedButton(
-                          key: ChangePasswordScreen.signOutKey,
-                          onPressed: () =>
-                              context.read<AccountBloc>().add(const AccountSignOutRequested()),
-                          child: const Text('Sign out'),
+                        const SizedBox(height: Spacing.lg),
+                        Wrap(
+                          spacing: Spacing.sm,
+                          runSpacing: Spacing.sm,
+                          children: [
+                            FilledButton(
+                              key: ChangePasswordScreen.submitKey,
+                              onPressed: awaiting ? null : () => _submit(state),
+                              child: Text(awaiting ? 'Saving…' : 'Change password'),
+                            ),
+                            OutlinedButton(
+                              key: ChangePasswordScreen.signOutKey,
+                              onPressed: () => context
+                                  .read<AccountBloc>()
+                                  .add(const AccountSignOutRequested()),
+                              child: const Text('Sign out'),
+                            ),
+                          ],
                         ),
                       ],
                     ),

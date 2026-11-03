@@ -21,13 +21,14 @@ import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../widgets/app_dialog.dart';
 import 'capas_bloc.dart';
 
 class CapaOrgUnitFilterDialog extends StatelessWidget {
   const CapaOrgUnitFilterDialog({super.key});
 
-  static const ValueKey<String> allOrgUnitsKey = ValueKey<String>('capas-filter-all');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capas-filter-cancel');
+  static final ValueKey<String> allOrgUnitsKey = AppDialog.actionKey('all-org-units');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
 
   /// Opens the filter over the list. `showDialog` builds its route under the
   /// Navigator, which is not a descendant of the route-scoped
@@ -57,10 +58,29 @@ class CapaOrgUnitFilterDialog extends StatelessWidget {
     final state = context.watch<CapasBloc>().state;
     final selectedId = state is CapasLoaded ? state.orgUnitFilterId : null;
 
-    return AlertDialog(
-      title: const Text('Filter by Org Unit'),
-      content: SizedBox(
-        width: 420,
+    return AppDialog(
+      title: 'Filter by Org Unit',
+      // A picker: one thing chosen from a list (issue #398's four widths).
+      size: AppDialogSize.picker,
+      actions: [
+        // Clearing is this dialog's own act (primary, and therefore last);
+        // `Cancel` is the dismiss action `Esc` runs.
+        AppDialogAction(
+          id: 'all-org-units',
+          label: 'All Org Units',
+          onPressed: () {
+            context.read<CapasBloc>().add(const CapasOrgUnitFilterCleared());
+            Navigator.of(context).pop();
+          },
+        ),
+        AppDialogAction(
+          id: 'cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+      child: SizedBox(
         height: 420,
         child: OrgUnitChooser(
           selectedId: selectedId,
@@ -75,21 +95,6 @@ class CapaOrgUnitFilterDialog extends StatelessWidget {
           },
         ),
       ),
-      actions: [
-        TextButton(
-          key: allOrgUnitsKey,
-          onPressed: () {
-            context.read<CapasBloc>().add(const CapasOrgUnitFilterCleared());
-            Navigator.of(context).pop();
-          },
-          child: const Text('All Org Units'),
-        ),
-        TextButton(
-          key: cancelKey,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-      ],
     );
   }
 }

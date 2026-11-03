@@ -30,6 +30,7 @@ import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
 
@@ -49,16 +50,32 @@ abstract final class CapaWhyKeys {
   /// a `DialogPage` is not `barrierDismissible` (see `dialog_page.dart`): a
   /// refusal with no control of its own would leave a person tapping outside a
   /// dialog that never closes.
-  static const ValueKey<String> dismissKey = ValueKey<String>('capa-why-dismiss');
+  static final ValueKey<String> dismissKey = AppDialog.actionKey('back-to-the-capa');
 }
 
-/// The one way out every refusal here offers, and where it goes: back to the
-/// investigation the address was reached from.
-Widget _dismissButton(BuildContext context) => TextButton(
-      key: CapaWhyKeys.dismissKey,
-      onPressed: () => context.pop(),
-      child: const Text('Back to the CAPA'),
-    );
+/// One of these three addresses' refusals: why there is no form, and the one
+/// way back to the investigation the address was reached from.
+class _WhyRefusal extends StatelessWidget {
+  const _WhyRefusal({super.key, required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => AppDialog(
+        title: title,
+        description: message,
+        size: AppDialogSize.decision,
+        actions: [
+          AppDialogAction(
+            id: 'back-to-the-capa',
+            label: 'Back to the CAPA',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => context.pop(),
+          ),
+        ],
+      );
+}
 
 /// What this address says when it is not one the CAPA it names can answer — or
 /// null when it is, in which case the caller renders its own form.
@@ -81,51 +98,41 @@ Widget? capaWhyAddressRefusal(
         content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
       );
     case CapaDetailUnavailable(message: final message):
-      return AlertDialog(
+      return _WhyRefusal(
         key: CapaWhyKeys.notLoadedKey,
-        title: const Text('That CAPA could not be read'),
-        content: Text(message),
-        actions: [_dismissButton(context)],
+        title: 'That CAPA could not be read',
+        message: message,
       );
     case CapaDetailLoaded(capa: final capa):
       if (!capaChainOrder.contains(chain)) {
-        return AlertDialog(
+        return const _WhyRefusal(
           key: CapaWhyKeys.unknownChainKey,
-          title: const Text('That is not a chain'),
-          content: const Text(
-            'A CAPA reasons with two chains: why the problem happened, and why it was not detected.',
-          ),
-          actions: [_dismissButton(context)],
+          title: 'That is not a chain',
+          message:
+              'A CAPA reasons with two chains: why the problem happened, and why it was not detected.',
         );
       }
       if (!capa.isOpen) {
-        return AlertDialog(
+        return _WhyRefusal(
           key: CapaWhyKeys.closedKey,
-          title: const Text('This investigation is over'),
-          content: Text(
-            '${capa.capaNo} is ${capa.statusLabel.toLowerCase()}, so its chains are a record '
-            'rather than a worklist.',
-          ),
-          actions: [_dismissButton(context)],
+          title: 'This investigation is over',
+          message: '${capa.capaNo} is ${capa.statusLabel.toLowerCase()}, so its chains are a record '
+              'rather than a worklist.',
         );
       }
       if (!mayEditCapaChains(context, capa)) {
-        return AlertDialog(
+        return const _WhyRefusal(
           key: CapaWhyKeys.refusedKey,
-          title: const Text('Not yours to write'),
-          content: const Text(
-            "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
-            'its team.',
-          ),
-          actions: [_dismissButton(context)],
+          title: 'Not yours to write',
+          message: "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
+              'its team.',
         );
       }
       if (whyId != null && capa.whysIn(chain).every((why) => why.id != whyId)) {
-        return AlertDialog(
+        return const _WhyRefusal(
           key: CapaWhyKeys.missingWhyKey,
-          title: const Text('That Why is not in this chain'),
-          content: const Text('It may have been removed a moment ago by somebody else.'),
-          actions: [_dismissButton(context)],
+          title: 'That Why is not in this chain',
+          message: 'It may have been removed a moment ago by somebody else.',
         );
       }
       return null;
@@ -142,8 +149,8 @@ class CapaWhyDialog extends StatelessWidget {
   final String chain;
 
   static const ValueKey<String> statementKey = ValueKey<String>('capa-why-add-statement');
-  static const ValueKey<String> submitKey = ValueKey<String>('capa-why-add-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-why-add-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('add-it');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-why-add-failure');
 
   @override
@@ -156,9 +163,8 @@ class CapaWhyDialog extends StatelessWidget {
       chain: chain,
       title: 'Add a Why',
       submitLabel: 'Add it',
+      submitId: 'add-it',
       statementKey: statementKey,
-      submitKey: submitKey,
-      cancelKey: cancelKey,
       failureKey: failureKey,
       onSubmit: (statement) => context
           .read<CapaDetailBloc>()
@@ -175,8 +181,8 @@ class CapaWhyEditDialog extends StatelessWidget {
   final String whyId;
 
   static const ValueKey<String> statementKey = ValueKey<String>('capa-why-edit-statement');
-  static const ValueKey<String> submitKey = ValueKey<String>('capa-why-edit-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-why-edit-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('save-it');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-why-edit-failure');
 
   @override
@@ -192,9 +198,8 @@ class CapaWhyEditDialog extends StatelessWidget {
       chain: chain,
       title: 'Revise Why ${why.sequence}',
       submitLabel: 'Save it',
+      submitId: 'save-it',
       statementKey: statementKey,
-      submitKey: submitKey,
-      cancelKey: cancelKey,
       failureKey: failureKey,
       initial: why.statement,
       onSubmit: (statement) => context
@@ -215,8 +220,8 @@ class CapaWhyRemoveDialog extends StatefulWidget {
   final String chain;
   final String whyId;
 
-  static const ValueKey<String> confirmKey = ValueKey<String>('capa-why-remove-confirm');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-why-remove-cancel');
+  static final ValueKey<String> confirmKey = AppDialog.actionKey('remove-it');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-why-remove-failure');
 
   @override
@@ -270,48 +275,50 @@ class _CapaWhyRemoveDialogState extends State<CapaWhyRemoveDialog> {
 
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: Text('Remove Why ${why.sequence}?'),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                why.statement,
-                style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: Spacing.md),
-              Text(
-                'It is taken out of the chain for good, and the Whys after it move up one. '
-                'The rest of the investigation is not touched.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (_failure != null)
-                Padding(
-                  key: CapaWhyRemoveDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: 'Remove Why ${why.sequence}?',
+        // A decision, not a form: one sentence about what goes with it, and the
+        // act that cannot be undone (issue #398's four widths).
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: CapaWhyRemoveDialog.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: CapaWhyRemoveDialog.confirmKey,
+          AppDialogAction(
+            id: 'remove-it',
+            label: 'Remove it',
+            kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
-            child: const Text('Remove it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              why.statement,
+              style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+            ),
+            const SizedBox(height: Spacing.md),
+            Text(
+              'It is taken out of the chain for good, and the Whys after it move up one. '
+              'The rest of the investigation is not touched.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            if (_failure != null)
+              Padding(
+                key: CapaWhyRemoveDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -329,9 +336,8 @@ class _WhyForm extends StatefulWidget {
     required this.chain,
     required this.title,
     required this.submitLabel,
+    required this.submitId,
     required this.statementKey,
-    required this.submitKey,
-    required this.cancelKey,
     required this.failureKey,
     required this.onSubmit,
     this.initial,
@@ -340,9 +346,12 @@ class _WhyForm extends StatefulWidget {
   final String chain;
   final String title;
   final String submitLabel;
+
+  /// Names the submit action's `Key` ([AppDialog.actionKey]); the cancel action
+  /// is `cancel` on both addresses, because only one of them is ever open.
+  final String submitId;
+
   final ValueKey<String> statementKey;
-  final ValueKey<String> submitKey;
-  final ValueKey<String> cancelKey;
   final ValueKey<String> failureKey;
   final String? initial;
   final void Function(String statement) onSubmit;
@@ -400,57 +409,57 @@ class _WhyFormState extends State<_WhyForm> {
 
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: Text(widget.title),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${capaChainLabel(widget.chain)} — one step of the reasoning, in your own words.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: Spacing.md),
-              TextField(
-                key: widget.statementKey,
-                controller: _statement,
-                enabled: !_awaiting,
-                autofocus: true,
-                minLines: 2,
-                maxLines: 3,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'The Why',
-                  helperText: 'What you found, said so the next person can follow it.',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              if (_failure != null)
-                Padding(
-                  key: widget.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: widget.title,
+        // One field: a short form (issue #398's four widths).
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: widget.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: widget.submitKey,
+          AppDialogAction(
+            id: widget.submitId,
+            label: widget.submitLabel,
             onPressed: _complete ? _submit : null,
-            child: Text(widget.submitLabel),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${capaChainLabel(widget.chain)} — one step of the reasoning, in your own words.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: widget.statementKey,
+              controller: _statement,
+              enabled: !_awaiting,
+              autofocus: true,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'The Why',
+                helperText: 'What you found, said so the next person can follow it.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: widget.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -21,6 +21,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
@@ -39,8 +40,8 @@ class ActionMeasureDialog extends StatefulWidget {
   static const ValueKey<String> ownerKey = ValueKey<String>('action-measure-owner');
   static const ValueKey<String> dueDateKey = ValueKey<String>('action-measure-due-date');
   static const ValueKey<String> priorityKey = ValueKey<String>('action-measure-priority');
-  static const ValueKey<String> submitKey = ValueKey<String>('action-measure-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('action-measure-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('add');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('action-measure-failure');
 
   /// The address's own guards: the detail read has not answered yet, and the
@@ -110,15 +111,28 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
     final theme = Theme.of(context);
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text('Add a ${_label.toLowerCase()}'),
-        content: SizedBox(
-          width: 620,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
+      child: AppDialog(
+        title: 'Add a ${_label.toLowerCase()}',
+        // A long form: five fields and the Org Unit chooser (issue #398).
+        size: AppDialogSize.wide,
+        actions: [
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => context.pop(),
+          ),
+          AppDialogAction(
+            id: 'add',
+            label: 'Add the ${_label.toLowerCase()}',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
                 Text(
                   'Answering ${widget.concern.actionNo}: ${widget.concern.title}',
                   style: theme.textTheme.bodyMedium
@@ -228,22 +242,9 @@ class _ActionMeasureDialogState extends State<ActionMeasureDialog> {
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),
                   ),
-              ],
-            ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            key: ActionMeasureDialog.cancelKey,
-            onPressed: _awaiting ? null : () => context.pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: ActionMeasureDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text('Add the ${_label.toLowerCase()}'),
-          ),
-        ],
       ),
     );
   }

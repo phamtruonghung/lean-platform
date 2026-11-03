@@ -32,6 +32,8 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -293,16 +295,185 @@ class _Register extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final columns = _columns(context);
     return Center(
       child: AppPageFrame(
         maxWidth: CapasScreen.maxWidth,
-        child: ListView(
-          key: CapasScreen.listKey,
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.lg),
-          children: [
-            for (final capa in capas) _CapaRow(capa: capa),
-          ],
+        child: LayoutBuilder(
+          builder: (context, box) {
+            // The box this list was handed, never the window (the lesson of
+            // #105), and scaled by the reader's text size (WCAG 1.4.4).
+            final table =
+                box.maxWidth >= AppBreakpoints.effective(context, AppBreakpoints.registerTable);
+            if (!table) {
+              return ListView(
+                key: CapasScreen.listKey,
+                padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.lg),
+                children: [
+                  for (final capa in capas) _CapaRow(capa: capa),
+                ],
+              );
+            }
+            return ListView(
+              key: CapasScreen.listKey,
+              padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.lg),
+              children: [
+                Card(
+                  margin: EdgeInsets.zero,
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTableHeader(columns: columns),
+                      for (final capa in capas) _CapaTableRow(columns: columns, capa: capa),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
+      ),
+    );
+  }
+}
+
+/// The register's one column spec (issue #396's design pass): the band and every
+/// row are built from this list, so a label and its cells start at the same x.
+///
+/// The Effectiveness check column takes the slack beside the record's own name
+/// because that is the fact this Screen exists for: which investigations the
+/// plant owes an answer about, and when the answer falls due. The Status column
+/// states a measured `width` — it also carries the overdue chip, so it is
+/// measured across the two widest labels a reader can see at once.
+List<AppTableColumn> _columns(BuildContext context) => [
+      const AppTableColumn('Investigation', flex: 5),
+      const AppTableColumn('Org Unit', flex: 2),
+      const AppTableColumn('Effectiveness check', flex: 5),
+      AppTableColumn('Status', width: _statusColumnWidth(context)),
+    ];
+
+/// The widest pair of labels the Status column can hold at once — a status plus
+/// the `Overdue check` chip — in the chip's own style at the reader's text size,
+/// plus both chips' padding and the slot's gutter.
+double _statusColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  );
+  var widest = 0.0;
+  for (final status in capaStatuses.keys) {
+    painter.text = TextSpan(text: capaStatusLabel(status), style: Theme.of(context).textTheme.labelLarge);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  painter.text = TextSpan(text: 'Overdue check', style: Theme.of(context).textTheme.labelLarge);
+  painter.layout();
+  return widest + painter.width + Spacing.xxl + Spacing.md + Spacing.sm;
+}
+
+/// One investigation as a row of the register. Its own name and the facts that
+/// place it — number, method, how many are on the team — are the first cell, two
+/// lines; the check it is waiting on is the second; the state is the third.
+class _CapaTableRow extends StatelessWidget {
+  const _CapaTableRow({required this.columns, required this.capa});
+
+  final List<AppTableColumn> columns;
+  final Capa capa;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final floor = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
+    final verifiedAt = capa.effectivenessVerifiedAt;
+
+    Widget shrinkWrapTargets(Widget child) => Theme(
+          data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          child: child,
+        );
+
+    // The fact this Screen exists for, in the same three shapes the card draws:
+    // a check that has fallen due, one that is due, and one already recorded.
+    final Widget check;
+    if (verifiedAt != null) {
+      check = Text(
+        '${capaEffectivenessOutcomeLabel(capa.effectivenessOutcome!)}, '
+        'recorded by ${capa.effectivenessVerifiedBy?.name ?? 'somebody'}.',
+        key: CapasScreen.rowVerifiedKey(capa.id),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: floor,
+      );
+    } else if (capa.effectivenessCheckDueAt != null) {
+      check = Text(
+        capa.effectivenessCheckOverdue
+            ? 'The effectiveness check was due on ${capa.effectivenessCheckDueAt}.'
+            : 'The effectiveness check is due on ${capa.effectivenessCheckDueAt}.',
+        key: CapasScreen.rowDueKey(capa.id),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: dense?.copyWith(
+          color: capa.effectivenessCheckOverdue ? palette.statusDanger : palette.textMuted,
+        ),
+      );
+    } else {
+      check = Text(
+        'The effectiveness check falls due ${capa.effectivenessCheckDelayDays} days '
+        'after the Concern closes.',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: floor,
+      );
+    }
+
+    return KeyedSubtree(
+      key: CapasScreen.rowKey(capa.id),
+      child: AppTableRow(
+        columns: columns,
+        onTap: () => context.go('${Routes.actions}/capas/${capa.id}'),
+        cells: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(capa.capaNo, style: floor),
+              const SizedBox(height: Spacing.xxs),
+              DisclosingText(
+                capa.title,
+                style: dense?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: Spacing.xxs),
+              Text(
+                [capa.methodLabel, '${capa.team.length} on the team'].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: floor,
+              ),
+            ],
+          ),
+          DisclosingText(capa.orgUnitName, style: dense?.copyWith(color: palette.textMuted)),
+          check,
+          shrinkWrapTargets(
+            Wrap(
+              spacing: Spacing.xs,
+              runSpacing: Spacing.xxs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                // The one mark this list exists to make: the check is due and
+                // the day has passed. A chip rather than a colour, so it reads
+                // at a glance and survives a colour-blind reader.
+                if (capa.effectivenessCheckOverdue)
+                  StatusChip(
+                    key: CapasScreen.rowOverdueKey(capa.id),
+                    label: 'Overdue check',
+                    tone: StatusTone.warning,
+                  ),
+                StatusChip(label: capa.statusLabel, tone: capa.statusTone),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

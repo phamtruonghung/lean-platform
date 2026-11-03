@@ -34,7 +34,9 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
@@ -176,23 +178,100 @@ class CapaDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<CapaDetailBloc>().state;
+    final loaded = state is CapaDetailLoaded ? state.capa : null;
 
     return Scaffold(
-      body: switch (state) {
-        CapaDetailLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
-        CapaDetailUnavailable(message: final message) => PlatformFailureState(
-            key: failedKey,
-            title: 'That CAPA could not be read',
-            message: message,
-            retryKey: retryKey,
-            onRetry: () => context.read<CapaDetailBloc>().add(CapaDetailStarted(capaId)),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Head(capa: loaded),
+          Expanded(
+            child: switch (state) {
+              CapaDetailLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
+              CapaDetailUnavailable(message: final message) => PlatformFailureState(
+                  key: failedKey,
+                  title: 'That CAPA could not be read',
+                  message: message,
+                  retryKey: retryKey,
+                  onRetry: () => context.read<CapaDetailBloc>().add(CapaDetailStarted(capaId)),
+                ),
+              CapaDetailLoaded(capa: final capa) => _CapaDetail(
+                  capa: capa,
+                  notice: state.notice,
+                  failure: state.mutationFailure,
+                ),
+            },
           ),
-        CapaDetailLoaded(capa: final capa) => _CapaDetail(
-            capa: capa,
-            notice: state.notice,
-            failure: state.mutationFailure,
+        ],
+      ),
+    );
+  }
+}
+
+/// The page's own title row (issue #396's design pass): the way back — to the
+/// Concern this investigation answers, which is where the Screen was opened
+/// from — the report, and `AppPageHeader('CAPA')`.
+///
+/// It sits above the state switch, so a load and a failed read carry the same
+/// title row and back control as the record does, and the report appears only
+/// once there is a record to print.
+class _Head extends StatelessWidget {
+  const _Head({this.capa});
+
+  final Capa? capa;
+
+  @override
+  Widget build(BuildContext context) {
+    final loaded = capa;
+    final concern = loaded?.concern;
+    // A CAPA whose Concern could not be read (a row written outside the
+    // service, which the link's own uniqueness makes impossible through the
+    // API) falls back to the log rather than to a dead address.
+    final backTarget = concern == null ? Routes.actions : '${Routes.actions}/${concern.id}';
+
+    return Center(
+      child: AppPageFrame(
+        maxWidth: CapaDetailScreen.maxWidth,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  key: CapaDetailScreen.backKey,
+                  onPressed: () => context.go(backTarget),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
+                  icon: const Icon(Icons.arrow_back),
+                  label: Text(
+                    concern == null ? 'Back to the action log' : 'Back to ${concern.actionNo}',
+                  ),
+                ),
+              ),
+              const SizedBox(height: Spacing.sm),
+              AppPageHeader(
+                title: 'CAPA',
+                actions: [
+                  // The report, offered to every reader rather than gated: the
+                  // record itself is a Site-wide read (ADR-0009), and a reader
+                  // who may read the investigation may hand its report to an
+                  // auditor.
+                  if (loaded != null)
+                    TextButton.icon(
+                      key: CapaDetailScreen.reportKey,
+                      onPressed: () => context.go(Routes.capaReport(loaded.id)),
+                      icon: const Icon(Icons.description_outlined),
+                      label: const Text('The report'),
+                    ),
+                ],
+              ),
+            ],
           ),
-      },
+        ),
+      ),
     );
   }
 }
@@ -210,56 +289,92 @@ class _CapaDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final concern = capa.concern;
-    // Where "back" goes is the Concern, because that is where this Screen was
-    // opened from and where the problem lives. A CAPA whose Concern could not
-    // be read (a row written outside the service, which the link's own
-    // uniqueness makes impossible through the API) falls back to the log rather
-    // than to a dead address.
-    final backTarget = concern == null ? Routes.actions : '${Routes.actions}/${concern.id}';
 
     return Center(
       child: AppPageFrame(
         maxWidth: CapaDetailScreen.maxWidth,
-        child: ListView(
+        // A `SingleChildScrollView`, not a `ListView`, for the reason the Action
+        // detail page gives: an investigation is a document of a bounded number
+        // of sections, so every one of them is built whether or not it is on
+        // screen.
+        child: SingleChildScrollView(
           key: CapaDetailScreen.loadedKey,
-          padding: const EdgeInsets.all(Spacing.xl),
-          children: [
-            // A `Wrap`, not a `Row`: the back label, the report link and the
-            // status chip are wider together than an 800px window, and a `Wrap`
-            // puts what does not fit on its own line rather than overflowing.
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: Spacing.sm,
-              runSpacing: Spacing.sm,
-              children: [
-                TextButton.icon(
-                  key: CapaDetailScreen.backKey,
-                  onPressed: () => context.go(backTarget),
-                  icon: const Icon(Icons.arrow_back),
-                  label: Text(
-                    concern == null ? 'Back to the action log' : 'Back to ${concern.actionNo}',
-                  ),
-                ),
-                // The report, offered to every reader rather than gated: the
-                // record itself is a Site-wide read (ADR-0009), and a reader
-                // who may read the investigation may hand its report to an
-                // auditor.
-                TextButton.icon(
-                  key: CapaDetailScreen.reportKey,
-                  onPressed: () => context.go(Routes.capaReport(capa.id)),
-                  icon: const Icon(Icons.description_outlined),
-                  label: const Text('The report'),
-                ),
-                StatusChip(label: capa.statusLabel, tone: capa.statusTone),
-              ],
-            ),
+          // The page head above this view already pads its own top and the
+          // space beneath itself.
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SummaryCard(capa: capa, notice: notice, failure: failure),
+              const SizedBox(height: Spacing.md),
+            _Team(capa: capa),
             const SizedBox(height: Spacing.md),
-            Text(capa.capaNo, style: theme.textTheme.labelLarge),
+            _Problem(capa: capa),
+            const SizedBox(height: Spacing.md),
+            // The fishbone before the chains, because that is the order the
+            // team works in: the candidate causes are reasoned about first, and
+            // a chain begins from the one the evidence confirmed (issue #213).
+            _Fishbone(capa: capa),
+            const SizedBox(height: Spacing.md),
+            _Chains(capa: capa),
+            if (concern != null) ...[
+              const SizedBox(height: Spacing.md),
+              _ConcernCard(concern: concern),
+              const SizedBox(height: Spacing.md),
+              _ConcernMeasures(concern: concern),
+            ],
+            const SizedBox(height: Spacing.md),
+            // Last, because it is the last thing that happens: the
+            // investigation has finished, the Concern has closed, and somebody
+            // else has verified that the fix held (issue #211).
+            _Effectiveness(capa: capa),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The summary card (issue #396's design pass): what the record *is* before
+/// anything about how it is going — its number, its title, the chips that place
+/// it (the discipline it is run as, the Org Unit, the date it is due, the state
+/// once it has ended), and one line each for what the last write did and why the
+/// last one did not land.
+///
+/// The notices live here rather than inside a section because there are two
+/// kinds of write this Screen makes (a chain's, #210, and the effectiveness
+/// check's, #211) and only one notice between them.
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.capa, this.notice, this.failure});
+
+  final Capa capa;
+  final String? notice;
+  final String? failure;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              capa.capaNo,
+              style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+            ),
             const SizedBox(height: Spacing.xs),
-            Text(capa.title, style: theme.textTheme.headlineSmall),
+            Text(
+              capa.title,
+              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: Spacing.sm),
             Wrap(
               spacing: Spacing.sm,
@@ -272,52 +387,25 @@ class _CapaDetail extends StatelessWidget {
                 Chip(label: Text('${capa.methodLabel} investigation')),
                 Chip(label: Text(capa.orgUnitName)),
                 if (capa.dueDate != null) Chip(label: Text('due ${capa.dueDate}')),
-                if (!capa.isOpen) StatusChip(label: capa.statusLabel, tone: capa.statusTone),
+                StatusChip(label: capa.statusLabel, tone: capa.statusTone),
               ],
             ),
-            const SizedBox(height: Spacing.lg),
-            // What the last write did, and why the last one did not land —
-            // above the sections rather than inside one of them, because there
-            // are now two kinds of write this Screen makes (a chain's, #210,
-            // and the effectiveness check's, #211) and only one notice.
-            if (notice != null)
-              Padding(
+            if (notice != null) ...[
+              const SizedBox(height: Spacing.md),
+              Text(
+                notice!,
                 key: CapaDetailScreen.noticeKey,
-                padding: const EdgeInsets.only(bottom: Spacing.md),
-                child: Text(notice!, style: theme.textTheme.bodyMedium),
+                style: AppTypography.dense(context),
               ),
-            if (failure != null)
-              Padding(
-                key: CapaDetailScreen.failureKey,
-                padding: const EdgeInsets.only(bottom: Spacing.md),
-                child: Text(
-                  failure!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ),
-            _Team(capa: capa),
-            const SizedBox(height: Spacing.lg),
-            _Problem(capa: capa),
-            const SizedBox(height: Spacing.lg),
-            // The fishbone before the chains, because that is the order the
-            // team works in: the candidate causes are reasoned about first, and
-            // a chain begins from the one the evidence confirmed (issue #213).
-            _Fishbone(capa: capa),
-            const SizedBox(height: Spacing.lg),
-            _Chains(capa: capa),
-            if (concern != null) ...[
-              const SizedBox(height: Spacing.lg),
-              _ConcernCard(concern: concern),
-              const SizedBox(height: Spacing.lg),
-              _ConcernMeasures(concern: concern),
             ],
-            const SizedBox(height: Spacing.lg),
-            // Last, because it is the last thing that happens: the
-            // investigation has finished, the Concern has closed, and somebody
-            // else has verified that the fix held (issue #211).
-            _Effectiveness(capa: capa),
+            if (failure != null) ...[
+              const SizedBox(height: Spacing.sm),
+              Text(
+                failure!,
+                key: CapaDetailScreen.failureKey,
+                style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
+              ),
+            ],
           ],
         ),
       ),
@@ -354,12 +442,11 @@ class _Effectiveness extends StatelessWidget {
     final verifiedAt = capa.effectivenessVerifiedAt;
     final dueAt = capa.effectivenessCheckDueAt;
 
-    return Column(
+    return KeyedSubtree(
       key: CapaDetailScreen.effectivenessKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Effectiveness', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.xs),
+      child: AppDetailSection(
+        title: 'Effectiveness',
+        children: [
         Text(
           'A CAPA closes only when both chains have a confirmed root cause, its Concern is '
           'closed, and somebody holding Quality authority other than its team lead has '
@@ -455,7 +542,8 @@ class _Effectiveness extends StatelessWidget {
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -473,19 +561,18 @@ class _Team extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final team = capa.team;
-    return Column(
+    return KeyedSubtree(
       key: CapaDetailScreen.teamKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Team', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.sm),
+      child: AppDetailSection(
+        title: 'Team',
+        children: [
         if (team.isEmpty)
           Text(
             key: CapaDetailScreen.noTeamKey,
             'Nobody is on this investigation yet.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.dense(context)
+                ?.copyWith(color: AppColors.of(context).textMuted),
           ),
         for (final member in team)
           Padding(
@@ -494,10 +581,11 @@ class _Team extends StatelessWidget {
               member.employeeId == capa.teamLead?.employeeId
                   ? '${member.name} · team lead'
                   : member.name,
-              style: theme.textTheme.bodyMedium,
+              style: AppTypography.dense(context),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -514,20 +602,20 @@ class _Problem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final problem = capa.problemStatement;
-    return Column(
+    return KeyedSubtree(
       key: CapaDetailScreen.problemKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('The problem', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.sm),
-        Text(
-          key: problem == null ? CapaDetailScreen.noProblemKey : null,
-          problem ?? 'Nobody has written the problem description yet.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: problem == null ? theme.colorScheme.onSurfaceVariant : null,
+      child: AppDetailSection(
+        title: 'The problem',
+        children: [
+          Text(
+            key: problem == null ? CapaDetailScreen.noProblemKey : null,
+            problem ?? 'Nobody has written the problem description yet.',
+            style: AppTypography.dense(context)?.copyWith(
+              color: problem == null ? theme.colorScheme.onSurfaceVariant : null,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -569,12 +657,11 @@ class _Fishbone extends StatelessWidget {
     final theme = Theme.of(context);
     final mayWrite = capa.isOpen && mayEditCapaChains(context, capa);
 
-    return Column(
+    return KeyedSubtree(
       key: CapaDetailScreen.fishboneKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Candidate causes', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.xs),
+      child: AppDetailSection(
+        title: 'Candidate causes',
+        children: [
         Text(
           'The fishbone: what the team suspected, by 6M category, and what the evidence said '
           'about each one. The chain that follows begins with the cause it confirmed.',
@@ -604,7 +691,8 @@ class _Fishbone extends StatelessWidget {
           _Bone(capa: capa, category: category, mayWrite: mayWrite),
           const SizedBox(height: Spacing.md),
         ],
-      ],
+        ],
+      ),
     );
   }
 }
@@ -796,12 +884,11 @@ class _Chains extends StatelessWidget {
     final theme = Theme.of(context);
     final mayWrite = capa.isOpen && mayEditCapaChains(context, capa);
 
-    return Column(
+    return KeyedSubtree(
       key: CapaDetailScreen.chainsKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Root cause', style: theme.textTheme.titleSmall),
-        const SizedBox(height: Spacing.xs),
+      child: AppDetailSection(
+        title: 'Root cause',
+        children: [
         Text(
           'Two chains, each ending at one confirmed root cause: why the problem happened, '
           'and why it was not detected.',
@@ -831,7 +918,8 @@ class _Chains extends StatelessWidget {
           _Chain(capa: capa, chain: chain, mayWrite: mayWrite),
           const SizedBox(height: Spacing.md),
         ],
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1044,13 +1132,44 @@ class _ConcernCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return KeyedSubtree(
       key: CapaDetailScreen.concernKey,
-      child: ListTile(
-        onTap: () => context.go('${Routes.actions}/${concern.id}'),
-        title: Text('The Concern: ${concern.actionNo}'),
-        subtitle: Text(concern.title),
-        trailing: StatusChip(label: concern.statusLabel, tone: concern.statusTone),
+      child: AppDetailSection(
+        title: 'The Concern',
+        children: [
+          InkWell(
+            onTap: () => context.go('${Routes.actions}/${concern.id}'),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'The Concern: ${concern.actionNo}',
+                          style: AppTypography.dense(context)
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: Spacing.xxs),
+                        Text(
+                          concern.title,
+                          style: AppTypography.floor(context)
+                              ?.copyWith(color: AppColors.of(context).textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: Spacing.sm),
+                  StatusChip(label: concern.statusLabel, tone: concern.statusTone),
+                  Icon(Icons.chevron_right, color: AppColors.of(context).textMuted),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1072,17 +1191,13 @@ class _ConcernMeasures extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final measures = concern.measures;
-    return Column(
+    return KeyedSubtree(
       key: CapaDetailScreen.measuresKey,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          measures.isEmpty
-              ? 'What the Concern has done'
-              : 'What the Concern has done (${measures.length})',
-          style: theme.textTheme.titleSmall,
-        ),
-        const SizedBox(height: Spacing.xs),
+      child: AppDetailSection(
+        title: measures.isEmpty
+            ? 'What the Concern has done'
+            : 'What the Concern has done (${measures.length})',
+        children: [
         Text(
           'The containment (D3), the countermeasures (D5-D6) and the preventive actions (D7) are '
           "the Concern's own, recorded once in the action log — this is where they are read, not "
@@ -1139,7 +1254,8 @@ class _ConcernMeasures extends StatelessWidget {
               ],
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 }

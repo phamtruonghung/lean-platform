@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
 
@@ -44,11 +45,19 @@ class ActionPhaseCompleteDialogHost extends StatelessWidget {
           key: loadingKey,
           content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
         ),
-      ActionDetailUnavailable(message: final message) => AlertDialog(
+      ActionDetailUnavailable(message: final message) => AppDialog(
           key: notLoadedKey,
-          title: const Text('That Action could not be read'),
-          content: Text(message),
-          actions: [TextButton(onPressed: () => context.pop(), child: const Text('Back'))],
+          title: 'That Action could not be read',
+          description: message,
+          size: AppDialogSize.decision,
+          actions: [
+            AppDialogAction(
+              id: 'close',
+              label: 'Back',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: () => context.pop(),
+            ),
+          ],
         ),
       ActionDetailLoaded(action: final action) => action.openPhase?.phase != phase
           ? _refusal(context, action)
@@ -62,17 +71,21 @@ class ActionPhaseCompleteDialogHost extends StatelessWidget {
   /// 409 uses.
   Widget _refusal(BuildContext context, Action action) {
     final waitingOn = action.openPhase;
-    return AlertDialog(
+    return AppDialog(
       key: notOpenKey,
-      title: const Text('That is not the open phase'),
-      content: Text(
-        waitingOn == null
-            ? 'This Action has no open phase left.'
-            : 'This Action is waiting on its ${waitingOn.phaseLabel.toLowerCase()} phase, not its '
-                '${actionPhaseLabel(phase).toLowerCase()}.',
-      ),
+      title: 'That is not the open phase',
+      description: waitingOn == null
+          ? 'This Action has no open phase left.'
+          : 'This Action is waiting on its ${waitingOn.phaseLabel.toLowerCase()} phase, not its '
+              '${actionPhaseLabel(phase).toLowerCase()}.',
+      size: AppDialogSize.decision,
       actions: [
-        TextButton(onPressed: () => context.pop(), child: const Text('Back to the Action')),
+        AppDialogAction(
+          id: 'close',
+          label: 'Back to the Action',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => context.pop(),
+        ),
       ],
     );
   }
@@ -85,8 +98,8 @@ class ActionPhaseCompleteDialog extends StatefulWidget {
 
   static const ValueKey<String> noteKey = ValueKey<String>('action-phase-note');
   static const ValueKey<String> outcomeKey = ValueKey<String>('action-phase-outcome');
-  static const ValueKey<String> submitKey = ValueKey<String>('action-phase-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('action-phase-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('complete');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('action-phase-failure');
   static ValueKey<String> outcomeOptionKey(String wire) =>
       ValueKey<String>('action-phase-outcome-$wire');
@@ -149,99 +162,99 @@ class _ActionPhaseCompleteDialogState extends State<ActionPhaseCompleteDialog> {
     final label = _phase.phaseLabel;
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text('Complete the $label'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
+      child: AppDialog(
+        title: 'Complete the $label',
+        // A short form with a radio pair on a Check (issue #398's four widths).
+        size: AppDialogSize.form,
+        actions: [
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => context.pop(),
+          ),
+          AppDialogAction(
+            id: 'complete',
+            label: 'Complete the $label',
+            onPressed: _complete && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                switch (_phase.phase) {
+                  'plan' => 'What will be different, and how you will know. The target belongs '
+                      'here, in the plant\'s own words.',
+                  'do' => 'What was actually done.',
+                  'check' => 'What was measured, against what the Plan named.',
+                  _ => 'Which standard now holds it, so the fix outlives the person who made it.',
+                },
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: ActionPhaseCompleteDialog.noteKey,
+                controller: _note,
+                enabled: !_awaiting,
+                minLines: 2,
+                maxLines: 5,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: _isCheck ? 'What was measured' : 'What was done',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              if (_isCheck) ...[
+                const SizedBox(height: Spacing.md),
+                Text('Did it hold?', style: theme.textTheme.titleSmall),
+                const SizedBox(height: Spacing.xxs),
                 Text(
-                  switch (_phase.phase) {
-                    'plan' => 'What will be different, and how you will know. The target belongs '
-                        'here, in the plant\'s own words.',
-                    'do' => 'What was actually done.',
-                    'check' => 'What was measured, against what the Plan named.',
-                    _ => 'Which standard now holds it, so the fix outlives the person who made it.',
-                  },
+                  'Answering that it did not opens the next cycle rather than closing the '
+                  'Action, and keeps this round on the record.',
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ActionPhaseCompleteDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 5,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: _isCheck ? 'What was measured' : 'What was done',
-                    border: const OutlineInputBorder(),
+                const SizedBox(height: Spacing.sm),
+                RadioGroup<String>(
+                  groupValue: _outcome,
+                  // Guarded rather than nulled out: `RadioGroup.onChanged` is
+                  // not nullable, and the tiles below are disabled anyway
+                  // while a completion is in flight.
+                  onChanged: (outcome) {
+                    if (_awaiting) return;
+                    setState(() => _outcome = outcome);
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final entry in actionCheckOutcomeLabels.entries)
+                        RadioListTile<String>(
+                          key: ActionPhaseCompleteDialog.outcomeOptionKey(entry.key),
+                          value: entry.key,
+                          title: Text(entry.value),
+                          enabled: !_awaiting,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                    ],
                   ),
                 ),
-                if (_isCheck) ...[
-                  const SizedBox(height: Spacing.md),
-                  Text('Did it hold?', style: theme.textTheme.titleSmall),
-                  const SizedBox(height: Spacing.xxs),
-                  Text(
-                    'Answering that it did not opens the next cycle rather than closing the '
-                    'Action, and keeps this round on the record.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  RadioGroup<String>(
-                    groupValue: _outcome,
-                    // Guarded rather than nulled out: `RadioGroup.onChanged` is
-                    // not nullable, and the tiles below are disabled anyway
-                    // while a completion is in flight.
-                    onChanged: (outcome) {
-                      if (_awaiting) return;
-                      setState(() => _outcome = outcome);
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (final entry in actionCheckOutcomeLabels.entries)
-                          RadioListTile<String>(
-                            key: ActionPhaseCompleteDialog.outcomeOptionKey(entry.key),
-                            value: entry.key,
-                            title: Text(entry.value),
-                            enabled: !_awaiting,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: ActionPhaseCompleteDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
               ],
-            ),
+              if (_failure != null)
+                Padding(
+                  key: ActionPhaseCompleteDialog.failureKey,
+                  padding: const EdgeInsets.only(top: Spacing.md),
+                  child: Text(
+                    _failure!,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                  ),
+                ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            key: ActionPhaseCompleteDialog.cancelKey,
-            onPressed: _awaiting ? null : () => context.pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: ActionPhaseCompleteDialog.submitKey,
-            onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text('Complete the $label'),
-          ),
-        ],
       ),
     );
   }
