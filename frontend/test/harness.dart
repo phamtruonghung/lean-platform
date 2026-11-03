@@ -4537,6 +4537,12 @@ class FakeWire {
   Map<String, List<Map<String, dynamic>>> skillCoverage;
   int skillCoverageStatus;
 
+  /// When set, a `GET .../skill-coverage` read hangs until the test completes
+  /// it — the same device [skillsGate] is, so a test can hold a Site's report
+  /// open and measure the page's own loading state (issue #394: the frame that
+  /// used to throw "Vertical viewport was given unbounded height").
+  Completer<void>? skillCoverageGate;
+
   /// Every Site id a coverage report was asked for, in the order the
   /// requests reached the wire.
   final List<String> skillCoverageRequests = [];
@@ -8936,6 +8942,7 @@ class FakeWire {
         if (path.startsWith('/api/people/sites/') && path.endsWith('/skill-coverage')) {
           final siteId = path.split('/')[4];
           skillCoverageRequests.add(siteId);
+          if (skillCoverageGate != null) await skillCoverageGate!.future;
           if (skillCoverageStatus != 200) {
             return http.Response(
               jsonEncode({'message': 'Skill coverage is unavailable.'}),

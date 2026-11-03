@@ -11,12 +11,23 @@
 /// "Active" switch, offered only while correcting an existing row, is the one
 /// way this dialog ever reaches `isActive`; there is no delete anywhere on
 /// this Screen.
+///
+/// **Drawn in `AppDialog` (issue #394, ADR-0058).** Six fields is a short form,
+/// so [AppDialogSize.form] (520) — the ADR's own mapping — rather than the 460
+/// this file used to hand an `AlertDialog` through a `SizedBox` inside its
+/// content. The shell owns the width, the pinned action row and the sheet at a
+/// narrow box or a large text scale; this file owns its fields, their keys, the
+/// failure's copy and the enable condition on Add/Save, all unchanged. The two
+/// action keys are `AppDialog.actionKey` of this dialog's ids, the one rename
+/// (#398's pattern) the PR lists.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'skill.dart';
 import 'skills_bloc.dart';
 
@@ -34,9 +45,16 @@ class SkillFormDialog extends StatefulWidget {
   static const ValueKey<String> revalidationMonthsKey =
       ValueKey<String>('skill-form-revalidation-months');
   static const ValueKey<String> activeKey = ValueKey<String>('skill-form-active');
-  static const ValueKey<String> submitKey = ValueKey<String>('skill-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('skill-form-cancel');
+
+  /// The two actions, named through the dialog shell that now draws them
+  /// (`AppDialog.actionKey`, ADR-0058): same accessors, the shell's key values.
+  static final ValueKey<String> submitKey = AppDialog.actionKey('skill-form-submit');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('skill-form-cancel');
+
   static const ValueKey<String> failureKey = ValueKey<String>('skill-form-failure');
+
+  static const String _submitId = 'skill-form-submit';
+  static const String _cancelId = 'skill-form-cancel';
 
   /// Opens the form over the skill catalogue. `showDialog` builds its route
   /// under the Navigator, which is not a descendant of the route-scoped
@@ -153,100 +171,97 @@ class _SkillFormDialogState extends State<SkillFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final failure = _failure;
     return BlocListener<SkillsBloc, SkillsState>(
       listener: _onSkillsChanged,
-      child: AlertDialog(
-        title: Text(_isCorrection ? 'Correct skill' : 'Add skill'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: SkillFormDialog.codeKey,
-                  controller: _code,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Code', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SkillFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: SkillFormDialog.categoryKey,
-                  initialValue: _skillCategory,
-                  decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
-                  items: [
-                    for (final category in skillCategories)
-                      DropdownMenuItem<String>(value: category, child: Text(category)),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _skillCategory = value!),
-                ),
-                const SizedBox(height: Spacing.md),
-                SwitchListTile(
-                  key: SkillFormDialog.requiresCertificationKey,
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Requires certification'),
-                  value: _requiresCertification,
-                  onChanged:
-                      _awaiting ? null : (value) => setState(() => _requiresCertification = value),
-                ),
-                const SizedBox(height: Spacing.sm),
-                TextField(
-                  key: SkillFormDialog.revalidationMonthsKey,
-                  controller: _revalidationMonths,
-                  enabled: !_awaiting,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Revalidation period, in months (optional)',
-                    helperText: 'Left blank, this skill never needs revalidating.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_isCorrection) ...[
-                  const SizedBox(height: Spacing.md),
-                  SwitchListTile(
-                    key: SkillFormDialog.activeKey,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active'),
-                    value: _isActive,
-                    onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: SkillFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: _isCorrection ? 'Correct skill' : 'Add skill',
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: SkillFormDialog.cancelKey,
+          AppDialogAction(
+            id: SkillFormDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SkillFormDialog.submitKey,
+          AppDialogAction(
+            id: SkillFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add skill'),
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add skill')),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: SkillFormDialog.codeKey,
+              controller: _code,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Code', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SkillFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: SkillFormDialog.categoryKey,
+              initialValue: _skillCategory,
+              decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+              items: [
+                for (final category in skillCategories)
+                  DropdownMenuItem<String>(value: category, child: Text(category)),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _skillCategory = value!),
+            ),
+            const SizedBox(height: Spacing.md),
+            SwitchListTile(
+              key: SkillFormDialog.requiresCertificationKey,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Requires certification'),
+              value: _requiresCertification,
+              onChanged: _awaiting ? null : (value) => setState(() => _requiresCertification = value),
+            ),
+            const SizedBox(height: Spacing.sm),
+            TextField(
+              key: SkillFormDialog.revalidationMonthsKey,
+              controller: _revalidationMonths,
+              enabled: !_awaiting,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Revalidation period, in months (optional)',
+                helperText: 'Left blank, this skill never needs revalidating.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_isCorrection) ...[
+              const SizedBox(height: Spacing.md),
+              SwitchListTile(
+                key: SkillFormDialog.activeKey,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                value: _isActive,
+                onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
+              ),
+            ],
+            if (failure != null)
+              Padding(
+                key: SkillFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  failure,
+                  style: AppTypography.dense(context)
+                      ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

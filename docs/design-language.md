@@ -790,7 +790,13 @@ measured height — with nothing overflowing at twice the text. `formTwoColumn` 
 is still named and spent by nothing: the maintenance forms it was argued for are
 dialogs, whose box is 420 to 640 wide (section 11), so their field grid never
 reaches 900 and the number waits for a form's field grid that adopts it — pinned
-then, at its edge, by that Screen's own test. Work orders is
+then, at its edge, by that Screen's own test. **#394 measures the same arithmetic
+from a second Module:** the two People registers it re-laid-out — skill coverage
+and the Training record register — join the ten maintenance ones on
+`registerTable` (700), and `test/people_skills_training_geometry_test.dart` pins the
+band's own 32px, a band label and its cells within 1px on both a start-aligned and
+an end-aligned column, the 44px floor a row that opens a record carries, and cards
+at a 700 window and at twice the text. Work orders is
 deliberately not on 700: its seven columns
 keep their own 800, argued in section 6, and its own tests cover both sides of
 that number. Home's grid carries a private `_CardGrid.twoColumnWidth` of 640,
@@ -1056,6 +1062,27 @@ needs to run.
 its enable conditions (`onPressed: null`); its own failure text, inline in `child`
 (§12); what each callback does, including popping or going (the primitive pops
 nothing for it); and `DialogPage`'s barrier flag.
+
+### Which width, measured — the People Module's six (#394)
+
+A width is a question about how much the dialog has to hold, and S8 answered it
+for the six dialogs its seven Screens open. Recorded here so the next slice can
+recognise its own case rather than re-argue one:
+
+| dialog | opened by | size | why |
+|---|---|---|---|
+| `job_role_form_dialog` | Job roles | `form` (520) | three fields, closed by one act |
+| `skill_form_dialog` | Skills | `form` (520) | six fields — the top of "short form" |
+| `training_raise_dialog` | Training records, the Training record | `wide` (640) | a long form with a picker pane of its own |
+| `training_trainee_dialog` | the Training record | `picker` (460) | one Employee chosen from a Directory |
+| `training_answer_dialog` | the Training record, Training to confirm | `picker` (460) | one of three choices, plus the drawing pad |
+| `skill_qualified_employees_dialog` | Skills | `wide` (640) | a scope tree over a list of answers |
+
+The number is the question "how much does this hold", read off §11's table; a
+file's previous `SizedBox` inside an `AlertDialog` was a local guess and is not
+carried over. None of the forms reaches `formTwoColumn` (900) — 640 is the
+widest shell — so a form in a dialog is one column at every box, by construction
+rather than by a missing branch (§10).
 
 ## 12. Feedback: one place per outcome, and what is never a snack
 

@@ -19,6 +19,32 @@
 ///
 /// Opened with `showDialog` and an explicit Bloc hand-off, as every dialog in
 /// this Module is (`AttendanceRecordDialog.open`'s own pattern).
+///
+/// **The module's one long form, in `AppDialog` (issues #394 and #398,
+/// ADR-0058).** This is the multi-section form pattern the slice's brief asks
+/// for, and every part of it comes from a primitive rather than from this file:
+///
+/// - the shell, the width and the sheet behaviour are `AppDialog`'s, at
+///   [AppDialogSize.wide] (640) — a long form with its own picker, not the 520
+///   an `AlertDialog` used to be told through a `SizedBox` inside its content;
+/// - **the submit row is pinned**, because `AppDialog` gives the content area
+///   the scroll and keeps the actions under it: on a short box the fields
+///   scroll while Raise/Cancel stay reachable, which is the "sticky submit at
+///   wide" the brief names and was not true of the `AlertDialog` version;
+/// - **the fields are grouped under section headings** — what the training was,
+///   who gave it and why, and where it was given — so five fields and a tree
+///   read as three questions rather than as one column of boxes;
+/// - **the field grid is one column at every box**, by construction rather than
+///   by a missing branch: the widest shell is 640 and `formTwoColumn` is 900, so
+///   the grid's own breakpoint (`AppBreakpoints.formTwoColumn`, §10) can never
+///   be reached inside a dialog. The brief's "one column under 700px" holds
+///   everywhere this form is drawn.
+///
+/// Nothing about the form's behaviour moved: the same controllers, the same
+/// gate on submit, the same Bloc events, the same field keys, the same helper
+/// texts, the same failure line in the same place. The two action keys are the
+/// shell's (`AppDialog.actionKey` of this dialog's own ids), the rename #398
+/// established.
 library;
 
 import 'package:flutter/material.dart';
@@ -26,8 +52,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'employee.dart';
 import 'org_unit.dart';
@@ -47,11 +75,18 @@ class TrainingRaiseDialog extends StatefulWidget {
   static const ValueKey<String> trainedOnKey = ValueKey<String>('training-raise-trained-on');
   static const ValueKey<String> durationKey = ValueKey<String>('training-raise-duration');
   static const ValueKey<String> objectiveKey = ValueKey<String>('training-raise-objective');
-  static const ValueKey<String> submitKey = ValueKey<String>('training-raise-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('training-raise-cancel');
+
+  /// The two actions, named through the dialog shell that now draws them
+  /// (`AppDialog.actionKey`, ADR-0058): same accessors, the shell's key values.
+  static final ValueKey<String> submitKey = AppDialog.actionKey(_submitId);
+  static final ValueKey<String> cancelKey = AppDialog.actionKey(_cancelId);
+
   static const ValueKey<String> failureKey = ValueKey<String>('training-raise-failure');
   static ValueKey<String> expandKey(String id) => ValueKey<String>('training-raise-expand-$id');
   static ValueKey<String> orgUnitKey(String id) => ValueKey<String>('training-raise-org-unit-$id');
+
+  static const String _submitId = 'training-raise-submit';
+  static const String _cancelId = 'training-raise-cancel';
 
   /// The trainer picker's own name, which its `Key`s are derived from.
   static const String trainerFieldName = 'training-raise-trainer';
@@ -208,8 +243,7 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dialog = _buildDialog(context, theme);
+    final dialog = _buildDialog(context);
     if (_correcting) {
       return BlocListener<TrainingDetailBloc, TrainingDetailState>(
         listener: _onRecordChanged,
@@ -219,123 +253,149 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
     return BlocListener<TrainingBloc, TrainingState>(listener: _onRegisterChanged, child: dialog);
   }
 
-  Widget _buildDialog(BuildContext context, ThemeData theme) {
-    return AlertDialog(
-      title: Text(_correcting ? 'Correct training record' : 'Raise training record'),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                key: TrainingRaiseDialog.titleKey,
-                controller: _title,
-                enabled: !_awaiting,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  helperText: 'What the training was.',
-                  border: OutlineInputBorder(),
-                ),
+  Widget _buildDialog(BuildContext context) {
+    final failure = _failure;
+    return AppDialog(
+      title: _correcting ? 'Correct training record' : 'Raise training record',
+      size: AppDialogSize.wide,
+      actions: [
+        AppDialogAction(
+          id: TrainingRaiseDialog._cancelId,
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+        ),
+        AppDialogAction(
+          id: TrainingRaiseDialog._submitId,
+          label: _correcting
+              ? (_awaiting ? 'Correcting…' : 'Correct training record')
+              : (_awaiting ? 'Raising…' : 'Raise training record'),
+          onPressed: _complete && !_awaiting ? _submit : null,
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const _SectionHeading('What it was'),
+          TextField(
+            key: TrainingRaiseDialog.titleKey,
+            controller: _title,
+            enabled: !_awaiting,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Title',
+              helperText: 'What the training was.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: Spacing.md),
+          AppDateField(
+            key: TrainingRaiseDialog.trainedOnKey,
+            name: 'training-raise-trained-on',
+            label: 'Trained on',
+            helperText: 'The day it was given.',
+            value: _trainedOn,
+            enabled: !_awaiting,
+            onChanged: (value) => setState(() => _trainedOn = value),
+          ),
+          const SizedBox(height: Spacing.md),
+          TextField(
+            key: TrainingRaiseDialog.durationKey,
+            controller: _duration,
+            enabled: !_awaiting,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Duration (hours)',
+              helperText: 'How long it lasted, e.g. 1.5.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: Spacing.lg),
+          const _SectionHeading('Who gave it, and why'),
+          AppSearchField<Employee>(
+            name: TrainingRaiseDialog.trainerFieldName,
+            label: 'Trainer (optional)',
+            helperText: 'Who gave it, found in the Directory.',
+            value: _trainer,
+            enabled: !_awaiting,
+            onChanged: (employee) => setState(() => _trainer = employee),
+            onSelected: (employee) => setState(() => _trainer = employee),
+            fetchSuggestions: (term) async {
+              final token = context.read<AuthGateway>().currentAccessToken;
+              if (token == null) return const [];
+              return context.read<PeopleApi>().fetchEmployees(token, search: term, limit: 10);
+            },
+            suggestionBuilder: (context, employee) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+              child: Text(employee.displayName),
+            ),
+            idOf: (employee) => employee.id,
+            displayStringFor: (employee) => employee.displayName,
+          ),
+          const SizedBox(height: Spacing.md),
+          TextField(
+            key: TrainingRaiseDialog.objectiveKey,
+            controller: _objective,
+            enabled: !_awaiting,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Objective (optional)',
+              helperText: 'What the training set out to teach.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          if (!_correcting) ...[
+            const SizedBox(height: Spacing.lg),
+            const _SectionHeading('Where it was given'),
+            _OrgUnitPicker(
+              selectedId: _orgUnitId,
+              enabled: !_awaiting,
+              onSelected: (node) => setState(() => _orgUnitId = node.id),
+            ),
+          ],
+          if (failure != null)
+            Padding(
+              key: TrainingRaiseDialog.failureKey,
+              padding: const EdgeInsets.only(top: Spacing.md),
+              child: Text(
+                failure,
+                style: AppTypography.dense(context)
+                    ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),
               ),
-              const SizedBox(height: Spacing.md),
-              AppDateField(
-                key: TrainingRaiseDialog.trainedOnKey,
-                name: 'training-raise-trained-on',
-                label: 'Trained on',
-                helperText: 'The day it was given.',
-                value: _trainedOn,
-                enabled: !_awaiting,
-                onChanged: (value) => setState(() => _trainedOn = value),
-              ),
-              const SizedBox(height: Spacing.md),
-              TextField(
-                key: TrainingRaiseDialog.durationKey,
-                controller: _duration,
-                enabled: !_awaiting,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Duration (hours)',
-                  helperText: 'How long it lasted, e.g. 1.5.',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: Spacing.md),
-              AppSearchField<Employee>(
-                name: TrainingRaiseDialog.trainerFieldName,
-                label: 'Trainer (optional)',
-                helperText: 'Who gave it, found in the Directory.',
-                value: _trainer,
-                enabled: !_awaiting,
-                onChanged: (employee) => setState(() => _trainer = employee),
-                onSelected: (employee) => setState(() => _trainer = employee),
-                fetchSuggestions: (term) async {
-                  final token = context.read<AuthGateway>().currentAccessToken;
-                  if (token == null) return const [];
-                  return context.read<PeopleApi>().fetchEmployees(token, search: term, limit: 10);
-                },
-                suggestionBuilder: (context, employee) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-                  child: Text(employee.displayName),
-                ),
-                idOf: (employee) => employee.id,
-                displayStringFor: (employee) => employee.displayName,
-              ),
-              const SizedBox(height: Spacing.md),
-              TextField(
-                key: TrainingRaiseDialog.objectiveKey,
-                controller: _objective,
-                enabled: !_awaiting,
-                minLines: 2,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Objective (optional)',
-                  helperText: 'What the training set out to teach.',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: Spacing.md),
-              if (!_correcting) ...[
-                Text('Where it was given', style: theme.textTheme.titleSmall),
-                const SizedBox(height: Spacing.xs),
-                _OrgUnitPicker(
-                  selectedId: _orgUnitId,
-                  enabled: !_awaiting,
-                  onSelected: (node) => setState(() => _orgUnitId = node.id),
-                ),
-              ],
-              if (_failure != null)
-                Padding(
-                  key: TrainingRaiseDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A section's own heading inside a long form: the same weight a section title
+/// carries on a detail page, so the form reads as three questions. It is not
+/// `AppDetailSection` — that is a card on a page, and a dialog's content is
+/// already inside one.
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Spacing.sm),
+      child: Semantics(
+        header: true,
+        container: true,
+        child: Text(
+          title,
+          style: AppTypography.dense(context)?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.of(context).textPrimary,
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          key: TrainingRaiseDialog.cancelKey,
-          onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          key: TrainingRaiseDialog.submitKey,
-          onPressed: _complete && !_awaiting ? _submit : null,
-          child: Text(
-            _correcting
-                ? (_awaiting ? 'Correcting…' : 'Correct training record')
-                : (_awaiting ? 'Raising…' : 'Raise training record'),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -501,7 +561,7 @@ class _PickerMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.all(Spacing.md),
       child: Column(
@@ -510,7 +570,7 @@ class _PickerMessage extends StatelessWidget {
         children: [
           Text(
             message,
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
           ),
           if (onRetry != null) ...[
             const SizedBox(height: Spacing.xs),
