@@ -1099,8 +1099,8 @@ dialog's barrier is a message nobody can read.
 
 A `SnackBar` is one line, one duration, at the bottom of the window and gone
 before a second reader looks, which is measured against its two users in `lib/`:
-`maintenance/floor_screen.dart` (three calls, at `:137`, `:167` and `:197`) and
-`platform/change_password_dialog.dart` (`:36`). All three report a recorded act whose
+`maintenance/floor_screen.dart` (three calls, at `:138`, `:168` and `:198`) and
+`platform/change_password_dialog.dart` (`:47`). All four report a recorded act whose
 effect is already visible. That is the only thing a snack is for: **an
 acknowledgement of an act whose effect is already on the page.** Anything else is a
 banner.
