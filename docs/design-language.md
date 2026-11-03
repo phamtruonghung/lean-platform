@@ -612,6 +612,97 @@ None of these is a taste. Each has a measured reason or a standard behind it.
   ignores that setting. Home's `_HomeCard` is the example of all three.
 - **Contrast**, the table below, every pair measured.
 
+### The keyboard: where `Tab` goes, and what `Enter` and `Esc` mean
+
+One policy, so a reader who never touches the pointer meets the same rules on
+every Screen (issue #401). Each line names the code that holds it, because a rule
+written only here is a rule nobody can be held to.
+
+- **Every control a keyboard can reach is a stop, in reading order.** A register
+  row that opens a record is the stop — the row's own `InkWell`, wrapped in
+  `AppFocusRing` — and the controls inside it come next. Nothing that only a
+  pointer can operate is left in a page: rows, tiles, Destinations and dialog
+  actions all activate on `Enter` or `Space`.
+- **The focus ring is one widget.** `AppFocusRing` draws 2px of
+  `AppPalette.focusRing` over a control's own bounds as a
+  `foregroundDecoration`, so focus moves no pixel of layout, and only under
+  `FocusHighlightMode.traditional`, so a click leaves no ring behind. A
+  Destination, a tappable row and the skip control all wear it. The two surfaces
+  that already drew their own ring from the same token (`AppStatTile`'s card
+  shape, the KPI catalogue's row) are unchanged and equivalent.
+- **`Esc` is the dialog's.** `AppDialog` maps it to `DismissIntent` and runs the
+  dialog's own dismiss action — not a blind pop — and with that action disabled
+  it does nothing, exactly like the button (§11).
+- **Focus is trapped while a dialog is open, and given back when it closes.**
+  The **route** is the focus scope — every `showDialog` route is one — and it
+  restores focus to the control that opened it. `AppDialog` adds no scope of its
+  own; it only binds `Esc` to its own dismiss action, and a redundant `FocusScope`
+  would be a second trap that has to stay in step with the framework's.
+- **The Shell owns the tab order across the seam.** The skip control, every
+  control the sidebar draws (the Destinations in their groups' order, then the
+  account footer) and then the Screen's own stops form **one run**: `Tab` past a
+  Screen's last control lands on "Skip to content", the last chrome control hands
+  back to the Screen's first, and `Shift+Tab` walks the same chain backwards.
+  `PlatformShell` implements it in `_onTraversalKey` and returns
+  `KeyEventResult.ignored` for every press that is not at a seam, so the order
+  *inside* a Screen, the dialog trap and the ring are still the framework's.
+  Why it cannot be left to the framework is measured in the subsection below.
+- **`Enter` in a single-line field submits that form's primary action.**
+  `AppFormSubmit` wraps a form (`SignInScreen` and `ChangePasswordDialog` today)
+  and handles the key only when the focus is inside a single-line `EditableText`,
+  so a multi-line field keeps its newline and a focused button keeps its own
+  action — `Enter` on a button is that button's activation, never the form's
+  primary. The rule is a `Focus.onKeyEvent` rather than a `Shortcuts` layer
+  because a `Shortcuts` layer between a focused button and the app's own
+  shortcuts swallows the button's activation (measured: the button stopped
+  firing). `onSubmitted` stays as well, for a soft keyboard's own action key; on
+  a hardware `Enter` in the pinned image it is not reached, and this is.
+- **The skip control comes before the Shell's own chrome.** "Skip to content" is
+  drawn at the top-left of the Shell in a `Stack`, invisible until it takes
+  focus (`Opacity` 0 plus `IgnorePointer`, so it never eats a click on the brand
+  mark) and 44px when it does. Activating it moves focus to the first control the
+  Screen offers, so a reader does not walk the Destinations to reach the page.
+- **The current Destination says so.** The selected item is a
+  `Semantics(container: true, selected: …)` node — the shape Flutter's own
+  `NavigationRail` uses — so the tint, the weight and the 3px mark are not the
+  only carriers of "you are here".
+
+### Why the Shell walks the chrome itself, measured
+
+The framework's own traversal was tried first, and it does not hold in this
+composition. Both numbers below were read in the pinned image at 1280x1000 on
+`/work-orders`:
+
+- **A Screen's run never reached the sidebar.** Measured on the tree this policy
+  replaces: sixteen `Tab` presses visited the register's ten controls and returned
+  to the first — the Screen is a `Navigator` route, and the route's focus scope is
+  where the walk ends.
+- **The order across the two regions is not the order a reader sees.** The
+  reading-order policy sorts by geometry, and the sidebar is a
+  `SingleChildScrollView` that lays every Destination out whether or not it is on
+  screen: items below the fold sit at `y > 1000`, so the policy placed `Meters`,
+  `Job plans`, `Action log` and the rest **after** the register's
+  `work-order-actions-101`. Dumping that sorted order is what settled the
+  question — the interleaving is not a bug in one widget, it is what "reading
+  order" means for a scrolling column beside a page.
+
+Two mechanisms were prototyped and removed before this one: a
+`TraversalEdgeBehavior.parentScope` route (a Screen's controls are in a scope the
+Shell owns, so `parentScope.nextFocus()` lands back inside the same Screen) and a
+direct `requestFocus` from the key handler (measured: it landed on alternate
+presses only, because the sidebar's scroll-follow lays the newly focused item out
+on the same frame). The Shell therefore names the chain itself — the widget
+build order, which is the order the reader sees — and moves focus **after** the
+frame (`addPostFrameCallback`), which landed on every press in the same
+measurement.
+
+What this costs, stated plainly: the chrome's order is the Shell's, so a new
+region of the sidebar must be built inside `_Sidebar` to join the run; and the
+Shell reads the Screen's stops through the app's own `ReadingOrderTraversalPolicy`
+(a thin subclass in `shell.dart`), so a Screen whose internal order the policy
+gets wrong would hand over at the wrong end — the same failure the policy already
+has inside that Screen.
+
 ## 9. Contrast, measured
 
 WCAG 2.x relative luminance, the formula in `frontend/test/contrast.dart`,

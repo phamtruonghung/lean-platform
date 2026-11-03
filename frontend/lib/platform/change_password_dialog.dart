@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../theme.dart';
+import '../widgets/app_form_submit.dart';
 import 'auth_gateway.dart';
 import 'change_password_bloc.dart';
 
@@ -97,40 +98,48 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
           content: SizedBox(
             width: 420,
             child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    key: ChangePasswordDialog.currentFieldKey,
-                    controller: _current,
-                    enabled: !awaiting,
-                    obscureText: true,
-                    autofocus: true,
-                    decoration: const InputDecoration(labelText: 'Current password'),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  TextField(
-                    key: ChangePasswordDialog.newFieldKey,
-                    controller: _new,
-                    enabled: !awaiting,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'New password',
-                      helperText: 'At least ${PeopleApi.minimumPasswordLength} characters.',
+              // `Enter` in either field submits (issue #401): both are
+              // single-line, the form has one primary act, and a keyboard reader
+              // should not have to reach for the button. Null while the request
+              // is in flight, the same null both buttons carry.
+              child: AppFormSubmit(
+                onSubmit: awaiting ? null : () => _submit(state),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      key: ChangePasswordDialog.currentFieldKey,
+                      controller: _current,
+                      enabled: !awaiting,
+                      obscureText: true,
+                      autofocus: true,
+                      decoration: const InputDecoration(labelText: 'Current password'),
                     ),
-                    onSubmitted: (_) => _submit(state),
-                  ),
-                  if (failure != null)
-                    Padding(
-                      key: ChangePasswordDialog.failureKey,
-                      padding: const EdgeInsets.only(top: Spacing.md),
-                      child: Text(
-                        failure,
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                    const SizedBox(height: Spacing.md),
+                    TextField(
+                      key: ChangePasswordDialog.newFieldKey,
+                      controller: _new,
+                      enabled: !awaiting,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'New password',
+                        helperText: 'At least ${PeopleApi.minimumPasswordLength} characters.',
                       ),
+                      onSubmitted: (_) => _submit(state),
                     ),
-                ],
+                    if (failure != null)
+                      Padding(
+                        key: ChangePasswordDialog.failureKey,
+                        padding: const EdgeInsets.only(top: Spacing.md),
+                        child: Text(
+                          failure,
+                          style:
+                              theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -45,6 +45,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'app_focus_ring.dart';
 
 /// Which edge a column's content sits against.
 enum AppColumnAlign { start, end }
@@ -175,11 +176,17 @@ class AppTableRow extends StatelessWidget {
       ),
     );
     if (onTap != null) {
-      content = InkWell(
-        onTap: onTap,
-        hoverColor: palette.rowHoverFill,
-        splashFactory: NoSplash.splashFactory,
-        child: content,
+      // A row that opens a record is a keyboard stop (issue #401): an `InkWell`
+      // is focusable and `Enter`/`Space` activate it, and [AppFocusRing] is what
+      // makes the stop visible — the same 2px ring a Destination or a button
+      // wears, traced over this row's own square bounds.
+      content = AppFocusRing(
+        child: InkWell(
+          onTap: onTap,
+          hoverColor: palette.rowHoverFill,
+          splashFactory: NoSplash.splashFactory,
+          child: content,
+        ),
       );
     }
     return Container(

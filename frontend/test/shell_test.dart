@@ -123,12 +123,17 @@ Widget _harness({
 }
 
 BoxDecoration? _highlightOf(WidgetTester tester, String label) {
-  final container = tester.widget<Container>(
-    find.descendant(
-      of: find.byKey(ValueKey('nav-item-$label')),
-      matching: find.byType(Container),
-    ),
-  );
+  // The fill is the Destination's own `Container`. There can be more than one
+  // inside a nav item since issue #401 (`AppFocusRing` wraps the item), so the
+  // one asked for is the one that paints a decoration.
+  final container = tester
+      .widgetList<Container>(
+        find.descendant(
+          of: find.byKey(ValueKey('nav-item-$label')),
+          matching: find.byType(Container),
+        ),
+      )
+      .firstWhere((candidate) => candidate.decoration != null);
   return container.decoration as BoxDecoration?;
 }
 
