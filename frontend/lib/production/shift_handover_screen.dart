@@ -65,6 +65,16 @@ import 'handover_format.dart';
 import 'handover_vocabulary.dart';
 import 'shift_handover_bloc.dart';
 
+/// The horizontal room a section's field row gives up before it is measured
+/// (issue #440): the scrolled form's own `Spacing.lg` inset on each side, plus
+/// `AppDetailSection`'s `Spacing.lg` body padding on each side.
+///
+/// The pinned bar and the field grid decide "wide" on the same box, so the page
+/// box is compared against the grid's own point minus this inset. Measured
+/// through the router at 1x: a 940px page hands its field rows 876, and four
+/// `Spacing.lg`s is exactly the difference.
+const double _formInset = 4 * Spacing.lg;
+
 class ShiftHandoverScreen extends StatelessWidget {
   const ShiftHandoverScreen({
     super.key,
@@ -229,10 +239,14 @@ class _LoadedState extends State<_Loaded> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Narrow is the form's own two-column point, scaled by the reader's
-            // text size: below it the fields stack, and the anchors replace the
-            // pinned bar (WCAG 1.4.4 — #379 and #381 were both a breakpoint
-            // read without the scale).
-            final narrow = constraints.maxWidth <
+            // text size and measured on the box the field grid is itself given
+            // (issue #440): the page less the form's own inset. Comparing the
+            // page box instead drew the pinned bar over stacked fields for a
+            // 64px band of windows (page 900..964), which is the opposite of
+            // `docs/design-language.md`'s "below the form's two-column box,
+            // anchors instead" (WCAG 1.4.4 — #379 and #381 were both a
+            // breakpoint read without the scale).
+            final narrow = constraints.maxWidth - _formInset <
                 AppBreakpoints.effective(context, AppBreakpoints.formTwoColumn);
 
             // One submit control in the tree, whichever place is right for the

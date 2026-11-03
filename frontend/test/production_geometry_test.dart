@@ -372,6 +372,51 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('across the band #440 named, the pinned bar is drawn exactly when the fields share '
+        'a row: not at 1200, yes at 1240', (tester) async {
+      // The bar and the field grid decide "wide" on the same box now: the page
+      // less the form's own 64px inset (the scroll view's `Spacing.lg` each side
+      // plus `AppDetailSection`'s). A 1200 window hands the page 940 and its
+      // field rows 876, under the form's 900 two-column point; a 1240 window
+      // hands them 916, over it. Comparing the page box instead drew the bar at
+      // 1200 over stacked fields — the residue of #389, measured in #440.
+      for (final (width, wide) in [(1200.0, false), (1240.0, true)]) {
+        await _pump(tester, at: _handoverAddress, width: width, drafted: true, height: 1000);
+
+        final bar = find.byKey(ShiftHandoverScreen.submitBarKey);
+        final anchors = find.byKey(ShiftHandoverScreen.anchorsKey);
+        final submit = find.byKey(ShiftHandoverScreen.submitKey);
+        final sharedRow = tester
+                .getTopLeft(find.byKey(ShiftHandoverScreen.machineAbnormalityKey('a1')))
+                .dy -
+            tester.getTopLeft(find.byKey(ShiftHandoverScreen.machineStateKey('a1'))).dy;
+
+        expect(
+          (sharedRow.abs() < 0.5),
+          wide,
+          reason: 'at $width the field grid is ${wide ? 'two across' : 'stacked'}',
+        );
+        expect(
+          bar,
+          wide ? findsOneWidget : findsNothing,
+          reason: 'at $width the bar is ${wide ? 'drawn' : 'not drawn — the fields are stacked'}',
+        );
+        expect(
+          anchors,
+          wide ? findsNothing : findsOneWidget,
+          reason: 'at $width the anchors are ${wide ? 'not drawn' : 'in the header'}',
+        );
+        // The one act lives in whichever place the box made right.
+        expect(
+          find.descendant(of: wide ? bar : find.byKey(ShiftHandoverScreen.loadedKey), matching: submit),
+          findsOneWidget,
+          reason: 'at $width the one act is inside the ${wide ? 'bar' : 'form'}',
+        );
+        expect(tester.getSize(submit).height, greaterThanOrEqualTo(AppTouchTarget.min));
+        expect(tester.takeException(), isNull, reason: 'handover at $width');
+      }
+    });
+
     testWidgets('at a text scale of 2, at 1280, 900 and at 700, nothing overflows, the narrow shape '
         'is taken, the fields are still there and the act is still reachable', (tester) async {
       for (final width in [1280.0, 900.0, 700.0]) {
