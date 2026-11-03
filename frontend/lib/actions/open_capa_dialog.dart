@@ -27,6 +27,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
@@ -41,8 +42,8 @@ class OpenCapaDialog extends StatefulWidget {
   static const ValueKey<String> loadingKey = ValueKey<String>('open-capa-loading');
   static const ValueKey<String> descriptionKey = ValueKey<String>('open-capa-description');
   static const ValueKey<String> teamLeadKey = ValueKey<String>('open-capa-team-lead');
-  static const ValueKey<String> submitKey = ValueKey<String>('open-capa-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('open-capa-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('open');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('open-capa-failure');
   static const ValueKey<String> noMembersKey = ValueKey<String>('open-capa-no-members');
 
@@ -124,25 +125,52 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
     // decision taken before `/me` answered would be a decision taken on a
     // half-known Account. The server refuses either way; this says why.
     if (!holdsQualityAuthority(context, widget.concern.orgUnitId)) {
-      return AlertDialog(
+      // A refusal with a way out: the address is a `DialogPage`, which is not
+      // barrier-dismissible, so a sentence with no action would be a dead end
+      // (the trap `docs/design-language.md` §11 records).
+      return AppDialog(
         key: OpenCapaDialog.refusedKey,
-        content: const Text(
-          "Opening a CAPA needs Quality authority at this Concern's Org Unit.",
-        ),
+        title: 'Opening a CAPA needs authority',
+        size: AppDialogSize.decision,
+        actions: [
+          AppDialogAction(
+            id: 'close',
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => context.pop(),
+          ),
+        ],
+        child: const Text("Opening a CAPA needs Quality authority at this Concern's Org Unit."),
       );
     }
 
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text('Open a CAPA on ${widget.concern.actionNo}'),
-        content: SizedBox(
-          width: 620,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
+      child: AppDialog(
+        title: 'Open a CAPA on ${widget.concern.actionNo}',
+        // A long form with two pickers and a chip row (issue #398's widths).
+        size: AppDialogSize.wide,
+        actions: [
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => context.pop(),
+          ),
+          AppDialogAction(
+            id: 'open',
+            label: 'Open the CAPA',
+            // Anything is enough: an investigation with no team and no
+            // description yet is a real state, so nothing here blocks a caller
+            // who has decided the problem needs one.
+            onPressed: _awaiting ? null : _submit,
+          ),
+        ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
                 Text(
                   '${widget.concern.title} — an 8D investigation, in the action log, on this '
                   'Concern. Its containments, countermeasures and preventive actions are the '
@@ -243,25 +271,9 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),
                   ),
-              ],
-            ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            key: OpenCapaDialog.cancelKey,
-            onPressed: _awaiting ? null : () => context.pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: OpenCapaDialog.submitKey,
-            // Anything is enough: an investigation with no team and no
-            // description yet is a real state, so nothing here blocks a caller
-            // who has decided the problem needs one.
-            onPressed: _awaiting ? null : _submit,
-            child: const Text('Open the CAPA'),
-          ),
-        ],
       ),
     );
   }

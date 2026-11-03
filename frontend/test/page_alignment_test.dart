@@ -186,9 +186,18 @@ const _pages = <_Page>[
   _Page('/safety/body-parts', 'lib/safety/body_parts_screen.dart', 'Body parts',
       'Where on the body an injury was'),
   _Page('/actions/capas/801/report', 'lib/actions/capa_report_screen.dart',
-      'The guard keeps working loose',
+      'CAPA report',
       'The 8D record of this investigation',
       inset: Spacing.xl),
+  // The two Actions detail Screens (issue #396's design pass). Both used to be
+  // excluded here — "its title is the record's own title, not a page heading" —
+  // and neither is any more: each now leads with `AppPageHeader('Action')` /
+  // `AppPageHeader('CAPA')` and carries the record's identity in a summary card
+  // beneath it, so the page head and the card under it start at the frame's own
+  // left edge like any other page's. The first card's own text sits at the
+  // card's `Spacing.lg` padding, inside the default 20px row bound.
+  _Page('/actions/501', 'lib/actions/action_detail_screen.dart', 'Action', ''),
+  _Page('/actions/capas/801', 'lib/actions/capa_detail_screen.dart', 'CAPA', ''),
   // The attendance-to-confirm worklist (issue #250). Its rows are plain
   // `ListTile`s, not `Card`s — the same shape `attendance_picker_screen.dart`'s
   // own rows take — so only the title/description half of this audit
@@ -227,10 +236,6 @@ const _pages = <_Page>[
 /// nor the table above, and on a stale entry here whose file has been renamed or
 /// deleted.
 const _excluded = <String, String>{
-  'lib/actions/action_detail_screen.dart':
-      "its title is the Action's own title, not a page heading",
-  'lib/actions/capa_detail_screen.dart':
-      "its title is the CAPA's own title, not a page heading",
   'lib/people/employee_detail_screen.dart':
       "its title is the Employee's own name, not a page heading",
   'lib/maintenance/work_order_detail_screen.dart':
@@ -301,6 +306,13 @@ FakeWire _wire() => FakeWire(
       },
       actions: {
         '1': [actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose')],
+      },
+      // The two Actions detail pages (issue #396), so each renders its summary
+      // card rather than a failed read and the card assertion actually runs. The
+      // CAPA both detail pages read is the one the report's own fixture below
+      // already provides.
+      actionDetails: {
+        '501': actionJson('501', 'AC-HCM-2026-00001', 'Guard keeps working loose'),
       },
       // One KPI (ADR-0055), so the KPI catalogue, Review and Targets pages render
       // their rows rather than an empty state and the row assertions actually run.

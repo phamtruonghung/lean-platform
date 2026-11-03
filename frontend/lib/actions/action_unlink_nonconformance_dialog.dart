@@ -22,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
 
@@ -91,8 +92,8 @@ class ActionUnlinkNonconformanceDialog extends StatefulWidget {
   final String concernId;
   final LinkedNonconformance occurrence;
 
-  static const ValueKey<String> submitKey = ValueKey<String>('action-unlink-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('action-unlink-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('unlink');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('keep-it-linked');
   static const ValueKey<String> failureKey = ValueKey<String>('action-unlink-failure');
 
   @override
@@ -143,51 +144,52 @@ class _ActionUnlinkNonconformanceDialogState extends State<ActionUnlinkNonconfor
 
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Unlink this Non-conformance'),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(occurrence.issueNo, style: theme.textTheme.titleMedium),
-              const SizedBox(height: Spacing.xs),
-              Text(
-                '${occurrence.productLabel} · ${occurrence.defectCodeLabel} · '
-                '${occurrence.quantityLabel}',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: Spacing.md),
-              Text(
-                'It stops being one of the occurrences this Concern answers. The Non-conformance '
-                'itself is untouched — it keeps its number, its Dispositions and its quantity.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (_failure != null)
-                Padding(
-                  key: ActionUnlinkNonconformanceDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: 'Unlink this Non-conformance',
+        // One question and a record's identity: a decision (issue #398).
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: ActionUnlinkNonconformanceDialog.cancelKey,
+          AppDialogAction(
+            id: 'keep-it-linked',
+            label: 'Keep it linked',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Keep it linked'),
           ),
-          FilledButton(
-            key: ActionUnlinkNonconformanceDialog.submitKey,
+          AppDialogAction(
+            id: 'unlink',
+            label: 'Unlink it',
+            kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
-            child: const Text('Unlink it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(occurrence.issueNo, style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              '${occurrence.productLabel} · ${occurrence.defectCodeLabel} · '
+              '${occurrence.quantityLabel}',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.md),
+            Text(
+              'It stops being one of the occurrences this Concern answers. The Non-conformance '
+              'itself is untouched — it keeps its number, its Dispositions and its quantity.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            if (_failure != null)
+              Padding(
+                key: ActionUnlinkNonconformanceDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

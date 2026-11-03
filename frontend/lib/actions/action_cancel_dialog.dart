@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
 
@@ -70,8 +71,8 @@ class ActionCancelDialog extends StatefulWidget {
   final Action action;
 
   static const ValueKey<String> reasonKey = ValueKey<String>('action-cancel-reason');
-  static const ValueKey<String> submitKey = ValueKey<String>('action-cancel-submit');
-  static const ValueKey<String> backKey = ValueKey<String>('action-cancel-back');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('call-it-off');
+  static final ValueKey<String> backKey = AppDialog.actionKey('leave-alone');
   static const ValueKey<String> failureKey = ValueKey<String>('action-cancel-failure');
 
   @override
@@ -121,64 +122,68 @@ class _ActionCancelDialogState extends State<ActionCancelDialog> {
     final theme = Theme.of(context);
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text('Call off ${widget.action.actionNo}?'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.action.title,
-                  style: theme.textTheme.titleSmall,
-                ),
-                const SizedBox(height: Spacing.sm),
-                Text(
-                  'Calling it off ends the record without claiming anything was done about it. '
-                  'The row stays, with the reason you give it.',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: ActionCancelDialog.reasonKey,
-                  controller: _reason,
-                  enabled: !_awaiting,
-                  minLines: 1,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Why (optional)',
-                    helperText: 'Raised in error, a duplicate, overtaken by events.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: ActionCancelDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Call off ${widget.action.actionNo}?',
+        // A short form: one optional field (issue #398's four widths).
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: ActionCancelDialog.backKey,
+          AppDialogAction(
+            id: 'leave-alone',
+            label: 'Leave it alone',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => context.pop(),
-            child: const Text('Leave it alone'),
           ),
-          FilledButton(
-            key: ActionCancelDialog.submitKey,
+          // Destructive: the record ends and the server keeps no way back, so
+          // the button that does it is the danger colour and sits apart from
+          // the way out rather than first.
+          AppDialogAction(
+            id: 'call-it-off',
+            label: 'Call it off',
+            kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
-            child: const Text('Call it off'),
           ),
         ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.action.title,
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: Spacing.sm),
+              Text(
+                'Calling it off ends the record without claiming anything was done about it. '
+                'The row stays, with the reason you give it.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: Spacing.md),
+              TextField(
+                key: ActionCancelDialog.reasonKey,
+                controller: _reason,
+                enabled: !_awaiting,
+                minLines: 1,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Why (optional)',
+                  helperText: 'Raised in error, a duplicate, overtaken by events.',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_failure != null)
+                Padding(
+                  key: ActionCancelDialog.failureKey,
+                  padding: const EdgeInsets.only(top: Spacing.md),
+                  child: Text(
+                    _failure!,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

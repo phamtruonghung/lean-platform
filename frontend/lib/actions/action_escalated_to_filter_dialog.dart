@@ -19,13 +19,14 @@ import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../widgets/app_dialog.dart';
 import 'actions_bloc.dart';
 
 class ActionEscalatedToFilterDialog extends StatelessWidget {
   const ActionEscalatedToFilterDialog({super.key});
 
-  static const ValueKey<String> anyoneKey = ValueKey<String>('actions-filter-escalated-anyone');
-  static const ValueKey<String> cancelKey = ValueKey<String>('actions-filter-escalated-cancel');
+  static final ValueKey<String> anyoneKey = AppDialog.actionKey('anyone');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
 
   /// Opens the filter over the register. `showDialog` builds its route under the
   /// Navigator, which is not a descendant of the route-scoped
@@ -56,10 +57,30 @@ class ActionEscalatedToFilterDialog extends StatelessWidget {
     final state = context.watch<ActionsBloc>().state;
     final selectedId = state is ActionsLoaded ? state.escalatedToOrgUnitFilterId : null;
 
-    return AlertDialog(
-      title: const Text('Filter by what was handed up'),
-      content: SizedBox(
-        width: 420,
+    return AppDialog(
+      title: 'Filter by what was handed up',
+      // A picker, at the same width as the Org Unit filter beside it: the two
+      // are the same question about different columns (issue #398).
+      size: AppDialogSize.picker,
+      actions: [
+        // Clearing is this dialog's own act (primary, and therefore last);
+        // `Cancel` is the dismiss action `Esc` runs.
+        AppDialogAction(
+          id: 'anyone',
+          label: 'Anyone',
+          onPressed: () {
+            context.read<ActionsBloc>().add(const ActionsEscalatedToFilterCleared());
+            Navigator.of(context).pop();
+          },
+        ),
+        AppDialogAction(
+          id: 'cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+      child: SizedBox(
         height: 420,
         child: OrgUnitChooser(
           selectedId: selectedId,
@@ -78,21 +99,6 @@ class ActionEscalatedToFilterDialog extends StatelessWidget {
           },
         ),
       ),
-      actions: [
-        TextButton(
-          key: anyoneKey,
-          onPressed: () {
-            context.read<ActionsBloc>().add(const ActionsEscalatedToFilterCleared());
-            Navigator.of(context).pop();
-          },
-          child: const Text('Anyone'),
-        ),
-        TextButton(
-          key: cancelKey,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-      ],
     );
   }
 }

@@ -54,6 +54,7 @@ import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/status_chip.dart';
@@ -118,6 +119,10 @@ class CapaReportScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('capa-report-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('capa-report-retry');
   static const ValueKey<String> backKey = ValueKey<String>('capa-report-back');
+
+  /// The document's own metadata line — the facts the header chips used to
+  /// carry, printed as text so a monochrome print keeps them.
+  static const ValueKey<String> metaKey = ValueKey<String>('capa-report-meta');
 
   /// What an investigation has not done yet, said once at the top rather than
   /// left to be inferred from seven sections.
@@ -274,8 +279,22 @@ class _Report extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final concern = capa.concern;
     final outstanding = _outstanding;
+    final opened = capa.openedAt?.toLocal().toIso8601String().substring(0, 10);
+
+    // The document's own metadata, one line rather than a row of chips: on
+    // paper a chip's tint is the first thing a monochrome printer loses, and a
+    // ruled line of facts reads the same on a screen and on a printed page
+    // (issue #396). Every value a chip carried is still printed.
+    final meta = [
+      '${capa.methodLabel} investigation',
+      capa.orgUnitName,
+      if (opened != null) 'opened $opened',
+      if (capa.dueDate != null) 'due ${capa.dueDate}',
+      capa.statusLabel,
+    ].join(' · ');
 
     return Center(
       child: AppPageFrame(
@@ -292,61 +311,55 @@ class _Report extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // A `Wrap`, not a `Row`, for the reason every header in this
-              // client is one: the link and the status chip are wider together
-              // than an 800px window, and a `Wrap` drops the chip onto its own
-              // line rather than overflowing.
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: Spacing.sm,
-                runSpacing: Spacing.sm,
-                children: [
-                  TextButton.icon(
-                    key: CapaReportScreen.backKey,
-                    onPressed: () => context.go('${Routes.actions}/capas/${capa.id}'),
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text('Back to the CAPA'),
+              // The page's own title row, and the one control on the document:
+              // the way back. It is the same `AppPageHeader` every Screen wears
+              // (issue #396), so the report reads as part of the product even
+              // though it is reached outside the Shell.
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  key: CapaReportScreen.backKey,
+                  onPressed: () => context.go('${Routes.actions}/capas/${capa.id}'),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  StatusChip(label: capa.statusLabel, tone: capa.statusTone),
-                ],
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to the CAPA'),
+                ),
               ),
-              const SizedBox(height: Spacing.md),
-              Text(capa.capaNo, style: theme.textTheme.labelLarge),
+              const SizedBox(height: Spacing.sm),
+              const AppPageHeader(title: 'CAPA report'),
+              const SizedBox(height: Spacing.lg),
+              Text(
+                capa.capaNo,
+                style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+              ),
               const SizedBox(height: Spacing.xs),
-              Text(capa.title, style: theme.textTheme.headlineSmall),
+              Text(
+                capa.title,
+                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: Spacing.sm),
               Text(
                 'The 8D record of this investigation: its team, the problem it answers, what was '
                 'done about it, and whether the fix held.',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
               ),
-              const SizedBox(height: Spacing.sm),
               if (concern != null) ...[
+                const SizedBox(height: Spacing.sm),
                 Text(
                   'Answers the Concern ${concern.actionNo} · ${concern.title}',
-                  style: theme.textTheme.bodyMedium,
+                  style: AppTypography.dense(context),
                 ),
-                const SizedBox(height: Spacing.sm),
               ],
-              Wrap(
-                spacing: Spacing.sm,
-                runSpacing: Spacing.sm,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Chip(label: Text('${capa.methodLabel} investigation')),
-                  Chip(label: Text(capa.orgUnitName)),
-                  if (capa.openedAt != null)
-                    Chip(
-                      label: Text(
-                        'opened ${capa.openedAt!.toLocal().toIso8601String().substring(0, 10)}',
-                      ),
-                    ),
-                  if (capa.dueDate != null) Chip(label: Text('due ${capa.dueDate}')),
-                ],
+              const SizedBox(height: Spacing.sm),
+              Text(
+                meta,
+                key: CapaReportScreen.metaKey,
+                style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
               ),
               const SizedBox(height: Spacing.lg),
+
               if (outstanding.isNotEmpty)
                 _Section(
                   key: CapaReportScreen.outstandingKey,
@@ -531,41 +544,51 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final empty = children.isEmpty && measures.isEmpty;
 
-    return Card(
-      // `Card`'s own 4px margin would push this section off the page's left
-      // edge, which is where a section belongs (the page frame's own inset,
-      // measured by `page_alignment_test.dart`); the gap between sections is
-      // the margin below.
-      margin: const EdgeInsets.only(bottom: Spacing.lg),
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(heading, style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.xxs),
-            Text(
-              summary,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+    // **A section of a document, not a card.** On a screen a card and a ruled
+    // block read much the same; on paper the card's fill and rounded corners
+    // print as grey panels around every 8D step, and the report stops looking
+    // like a document (issue #396). So the section is a hairline, its heading
+    // and what it holds — no fill, no elevation, nothing a printer has to
+    // interpret. The greys are the palette's own (`edge` for the rule,
+    // `textMuted` for the sentence under the heading), which measure the same
+    // contrast on paper as on the canvas.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Spacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Divider(height: 1, thickness: 1, color: palette.edge),
+          const SizedBox(height: Spacing.sm),
+          Semantics(
+            header: true,
+            child: Text(
+              heading,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: palette.textPrimary,
+                  ),
             ),
-            const SizedBox(height: Spacing.md),
-            if (empty && emptySentence != null)
-              Text(
-                key: emptyKey,
-                emptySentence!,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              )
-            else ...[
-              ...children,
-              for (final measure in measures) _Measure(measure: measure),
-            ],
+          ),
+          const SizedBox(height: Spacing.xxs),
+          Text(
+            summary,
+            style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+          ),
+          const SizedBox(height: Spacing.md),
+          if (empty && emptySentence != null)
+            Text(
+              key: emptyKey,
+              emptySentence!,
+              style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+            )
+          else ...[
+            ...children,
+            for (final measure in measures) _Measure(measure: measure),
           ],
-        ),
+        ],
       ),
     );
   }

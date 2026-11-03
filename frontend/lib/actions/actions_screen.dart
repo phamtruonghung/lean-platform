@@ -17,6 +17,8 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -46,6 +48,12 @@ class ActionsScreen extends StatelessWidget {
   static const ValueKey<String> failedKey = ValueKey<String>('actions-failed');
   static const ValueKey<String> retryKey = ValueKey<String>('actions-retry');
   static const ValueKey<String> formLoadingKey = ValueKey<String>('actions-form-loading');
+
+  /// Which shape the log was drawn in — the register above
+  /// `AppBreakpoints.registerTable` of box, the card per record below it. Both
+  /// carry the same keys and the same sentences; only the arrangement differs.
+  static const ValueKey<String> tableKey = ValueKey<String>('actions-table');
+  static const ValueKey<String> cardsKey = ValueKey<String>('actions-cards');
 
   static ValueKey<String> rowKey(String id) => ValueKey<String>('action-row-$id');
   static ValueKey<String> rowStatusKey(String id) => ValueKey<String>('action-status-$id');
@@ -364,6 +372,60 @@ abstract final class ActionsEmptyKeys {
   static const ValueKey<String> matched = ValueKey<String>('actions-empty-matched');
 }
 
+/// The register's one column spec (issue #396's design pass): `AppTableHeader`
+/// and every `AppTableRow` are built from this list, so a label and its cells
+/// start at the same x by construction.
+///
+/// Four of these are the columns the ticket names — owner, due, state and
+/// source — because those are the four questions a reader of an action log asks
+/// in order: who owes it, when is it due, is it still live, and where did it
+/// come from. The fifth is the record's own title, which is what the row is
+/// *about* and therefore takes the slack.
+///
+/// The State column states a measured `width` rather than a `flex`: a chip is
+/// bounded content, and a column that took a share of the window would move the
+/// same word's x on two Screens.
+List<AppTableColumn> _columns(BuildContext context) => [
+      const AppTableColumn('Action', flex: 6),
+      const AppTableColumn('Owner', flex: 2),
+      const AppTableColumn('Due', flex: 3),
+      const AppTableColumn('Source', flex: 2),
+      AppTableColumn('State', width: _statusColumnWidth(context)),
+    ];
+
+/// The widest status label in a chip's own style at the reader's text scale,
+/// plus the chip's padding and the slot's gutter — measured rather than guessed
+/// so a renamed state cannot clip (the same measurement
+/// `safety/incidents_screen.dart` makes for its own state column).
+double _statusColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  );
+  var widest = 0.0;
+  for (final entry in actionStatuses.values) {
+    painter.text = TextSpan(text: entry.$1, style: Theme.of(context).textTheme.labelLarge);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  return widest + Spacing.xxl + Spacing.sm;
+}
+
+/// The record an Action was raised from, in the words the detail Screen already
+/// prints for the same three sources (issue #396).
+///
+/// Deliberately derived from the links the payload carries rather than from
+/// `sourceType`: the words belong to the records, and a wire value this build
+/// does not model (a Downtime event, a Work order) must not become a column of
+/// snake_case. `Raised here` is what `standalone` reads as on screen — an Action
+/// somebody raised on the log itself.
+String sourceLabel(Action action) {
+  if (action.safetyIncident != null) return 'Safety incident';
+  if (action.safetyObservation != null) return 'Safety observation';
+  if (action.nonconformances.isNotEmpty) return 'Non-conformance';
+  return 'Raised here';
+}
+
 class _ActionsList extends StatelessWidget {
   const _ActionsList({required this.actions});
 
@@ -371,18 +433,178 @@ class _ActionsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final columns = _columns(context);
     return Center(
       child: AppPageFrame(
         maxWidth: ActionsScreen.maxWidth,
-        child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: actions.length,
-          itemBuilder: (context, index) => _ActionRow(action: actions[index]),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            // The box this list was handed — the page less the Shell's rail and
+            // this frame — never the window (the lesson of #105), and scaled by
+            // the reader's text size (WCAG 1.4.4): five columns at twice the
+            // text need twice the box before they read.
+            final table =
+                box.maxWidth >= AppBreakpoints.effective(context, AppBreakpoints.registerTable);
+            if (!table) {
+              return ListView.builder(
+                key: ActionsScreen.cardsKey,
+                padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                itemCount: actions.length,
+                itemBuilder: (context, index) => _ActionRow(action: actions[index]),
+              );
+            }
+            return ListView(
+              key: ActionsScreen.tableKey,
+              padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+              children: [
+                Card(
+                  margin: EdgeInsets.zero,
+                  // The band's own fill would otherwise square off the card's
+                  // rounded corners.
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTableHeader(columns: columns),
+                      for (final action in actions)
+                        _ActionTableRow(columns: columns, action: action),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
+
+/// One Action as a row of the register.
+///
+/// **The row is two lines, and both are the point.** The first is the record's
+/// title — the only unbounded text, so it is the cell that discloses its
+/// clipping — and the second is the metadata a reader uses to place it: its
+/// number, the kind of Action it is, its priority when it has one worth
+/// flagging, how much answers it, and what it was handed up to. Squeezing those
+/// five facts into a fifth one-line column was the alternative, and it produced
+/// a register with nine columns, each too narrow to read.
+///
+/// The four columns beside it are one line each, so the row is as tall as the
+/// tallest cell and no taller: owner, due (the overdue reading is a sentence,
+/// never arithmetic on a date), source, and the state chip.
+class _ActionTableRow extends StatelessWidget {
+  const _ActionTableRow({required this.columns, required this.action});
+
+  final List<AppTableColumn> columns;
+  final Action action;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final muted = dense?.copyWith(color: palette.textMuted);
+    final floor = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
+
+    // The framework's own padded tap target is lifted on the chips: it would add
+    // height to a row whose height is already the target.
+    Widget shrinkWrapTargets(Widget child) => Theme(
+          data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          child: child,
+        );
+
+    final meta = <Widget>[
+      Text(action.actionNo, style: floor),
+      // The kind of Action, chip and key exactly as the card below draws it:
+      // `rowStatusKey` names this chip on both shapes of the log, so a test that
+      // finds it by that key finds one thing whatever the window is.
+      shrinkWrapTargets(
+        StatusChip(
+          key: ActionsScreen.rowStatusKey(action.id),
+          label: action.typeLabel,
+          tone: StatusTone.info,
+        ),
+      ),
+      if (action.priority <= 2)
+        Text(
+          action.priorityLabel,
+          style: floor?.copyWith(color: palette.statusWarning),
+        ),
+      if (action.measureCount > 0)
+        Text(
+          '${action.measureCount} '
+          '${action.measureCount == 1 ? 'measure' : 'measures'}, '
+          '${action.countermeasureCount} of them countermeasures',
+          key: ActionsScreen.measuresKey(action.id),
+          style: floor,
+        ),
+      if (action.escalatedToOrgUnitName != null)
+        Text(
+          'Escalated to ${action.escalatedToOrgUnitName}',
+          key: ActionsScreen.escalatedKey(action.id),
+          style: floor,
+        ),
+    ];
+
+    return KeyedSubtree(
+      key: ActionsScreen.rowKey(action.id),
+      child: AppTableRow(
+        columns: columns,
+        onTap: () => context.go('${Routes.actions}/${action.id}'),
+        cells: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DisclosingText(
+                action.title,
+                style: dense?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: Spacing.xxs),
+              Wrap(
+                spacing: Spacing.sm,
+                runSpacing: Spacing.xxs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: meta,
+              ),
+            ],
+          ),
+          DisclosingText(
+            action.ownerName ?? 'Nobody yet',
+            key: ActionsScreen.ownerKey(action.id),
+            style: muted,
+          ),
+          Text(
+            action.isOverdue
+                ? 'Overdue by ${action.daysOverdue} days'
+                : action.dueDate == null
+                    ? 'No due date'
+                    : 'Due ${action.dueDate}',
+            key: ActionsScreen.dueKey(action.id),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: dense?.copyWith(
+              color: action.isOverdue ? palette.statusDanger : palette.textMuted,
+            ),
+          ),
+          Text(
+            sourceLabel(action),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: muted,
+          ),
+          shrinkWrapTargets(
+            StatusChip(
+              label: action.statusLabel,
+              tone: action.statusTone,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class _ActionRow extends StatelessWidget {
   const _ActionRow({required this.action});
