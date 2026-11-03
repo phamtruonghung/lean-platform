@@ -47,11 +47,11 @@ route is handed the whole window and the window is its box.
 made a transition dialog an address, a `DialogRoute` whose list stays visible and
 which survives a refresh. That is `platform/dialog_page.dart` and it does not change.
 `AppDialog` is what a `DialogPage`'s `builder` returns. There are 52
-`DialogPage<void>(` pages in `router.dart` and 137 `showDialog` call sites across
-68 files; both stay legal, and a dialog with no address of its own is a `showDialog`
-that builds an `AppDialog`. No route helper was added: opening a dialog from a
-focused button with plain `showDialog` and closing it returns focus to the button
-(`app_dialog_test.dart`), so there was nothing for one to fix.
+`DialogPage<void>(` pages in `router.dart` and 84 `showDialog` call sites across
+65 files at this writing; both stay legal, and a dialog with no address of its own
+is a `showDialog` that builds an `AppDialog`. No route helper was added: opening a
+dialog from a focused button with plain `showDialog` and closing it returns focus
+to the button (`app_dialog_test.dart`), so there was nothing for one to fix.
 
 **The primitive guarantees the accessibility and the caller owns the words.**
 Focus is trapped by a focus scope of the dialog's own, inside the route's and under
