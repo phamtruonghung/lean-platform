@@ -63,7 +63,10 @@ class SafetyOrgUnitFilterDialog extends StatelessWidget {
 
     return AppDialog(
       title: 'Filter by Org Unit',
-      // A picker: a tree to choose one Org Unit from.
+      // One tree of names, at the width this dialog has always been: `decision`
+      // is 420, the box the hand-sized `AlertDialog` used, so moving the shell
+      // onto [AppDialog] changes nothing a reader feels. `picker` (460) is for
+      // a dialog written for the tree, which this one is not.
       size: AppDialogSize.decision,
       // Clearing is this dialog's own act (the primary, right-most); Cancel is
       // the dismiss, which is what `Esc` runs.

@@ -450,16 +450,40 @@ class _Empty extends StatelessWidget {
 ///
 /// The two chip columns state a measured `width` rather than a `flex`: a rung
 /// or a state is bounded content, and a column that took a share of the window
-/// would move the same value's x on two Screens. The four text columns flex,
+/// would move the same value's x on two Screens. The three text columns flex,
 /// and disclose what they clip.
+///
+/// `Incident #` is measured for the same reason, one step further: the number
+/// is a fixed-shape code, so a share of the flex let the identifier be the one
+/// value that clipped — `SI-HCM-2026-000…` at every window under 1440, which is
+/// a reader unable to tell `00001` from `00002`. It is the same measurement
+/// `quality/complaints_screen.dart` makes for a complaint number.
 List<AppTableColumn> _columns(BuildContext context) => [
       AppTableColumn('Severity', width: _severityColumnWidth(context)),
-      const AppTableColumn('Incident #', flex: 2),
+      AppTableColumn('Incident #', width: _incidentNumberColumnWidth(context)),
       const AppTableColumn('Type', flex: 3),
       const AppTableColumn('Org Unit', flex: 2),
       const AppTableColumn('Filed against', flex: 3),
       AppTableColumn('Status', width: _statusColumnWidth(context)),
     ];
+
+/// The Incident # column: the documented number format —
+/// `SI-HCM-2026-00001` (`safety-incidents.js`'s own header: a Site-scoped,
+/// year-stamped, zero-padded sequence) — in the cell's own style at the
+/// reader's text scale, plus the slot's gutter. The cell renders it `dense` and
+/// semi-bold, so that is what is measured, never a default style.
+double _incidentNumberColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: 'SI-HCM-2026-00001',
+      style: AppTypography.dense(context)?.copyWith(fontWeight: FontWeight.w600),
+    ),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width + Spacing.sm + 8;
+}
 
 /// The Severity column's width: the widest rung label in a compact `Chip`'s own
 /// label style at the reader's text scale, plus the chip's padding and the

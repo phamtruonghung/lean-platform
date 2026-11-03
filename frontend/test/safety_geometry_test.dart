@@ -7,23 +7,29 @@
 /// card, and that at twice the text nothing clips and the register falls back
 /// to cards rather than squeezing six columns into half a box.
 ///
-/// **Why 700 and 1280.** 700 is the narrowest box the register still draws a
-/// table in, and it is the width the brief names for the catalogues; 1280 is an
-/// ordinary desktop window. Both are *windows*: the Shell's 260px rail comes off
-/// first, so a register is handed `window - 260` and then loses this page's
-/// `Spacing.lg` either side. Every assertion below is on the widget that is
-/// actually measured, never on the window.
+/// **Why 700, 900 and 1280.** 700 is the narrowest box the catalogue rows and
+/// the register's cards are drawn at, and it is the width the brief names for
+/// the catalogues; 900 is the middle width the brief names, and the widest box
+/// at which the register is still cards (`window - 260` = 640 against the
+/// 700 breakpoint); 1280 is an ordinary desktop window. Every width is a
+/// *window*: the Shell's 260px rail comes off first, so a register is handed
+/// `window - 260` and then loses this page's `Spacing.lg` either side. Every
+/// assertion below is on the widget that is actually measured, never on the
+/// window.
 ///
 /// **Why a text scale of 2.** #379 and #381 were both a breakpoint that ignored
 /// the reader's text size, so the same code read fine at 100% and squeezed at
 /// 200%. A case at 2.0 that only renders would not catch that; the cases here
-/// assert the *shape* (cards, not a table) and that nothing threw.
+/// assert the *shape* (cards, not a table) and, for the catalogue and detail
+/// cases, the measured geometry of what moved — a `getTopLeft`/`getSize` pin
+/// that a raw breakpoint mutant cannot satisfy.
 ///
 /// The app is pumped through the real router with the wire faked, as
 /// `work_orders_geometry_test.dart` does; nothing here reaches into a Bloc.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lean_platform/platform/destinations.dart';
@@ -148,13 +154,57 @@ void main() {
       expect(filter.dx, closeTo(title.dx, 1.0));
     });
 
-    testWidgets('at 700 the register is a card per record', (tester) async {
-      await _pump(tester, width: 700, location: '/safety/incidents');
+    testWidgets('the Incident # column fits its whole number at every table box', (tester) async {
+      // The number is a fixed-shape code — `SI-HCM-2026-00001`
+      // (`safety-incidents.js` documents the format) — so a share of the flex
+      // ellipsized the identifier at every ordinary desktop width, which is a
+      // reader unable to tell `00001` from `00002`. The column is measured
+      // instead; this is the assertion that keeps it measured: 960 is the
+      // narrowest window the register still draws a table in (`960 - 260` is
+      // exactly the 700 breakpoint), and 1160/1280 are ordinary desktops.
+      for (final width in const [960.0, 1160.0, 1280.0]) {
+        await _pump(tester, width: width, location: '/safety/incidents');
+        expect(find.byKey(SafetyIncidentsScreen.tableKey), findsOneWidget,
+            reason: 'window $width');
 
+        final row = find.byKey(SafetyIncidentsScreen.rowKey('901'));
+        final number = find.descendant(of: row, matching: find.text('SI-HCM-2026-00001'));
+        final paragraph = tester.renderObject<RenderParagraph>(number);
+        expect(paragraph.didExceedMaxLines, isFalse,
+            reason: 'window $width: the identifier is ellipsized');
+
+        // ...and it fits because the cell it is given is at least as wide as
+        // the number, not because something else clipped less.
+        final cell = find.descendant(of: row, matching: find.byKey(AppTableRow.cellKey(1)));
+        expect(tester.getSize(number).width,
+            lessThanOrEqualTo(tester.getSize(cell).width),
+            reason: 'window $width');
+        expect(find.byKey(SafetyIncidentsScreen.rowStatusKey('901')), findsOneWidget,
+            reason: 'window $width: the state chip survived the narrower flex');
+      }
+
+      // At twice the text the register is a card per record, and the number
+      // fits there too — the card gives it a line rather than a column.
+      await _pump(tester, width: 1280, location: '/safety/incidents', textScale: 2);
       expect(find.byKey(SafetyIncidentsScreen.cardsKey), findsOneWidget);
-      expect(find.byKey(SafetyIncidentsScreen.tableKey), findsNothing);
-      expect(find.byType(AppTableHeader), findsNothing);
-      _expectRowIsATapTarget(tester, find.byKey(SafetyIncidentsScreen.rowKey('901')));
+      expect(
+        tester.renderObject<RenderParagraph>(find.text('SI-HCM-2026-00001')).didExceedMaxLines,
+        isFalse,
+        reason: 'at twice the text the number is not clipped either',
+      );
+    });
+
+    testWidgets('at 700 and at 900 the register is a card per record', (tester) async {
+      for (final width in const [700.0, 900.0]) {
+        await _pump(tester, width: width, location: '/safety/incidents');
+
+        expect(find.byKey(SafetyIncidentsScreen.cardsKey), findsOneWidget,
+            reason: 'window $width');
+        expect(find.byKey(SafetyIncidentsScreen.tableKey), findsNothing,
+            reason: 'window $width');
+        expect(find.byType(AppTableHeader), findsNothing, reason: 'window $width');
+        _expectRowIsATapTarget(tester, find.byKey(SafetyIncidentsScreen.rowKey('901')));
+      }
     });
 
     testWidgets('at twice the text the register is cards, and nothing clips', (tester) async {
@@ -194,8 +244,8 @@ void main() {
       expect(find.byKey(SafetyObservationsScreen.rowStopWorkKey('702')), findsNothing);
     });
 
-    testWidgets('at 700 and at twice the text the register is cards', (tester) async {
-      for (final (width, scale) in const [(700.0, 1.0), (1280.0, 2.0)]) {
+    testWidgets('at 700, at 900 and at twice the text the register is cards', (tester) async {
+      for (final (width, scale) in const [(700.0, 1.0), (900.0, 1.0), (1280.0, 2.0)]) {
         await _pump(tester, width: width, location: '/safety/observations', textScale: scale);
         expect(tester.takeException(), isNull, reason: 'window $width at ${scale}x');
         expect(find.byKey(SafetyObservationsScreen.cardsKey), findsOneWidget,
@@ -206,8 +256,9 @@ void main() {
   });
 
   group('The two catalogues', () {
-    testWidgets('a catalogue row is 44 tall at 700 and at 1280, at 1x and at 2x', (tester) async {
-      for (final width in const [700.0, 1280.0]) {
+    testWidgets('a catalogue row is 44 tall at 700, at 900 and at 1280, at 1x and at 2x',
+        (tester) async {
+      for (final width in const [700.0, 900.0, 1280.0]) {
         await _pump(tester, width: width, location: '/safety/injury-types');
         expect(tester.takeException(), isNull, reason: 'window $width');
         final row = find.byKey(InjuryTypesScreen.rowKey('61'));
@@ -230,18 +281,37 @@ void main() {
           reason: 'the action is not lost at 200%');
     });
 
-    testWidgets('a Body part row carries the region it is filed under', (tester) async {
-      await _pump(tester, width: 700, location: '/safety/body-parts');
+    testWidgets('a Body part row holds its one line, its inset and its action at every width',
+        (tester) async {
+      // The catalogue's whole claim is one dense line: the part, its code and
+      // the region it is filed under, at the card's own inset, with the action
+      // against the card's other edge. Measured at the three widths the brief
+      // names and at twice the text — the 2x case is a real geometry pin
+      // (`getTopLeft`/`getSize`), not a render.
+      for (final (width, scale) in const [
+        (700.0, 1.0),
+        (900.0, 1.0),
+        (1280.0, 1.0),
+        (1280.0, 2.0),
+      ]) {
+        await _pump(tester, width: width, location: '/safety/body-parts', textScale: scale);
+        final label = 'window $width at ${scale}x';
+        expect(tester.takeException(), isNull, reason: label);
 
-      final row = find.byKey(BodyPartsScreen.rowKey('51'));
-      expect(row, findsOneWidget);
-      _expectRowIsATapTarget(tester, row);
-      // The row's own one text: the part, its code and the region, on one line
-      // inside the card's inset.
-      final label = find.text('Left hand · HAND-L · Upper limb');
-      expect(label, findsOneWidget);
-      final card = tester.getTopLeft(find.ancestor(of: row, matching: find.byType(Card)));
-      expect(tester.getTopLeft(label).dx, closeTo(card.dx + 16, 1.0));
+        final row = find.byKey(BodyPartsScreen.rowKey('51'));
+        expect(tester.getSize(row).height, greaterThanOrEqualTo(44.0), reason: label);
+
+        final card = tester.getRect(find.ancestor(of: row, matching: find.byType(Card)));
+        final part = find.text('Left hand · HAND-L · Upper limb');
+        expect(tester.getTopLeft(part).dx, closeTo(card.left + 16, 1.0), reason: label);
+        expect(tester.renderObject<RenderParagraph>(part).didExceedMaxLines, isFalse,
+            reason: '$label: the row is one line, not a clipped one');
+
+        final action = tester.getRect(find.byKey(BodyPartsScreen.correctKey('51')));
+        expect(action.right, closeTo(card.right - 16, 1.0), reason: label);
+        expect(action.height, greaterThanOrEqualTo(44.0),
+            reason: '$label: the action is a tap target');
+      }
     });
   });
 
@@ -264,9 +334,9 @@ void main() {
       expect(events.dy, greaterThan(injury.dy));
     });
 
-    testWidgets('at 700 and at twice the text the page holds, summary still first',
+    testWidgets('at 700, at 900 and at twice the text the page holds, summary still first',
         (tester) async {
-      for (final (width, scale) in const [(700.0, 1.0), (1280.0, 2.0)]) {
+      for (final (width, scale) in const [(700.0, 1.0), (900.0, 1.0), (1280.0, 2.0)]) {
         await _pump(tester, width: width, location: '/safety/incidents/901', textScale: scale);
         expect(tester.takeException(), isNull, reason: 'window $width at ${scale}x');
         expect(
@@ -279,16 +349,32 @@ void main() {
   });
 
   group('Safety observation detail', () {
-    testWidgets('the summary card leads, at 700 and at 1280', (tester) async {
-      for (final width in const [700.0, 1280.0]) {
-        await _pump(tester, width: width, location: '/safety/observations/701');
-        expect(tester.takeException(), isNull, reason: 'window $width');
-        expect(
-          tester.getTopLeft(find.text('Summary')).dy,
-          lessThan(tester.getTopLeft(find.text('What was seen')).dy),
-          reason: 'window $width',
-        );
-        expect(find.byKey(SafetyObservationDetailScreen.filedKey), findsOneWidget);
+    testWidgets('the summary card leads at 700, at 900, at 1280 and at twice the text',
+        (tester) async {
+      for (final (width, scale) in const [
+        (700.0, 1.0),
+        (900.0, 1.0),
+        (1280.0, 1.0),
+        (1280.0, 2.0),
+      ]) {
+        await _pump(tester, width: width, location: '/safety/observations/701', textScale: scale);
+        final label = 'window $width at ${scale}x';
+        expect(tester.takeException(), isNull, reason: label);
+
+        final summary = tester.getTopLeft(find.text('Summary'));
+        final seen = tester.getTopLeft(find.text('What was seen'));
+        expect(summary.dy, lessThan(seen.dy), reason: label);
+
+        // Where and when it was filed is inside the summary card, above the
+        // narrative — measured, not merely present.
+        final filed = tester.getRect(find.byKey(SafetyObservationDetailScreen.filedKey));
+        expect(filed.top, greaterThanOrEqualTo(summary.dy), reason: label);
+        expect(filed.bottom, lessThan(seen.dy), reason: label);
+
+        // The one control that leaves the page is a tap target at every width.
+        expect(tester.getSize(find.byKey(SafetyObservationDetailScreen.backKey)).height,
+            greaterThanOrEqualTo(44.0),
+            reason: label);
       }
     });
   });
