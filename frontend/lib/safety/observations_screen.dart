@@ -13,7 +13,21 @@
 /// default order, never date. Severity potential paints as `fatal` ->
 /// danger, `high` -> warning, `medium` -> info, `low` -> neutral, and
 /// **stop-work is its own labelled badge, not a tone** — it is a fact about
-/// what somebody did, not a state the observation is in.
+/// what somebody did, not a state the observation is in. Because that badge is
+/// the one thing a reader must not miss, it is a column of its own in the
+/// table rather than a word inside another cell, and it keeps its own `Key` in
+/// both shapes.
+///
+/// **A register of six columns above [AppBreakpoints.registerTable] of box, a
+/// card per record below it** (issue #391, `docs/design-language.md` §10). The
+/// breakpoint is measured on the box the list was handed — the page less the
+/// Shell's rail and this frame — never on the window, and is multiplied by the
+/// reader's text scale, so a table that read at 100% falls back to cards at
+/// 200% rather than clipping (WCAG 1.4.4; #379, #381).
+///
+/// **The Site, the Org Unit and the seven narrowing controls are one toolbar
+/// row** (`AppToolbar`): filters lead, the count of what they narrowed to
+/// follows, and the row wraps into a column when the box cannot hold it.
 ///
 /// **The empty register is bad news, unlike the incident register's.** A
 /// leading indicator with nothing on it means nobody is walking, so the copy
@@ -30,6 +44,9 @@ import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/app_toolbar.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -72,6 +89,12 @@ class SafetyObservationsScreen extends StatelessWidget {
   static const ValueKey<String> noSiteKey = ValueKey<String>('safety-observations-no-site');
   static const ValueKey<String> formLoadingKey =
       ValueKey<String>('safety-observations-form-loading');
+
+  /// The register's two shapes and its count, named so a test can tell which
+  /// one it is looking at without counting widgets.
+  static const ValueKey<String> tableKey = ValueKey<String>('safety-observations-table');
+  static const ValueKey<String> cardsKey = ValueKey<String>('safety-observations-cards');
+  static const ValueKey<String> countKey = ValueKey<String>('safety-observations-count');
 
   static ValueKey<String> rowKey(String id) => ValueKey<String>('safety-observation-row-$id');
   static ValueKey<String> rowPotentialKey(String id) =>
@@ -160,6 +183,8 @@ class _Header extends StatelessWidget {
       child: AppPageFrame(
         maxWidth: SafetyObservationsScreen.maxWidth,
         child: Padding(
+          // One inset, so the title, the first filter and the first row share
+          // one left edge (`docs/frontend-layout.md` §1).
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
             title: 'Safety observations',
@@ -185,9 +210,10 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// The Site chooser and the five ways to narrow the register. Each is a read
-/// filter over an already-visible list, so each sends a request rather than
-/// hiding rows the client happens to hold.
+/// The Site chooser, the Org Unit filter, the seven narrowing controls and the
+/// count, in one [AppToolbar]. Each filter is a read filter over an
+/// already-visible list, so each sends a request rather than hiding rows the
+/// client happens to hold.
 class _Filters extends StatelessWidget {
   const _Filters({required this.loaded});
 
@@ -198,11 +224,8 @@ class _Filters extends StatelessWidget {
     final theme = Theme.of(context);
     final filters = loaded.filters;
 
-    return Wrap(
-      spacing: Spacing.md,
-      runSpacing: Spacing.sm,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
+    return AppToolbar(
+      filters: [
         if (loaded.sites.length > 1)
           SizedBox(
             width: 200,
@@ -334,31 +357,40 @@ class _Filters extends StatelessWidget {
                 .add(SafetyObservationsHasActionFilterChanged(value)),
           ),
         ),
-        SizedBox(
-          width: 165,
-          child: AppDateField(
-            key: SafetyObservationsScreen.fromDateKey,
-            name: 'safety-observations-from',
-            label: 'Observed from',
-            value: filters.from,
-            optional: true,
-            onChanged: (value) => context
-                .read<SafetyObservationsBloc>()
-                .add(SafetyObservationsDateRangeChanged(from: value, clearFrom: value == null)),
-          ),
-        ),
-        SizedBox(
-          width: 165,
-          child: AppDateField(
-            key: SafetyObservationsScreen.toDateKey,
-            name: 'safety-observations-to',
-            label: 'Observed to',
-            value: filters.to,
-            optional: true,
-            onChanged: (value) => context
-                .read<SafetyObservationsBloc>()
-                .add(SafetyObservationsDateRangeChanged(to: value, clearTo: value == null)),
-          ),
+        // The date range is one pair, side by side, and is the group a reader
+        // changes together — so it is one entry in the toolbar's own filter
+        // list and wraps as a unit.
+        Wrap(
+          spacing: Spacing.sm,
+          runSpacing: Spacing.sm,
+          children: [
+            SizedBox(
+              width: 165,
+              child: AppDateField(
+                key: SafetyObservationsScreen.fromDateKey,
+                name: 'safety-observations-from',
+                label: 'Observed from',
+                value: filters.from,
+                optional: true,
+                onChanged: (value) => context
+                    .read<SafetyObservationsBloc>()
+                    .add(SafetyObservationsDateRangeChanged(from: value, clearFrom: value == null)),
+              ),
+            ),
+            SizedBox(
+              width: 165,
+              child: AppDateField(
+                key: SafetyObservationsScreen.toDateKey,
+                name: 'safety-observations-to',
+                label: 'Observed to',
+                value: filters.to,
+                optional: true,
+                onChanged: (value) => context
+                    .read<SafetyObservationsBloc>()
+                    .add(SafetyObservationsDateRangeChanged(to: value, clearTo: value == null)),
+              ),
+            ),
+          ],
         ),
         if (filters.isSet)
           TextButton(
@@ -369,6 +401,13 @@ class _Filters extends StatelessWidget {
             child: Text('Clear filters', style: theme.textTheme.bodyMedium),
           ),
       ],
+      count: Text(
+        loaded.observations.length == 1
+            ? '1 Safety observation'
+            : '${loaded.observations.length} Safety observations',
+        key: SafetyObservationsScreen.countKey,
+        style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
+      ),
     );
   }
 }
@@ -432,6 +471,39 @@ class _Empty extends StatelessWidget {
   }
 }
 
+/// The register's one column spec: [AppTableHeader] and every [AppTableRow] are
+/// built from it, so a label and its cells start at the same x. The two chip
+/// columns state a measured width; the three text columns flex and disclose
+/// what they clip.
+List<AppTableColumn> _columns(BuildContext context) => [
+      AppTableColumn('Potential', width: _chipColumnWidth(context, _potentialLabels)),
+      const AppTableColumn('Type', flex: 2),
+      const AppTableColumn('Category', flex: 3),
+      const AppTableColumn('Org Unit', flex: 2),
+      const AppTableColumn('Filed against', flex: 3),
+      AppTableColumn('Stop-work', width: _chipColumnWidth(context, const ['Stop-work'])),
+    ];
+
+List<String> get _potentialLabels =>
+    [for (final potential in SeverityPotential.values) SeverityPotential.label(potential)];
+
+/// A chip column's width: the widest label in a compact `Chip`'s own label
+/// style at the reader's text scale, plus the chip's padding and the slot's
+/// gutter.
+double _chipColumnWidth(BuildContext context, List<String> labels) {
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  );
+  var widest = 0.0;
+  for (final label in labels) {
+    painter.text = TextSpan(text: label, style: Theme.of(context).textTheme.labelLarge);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  return widest + Spacing.xxl + Spacing.sm;
+}
+
 class _Register extends StatelessWidget {
   const _Register({required this.rows});
 
@@ -439,36 +511,138 @@ class _Register extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final columns = _columns(context);
     return Center(
       child: AppPageFrame(
         maxWidth: SafetyObservationsScreen.maxWidth,
-        child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-          itemCount: rows.length,
-          itemBuilder: (context, index) => _SafetyObservationRow(observation: rows[index]),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final table =
+                box.maxWidth >= AppBreakpoints.effective(context, AppBreakpoints.registerTable);
+            if (!table) {
+              return ListView.builder(
+                key: SafetyObservationsScreen.cardsKey,
+                padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+                itemCount: rows.length,
+                itemBuilder: (context, index) => _SafetyObservationCard(observation: rows[index]),
+              );
+            }
+            return ListView(
+              key: SafetyObservationsScreen.tableKey,
+              padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+              children: [
+                Card(
+                  margin: EdgeInsets.zero,
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTableHeader(columns: columns),
+                      for (final row in rows)
+                        _SafetyObservationTableRow(columns: columns, observation: row),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _SafetyObservationRow extends StatelessWidget {
-  const _SafetyObservationRow({required this.observation});
+/// One Safety observation as a row of the table. The whole row opens the
+/// record, so it is [AppTouchTarget.min] tall and carries a focus ring.
+class _SafetyObservationTableRow extends StatelessWidget {
+  const _SafetyObservationTableRow({required this.columns, required this.observation});
+
+  final List<AppTableColumn> columns;
+  final SafetyObservation observation;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    final muted = dense?.copyWith(color: palette.textMuted);
+
+    Widget shrinkWrapTargets(Widget child) => Theme(
+          data: Theme.of(context)
+              .copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          child: child,
+        );
+
+    return KeyedSubtree(
+      key: SafetyObservationsScreen.rowKey(observation.id),
+      child: AppTableRow(
+        columns: columns,
+        onTap: () => context.go('${Routes.safetyObservations}/${observation.id}'),
+        cells: [
+          shrinkWrapTargets(
+            StatusChip(
+              key: SafetyObservationsScreen.rowPotentialKey(observation.id),
+              label: observation.severityPotentialLabel,
+              tone: observation.severityPotentialTone,
+            ),
+          ),
+          DisclosingText(observation.observationTypeLabel, style: dense),
+          DisclosingText(
+            observation.categoryLabel,
+            style: dense?.copyWith(
+              color: palette.textPrimary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          DisclosingText(observation.orgUnitName, style: muted),
+          Text(
+            observation.filedAgainst,
+            key: SafetyObservationsScreen.rowFiledKey(observation.id),
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: muted,
+          ),
+          // Stop-work is a labelled badge, never a tone (the binding design
+          // comment on #223) — it is a fact about what somebody did, not a
+          // state the observation is in.
+          if (observation.isStopWork)
+            shrinkWrapTargets(
+              Chip(
+                key: SafetyObservationsScreen.rowStopWorkKey(observation.id),
+                label: const Text('Stop-work'),
+                visualDensity: VisualDensity.compact,
+              ),
+            )
+          else
+            const SizedBox.shrink(),
+        ],
+      ),
+    );
+  }
+}
+
+/// One Safety observation as a card, below the table's breakpoint.
+class _SafetyObservationCard extends StatelessWidget {
+  const _SafetyObservationCard({required this.observation});
 
   final SafetyObservation observation;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
     final row = observation;
 
     return Card(
       key: SafetyObservationsScreen.rowKey(row.id),
       margin: const EdgeInsets.only(bottom: Spacing.sm),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.go('${Routes.safetyObservations}/${row.id}'),
+        hoverColor: palette.rowHoverFill,
+        splashFactory: NoSplash.splashFactory,
         child: Padding(
-          padding: const EdgeInsets.all(Spacing.md),
+          padding: const EdgeInsets.all(Spacing.lg),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -477,8 +651,8 @@ class _SafetyObservationRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Wrap(
-                      spacing: Spacing.xs,
-                      runSpacing: Spacing.xxs,
+                      spacing: Spacing.sm,
+                      runSpacing: Spacing.xs,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         StatusChip(
@@ -487,26 +661,32 @@ class _SafetyObservationRow extends StatelessWidget {
                           tone: row.severityPotentialTone,
                         ),
                         // Stop-work is a labelled badge, never a tone (the
-                        // binding design comment on #223) — it is a fact
-                        // about what somebody did, not a state the
-                        // observation is in.
+                        // binding design comment on #223).
                         if (row.isStopWork)
                           Chip(
                             key: SafetyObservationsScreen.rowStopWorkKey(row.id),
                             label: const Text('Stop-work'),
                             visualDensity: VisualDensity.compact,
                           ),
-                        Text(row.observationTypeLabel, style: theme.textTheme.labelMedium),
+                        Text(
+                          row.observationTypeLabel,
+                          style: dense?.copyWith(color: palette.textMuted),
+                        ),
                       ],
                     ),
                     const SizedBox(height: Spacing.xs),
-                    Text(row.categoryLabel, style: theme.textTheme.titleMedium),
+                    Text(
+                      row.categoryLabel,
+                      style: dense?.copyWith(
+                        color: palette.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     const SizedBox(height: Spacing.xxs),
                     Text(
                       '${row.orgUnitName} · filed against ${row.filedAgainst}',
                       key: SafetyObservationsScreen.rowFiledKey(row.id),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                     ),
                   ],
                 ),

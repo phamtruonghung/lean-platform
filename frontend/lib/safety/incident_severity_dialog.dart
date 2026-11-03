@@ -20,6 +20,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
 
@@ -31,8 +32,13 @@ class SafetyIncidentSeverityDialog extends StatefulWidget {
   static const ValueKey<String> loadingKey = ValueKey<String>('safety-incident-severity-loading');
   static const ValueKey<String> severityKey = ValueKey<String>('safety-incident-severity-value');
   static const ValueKey<String> noteKey = ValueKey<String>('safety-incident-severity-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('safety-incident-severity-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('safety-incident-severity-cancel');
+  /// The actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11).
+  static const String _submitId = 'safety-incident-severity-submit';
+  static const String _dismissId = 'safety-incident-severity-cancel';
+  static const String _closeId = 'safety-incident-severity-refused-close';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
   static const ValueKey<String> failureKey = ValueKey<String>('safety-incident-severity-failure');
   static const ValueKey<String> refusedKey = ValueKey<String>('safety-incident-severity-refused');
 
@@ -96,92 +102,96 @@ class _SafetyIncidentSeverityDialogState extends State<SafetyIncidentSeverityDia
     // value frozen when the route first built would answer for a half-known
     // Account.
     if (!holdsSafetyAuthority(context, incident.orgUnitId)) {
-      return AlertDialog(
+      // A refused dialog still needs a way out: the sentence is its own
+      // description and the single action closes it.
+      return AppDialog(
         key: SafetyIncidentSeverityDialog.refusedKey,
-        content: const Text(
-          "Correcting the severity needs Safety authority at this Safety incident's Org Unit.",
-        ),
+        title: 'Correct the severity',
+        size: AppDialogSize.decision,
+        description:
+            "Correcting the severity needs Safety authority at this Safety incident's Org Unit.",
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentSeverityDialog._closeId,
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<SafetyIncidentDetailBloc, SafetyIncidentDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Correct the severity'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${incident.incidentNo} is ${incident.severityLabel.toLowerCase()}. Correcting '
-                  'it restates the period it occurred in.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String?>(
-                  key: SafetyIncidentSeverityDialog.severityKey,
-                  initialValue: _severity,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Correct the severity to',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('Leave the severity alone'),
-                    ),
-                    for (final level in _offerableSeverities)
-                      DropdownMenuItem<String?>(
-                        value: level,
-                        child: Text(SeverityLevel.label(level)),
-                      ),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _severity = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SafetyIncidentSeverityDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 3,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    helperText: 'Why the severity is being corrected.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: SafetyIncidentSeverityDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // A form (520): one select and one note (§11).
+      child: AppDialog(
+        title: 'Correct the severity',
+        size: AppDialogSize.form,
+        description: '${incident.incidentNo} is ${incident.severityLabel.toLowerCase()}. '
+            'Correcting it restates the period it occurred in.',
         actions: [
-          TextButton(
-            key: SafetyIncidentSeverityDialog.cancelKey,
+          AppDialogAction(
+            id: SafetyIncidentSeverityDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SafetyIncidentSeverityDialog.submitKey,
+          AppDialogAction(
+            id: SafetyIncidentSeverityDialog._submitId,
+            label: 'Correct it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Correct it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String?>(
+              key: SafetyIncidentSeverityDialog.severityKey,
+              initialValue: _severity,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Correct the severity to',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('Leave the severity alone'),
+                ),
+                for (final level in _offerableSeverities)
+                  DropdownMenuItem<String?>(
+                    value: level,
+                    child: Text(SeverityLevel.label(level)),
+                  ),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _severity = value),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SafetyIncidentSeverityDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Note',
+                helperText: 'Why the severity is being corrected.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: SafetyIncidentSeverityDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

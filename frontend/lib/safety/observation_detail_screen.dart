@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -139,13 +140,16 @@ class _Loaded extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Spacing.lg),
+            // The summary card first — what kind of observation, where, when
+            // (issue #391). The severity potential and the stop-work badge are
+            // the title row above, which is where a reader looks first.
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(Spacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('What was seen', style: theme.textTheme.titleMedium),
+                    Text('Summary', style: theme.textTheme.titleMedium),
                     const SizedBox(height: Spacing.sm),
                     _Fact(label: 'Category', value: row.categoryLabel),
                     _Fact(label: 'Org Unit', value: row.orgUnitName),
@@ -155,21 +159,27 @@ class _Loaded extends StatelessWidget {
                       value: row.filedAgainst,
                     ),
                     _Fact(label: 'Observed at', value: row.observedAt ?? 'Not recorded'),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            AppDetailSection(
+              title: 'What was seen',
+              children: [
                     _Fact(label: 'Description', value: row.description ?? 'None given'),
                     _Fact(
                       label: 'Action taken',
                       value: row.actionTaken ?? 'None recorded yet',
                     ),
                     _Fact(label: 'Recorded by', value: row.recordedByLabel),
-                  ],
-                ),
-              ),
+              ],
             ),
-            const SizedBox(height: Spacing.lg),
             // What is being done about it (issue #231). Below the record's
             // own story, the same order the Safety incident Screen keeps for
             // its own Concern card: the observation itself comes first, the
             // work that answers it second.
+            const SizedBox(height: Spacing.md),
             _ActionsCard(
               observation: row,
               notice: state.notice,
@@ -208,15 +218,10 @@ class _ActionsCard extends StatelessWidget {
     final theme = Theme.of(context);
     final actions = observation.actions;
 
-    return Card(
+    return AppDetailSection(
       key: SafetyObservationDetailScreen.actionsKey,
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Closing the loop', style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.xs),
+      title: 'Closing the loop',
+      children: [
             Text(
               'The observation itself is recorded here; what somebody does about it is owned '
               'in the action log, as an Action.',
@@ -276,9 +281,7 @@ class _ActionsCard extends StatelessWidget {
               icon: const Icon(Icons.assignment_add),
               label: const Text('Raise an Action'),
             ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }

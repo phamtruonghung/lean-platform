@@ -45,6 +45,7 @@ import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'safety_incident.dart';
 import 'safety_incidents_bloc.dart';
@@ -71,13 +72,18 @@ class SafetyIncidentFormDialog extends StatefulWidget {
       ValueKey<String>('safety-incident-form-occurred-at');
   static const ValueKey<String> reportedAtKey =
       ValueKey<String>('safety-incident-form-reported-at');
-  static const ValueKey<String> submitKey = ValueKey<String>('safety-incident-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('safety-incident-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('safety-incident-form-failure');
   static const ValueKey<String> assetsFailedKey =
       ValueKey<String>('safety-incident-form-assets-failed');
   static const ValueKey<String> chosenOrgUnitKey =
       ValueKey<String>('safety-incident-form-chosen-org-unit');
+
+  /// The actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11).
+  static const String _submitId = 'safety-incident-form-submit';
+  static const String _dismissId = 'safety-incident-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
 
   /// The Asset picker's own name, which its `Key`s are derived from.
   static const String assetFieldName = 'safety-incident-asset';
@@ -237,12 +243,25 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
       child: BlocListener<OrgUnitPickerBloc, OrgUnitPickerState>(
         listenWhen: (previous, current) => previous.siteId != current.siteId,
         listener: (context, state) => _onOrgUnitSiteChanged(),
-        child: AlertDialog(
-          title: const Text('Record a Safety incident'),
-          content: SizedBox(
-            width: 640,
-            child: SingleChildScrollView(
-              child: Column(
+        // The widest of the four sizes (640): six fields, two of them
+        // date-times, plus the Org Unit chooser (§11).
+        child: AppDialog(
+          title: 'Record a Safety incident',
+          size: AppDialogSize.wide,
+          actions: [
+            AppDialogAction(
+              id: SafetyIncidentFormDialog._dismissId,
+              label: 'Cancel',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+            ),
+            AppDialogAction(
+              id: SafetyIncidentFormDialog._submitId,
+              label: 'Record it',
+              onPressed: _complete && !_awaiting ? _submit : null,
+            ),
+          ],
+          child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -422,22 +441,8 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                             theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                       ),
                     ),
-                ],
-              ),
-            ),
+            ],
           ),
-          actions: [
-            TextButton(
-              key: SafetyIncidentFormDialog.cancelKey,
-              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: SafetyIncidentFormDialog.submitKey,
-              onPressed: _complete && !_awaiting ? _submit : null,
-              child: const Text('Record it'),
-            ),
-          ],
         ),
       ),
     );

@@ -9,8 +9,14 @@
 ///
 /// Rows are ordered by region and then by code, which is the order the API
 /// sends them in: a catalogue of body parts groups naturally, and the region
-/// is on the row rather than only in the form because it is what a reader
-/// scans by.
+/// is on the row (`BodyPart.label` carries it) rather than only in the form,
+/// because it is what a reader scans by.
+///
+/// **A catalogue row is one dense line and [AppTouchTarget.min] tall** (issue
+/// #391, `docs/design-language.md` §12): `dense` for the part, `floor` for its
+/// region, the Inactive badge only where it applies, and the Correct button
+/// stated at 44 so the row cannot grow around it. At [AppLayout.pageWidth] the
+/// whole catalogue reads at 700px and keeps the same shape at 1280.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,6 +27,7 @@ import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -140,42 +147,53 @@ class _BodyPartRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
+    final palette = AppColors.of(context);
+    return ConstrainedBox(
       key: BodyPartsScreen.rowKey(bodyPart.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    bodyPart.label,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
+      constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    // The label already carries the code and the region it is
+                    // filed under (`BodyPart.label`) — the region is what a
+                    // reader scans by, so it is on the row rather than only in
+                    // the form.
+                    child: DisclosingText(
+                      bodyPart.label,
+                      style: AppTypography.dense(context)?.copyWith(
+                        color: bodyPart.isActive ? palette.textPrimary : palette.textMuted,
+                      ),
+                    ),
                   ),
-                ),
-                if (!bodyPart.isActive) ...[
-                  const SizedBox(width: Spacing.sm),
-                  StatusChip(
-                    key: BodyPartsScreen.inactiveChipKey(bodyPart.id),
-                    label: 'Inactive',
-                    tone: StatusTone.neutral,
-                  ),
+                  if (!bodyPart.isActive) ...[
+                    const SizedBox(width: Spacing.sm),
+                    StatusChip(
+                      key: BodyPartsScreen.inactiveChipKey(bodyPart.id),
+                      label: 'Inactive',
+                      tone: StatusTone.neutral,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          if (isAdmin)
-            OutlinedButton(
-              key: BodyPartsScreen.correctKey(bodyPart.id),
-              onPressed: isMutating
-                  ? null
-                  : () => BodyPartFormDialog.open(context, bodyPart: bodyPart),
-              child: const Text('Correct'),
-            ),
-        ],
+            if (isAdmin)
+              OutlinedButton(
+                key: BodyPartsScreen.correctKey(bodyPart.id),
+                onPressed: isMutating
+                    ? null
+                    : () => BodyPartFormDialog.open(context, bodyPart: bodyPart),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Correct'),
+              ),
+          ],
+        ),
       ),
     );
   }
