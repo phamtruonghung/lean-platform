@@ -7,7 +7,10 @@
 /// survive both layouts, in both palettes; that the palette switch rides in the
 /// form card's heading row, above the fields, in both layouts and in both
 /// palettes (issue #415); and that 320px neither overflows nor
-/// strands anything out of reach. They mount the Screen alone over a recording
+/// strands anything out of reach — at the default text size, and with the
+/// reader's text at 200%, which is the narrowest box and the largest text
+/// WCAG 1.4.4 asks a page to hold at once (issue #418). They mount the Screen
+/// alone over a recording
 /// `AuthGateway` rather than the whole app, because the Screen is the unit and
 /// its layout does not depend on the router. Not claimed: that the real
 /// gateways sign anyone in — `local_auth_test.dart` proves that, and that the
@@ -15,6 +18,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -74,10 +78,13 @@ Future<RecordingAuthGateway> pumpSignIn(
   Size size, {
   Brightness brightness = Brightness.light,
   PaletteToggleSpy? palette,
+  double textScale = 1.0,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
+  tester.platformDispatcher.textScaleFactorTestValue = textScale;
   addTearDown(tester.view.reset);
+  addTearDown(tester.platformDispatcher.clearAllTestValues);
   final gateway = RecordingAuthGateway();
   final toggle = palette ?? PaletteToggleSpy();
   await tester.pumpWidget(
@@ -161,6 +168,36 @@ void main() {
     expect(tester.getRect(find.byKey(SignInScreen.compactBrandKey)).top, greaterThanOrEqualTo(0));
   });
 
+  // WCAG 1.4.4 at the narrowest window the app supports (issue #418): the
+  // compact brand is one icon and one unbreakable word, and at twice the text
+  // the word is wider than the row has left beside the icon, so the two take a
+  // line each. What is pinned: nothing overflows, nothing is painted outside
+  // the window, and the word is drawn in full rather than ellipsized.
+  for (final brightness in Brightness.values) {
+    testWidgets('at 320x568 with the text at 200% nothing overflows in ${brightness.name}',
+        (tester) async {
+      await pumpSignIn(tester, const Size(320, 568), brightness: brightness, textScale: 2.0);
+
+      expect(tester.takeException(), isNull);
+      for (final part in [find.byKey(SignInScreen.compactBrandKey), find.text('Platform')]) {
+        final rect = tester.getRect(part);
+        expect(rect.left, greaterThanOrEqualTo(0), reason: part.toString());
+        expect(rect.right, lessThanOrEqualTo(320), reason: part.toString());
+      }
+      expect(
+        tester.renderObject<RenderParagraph>(find.text('Platform')).didExceedMaxLines,
+        isFalse,
+        reason: 'the word is drawn in full, not ellipsized',
+      );
+      final card = tester.getRect(find.byKey(SignInScreen.formCardKey));
+      expect(card.left, greaterThanOrEqualTo(0));
+      expect(card.right, lessThanOrEqualTo(320));
+      expect(_field('Email'), findsOneWidget);
+      expect(_field('Password'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
+    });
+  }
+
   testWidgets('a short two-panel window scrolls the identity panel rather than overflowing',
       (tester) async {
     await pumpSignIn(tester, const Size(1000, 200));
@@ -168,7 +205,7 @@ void main() {
   });
 
   for (final brightness in Brightness.values) {
-    for (final size in const [Size(1200, 900), Size(375, 812)]) {
+    for (final size in const [Size(1200, 900), Size(375, 812), Size(320, 568)]) {
       testWidgets('the copy is kept at ${size.width.round()}px in ${brightness.name}',
           (tester) async {
         await pumpSignIn(tester, size, brightness: brightness);
