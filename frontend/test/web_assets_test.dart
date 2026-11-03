@@ -1,5 +1,5 @@
 /// The files a browser reads *before* Flutter runs: the manifest, the icons and
-/// `index.html`'s own head (issue #399).
+/// `index.html`'s own head and boot surface (issue #399, #400).
 ///
 /// These are checked from the app's own copy of `web/` — the same directory
 /// `flutter build web` copies into the bundle — rather than by curling a
@@ -138,4 +138,86 @@ void main() {
       expect(_pngSize(shortcut).width, 192);
     });
   });
+
+  group('boot surface (issue #400)', () {
+    late String style;
+
+    setUpAll(() {
+      final block = RegExp(r'<style>([\s\S]*?)</style>').firstMatch(index);
+      expect(block, isNotNull,
+          reason: 'index.html draws no boot surface: there is no <style> block at all');
+      style = block!.group(1)!;
+    });
+
+    test('paints the name, the sentence and a moving indicator before Flutter runs', () {
+      expect(index, contains('id="boot-splash"'));
+      expect(index, contains('>Platform<'), reason: 'the surface does not say whose product this is');
+      expect(index, contains('One application for running several manufacturing plants.'),
+          reason: 'this is the sentence sign_in_screen.dart prints — a loading surface that '
+              'describes the product differently is a second voice');
+      expect(index, contains('class="boot-splash__bar"'));
+      expect(style, contains('@keyframes boot-splash-slide'),
+          reason: 'the indicator never moves, so nothing says the wait is progressing');
+    });
+
+    test("follows the reader's palette, in the app's own tokens", () {
+      final darkAt = style.indexOf('@media (prefers-color-scheme: dark)');
+      expect(darkAt, greaterThan(0),
+          reason: 'a reader whose palette is dark is shown the light surface first — '
+              'which is the white flash this surface exists to remove');
+      final light = style.substring(0, darkAt);
+      final dark = style.substring(darkAt);
+
+      final tokens = <String, ({Color light, Color dark})>{
+        'boot-canvas': (light: AppPalette.light.canvas, dark: AppPalette.dark.canvas),
+        'boot-ink': (light: AppPalette.light.textPrimary, dark: AppPalette.dark.textPrimary),
+        'boot-muted-ink': (light: AppPalette.light.textMuted, dark: AppPalette.dark.textMuted),
+        'boot-action': (light: AppPalette.light.actionPrimary, dark: AppPalette.dark.actionPrimary),
+        'boot-track': (light: AppPalette.light.surfaceMuted, dark: AppPalette.dark.surfaceMuted),
+      };
+      tokens.forEach((name, pair) {
+        expect(_cssProperty(light, name), _hex(pair.light),
+            reason: '--$name in the light surface is not the palette token that names it');
+        expect(_cssProperty(dark, name), _hex(pair.dark),
+            reason: '--$name in the dark surface is not the palette token that names it');
+      });
+    });
+
+    test('leaves nothing in the tab order', () {
+      // Read the markup, not the prose: the file's own comments name these
+      // elements to say they are absent.
+      final markup = index.replaceAll(RegExp(r'<!--[\s\S]*?-->'), '');
+      expect(RegExp(r'<a[\s>]').hasMatch(markup), isFalse,
+          reason: 'a link in the boot surface is a focus target the app then inherits');
+      expect(markup, isNot(contains('<button')));
+      expect(markup, isNot(contains('<input')));
+      expect(markup, isNot(contains('tabindex')));
+    });
+
+    test('is removed from the document when the engine paints its first frame', () {
+      expect(index, contains("addEventListener('flutter-first-frame'"),
+          reason: 'nothing listens for the first frame, so the surface would sit over the app forever');
+      expect(index, contains('removeChild(splash)'),
+          reason: 'the surface must leave the document; a hidden-but-present node is the ghost');
+      expect(index.indexOf('flutter-first-frame'), lessThan(index.indexOf('flutter_bootstrap.js')),
+          reason: 'the listener is registered after the bootstrap script, so the signal can arrive unheard');
+    });
+
+    test('stops moving when the reader asks, and needs nothing fetched to paint', () {
+      expect(style, contains('@media (prefers-reduced-motion: reduce)'),
+          reason: 'the indicator animates for a reader who asked for less motion');
+      expect(style, isNot(contains('url(')),
+          reason: 'a background image is another request before the surface can paint');
+      expect(index.indexOf('id="boot-splash"'), lessThan(index.indexOf('flutter_bootstrap.js')),
+          reason: 'the surface is drawn after the bundle starts loading, so it cannot precede the wait it covers');
+    });
+  });
+}
+
+/// One `--custom-property` value out of a CSS fragment, spelled the way
+/// `index.html` spells it (upper case).
+String _cssProperty(String css, String name) {
+  final match = RegExp('--$name:\\s*(#[0-9A-Fa-f]{6})').firstMatch(css);
+  expect(match, isNotNull, reason: 'the boot surface declares no --$name');
+  return match!.group(1)!.toUpperCase();
 }
