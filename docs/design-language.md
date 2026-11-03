@@ -258,8 +258,8 @@ the title and `Spacing.sm` (8) between the title and its hairline, then
 `Spacing.md` (12) under the hairline and `Spacing.lg` (16) at the card's foot.
 Those are the card's own shape, not a second reading of the ladder.
 
-**The three literals left.** Of the 601 `EdgeInsets` in `frontend/lib`, three
-still carry a bare number and all three are the Org Unit tree's own indent:
+**The three literals left.** Three `EdgeInsets` constructions in `frontend/lib`
+still carry a bare number, and all three are the Org Unit tree's own indent:
 `org_units_screen.dart:578` and `org_unit_picker.dart:314` and `:322` indent a
 child row by `left: 32` where `Spacing.xxl` is the token. They converge with that
 tree's own slice. Work orders' truncated-list banner carried the same kind of
@@ -380,19 +380,28 @@ name: a real affordance back to the register, a `TextButton` at
 parent's own word for its own Destination rather than a new one. The crumb says
 where the page sits; the sidebar keeps saying where the Module is.
 
-Read against section 2, this is concrete. A register measures the box it is handed
-— the page's box less its inset, 32 at the `Spacing.lg` (16) each side of section
-5. At a 700 window that is 408, at 900 it is 608: **both are below 700, so a
-five-column register is cards at both**, and tables appear only where the box
-reaches 700, which is a page box of 732 and a window of about 992 and up.
+Read against section 2, this is concrete. A register measures the box it is handed,
+and the tree hands it one of two. Parts and Store stock measure inside the page's
+own inset: their `LayoutBuilder` sits in the scrolling list, under the `Spacing.lg`
+(16) each side of section 5 (`parts_screen.dart:198`,
+`store_stock_screen.dart:232`), so their box is the page's box less 32. At a 700
+window that is 408, at 900 it is 608: **both are below 700, so those two are cards
+at both**, and their table appears only where the list's box reaches 700, which is
+a page box of 732 and a window of about 992 and up.
 
-**Work orders is the one register that is not on that base, and only while its
-`LayoutBuilder` stays outside the inset.** It wraps `AppPageFrame` rather than
-sitting inside it (`work_orders_screen.dart:714` builds the frame at `:723` and
-pads at `:729`), so the width it compares is the page box itself — the Shell's
-content area, 260 under the window — and its own 800 is reached at a window of
-800 + 260 = **1060**. A register that measured inside the inset would need a page
-box of 832 for the same 800, which is a window of about **1092**.
+**The rest measure the page's box itself, because their `LayoutBuilder` sits
+outside that inset**, so each flips at its own breakpoint plus the Shell's 260:
+Assets, Stores and Job plans at 700 are tables from a window of 960
+(`assets_screen.dart:456` wraps the frame at `:462`); Work orders' 800 at 800 + 260
+= **1060** (`work_orders_screen.dart:714`, frame at `:723`, padding at `:729`);
+Downtime's and My requests' 900 at 1160; Meters', PM schedules' and the Requests
+queue's 960 at 1220. The Actions log, CAPAs and the two Safety registers reach the
+same box the other way — their `LayoutBuilder` sits inside `AppPageFrame` with no
+inset of its own between it and the frame (`safety/incidents_screen.dart:522`,
+`:524`) — so 700 there is the same 960 window. Work orders' 1060 is the 800 arm of
+that family, not a register of its own, and it stays on the page box only while its
+`LayoutBuilder` stays outside the inset. A register that measured inside the inset
+would need a page box of 832 for the same 800 — a window of about **1092**.
 
 ### The catalogue: a list of records that are read down
 
