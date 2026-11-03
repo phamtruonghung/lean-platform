@@ -330,12 +330,19 @@ class _Wordmark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
-    return Row(
-      mainAxisSize: centered ? MainAxisSize.max : MainAxisSize.min,
-      mainAxisAlignment: centered ? MainAxisAlignment.center : MainAxisAlignment.start,
+    // A Wrap, not a Row: "Platform" is one unbreakable word, and at 320px with
+    // the reader's text at 200% it is wider than the row has left beside the
+    // icon on either side of it (WCAG 1.4.4). A Wrap gives it the next line
+    // instead of painting 32px past the window; at a text scale of 1 the two
+    // sit on one line, laid out exactly as the Row laid them out, centred or
+    // start-aligned as the header asks.
+    return Wrap(
+      alignment: centered ? WrapAlignment.center : WrapAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: Spacing.sm,
+      runSpacing: Spacing.xs,
       children: [
         Icon(Icons.dashboard_outlined, color: palette.actionPrimary),
-        const SizedBox(width: Spacing.sm),
         Text('Platform', style: Theme.of(context).textTheme.titleLarge),
       ],
     );
