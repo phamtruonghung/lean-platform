@@ -199,7 +199,12 @@ void main() {
           reason: 'nothing listens for the first frame, so the surface would sit over the app forever');
       expect(index, contains('removeChild(splash)'),
           reason: 'the surface must leave the document; a hidden-but-present node is the ghost');
-      expect(index.indexOf('flutter-first-frame'), lessThan(index.indexOf('flutter_bootstrap.js')),
+      // Measure the listener itself, not the first mention of the event name:
+      // the file's comments name `flutter-first-frame` above the script, so
+      // `indexOf('flutter-first-frame')` always resolves to a comment and the
+      // ordering assertion would hold however the script is arranged.
+      expect(index.indexOf("addEventListener('flutter-first-frame'"),
+          lessThan(index.indexOf('<script src="flutter_bootstrap.js')),
           reason: 'the listener is registered after the bootstrap script, so the signal can arrive unheard');
     });
 
