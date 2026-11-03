@@ -158,11 +158,23 @@ const _pages = <_Page>[
   // the card's own padding, so the default bound holds.
   _Page('/safety/incidents', 'lib/safety/incidents_screen.dart', 'Safety incidents',
       'What went wrong at this Site'),
+  // The Safety incident detail page (issue #391's design law 3, followed up
+  // after S5): its title row is now `AppPageHeader('Safety incident')` rather
+  // than the record's own number, so it is audited here instead of excluded —
+  // the page head, the summary card and the first row inside it all start at
+  // the frame's own left edge.
+  _Page('/safety/incidents/901', 'lib/safety/incident_detail_screen.dart', 'Safety incident', ''),
   // The Safety observation register (issue #230). Its rows are cards of text
   // at the card's own padding, the same shape the incident register above
   // keeps, so the default bound holds.
   _Page('/safety/observations', 'lib/safety/observations_screen.dart', 'Safety observations',
       'What was seen before anything went wrong'),
+  // The Safety observation detail page (issue #391's design law 3, followed up
+  // after S5): the same shape as the incident's — `AppPageHeader('Safety
+  // observation')` naming the Screen, the record's own type in the summary
+  // card — so it is audited rather than excluded.
+  _Page('/safety/observations/701', 'lib/safety/observation_detail_screen.dart',
+      'Safety observation', ''),
   // The Safety Module's two catalogues (issue #224). Flat lists of rows at the
   // card's own padding, like the Product catalogue, so the default bound holds
   // for each. Audited rather than excluded even though their Destinations are
@@ -231,10 +243,6 @@ const _excluded = <String, String>{
       "its title is the complaint's own Customer and Product, not a page heading",
   'lib/quality/supplier_ncr_detail_screen.dart':
       "its title is the supplier NCR's own Supplier and Product, not a page heading",
-  'lib/safety/incident_detail_screen.dart':
-      "its title is the Safety incident's own number, not a page heading",
-  'lib/safety/observation_detail_screen.dart':
-      "its title is the observation's own type, not a page heading",
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',

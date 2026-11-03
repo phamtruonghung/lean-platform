@@ -40,11 +40,12 @@ import 'package:lean_platform/safety/injury_types_screen.dart';
 import 'package:lean_platform/safety/observation_detail_screen.dart';
 import 'package:lean_platform/safety/observations_screen.dart';
 import 'package:lean_platform/widgets/app_dialog.dart';
+import 'package:lean_platform/widgets/app_page_header.dart';
 import 'package:lean_platform/widgets/app_table.dart';
 
 import 'harness.dart';
 
-FakeWire _wire() => FakeWire(
+FakeWire _wire({int readStatus = 200}) => FakeWire(
       role: Roles.admin,
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       orgUnits: {
@@ -76,6 +77,10 @@ FakeWire _wire() => FakeWire(
           safetyObservationJson('702', severityPotential: 'low', category: 'housekeeping'),
         ],
       },
+      // One switch for both detail reads: the failed-state cases below ask for
+      // the 500 a real API answers when the record cannot be read.
+      safetyIncidentsStatus: readStatus,
+      safetyObservationsStatus: readStatus,
       bodyParts: [
         bodyPartJson('51', 'HAND-L', 'Left hand'),
         bodyPartJson('52', 'FOREARM-L', 'Left forearm', region: 'upper_limb'),
@@ -92,6 +97,7 @@ Future<void> _pump(
   required String location,
   double textScale = 1,
   bool settle = true,
+  FakeWire? wire,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(width, 2200);
@@ -101,7 +107,7 @@ Future<void> _pump(
   await pumpApp(
     tester,
     gateway: FakeAuthGateway(accessToken: 'a-token'),
-    client: _wire().client,
+    client: (wire ?? _wire()).client,
     initialLocation: location,
     settle: settle,
   );
@@ -346,6 +352,79 @@ void main() {
         );
       }
     });
+
+    // Issue #391's design law 3 (one page rhythm): the page's title row is the
+    // shared `AppPageHeader` naming the Screen, and it is drawn above the
+    // state switch so no state goes without it.
+    testWidgets('the page head names the Screen at 700, at 900, at 1280 and at twice the text',
+        (tester) async {
+      for (final (width, scale) in const [
+        (700.0, 1.0),
+        (900.0, 1.0),
+        (1280.0, 1.0),
+        (1280.0, 2.0),
+      ]) {
+        await _pump(tester, width: width, location: '/safety/incidents/901', textScale: scale);
+        final label = 'window $width at ${scale}x';
+        expect(tester.takeException(), isNull, reason: label);
+
+        expect(find.byType(AppPageHeader), findsOneWidget, reason: '$label: no page head');
+        expect(
+          tester.widget<Text>(find.byKey(AppPageHeader.titleKey)).data,
+          'Safety incident',
+          reason: '$label: the page head is not the Screen\'s own name',
+        );
+        expect(find.byKey(SafetyIncidentDetailScreen.backKey), findsOneWidget,
+            reason: '$label: no way back under the page head');
+        expect(tester.getSize(find.byKey(SafetyIncidentDetailScreen.backKey)).height,
+            greaterThanOrEqualTo(44.0),
+            reason: '$label: the back control is not a tap target');
+      }
+    });
+
+    testWidgets('the record\'s own identity is in the summary card, not the page title',
+        (tester) async {
+      await _pump(tester, width: 1280, location: '/safety/incidents/901');
+
+      final summary = find.byKey(SafetyIncidentDetailScreen.summaryKey);
+      expect(summary, findsOneWidget);
+      for (final key in [
+        SafetyIncidentDetailScreen.statusKey,
+        SafetyIncidentDetailScreen.severityKey,
+        SafetyIncidentDetailScreen.recordableKey,
+      ]) {
+        expect(find.descendant(of: summary, matching: find.byKey(key)), findsOneWidget,
+            reason: 'the record\'s identity is not inside the summary card');
+      }
+
+      // The number is a line inside that card, and the page title is not it.
+      final number = tester.getRect(find.text('SI-HCM-2026-00001'));
+      final card = tester.getRect(summary);
+      expect(number.top, greaterThanOrEqualTo(card.top), reason: 'the number is above the card');
+      expect(number.bottom, lessThanOrEqualTo(card.bottom),
+          reason: 'the number is below the summary card');
+      expect(tester.getTopLeft(find.byType(AppPageHeader)).dx, closeTo(card.left, 1.5),
+          reason: 'the summary card and the page head do not share one left edge');
+    });
+
+    testWidgets('a failed read still carries the page head and the retry', (tester) async {
+      await _pump(tester, width: 1280, location: '/safety/incidents/901', wire: _wire(readStatus: 500));
+
+      // The defect this card is about: the head used to live inside the loaded
+      // branch, so a record that failed to read rendered no title and no way
+      // back.
+      expect(find.byKey(SafetyIncidentDetailScreen.failedKey), findsOneWidget);
+      expect(find.byKey(SafetyIncidentDetailScreen.retryKey), findsOneWidget);
+      expect(find.byType(AppPageHeader), findsOneWidget,
+          reason: 'a failed read renders no page head');
+      expect(
+        tester.widget<Text>(find.byKey(AppPageHeader.titleKey)).data,
+        'Safety incident',
+      );
+      expect(find.byKey(SafetyIncidentDetailScreen.backKey), findsOneWidget,
+          reason: 'a failed read renders no way back');
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('Safety observation detail', () {
@@ -376,6 +455,75 @@ void main() {
             greaterThanOrEqualTo(44.0),
             reason: label);
       }
+    });
+
+    // Issue #391's design law 3 (one page rhythm): the shared `AppPageHeader`
+    // names the Screen, and it is drawn above the state switch so no state goes
+    // without it.
+    testWidgets('the page head names the Screen at 700, at 900, at 1280 and at twice the text',
+        (tester) async {
+      for (final (width, scale) in const [
+        (700.0, 1.0),
+        (900.0, 1.0),
+        (1280.0, 1.0),
+        (1280.0, 2.0),
+      ]) {
+        await _pump(tester, width: width, location: '/safety/observations/701', textScale: scale);
+        final label = 'window $width at ${scale}x';
+        expect(tester.takeException(), isNull, reason: label);
+
+        expect(find.byType(AppPageHeader), findsOneWidget, reason: '$label: no page head');
+        expect(
+          tester.widget<Text>(find.byKey(AppPageHeader.titleKey)).data,
+          'Safety observation',
+          reason: '$label: the page head is not the Screen\'s own name',
+        );
+        expect(find.byKey(SafetyObservationDetailScreen.backKey), findsOneWidget,
+            reason: '$label: no way back under the page head');
+        expect(tester.getSize(find.byKey(SafetyObservationDetailScreen.backKey)).height,
+            greaterThanOrEqualTo(44.0),
+            reason: '$label: the back control is not a tap target');
+      }
+    });
+
+    testWidgets('the record\'s own identity is in the summary card, not the page title',
+        (tester) async {
+      await _pump(tester, width: 1280, location: '/safety/observations/701');
+
+      final summary = find.byKey(SafetyObservationDetailScreen.summaryKey);
+      expect(summary, findsOneWidget);
+      for (final key in [
+        SafetyObservationDetailScreen.potentialKey,
+        SafetyObservationDetailScreen.stopWorkKey,
+      ]) {
+        expect(find.descendant(of: summary, matching: find.byKey(key)), findsOneWidget,
+            reason: 'the record\'s identity is not inside the summary card');
+      }
+      expect(
+        find.descendant(of: summary, matching: find.text('Unsafe act')),
+        findsOneWidget,
+        reason: 'the observation\'s own type is not inside the summary card',
+      );
+      expect(tester.getTopLeft(find.byType(AppPageHeader)).dx,
+          closeTo(tester.getRect(summary).left, 1.5),
+          reason: 'the summary card and the page head do not share one left edge');
+    });
+
+    testWidgets('a failed read still carries the page head and the retry', (tester) async {
+      await _pump(
+          tester, width: 1280, location: '/safety/observations/701', wire: _wire(readStatus: 500));
+
+      expect(find.byKey(SafetyObservationDetailScreen.failedKey), findsOneWidget);
+      expect(find.byKey(SafetyObservationDetailScreen.retryKey), findsOneWidget);
+      expect(find.byType(AppPageHeader), findsOneWidget,
+          reason: 'a failed read renders no page head');
+      expect(
+        tester.widget<Text>(find.byKey(AppPageHeader.titleKey)).data,
+        'Safety observation',
+      );
+      expect(find.byKey(SafetyObservationDetailScreen.backKey), findsOneWidget,
+          reason: 'a failed read renders no way back');
+      expect(tester.takeException(), isNull);
     });
   });
 

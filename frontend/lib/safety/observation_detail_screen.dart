@@ -1,6 +1,13 @@
 /// One Safety observation (issue #230): what was seen, where, when, and how
 /// bad it could have been.
 ///
+/// **The page head** is `AppPageHeader('Safety observation')`, drawn above the
+/// state switch so every state carries it — the loading skeleton, a failed
+/// read, the missing record and the loaded record alike (issue #391's design
+/// law 3: one page rhythm; the shape the Non-conformance and Work order detail
+/// Screens keep). What the record *is* — its type, its severity potential, the
+/// stop-work badge — is the summary card's first line, never the page's title.
+///
 /// Readable by anyone who can see the Site (the server's own rule — Org Unit
 /// scope decides where an Account may act, not what it may know about), so
 /// this Screen gates nothing about reading it. There is no injury-style
@@ -25,6 +32,7 @@ import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -40,6 +48,8 @@ class SafetyObservationDetailScreen extends StatelessWidget {
   static const double maxWidth = 900;
 
   static const ValueKey<String> backKey = ValueKey<String>('safety-observation-back');
+  static const ValueKey<String> summaryKey =
+      ValueKey<String>('safety-observation-detail-summary');
   static const ValueKey<String> potentialKey =
       ValueKey<String>('safety-observation-detail-potential');
   static const ValueKey<String> stopWorkKey =
@@ -67,30 +77,92 @@ class SafetyObservationDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<SafetyObservationDetailBloc>().state;
 
+    // The page head sits above the state switch, so a load, a failed read, a
+    // missing record and the record itself all carry the same title row and
+    // back control (issue #391's design law 3). The missing state is the one
+    // state whose back control belongs to its empty state — that state already
+    // offers exactly this control under [SafetyObservationDetailScreen.backKey],
+    // and two widgets may not share one key.
+    final missing = state is SafetyObservationDetailUnavailable && state.isMissing;
+
     return Scaffold(
-      body: switch (state) {
-        SafetyObservationDetailLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
-        SafetyObservationDetailUnavailable(isMissing: true) => PlatformEmptyState.noneExist(
-            key: missingKey,
-            title: 'No such Safety observation',
-            message: 'Nothing is recorded at this address. It may have been removed, or '
-                'the address may be wrong.',
-            icon: Icons.search_off_outlined,
-            actionLabel: 'Back to Safety observations',
-            actionKey: backKey,
-            onAction: () => context.go(Routes.safetyObservations),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Head(showBack: !missing),
+          Expanded(
+            child: switch (state) {
+              SafetyObservationDetailLoading() =>
+                const SkeletonList(rows: 4, maxWidth: maxWidth),
+              SafetyObservationDetailUnavailable(isMissing: true) =>
+                PlatformEmptyState.noneExist(
+                  key: missingKey,
+                  title: 'No such Safety observation',
+                  message: 'Nothing is recorded at this address. It may have been removed, or '
+                      'the address may be wrong.',
+                  icon: Icons.search_off_outlined,
+                  actionLabel: 'Back to Safety observations',
+                  actionKey: backKey,
+                  onAction: () => context.go(Routes.safetyObservations),
+                ),
+              SafetyObservationDetailUnavailable(message: final message) => PlatformFailureState(
+                  key: failedKey,
+                  title: 'The Safety observation could not be read',
+                  message: message,
+                  retryKey: retryKey,
+                  onRetry: () => context
+                      .read<SafetyObservationDetailBloc>()
+                      .add(const SafetyObservationDetailRefreshed()),
+                ),
+              SafetyObservationDetailLoaded() => _Loaded(state: state),
+            },
           ),
-        SafetyObservationDetailUnavailable(message: final message) => PlatformFailureState(
-            key: failedKey,
-            title: 'The Safety observation could not be read',
-            message: message,
-            retryKey: retryKey,
-            onRetry: () => context
-                .read<SafetyObservationDetailBloc>()
-                .add(const SafetyObservationDetailRefreshed()),
+        ],
+      ),
+    );
+  }
+}
+
+/// The page's own title row: the way back, then `AppPageHeader`. It lives above
+/// the state switch, so the loading, failed, missing and loaded states are told
+/// apart by their body and never by a missing page head.
+class _Head extends StatelessWidget {
+  const _Head({this.showBack = true});
+
+  /// False in the missing state, whose empty state carries the back control
+  /// under the same [SafetyObservationDetailScreen.backKey].
+  final bool showBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AppPageFrame(
+        maxWidth: SafetyObservationDetailScreen.maxWidth,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showBack) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: SafetyObservationDetailScreen.backKey,
+                    onPressed: () => context.go(Routes.safetyObservations),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back to Safety observations'),
+                  ),
+                ),
+                const SizedBox(height: Spacing.sm),
+              ],
+              const AppPageHeader(title: 'Safety observation'),
+            ],
           ),
-        SafetyObservationDetailLoaded() => _Loaded(state: state),
-      },
+        ),
+      ),
     );
   }
 }
@@ -102,67 +174,20 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final row = state.observation;
 
     return Center(
       child: AppPageFrame(
         maxWidth: SafetyObservationDetailScreen.maxWidth,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
+          // The page head above this list already pads the top (`Spacing.xl`)
+          // and the space beneath itself (`Spacing.lg`).
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: SafetyObservationDetailScreen.backKey,
-                onPressed: () => context.go(Routes.safetyObservations),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Safety observations'),
-              ),
-            ),
-            const SizedBox(height: Spacing.sm),
-            Wrap(
-              spacing: Spacing.sm,
-              runSpacing: Spacing.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(row.observationTypeLabel, style: theme.textTheme.headlineSmall),
-                StatusChip(
-                  key: SafetyObservationDetailScreen.potentialKey,
-                  label: row.severityPotentialLabel,
-                  tone: row.severityPotentialTone,
-                ),
-                if (row.isStopWork)
-                  Chip(
-                    key: SafetyObservationDetailScreen.stopWorkKey,
-                    label: const Text('Stop-work'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: Spacing.lg),
-            // The summary card first — what kind of observation, where, when
-            // (issue #391). The severity potential and the stop-work badge are
-            // the title row above, which is where a reader looks first.
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(Spacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Summary', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: Spacing.sm),
-                    _Fact(label: 'Category', value: row.categoryLabel),
-                    _Fact(label: 'Org Unit', value: row.orgUnitName),
-                    _Fact(
-                      label: 'Filed against',
-                      key: SafetyObservationDetailScreen.filedKey,
-                      value: row.filedAgainst,
-                    ),
-                    _Fact(label: 'Observed at', value: row.observedAt ?? 'Not recorded'),
-                  ],
-                ),
-              ),
-            ),
+            // The summary card first — what the record *is* (its type, its
+            // severity potential, the stop-work badge), then where, when and
+            // what kind (issue #391; the shape S4's own Summary card keeps).
+            _SummaryCard(observation: row),
             const SizedBox(height: Spacing.md),
             AppDetailSection(
               title: 'What was seen',
@@ -185,6 +210,66 @@ class _Loaded extends StatelessWidget {
               notice: state.notice,
               busy: state.isRaisingAction,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What the record *is*, at the top of the page's first card: the observation's
+/// type, its severity potential and — where it applies — the stop-work badge,
+/// then the summary facts beneath. (Issue #391's design law 3, and the shape
+/// S4's own Summary card keeps: the page title names the Screen, never the
+/// record.)
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.observation});
+
+  final SafetyObservation observation;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      key: SafetyObservationDetailScreen.summaryKey,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // A `Wrap`: the type and its badges must not overflow at a narrow
+            // width, and the observation's own type is what a reader looks for.
+            Wrap(
+              spacing: Spacing.sm,
+              runSpacing: Spacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(observation.observationTypeLabel, style: theme.textTheme.headlineSmall),
+                StatusChip(
+                  key: SafetyObservationDetailScreen.potentialKey,
+                  label: observation.severityPotentialLabel,
+                  tone: observation.severityPotentialTone,
+                ),
+                if (observation.isStopWork)
+                  Chip(
+                    key: SafetyObservationDetailScreen.stopWorkKey,
+                    label: const Text('Stop-work'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: Spacing.md),
+            Text('Summary', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.sm),
+            _Fact(label: 'Category', value: observation.categoryLabel),
+            _Fact(label: 'Org Unit', value: observation.orgUnitName),
+            _Fact(
+              label: 'Filed against',
+              key: SafetyObservationDetailScreen.filedKey,
+              value: observation.filedAgainst,
+            ),
+            _Fact(label: 'Observed at', value: observation.observedAt ?? 'Not recorded'),
           ],
         ),
       ),
