@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
@@ -28,8 +28,212 @@
   <!-- What the tab says until the router titles it: `Platform`. Every address
        is titled by the table in lib/platform/router.dart once the app runs. -->
   <title>Platform</title>
+  <!-- ==========================================================================
+       The boot surface (issue #400).
+
+       `main.dart.js` is ~1.6 MB gzipped and, on a plant's wifi, takes seconds
+       to arrive and compile. Until this existed, `body` was empty for that
+       whole period: a blank page for everyone, and a flash of white for a
+       reader whose palette is dark. This draws the Platform's own identity
+       while that wait happens, in plain HTML and CSS — no script, no font, no
+       image, nothing to fetch — and it is removed the moment Flutter paints its
+       first frame (the engine dispatches `flutter-first-frame`; see the script
+       at the end of `body`).
+
+       Every colour below is a token from lib/theme.dart, written here because
+       this file is read before any Dart exists. The pairing is asserted by
+       test/web_assets_test.dart, which fails if these values ever drift from
+       `AppPalette`, so this is not a second brand:
+
+         --boot-canvas      light `_PrimitivesLight.canvas`      dark `_PrimitivesDark.canvas`
+         --boot-ink         light `_PrimitivesLight.onSurface`   dark `_PrimitivesDark.onSurface`
+         --boot-muted-ink   light `_PrimitivesLight.onSurfaceVariant`
+                            dark  `_PrimitivesDark.onSurfaceVariant`
+         --boot-action      light `_PrimitivesLight.primary`     dark `_PrimitivesDark.primary`
+         --boot-track       light `_PrimitivesLight.muted`       dark `_PrimitivesDark.muted`
+
+       Contrast, measured against the canvas each is drawn on (WCAG 2.x
+       relative luminance; the numbers theme.dart records for the same pairs,
+       re-derived here rather than restated): the name and the sentence are
+       9.90:1 and 7.24:1 light, 16.30:1 and 12.02:1 dark; the indicator is a
+       non-text graphic at 8.34:1 light and 9.90:1 dark, and 7.49:1 / 5.74:1
+       against its own track — well over the 3:1 floor of 1.4.11.
+
+       Sizes are in `rem` and the column is a `min()` of `rem` and the viewport,
+       so a reader who raises their browser's base font size gets a larger
+       surface rather than one that overflows — the same rule the app applies to
+       `textScaler`. ========================================================== -->
+  <style>
+    :root {
+      --boot-canvas: #F8FAFC;
+      --boot-ink: #1E3A8A;
+      --boot-muted-ink: #475569;
+      --boot-action: #1E40AF;
+      --boot-track: #E9EEF6;
+    }
+
+    /* The app follows the system palette by default (issue #369), so the
+       surface that stands in for it does too. */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --boot-canvas: #0F172A;
+        --boot-ink: #F1F5F9;
+        --boot-muted-ink: #CBD5E1;
+        --boot-action: #93C5FD;
+        --boot-track: #334155;
+      }
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--boot-canvas);
+    }
+
+    #boot-splash {
+      position: fixed;
+      inset: 0;
+      /* Above the <flutter-view> the engine appends to body. */
+      z-index: 2147483647;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: var(--boot-canvas);
+      color: var(--boot-ink);
+      font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      /* It covers the app for the instant between the first frame and its own
+         removal, so it must never be the thing a click lands on. */
+      pointer-events: none;
+    }
+
+    .boot-splash__inner {
+      width: 100%;
+      max-width: min(22rem, 100%);
+    }
+
+    .boot-splash__wordmark {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .boot-splash__mark {
+      flex: none;
+      width: 1.5rem;
+      height: 1.5rem;
+      color: var(--boot-action);
+    }
+
+    /* `titleLarge` at 18px, the size the app's own wordmark uses. */
+    .boot-splash__name {
+      font-size: 1.125rem;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    /* `titleMedium` at 16px — the sentence the sign-in panel prints. */
+    .boot-splash__sentence {
+      margin: 1rem 0 0;
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--boot-muted-ink);
+    }
+
+    .boot-splash__track {
+      position: relative;
+      overflow: hidden;
+      margin-top: 1.5rem;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--boot-track);
+    }
+
+    /* The bar slides rather than grows: a transform is composited and costs no
+       layout, where an animated `width` would relayout the track every frame. */
+    .boot-splash__bar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 40%;
+      border-radius: 2px;
+      background: var(--boot-action);
+      transform: translateX(-100%);
+      animation: boot-splash-slide 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes boot-splash-slide {
+      from {
+        transform: translateX(-100%);
+      }
+      to {
+        transform: translateX(250%);
+      }
+    }
+
+    /* A reader who asked for less motion gets the same indicator, parked, and
+       the status text still says what is happening. */
+    @media (prefers-reduced-motion: reduce) {
+      .boot-splash__bar {
+        animation: none;
+        transform: none;
+      }
+    }
+
+    /* Read by a screen reader, never drawn: the visible indicator says nothing
+       on its own, and the surface's role="status" is what announces progress. */
+    .boot-splash__loading {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
 </head>
 <body>
+  <!-- Neither this element nor anything inside it is focusable: there is no
+       link, button, input or `tabindex` here, and the whole surface is removed
+       from the document when the app takes over — so no ghost is left in the
+       tab order. -->
+  <div id="boot-splash" role="status" aria-live="polite">
+    <div class="boot-splash__inner">
+      <div class="boot-splash__wordmark">
+        <svg class="boot-splash__mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M3 3h8v10H3V3zm2 2v6h4V5H5zm8-2h8v6h-8V3zm2 2v2h4V5h-4zM3 15h8v6H3v-6zm2 2v2h4v-2H5zm8-6h8v10h-8V11zm2 2v6h4v-6h-4z"></path>
+        </svg>
+        <span class="boot-splash__name">Platform</span>
+      </div>
+      <p class="boot-splash__sentence">One application for running several manufacturing plants.</p>
+      <div class="boot-splash__track" aria-hidden="true">
+        <div class="boot-splash__bar"></div>
+      </div>
+      <span class="boot-splash__loading">Loading the Platform.</span>
+    </div>
+  </div>
+  <!-- Registered before the bootstrap script so the signal cannot arrive
+       unheard. The engine dispatches exactly one `flutter-first-frame` on the
+       window when the app has painted; the surface comes out of the document
+       in the same turn, so the app is revealed rather than the splash faded
+       out over it. If the bundle never runs, the surface deliberately stays:
+       a visible "loading" is honest, and a blank page is the defect this
+       removes. -->
+  <script>
+    (function () {
+      var splash = document.getElementById('boot-splash');
+      if (!splash) return;
+      window.addEventListener('flutter-first-frame', function () {
+        if (splash.parentNode) splash.parentNode.removeChild(splash);
+      }, { once: true });
+    }());
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
