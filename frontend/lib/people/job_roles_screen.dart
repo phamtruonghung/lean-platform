@@ -1,14 +1,33 @@
 /// The job role catalogue (issue #88, ADR-0005's shared catalogue,
 /// CONTEXT.md's Job role entry): every job role the plant recognises, laid
-/// over an administrator's own write surface for it (`POST`/
-/// `PATCH /api/people/job-roles`, job-role-routes.js).
+/// over an administrator's own write surface for it (`POST`/`PATCH /api/people/
+/// job-roles`, job-role-routes.js).
 ///
 /// Offered to every approved Account, the same openness `DirectoryScreen`
-/// already has: `GET /api/people/job-roles` carries no admin or scope check
-/// of its own (job-role-routes.js's own header), so hiding this Screen behind
-/// a role would gate a destination the route itself never refuses. Only the
+/// already has: `GET /api/people/job-roles` carries no admin or scope check of
+/// its own (job-role-routes.js's own header), so hiding this Screen behind a
+/// role would gate a destination the route itself never refuses. Only the
 /// write affordances inside it ([isAdmin]) are gated — the same shape
 /// `EmployeeDetailScreen` already uses for its own administrator-only writes.
+///
+/// **This is a catalogue, not a register** (`docs/frontend-layout.md` §5): a
+/// list read *down* — a reader finds a role by its name and then acts on it —
+/// so it is an `AppListCard` of rows with the record's own controls at the far
+/// end and no column-label band.
+///
+/// **What #394 changed here.** The row used to set the name and the code in one
+/// weight and one colour (`"Welder · WELD"`), so the identifier a reader scans
+/// for and the code a spreadsheet is keyed on looked like the same kind of
+/// thing; `name` is now `dense` w600 in `textPrimary` and the ` · CODE` tail is
+/// `textMuted`, which is §6's own rule for a catalogue's name and code (the
+/// reference board's `.z`). The line is one `Text.rich`, so the sentence a
+/// reader hears — and the string the Module's tests assert — is unchanged. The
+/// row's left edge and its control's right edge are now the card's own inset
+/// rather than a `Wrap`'s idea of it, and **when the card's box is narrower than
+/// `AppBreakpoints.headerActionsWrap` at the reader's text size the control
+/// drops under the name** instead of being squeezed beside it: at a 700 window
+/// with twice the text, "Correct" and a name beside it do not both fit, and a
+/// `Row` would overflow rather than move.
 library;
 
 import 'package:flutter/material.dart';
@@ -63,6 +82,9 @@ class JobRolesScreen extends StatelessWidget {
   static const ValueKey<String> noMatchKey = ValueKey<String>('job-roles-no-match');
   static ValueKey<String> correctKey(String id) => ValueKey<String>('job-roles-correct-$id');
   static ValueKey<String> inactiveChipKey(String id) => ValueKey<String>('job-roles-inactive-$id');
+
+  /// One row's catalogue line: the name, then the code the plant keys it on.
+  static ValueKey<String> nameKey(String id) => ValueKey<String>('job-roles-name-$id');
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +170,7 @@ class _LoadedState extends State<_Loaded> {
                   ),
               ],
             ),
-            const SizedBox(height: Spacing.lg),
+            const SizedBox(height: Spacing.md),
             if (widget.state.jobRoles.isEmpty)
               // No "none matched" variant while there is nothing to narrow
               // (issue #103's own distinction, now carried by the filter box
@@ -173,7 +195,7 @@ class _LoadedState extends State<_Loaded> {
                 shown: matches.length,
                 total: widget.state.jobRoles.length,
               ),
-              const SizedBox(height: Spacing.lg),
+              const SizedBox(height: Spacing.md),
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: JobRolesScreen.noMatchKey,
@@ -203,6 +225,9 @@ class _LoadedState extends State<_Loaded> {
   }
 }
 
+/// One row of the catalogue: the role's own line at the card's left edge, its
+/// control at the card's right-hand one (see this file's header for both
+/// decisions).
 class _JobRoleRow extends StatelessWidget {
   const _JobRoleRow({required this.jobRole, required this.isAdmin, required this.isMutating});
 
@@ -212,38 +237,82 @@ class _JobRoleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      key: JobRolesScreen.rowKey(jobRole.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
+    final palette = AppColors.of(context);
+    // The two tones of one line, not two widgets: `Text.rich` keeps the
+    // sentence ("Welder · WELD") whole for a screen reader and for the string
+    // this Module's tests assert, while the eye gets the name first and the
+    // code as its quieter tail.
+    final line = Text.rich(
+      TextSpan(
         children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    '${jobRole.name} · ${jobRole.code}',
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                if (!jobRole.isActive) ...[
-                  const SizedBox(width: Spacing.sm),
-                  StatusChip(key: JobRolesScreen.inactiveChipKey(jobRole.id), label: 'Inactive', tone: StatusTone.neutral),
-                ],
-              ],
+          TextSpan(
+            text: jobRole.name,
+            style: AppTypography.dense(context)?.copyWith(
+              color: palette.textPrimary,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          if (isAdmin)
-            OutlinedButton(
-              key: JobRolesScreen.correctKey(jobRole.id),
-              onPressed: isMutating ? null : () => JobRoleFormDialog.open(context, jobRole: jobRole),
-              child: const Text('Correct'),
-            ),
+          TextSpan(
+            text: ' · ${jobRole.code}',
+            style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+          ),
         ],
       ),
+      key: JobRolesScreen.nameKey(jobRole.id),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+
+    final name = Row(
+      children: [
+        Flexible(child: line),
+        if (!jobRole.isActive) ...[
+          const SizedBox(width: Spacing.sm),
+          StatusChip(key: JobRolesScreen.inactiveChipKey(jobRole.id), label: 'Inactive', tone: StatusTone.neutral),
+        ],
+      ],
+    );
+
+    final Widget? action = isAdmin
+        ? OutlinedButton(
+            key: JobRolesScreen.correctKey(jobRole.id),
+            onPressed: isMutating ? null : () => JobRoleFormDialog.open(context, jobRole: jobRole),
+            child: const Text('Correct'),
+          )
+        : null;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The box the row is handed, at the reader's text size (§10): the
+        // control is dropped under the name rather than squeezed beside it.
+        final stacked = constraints.maxWidth <
+            AppBreakpoints.effective(context, AppBreakpoints.headerActionsWrap);
+        return Padding(
+          key: JobRolesScreen.rowKey(jobRole.id),
+          padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.md),
+          child: stacked
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    name,
+                    if (action != null) ...[
+                      const SizedBox(height: Spacing.sm),
+                      Align(alignment: Alignment.centerRight, child: action),
+                    ],
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: name),
+                    if (action != null) ...[
+                      const SizedBox(width: Spacing.md),
+                      action,
+                    ],
+                  ],
+                ),
+        );
+      },
     );
   }
 }
-

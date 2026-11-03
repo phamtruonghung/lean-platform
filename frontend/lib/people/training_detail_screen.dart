@@ -28,6 +28,29 @@
 /// a draft only a discard control behind a confirmation. A sent record is
 /// never offered discard - sending is where a record becomes evidence. A
 /// discarded draft takes the person back to the register.
+///
+/// **The page shape (issue #394).** A summary card first, then the sections —
+/// `docs/design-language.md` §5's order for a detail page, and `AppDetailSection`
+/// for each section so their titles, hairlines and insets are the same ones a
+/// Work order or a CAPA reads at. The summary card is the record's answer to
+/// "what is this and where does it stand": its number and state, what was
+/// trained, the server's own reading of the answers, and — under a hairline, so
+/// they read as the card's own acts rather than another fact — the controls
+/// this caller may use on it, with the server's refusals beside them. Below it,
+/// the facts are a section and the Trainees are a section.
+///
+/// **Which rule holds a mark is stated on the Trainee it belongs to.** Each
+/// answered Trainee's row names the Signature its answer carries — `stored`
+/// (the one they keep) or `drawn` (a stroke made as they answered) — because
+/// that is ADR-0053's rule showing at the one place a reader can check it: the
+/// mark is kept in the database against that Employee, and a row that said only
+/// "Signed" would be repeating the colour without the fact.
+///
+/// The page names [maxWidth] 720, so its sections are one column at every
+/// window: `detailTwoColumn` (1000) is a box this frame never hands them, and
+/// stacking is the documented answer for a frame under it (§10). Naming 1040
+/// here to reach two columns would re-decide the page's width, which this slice
+/// does not own.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,7 +58,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
+import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
+import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -86,18 +112,32 @@ class TrainingDetailScreen extends StatelessWidget {
   static const ValueKey<String> trainerKey = ValueKey<String>('training-detail-trainer');
   static const ValueKey<String> objectiveKey = ValueKey<String>('training-detail-objective');
   static const ValueKey<String> noTraineesKey = ValueKey<String>('training-detail-no-trainees');
+
+  /// The Trainees section. The key names the region; #394 moved it from the
+  /// section's heading `Text` onto the section itself, because `AppDetailSection`
+  /// now owns that heading — it still resolves to exactly one widget, and the
+  /// heading's own string ("Trainees (N)") is unchanged.
   static const ValueKey<String> traineesHeadingKey = ValueKey<String>('training-detail-trainees-heading');
   static const ValueKey<String> addTraineeKey = ValueKey<String>('training-detail-add-trainee');
   static const ValueKey<String> removeFailureKey = ValueKey<String>('training-detail-remove-failure');
   static const ValueKey<String> sendKey = ValueKey<String>('training-detail-send');
   static const ValueKey<String> correctKey = ValueKey<String>('training-detail-correct');
   static const ValueKey<String> discardKey = ValueKey<String>('training-detail-discard');
-  static const ValueKey<String> discardConfirmKey = ValueKey<String>('training-detail-discard-confirm');
-  static const ValueKey<String> discardCancelKey = ValueKey<String>('training-detail-discard-cancel');
+
+  /// The discard confirmation's two actions. #394 moved this alert onto
+  /// `AppDialog` (ADR-0058), which owns its action keys, so the two accessors
+  /// keep their names and now resolve to the dialog's own action keys — the
+  /// rename the PR lists. Nothing else about the confirmation changed: same
+  /// question, same description, same two words, same callbacks.
+  static final ValueKey<String> discardConfirmKey = AppDialog.actionKey('training-discard-confirm');
+  static final ValueKey<String> discardCancelKey = AppDialog.actionKey('training-discard-cancel');
   static const ValueKey<String> discardFailureKey = ValueKey<String>('training-detail-discard-failure');
   static const ValueKey<String> sendFailureKey = ValueKey<String>('training-detail-send-failure');
   static const ValueKey<String> readingKey = ValueKey<String>('training-detail-reading');
   static const ValueKey<String> answerFailureKey = ValueKey<String>('training-detail-answer-failure');
+
+  /// The summary card, so a test can measure the sections against it.
+  static const ValueKey<String> summaryKey = ValueKey<String>('training-detail-summary');
   static ValueKey<String> traineeAnswerKey(String id) => ValueKey<String>('training-detail-trainee-answer-$id');
   static ValueKey<String> traineeSignatureKey(String id) =>
       ValueKey<String>('training-detail-trainee-signature-$id');
@@ -180,20 +220,22 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    final trainerName = record.trainerName;
-    final objective = record.objective;
+    final palette = AppColors.of(context);
     // A draft is only ever shown to a caller who could send it; a sent record
     // is shown to everybody, so its Trainee list is changed only by one who can
     // correct it (the server's own gate, asked again on every write).
     final canChangeTrainees = record.isDraft || canSend;
+    final trainerName = record.trainerName;
+    final objective = record.objective;
     return Center(
       child: AppPageFrame(
         maxWidth: TrainingDetailScreen.maxWidth,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
+            // One level below the register: the way back and the way to the
+            // printed sheet are crumbs above the record's own head
+            // (`docs/design-language.md` §6).
             Align(
               alignment: Alignment.centerLeft,
               child: Wrap(
@@ -215,54 +257,180 @@ class _Loaded extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Spacing.sm),
-            Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    record.number,
-                    key: TrainingDetailScreen.numberKey,
-                    style: theme.textTheme.headlineSmall,
+            // The summary card: what this record is, where it stands, and what
+            // this caller may do with it.
+            Card(
+              key: TrainingDetailScreen.summaryKey,
+              margin: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.lg, Spacing.lg, Spacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                record.number,
+                                key: TrainingDetailScreen.numberKey,
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: palette.textPrimary,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(width: Spacing.sm),
+                            StatusChip(
+                              key: TrainingDetailScreen.statusKey,
+                              label: record.statusLabel,
+                              tone: trainingStatusTone(record.status),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: Spacing.xxs),
+                        Text(
+                          record.title,
+                          key: TrainingDetailScreen.titleKey,
+                          style: AppTypography.dense(context)?.copyWith(
+                            fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+                            color: palette.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: Spacing.xs),
+                        Text(
+                          _readingOf(record),
+                          key: TrainingDetailScreen.readingKey,
+                          style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+                        ),
+                      ],
+                    ),
                   ),
+                  if (canSend) _summaryActions(context),
+                ],
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            AppDetailSection(
+              title: 'The training',
+              children: [
+                TrainingFact(
+                  label: 'Trained on',
+                  value: record.trainedOn,
+                  valueKey: TrainingDetailScreen.trainedOnKey,
                 ),
-                const SizedBox(width: Spacing.sm),
-                StatusChip(
-                  key: TrainingDetailScreen.statusKey,
-                  label: record.statusLabel,
-                  tone: trainingStatusTone(record.status),
+                TrainingFact(
+                  label: 'Org Unit',
+                  value: record.orgUnitName,
+                  valueKey: TrainingDetailScreen.orgUnitKey,
+                ),
+                TrainingFact(
+                  label: 'Duration',
+                  value: formatTrainingHours(record.durationHours),
+                  valueKey: TrainingDetailScreen.durationKey,
+                ),
+                TrainingFact(
+                  label: 'Trainer',
+                  value: trainerName ?? 'Not recorded',
+                  valueKey: TrainingDetailScreen.trainerKey,
+                ),
+                TrainingFact(
+                  label: 'Objective',
+                  value: objective == null || objective.isEmpty ? 'Not recorded' : objective,
+                  valueKey: TrainingDetailScreen.objectiveKey,
                 ),
               ],
             ),
-            const SizedBox(height: Spacing.xs),
-            Text(record.title, key: TrainingDetailScreen.titleKey, style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.sm),
-            Text(_readingOf(record), key: TrainingDetailScreen.readingKey, style: muted),
-            if (record.isDraft && canSend) ...[
-              const SizedBox(height: Spacing.md),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  key: TrainingDetailScreen.sendKey,
-                  onPressed: isWriting ? null : () => context.read<TrainingDetailBloc>().add(const TrainingRecordSent()),
-                  icon: const Icon(Icons.send_outlined),
-                  label: const Text('Send to Trainees'),
-                ),
-              ),
-              if (sendFailure != null)
-                Padding(
-                  key: TrainingDetailScreen.sendFailureKey,
-                  padding: const EdgeInsets.only(top: Spacing.sm),
-                  child: Text(
-                    sendFailure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+            const SizedBox(height: Spacing.md),
+            AppDetailSection(
+              key: TrainingDetailScreen.traineesHeadingKey,
+              title: 'Trainees (${record.traineeCount})',
+              trailing: canChangeTrainees
+                  ? OutlinedButton.icon(
+                      key: TrainingDetailScreen.addTraineeKey,
+                      onPressed: isWriting
+                          ? null
+                          : () => TrainingTraineeDialog.open(
+                                context,
+                                orgUnitId: record.orgUnitId,
+                                orgUnitName: record.orgUnitName,
+                              ),
+                      icon: const Icon(Icons.person_add_alt_1_outlined),
+                      label: const Text('Add Trainee'),
+                    )
+                  : null,
+              children: [
+                if (record.trainees.isEmpty)
+                  Text(
+                    'No Trainees are on this Training record yet.',
+                    key: TrainingDetailScreen.noTraineesKey,
+                    style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
+                  )
+                else
+                  for (final trainee in record.trainees)
+                    _TraineeRow(
+                      trainee: trainee,
+                      record: record,
+                      isWriting: isWriting,
+                      canSend: canSend,
+                      canChangeTrainees: canChangeTrainees,
+                      employeeId: employeeId,
+                    ),
+                if (answerFailure != null)
+                  _FailureText(
+                    key: TrainingDetailScreen.answerFailureKey,
+                    message: answerFailure!,
                   ),
-                ),
-            ],
-            if (canSend) ...[
-              const SizedBox(height: Spacing.md),
-              Wrap(
+                if (evaluationFailure != null)
+                  _FailureText(
+                    key: TrainingDetailScreen.evaluationFailureKey,
+                    message: evaluationFailure!,
+                  ),
+                if (removeFailure != null)
+                  _FailureText(
+                    key: TrainingDetailScreen.removeFailureKey,
+                    message: removeFailure!,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The record's own acts, under a hairline so they read as the card's footer
+  /// rather than as one more fact above them.
+  Widget _summaryActions(BuildContext context) {
+    final palette = AppColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Divider(height: 1, thickness: 1, color: palette.edge),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.md, Spacing.lg, Spacing.md),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth <
+                  AppBreakpoints.effective(context, AppBreakpoints.headerActionsWrap);
+              final controls = Wrap(
                 spacing: Spacing.sm,
                 runSpacing: Spacing.sm,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  if (record.isDraft)
+                    FilledButton.icon(
+                      key: TrainingDetailScreen.sendKey,
+                      onPressed: isWriting
+                          ? null
+                          : () => context.read<TrainingDetailBloc>().add(const TrainingRecordSent()),
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text('Send to Trainees'),
+                    ),
                   OutlinedButton.icon(
                     key: TrainingDetailScreen.correctKey,
                     onPressed: isWriting ? null : () => TrainingRaiseDialog.openCorrection(context, record),
@@ -277,180 +445,202 @@ class _Loaded extends StatelessWidget {
                       label: const Text('Discard draft'),
                     ),
                 ],
-              ),
-              if (discardFailure != null)
-                Padding(
-                  key: TrainingDetailScreen.discardFailureKey,
-                  padding: const EdgeInsets.only(top: Spacing.sm),
-                  child: Text(
-                    discardFailure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-            const SizedBox(height: Spacing.lg),
-            Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(Spacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _Fact(label: 'Trained on', value: record.trainedOn, valueKey: TrainingDetailScreen.trainedOnKey),
-                    _Fact(label: 'Org Unit', value: record.orgUnitName, valueKey: TrainingDetailScreen.orgUnitKey),
-                    _Fact(
-                      label: 'Duration',
-                      value: formatTrainingHours(record.durationHours),
-                      valueKey: TrainingDetailScreen.durationKey,
+              );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (stacked)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [controls],
+                    )
+                  else
+                    Align(alignment: Alignment.centerRight, child: controls),
+                  if (sendFailure != null)
+                    _FailureText(
+                      key: TrainingDetailScreen.sendFailureKey,
+                      message: sendFailure!,
                     ),
-                    _Fact(
-                      label: 'Trainer',
-                      value: trainerName ?? 'Not recorded',
-                      valueKey: TrainingDetailScreen.trainerKey,
+                  if (discardFailure != null)
+                    _FailureText(
+                      key: TrainingDetailScreen.discardFailureKey,
+                      message: discardFailure!,
                     ),
-                    _Fact(
-                      label: 'Objective',
-                      value: objective == null || objective.isEmpty ? 'Not recorded' : objective,
-                      valueKey: TrainingDetailScreen.objectiveKey,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: Spacing.lg),
-            Row(
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One fact on the summary's own section: its label at the section's left edge
+/// and its value in the same column down the page. The label is three parts of
+/// the row and the value five, so a longer label wraps rather than pushing the
+/// values out of line; there is no hand-set pixel width here.
+class TrainingFact extends StatelessWidget {
+  const TrainingFact({super.key, required this.label, required this.value, required this.valueKey});
+
+  final String label;
+  final String value;
+  final Key valueKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 3,
+          child: Text(
+            label,
+            style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
+          ),
+        ),
+        Expanded(
+          flex: 5,
+          child: Text(
+            value,
+            key: valueKey,
+            style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One Trainee: who they are, what they answered, the rule that holds their
+/// mark, and the two things a trainer or the Trainee themselves can do about it.
+class _TraineeRow extends StatelessWidget {
+  const _TraineeRow({
+    required this.trainee,
+    required this.record,
+    required this.isWriting,
+    required this.canSend,
+    required this.canChangeTrainees,
+    required this.employeeId,
+  });
+
+  final TrainingTrainee trainee;
+  final TrainingRecord record;
+  final bool isWriting;
+  final bool canSend;
+  final bool canChangeTrainees;
+  final String? employeeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final muted = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
+    return Padding(
+      key: TrainingDetailScreen.traineeRowKey(trainee.id),
+      padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    'Trainees (${record.traineeCount})',
-                    key: TrainingDetailScreen.traineesHeadingKey,
-                    style: theme.textTheme.titleMedium,
+                Text(
+                  '${trainee.employeeNo} · ${trainee.employeeName}',
+                  style: AppTypography.dense(context)?.copyWith(
+                    color: palette.textPrimary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (canChangeTrainees)
-                  OutlinedButton.icon(
-                    key: TrainingDetailScreen.addTraineeKey,
-                    onPressed: isWriting
-                        ? null
-                        : () => TrainingTraineeDialog.open(
-                              context,
-                              orgUnitId: record.orgUnitId,
-                              orgUnitName: record.orgUnitName,
-                            ),
-                    icon: const Icon(Icons.person_add_alt_1_outlined),
-                    label: const Text('Add Trainee'),
+                if (!record.isDraft)
+                  Text(
+                    _answerOf(trainee),
+                    key: TrainingDetailScreen.traineeAnswerKey(trainee.id),
+                    style: muted,
+                  ),
+                if (!record.isDraft && trainee.signatureAppliedAs != null)
+                  Text(
+                    switch (trainee.signatureAppliedAs) {
+                      'stored' => 'Signed with their kept Signature',
+                      _ => 'Signed with a Signature drawn as they answered',
+                    },
+                    key: TrainingDetailScreen.traineeSignatureKey(trainee.id),
+                    style: muted,
+                  ),
+                if (canSend)
+                  _EvaluationPicker(trainee: trainee, isWriting: isWriting)
+                else if (trainee.evaluation != null)
+                  Text(
+                    'Evaluated: ${trainingEvaluationLabel(trainee.evaluation!)}',
+                    key: TrainingDetailScreen.evaluationKey(trainee.id),
+                    style: muted,
+                  ),
+                if (!record.isDraft && employeeId != null && trainee.employeeId == employeeId)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Spacing.xs),
+                    child: Wrap(
+                      spacing: Spacing.sm,
+                      children: [
+                        FilledButton(
+                          key: TrainingDetailScreen.confirmKey(trainee.id),
+                          onPressed: isWriting
+                              ? null
+                              : () async {
+                                  final bloc = context.read<TrainingDetailBloc>();
+                                  final signature = await showTrainingAnswerDialog(context);
+                                  if (signature == null) return;
+                                  bloc.add(TrainingTraineeAnswered(trainee.id, 'confirmed', signature: signature));
+                                },
+                          child: const Text('Confirm'),
+                        ),
+                        OutlinedButton(
+                          key: TrainingDetailScreen.declineKey(trainee.id),
+                          onPressed: isWriting
+                              ? null
+                              : () => context
+                                  .read<TrainingDetailBloc>()
+                                  .add(TrainingTraineeAnswered(trainee.id, 'declined')),
+                          child: const Text('Decline'),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
-            const SizedBox(height: Spacing.sm),
-            if (record.trainees.isEmpty)
-              Text(
-                'No Trainees are on this Training record yet.',
-                key: TrainingDetailScreen.noTraineesKey,
-                style: muted,
-              )
-            else
-              for (final trainee in record.trainees)
-                ListTile(
-                  key: TrainingDetailScreen.traineeRowKey(trainee.id),
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  title: Text('${trainee.employeeNo} · ${trainee.employeeName}'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!record.isDraft)
-                        Text(
-                          _answerOf(trainee),
-                          key: TrainingDetailScreen.traineeAnswerKey(trainee.id),
-                        ),
-                      if (!record.isDraft && trainee.signatureAppliedAs != null)
-                        Text(
-                          switch (trainee.signatureAppliedAs) {
-                            'stored' => 'Signed with their kept Signature',
-                            _ => 'Signed with a Signature drawn as they answered',
-                          },
-                          key: TrainingDetailScreen.traineeSignatureKey(trainee.id),
-                        ),
-                      if (canSend)
-                        _EvaluationPicker(trainee: trainee, isWriting: isWriting)
-                      else if (trainee.evaluation != null)
-                        Text(
-                          'Evaluated: ${trainingEvaluationLabel(trainee.evaluation!)}',
-                          key: TrainingDetailScreen.evaluationKey(trainee.id),
-                        ),
-                      if (!record.isDraft && employeeId != null && trainee.employeeId == employeeId)
-                        Padding(
-                          padding: const EdgeInsets.only(top: Spacing.xs),
-                          child: Wrap(
-                            spacing: Spacing.sm,
-                            children: [
-                              FilledButton(
-                                key: TrainingDetailScreen.confirmKey(trainee.id),
-                                onPressed: isWriting
-                                    ? null
-                                    : () async {
-                                        final bloc = context.read<TrainingDetailBloc>();
-                                        final signature = await showTrainingAnswerDialog(context);
-                                        if (signature == null) return;
-                                        bloc.add(TrainingTraineeAnswered(trainee.id, 'confirmed', signature: signature));
-                                      },
-                                child: const Text('Confirm'),
-                              ),
-                              OutlinedButton(
-                                key: TrainingDetailScreen.declineKey(trainee.id),
-                                onPressed: isWriting
-                                    ? null
-                                    : () => context
-                                        .read<TrainingDetailBloc>()
-                                        .add(TrainingTraineeAnswered(trainee.id, 'declined')),
-                                child: const Text('Decline'),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  trailing: canChangeTrainees
-                      ? IconButton(
-                          key: TrainingDetailScreen.removeTraineeKey(trainee.id),
-                          tooltip: 'Remove ${trainee.employeeName}',
-                          icon: const Icon(Icons.close),
-                          onPressed: isWriting
-                              ? null
-                              : () => context.read<TrainingDetailBloc>().add(TrainingTraineeRemoved(trainee.id)),
-                        )
-                      : null,
-                ),
-            if (answerFailure != null)
-              Padding(
-                key: TrainingDetailScreen.answerFailureKey,
-                padding: const EdgeInsets.only(top: Spacing.sm),
-                child: Text(
-                  answerFailure!,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                ),
-              ),
-            if (evaluationFailure != null)
-              Padding(
-                key: TrainingDetailScreen.evaluationFailureKey,
-                padding: const EdgeInsets.only(top: Spacing.sm),
-                child: Text(
-                  evaluationFailure!,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                ),
-              ),
-            if (removeFailure != null)
-              Padding(
-                key: TrainingDetailScreen.removeFailureKey,
-                padding: const EdgeInsets.only(top: Spacing.sm),
-                child: Text(
-                  removeFailure!,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                ),
-              ),
-          ],
-        ),
+          ),
+          if (canChangeTrainees)
+            IconButton(
+              key: TrainingDetailScreen.removeTraineeKey(trainee.id),
+              tooltip: 'Remove ${trainee.employeeName}',
+              icon: const Icon(Icons.close),
+              onPressed: isWriting
+                  ? null
+                  : () => context.read<TrainingDetailBloc>().add(TrainingTraineeRemoved(trainee.id)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A refusal, where it belongs: under the control that was refused, in the
+/// palette's own danger foreground.
+class _FailureText extends StatelessWidget {
+  const _FailureText({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: Spacing.sm),
+      child: Text(
+        message,
+        style: AppTypography.dense(context)
+            ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),
       ),
     );
   }
@@ -462,22 +652,23 @@ Future<void> _discard(BuildContext context) async {
   final bloc = context.read<TrainingDetailBloc>();
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Discard this draft?'),
-      content: const Text(
-        'The draft and the Trainees listed on it will be deleted, and it cannot be brought back. '
-        'Nobody has been asked about it yet.',
-      ),
+    builder: (dialogContext) => AppDialog(
+      title: 'Discard this draft?',
+      description: 'The draft and the Trainees listed on it will be deleted, and it cannot be '
+          'brought back. Nobody has been asked about it yet.',
+      size: AppDialogSize.decision,
       actions: [
-        TextButton(
-          key: TrainingDetailScreen.discardCancelKey,
+        AppDialogAction(
+          id: 'training-discard-cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
         ),
-        FilledButton(
-          key: TrainingDetailScreen.discardConfirmKey,
+        AppDialogAction(
+          id: 'training-discard-confirm',
+          label: 'Discard',
+          kind: AppDialogActionKind.destructive,
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Discard'),
         ),
       ],
     ),
@@ -551,35 +742,6 @@ class _EvaluationPicker extends StatelessWidget {
                   : () => context.read<TrainingDetailBloc>().add(TrainingTraineeEvaluated(trainee.id, null)),
               child: const Text('Clear'),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value, required this.valueKey});
-
-  final String label;
-  final String value;
-  final Key valueKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ),
-          Expanded(child: Text(value, key: valueKey, style: theme.textTheme.bodyMedium)),
         ],
       ),
     );

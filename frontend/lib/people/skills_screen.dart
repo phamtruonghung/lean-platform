@@ -24,6 +24,18 @@
 /// the three shared states, the shared `AppListCard` for its rows, the
 /// Platform's page width, and the same row shape job roles uses — name on the
 /// left, actions at the right-hand end of the same line.
+///
+/// **It is a catalogue, not a register** (`docs/frontend-layout.md` §5): a
+/// list read *down*. #394 brought it onto the same row shape `JobRolesScreen`
+/// took in the same slice — the name at w600 in `textPrimary` with its code and
+/// category as the quieter tail in `textMuted` (one `Text.rich`, so the
+/// sentence and the asserted string are unchanged), the row's left edge and its
+/// control's right edge at the card's own inset, and the two controls dropped
+/// *under* the name rather than beside it when the card's box is narrower than
+/// `AppBreakpoints.headerActionsWrap` at the reader's text size. That last one
+/// is the measured case this row was already wrapping for: at an 800px window
+/// two outlined buttons take ~400 of the row's 368 usable pixels, and at twice
+/// the text they take twice that.
 library;
 
 import 'package:flutter/material.dart';
@@ -71,6 +83,9 @@ class SkillsScreen extends StatelessWidget {
   static ValueKey<String> correctKey(String id) => ValueKey<String>('skills-correct-$id');
   static ValueKey<String> inactiveChipKey(String id) => ValueKey<String>('skills-inactive-$id');
   static ValueKey<String> whoHoldsKey(String id) => ValueKey<String>('skills-who-holds-$id');
+
+  /// One row's catalogue line: the skill's name, then its code and category.
+  static ValueKey<String> nameKey(String id) => ValueKey<String>('skills-name-$id');
 
   /// The filter box's `name` (issue #191), seeding [filterFieldKey],
   /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
@@ -171,7 +186,7 @@ class _LoadedState extends State<_Loaded> {
                   ),
               ],
             ),
-            const SizedBox(height: Spacing.lg),
+            const SizedBox(height: Spacing.md),
             if (widget.state.skills.isEmpty)
               // The shared empty state, with the action that would fill it
               // (issue #189) — and, since this ticket, only the one empty
@@ -196,7 +211,7 @@ class _LoadedState extends State<_Loaded> {
                 shown: matches.length,
                 total: widget.state.skills.length,
               ),
-              const SizedBox(height: Spacing.lg),
+              const SizedBox(height: Spacing.md),
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: SkillsScreen.noMatchKey,
@@ -223,16 +238,8 @@ class _LoadedState extends State<_Loaded> {
   }
 }
 
-/// One row of the catalogue: what the skill is on the left, what can be done
-/// about it at the right-hand end of the same line (issue #189).
-///
-/// The actions used to sit *beneath* the skill's own text in a `Wrap`, which
-/// made every row twice as tall as a job role's and left the right half of each
-/// row empty. The actions are now the row's own second item, so they sit at the
-/// right-hand end of the name's line — and, because the whole row is a `Wrap`
-/// rather than a `Row`, they drop to their own line on a surface too narrow to
-/// hold them beside the name instead of overflowing it. A `Row` was tried first
-/// and overflowed by 77px at an 800px window, which is a supported width.
+/// One row of the catalogue: what the skill is at the card's left edge, what
+/// can be done about it at the card's right-hand one (see this file's header).
 class _SkillRow extends StatelessWidget {
   const _SkillRow({required this.skill, required this.isAdmin, required this.isMutating});
 
@@ -242,59 +249,87 @@ class _SkillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      key: SkillsScreen.rowKey(skill.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      // A `Wrap`, not a `Row` (issue #189): the actions sit at the right-hand
-      // end of the name's own line while there is room for them and drop to
-      // their own line when there is not — which is what a `Row` cannot do, and
-      // at an 800px window there is genuinely not (measured: two outlined
-      // buttons take ~400px, leaving 76px for the text and its `Inactive`
-      // chip). Same rule the repo's own header-overflow note records: `Wrap`,
-      // never a `Row` whose controls can outgrow it.
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: Spacing.md,
-        runSpacing: Spacing.xs,
+    final palette = AppColors.of(context);
+    // One line, two tones: the name a reader scans for at w600 in
+    // `textPrimary`, and the code with its category as the quieter tail in
+    // `textMuted` — §6's rule for a catalogue's name and code. `Text.rich`
+    // keeps it one sentence for a screen reader and one string for the tests.
+    final line = Text.rich(
+      TextSpan(
         children: [
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: Spacing.sm,
-            runSpacing: Spacing.xs,
-            children: [
-              Text(
-                '${skill.name} · ${skill.code} · ${skill.skillCategory}',
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (!skill.isActive)
-                StatusChip(
-                  key: SkillsScreen.inactiveChipKey(skill.id),
-                  label: 'Inactive',
-                  tone: StatusTone.neutral,
-                ),
-            ],
+          TextSpan(
+            text: skill.name,
+            style: AppTypography.dense(context)?.copyWith(
+              color: palette.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          Wrap(
-            spacing: Spacing.sm,
-            runSpacing: Spacing.xs,
-            children: [
-              OutlinedButton(
-                key: SkillsScreen.whoHoldsKey(skill.id),
-                onPressed: () => SkillQualifiedEmployeesDialog.open(context, skill),
-                child: const Text('Who holds this'),
-              ),
-              if (isAdmin)
-                OutlinedButton(
-                  key: SkillsScreen.correctKey(skill.id),
-                  onPressed: isMutating ? null : () => SkillFormDialog.open(context, skill: skill),
-                  child: const Text('Correct'),
-                ),
-            ],
+          TextSpan(
+            text: ' · ${skill.code} · ${skill.skillCategory}',
+            style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
         ],
       ),
+      key: SkillsScreen.nameKey(skill.id),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+
+    final name = Row(
+      children: [
+        Flexible(child: line),
+        if (!skill.isActive) ...[
+          const SizedBox(width: Spacing.sm),
+          StatusChip(key: SkillsScreen.inactiveChipKey(skill.id), label: 'Inactive', tone: StatusTone.neutral),
+        ],
+      ],
+    );
+
+    final actions = <Widget>[
+      OutlinedButton(
+        key: SkillsScreen.whoHoldsKey(skill.id),
+        onPressed: () => SkillQualifiedEmployeesDialog.open(context, skill),
+        child: const Text('Who holds this'),
+      ),
+      if (isAdmin)
+        OutlinedButton(
+          key: SkillsScreen.correctKey(skill.id),
+          onPressed: isMutating ? null : () => SkillFormDialog.open(context, skill: skill),
+          child: const Text('Correct'),
+        ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The box the row is handed, at the reader's text size (§10): the
+        // controls drop under the name rather than squeezing it out.
+        final stacked = constraints.maxWidth <
+            AppBreakpoints.effective(context, AppBreakpoints.headerActionsWrap);
+        return Padding(
+          key: SkillsScreen.rowKey(skill.id),
+          padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.md),
+          child: stacked
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    name,
+                    const SizedBox(height: Spacing.sm),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Wrap(spacing: Spacing.sm, runSpacing: Spacing.xs, children: actions),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: name),
+                    const SizedBox(width: Spacing.md),
+                    Wrap(spacing: Spacing.sm, runSpacing: Spacing.xs, children: actions),
+                  ],
+                ),
+        );
+      },
     );
   }
 }

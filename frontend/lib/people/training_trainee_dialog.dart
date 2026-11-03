@@ -12,6 +12,16 @@
 /// or the 409s for a duplicate and a departed Employee) is
 /// rendered inside the dialog, which stays open. Opened with `showDialog` and
 /// an explicit Bloc hand-off, as every dialog in this Module is.
+///
+/// **Drawn in `AppDialog` (issue #394, ADR-0058)** at [AppDialogSize.picker]
+/// (460) — the width the ADR names for "a list or filter to choose one thing
+/// from", which is what this is — instead of the 520 it used to hand an
+/// `AlertDialog` through a `SizedBox` inside its content. The shell's content
+/// area is the only scroller, so the outer `SingleChildScrollView` is gone; the
+/// segmented scope control, the picker, its `Key`s, the failure's copy and the
+/// enable condition on Add are unchanged. The two action keys are the shell's
+/// (`AppDialog.actionKey` of this dialog's own ids), the rename #398
+/// established.
 library;
 
 import 'package:flutter/material.dart';
@@ -19,7 +29,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'employee.dart';
 import 'training_detail_bloc.dart';
@@ -32,13 +44,19 @@ class TrainingTraineeDialog extends StatefulWidget {
   final String orgUnitName;
 
   static const ValueKey<String> scopeKey = ValueKey<String>('training-trainee-scope');
-  static const ValueKey<String> submitKey = ValueKey<String>('training-trainee-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('training-trainee-cancel');
+
+  /// The two actions, named through the dialog shell that now draws them.
+  static final ValueKey<String> submitKey = AppDialog.actionKey(_submitId);
+  static final ValueKey<String> cancelKey = AppDialog.actionKey(_cancelId);
+
   static const ValueKey<String> failureKey = ValueKey<String>('training-trainee-failure');
 
   /// The two choices of the scope control.
   static const ValueKey<String> orgUnitScopeKey = ValueKey<String>('training-trainee-scope-org-unit');
   static const ValueKey<String> directoryScopeKey = ValueKey<String>('training-trainee-scope-directory');
+
+  static const String _submitId = 'training-trainee-submit';
+  static const String _cancelId = 'training-trainee-cancel';
 
   /// The picker's own name, which its `Key`s are derived from.
   static const String employeeFieldName = 'training-trainee-employee';
@@ -95,98 +113,96 @@ class _TrainingTraineeDialogState extends State<TrainingTraineeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final failure = _failure;
     return BlocListener<TrainingDetailBloc, TrainingDetailState>(
       listener: _onRecordChanged,
-      child: AlertDialog(
-        title: const Text('Add Trainee'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SegmentedButton<bool>(
-                  key: TrainingTraineeDialog.scopeKey,
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment<bool>(
-                      value: false,
-                      label: Text(widget.orgUnitName, overflow: TextOverflow.ellipsis),
-                      tooltip: 'Employees of ${widget.orgUnitName}',
-                    ),
-                    const ButtonSegment<bool>(value: true, label: Text('Whole Directory')),
-                  ],
-                  selected: {_wholeDirectory},
-                  onSelectionChanged: _awaiting
-                      ? null
-                      : (selection) => setState(() {
-                            _wholeDirectory = selection.first;
-                            _employee = null;
-                            _failure = null;
-                          }),
-                ),
-                const SizedBox(height: Spacing.md),
-                // Keyed on the scope so a change starts a fresh search.
-                KeyedSubtree(
-                  key: ValueKey<bool>(_wholeDirectory),
-                  child: AppSearchField<Employee>(
-                    name: TrainingTraineeDialog.employeeFieldName,
-                    label: 'Employee',
-                    helperText: _wholeDirectory
-                        ? 'Anyone in the Directory, found by name or number.'
-                        : 'An Employee of ${widget.orgUnitName}, found by name or number.',
-                    value: _employee,
-                    enabled: !_awaiting,
-                    onChanged: (employee) => setState(() => _employee = employee),
-                    onSelected: (employee) => setState(() {
-                      _employee = employee;
-                      _failure = null;
-                    }),
-                    fetchSuggestions: (term) async {
-                      final token = context.read<AuthGateway>().currentAccessToken;
-                      if (token == null) return const [];
-                      return context.read<PeopleApi>().fetchEmployees(
-                            token,
-                            search: term,
-                            orgUnitId: _wholeDirectory ? null : widget.orgUnitId,
-                            limit: 10,
-                          );
-                    },
-                    suggestionBuilder: (context, employee) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
-                      child: Text('${employee.displayName} · ${employee.employeeNo}'),
-                    ),
-                    idOf: (employee) => employee.id,
-                    displayStringFor: (employee) => employee.displayName,
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: TrainingTraineeDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: 'Add Trainee',
+        size: AppDialogSize.picker,
         actions: [
-          TextButton(
-            key: TrainingTraineeDialog.cancelKey,
+          AppDialogAction(
+            id: TrainingTraineeDialog._cancelId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: TrainingTraineeDialog.submitKey,
+          AppDialogAction(
+            id: TrainingTraineeDialog._submitId,
+            label: _awaiting ? 'Adding…' : 'Add Trainee',
             onPressed: _employee != null && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Adding…' : 'Add Trainee'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SegmentedButton<bool>(
+              key: TrainingTraineeDialog.scopeKey,
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment<bool>(
+                  value: false,
+                  label: Text(widget.orgUnitName, overflow: TextOverflow.ellipsis),
+                  tooltip: 'Employees of ${widget.orgUnitName}',
+                ),
+                const ButtonSegment<bool>(value: true, label: Text('Whole Directory')),
+              ],
+              selected: {_wholeDirectory},
+              onSelectionChanged: _awaiting
+                  ? null
+                  : (selection) => setState(() {
+                        _wholeDirectory = selection.first;
+                        _employee = null;
+                        _failure = null;
+                      }),
+            ),
+            const SizedBox(height: Spacing.md),
+            // Keyed on the scope so a change starts a fresh search.
+            KeyedSubtree(
+              key: ValueKey<bool>(_wholeDirectory),
+              child: AppSearchField<Employee>(
+                name: TrainingTraineeDialog.employeeFieldName,
+                label: 'Employee',
+                helperText: _wholeDirectory
+                    ? 'Anyone in the Directory, found by name or number.'
+                    : 'An Employee of ${widget.orgUnitName}, found by name or number.',
+                value: _employee,
+                enabled: !_awaiting,
+                onChanged: (employee) => setState(() => _employee = employee),
+                onSelected: (employee) => setState(() {
+                  _employee = employee;
+                  _failure = null;
+                }),
+                fetchSuggestions: (term) async {
+                  final token = context.read<AuthGateway>().currentAccessToken;
+                  if (token == null) return const [];
+                  return context.read<PeopleApi>().fetchEmployees(
+                        token,
+                        search: term,
+                        orgUnitId: _wholeDirectory ? null : widget.orgUnitId,
+                        limit: 10,
+                      );
+                },
+                suggestionBuilder: (context, employee) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+                  child: Text('${employee.displayName} · ${employee.employeeNo}'),
+                ),
+                idOf: (employee) => employee.id,
+                displayStringFor: (employee) => employee.displayName,
+              ),
+            ),
+            if (failure != null)
+              Padding(
+                key: TrainingTraineeDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  failure,
+                  style: AppTypography.dense(context)
+                      ?.copyWith(color: AppColors.of(context).statusForeground(StatusTone.danger)),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

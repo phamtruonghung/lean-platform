@@ -25,6 +25,17 @@
 /// whose qualification has lapsed simply is not answered here at all, so
 /// unlike the Employee Screen's own held-skill chips there is no "lapsed" row
 /// to distinguish on this dialog.
+///
+/// **Drawn in `AppDialog` (issue #394, ADR-0058)** at [AppDialogSize.wide]
+/// (640) — content with a pane of its own, which is what that width is for:
+/// the scope tree has a fixed 180px height and a Site switch above it, and the
+/// answer rows beneath it carry a name and a level. The shell makes the content
+/// area the only scroller, so the outer `SingleChildScrollView` is gone and the
+/// Close action is pinned under the content; below 700 of box, or at 1.5× text,
+/// the whole thing is a bottom sheet. Nothing else moved: the tree, its keys,
+/// the minimum-level list, the Search gate on a chosen Org Unit and every
+/// message are unchanged. The one action's key is now the shell's
+/// (`AppDialog.actionKey`), the rename #398 established.
 library;
 
 import 'package:flutter/material.dart';
@@ -32,7 +43,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'org_unit.dart';
 import 'org_unit_picker_bloc.dart';
 import 'skill.dart';
@@ -46,7 +59,12 @@ class SkillQualifiedEmployeesDialog extends StatefulWidget {
   static const ValueKey<String> siteKey = ValueKey<String>('skill-qualified-site');
   static const ValueKey<String> minimumLevelKey = ValueKey<String>('skill-qualified-minimum-level');
   static const ValueKey<String> searchKey = ValueKey<String>('skill-qualified-search');
-  static const ValueKey<String> closeKey = ValueKey<String>('skill-qualified-close');
+
+  /// The dialog's one action, named through the shell that now draws it.
+  static final ValueKey<String> closeKey = AppDialog.actionKey(_closeId);
+
+  static const String _closeId = 'skill-qualified-close';
+
   static const ValueKey<String> failureKey = ValueKey<String>('skill-qualified-failure');
   static const ValueKey<String> emptyKey = ValueKey<String>('skill-qualified-empty');
   static const ValueKey<String> hintKey = ValueKey<String>('skill-qualified-hint');
@@ -101,64 +119,71 @@ class _SkillQualifiedEmployeesDialogState extends State<SkillQualifiedEmployeesD
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
     final skillsState = context.watch<SkillsBloc>().state;
     final query = skillsState is SkillsLoaded ? skillsState.query : null;
 
-    return AlertDialog(
-      title: Text('Who holds ${widget.skill.name}'),
-      content: SizedBox(
-        width: 480,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Scoped to', style: theme.textTheme.titleSmall),
-              const SizedBox(height: Spacing.xs),
-              _ScopePicker(
-                selectedId: _orgUnitId,
-                onSelected: (node) => setState(() => _orgUnitId = node.id),
-              ),
-              const SizedBox(height: Spacing.md),
-              DropdownButtonFormField<int?>(
-                key: SkillQualifiedEmployeesDialog.minimumLevelKey,
-                initialValue: _minimumLevel,
-                decoration: const InputDecoration(
-                  labelText: 'Minimum proficiency',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem<int?>(value: null, child: Text('Any')),
-                  DropdownMenuItem<int?>(value: 1, child: Text('1')),
-                  DropdownMenuItem<int?>(value: 2, child: Text('2')),
-                  DropdownMenuItem<int?>(value: 3, child: Text('3')),
-                  DropdownMenuItem<int?>(value: 4, child: Text('4')),
-                ],
-                onChanged: (value) => setState(() => _minimumLevel = value),
-              ),
-              const SizedBox(height: Spacing.md),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton(
-                  key: SkillQualifiedEmployeesDialog.searchKey,
-                  onPressed: _orgUnitId == null ? null : _search,
-                  child: const Text('Search'),
-                ),
-              ),
-              const SizedBox(height: Spacing.md),
-              _Results(query: query),
-            ],
-          ),
-        ),
-      ),
+    return AppDialog(
+      title: 'Who holds ${widget.skill.name}',
+      size: AppDialogSize.wide,
       actions: [
-        TextButton(
-          key: SkillQualifiedEmployeesDialog.closeKey,
+        AppDialogAction(
+          id: SkillQualifiedEmployeesDialog._closeId,
+          label: 'Close',
+          kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
         ),
       ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Semantics(
+            header: true,
+            container: true,
+            child: Text(
+              'Scoped to',
+              style: AppTypography.dense(context)?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: palette.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: Spacing.xs),
+          _ScopePicker(
+            selectedId: _orgUnitId,
+            onSelected: (node) => setState(() => _orgUnitId = node.id),
+          ),
+          const SizedBox(height: Spacing.md),
+          DropdownButtonFormField<int?>(
+            key: SkillQualifiedEmployeesDialog.minimumLevelKey,
+            initialValue: _minimumLevel,
+            decoration: const InputDecoration(
+              labelText: 'Minimum proficiency',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem<int?>(value: null, child: Text('Any')),
+              DropdownMenuItem<int?>(value: 1, child: Text('1')),
+              DropdownMenuItem<int?>(value: 2, child: Text('2')),
+              DropdownMenuItem<int?>(value: 3, child: Text('3')),
+              DropdownMenuItem<int?>(value: 4, child: Text('4')),
+            ],
+            onChanged: (value) => setState(() => _minimumLevel = value),
+          ),
+          const SizedBox(height: Spacing.md),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton(
+              key: SkillQualifiedEmployeesDialog.searchKey,
+              onPressed: _orgUnitId == null ? null : _search,
+              child: const Text('Search'),
+            ),
+          ),
+          const SizedBox(height: Spacing.md),
+          _Results(query: query),
+        ],
+      ),
     );
   }
 }
@@ -170,12 +195,13 @@ class _Results extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = AppColors.of(context);
+    final floor = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     if (query == null) {
       return Text(
         'Choose an Org Unit, then search.',
         key: SkillQualifiedEmployeesDialog.hintKey,
-        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
       );
     }
     switch (query!.status) {
@@ -187,14 +213,15 @@ class _Results extends StatelessWidget {
         return Text(
           query!.failure ?? '',
           key: SkillQualifiedEmployeesDialog.failureKey,
-          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+          style: AppTypography.dense(context)
+              ?.copyWith(color: palette.statusForeground(StatusTone.danger)),
         );
       case QualifiedEmployeesStatus.ready:
         if (query!.employees.isEmpty) {
           return Text(
             'Nobody currently qualifies at this Org Unit.',
             key: SkillQualifiedEmployeesDialog.emptyKey,
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           );
         }
         return Column(
@@ -207,7 +234,7 @@ class _Results extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(child: Text('${employee.displayName} · ${employee.employeeNo}')),
-                    Text('Level ${employee.proficiencyLevel}', style: theme.textTheme.bodySmall),
+                    Text('Level ${employee.proficiencyLevel}', style: floor),
                   ],
                 ),
               ),
@@ -368,7 +395,6 @@ class _PickerMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.all(Spacing.md),
       child: Column(
@@ -377,7 +403,8 @@ class _PickerMessage extends StatelessWidget {
         children: [
           Text(
             message,
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: AppTypography.floor(context)
+                ?.copyWith(color: AppColors.of(context).textMuted),
           ),
           if (onRetry != null) ...[
             const SizedBox(height: Spacing.xs),

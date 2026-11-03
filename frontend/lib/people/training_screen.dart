@@ -13,6 +13,26 @@
 ///
 /// Org Unit browsing reuses `OrgUnitPickerBloc`, exactly as
 /// `AttendanceToConfirmScreen` does for its own filter.
+///
+/// **A register, not a catalogue (issue #394).** A reader comes here to compare
+/// records — which of them was trained, by whom, and how many of its Trainees
+/// have answered — so above [AppBreakpoints.registerTable] of box width the
+/// records sit under one `AppTableHeader` band with the numbers aligned, and
+/// below it each record is a card carrying the two sentences this Screen has
+/// always shown. The card states today's wording verbatim; the band adds the
+/// column labels the wide shape needs, which is the only reading the narrow one
+/// does without.
+///
+/// **Which columns, and why these.** The wire sends one row per record
+/// (`toTrainingRecord` in training.js): its number, its title, the day it was
+/// given, its Org Unit, whose Trainees are on it and how many of them have
+/// answered. Those are the columns, in that order, with the record's state as
+/// the tone column and the printed form as the row's own action — a field is
+/// not invented to fill a column and none is dropped for a narrower row
+/// (`docs/design-language.md` §6). A per-Trainee answered *date* is on the
+/// record's own page and on the printed form, where it belongs beside the
+/// person it belongs to; the register answers "how many", which is what it can
+/// compare down a column.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,6 +47,8 @@ import '../widgets/app_date_field.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/app_table.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/status_chip.dart';
@@ -56,12 +78,42 @@ class TrainingScreen extends StatelessWidget {
   static const ValueKey<String> orgUnitBrowseToggleKey = ValueKey<String>('training-org-unit-toggle');
   static const ValueKey<String> fromFieldKey = ValueKey<String>('training-from');
   static const ValueKey<String> toFieldKey = ValueKey<String>('training-to');
+  static const ValueKey<String> registerKey = ValueKey<String>('training-register');
   static ValueKey<String> orgUnitRowKey(String id) => ValueKey<String>('training-org-unit-$id');
   static ValueKey<String> rowKey(String id) => ValueKey<String>('training-row-$id');
+
+  /// The record's own state chip. The name is historical — #287 rendered it only
+  /// for a draft — and since #394 the register's State column carries it for
+  /// every row, a sent record included, so the column is never blank. No caller
+  /// or test is renamed by that.
   static ValueKey<String> draftKey(String id) => ValueKey<String>('training-draft-$id');
 
   /// A row's link to the record's printed form (issue #292).
   static ValueKey<String> formKey(String id) => ValueKey<String>('training-form-$id');
+
+  /// The band, stated once: the labels and the cells are built from it, so a
+  /// label and its cells start at the same x by construction
+  /// (`docs/frontend-layout.md` §4).
+  static const List<AppTableColumn> columns = <AppTableColumn>[
+    AppTableColumn('Record', flex: 3),
+    AppTableColumn('Training', flex: 5),
+    AppTableColumn('Trainees', flex: 5),
+    AppTableColumn('Trained on', flex: 2),
+    AppTableColumn('Answers', flex: 2, align: AppColumnAlign.end),
+    AppTableColumn('State', width: 104),
+    // The row's own action column: an unlabelled slot at the far end, so the
+    // printed form sits at the card's right edge rather than inside another
+    // cell (`docs/frontend-layout.md` §6).
+    AppTableColumn('', width: 56),
+  ];
+
+  /// How many Trainees have answered, of how many are on the record.
+  static String answersOf(TrainingRecord record) =>
+      '${record.answeredCount} of ${record.traineeCount}';
+
+  /// Who is on the record, as one cell: the names, in the order they were added.
+  static String traineesOf(TrainingRecord record) =>
+      record.trainees.isEmpty ? '—' : record.trainees.map((t) => t.employeeName).join(', ');
 
   @override
   Widget build(BuildContext context) {
@@ -134,8 +186,30 @@ class _RegisterBodyState extends State<_RegisterBody> {
               onAction: widget.canRaise ? () => TrainingRaiseDialog.open(context) : null,
             );
     } else {
-      content = AppListCard(
-        rows: [for (final record in state.records) _TrainingRow(record: record)],
+      content = LayoutBuilder(
+        builder: (context, constraints) {
+          // The box the register is handed, at the reader's text size (§10):
+          // one card per record below it, the band above it.
+          final wide = constraints.maxWidth >=
+              AppBreakpoints.effective(context, AppBreakpoints.registerTable);
+          if (!wide) {
+            return AppListCard(
+              key: TrainingScreen.registerKey,
+              rows: [for (final record in state.records) _TrainingRow(record: record)],
+            );
+          }
+          return Card(
+            key: TrainingScreen.registerKey,
+            margin: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AppTableHeader(columns: TrainingScreen.columns),
+                for (final record in state.records) _TrainingTableRow(record: record),
+              ],
+            ),
+          );
+        },
       );
     }
 
@@ -159,7 +233,7 @@ class _RegisterBodyState extends State<_RegisterBody> {
                     ),
                 ],
               ),
-              const SizedBox(height: Spacing.lg),
+              const SizedBox(height: Spacing.md),
               _OrgUnitFilter(
                 state: state,
                 bloc: bloc,
@@ -193,7 +267,7 @@ class _RegisterBodyState extends State<_RegisterBody> {
                   ),
                 ],
               ),
-              const SizedBox(height: Spacing.lg),
+              const SizedBox(height: Spacing.md),
               // A capped register must not read as the whole of it (ADR-0026).
               if (state.truncated && state.failure == null && !state.isLoading)
                 Padding(
@@ -210,6 +284,58 @@ class _RegisterBodyState extends State<_RegisterBody> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// One record under the register's band: the same fields the card carries, one
+/// per column. The row is 44 (`AppTouchTarget.min`) because the whole of it
+/// opens the record, and the printed form is a sibling target inside it.
+class _TrainingTableRow extends StatelessWidget {
+  const _TrainingTableRow({required this.record});
+
+  final TrainingRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppColors.of(context);
+    final dense = AppTypography.dense(context);
+    return AppTableRow(
+      key: TrainingScreen.rowKey(record.id),
+      columns: TrainingScreen.columns,
+      onTap: () => context.go('${Routes.training}/${record.id}'),
+      cells: [
+        DisclosingText(record.number, style: dense?.copyWith(color: palette.textMuted)),
+        DisclosingText(record.title, style: dense?.copyWith(color: palette.textPrimary)),
+        DisclosingText(
+          TrainingScreen.traineesOf(record),
+          style: dense?.copyWith(color: palette.textMuted),
+        ),
+        Text(record.trainedOn, style: dense),
+        Text(
+          TrainingScreen.answersOf(record),
+          style: AppTableRow.numberStyle(context),
+        ),
+        // The record's own state. A draft carries the chip (issue #287's own
+        // marking, kept as it was); a sent record states its state as words,
+        // so the column is never blank and the draft marking stays distinct.
+        if (record.isDraft)
+          StatusChip(
+            key: TrainingScreen.draftKey(record.id),
+            label: record.statusLabel,
+            tone: trainingStatusTone(record.status),
+          )
+        else
+          Text(record.statusLabel, style: dense?.copyWith(color: palette.textMuted)),
+        // The printed form, one tap from the register — a sibling of the row's
+        // own tap target so the two never fight over one gesture.
+        IconButton(
+          key: TrainingScreen.formKey(record.id),
+          tooltip: 'The form for ${record.number}',
+          icon: const Icon(Icons.description_outlined),
+          onPressed: () => context.go(Routes.trainingForm(record.id)),
+        ),
+      ],
     );
   }
 }
@@ -379,6 +505,8 @@ class _OrgUnitRow extends StatelessWidget {
   }
 }
 
+/// One record below the register's breakpoint: the two sentences this Screen
+/// has always shown, its state, and the printed form.
 class _TrainingRow extends StatelessWidget {
   const _TrainingRow({required this.record});
 
@@ -386,8 +514,8 @@ class _TrainingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final palette = AppColors.of(context);
+    final muted = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     final trainerName = record.trainerName;
     return Row(
       children: [
@@ -403,23 +531,24 @@ class _TrainingRow extends StatelessWidget {
                   Row(
                     children: [
                       Flexible(
-                        child: Text(
+                        child: DisclosingText(
                           '${record.number} · ${record.title}',
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium,
+                          style: AppTypography.dense(context)?.copyWith(
+                            color: palette.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      if (record.isDraft) ...[
-                        const SizedBox(width: Spacing.sm),
+                      const SizedBox(width: Spacing.sm),
+                      if (record.isDraft)
                         StatusChip(
                           key: TrainingScreen.draftKey(record.id),
                           label: record.statusLabel,
                           tone: trainingStatusTone(record.status),
                         ),
-                      ],
                     ],
                   ),
-                  const SizedBox(height: Spacing.xs),
+                  const SizedBox(height: Spacing.xxs),
                   Text(
                     '${record.trainedOn} · ${record.orgUnitName} · ${formatTrainingHours(record.durationHours)}'
                     '${trainerName == null ? '' : ' · Trainer: $trainerName'}',
