@@ -38,25 +38,34 @@ class ActionCancelDialogHost extends StatelessWidget {
           key: loadingKey,
           content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
         ),
-      ActionDetailUnavailable(message: final message) => AlertDialog(
+      ActionDetailUnavailable(message: final message) => AppDialog(
           key: alreadyEndedKey,
-          title: const Text('That Action could not be read'),
-          content: Text(message),
-          actions: [TextButton(onPressed: () => context.pop(), child: const Text('Back'))],
+          title: 'That Action could not be read',
+          description: message,
+          size: AppDialogSize.decision,
+          actions: [
+            AppDialogAction(
+              id: 'close',
+              label: 'Back',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: () => context.pop(),
+            ),
+          ],
         ),
       ActionDetailLoaded(action: final action) => action.status == 'done' || action.status == 'cancelled'
-          ? AlertDialog(
+          ? AppDialog(
               key: alreadyEndedKey,
-              title: const Text('That Action has ended'),
-              content: Text(
-                action.status == 'done'
-                    ? 'It is closed, so there is nothing left to call off.'
-                    : 'It was already cancelled.',
-              ),
+              title: 'That Action has ended',
+              description: action.status == 'done'
+                  ? 'It is closed, so there is nothing left to call off.'
+                  : 'It was already cancelled.',
+              size: AppDialogSize.decision,
               actions: [
-                TextButton(
+                AppDialogAction(
+                  id: 'close',
+                  label: 'Back to the Action',
+                  kind: AppDialogActionKind.dismiss,
                   onPressed: () => context.pop(),
-                  child: const Text('Back to the Action'),
                 ),
               ],
             )

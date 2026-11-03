@@ -45,11 +45,19 @@ class ActionPhaseCompleteDialogHost extends StatelessWidget {
           key: loadingKey,
           content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
         ),
-      ActionDetailUnavailable(message: final message) => AlertDialog(
+      ActionDetailUnavailable(message: final message) => AppDialog(
           key: notLoadedKey,
-          title: const Text('That Action could not be read'),
-          content: Text(message),
-          actions: [TextButton(onPressed: () => context.pop(), child: const Text('Back'))],
+          title: 'That Action could not be read',
+          description: message,
+          size: AppDialogSize.decision,
+          actions: [
+            AppDialogAction(
+              id: 'close',
+              label: 'Back',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: () => context.pop(),
+            ),
+          ],
         ),
       ActionDetailLoaded(action: final action) => action.openPhase?.phase != phase
           ? _refusal(context, action)
@@ -63,17 +71,21 @@ class ActionPhaseCompleteDialogHost extends StatelessWidget {
   /// 409 uses.
   Widget _refusal(BuildContext context, Action action) {
     final waitingOn = action.openPhase;
-    return AlertDialog(
+    return AppDialog(
       key: notOpenKey,
-      title: const Text('That is not the open phase'),
-      content: Text(
-        waitingOn == null
-            ? 'This Action has no open phase left.'
-            : 'This Action is waiting on its ${waitingOn.phaseLabel.toLowerCase()} phase, not its '
-                '${actionPhaseLabel(phase).toLowerCase()}.',
-      ),
+      title: 'That is not the open phase',
+      description: waitingOn == null
+          ? 'This Action has no open phase left.'
+          : 'This Action is waiting on its ${waitingOn.phaseLabel.toLowerCase()} phase, not its '
+              '${actionPhaseLabel(phase).toLowerCase()}.',
+      size: AppDialogSize.decision,
       actions: [
-        TextButton(onPressed: () => context.pop(), child: const Text('Back to the Action')),
+        AppDialogAction(
+          id: 'close',
+          label: 'Back to the Action',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => context.pop(),
+        ),
       ],
     );
   }

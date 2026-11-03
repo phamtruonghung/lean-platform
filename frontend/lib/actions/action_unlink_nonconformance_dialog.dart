@@ -46,11 +46,19 @@ class ActionUnlinkNonconformanceDialogHost extends StatelessWidget {
           key: loadingKey,
           content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
         ),
-      ActionDetailUnavailable(message: final message) => AlertDialog(
+      ActionDetailUnavailable(message: final message) => AppDialog(
           key: notLinkedKey,
-          title: const Text('That Concern could not be read'),
-          content: Text(message),
-          actions: [TextButton(onPressed: () => context.pop(), child: const Text('Back'))],
+          title: 'That Concern could not be read',
+          description: message,
+          size: AppDialogSize.decision,
+          actions: [
+            AppDialogAction(
+              id: 'close',
+              label: 'Back',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: () => context.pop(),
+            ),
+          ],
         ),
       ActionDetailLoaded(action: final action) => () {
           LinkedNonconformance? found;
@@ -58,17 +66,18 @@ class ActionUnlinkNonconformanceDialogHost extends StatelessWidget {
             if (occurrence.id == nonconformanceId) found = occurrence;
           }
           if (found == null) {
-            return AlertDialog(
+            return AppDialog(
               key: notLinkedKey,
-              title: const Text('That Non-conformance is not linked here'),
-              content: const Text(
-                'This Concern answers nothing by that id. It may have been unlinked already, or '
-                'the address may be wrong.',
-              ),
+              title: 'That Non-conformance is not linked here',
+              description: 'This Concern answers nothing by that id. It may have been unlinked '
+                  'already, or the address may be wrong.',
+              size: AppDialogSize.decision,
               actions: [
-                TextButton(
+                AppDialogAction(
+                  id: 'close',
+                  label: 'Back to the Concern',
+                  kind: AppDialogActionKind.dismiss,
                   onPressed: () => context.pop(),
-                  child: const Text('Back to the Concern'),
                 ),
               ],
             );
