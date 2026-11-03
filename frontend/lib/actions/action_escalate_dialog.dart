@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'action.dart';
 import 'action_detail_bloc.dart';
 
@@ -55,27 +56,20 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
           key: ActionEscalateDialogHost.loadingKey,
           content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
         ),
-      ActionDetailUnavailable(message: final message) => AlertDialog(
+      ActionDetailUnavailable(message: final message) => _EscalateRefusal(
           key: ActionEscalateDialogHost.endedKey,
-          title: const Text('That Action could not be read'),
-          content: Text(message),
-          actions: [TextButton(onPressed: () => context.pop(), child: const Text('Back'))],
+          title: 'That Action could not be read',
+          message: message,
+          dismissLabel: 'Back',
         ),
       ActionDetailLoaded(action: final action) => switch (action.status) {
-          'done' || 'cancelled' => AlertDialog(
+          'done' || 'cancelled' => _EscalateRefusal(
               key: ActionEscalateDialogHost.endedKey,
-              title: const Text('That Action has ended'),
-              content: Text(
-                action.status == 'done'
-                    ? 'It is closed. Whoever needed to know about it was told before it was.'
-                    : 'It was called off, so there is nothing to hand up.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => context.pop(),
-                  child: const Text('Back to the Action'),
-                ),
-              ],
+              title: 'That Action has ended',
+              message: action.status == 'done'
+                  ? 'It is closed. Whoever needed to know about it was told before it was.'
+                  : 'It was called off, so there is nothing to hand up.',
+              dismissLabel: 'Back to the Action',
             ),
           _ when state.isLoadingEscalationTargets => const AlertDialog(
               key: ActionEscalateDialogHost.loadingKey,
@@ -84,30 +78,57 @@ class _ActionEscalateDialogHostState extends State<ActionEscalateDialogHost> {
           // A failure to read the targets is about the list, not about the
           // Action: it is said here, in the dialog that wanted it.
           _ when state.escalationFailure != null && state.escalationTargets.isEmpty =>
-            AlertDialog(
+            _EscalateRefusal(
               key: ActionEscalateDialogHost.endedKey,
-              title: const Text('Nowhere to hand it up to'),
-              content: Text(state.escalationFailure!),
-              actions: [TextButton(onPressed: () => context.pop(), child: const Text('Back'))],
+              title: 'Nowhere to hand it up to',
+              message: state.escalationFailure!,
+              dismissLabel: 'Back',
             ),
-          _ when state.escalationTargets.isEmpty => AlertDialog(
+          _ when state.escalationTargets.isEmpty => _EscalateRefusal(
               key: ActionEscalateDialogHost.nowhereKey,
-              title: const Text('There is nobody above this'),
-              content: Text(
-                '${action.actionNo} sits at ${action.orgUnitName}, which is already the top of '
-                'this Site. Nothing above it can be told.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => context.pop(),
-                  child: const Text('Back to the Action'),
-                ),
-              ],
+              title: 'There is nobody above this',
+              message: '${action.actionNo} sits at ${action.orgUnitName}, which is already the top of '
+                  'this Site. Nothing above it can be told.',
+              dismissLabel: 'Back to the Action',
             ),
           _ => ActionEscalateDialog(action: action, targets: state.escalationTargets),
         },
     };
   }
+}
+
+/// One of this address's refusals: a sentence about why there is no form, and
+/// the one way back to the Action the address was reached from.
+///
+/// A `DialogPage` is not `barrierDismissible` (see `dialog_page.dart`), so a
+/// refusal with no control of its own would leave a person tapping outside a
+/// dialog that never closes.
+class _EscalateRefusal extends StatelessWidget {
+  const _EscalateRefusal({
+    super.key,
+    required this.title,
+    required this.message,
+    required this.dismissLabel,
+  });
+
+  final String title;
+  final String message;
+  final String dismissLabel;
+
+  @override
+  Widget build(BuildContext context) => AppDialog(
+        title: title,
+        description: message,
+        size: AppDialogSize.decision,
+        actions: [
+          AppDialogAction(
+            id: 'close',
+            label: dismissLabel,
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => context.pop(),
+          ),
+        ],
+      );
 }
 
 class ActionEscalateDialog extends StatefulWidget {
@@ -116,8 +137,8 @@ class ActionEscalateDialog extends StatefulWidget {
   final Action action;
   final List<EscalationTarget> targets;
 
-  static const ValueKey<String> submitKey = ValueKey<String>('action-escalate-submit');
-  static const ValueKey<String> backKey = ValueKey<String>('action-escalate-back');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('hand-it-up');
+  static final ValueKey<String> backKey = AppDialog.actionKey('not-now');
   static const ValueKey<String> failureKey = ValueKey<String>('action-escalate-failure');
 
   static ValueKey<String> targetKey(String id) => ValueKey<String>('action-escalate-target-$id');
@@ -164,12 +185,25 @@ class _ActionEscalateDialogState extends State<ActionEscalateDialog> {
 
     return BlocListener<ActionDetailBloc, ActionDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: Text('Hand ${widget.action.actionNo} up'),
-        content: SizedBox(
-          width: 560,
-          child: SingleChildScrollView(
-            child: Column(
+      child: AppDialog(
+        title: 'Hand ${widget.action.actionNo} up',
+        // A list to choose one Org Unit from, and the sentence that says what
+        // raising it does (issue #398's four widths).
+        size: AppDialogSize.picker,
+        actions: [
+          AppDialogAction(
+            id: 'not-now',
+            label: 'Not now',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => context.pop(),
+          ),
+          AppDialogAction(
+            id: 'hand-it-up',
+            label: 'Hand it up',
+            onPressed: _awaiting || _targetId == null ? null : _submit,
+          ),
+        ],
+        child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -215,20 +249,6 @@ class _ActionEscalateDialogState extends State<ActionEscalateDialog> {
                   ),
               ],
             ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            key: ActionEscalateDialog.backKey,
-            onPressed: _awaiting ? null : () => context.pop(),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            key: ActionEscalateDialog.submitKey,
-            onPressed: _awaiting || _targetId == null ? null : _submit,
-            child: const Text('Hand it up'),
-          ),
-        ],
       ),
     );
   }

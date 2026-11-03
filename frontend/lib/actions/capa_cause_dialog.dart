@@ -49,6 +49,7 @@ import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
 
@@ -69,16 +70,32 @@ abstract final class CapaCauseKeys {
   /// a `DialogPage` is not `barrierDismissible` (see `dialog_page.dart`): a
   /// refusal with no control of its own would leave a person tapping outside a
   /// dialog that never closes.
-  static const ValueKey<String> dismissKey = ValueKey<String>('capa-cause-dismiss');
+  static final ValueKey<String> dismissKey = AppDialog.actionKey('back-to-the-capa');
 }
 
-/// The one way out every refusal here offers, and where it goes: back to the
-/// investigation the address was reached from.
-Widget _dismissButton(BuildContext context) => TextButton(
-      key: CapaCauseKeys.dismissKey,
-      onPressed: () => context.pop(),
-      child: const Text('Back to the CAPA'),
-    );
+/// One of these five addresses' refusals: why there is no form, and the one way
+/// back to the investigation the address was reached from.
+class _CauseRefusal extends StatelessWidget {
+  const _CauseRefusal({super.key, required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => AppDialog(
+        title: title,
+        description: message,
+        size: AppDialogSize.decision,
+        actions: [
+          AppDialogAction(
+            id: 'back-to-the-capa',
+            label: 'Back to the CAPA',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => context.pop(),
+          ),
+        ],
+      );
+}
 
 /// What this address says when it is not one the CAPA it names can answer — or
 /// null when it is, in which case the caller renders its own form.
@@ -101,51 +118,41 @@ Widget? capaCauseAddressRefusal(
         content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
       );
     case CapaDetailUnavailable(message: final message):
-      return AlertDialog(
+      return _CauseRefusal(
         key: CapaCauseKeys.notLoadedKey,
-        title: const Text('That CAPA could not be read'),
-        content: Text(message),
-        actions: [_dismissButton(context)],
+        title: 'That CAPA could not be read',
+        message: message,
       );
     case CapaDetailLoaded(capa: final capa):
       if (!capaCauseCategoryOrder.contains(category)) {
-        return AlertDialog(
+        return const _CauseRefusal(
           key: CapaCauseKeys.unknownCategoryKey,
-          title: const Text('That is not a 6M category'),
-          content: const Text(
-            'A fishbone has six bones: Man, Machine, Method, Material, Measurement and Environment.',
-          ),
-          actions: [_dismissButton(context)],
+          title: 'That is not a 6M category',
+          message:
+              'A fishbone has six bones: Man, Machine, Method, Material, Measurement and Environment.',
         );
       }
       if (!capa.isOpen) {
-        return AlertDialog(
+        return _CauseRefusal(
           key: CapaCauseKeys.closedKey,
-          title: const Text('This investigation is over'),
-          content: Text(
-            '${capa.capaNo} is ${capa.statusLabel.toLowerCase()}, so its fishbone is a record '
-            'rather than a worklist.',
-          ),
-          actions: [_dismissButton(context)],
+          title: 'This investigation is over',
+          message: '${capa.capaNo} is ${capa.statusLabel.toLowerCase()}, so its fishbone is a '
+              'record rather than a worklist.',
         );
       }
       if (!mayEditCapaChains(context, capa)) {
-        return AlertDialog(
+        return const _CauseRefusal(
           key: CapaCauseKeys.refusedKey,
-          title: const Text('Not yours to write'),
-          content: const Text(
-            "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
-            'its team.',
-          ),
-          actions: [_dismissButton(context)],
+          title: 'Not yours to write',
+          message: "Writing a CAPA's root causes needs edit access at its Org Unit, or a place on "
+              'its team.',
         );
       }
       if (causeId != null && capa.causesIn(category).every((cause) => cause.id != causeId)) {
-        return AlertDialog(
+        return const _CauseRefusal(
           key: CapaCauseKeys.missingCauseKey,
-          title: const Text('That cause is not on this bone'),
-          content: const Text('It may have been removed a moment ago by somebody else.'),
-          actions: [_dismissButton(context)],
+          title: 'That cause is not on this bone',
+          message: 'It may have been removed a moment ago by somebody else.',
         );
       }
       return null;
@@ -162,8 +169,8 @@ class CapaCauseDialog extends StatelessWidget {
   final String category;
 
   static const ValueKey<String> statementKey = ValueKey<String>('capa-cause-add-statement');
-  static const ValueKey<String> submitKey = ValueKey<String>('capa-cause-add-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-cause-add-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('record-it');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-cause-add-failure');
 
   @override
@@ -176,10 +183,9 @@ class CapaCauseDialog extends StatelessWidget {
       title: 'Record a candidate cause',
       blurb: '${capaCauseCategoryLabel(category)} — something that could be behind the problem.',
       submitLabel: 'Record it',
+      submitId: 'record-it',
       category: category,
       statementKey: statementKey,
-      submitKey: submitKey,
-      cancelKey: cancelKey,
       failureKey: failureKey,
       onSubmit: (chosenCategory, statement) => context.read<CapaDetailBloc>().add(
             CapaDetailCauseAdded(category: chosenCategory, statement: statement),
@@ -197,8 +203,8 @@ class CapaCauseEditDialog extends StatelessWidget {
   final String causeId;
 
   static const ValueKey<String> statementKey = ValueKey<String>('capa-cause-edit-statement');
-  static const ValueKey<String> submitKey = ValueKey<String>('capa-cause-edit-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-cause-edit-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('save-it');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-cause-edit-failure');
 
   /// One of the six, as a choice — a cause genuinely may be re-filed (the team
@@ -220,11 +226,10 @@ class CapaCauseEditDialog extends StatelessWidget {
       title: 'Revise the cause',
       blurb: 'What it says, and which of the six it is filed under.',
       submitLabel: 'Save it',
+      submitId: 'save-it',
       category: cause.category,
       choosesCategory: true,
       statementKey: statementKey,
-      submitKey: submitKey,
-      cancelKey: cancelKey,
       failureKey: failureKey,
       initial: cause.statement,
       onSubmit: (chosen, statement) => context.read<CapaDetailBloc>().add(
@@ -253,8 +258,8 @@ class CapaCauseVerdictDialog extends StatelessWidget {
   final String causeId;
 
   static const ValueKey<String> evidenceKey = ValueKey<String>('capa-cause-verdict-evidence');
-  static const ValueKey<String> submitKey = ValueKey<String>('capa-cause-verdict-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-cause-verdict-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('record-the-verdict');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-cause-verdict-failure');
 
   /// One of the two decisions, as a choice.
@@ -285,8 +290,8 @@ class CapaCauseRemoveDialog extends StatefulWidget {
   final String category;
   final String causeId;
 
-  static const ValueKey<String> confirmKey = ValueKey<String>('capa-cause-remove-confirm');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-cause-remove-cancel');
+  static final ValueKey<String> confirmKey = AppDialog.actionKey('remove-it');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-cause-remove-failure');
 
   @override
@@ -340,49 +345,50 @@ class _CapaCauseRemoveDialogState extends State<CapaCauseRemoveDialog> {
 
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: const Text('Remove this cause?'),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                cause.statement,
-                style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: Spacing.md),
-              Text(
-                'It is taken off the ${cause.categoryLabel} bone for good'
-                '${cause.isConfirmed ? ', including the verdict your evidence backed' : ''}. '
-                'A chain started from it keeps the Why it began with.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (_failure != null)
-                Padding(
-                  key: CapaCauseRemoveDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: 'Remove this cause?',
+        // A decision, not a form (issue #398's four widths).
+        size: AppDialogSize.decision,
         actions: [
-          TextButton(
-            key: CapaCauseRemoveDialog.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: CapaCauseRemoveDialog.confirmKey,
+          AppDialogAction(
+            id: 'remove-it',
+            label: 'Remove it',
+            kind: AppDialogActionKind.destructive,
             onPressed: _awaiting ? null : _submit,
-            child: const Text('Remove it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              cause.statement,
+              style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+            ),
+            const SizedBox(height: Spacing.md),
+            Text(
+              'It is taken off the ${cause.categoryLabel} bone for good'
+              '${cause.isConfirmed ? ', including the verdict your evidence backed' : ''}. '
+              'A chain started from it keeps the Why it began with.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            if (_failure != null)
+              Padding(
+                key: CapaCauseRemoveDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -410,8 +416,8 @@ class CapaWhyFromCauseDialog extends StatelessWidget {
   final String causeId;
 
   static const ValueKey<String> statementKey = ValueKey<String>('capa-cause-why-statement');
-  static const ValueKey<String> submitKey = ValueKey<String>('capa-cause-why-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-cause-why-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('start-the-chain');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-cause-why-failure');
   static const ValueKey<String> noChainKey = ValueKey<String>('capa-cause-why-no-chain');
 
@@ -428,15 +434,12 @@ class CapaWhyFromCauseDialog extends StatelessWidget {
     final cause = capa.causesIn(category).firstWhere((each) => each.id == causeId);
 
     if (capa.chainsNotStarted.isEmpty) {
-      return AlertDialog(
+      return _CauseRefusal(
         key: noChainKey,
-        title: const Text('Both chains have been started'),
-        content: Text(
-          '${capa.capaNo} already reasons both why the problem happened and why it was not '
-          'detected, so the Why for this cause belongs in one of them rather than at the head '
-          'of a chain.',
-        ),
-        actions: [_dismissButton(context)],
+        title: 'Both chains have been started',
+        message: '${capa.capaNo} already reasons both why the problem happened and why it was not '
+            'detected, so the Why for this cause belongs in one of them rather than at the head '
+            'of a chain.',
       );
     }
 
@@ -456,10 +459,9 @@ class _CauseForm extends StatefulWidget {
     required this.title,
     required this.blurb,
     required this.submitLabel,
+    required this.submitId,
     required this.category,
     required this.statementKey,
-    required this.submitKey,
-    required this.cancelKey,
     required this.failureKey,
     required this.onSubmit,
     this.choosesCategory = false,
@@ -469,6 +471,10 @@ class _CauseForm extends StatefulWidget {
   final String title;
   final String blurb;
   final String submitLabel;
+
+  /// Names the submit action's `Key` ([AppDialog.actionKey]); the cancel action
+  /// is `cancel` on every address here, because only one is ever open.
+  final String submitId;
 
   /// The category the cause is under, and the one the form starts at. On the
   /// add address it is the address's own bone; on the revise address it is
@@ -480,8 +486,6 @@ class _CauseForm extends StatefulWidget {
   final bool choosesCategory;
 
   final ValueKey<String> statementKey;
-  final ValueKey<String> submitKey;
-  final ValueKey<String> cancelKey;
   final ValueKey<String> failureKey;
   final String? initial;
 
@@ -543,77 +547,77 @@ class _CauseFormState extends State<_CauseForm> {
 
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: Text(widget.title),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(widget.blurb, style: theme.textTheme.bodyMedium),
-              if (choosesCategory) ...[
-                const SizedBox(height: Spacing.md),
-                Text('The bone it hangs from', style: theme.textTheme.bodySmall),
-                const SizedBox(height: Spacing.xs),
-                // A `Wrap` of choices rather than a `Row`, for the reason every
-                // row of controls in this client is one: six labels at the
-                // widget tests' own surface would overflow a Row.
-                Wrap(
-                  spacing: Spacing.xs,
-                  runSpacing: Spacing.xs,
-                  children: [
-                    for (final category in capaCauseCategoryOrder)
-                      ChoiceChip(
-                        key: CapaCauseEditDialog.categoryKey(category),
-                        label: Text(capaCauseCategoryLabel(category)),
-                        selected: _category == category,
-                        onSelected: _awaiting
-                            ? null
-                            : (_) => setState(() => _category = category),
-                      ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: Spacing.md),
-              TextField(
-                key: widget.statementKey,
-                controller: _statement,
-                enabled: !_awaiting,
-                autofocus: true,
-                minLines: 2,
-                maxLines: 3,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'The candidate cause',
-                  helperText: 'What you suspect, said so the next person can check it.',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              if (_failure != null)
-                Padding(
-                  key: widget.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: widget.title,
+        // One field, and on the revise address a chip row: a short form
+        // (issue #398's four widths).
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: widget.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: widget.submitKey,
+          AppDialogAction(
+            id: widget.submitId,
+            label: widget.submitLabel,
             onPressed: _complete ? _submit : null,
-            child: Text(widget.submitLabel),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.blurb, style: theme.textTheme.bodyMedium),
+            if (choosesCategory) ...[
+              const SizedBox(height: Spacing.md),
+              Text('The bone it hangs from', style: theme.textTheme.bodySmall),
+              const SizedBox(height: Spacing.xs),
+              // A `Wrap` of choices rather than a `Row`, for the reason every
+              // row of controls in this client is one: six labels at the
+              // widget tests' own surface would overflow a Row.
+              Wrap(
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xs,
+                children: [
+                  for (final category in capaCauseCategoryOrder)
+                    ChoiceChip(
+                      key: CapaCauseEditDialog.categoryKey(category),
+                      label: Text(capaCauseCategoryLabel(category)),
+                      selected: _category == category,
+                      onSelected:
+                          _awaiting ? null : (_) => setState(() => _category = category),
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: widget.statementKey,
+              controller: _statement,
+              enabled: !_awaiting,
+              autofocus: true,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'The candidate cause',
+                helperText: 'What you suspect, said so the next person can check it.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: widget.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -690,78 +694,78 @@ class _VerdictFormState extends State<_VerdictForm> {
 
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: const Text('Decide this cause'),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.cause.statement,
-                style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: Spacing.md),
-              Text(
-                'A verdict is a decision the report reads back, so it is recorded with the '
-                'evidence for it.',
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: Spacing.sm),
-              Wrap(
-                spacing: Spacing.xs,
-                runSpacing: Spacing.xs,
-                children: [
-                  for (final decision in capaCauseDecisions)
-                    ChoiceChip(
-                      key: CapaCauseVerdictDialog.verdictKey(decision),
-                      label: Text(capaCauseVerdictLabel(decision)),
-                      selected: _verdict == decision,
-                      onSelected:
-                          _awaiting ? null : (_) => setState(() => _verdict = decision),
-                    ),
-                ],
-              ),
-              const SizedBox(height: Spacing.md),
-              TextField(
-                key: CapaCauseVerdictDialog.evidenceKey,
-                controller: _evidence,
-                enabled: !_awaiting,
-                autofocus: true,
-                minLines: 2,
-                maxLines: 4,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'The evidence',
-                  helperText: 'What you looked at, and what it showed.',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              if (_failure != null)
-                Padding(
-                  key: CapaCauseVerdictDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: 'Decide this cause',
+        // Two decisions and the evidence for them: a short form
+        // (issue #398's four widths).
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: CapaCauseVerdictDialog.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: CapaCauseVerdictDialog.submitKey,
+          AppDialogAction(
+            id: 'record-the-verdict',
+            label: 'Record the verdict',
             onPressed: _complete ? _submit : null,
-            child: const Text('Record the verdict'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.cause.statement,
+              style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+            ),
+            const SizedBox(height: Spacing.md),
+            Text(
+              'A verdict is a decision the report reads back, so it is recorded with the '
+              'evidence for it.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: Spacing.sm),
+            Wrap(
+              spacing: Spacing.xs,
+              runSpacing: Spacing.xs,
+              children: [
+                for (final decision in capaCauseDecisions)
+                  ChoiceChip(
+                    key: CapaCauseVerdictDialog.verdictKey(decision),
+                    label: Text(capaCauseVerdictLabel(decision)),
+                    selected: _verdict == decision,
+                    onSelected: _awaiting ? null : (_) => setState(() => _verdict = decision),
+                  ),
+              ],
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: CapaCauseVerdictDialog.evidenceKey,
+              controller: _evidence,
+              enabled: !_awaiting,
+              autofocus: true,
+              minLines: 2,
+              maxLines: 4,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'The evidence',
+                helperText: 'What you looked at, and what it showed.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: CapaCauseVerdictDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -836,77 +840,76 @@ class _StartChainFormState extends State<_StartChainForm> {
 
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: const Text('Start a chain from this cause'),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'The evidence confirmed this cause, so a chain may begin with it. What it says '
-                'is the first Why.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (widget.chains.length > 1) ...[
-                const SizedBox(height: Spacing.md),
-                Text('Which chain it begins', style: theme.textTheme.bodySmall),
-                const SizedBox(height: Spacing.xs),
-                Wrap(
-                  spacing: Spacing.xs,
-                  runSpacing: Spacing.xs,
-                  children: [
-                    for (final chain in widget.chains)
-                      ChoiceChip(
-                        key: CapaWhyFromCauseDialog.chainKey(chain),
-                        label: Text(capaChainLabel(chain)),
-                        selected: _chain == chain,
-                        onSelected:
-                            _awaiting ? null : (_) => setState(() => _chain = chain),
-                      ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: Spacing.md),
-              TextField(
-                key: CapaWhyFromCauseDialog.statementKey,
-                controller: _statement,
-                enabled: !_awaiting,
-                autofocus: true,
-                minLines: 2,
-                maxLines: 3,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'The first Why',
-                  helperText: 'The confirmed cause, said the way the chain should read.',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              if (_failure != null)
-                Padding(
-                  key: CapaWhyFromCauseDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: 'Start a chain from this cause',
+        // A chain chip row and one field: a short form (issue #398's widths).
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: CapaWhyFromCauseDialog.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: CapaWhyFromCauseDialog.submitKey,
+          AppDialogAction(
+            id: 'start-the-chain',
+            label: 'Start the chain',
             onPressed: _complete ? _submit : null,
-            child: const Text('Start the chain'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'The evidence confirmed this cause, so a chain may begin with it. What it says '
+              'is the first Why.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            if (widget.chains.length > 1) ...[
+              const SizedBox(height: Spacing.md),
+              Text('Which chain it begins', style: theme.textTheme.bodySmall),
+              const SizedBox(height: Spacing.xs),
+              Wrap(
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xs,
+                children: [
+                  for (final chain in widget.chains)
+                    ChoiceChip(
+                      key: CapaWhyFromCauseDialog.chainKey(chain),
+                      label: Text(capaChainLabel(chain)),
+                      selected: _chain == chain,
+                      onSelected: _awaiting ? null : (_) => setState(() => _chain = chain),
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: CapaWhyFromCauseDialog.statementKey,
+              controller: _statement,
+              enabled: !_awaiting,
+              autofocus: true,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'The first Why',
+                helperText: 'The confirmed cause, said the way the chain should read.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: CapaWhyFromCauseDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

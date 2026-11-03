@@ -30,6 +30,7 @@ import 'change_password_bloc.dart';
 class ChangePasswordScreen extends StatelessWidget {
   const ChangePasswordScreen({super.key});
 
+  static const ValueKey<String> cardKey = ValueKey<String>('change-password-screen-card');
   static const ValueKey<String> currentFieldKey = ValueKey<String>('change-password-screen-current');
   static const ValueKey<String> newFieldKey = ValueKey<String>('change-password-screen-new');
   static const ValueKey<String> failureKey = ValueKey<String>('change-password-screen-failure');
@@ -104,6 +105,7 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(Spacing.xl),
                 child: Card(
+                  key: ChangePasswordScreen.cardKey,
                   // A `Card`'s own 4px margin would inset the block off the
                   // bound it was given; the padding is the block's, and the
                   // margin is zero (issue #396).

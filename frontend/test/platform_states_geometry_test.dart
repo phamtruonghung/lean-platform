@@ -82,8 +82,8 @@ void main() {
   setUpAll(loadAppFonts);
 
   group('not found', () {
-    testWidgets('at 700 and 1280 it is one 460 card in the header rhythm', (tester) async {
-      for (final width in const [700.0, 1280.0]) {
+    testWidgets('at 700, 900 and 1280 it is one 460 card in the header rhythm', (tester) async {
+      for (final width in const [700.0, 900.0, 1280.0]) {
         await _pumpScreen(tester, const NotFoundScreen(location: '/no/such/page'), width: width);
         _expectBoundedCard(tester, reason: 'window $width');
         _expectHeaderRhythm(tester, reason: 'window $width');
@@ -99,6 +99,8 @@ void main() {
           width: 1280, textScale: 2);
       expect(tester.takeException(), isNull);
       _expectBoundedCard(tester, reason: '200% text');
+      _expectHeaderRhythm(tester, reason: '200% text');
+      _expectActionsAreTapTargets(tester, reason: '200% text');
       expect(find.byKey(NotFoundScreen.homeKey), findsOneWidget);
     });
 
@@ -125,40 +127,56 @@ void main() {
   });
 
   group('access denied', () {
-    testWidgets('at 700 and 1280 it is one 460 card in the header rhythm', (tester) async {
-      for (final width in const [700.0, 1280.0]) {
-        tester.view.devicePixelRatio = 1.0;
-        tester.view.physicalSize = Size(width, 1600);
-        addTearDown(tester.view.reset);
-        addTearDown(tester.platformDispatcher.clearAllTestValues);
-        await pumpApp(
-          tester,
-          gateway: FakeAuthGateway(accessToken: 'a-token'),
-          client: FakeWire(
-            role: Roles.operator,
-            sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
-            orgUnits: {
-              null: [orgUnitJson('10', 'Line 1')],
-            },
-          ).client,
-          initialLocation: '/approvals',
-        );
-        await tester.pumpAndSettle();
+    Future<void> pumpDenied(WidgetTester tester,
+        {required double width, double textScale = 1}) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = Size(width, 1600);
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearAllTestValues);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: FakeWire(
+          role: Roles.operator,
+          sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+          orgUnits: {
+            null: [orgUnitJson('10', 'Line 1')],
+          },
+        ).client,
+        initialLocation: '/approvals',
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('at 700, 900 and 1280 it is one 460 card in the header rhythm', (tester) async {
+      for (final width in const [700.0, 900.0, 1280.0]) {
+        await pumpDenied(tester, width: width);
         expect(find.byType(AccessDeniedScreen), findsOneWidget, reason: 'window $width');
         // This route renders inside the Shell, so a 700px window hands the
         // state 440px and the block is bounded by that rather than by 460 —
         // and still does not grow when the window does.
-        _expectBoundedCard(tester, reason: 'window $width', bound: width - 260 < 460 ? width - 260 : 460);
+        _expectBoundedCard(tester,
+            reason: 'window $width', bound: width - 260 < 460 ? width - 260 : 460);
         _expectHeaderRhythm(tester, reason: 'window $width');
         _expectActionsAreTapTargets(tester, reason: 'window $width');
         expect(find.byKey(AccessDeniedScreen.homeKey), findsOneWidget);
       }
     });
+
+    testWidgets('at twice the text the card holds and keeps its way out', (tester) async {
+      await pumpDenied(tester, width: 1280, textScale: 2);
+      expect(tester.takeException(), isNull);
+      _expectBoundedCard(tester, reason: '200% text');
+      _expectHeaderRhythm(tester, reason: '200% text');
+      _expectActionsAreTapTargets(tester, reason: '200% text');
+      expect(find.byKey(AccessDeniedScreen.homeKey), findsOneWidget);
+    });
   });
 
   group('session error', () {
     testWidgets('is one 460 card with both actions at the floor', (tester) async {
-      for (final width in const [700.0, 1280.0]) {
+      for (final width in const [700.0, 900.0, 1280.0]) {
         await _pumpScreen(
           tester,
           const SessionErrorScreen(message: 'the request timed out'),
@@ -172,18 +190,37 @@ void main() {
         expect(find.byKey(SessionErrorScreen.signOutKey), findsOneWidget);
       }
     });
+
+    testWidgets('at twice the text it holds and still offers both ways out', (tester) async {
+      await _pumpScreen(
+        tester,
+        const SessionErrorScreen(message: 'the request timed out'),
+        width: 1280,
+        textScale: 2,
+      );
+      expect(tester.takeException(), isNull);
+      _expectBoundedCard(tester, reason: '200% text');
+      _expectHeaderRhythm(tester, reason: '200% text');
+      _expectActionsAreTapTargets(tester, reason: '200% text');
+      expect(find.byKey(SessionErrorScreen.retryKey), findsOneWidget);
+      expect(find.byKey(SessionErrorScreen.signOutKey), findsOneWidget);
+    });
   });
 
   group('awaiting approval', () {
-    testWidgets('is one 460 card, and its actions survive twice the text', (tester) async {
-      await _pumpScreen(
-        tester,
-        const AwaitingApprovalScreen(email: 'a@b.c'),
-        width: 700,
-      );
-      _expectBoundedCard(tester);
-      _expectHeaderRhythm(tester);
-      _expectActionsAreTapTargets(tester);
+    testWidgets('at 700, 900 and 1280 it is one 460 card, and it survives twice the text',
+        (tester) async {
+      for (final width in const [700.0, 900.0, 1280.0]) {
+        await _pumpScreen(
+          tester,
+          const AwaitingApprovalScreen(email: 'a@b.c'),
+          width: width,
+        );
+        _expectBoundedCard(tester, reason: 'window $width');
+        _expectHeaderRhythm(tester, reason: 'window $width');
+        _expectActionsAreTapTargets(tester, reason: 'window $width');
+        expect(find.byKey(AwaitingApprovalScreen.checkAgainKey), findsOneWidget);
+      }
 
       await _pumpScreen(
         tester,
@@ -193,6 +230,8 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       _expectBoundedCard(tester, reason: '200% text');
+      _expectHeaderRhythm(tester, reason: '200% text');
+      _expectActionsAreTapTargets(tester, reason: '200% text');
       expect(find.byKey(AwaitingApprovalScreen.checkAgainKey), findsOneWidget);
     });
   });
@@ -211,7 +250,7 @@ void main() {
             },
           };
 
-      for (final width in const [700.0, 1280.0]) {
+      for (final width in const [700.0, 900.0, 1280.0]) {
         tester.view.devicePixelRatio = 1.0;
         tester.view.physicalSize = Size(width, 1600);
         addTearDown(tester.view.reset);
@@ -232,6 +271,51 @@ void main() {
         expect(find.byKey(ChangePasswordScreen.submitKey), findsOneWidget);
         expect(find.byKey(ChangePasswordScreen.signOutKey), findsOneWidget);
         expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('at twice the text the fields and the way out stay inside the card',
+        (tester) async {
+      Map<String, dynamic> body() => {
+            'status': 'active',
+            'account': {
+              'id': '1',
+              'email': 'a@b.c',
+              'displayName': 'A B',
+              'role': 'administrator',
+              'mustChangePassword': true,
+            },
+          };
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearAllTestValues);
+      await pumpApp(
+        tester,
+        gateway: FakeAuthGateway(accessToken: 'a-token'),
+        client: meClient(body),
+        initialLocation: '/',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ChangePasswordScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      _expectBoundedCard(tester, reason: '200% text');
+      _expectHeaderRhythm(tester, reason: '200% text');
+      _expectActionsAreTapTargets(tester, reason: '200% text');
+
+      // Measured at 200%: both fields and the submit control stay inside the
+      // card's own box, so no field is clipped by a hand-typed width.
+      final card = tester.getRect(find.byKey(ChangePasswordScreen.cardKey));
+      for (final field in [
+        ChangePasswordScreen.currentFieldKey,
+        ChangePasswordScreen.newFieldKey,
+        ChangePasswordScreen.submitKey,
+      ]) {
+        final rect = tester.getRect(find.byKey(field));
+        expect(rect.left, greaterThanOrEqualTo(card.left - 0.5), reason: 'inside the card');
+        expect(rect.right, lessThanOrEqualTo(card.right + 0.5), reason: 'inside the card');
       }
     });
   });

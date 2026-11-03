@@ -167,7 +167,8 @@ void main() {
       }
     });
 
-    testWidgets('at twice the text the log is cards, and nothing clips', (tester) async {
+    testWidgets('at twice the text the log is cards, and the readings stay inside one',
+        (tester) async {
       await _pump(tester, width: 1280, location: '/actions', textScale: 2);
 
       expect(tester.takeException(), isNull);
@@ -176,6 +177,23 @@ void main() {
       expect(find.byKey(ActionsScreen.tableKey), findsNothing);
       expect(find.byKey(ActionsScreen.rowStatusKey('501')), findsOneWidget,
           reason: 'no state chip is lost at 200%');
+
+      // Measured rather than present: at 200% the card is taller than a 1x row
+      // (a 2x line is 28px against 14), and every reading the card carries
+      // stays inside the card's own box.
+      final card = tester.getRect(find.byKey(ActionsScreen.rowKey('501')));
+      expect(card.height, greaterThan(88.0),
+          reason: 'a card at twice the text is taller than the 1x row');
+      for (final (name, part) in [
+        ('state chip', ActionsScreen.rowStatusKey('501')),
+        ('owner', ActionsScreen.ownerKey('501')),
+        ('due', ActionsScreen.dueKey('501')),
+      ]) {
+        final rect = tester.getRect(find.byKey(part));
+        expect(rect.left, greaterThanOrEqualTo(card.left - 0.5), reason: '$name inside the card');
+        expect(rect.right, lessThanOrEqualTo(card.right + 0.5), reason: '$name inside the card');
+        expect(rect.bottom, lessThanOrEqualTo(card.bottom + 0.5), reason: '$name inside the card');
+      }
     });
 
     testWidgets('the page head and the register share one left edge', (tester) async {
@@ -204,16 +222,35 @@ void main() {
       expect(find.byKey(CapasScreen.rowKey('801')), findsOneWidget);
     });
 
-    testWidgets('at 700 it is a card per investigation, and at 2x it still is',
+    testWidgets('at 700 it is a card per investigation, and at 900 and 2x it still is',
         (tester) async {
       await _pump(tester, width: 700, location: '/actions/capas');
       expect(find.byType(AppTableHeader), findsNothing, reason: 'window 700');
+      _expectRowIsATapTarget(tester, find.byKey(CapasScreen.rowKey('801')));
+
+      await _pump(tester, width: 900, location: '/actions/capas');
+      expect(find.byType(AppTableHeader), findsNothing, reason: 'window 900');
       _expectRowIsATapTarget(tester, find.byKey(CapasScreen.rowKey('801')));
 
       await _pump(tester, width: 1280, location: '/actions/capas', textScale: 2);
       expect(tester.takeException(), isNull);
       expect(find.byType(AppTableHeader), findsNothing, reason: '200% text');
       expect(find.byKey(CapasScreen.rowKey('801')), findsOneWidget);
+
+      // Measured at 200%: the card is taller than a 1x row, and the overdue
+      // mark and the check date stay inside the card that carries them.
+      final card = tester.getRect(find.byKey(CapasScreen.rowKey('802')));
+      expect(card.height, greaterThan(88.0),
+          reason: 'a card at twice the text is taller than the 1x row');
+      for (final (name, part) in [
+        ('overdue mark', CapasScreen.rowOverdueKey('802')),
+        ('check date', CapasScreen.rowDueKey('802')),
+      ]) {
+        final rect = tester.getRect(find.byKey(part));
+        expect(rect.left, greaterThanOrEqualTo(card.left - 0.5), reason: '$name inside the card');
+        expect(rect.right, lessThanOrEqualTo(card.right + 0.5), reason: '$name inside the card');
+        expect(rect.bottom, lessThanOrEqualTo(card.bottom + 0.5), reason: '$name inside the card');
+      }
     });
   });
 
@@ -258,13 +295,33 @@ void main() {
       expect(find.byKey(ActionDetailScreen.backKey), findsOneWidget);
     });
 
-    testWidgets('at 700 and at twice the text the sections hold', (tester) async {
-      for (final (width, scale) in const [(700.0, 1.0), (1280.0, 2.0)]) {
+    testWidgets('at 700, at 900 and at twice the text one left edge holds and the sections follow',
+        (tester) async {
+      for (final (width, scale) in const [(700.0, 1.0), (900.0, 1.0), (1280.0, 2.0)]) {
         await _pump(tester, width: width, location: '/actions/501', textScale: scale);
-        expect(tester.takeException(), isNull, reason: 'window $width at ${scale}x');
-        expect(find.byKey(ActionDetailScreen.summaryKey), findsOneWidget,
-            reason: 'window $width at ${scale}x');
-        expect(find.byKey(AppDetailSection.titleKey('Where it stands')), findsOneWidget);
+        final why = 'window $width at ${scale}x';
+        expect(tester.takeException(), isNull, reason: why);
+        expect(find.byKey(ActionDetailScreen.summaryKey), findsOneWidget, reason: why);
+        expect(find.byKey(AppDetailSection.titleKey('Where it stands')), findsOneWidget,
+            reason: why);
+
+        // Measured: the summary card, the section under it and the page head
+        // start at one left edge, and the section sits below the card.
+        final head = tester.getTopLeft(find.byKey(AppPageHeader.titleKey));
+        final summary = tester.getRect(find.byKey(ActionDetailScreen.summaryKey));
+        final section = tester.getRect(
+          find
+              .ancestor(
+                of: find.byKey(AppDetailSection.titleKey('Where it stands')),
+                matching: find.byType(Card),
+              )
+              .first,
+        );
+        expect(summary.left, closeTo(head.dx, 1.0), reason: 'one left edge: $why');
+        expect(section.left, closeTo(summary.left, 1.0), reason: 'one left edge: $why');
+        expect(section.width, closeTo(summary.width, 1.0), reason: 'one column: $why');
+        expect(section.top, greaterThanOrEqualTo(summary.bottom - 1.0),
+            reason: 'the sections follow the summary card: $why');
       }
     });
   });
@@ -291,16 +348,32 @@ void main() {
       expect(find.byKey(AppDetailSection.titleKey('The problem')), findsWidgets);
     });
 
-    testWidgets('at 700 and at twice the text the sections hold', (tester) async {
-      for (final (width, scale) in const [(700.0, 1.0), (1280.0, 2.0), (900.0, 1.0)]) {
+    testWidgets('at 700, at 900 and at twice the text one left edge holds and the sections follow',
+        (tester) async {
+      for (final (width, scale) in const [(700.0, 1.0), (900.0, 1.0), (1280.0, 2.0)]) {
         await _pump(tester, width: width, location: '/actions/capas/801', textScale: scale);
-        expect(tester.takeException(), isNull, reason: 'window $width at ${scale}x');
+        final why = 'window $width at ${scale}x';
+        expect(tester.takeException(), isNull, reason: why);
         // The sections the page opens with; the ones further down a lazy list
         // are not built until a reader scrolls to them, which is the list's
         // business rather than the layout's.
-        expect(find.byKey(AppDetailSection.titleKey('Team')), findsOneWidget,
-            reason: 'window $width at ${scale}x');
+        expect(find.byKey(AppDetailSection.titleKey('Team')), findsOneWidget, reason: why);
         expect(find.byKey(CapaDetailScreen.backKey), findsOneWidget);
+
+        // Measured: the page head and the first section card under it begin at
+        // one left edge, and the section is below the head.
+        final head = tester.getTopLeft(find.byKey(AppPageHeader.titleKey));
+        final team = tester.getRect(
+          find
+              .ancestor(
+                of: find.byKey(AppDetailSection.titleKey('Team')),
+                matching: find.byType(Card),
+              )
+              .first,
+        );
+        expect(team.left, closeTo(head.dx, 1.0), reason: 'one left edge: $why');
+        expect(team.top, greaterThan(head.dy), reason: 'the sections follow the head: $why');
+        expect(team.width, greaterThan(0.0), reason: why);
       }
     });
   });
@@ -326,11 +399,23 @@ void main() {
       expect(find.text('D1 · Team'), findsOneWidget);
     });
 
-    testWidgets('it holds at 700 and at twice the text', (tester) async {
-      for (final (width, scale) in const [(700.0, 1.0), (1280.0, 2.0)]) {
+    testWidgets('it holds at 700, at 900 and at twice the text, and its rules share the page edge',
+        (tester) async {
+      for (final (width, scale) in const [(700.0, 1.0), (900.0, 1.0), (1280.0, 2.0)]) {
         await _pump(tester, width: width, location: '/actions/capas/801/report', textScale: scale);
-        expect(tester.takeException(), isNull, reason: 'window $width at ${scale}x');
-        expect(find.text('D1 · Team'), findsOneWidget);
+        final why = 'window $width at ${scale}x';
+        expect(tester.takeException(), isNull, reason: why);
+        expect(find.text('D1 · Team'), findsOneWidget, reason: why);
+
+        // Measured: the meta line and the page head share the left edge, and
+        // the document's rules stay inside the page's own width — which is
+        // what makes the printed sheet one column rather than a cropped one.
+        final head = tester.getTopLeft(find.byKey(AppPageHeader.titleKey));
+        final meta = tester.getRect(find.byKey(CapaReportScreen.metaKey));
+        final loaded = tester.getRect(find.byKey(CapaReportScreen.loadedKey));
+        expect(meta.left, closeTo(head.dx, 1.0), reason: 'one left edge: $why');
+        expect(meta.left, greaterThanOrEqualTo(loaded.left - 0.5), reason: why);
+        expect(meta.right, lessThanOrEqualTo(loaded.right + 0.5), reason: why);
       }
     });
   });

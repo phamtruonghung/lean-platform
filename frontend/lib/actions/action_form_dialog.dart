@@ -21,6 +21,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import 'action.dart';
 import 'actions_api.dart';
@@ -40,8 +41,8 @@ class ActionFormDialog extends StatefulWidget {
   static const ValueKey<String> ownerKey = ValueKey<String>('action-form-owner');
   static const ValueKey<String> dueDateKey = ValueKey<String>('action-form-due-date');
   static const ValueKey<String> priorityKey = ValueKey<String>('action-form-priority');
-  static const ValueKey<String> submitKey = ValueKey<String>('action-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('action-form-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('raise-it');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('action-form-failure');
   static const ValueKey<String> chosenKey = ValueKey<String>('action-form-chosen');
 
@@ -158,12 +159,27 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
       child: BlocListener<OrgUnitPickerBloc, OrgUnitPickerState>(
         listenWhen: (previous, current) => previous.siteId != current.siteId,
         listener: (context, state) => _onOrgUnitSiteChanged(state),
-        child: AlertDialog(
-          title: const Text('Raise a concern'),
-          content: SizedBox(
-            width: 640,
-            child: SingleChildScrollView(
-              child: Column(
+        child: AppDialog(
+          title: 'Raise a concern',
+          // A long form: two dropdowns, a Pillar, a searched owner, a date and
+          // an Org Unit chooser (issue #398's four widths).
+          size: AppDialogSize.wide,
+          actions: [
+            AppDialogAction(
+              id: 'cancel',
+              label: 'Cancel',
+              kind: AppDialogActionKind.dismiss,
+              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+            ),
+            AppDialogAction(
+              id: 'raise-it',
+              label: 'Raise it',
+              onPressed: _complete && !_awaiting ? _submit : null,
+            ),
+          ],
+          // The content area is the dialog's own scroll view, so the form is a
+          // plain Column: one scrollbar, not two (issue #396).
+          child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -329,20 +345,6 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                     ),
                 ],
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              key: ActionFormDialog.cancelKey,
-              onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: ActionFormDialog.submitKey,
-              onPressed: _complete && !_awaiting ? _submit : null,
-              child: const Text('Raise it'),
-            ),
-          ],
         ),
       ),
     );

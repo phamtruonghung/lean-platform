@@ -31,6 +31,7 @@ import 'package:go_router/go_router.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'capa.dart';
 import 'capa_detail_bloc.dart';
 
@@ -51,7 +52,31 @@ abstract final class CapaEffectivenessKeys {
   /// The way out of a refusal. A `DialogPage` is not `barrierDismissible` (see
   /// `dialog_page.dart`), so a refusal with no control of its own would leave a
   /// person tapping outside a dialog that never closes.
-  static const ValueKey<String> dismissKey = ValueKey<String>('capa-effectiveness-dismiss');
+  static final ValueKey<String> dismissKey = AppDialog.actionKey('back-to-the-capa');
+}
+
+/// One of this address's refusals: why there is no form, and the one way back
+/// to the investigation the address was reached from.
+class _EffectivenessRefusal extends StatelessWidget {
+  const _EffectivenessRefusal({super.key, required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => AppDialog(
+        title: title,
+        description: message,
+        size: AppDialogSize.decision,
+        actions: [
+          AppDialogAction(
+            id: 'back-to-the-capa',
+            label: 'Back to the CAPA',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => context.pop(),
+          ),
+        ],
+      );
 }
 
 /// What this address says when it is not one the CAPA it names can answer — or
@@ -70,57 +95,39 @@ Widget? capaEffectivenessAddressRefusal(BuildContext context, CapaDetailState st
         content: SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
       );
     case CapaDetailUnavailable(message: final message):
-      return AlertDialog(
+      return _EffectivenessRefusal(
         key: CapaEffectivenessKeys.notLoadedKey,
-        title: const Text('That CAPA could not be read'),
-        content: Text(message),
-        actions: [_dismissButton(context)],
+        title: 'That CAPA could not be read',
+        message: message,
       );
     case CapaDetailLoaded(capa: final capa):
       if (!capa.isOpen) {
-        return AlertDialog(
+        return _EffectivenessRefusal(
           key: CapaEffectivenessKeys.closedKey,
-          title: const Text('This investigation is over'),
-          content: Text(
-            '${capa.capaNo} is ${capa.statusLabel.toLowerCase()}, so its effectiveness is '
-            'recorded and the record is read rather than changed.',
-          ),
-          actions: [_dismissButton(context)],
+          title: 'This investigation is over',
+          message: '${capa.capaNo} is ${capa.statusLabel.toLowerCase()}, so its effectiveness is '
+              'recorded and the record is read rather than changed.',
         );
       }
       if (!holdsQualityAuthority(context, capa.orgUnitId)) {
-        return AlertDialog(
+        return const _EffectivenessRefusal(
           key: CapaEffectivenessKeys.refusedKey,
-          title: const Text('Not yours to decide'),
-          content: const Text(
-            "Recording a CAPA's effectiveness check needs Quality authority at its Org Unit.",
-          ),
-          actions: [_dismissButton(context)],
+          title: 'Not yours to decide',
+          message: "Recording a CAPA's effectiveness check needs Quality authority at its Org Unit.",
         );
       }
       if (isCapaTeamLeadAccount(context, capa)) {
-        return AlertDialog(
+        return _EffectivenessRefusal(
           key: CapaEffectivenessKeys.teamLeadKey,
-          title: const Text('Somebody else has to check this'),
-          content: Text(
-            'You lead the investigation on ${capa.capaNo}, so you are the one person whose '
-            "judgement about this fix is not evidence. A holder of Quality authority who is not "
-            "on the team lead's Account records the check.",
-          ),
-          actions: [_dismissButton(context)],
+          title: 'Somebody else has to check this',
+          message: 'You lead the investigation on ${capa.capaNo}, so you are the one person whose '
+              "judgement about this fix is not evidence. A holder of Quality authority who is not "
+              "on the team lead's Account records the check.",
         );
       }
       return null;
   }
 }
-
-/// The one way out every refusal here offers, and where it goes: back to the
-/// investigation the address was reached from.
-Widget _dismissButton(BuildContext context) => TextButton(
-      key: CapaEffectivenessKeys.dismissKey,
-      onPressed: () => context.pop(),
-      child: const Text('Back to the CAPA'),
-    );
 
 /// Recording the effectiveness check — `.../capas/:id/effectiveness`.
 class CapaEffectivenessDialog extends StatefulWidget {
@@ -128,8 +135,8 @@ class CapaEffectivenessDialog extends StatefulWidget {
 
   static const ValueKey<String> outcomeKey = ValueKey<String>('capa-effectiveness-outcome');
   static const ValueKey<String> noteKey = ValueKey<String>('capa-effectiveness-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('capa-effectiveness-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('capa-effectiveness-cancel');
+  static final ValueKey<String> submitKey = AppDialog.actionKey('record-it');
+  static final ValueKey<String> cancelKey = AppDialog.actionKey('cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('capa-effectiveness-failure');
 
   /// What the form says about the two chains before the caller picks
@@ -203,107 +210,107 @@ class _CapaEffectivenessDialogState extends State<CapaEffectivenessDialog> {
 
     return BlocListener<CapaDetailBloc, CapaDetailState>(
       listener: _onChanged,
-      child: AlertDialog(
-        title: const Text('Record the effectiveness check'),
-        content: SizedBox(
-          width: 560,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${capa.capaNo} · ${capa.title}',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: Spacing.xs),
-              Text(
-                capa.effectivenessCheckDueAt == null
-                    ? 'The check falls due ${capa.effectivenessCheckDelayDays} days after the '
-                        'Concern closes.'
-                    : 'The Concern closed, and the check fell due on '
-                        '${capa.effectivenessCheckDueAt}.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: Spacing.md),
-              // A value with a known set is chosen, never typed (ADR-0023): the
-              // two verdicts are the schema's own, and the label is the
-              // sentence a person would say.
-              DropdownButtonFormField<String>(
-                key: CapaEffectivenessDialog.outcomeKey,
-                initialValue: _outcome,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'What the check found',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  for (final outcome in capaEffectivenessOutcomeOrder)
-                    DropdownMenuItem<String>(
-                      value: outcome,
-                      child: Text(capaEffectivenessOutcomeLabel(outcome)),
-                    ),
-                ],
-                onChanged: _awaiting
-                    ? null
-                    : (outcome) {
-                        if (outcome == null) return;
-                        setState(() => _outcome = outcome);
-                      },
-              ),
-              if (!capa.bothChainsAnswered)
-                Padding(
-                  key: CapaEffectivenessDialog.chainsOpenKey,
-                  padding: const EdgeInsets.only(top: Spacing.sm),
-                  child: Text(
-                    'A chain of this investigation has no confirmed root cause yet, so '
-                    '"${capaEffectivenessOutcomeLabel('effective')}" cannot close it: the '
-                    'investigation has to have finished before the fix is judged to have held.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: Spacing.md),
-              TextField(
-                key: CapaEffectivenessDialog.noteKey,
-                controller: _note,
-                enabled: !_awaiting,
-                autofocus: true,
-                minLines: 3,
-                maxLines: 5,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'What you checked, and what you found',
-                  helperText: 'The evidence for the verdict, so the next reader can weigh it.',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              if (_failure != null)
-                Padding(
-                  key: CapaEffectivenessDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      child: AppDialog(
+        title: 'Record the effectiveness check',
+        // Two fields and a sentence: a short form (issue #398's four widths).
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: CapaEffectivenessDialog.cancelKey,
+          AppDialogAction(
+            id: 'cancel',
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: CapaEffectivenessDialog.submitKey,
+          AppDialogAction(
+            id: 'record-it',
+            label: 'Record it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Record it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${capa.capaNo} · ${capa.title}',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              capa.effectivenessCheckDueAt == null
+                  ? 'The check falls due ${capa.effectivenessCheckDelayDays} days after the '
+                      'Concern closes.'
+                  : 'The Concern closed, and the check fell due on '
+                      '${capa.effectivenessCheckDueAt}.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            // A value with a known set is chosen, never typed (ADR-0023): the
+            // two verdicts are the schema's own, and the label is the
+            // sentence a person would say.
+            DropdownButtonFormField<String>(
+              key: CapaEffectivenessDialog.outcomeKey,
+              initialValue: _outcome,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'What the check found',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final outcome in capaEffectivenessOutcomeOrder)
+                  DropdownMenuItem<String>(
+                    value: outcome,
+                    child: Text(capaEffectivenessOutcomeLabel(outcome)),
+                  ),
+              ],
+              onChanged: _awaiting
+                  ? null
+                  : (outcome) {
+                      if (outcome == null) return;
+                      setState(() => _outcome = outcome);
+                    },
+            ),
+            if (!capa.bothChainsAnswered)
+              Padding(
+                key: CapaEffectivenessDialog.chainsOpenKey,
+                padding: const EdgeInsets.only(top: Spacing.sm),
+                child: Text(
+                  'A chain of this investigation has no confirmed root cause yet, so '
+                  '"${capaEffectivenessOutcomeLabel('effective')}" cannot close it: the '
+                  'investigation has to have finished before the fix is judged to have held.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: CapaEffectivenessDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              autofocus: true,
+              minLines: 3,
+              maxLines: 5,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'What you checked, and what you found',
+                helperText: 'The evidence for the verdict, so the next reader can weigh it.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: CapaEffectivenessDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
