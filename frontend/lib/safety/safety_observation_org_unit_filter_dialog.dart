@@ -15,14 +15,18 @@ import '../maintenance/maintenance.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
+import '../widgets/app_dialog.dart';
 import 'safety_observations_bloc.dart';
 
 class SafetyObservationOrgUnitFilterDialog extends StatelessWidget {
   const SafetyObservationOrgUnitFilterDialog({super.key});
 
-  static const ValueKey<String> allOrgUnitsKey =
-      ValueKey<String>('safety-observations-filter-all');
-  static const ValueKey<String> cancelKey = ValueKey<String>('safety-observations-filter-cancel');
+  /// The two actions' keys are the dialog shell's own (`AppDialog.actionKey`),
+  /// named for this dialog's use of them (`docs/design-language.md` §11).
+  static final ValueKey<String> allOrgUnitsKey =
+      AppDialog.actionKey('safety-observations-filter-all');
+  static final ValueKey<String> cancelKey =
+      AppDialog.actionKey('safety-observations-filter-cancel');
 
   /// Opens the filter over the register. `showDialog` builds its route under
   /// the Navigator, which is not a descendant of the route-scoped
@@ -54,10 +58,34 @@ class SafetyObservationOrgUnitFilterDialog extends StatelessWidget {
     final state = context.watch<SafetyObservationsBloc>().state;
     final selectedId = state is SafetyObservationsLoaded ? state.filters.orgUnitId : null;
 
-    return AlertDialog(
-      title: const Text('Filter by Org Unit'),
-      content: SizedBox(
-        width: 420,
+    return AppDialog(
+      title: 'Filter by Org Unit',
+      // One tree of names, at the width this dialog has always been: `decision`
+      // is 420, the box the hand-sized `AlertDialog` used, so moving the shell
+      // onto [AppDialog] changes nothing a reader feels. `picker` (460) is for
+      // a dialog written for the tree, which this one is not.
+      size: AppDialogSize.decision,
+      // Clearing is this dialog's own act (the primary, right-most); Cancel is
+      // the dismiss, which is what `Esc` runs.
+      actions: [
+        AppDialogAction(
+          id: 'safety-observations-filter-cancel',
+          label: 'Cancel',
+          kind: AppDialogActionKind.dismiss,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        AppDialogAction(
+          id: 'safety-observations-filter-all',
+          label: 'All Org Units',
+          onPressed: () {
+            context.read<SafetyObservationsBloc>().add(const SafetyObservationsFiltersCleared());
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
+      // The chooser is a tree with a scroll of its own, so it is given a height
+      // and the dialog's own content area scrolls around it.
+      child: SizedBox(
         height: 420,
         child: OrgUnitChooser(
           selectedId: selectedId,
@@ -73,21 +101,6 @@ class SafetyObservationOrgUnitFilterDialog extends StatelessWidget {
           },
         ),
       ),
-      actions: [
-        TextButton(
-          key: allOrgUnitsKey,
-          onPressed: () {
-            context.read<SafetyObservationsBloc>().add(const SafetyObservationsFiltersCleared());
-            Navigator.of(context).pop();
-          },
-          child: const Text('All Org Units'),
-        ),
-        TextButton(
-          key: cancelKey,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-      ],
     );
   }
 }

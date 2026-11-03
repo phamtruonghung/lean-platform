@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
 
@@ -25,8 +26,14 @@ class SafetyIncidentStatusDialog extends StatefulWidget {
   final SafetyIncident incident;
 
   static const ValueKey<String> loadingKey = ValueKey<String>('safety-incident-status-loading');
-  static const ValueKey<String> submitKey = ValueKey<String>('safety-incident-status-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('safety-incident-status-cancel');
+  /// The actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11). A `ValueKey` is equal by value, so these
+  /// find exactly the buttons the shell keyed.
+  static const String _submitId = 'safety-incident-status-submit';
+  static const String _dismissId = 'safety-incident-status-cancel';
+  static const String _closeId = 'safety-incident-status-refused-close';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
   static const ValueKey<String> failureKey = ValueKey<String>('safety-incident-status-failure');
   static const ValueKey<String> refusedKey = ValueKey<String>('safety-incident-status-refused');
 
@@ -69,56 +76,59 @@ class _SafetyIncidentStatusDialogState extends State<SafetyIncidentStatusDialog>
     final next = incident.nextStatus;
 
     if (next == null) {
-      return AlertDialog(
+      // A refused dialog still needs a way out: the sentence is the dialog's
+      // own description and the single action closes it.
+      return AppDialog(
         key: SafetyIncidentStatusDialog.refusedKey,
-        content: Text(
-          incident.isClosed
-              ? 'This Safety incident is closed; its status cannot be moved.'
-              : 'This Safety incident is already ${incident.statusLabel.toLowerCase()}; '
-                  'only closing moves it further.',
-        ),
+        title: 'Move the status',
+        size: AppDialogSize.decision,
+        description: incident.isClosed
+            ? 'This Safety incident is closed; its status cannot be moved.'
+            : 'This Safety incident is already ${incident.statusLabel.toLowerCase()}; '
+                'only closing moves it further.',
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentStatusDialog._closeId,
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<SafetyIncidentDetailBloc, SafetyIncidentDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Move the status'),
-        content: SizedBox(
-          width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${incident.incidentNo} moves from ${incident.statusLabel} to '
-                '${SafetyIncidentStatus.label(next)}.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (_failure != null)
-                Padding(
-                  key: SafetyIncidentStatusDialog.failureKey,
-                  padding: const EdgeInsets.only(top: Spacing.md),
-                  child: Text(
-                    _failure!,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      // A decision (420): one sentence restating the move, and two actions —
+      // there are no fields, because there is nothing to fill in.
+      child: AppDialog(
+        title: 'Move the status',
+        size: AppDialogSize.decision,
+        description: '${incident.incidentNo} moves from ${incident.statusLabel} to '
+            '${SafetyIncidentStatus.label(next)}.',
         actions: [
-          TextButton(
-            key: SafetyIncidentStatusDialog.cancelKey,
+          AppDialogAction(
+            id: SafetyIncidentStatusDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SafetyIncidentStatusDialog.submitKey,
+          AppDialogAction(
+            id: SafetyIncidentStatusDialog._submitId,
+            label: 'Move to ${SafetyIncidentStatus.label(next)}',
             onPressed: _awaiting ? null : () => _submit(next),
-            child: Text('Move to ${SafetyIncidentStatus.label(next)}'),
           ),
         ],
+        child: _failure == null
+            ? null
+            : Padding(
+                key: SafetyIncidentStatusDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
       ),
     );
   }

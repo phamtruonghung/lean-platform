@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
 
@@ -29,8 +30,13 @@ class SafetyIncidentDaysDialog extends StatefulWidget {
   static const ValueKey<String> lostTimeKey = ValueKey<String>('safety-incident-days-lost-time');
   static const ValueKey<String> restrictedKey =
       ValueKey<String>('safety-incident-days-restricted');
-  static const ValueKey<String> submitKey = ValueKey<String>('safety-incident-days-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('safety-incident-days-cancel');
+  /// The actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11).
+  static const String _submitId = 'safety-incident-days-submit';
+  static const String _dismissId = 'safety-incident-days-cancel';
+  static const String _closeId = 'safety-incident-days-refused-close';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
   static const ValueKey<String> failureKey = ValueKey<String>('safety-incident-days-failure');
   static const ValueKey<String> refusedKey = ValueKey<String>('safety-incident-days-refused');
 
@@ -97,85 +103,99 @@ class _SafetyIncidentDaysDialogState extends State<SafetyIncidentDaysDialog> {
     final incident = widget.incident;
 
     if (!holdsSafetyAuthority(context, incident.orgUnitId)) {
-      return AlertDialog(
+      // A refused dialog still needs a way out: the sentence is its own
+      // description and the single action closes it.
+      return AppDialog(
         key: SafetyIncidentDaysDialog.refusedKey,
-        content: const Text(
-          "Recording the days needs Safety authority at this Safety incident's Org Unit.",
-        ),
+        title: 'Record the days',
+        size: AppDialogSize.decision,
+        description:
+            "Recording the days needs Safety authority at this Safety incident's Org Unit.",
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentDaysDialog._closeId,
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
     if (incident.isClosed) {
-      return AlertDialog(
+      return AppDialog(
         key: SafetyIncidentDaysDialog.refusedKey,
-        content: const Text('This Safety incident is closed; its days cannot be changed.'),
+        title: 'Record the days',
+        size: AppDialogSize.decision,
+        description: 'This Safety incident is closed; its days cannot be changed.',
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentDaysDialog._closeId,
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<SafetyIncidentDetailBloc, SafetyIncidentDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Record the days'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'What ${incident.incidentNo} cost — zero is a real answer, and settles it.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SafetyIncidentDaysDialog.lostTimeKey,
-                  controller: _lostTime,
-                  enabled: !_awaiting,
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Lost-time days',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SafetyIncidentDaysDialog.restrictedKey,
-                  controller: _restricted,
-                  enabled: !_awaiting,
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Restricted days',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: SafetyIncidentDaysDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // A form (520): two numeric fields (§11).
+      child: AppDialog(
+        title: 'Record the days',
+        size: AppDialogSize.form,
+        description: 'What ${incident.incidentNo} cost — zero is a real answer, and settles it.',
         actions: [
-          TextButton(
-            key: SafetyIncidentDaysDialog.cancelKey,
+          AppDialogAction(
+            id: SafetyIncidentDaysDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SafetyIncidentDaysDialog.submitKey,
+          AppDialogAction(
+            id: SafetyIncidentDaysDialog._submitId,
+            label: 'Save',
             onPressed: _complete ? _submit : null,
-            child: const Text('Save'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: SafetyIncidentDaysDialog.lostTimeKey,
+              controller: _lostTime,
+              enabled: !_awaiting,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Lost-time days',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SafetyIncidentDaysDialog.restrictedKey,
+              controller: _restricted,
+              enabled: !_awaiting,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Restricted days',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: SafetyIncidentDaysDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

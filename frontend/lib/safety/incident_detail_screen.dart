@@ -64,7 +64,9 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_section_grid.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -78,7 +80,10 @@ class SafetyIncidentDetailScreen extends StatelessWidget {
 
   final String incidentId;
 
-  static const double maxWidth = 900;
+  /// Wider than a catalogue's page: this Screen lays its sections two-up once
+  /// the box can hold two readable ones (`AppSectionGrid`'s 1000), which the
+  /// Platform's own 900 cannot.
+  static const double maxWidth = 1080;
 
   static const ValueKey<String> backKey = ValueKey<String>('safety-incident-back');
   static const ValueKey<String> statusKey = ValueKey<String>('safety-incident-detail-status');
@@ -228,27 +233,47 @@ class _Loaded extends StatelessWidget {
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: Spacing.lg),
+            // The summary card first — where, when, what and the deadline —
+            // before the page starts telling the story (issue #391). A reader
+            // opening an incident checks three things in the first second: the
+            // area, the day, and whether anybody is still expected to act.
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(Spacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('What happened', style: theme.textTheme.titleMedium),
+                    Text('Summary', style: theme.textTheme.titleMedium),
                     const SizedBox(height: Spacing.sm),
                     _Fact(label: 'Incident type', value: row.incidentTypeLabel),
                     _Fact(label: 'Org Unit', value: row.orgUnitName),
-                    _Fact(
-                      label: 'Asset',
-                      value:
-                          row.assetName == null ? 'None named' : '${row.assetName} · ${row.assetCode}',
-                    ),
                     _Fact(
                       label: 'Filed against',
                       key: SafetyIncidentDetailScreen.filedKey,
                       value: row.filedAgainst,
                     ),
                     _Fact(label: 'Occurred at', value: row.occurredAt ?? 'Not recorded'),
+                    _Fact(
+                      key: SafetyIncidentDetailScreen.dueDateFactKey,
+                      label: 'Investigation due at',
+                      value: row.investigationDueAt ?? 'No deadline set',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            // The narrative, under the summary: what was recorded about the
+            // event itself — the equipment, who reported it, what was done on
+            // the spot and what it cost.
+            AppDetailSection(
+              title: 'What happened',
+              children: [
+                    _Fact(
+                      label: 'Asset',
+                      value:
+                          row.assetName == null ? 'None named' : '${row.assetName} · ${row.assetCode}',
+                    ),
                     _Fact(label: 'Reported at', value: row.reportedAt ?? 'Not recorded'),
                     _Fact(label: 'Reported by', value: row.reportedByLabel),
                     _Fact(label: 'Description', value: row.description ?? 'None given'),
@@ -260,30 +285,23 @@ class _Loaded extends StatelessWidget {
                       _Fact(label: 'Lost-time days', value: row.lostTimeDays.toString()),
                     if (row.restrictedDays > 0)
                       _Fact(label: 'Restricted days', value: row.restrictedDays.toString()),
-                    _Fact(
-                      key: SafetyIncidentDetailScreen.dueDateFactKey,
-                      label: 'Investigation due at',
-                      value: row.investigationDueAt ?? 'No deadline set',
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
-            if (row.hasInjurySection) ...[
-              const SizedBox(height: Spacing.lg),
-              _InjuryCard(incident: row),
-            ],
-            const SizedBox(height: Spacing.lg),
-            _EventHistoryCard(events: row.events),
-            const SizedBox(height: Spacing.lg),
-            // What is being done about the cause (issue #229). Below the
-            // record's own story, the same order the Non-conformance Screen
-            // keeps: the event itself comes first, the problem behind it
-            // second.
-            _ConcernsCard(
-              incident: row,
-              notice: state.notice,
-              busy: state.isRaisingConcern,
+            // The record's own story, then what is being done about the cause
+            // (issue #229): the event itself comes first, the problem behind it
+            // second. Two columns once the box can hold two readable sections,
+            // one below that (§10).
+            const SizedBox(height: Spacing.md),
+            AppSectionGrid(
+              sections: [
+                if (row.hasInjurySection) _InjuryCard(incident: row),
+                _EventHistoryCard(events: row.events),
+                _ConcernsCard(
+                  incident: row,
+                  notice: state.notice,
+                  busy: state.isRaisingConcern,
+                ),
+              ],
             ),
             const SizedBox(height: Spacing.lg),
             Wrap(
@@ -403,15 +421,10 @@ class _InjuryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
+    return AppDetailSection(
       key: SafetyIncidentDetailScreen.injuryKey,
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('The injury', style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.sm),
+      title: 'The injury',
+      children: [
             if (!incident.injuryDetailsVisible)
               Text(
                 'Restricted — visible to Safety authority for this area.',
@@ -445,9 +458,7 @@ class _InjuryCard extends StatelessWidget {
                         '${BodyPartRegion.label(incident.bodyPartRegion ?? BodyPartRegion.other)}',
               ),
             ],
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -477,15 +488,10 @@ class _ConcernsCard extends StatelessWidget {
     final theme = Theme.of(context);
     final concerns = incident.concerns;
 
-    return Card(
+    return AppDetailSection(
       key: SafetyIncidentDetailScreen.concernsKey,
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('The cause', style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.xs),
+      title: 'The cause',
+      children: [
             Text(
               'The incident itself is recorded here; the cause behind it is solved in the action '
               'log, as a Concern.',
@@ -545,9 +551,7 @@ class _ConcernsCard extends StatelessWidget {
               icon: const Icon(Icons.lightbulb_outline),
               label: const Text('Raise a Concern'),
             ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -564,14 +568,9 @@ class _EventHistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Event history', style: theme.textTheme.titleMedium),
-            const SizedBox(height: Spacing.xs),
+    return AppDetailSection(
+      title: 'Event history',
+      children: [
             Text(
               'Every severity change, status move, days change, closure and classification '
               'change, kept with who and when.',
@@ -610,9 +609,7 @@ class _EventHistoryCard extends StatelessWidget {
                     ),
                 ],
               ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }

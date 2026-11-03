@@ -18,12 +18,18 @@
 /// reaches `isActive`, and there is no delete anywhere on this Screen. A
 /// deactivated entry stops being offered as a choice while classifying and
 /// stays readable on every incident that already names it.
+///
+/// **Its shell is `AppDialog`** (issue #398, `docs/design-language.md` §11):
+/// three fields at most is the `form` width, the shell owns the title row, the
+/// one scroller and the action row, and on a narrow box or at twice the text it
+/// becomes a bottom sheet with the fields still in one column.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'injury_type.dart';
 import 'injury_types_bloc.dart';
 
@@ -36,9 +42,14 @@ class InjuryTypeFormDialog extends StatefulWidget {
   static const ValueKey<String> codeKey = ValueKey<String>('injury-type-form-code');
   static const ValueKey<String> nameKey = ValueKey<String>('injury-type-form-name');
   static const ValueKey<String> activeKey = ValueKey<String>('injury-type-form-active');
-  static const ValueKey<String> submitKey = ValueKey<String>('injury-type-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('injury-type-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('injury-type-form-failure');
+
+  /// The two actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11).
+  static const String _submitId = 'injury-type-form-submit';
+  static const String _dismissId = 'injury-type-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
 
   /// Opens the form over the catalogue. `showDialog` builds its route under
   /// the Navigator, which is not a descendant of the route-scoped
@@ -137,75 +148,71 @@ class _InjuryTypeFormDialogState extends State<InjuryTypeFormDialog> {
     final theme = Theme.of(context);
     return BlocListener<InjuryTypesBloc, InjuryTypesState>(
       listener: _onCatalogueChanged,
-      child: AlertDialog(
-        title: Text(_isCorrection ? 'Correct Injury type' : 'Add Injury type'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: InjuryTypeFormDialog.codeKey,
-                  controller: _code,
-                  enabled: !_isCorrection && !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Code',
-                    border: const OutlineInputBorder(),
-                    helperText:
-                        _isCorrection ? "An Injury type's code cannot be corrected" : null,
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: InjuryTypeFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration:
-                      const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                ),
-                if (_isCorrection) ...[
-                  const SizedBox(height: Spacing.md),
-                  SwitchListTile(
-                    key: InjuryTypeFormDialog.activeKey,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active'),
-                    subtitle: const Text(
-                      'A retired Injury type is no longer offered while classifying, and '
-                      'stays on every incident that already names it.',
-                    ),
-                    value: _isActive,
-                    onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: InjuryTypeFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: _isCorrection ? 'Correct Injury type' : 'Add Injury type',
+        // A short form (520): three fields at most (§11).
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: InjuryTypeFormDialog.cancelKey,
+          AppDialogAction(
+            id: InjuryTypeFormDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: InjuryTypeFormDialog.submitKey,
+          AppDialogAction(
+            id: InjuryTypeFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Injury type'),
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Injury type')),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: InjuryTypeFormDialog.codeKey,
+              controller: _code,
+              enabled: !_isCorrection && !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Code',
+                border: const OutlineInputBorder(),
+                helperText: _isCorrection ? "An Injury type's code cannot be corrected" : null,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: InjuryTypeFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+            ),
+            if (_isCorrection) ...[
+              const SizedBox(height: Spacing.md),
+              SwitchListTile(
+                key: InjuryTypeFormDialog.activeKey,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                subtitle: const Text(
+                  'A retired Injury type is no longer offered while classifying, and '
+                  'stays on every incident that already names it.',
+                ),
+                value: _isActive,
+                onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: InjuryTypeFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

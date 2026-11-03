@@ -17,6 +17,11 @@
 /// client entry point) and the answer is the Action, so the dialog closes on
 /// the Bloc's own `notice` and the Screen beneath it re-reads the
 /// observation.
+///
+/// **Its shell is `AppDialog`** (issue #398, `docs/design-language.md` §11):
+/// four fields is the `form` width, the shell owns the title row, the one
+/// scroller and the action row, and the sentence about where the Action is
+/// raised is the dialog's own `description`.
 library;
 
 import 'package:flutter/material.dart' hide Action;
@@ -24,6 +29,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../actions/actions.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'observation_detail_bloc.dart';
 import 'safety_observation.dart';
 
@@ -42,12 +48,15 @@ class SafetyObservationRaiseActionDialog extends StatefulWidget {
       ValueKey<String>('safety-observation-raise-action-description');
   static const ValueKey<String> priorityKey =
       ValueKey<String>('safety-observation-raise-action-priority');
-  static const ValueKey<String> submitKey =
-      ValueKey<String>('safety-observation-raise-action-submit');
-  static const ValueKey<String> cancelKey =
-      ValueKey<String>('safety-observation-raise-action-cancel');
   static const ValueKey<String> failureKey =
       ValueKey<String>('safety-observation-raise-action-failure');
+
+  /// The actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11).
+  static const String _submitId = 'safety-observation-raise-action-submit';
+  static const String _dismissId = 'safety-observation-raise-action-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
 
   @override
   State<SafetyObservationRaiseActionDialog> createState() =>
@@ -118,108 +127,102 @@ class _SafetyObservationRaiseActionDialogState
 
     return BlocListener<SafetyObservationDetailBloc, SafetyObservationDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Raise an Action'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'This observation is recorded at ${record.orgUnitName}, and the Action is '
-                  'raised there — a problem is owned where it was seen.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String?>(
-                  key: SafetyObservationRaiseActionDialog.actionTypeKey,
-                  initialValue: _actionType,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Kind of Action',
-                    helperText: 'Choose what this is.',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text('Choose a kind')),
-                    for (final type in ActionType.values)
-                      DropdownMenuItem<String?>(value: type.wire, child: Text(type.label)),
-                  ],
-                  onChanged: _awaiting
-                      ? null
-                      : (value) => setState(() => _actionType = value),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SafetyObservationRaiseActionDialog.titleKey,
-                  controller: _title,
-                  enabled: !_awaiting,
-                  maxLines: 1,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'What needs doing?',
-                    helperText: 'The Action is read in the action log, so say the work, not the '
-                        'observation.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SafetyObservationRaiseActionDialog.descriptionKey,
-                  controller: _description,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Anything known yet',
-                    helperText: 'Optional. The Safety observation itself is already linked as '
-                        'evidence.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<int>(
-                  key: SafetyObservationRaiseActionDialog.priorityKey,
-                  initialValue: _priority,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority',
-                    helperText: '1 is worst.',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final entry in actionPriorityLabels.entries)
-                      DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
-                  ],
-                  onChanged: _awaiting ? null : (value) => setState(() => _priority = value ?? 3),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: SafetyObservationRaiseActionDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // A form (520): four fields (§11).
+      child: AppDialog(
+        title: 'Raise an Action',
+        size: AppDialogSize.form,
+        description: 'This observation is recorded at ${record.orgUnitName}, and the Action is '
+            'raised there — a problem is owned where it was seen.',
         actions: [
-          TextButton(
-            key: SafetyObservationRaiseActionDialog.cancelKey,
+          AppDialogAction(
+            id: SafetyObservationRaiseActionDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: SafetyObservationRaiseActionDialog.submitKey,
+          AppDialogAction(
+            id: SafetyObservationRaiseActionDialog._submitId,
+            label: 'Raise it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Raise it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String?>(
+              key: SafetyObservationRaiseActionDialog.actionTypeKey,
+              initialValue: _actionType,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Kind of Action',
+                helperText: 'Choose what this is.',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('Choose a kind')),
+                for (final type in ActionType.values)
+                  DropdownMenuItem<String?>(value: type.wire, child: Text(type.label)),
+              ],
+              onChanged: _awaiting
+                  ? null
+                  : (value) => setState(() => _actionType = value),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SafetyObservationRaiseActionDialog.titleKey,
+              controller: _title,
+              enabled: !_awaiting,
+              maxLines: 1,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'What needs doing?',
+                helperText: 'The Action is read in the action log, so say the work, not the '
+                    'observation.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: SafetyObservationRaiseActionDialog.descriptionKey,
+              controller: _description,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Anything known yet',
+                helperText: 'Optional. The Safety observation itself is already linked as '
+                    'evidence.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<int>(
+              key: SafetyObservationRaiseActionDialog.priorityKey,
+              initialValue: _priority,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Priority',
+                helperText: '1 is worst.',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final entry in actionPriorityLabels.entries)
+                  DropdownMenuItem<int>(value: entry.key, child: Text(entry.value)),
+              ],
+              onChanged: _awaiting ? null : (value) => setState(() => _priority = value ?? 3),
+            ),
+            if (_failure != null)
+              Padding(
+                key: SafetyObservationRaiseActionDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

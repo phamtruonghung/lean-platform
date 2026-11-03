@@ -12,12 +12,20 @@
 /// Product's unit of measure it **is** correctable: filing a part under the
 /// wrong region is an ordinary mistake the catalogue must be able to fix, and
 /// no record quotes a region the way a report quotes a code.
+///
+/// **Its shell is `AppDialog`** (issue #398, `docs/design-language.md` §11):
+/// four fields at most is the `form` width, the shell owns the title row, the
+/// one scroller and the action row, and on a narrow box or at twice the text it
+/// becomes a bottom sheet with the fields still in one column. The fields,
+/// their labels and helpers, the enable conditions and what each action does are
+/// this dialog's own and did not change.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'body_part.dart';
 import 'body_parts_bloc.dart';
 
@@ -31,9 +39,15 @@ class BodyPartFormDialog extends StatefulWidget {
   static const ValueKey<String> nameKey = ValueKey<String>('body-part-form-name');
   static const ValueKey<String> regionKey = ValueKey<String>('body-part-form-region');
   static const ValueKey<String> activeKey = ValueKey<String>('body-part-form-active');
-  static const ValueKey<String> submitKey = ValueKey<String>('body-part-form-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('body-part-form-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('body-part-form-failure');
+
+  /// The two actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11). A `ValueKey` is equal by value, so these
+  /// find exactly the buttons the shell keyed.
+  static const String _submitId = 'body-part-form-submit';
+  static const String _dismissId = 'body-part-form-cancel';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
 
   static Future<void> open(BuildContext context, {BodyPart? bodyPart}) {
     final bloc = context.read<BodyPartsBloc>();
@@ -131,94 +145,91 @@ class _BodyPartFormDialogState extends State<BodyPartFormDialog> {
     final theme = Theme.of(context);
     return BlocListener<BodyPartsBloc, BodyPartsState>(
       listener: _onCatalogueChanged,
-      child: AlertDialog(
-        title: Text(_isCorrection ? 'Correct Body part' : 'Add Body part'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  key: BodyPartFormDialog.codeKey,
-                  controller: _code,
-                  enabled: !_isCorrection && !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    labelText: 'Code',
-                    border: const OutlineInputBorder(),
-                    helperText: _isCorrection ? "A Body part's code cannot be corrected" : null,
-                  ),
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: BodyPartFormDialog.nameKey,
-                  controller: _name,
-                  enabled: !_awaiting,
-                  onChanged: (_) => setState(() {}),
-                  decoration:
-                      const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: Spacing.md),
-                DropdownButtonFormField<String>(
-                  key: BodyPartFormDialog.regionKey,
-                  initialValue: _region,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Region',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final region in BodyPartRegion.values)
-                      DropdownMenuItem<String>(
-                        value: region,
-                        child: Text(BodyPartRegion.label(region)),
-                      ),
-                  ],
-                  onChanged: _awaiting
-                      ? null
-                      : (value) => setState(() => _region = value ?? BodyPartRegion.other),
-                ),
-                if (_isCorrection) ...[
-                  const SizedBox(height: Spacing.md),
-                  SwitchListTile(
-                    key: BodyPartFormDialog.activeKey,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active'),
-                    subtitle: const Text(
-                      'A retired Body part is no longer offered while classifying, and '
-                      'stays on every incident that already names it.',
-                    ),
-                    value: _isActive,
-                    onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
-                  ),
-                ],
-                if (_failure != null)
-                  Padding(
-                    key: BodyPartFormDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: AppDialog(
+        title: _isCorrection ? 'Correct Body part' : 'Add Body part',
+        // A short form (520): four fields at most (§11).
+        size: AppDialogSize.form,
         actions: [
-          TextButton(
-            key: BodyPartFormDialog.cancelKey,
+          AppDialogAction(
+            id: BodyPartFormDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            key: BodyPartFormDialog.submitKey,
+          AppDialogAction(
+            id: BodyPartFormDialog._submitId,
+            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Body part'),
             onPressed: _complete && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add Body part')),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: BodyPartFormDialog.codeKey,
+              controller: _code,
+              enabled: !_isCorrection && !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Code',
+                border: const OutlineInputBorder(),
+                helperText: _isCorrection ? "A Body part's code cannot be corrected" : null,
+              ),
+            ),
+            const SizedBox(height: Spacing.md),
+            TextField(
+              key: BodyPartFormDialog.nameKey,
+              controller: _name,
+              enabled: !_awaiting,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: Spacing.md),
+            DropdownButtonFormField<String>(
+              key: BodyPartFormDialog.regionKey,
+              initialValue: _region,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Region',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final region in BodyPartRegion.values)
+                  DropdownMenuItem<String>(
+                    value: region,
+                    child: Text(BodyPartRegion.label(region)),
+                  ),
+              ],
+              onChanged: _awaiting
+                  ? null
+                  : (value) => setState(() => _region = value ?? BodyPartRegion.other),
+            ),
+            if (_isCorrection) ...[
+              const SizedBox(height: Spacing.md),
+              SwitchListTile(
+                key: BodyPartFormDialog.activeKey,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                subtitle: const Text(
+                  'A retired Body part is no longer offered while classifying, and '
+                  'stays on every incident that already names it.',
+                ),
+                value: _isActive,
+                onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
+              ),
+            ],
+            if (_failure != null)
+              Padding(
+                key: BodyPartFormDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

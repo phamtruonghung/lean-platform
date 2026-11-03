@@ -45,6 +45,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/app_search_field.dart';
 import '../widgets/failure_state.dart';
 import 'body_part.dart';
@@ -64,9 +65,15 @@ class SafetyIncidentClassifyDialog extends StatefulWidget {
 
   static const ValueKey<String> loadingKey = ValueKey<String>('safety-incident-classify-loading');
   static const ValueKey<String> refusedKey = ValueKey<String>('safety-incident-classify-refused');
-  static const ValueKey<String> submitKey = ValueKey<String>('safety-incident-classify-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('safety-incident-classify-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('safety-incident-classify-failure');
+
+  /// The actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11).
+  static const String _submitId = 'safety-incident-classify-submit';
+  static const String _dismissId = 'safety-incident-classify-cancel';
+  static const String _closeId = 'safety-incident-classify-refused-close';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
   static const ValueKey<String> cataloguesFailedKey =
       ValueKey<String>('safety-incident-classify-catalogues-failed');
   static const ValueKey<String> cataloguesRetryKey =
@@ -263,11 +270,22 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
     // Read here, in a build, for the reason the Screen reads it there: a value
     // frozen when the route first built would answer for a half-known Account.
     if (!holdsSafetyAuthority(context, incident.orgUnitId)) {
-      return AlertDialog(
+      // A refused dialog still needs a way out: the sentence is its own
+      // description and the single action closes it.
+      return AppDialog(
         key: SafetyIncidentClassifyDialog.refusedKey,
-        content: const Text(
-          "Classifying the injury needs Safety authority at this Safety incident's Org Unit.",
-        ),
+        title: 'Classify the injury',
+        size: AppDialogSize.decision,
+        description:
+            "Classifying the injury needs Safety authority at this Safety incident's Org Unit.",
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentClassifyDialog._closeId,
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
@@ -276,34 +294,50 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
     // not offer this address on that rung, and this is the same rule said
     // again where an address typed by hand cannot get round it.
     if (!incident.hasInjurySection) {
-      return AlertDialog(
+      return AppDialog(
         key: SafetyIncidentClassifyDialog.refusedKey,
-        content: Text(
-          '${incident.incidentNo} sits on the no-injury rung. Nobody was hurt, so there is '
-          'nothing to classify — correct the severity first if that is wrong.',
-        ),
+        title: 'Classify the injury',
+        size: AppDialogSize.decision,
+        description: '${incident.incidentNo} sits on the no-injury rung. Nobody was hurt, so '
+            'there is nothing to classify — correct the severity first if that is wrong.',
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentClassifyDialog._closeId,
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<SafetyIncidentDetailBloc, SafetyIncidentDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Classify the injury'),
-        content: SizedBox(
-          width: 640,
-          child: SingleChildScrollView(
-            child: Column(
+      // The widest size (640): three pickers, each with its own clear row, and
+      // a catalogue failure state inside it (§11).
+      child: AppDialog(
+        title: 'Classify the injury',
+        size: AppDialogSize.wide,
+        description: 'Who was hurt, what the injury was and where on the body. These three '
+            'are read only by a holder of Safety authority for this area and by the '
+            "injured person's own Account.",
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentClassifyDialog._dismissId,
+            label: 'Cancel',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
+          ),
+          AppDialogAction(
+            id: SafetyIncidentClassifyDialog._submitId,
+            label: _awaiting ? 'Saving…' : 'Save the classification',
+            onPressed: _asksForSomething && !_awaiting ? _submit : null,
+          ),
+        ],
+        child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Who was hurt, what the injury was and where on the body. These three '
-                  'are read only by a holder of Safety authority for this area and by the '
-                  "injured person's own Account.",
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: Spacing.md),
                 AppSearchField<Employee>(
                   name: SafetyIncidentClassifyDialog.employeeFieldName,
                   label: 'Injured Employee',
@@ -447,21 +481,7 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                     ),
                   ),
               ],
-            ),
-          ),
         ),
-        actions: [
-          TextButton(
-            key: SafetyIncidentClassifyDialog.cancelKey,
-            onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            key: SafetyIncidentClassifyDialog.submitKey,
-            onPressed: _asksForSomething && !_awaiting ? _submit : null,
-            child: Text(_awaiting ? 'Saving…' : 'Save the classification'),
-          ),
-        ],
       ),
     );
   }

@@ -11,6 +11,11 @@
 /// decision 4 states this in so many words: a Concern closes only on a
 /// countermeasure that held, which is months, and this record does not wait
 /// on it.
+///
+/// **Its shell is `AppDialog`** (issue #398, `docs/design-language.md` §11):
+/// one note field is the `form` width, the shell owns the title row, the one
+/// scroller and the action row, and the two refusals are `decision` dialogs
+/// whose single dismiss action is the way out a refusal needs.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,6 +23,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../platform/router.dart';
 import '../theme.dart';
+import '../widgets/app_dialog.dart';
 import 'incident_detail_bloc.dart';
 import 'safety_incident.dart';
 
@@ -28,10 +34,16 @@ class SafetyIncidentCloseDialog extends StatefulWidget {
 
   static const ValueKey<String> loadingKey = ValueKey<String>('safety-incident-close-loading');
   static const ValueKey<String> noteKey = ValueKey<String>('safety-incident-close-note');
-  static const ValueKey<String> submitKey = ValueKey<String>('safety-incident-close-submit');
-  static const ValueKey<String> cancelKey = ValueKey<String>('safety-incident-close-cancel');
   static const ValueKey<String> failureKey = ValueKey<String>('safety-incident-close-failure');
   static const ValueKey<String> refusedKey = ValueKey<String>('safety-incident-close-refused');
+
+  /// The actions' ids, and the keys `AppDialog` gives them
+  /// (`docs/design-language.md` §11).
+  static const String _submitId = 'safety-incident-close-submit';
+  static const String _dismissId = 'safety-incident-close-cancel';
+  static const String _closeId = 'safety-incident-close-refused-close';
+  static ValueKey<String> get submitKey => AppDialog.actionKey(_submitId);
+  static ValueKey<String> get cancelKey => AppDialog.actionKey(_dismissId);
 
   @override
   State<SafetyIncidentCloseDialog> createState() => _SafetyIncidentCloseDialogState();
@@ -82,76 +94,89 @@ class _SafetyIncidentCloseDialogState extends State<SafetyIncidentCloseDialog> {
 
     // Read here, in a build, for the reason the Screen reads it there.
     if (!holdsSafetyAuthority(context, incident.orgUnitId)) {
-      return AlertDialog(
+      // A refused dialog still needs a way out: the sentence is its own
+      // description and the single action closes it.
+      return AppDialog(
         key: SafetyIncidentCloseDialog.refusedKey,
-        content: const Text(
-          "Closing a Safety incident needs Safety authority at its Org Unit.",
-        ),
+        title: 'Close this Safety incident',
+        size: AppDialogSize.decision,
+        description: 'Closing a Safety incident needs Safety authority at its Org Unit.',
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentCloseDialog._closeId,
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
     if (incident.isClosed) {
-      return AlertDialog(
+      return AppDialog(
         key: SafetyIncidentCloseDialog.refusedKey,
-        content: const Text('This Safety incident is already closed.'),
+        title: 'Close this Safety incident',
+        size: AppDialogSize.decision,
+        description: 'This Safety incident is already closed.',
+        actions: [
+          AppDialogAction(
+            id: SafetyIncidentCloseDialog._closeId,
+            label: 'Close',
+            kind: AppDialogActionKind.dismiss,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     }
 
     return BlocListener<SafetyIncidentDetailBloc, SafetyIncidentDetailState>(
       listener: _onDetailChanged,
-      child: AlertDialog(
-        title: const Text('Close this Safety incident'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${incident.incidentNo} will be closed. A Concern raised from it, if any, keeps '
-                  'working the cause on its own.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                TextField(
-                  key: SafetyIncidentCloseDialog.noteKey,
-                  controller: _note,
-                  enabled: !_awaiting,
-                  minLines: 2,
-                  maxLines: 3,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    helperText: 'Why this incident is being closed.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (_failure != null)
-                  Padding(
-                    key: SafetyIncidentCloseDialog.failureKey,
-                    padding: const EdgeInsets.only(top: Spacing.md),
-                    child: Text(
-                      _failure!,
-                      style:
-                          theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      // A form (520): the note is the judgement this act records (§11).
+      child: AppDialog(
+        title: 'Close this Safety incident',
+        size: AppDialogSize.form,
+        description: '${incident.incidentNo} will be closed. A Concern raised from it, if any, '
+            'keeps working the cause on its own.',
         actions: [
-          TextButton(
-            key: SafetyIncidentCloseDialog.cancelKey,
+          AppDialogAction(
+            id: SafetyIncidentCloseDialog._dismissId,
+            label: 'Leave it open',
+            kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Leave it open'),
           ),
-          FilledButton(
-            key: SafetyIncidentCloseDialog.submitKey,
+          AppDialogAction(
+            id: SafetyIncidentCloseDialog._submitId,
+            label: 'Close it',
             onPressed: _complete ? _submit : null,
-            child: const Text('Close it'),
           ),
         ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: SafetyIncidentCloseDialog.noteKey,
+              controller: _note,
+              enabled: !_awaiting,
+              minLines: 2,
+              maxLines: 3,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Note',
+                helperText: 'Why this incident is being closed.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_failure != null)
+              Padding(
+                key: SafetyIncidentCloseDialog.failureKey,
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

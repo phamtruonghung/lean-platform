@@ -20,6 +20,15 @@
 /// person's diagnosis; a list of the words a plant classifies injuries with
 /// names nobody.
 ///
+/// **A catalogue row is one dense line, and it is a tap target tall even
+/// though nothing on it is tappable as a whole** (issue #391,
+/// `docs/design-language.md` §12): [AppTouchTarget.min] of height, `dense` text
+/// that discloses what it clips, and the Correct button stated at the same
+/// 44 so the row cannot grow around it. The page is [AppLayout.pageWidth], so
+/// the whole catalogue — name, the Inactive badge and the action — reads in one
+/// glance at 700px and stays exactly that shape at 1280, where the text simply
+/// has more room.
+///
 /// No search control, for the same reason `ProductsScreen` gives: the sweep
 /// that adds one to each catalogue Screen is a different ticket.
 library;
@@ -32,6 +41,7 @@ import '../theme.dart';
 import '../widgets/app_list_card.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
 import '../widgets/skeleton_list.dart';
@@ -153,42 +163,49 @@ class _InjuryTypeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
+    final palette = AppColors.of(context);
+    return ConstrainedBox(
       key: InjuryTypesScreen.rowKey(injuryType.id),
-      padding: const EdgeInsets.all(Spacing.md),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    injuryType.label,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
+      constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DisclosingText(
+                      injuryType.label,
+                      style: AppTypography.dense(context)?.copyWith(
+                        color: injuryType.isActive ? palette.textPrimary : palette.textMuted,
+                      ),
+                    ),
                   ),
-                ),
-                if (!injuryType.isActive) ...[
-                  const SizedBox(width: Spacing.sm),
-                  StatusChip(
-                    key: InjuryTypesScreen.inactiveChipKey(injuryType.id),
-                    label: 'Inactive',
-                    tone: StatusTone.neutral,
-                  ),
+                  if (!injuryType.isActive) ...[
+                    const SizedBox(width: Spacing.sm),
+                    StatusChip(
+                      key: InjuryTypesScreen.inactiveChipKey(injuryType.id),
+                      label: 'Inactive',
+                      tone: StatusTone.neutral,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          if (isAdmin)
-            OutlinedButton(
-              key: InjuryTypesScreen.correctKey(injuryType.id),
-              onPressed: isMutating
-                  ? null
-                  : () => InjuryTypeFormDialog.open(context, injuryType: injuryType),
-              child: const Text('Correct'),
-            ),
-        ],
+            if (isAdmin)
+              OutlinedButton(
+                key: InjuryTypesScreen.correctKey(injuryType.id),
+                onPressed: isMutating
+                    ? null
+                    : () => InjuryTypeFormDialog.open(context, injuryType: injuryType),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                ),
+                child: const Text('Correct'),
+              ),
+          ],
+        ),
       ),
     );
   }
