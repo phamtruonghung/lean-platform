@@ -213,6 +213,17 @@ void main() {
     ]);
     expect(walker.now.key, PlatformShell.skipToContentKey,
         reason: 'the last control of the page hands over to the Shell, by Tab alone');
+
+    // And the seam closes in the other direction on this page too, not only on
+    // the register: `Shift+Tab` from the page's first control hands back to the
+    // chrome instead of stopping at the page's own edge (issue #401).
+    await walker.enter(find.byType(WorkOrderDetailScreen));
+    expect(walker.now.key, WorkOrderDetailScreen.backKey);
+    final sidebar = tester.element(find.byKey(PlatformShell.sidebarKey));
+    await walker.backward();
+    final backwards = FocusManager.instance.primaryFocus?.context;
+    expect(backwards is Element && _isInside(backwards, sidebar), isTrue,
+        reason: 'Shift+Tab from the first control of a detail page lands in the Shell');
   });
 
   testWidgets('a form dialog: focus starts in the field, Enter submits, and Tab cannot leave',
