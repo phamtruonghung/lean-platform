@@ -219,20 +219,31 @@ still be reachable when the register is empty, stays in the header's own `below`
 Assets is the one Screen that puts both there — Site and `Show retired` in a single
 `AppToolbar` — because both narrow what the register lists.
 
-Spacing is a `Spacing` value everywhere, and these are the values:
+Spacing is a `Spacing` value everywhere in `frontend/lib` but three call sites,
+noted under the table, and these are the values:
 
 | between | value |
 |---|---|
-| page inset, horizontal | `Spacing.lg` (16). Home is `Spacing.xl` (24), the one documented exception |
-| page inset, top and bottom | `Spacing.xl` (24) |
+| page inset, horizontal | `Spacing.lg` (16). Home is `Spacing.xl` (24), the documented exception |
+| page inset, top and bottom | `Spacing.xl` (24) at both ends — `fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl)`, the shape `docs/frontend-layout.md` section 1 draws |
 | header to its `below` (the toolbar) | `Spacing.md` (12). `AppPageHeader` already draws this |
 | toolbar to the body | `Spacing.md` (12) |
 | one card or section to the next | `Spacing.md` (12) |
-| inside a card | `Spacing.lg` (16) |
+| inside a card | `Spacing.lg` (16) horizontal; the vertical figures are the card's own (the note below) |
 | inside a register row, vertical | `Spacing.xs` (4) top and bottom = 8, around a 20px line; the row is 32 by its `minHeight`, content centred |
 | inside a register row, horizontal | `Spacing.md` (12) |
 | section title to its hairline | `Spacing.sm` (8) |
 | a label to the figure under it | `Spacing.xs` (4) |
+
+**Where the page inset is not the rule yet.** Two gaps are named here rather than
+smoothed over. 29 page paddings in `frontend/lib` end at `Spacing.lg` (16) at the
+foot instead of the 24 at both ends that `docs/frontend-layout.md` section 1
+draws, and each converges in its own slice. And 24 all round is not Home's alone:
+the CAPA report (`capa_report_screen.dart:310`) and the training form
+(`training_form_screen.dart:167`) are documents that still take 24 on every side,
+and each converges in its own slice too. Home keeps 24 because it is a grid of
+destinations rather than a register; a record Screen that is neither Home nor a
+document pads 16.
 
 A note on the register row's vertical figure. The board's `6px + line + 6px` has
 no 6 on the `Spacing` ladder, and this document does not add one. The row is
@@ -240,6 +251,21 @@ specified by its height (32, content centred vertically), which is what yields 6
 above and below a 20px line. `AppTableRow` pads `Spacing.xs` (4) top and bottom
 and floors the row at 32 through its `minHeight`, so the 6 above and below the
 line is what centring a 20px line in 32 leaves, not a sum of two paddings.
+
+A note on the card's vertical figures. The ladder's `inside a card` row is the
+horizontal gutter, and `AppDetailSection` states the rest: `Spacing.md` (12) above
+the title and `Spacing.sm` (8) between the title and its hairline, then
+`Spacing.md` (12) under the hairline and `Spacing.lg` (16) at the card's foot.
+Those are the card's own shape, not a second reading of the ladder.
+
+**The three literals left.** Three `EdgeInsets` constructions in `frontend/lib`
+still carry a bare number, and all three are the Org Unit tree's own indent:
+`org_units_screen.dart:578` and `org_unit_picker.dart:314` and `:322` indent a
+child row by `left: 32` where `Spacing.xxl` is the token. They converge with that
+tree's own slice. Work orders' truncated-list banner carried the same kind of
+literal — `EdgeInsets.fromLTRB(16, 0, 16, 8)` — and converged in #409, which is
+why the rule above is stated against the tree as it is rather than as it will be,
+and a new Screen adds no fourth literal.
 
 **One left edge.** The title, the description, the toolbar's first control and the
 first row's first cell all begin at the frame's left edge plus the page inset.
@@ -303,11 +329,14 @@ and the eye cannot compare them.
 
 **One column spec builds the band and every row**, so a header label and its cells
 start at the same x by construction. That is the rule `test/kpi_test.dart` already
-enforces for the two KPI Screens ("a header label and its cells start at the same
-x"), and `docs/frontend-layout.md` section 4 states. The spec's own numbers are
-`flex` weights, or a fixed `width` for a tone or action column. Work orders
-measures its status column by laying out its widest status label and adding 32 and
-`Spacing.sm` (`_statusColumnWidth`), and gives its action column a fixed 232. A
+enforces for the KPI catalogue screen ("a header label and its cells start at the
+same x, on /kpi"), and `docs/frontend-layout.md` section 4 states. It is the only
+Screen on that spec: `KpiTargetsScreen` is a register on the shared
+`AppTableHeader`, not a matrix, and the KPI review became a tiled grid in #365.
+The spec's own numbers are `flex` weights, or a fixed `width` for a tone or action
+column. Work orders measures its status column by laying out its widest status
+label and adding 32 and `Spacing.sm` (`_statusColumnWidth`), and gives its action
+column a fixed 232. A
 fixed width is reached for only where a label's length is bounded and `flex` would
 make the column's edge move with the window.
 
@@ -351,12 +380,28 @@ name: a real affordance back to the register, a `TextButton` at
 parent's own word for its own Destination rather than a new one. The crumb says
 where the page sits; the sidebar keeps saying where the Module is.
 
-Read against section 2, this is concrete. A register measures the box it is handed
-— the page's box less its inset, 32 at the `Spacing.lg` (16) each side of section
-5. At a 700 window that is 408, at 900 it is 608: **both are below 700, so a
-five-column register is cards at both**, and tables appear only where the box
-reaches 700, which is a page box of 732 and a window of about 992 and up. Work
-orders, at 800, is cards until the window is about 1060.
+Read against section 2, this is concrete. A register measures the box it is handed,
+and the tree hands it one of two. Parts and Store stock measure inside the page's
+own inset: their `LayoutBuilder` sits in the scrolling list, under the `Spacing.lg`
+(16) each side of section 5 (`parts_screen.dart:198`,
+`store_stock_screen.dart:232`), so their box is the page's box less 32. At a 700
+window that is 408, at 900 it is 608: **both are below 700, so those two are cards
+at both**, and their table appears only where the list's box reaches 700, which is
+a page box of 732 and a window of about 992 and up.
+
+**The rest measure the page's box itself, because their `LayoutBuilder` sits
+outside that inset**, so each flips at its own breakpoint plus the Shell's 260:
+Assets, Stores and Job plans at 700 are tables from a window of 960
+(`assets_screen.dart:456` wraps the frame at `:462`); Work orders' 800 at 800 + 260
+= **1060** (`work_orders_screen.dart:714`, frame at `:723`, padding at `:729`);
+Downtime's and My requests' 900 at 1160; Meters', PM schedules' and the Requests
+queue's 960 at 1220. The Actions log, CAPAs and the two Safety registers reach the
+same box the other way — their `LayoutBuilder` sits inside `AppPageFrame` with no
+inset of its own between it and the frame (`safety/incidents_screen.dart:522`,
+`:524`) — so 700 there is the same 960 window. Work orders' 1060 is the 800 arm of
+that family, not a register of its own, and it stays on the page box only while its
+`LayoutBuilder` stays outside the inset. A register that measured inside the inset
+would need a page box of 832 for the same 800 — a window of about **1092**.
 
 ### The catalogue: a list of records that are read down
 
