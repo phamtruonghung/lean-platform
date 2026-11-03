@@ -605,12 +605,13 @@ class _SafetyIncidentTableRow extends StatelessWidget {
           ),
           DisclosingText(incident.incidentTypeLabel, style: dense),
           DisclosingText(incident.orgUnitName, style: muted),
-          Text(
+          // Measured: this is the one cell that still clips in a table over a
+          // 1280 window (183.2px needed; 63.9 at 960, 138.9 at 1160), so it is
+          // the same disclosing cell its two neighbours are — the value is read
+          // in full from the tooltip rather than lost to the ellipsis.
+          DisclosingText(
             incident.filedAgainst,
             key: SafetyIncidentsScreen.rowFiledKey(incident.id),
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.ellipsis,
             style: muted,
           ),
           shrinkWrapTargets(
