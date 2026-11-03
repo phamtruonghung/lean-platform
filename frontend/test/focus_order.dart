@@ -172,17 +172,26 @@ class FocusWalker {
     return true;
   }
 
-  /// Whether the drawn ring is on screen: `AppFocusRing`'s own 2px decoration in
-  /// `focusRing`, read off the painted `DecoratedBox` rather than a marker.
+  /// Whether the drawn ring is on the **focused** control: `AppFocusRing`'s own
+  /// 2px decoration in `focusRing`, read off the painted `DecoratedBox` that
+  /// *wraps that control* rather than anywhere in the tree — a ring on another
+  /// widget is not evidence that this one is marked.
   bool get ringIsVisible {
+    final context = FocusManager.instance.primaryFocus?.context;
+    if (context is! Element) return false;
     final palette = AppColors.of(_paletteSurface);
-    for (final box in tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))) {
-      if (box.position == DecorationPosition.foreground &&
-          AppFocusRing.isRing(box.decoration, palette.focusRing)) {
-        return true;
+    var found = false;
+    context.visitAncestorElements((ancestor) {
+      final widget = ancestor.widget;
+      if (widget is DecoratedBox &&
+          widget.position == DecorationPosition.foreground &&
+          AppFocusRing.isRing(widget.decoration, palette.focusRing)) {
+        found = true;
+        return false;
       }
-    }
-    return false;
+      return true;
+    });
+    return found;
   }
 
   Element get _paletteSurface {

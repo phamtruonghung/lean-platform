@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:lean_platform/auth/sign_in_screen.dart';
 import 'package:lean_platform/maintenance/work_order_detail_screen.dart';
@@ -26,6 +27,7 @@ import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/change_password_bloc.dart';
 import 'package:lean_platform/platform/change_password_dialog.dart';
+import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/shell.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_confirm_dialog.dart';
@@ -39,6 +41,87 @@ import 'harness.dart';
 
 const _invokerKey = ValueKey<String>('focus-test-invoker');
 const _homeDestinationKey = ValueKey<String>('nav-item-Home');
+
+/// The Shell on a real router, for the measurements that need no app: the skip
+/// control's own height under `MaterialTapTargetSize.shrinkWrap`.
+Widget _shellHarness({MaterialTapTargetSize tapTargetSize = MaterialTapTargetSize.padded}) {
+  final router = GoRouter(
+    initialLocation: '/directory',
+    routes: [
+      ShellRoute(
+        builder: (context, state, child) => PlatformShell(
+          destinations: const [
+            Destination(label: 'Directory', icon: Icons.badge_outlined, path: '/directory'),
+          ],
+          currentLocation: state.uri.path,
+          onDestinationSelected: (destination) => context.go(destination.path),
+          account: const AccountActive(id: '1', email: 'a@b.c', displayName: 'A B', role: Roles.admin),
+          onSignOut: () {},
+          darkPalette: false,
+          onToggleDarkPalette: () {},
+          child: child,
+        ),
+        routes: [
+          GoRoute(
+            path: '/directory',
+            builder: (context, state) => const Center(child: Text('Directory Screen')),
+          ),
+        ],
+      ),
+    ],
+  );
+  return MaterialApp.router(
+    theme: buildAppTheme(Brightness.light).copyWith(materialTapTargetSize: tapTargetSize),
+    routerConfig: router,
+  );
+}
+
+/// Walks `Tab` out of [screen] and then through the Shell's chrome, returning
+/// every chrome stop — the skip control first, the Screen's first control
+/// closing the loop. Everything here is a key press; nothing calls a callback.
+Future<List<FocusStop>> _walkOutOfTheScreen(
+  WidgetTester tester,
+  FocusWalker walker,
+  Finder screen, {
+  int leaveLimit = 25,
+}) async {
+  final region = tester.element(screen.first);
+  final stops = <FocusStop>[];
+  var left = false;
+  for (var i = 0; i < leaveLimit; i++) {
+    await walker.forward();
+    if (walker.now.key == PlatformShell.skipToContentKey) {
+      left = true;
+      break;
+    }
+  }
+  if (!left) fail('Tab never left the Screen for the Shell within $leaveLimit presses');
+  stops.add(walker.now);
+  for (var i = 0; i < 80; i++) {
+    await walker.forward();
+    final context = FocusManager.instance.primaryFocus?.context;
+    if (context is Element && _isInside(context, region)) return stops;
+    stops.add(walker.now);
+  }
+  fail('the chrome run never handed back to the Screen');
+}
+
+bool _isDestinationKey(Widget widget) =>
+    widget.key is ValueKey<String> &&
+    (widget.key! as ValueKey<String>).value.startsWith('nav-item-');
+
+bool _isInside(Element element, Element region) {
+  if (identical(element, region)) return true;
+  var inside = false;
+  element.visitAncestorElements((ancestor) {
+    if (identical(ancestor, region)) {
+      inside = true;
+      return false;
+    }
+    return true;
+  });
+  return inside;
+}
 
 /// A wire with two Work orders, enough of a Site and Org Unit for the register,
 /// and one Work order's detail behind it.
@@ -119,18 +202,17 @@ void main() {
     expect(entered.key, WorkOrderDetailScreen.backKey,
         reason: 'the page starts where a keyboard leaves it: the way back');
 
-    // The page is one contiguous run of stops that returns to its own start: the
-    // keyboard never leaves the page's scope (a Screen is a route of its own —
-    // see `docs/design-language.md` §8 on what that costs).
+    // The page is one contiguous run of stops in the order a reader meets them,
+    // and its end hands over to the Shell (issue #401) rather than looping back
+    // to its own first control.
     final stops = await walker.within(find.byType(WorkOrderDetailScreen), limit: 14);
-    expect(stops.take(4).map((stop) => stop.key).toList(), [
+    expect(stops.map((stop) => stop.key).toList(), [
       WorkOrderDetailScreen.bookLabourKey,
       WorkOrderDetailScreen.bookPartKey,
       WorkOrderDetailScreen.recordReadingKey('t2'),
-      WorkOrderDetailScreen.backKey,
     ]);
-    expect(stops.length, greaterThan(4),
-        reason: 'a page of four controls is a run, not a single stop');
+    expect(walker.now.key, PlatformShell.skipToContentKey,
+        reason: 'the last control of the page hands over to the Shell, by Tab alone');
   });
 
   testWidgets('a form dialog: focus starts in the field, Enter submits, and Tab cannot leave',
@@ -251,7 +333,7 @@ void main() {
     expect(invoker.hasPrimaryFocus, isTrue);
   });
 
-  testWidgets('the Shell: the skip control leads, the Destinations walk, and the current one is announced',
+  testWidgets('the Shell: the Screen hands over to the skip control, and every Destination is a stop',
       (tester) async {
     await _pumpApp(tester, at: '/work-orders');
     // A ring is only worn under traditional highlight mode, which a real key
@@ -260,22 +342,57 @@ void main() {
     addTearDown(() => FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic);
     final walker = FocusWalker(tester);
 
-    // The skip control is drawn before everything, is a 44px control, and its
-    // action puts focus inside the Screen rather than on a Destination.
     final skip = find.byKey(PlatformShell.skipToContentKey);
     expect(skip, findsOneWidget);
-    expect(tester.getSize(skip).height, greaterThanOrEqualTo(AppTouchTarget.min));
     expect(find.descendant(of: skip, matching: find.text('Skip to content')), findsOneWidget);
-    await tester.runAsync(() async {});
-    tester.widget<TextButton>(find.descendant(of: skip, matching: find.byType(TextButton)))
-        .onPressed!();
-    await tester.pumpAndSettle();
-    // The first control the Screen itself offers, in the order it is built.
-    expect(walker.now.key, AppFilterField.fieldKey('work-orders-filter'),
-        reason: 'skipping the chrome lands on the first control the Screen offers');
 
-    // A Destination is a stop: it takes the focus, it wears the ring, and `Enter`
-    // on it goes there — the keyboard reaches every Screen.
+    // The Screen's run, walked by key presses only: within 25 presses `Tab`
+    // leaves the register for the Shell's skip control, walks the chrome, and
+    // hands back to the Screen's first control.
+    await walker.enter(find.byKey(WorkOrdersScreen.raiseKey));
+    final chrome = await _walkOutOfTheScreen(tester, walker, find.byType(WorkOrdersScreen));
+    expect(chrome.first.key, PlatformShell.skipToContentKey,
+        reason: 'the last control of a Screen hands over to the Shell, by Tab alone');
+    final destinations = [
+      for (final stop in chrome)
+        if (stop.key is ValueKey<String> &&
+            (stop.key! as ValueKey<String>).value.startsWith('nav-item-'))
+          (stop.key! as ValueKey<String>).value,
+    ];
+    expect(destinations.first, 'nav-item-Home',
+        reason: 'a Destination comes straight after the skip control');
+    expect(destinations.toSet().length, destinations.length,
+        reason: 'the run visits each Destination once, no repeats');
+    // Every Destination the Shell was handed is on that run — the set is read
+    // off the widget tree, so a Destination the walk missed fails the case.
+    final rendered = {
+      for (final element in find.byWidgetPredicate(_isDestinationKey).evaluate())
+        (element.widget.key! as ValueKey<String>).value,
+    };
+    expect(destinations.toSet(), rendered,
+        reason: 'every Destination is a stop of the run, none is pointer-only');
+    // The account footer follows them, and the Screen's first control closes
+    // the loop.
+    expect(chrome.length, greaterThan(destinations.length),
+        reason: 'the account footer is part of the chrome run');
+    expect(walker.now.key, WorkOrdersScreen.raiseKey,
+        reason: 'the last chrome stop hands over to the Screen first control');
+
+    // The seam works in both directions: `Shift+Tab` from the Screen's first
+    // control lands back in the chrome, and again walks towards the skip
+    // control rather than looping inside the Screen.
+    final sidebar = tester.element(find.byKey(PlatformShell.sidebarKey));
+    await walker.backward();
+    final backwards = FocusManager.instance.primaryFocus?.context;
+    expect(backwards is Element && _isInside(backwards, sidebar), isTrue,
+        reason: 'Shift+Tab from the first Screen control lands in the chrome');
+    await walker.backward();
+    final furtherBack = FocusManager.instance.primaryFocus?.context;
+    expect(furtherBack is Element && _isInside(furtherBack, sidebar), isTrue,
+        reason: 'and keeps walking the chrome backwards');
+
+    // A Destination is a stop: it takes the focus, it wears the ring, and
+    // `Enter` on it goes there — the keyboard reaches every Screen.
     await walker.enter(find.byKey(_homeDestinationKey));
     expect(walker.now.key, _homeDestinationKey);
     expect(walker.ringIsVisible, isTrue,
@@ -292,6 +409,62 @@ void main() {
         )
         .firstWhere((node) => node.properties.selected != null);
     expect(announcement.properties.selected, isTrue);
+  });
+
+  testWidgets('the Shell at 700px: the rail is one run too', (tester) async {
+    await _pumpApp(tester, at: '/work-orders', size: const Size(700, 1000));
+    final walker = FocusWalker(tester);
+
+    final skip = find.byKey(PlatformShell.skipToContentKey);
+    expect(tester.getSize(skip).height, greaterThanOrEqualTo(AppTouchTarget.min),
+        reason: 'the skip control keeps its 44px target on the narrow box');
+
+    await walker.enter(find.byKey(WorkOrdersScreen.raiseKey));
+    final chrome = await _walkOutOfTheScreen(tester, walker, find.byType(WorkOrdersScreen));
+    expect(chrome.first.key, PlatformShell.skipToContentKey);
+    final destinations = [
+      for (final stop in chrome)
+        if (stop.key is ValueKey<String> &&
+            (stop.key! as ValueKey<String>).value.startsWith('nav-item-'))
+          (stop.key! as ValueKey<String>).value,
+    ];
+    expect(destinations.first, 'nav-item-Home');
+    expect(destinations.toSet().length, destinations.length);
+    expect(chrome.length, greaterThan(destinations.length));
+    expect(walker.now.key, WorkOrdersScreen.raiseKey);
+  });
+
+  testWidgets('the Shell at twice the text: the run holds', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await _pumpApp(tester, at: '/work-orders');
+    final walker = FocusWalker(tester);
+
+    await walker.enter(find.byKey(WorkOrdersScreen.raiseKey));
+    final chrome = await _walkOutOfTheScreen(tester, walker, find.byType(WorkOrdersScreen));
+    expect(chrome.first.key, PlatformShell.skipToContentKey);
+    final destinations = [
+      for (final stop in chrome)
+        if (stop.key is ValueKey<String> &&
+            (stop.key! as ValueKey<String>).value.startsWith('nav-item-'))
+          (stop.key! as ValueKey<String>).value,
+    ];
+    expect(destinations.first, 'nav-item-Home');
+    expect(destinations.toSet().length, destinations.length);
+    expect(chrome.length, greaterThan(destinations.length));
+    expect(walker.now.key, WorkOrdersScreen.raiseKey);
+  });
+
+  testWidgets('the skip control is 44px tall when Material does not pad it', (tester) async {
+    // `MaterialTapTargetSize.padded` silently lifts a 40px minimum to 48, which
+    // is exactly how a `minimumSize` regression stays green. `shrinkWrap` shows
+    // the control's own height.
+    await tester.pumpWidget(_shellHarness(tapTargetSize: MaterialTapTargetSize.shrinkWrap));
+    await tester.pumpAndSettle();
+    final skip = find.byKey(PlatformShell.skipToContentKey);
+    expect(skip, findsOneWidget);
+    expect(tester.getSize(skip).height, greaterThanOrEqualTo(AppTouchTarget.min),
+        reason: 'the control draws its own 44px, not Material padding');
   });
 
   testWidgets('the sign-in Screen: the form is a run of stops and Enter signs in from a field',
