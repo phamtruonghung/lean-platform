@@ -1,10 +1,13 @@
 /// One Safety incident (issue #226): what happened, where, when, and where it
 /// sits on the severity ladder.
 ///
-/// The record's own number is the title rather than a page heading — the
-/// same choice the Non-conformance, Work order and Action detail Screens
-/// make, and why this Screen is excluded from `page_alignment_test.dart`'s
-/// audit by name rather than audited in it.
+/// **The page head** is `AppPageHeader('Safety incident')`, drawn above the
+/// state switch so every state carries it — the loading skeleton, a failed
+/// read, the missing record and the loaded record alike (issue #391's design
+/// law 3: one page rhythm; the shape the Non-conformance and Work order detail
+/// Screens keep). The record's own identity — its number, its status and
+/// severity chips, whether it is recordable — is the summary card's first
+/// line, never the page's title.
 ///
 /// Readable by anyone who can see the Site (the server's own rule — Org Unit
 /// scope decides where an Account may act, not what it may know about), so
@@ -66,6 +69,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
+import '../widgets/app_page_header.dart';
 import '../widgets/app_section_grid.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/failure_state.dart';
@@ -86,6 +90,7 @@ class SafetyIncidentDetailScreen extends StatelessWidget {
   static const double maxWidth = 1080;
 
   static const ValueKey<String> backKey = ValueKey<String>('safety-incident-back');
+  static const ValueKey<String> summaryKey = ValueKey<String>('safety-incident-detail-summary');
   static const ValueKey<String> statusKey = ValueKey<String>('safety-incident-detail-status');
   static const ValueKey<String> severityKey = ValueKey<String>('safety-incident-detail-severity');
   static const ValueKey<String> recordableKey =
@@ -154,30 +159,91 @@ class SafetyIncidentDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<SafetyIncidentDetailBloc>().state;
 
+    // The page head sits above the state switch, so a load, a failed read, a
+    // missing record and the record itself all carry the same title row and
+    // back control (issue #391's design law 3). The missing state is the one
+    // state whose back control belongs to its empty state — that state already
+    // offers exactly this control under [SafetyIncidentDetailScreen.backKey],
+    // and two widgets may not share one key.
+    final missing = state is SafetyIncidentDetailUnavailable && state.isMissing;
+
     return Scaffold(
-      body: switch (state) {
-        SafetyIncidentDetailLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
-        SafetyIncidentDetailUnavailable(isMissing: true) => PlatformEmptyState.noneExist(
-            key: missingKey,
-            title: 'No such Safety incident',
-            message: 'Nothing is recorded at this address. It may have been removed, or '
-                'the address may be wrong.',
-            icon: Icons.search_off_outlined,
-            actionLabel: 'Back to Safety incidents',
-            actionKey: backKey,
-            onAction: () => context.go(Routes.safetyIncidents),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Head(showBack: !missing),
+          Expanded(
+            child: switch (state) {
+              SafetyIncidentDetailLoading() =>
+                const SkeletonList(rows: 4, maxWidth: maxWidth),
+              SafetyIncidentDetailUnavailable(isMissing: true) => PlatformEmptyState.noneExist(
+                  key: missingKey,
+                  title: 'No such Safety incident',
+                  message: 'Nothing is recorded at this address. It may have been removed, or '
+                      'the address may be wrong.',
+                  icon: Icons.search_off_outlined,
+                  actionLabel: 'Back to Safety incidents',
+                  actionKey: backKey,
+                  onAction: () => context.go(Routes.safetyIncidents),
+                ),
+              SafetyIncidentDetailUnavailable(message: final message) => PlatformFailureState(
+                  key: failedKey,
+                  title: 'The Safety incident could not be read',
+                  message: message,
+                  retryKey: retryKey,
+                  onRetry: () => context
+                      .read<SafetyIncidentDetailBloc>()
+                      .add(const SafetyIncidentDetailRefreshed()),
+                ),
+              SafetyIncidentDetailLoaded() => _Loaded(state: state),
+            },
           ),
-        SafetyIncidentDetailUnavailable(message: final message) => PlatformFailureState(
-            key: failedKey,
-            title: 'The Safety incident could not be read',
-            message: message,
-            retryKey: retryKey,
-            onRetry: () => context
-                .read<SafetyIncidentDetailBloc>()
-                .add(const SafetyIncidentDetailRefreshed()),
+        ],
+      ),
+    );
+  }
+}
+
+/// The page's own title row: the way back, then `AppPageHeader`. It lives above
+/// the state switch, so the loading, failed, missing and loaded states are told
+/// apart by their body and never by a missing page head.
+class _Head extends StatelessWidget {
+  const _Head({this.showBack = true});
+
+  /// False in the missing state, whose empty state carries the back control
+  /// under the same [SafetyIncidentDetailScreen.backKey].
+  final bool showBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AppPageFrame(
+        maxWidth: SafetyIncidentDetailScreen.maxWidth,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showBack) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: SafetyIncidentDetailScreen.backKey,
+                    onPressed: () => context.go(Routes.safetyIncidents),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                    ),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back to Safety incidents'),
+                  ),
+                ),
+                const SizedBox(height: Spacing.sm),
+              ],
+              const AppPageHeader(title: 'Safety incident'),
+            ],
           ),
-        SafetyIncidentDetailLoaded() => _Loaded(state: state),
-      },
+        ),
+      ),
     );
   }
 }
@@ -196,72 +262,17 @@ class _Loaded extends StatelessWidget {
       child: AppPageFrame(
         maxWidth: SafetyIncidentDetailScreen.maxWidth,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
+          // The page head above this list already pads the top (`Spacing.xl`)
+          // and the space beneath itself (`Spacing.lg`).
+          padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: SafetyIncidentDetailScreen.backKey,
-                onPressed: () => context.go(Routes.safetyIncidents),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Safety incidents'),
-              ),
-            ),
-            const SizedBox(height: Spacing.sm),
-            Wrap(
-              spacing: Spacing.sm,
-              runSpacing: Spacing.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(row.incidentNo, style: theme.textTheme.headlineSmall),
-                StatusChip(
-                  key: SafetyIncidentDetailScreen.statusKey,
-                  label: row.statusLabel,
-                  tone: row.statusTone,
-                ),
-                StatusChip(
-                  key: SafetyIncidentDetailScreen.severityKey,
-                  label: row.severityLabel,
-                  tone: row.severityTone,
-                ),
-              ],
-            ),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              row.isRecordable ? 'Recordable' : 'Not recordable',
-              key: SafetyIncidentDetailScreen.recordableKey,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: Spacing.lg),
-            // The summary card first — where, when, what and the deadline —
-            // before the page starts telling the story (issue #391). A reader
-            // opening an incident checks three things in the first second: the
-            // area, the day, and whether anybody is still expected to act.
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(Spacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Summary', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: Spacing.sm),
-                    _Fact(label: 'Incident type', value: row.incidentTypeLabel),
-                    _Fact(label: 'Org Unit', value: row.orgUnitName),
-                    _Fact(
-                      label: 'Filed against',
-                      key: SafetyIncidentDetailScreen.filedKey,
-                      value: row.filedAgainst,
-                    ),
-                    _Fact(label: 'Occurred at', value: row.occurredAt ?? 'Not recorded'),
-                    _Fact(
-                      key: SafetyIncidentDetailScreen.dueDateFactKey,
-                      label: 'Investigation due at',
-                      value: row.investigationDueAt ?? 'No deadline set',
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            // The summary card first — what the record *is* (its own number,
+            // its state, its severity, whether it is recordable), then where,
+            // when, what and the deadline (issue #391; the shape S4's own
+            // Summary card keeps). A reader opening an incident checks three
+            // things in the first second: the area, the day, and whether
+            // anybody is still expected to act.
+            _SummaryCard(incident: row),
             const SizedBox(height: Spacing.md),
             // The narrative, under the summary: what was recorded about the
             // event itself — the equipment, who reported it, what was done on
@@ -393,6 +404,76 @@ class _Loaded extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What the record *is*, at the top of the page's first card: its own number,
+/// its state, its severity, and whether it is recordable — then the summary
+/// facts beneath. (Issue #391's design law 3, and the shape S4's own Summary
+/// card keeps: the page title names the Screen, never the record.)
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.incident});
+
+  final SafetyIncident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      key: SafetyIncidentDetailScreen.summaryKey,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // A `Wrap`: the number and its chips must not overflow at a narrow
+            // width, and the record's own number is what a reader looks for.
+            Wrap(
+              spacing: Spacing.sm,
+              runSpacing: Spacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(incident.incidentNo, style: theme.textTheme.headlineSmall),
+                StatusChip(
+                  key: SafetyIncidentDetailScreen.statusKey,
+                  label: incident.statusLabel,
+                  tone: incident.statusTone,
+                ),
+                StatusChip(
+                  key: SafetyIncidentDetailScreen.severityKey,
+                  label: incident.severityLabel,
+                  tone: incident.severityTone,
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              incident.isRecordable ? 'Recordable' : 'Not recordable',
+              key: SafetyIncidentDetailScreen.recordableKey,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Spacing.md),
+            Text('Summary', style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.sm),
+            _Fact(label: 'Incident type', value: incident.incidentTypeLabel),
+            _Fact(label: 'Org Unit', value: incident.orgUnitName),
+            _Fact(
+              label: 'Filed against',
+              key: SafetyIncidentDetailScreen.filedKey,
+              value: incident.filedAgainst,
+            ),
+            _Fact(label: 'Occurred at', value: incident.occurredAt ?? 'Not recorded'),
+            _Fact(
+              key: SafetyIncidentDetailScreen.dueDateFactKey,
+              label: 'Investigation due at',
+              value: incident.investigationDueAt ?? 'No deadline set',
+            ),
           ],
         ),
       ),
