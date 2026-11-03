@@ -15,6 +15,8 @@
 ///     rather than showing a blank wall;
 ///   - a reader who may not see the Site gets the failure, not an empty wall;
 ///   - the order the picker writes is the order that is sent;
+///   - the register row's toggle, and the labelled switch on both detail
+///     Screens, render the record's own state and send the same choice;
 ///   - the whole Screen survives a 700-px box at twice the text.
 library;
 
@@ -22,7 +24,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lean_platform/quality/complaint_detail_screen.dart';
 import 'package:lean_platform/quality/issue_images_section.dart';
+import 'package:lean_platform/quality/nonconformance_detail_screen.dart';
 import 'package:lean_platform/quality/nonconformances_screen.dart';
 import 'package:lean_platform/quality/quality_photo.dart';
 import 'package:lean_platform/quality/slide_show_screen.dart';
@@ -141,6 +145,12 @@ String _textOf(WidgetTester tester, Key key) {
       .last
       .data!;
 }
+
+/// The state the labelled switch renders, read off the widget itself — the same
+/// thing a person sees, not the Bloc's field.
+bool _switchValue(WidgetTester tester, Finder toggle) => tester
+    .widget<SwitchListTile>(find.descendant(of: toggle, matching: find.byType(SwitchListTile)))
+    .value;
 
 void main() {
   testWidgets('a picture is added to a Non-conformance from its detail Screen', (tester) async {
@@ -474,5 +484,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(wire.slideShowChoiceRequests, [('nonconformance', '701', true)]);
+  });
+
+  testWidgets('a Non-conformance detail Screen carries the slide-show switch, and it sends the choice',
+      (tester) async {
+    final wire = _wire();
+    // The wire already has this record on the wall, so the state the switch
+    // renders is the record's own rather than the model's default.
+    wire.nonconformances['1']![0] = {...wire.nonconformances['1']![0], 'inSlideShow': true};
+    await _pump(tester, wire, location: '/non-conformances/701', size: const Size(1200, 2600));
+
+    final toggle = find.byKey(NonconformanceDetailScreen.slideShowKey);
+    expect(_switchValue(tester, toggle), isTrue, reason: 'the wire carries inSlideShow: true');
+    expect(find.text('On the slide show'), findsOneWidget);
+
+    await tapIn(tester, toggle);
+
+    // The same address and the same body the register row's toggle sends.
+    expect(wire.slideShowChoiceRequests, [('nonconformance', '701', false)]);
+    // And the Screen re-reads the record, so the switch follows the answer.
+    expect(_switchValue(tester, toggle), isFalse);
+    expect(find.text('Not on the slide show'), findsOneWidget);
+  });
+
+  testWidgets('a Customer complaint detail Screen carries the slide-show switch, and it sends the choice',
+      (tester) async {
+    final wire = _wire();
+    await _pump(tester, wire, location: '/complaints/801', size: const Size(1200, 2600));
+
+    final toggle = find.byKey(ComplaintDetailScreen.slideShowKey);
+    expect(_switchValue(tester, toggle), isFalse, reason: 'the wire carries no inSlideShow');
+
+    await tapIn(tester, toggle);
+
+    expect(wire.slideShowChoiceRequests, [('complaint', '801', true)]);
+    expect(_switchValue(tester, toggle), isTrue);
+    expect(find.text('On the slide show'), findsOneWidget);
   });
 }

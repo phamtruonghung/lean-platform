@@ -57,17 +57,22 @@ lower-quality copy.
 
 **This is not a file store.** Three formats, one picture per slide, a bounded
 size, no folders, no sharing links, no retention policy of its own: a picture
-lives and dies with the record it was taken for, and there is deliberately no
-address that serves an image without the session that asked for the record. If a
-future feature wants documents attached to anything, it needs its own ADR and
-probably its own storage; this one does not start that road.
+belongs to the record it was taken for and has no life of its own, and there is
+deliberately no address that serves an image without the session that asked for
+the record. If a future feature wants documents attached to anything, it needs
+its own ADR and probably its own storage; this one does not start that road.
 
 ## Consequences
 
 - `quality_issue_images` joins `employee_signatures` as a named exception, and
   the schema test that guarded the first now guards both.
-- A picture is deleted with the record's own delete, in the same transaction,
-  and its removal is audited like any other row's (`attach_audit`).
+- **A picture is not yet deleted with the record's own delete**, and an earlier
+  draft of this ADR said it was. Both parent keys are plain `REFERENCES` with no
+  `ON DELETE CASCADE`, and neither a Non-conformance nor a Customer complaint has
+  a delete route, so nothing removes a picture with the record it was taken for.
+  When a record delete arrives it must remove that record's pictures first, in
+  the same transaction; a removal through the pictures' own `DELETE` is audited
+  like any other row's (`attach_audit`).
 - A backup of the database is a backup of the pictures. There is no second
   backup path to forget, and no second restore to prove.
 - A row is at most 5 MiB, and the register reads only metadata, so a Site's
