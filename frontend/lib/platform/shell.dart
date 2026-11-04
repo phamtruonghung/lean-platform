@@ -44,6 +44,7 @@ import '../app_version.dart';
 import '../people_api.dart';
 import '../theme.dart';
 import '../widgets/app_focus_ring.dart';
+import '../widgets/disclosing_text.dart';
 import '../widgets/palette_toggle.dart';
 import 'change_password_dialog.dart';
 import 'destinations.dart';
@@ -661,12 +662,26 @@ class _NavItem extends StatelessWidget {
             if (!collapsed) ...[
               const SizedBox(width: Spacing.md),
               Expanded(
-                child: Text(
-                  destination.label,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: foreground,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                // Wraps rather than ellipsizing on one line (issue #385's sweep):
+                // at twice the text a 260px rail leaves ~168px for the label and
+                // "Product standard costs" needs 298, so as one line it
+                // ellipsized the longer half of the Destination list with no way
+                // to read it. Three lines is what the longest label takes at 200%
+                // text (word boundaries make it three, not two); the `Tooltip` is
+                // the disclosure for anything still longer, the same route
+                // `DisclosingText` gives a clipped table cell (hover, long press,
+                // and the label read out to assistive technology).
+                child: Tooltip(
+                  message: destination.label,
+                  waitDuration: const Duration(milliseconds: 500),
+                  child: Text(
+                    destination.label,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: foreground,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
@@ -819,15 +834,19 @@ class _AccountFooter extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(
+                                      // Disclosed rather than silently ellipsized
+                                      // (issue #385's sweep): at twice the text
+                                      // neither fits the footer's 91px, and the
+                                      // only `Tooltip` above them is the account
+                                      // menu's, whose message is not the value it
+                                      // is hiding.
+                                      DisclosingText(
                                         account.displayName,
-                                        overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.bodyMedium
                                             ?.copyWith(fontWeight: FontWeight.w600),
                                       ),
-                                      Text(
+                                      DisclosingText(
                                         account.email,
-                                        overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                                       ),
