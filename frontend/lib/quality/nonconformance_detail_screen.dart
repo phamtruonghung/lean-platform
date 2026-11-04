@@ -14,6 +14,12 @@
 /// record with the control open, and the change a caller was making is not lost
 /// to a stray back-navigation.
 ///
+/// **The page head** is `AppPageHeader('Non-conformance')`, drawn above the
+/// state switch so every state carries it — the loading skeleton, a failed
+/// read, the missing record and the loaded record alike (issue #391's design
+/// law 3: one page rhythm). The record's own identity — its number, its state,
+/// its severity — is the summary card's first line, never the page's title.
+///
 /// **The page answers "what, whose, how bad, what next" above the fold (issue
 /// #390).** A summary card carries the record's number, its chips and the three
 /// facts that identify it; the sections beneath it are ordered by what a reader
@@ -149,36 +155,63 @@ class NonconformanceDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<NonconformanceDetailBloc>().state;
 
+    // The page head sits above the state switch, so a load, a failed read, a
+    // missing record and the record itself all carry the same title row and
+    // back control (issue #391's design law 3). The missing state is the one
+    // state whose back control belongs to its empty state — that state already
+    // offers exactly this control under [NonconformanceDetailScreen.backKey],
+    // and two widgets may not share one key.
+    final missing = state is NonconformanceDetailMissing;
+
     return Scaffold(
-      body: switch (state) {
-        NonconformanceDetailLoading() => const SkeletonList(rows: 4),
-        NonconformanceDetailMissing() => PlatformEmptyState.noneExist(
-            key: missingKey,
-            title: 'No such Non-conformance',
-            message: 'Nothing is recorded at this address. It may have been removed, or the '
-                'address may be wrong.',
-            icon: Icons.search_off_outlined,
-            actionLabel: 'Back to Non-conformances',
-            actionKey: backKey,
-            onAction: () => context.go(Routes.nonConformances),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Header(showBack: !missing),
+          Expanded(
+            child: switch (state) {
+              NonconformanceDetailLoading() =>
+                const SkeletonList(rows: 4, maxWidth: maxWidth),
+              NonconformanceDetailMissing() => PlatformEmptyState.noneExist(
+                  key: missingKey,
+                  title: 'No such Non-conformance',
+                  message: 'Nothing is recorded at this address. It may have been removed, or the '
+                      'address may be wrong.',
+                  icon: Icons.search_off_outlined,
+                  actionLabel: 'Back to Non-conformances',
+                  actionKey: backKey,
+                  onAction: () => context.go(Routes.nonConformances),
+                ),
+              NonconformanceDetailUnavailable(message: final message) => PlatformFailureState(
+                  key: failedKey,
+                  title: 'The Non-conformance could not be read',
+                  message: message,
+                  retryKey: retryKey,
+                  onRetry: () => context
+                      .read<NonconformanceDetailBloc>()
+                      .add(const NonconformanceDetailRefreshed()),
+                ),
+              NonconformanceDetailLoaded() => _Loaded(state: state),
+            },
           ),
-        NonconformanceDetailUnavailable(message: final message) => PlatformFailureState(
-            key: failedKey,
-            title: 'The Non-conformance could not be read',
-            message: message,
-            retryKey: retryKey,
-            onRetry: () =>
-                context.read<NonconformanceDetailBloc>().add(const NonconformanceDetailRefreshed()),
-          ),
-        NonconformanceDetailLoaded() => _Loaded(state: state),
-      },
+        ],
+      ),
     );
   }
 }
 
 /// The page's own head: the way back, then the shared `AppPageHeader`. What the
 /// record *is* — its number, its state, its severity — is the summary card's.
+///
+/// It lives above the state switch, so the loading, failed, missing and loaded
+/// states are told apart by their body and never by a missing page head.
 class _Header extends StatelessWidget {
+  const _Header({this.showBack = true});
+
+  /// False in the missing state, whose empty state carries the back control
+  /// under the same [NonconformanceDetailScreen.backKey].
+  final bool showBack;
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -189,16 +222,18 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextButton.icon(
-                key: NonconformanceDetailScreen.backKey,
-                onPressed: () => context.go(Routes.nonConformances),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Non-conformances'),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+              if (showBack) ...[
+                TextButton.icon(
+                  key: NonconformanceDetailScreen.backKey,
+                  onPressed: () => context.go(Routes.nonConformances),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to Non-conformances'),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+                  ),
                 ),
-              ),
-              const SizedBox(height: Spacing.sm),
+                const SizedBox(height: Spacing.sm),
+              ],
               const AppPageHeader(title: 'Non-conformance'),
             ],
           ),
@@ -226,7 +261,6 @@ class _Loaded extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Header(),
         Expanded(
           child: Center(
             child: AppPageFrame(

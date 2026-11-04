@@ -2498,6 +2498,7 @@ class FakeWire {
     this.updateCustomerMessage = 'That Customer could not be changed.',
     Map<String, List<Map<String, dynamic>>>? complaints,
     this.complaintsStatus = 200,
+    this.complaintDetailStatus = 200,
     this.complaintsTruncated = false,
     this.createComplaintStatus = 201,
     this.createComplaintMessage = 'customerId must be a valid Customer id',
@@ -2515,6 +2516,7 @@ class FakeWire {
     this.updateSupplierMessage = 'That Supplier could not be changed.',
     Map<String, List<Map<String, dynamic>>>? supplierNcrs,
     this.supplierNcrsStatus = 200,
+    this.supplierNcrDetailStatus = 200,
     this.supplierNcrsTruncated = false,
     this.createSupplierNcrStatus = 201,
     this.createSupplierNcrMessage = 'supplierId must be a valid Supplier id',
@@ -3110,6 +3112,12 @@ class FakeWire {
   /// `orgUnits` fixture the Non-conformance register uses).
   Map<String, List<Map<String, dynamic>>> complaints;
   int complaintsStatus;
+
+  /// `GET /api/quality/complaints/:id` — the record's own read. A status other
+  /// than 200 answers that status with a message, so a test can pump a failed
+  /// read and assert what the page still carries.
+  int complaintDetailStatus;
+
   bool complaintsTruncated;
 
   /// `POST /api/quality/sites/:siteId/complaints` — recording one.
@@ -3177,6 +3185,11 @@ class FakeWire {
   /// walking the same `orgUnits` fixture the Non-conformance register uses).
   Map<String, List<Map<String, dynamic>>> supplierNcrs;
   int supplierNcrsStatus;
+
+  /// `GET /api/quality/supplier-ncrs/:id` — the record's own read, failing on
+  /// any status but 200. See [complaintDetailStatus].
+  int supplierNcrDetailStatus;
+
   bool supplierNcrsTruncated;
 
   /// `POST /api/quality/sites/:siteId/supplier-ncrs` — recording one.
@@ -6083,6 +6096,12 @@ class FakeWire {
 
           if (request.method == 'GET') {
             supplierNcrReads.add(path);
+            if (supplierNcrDetailStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': 'The Supplier NCR could not be read.'}),
+                supplierNcrDetailStatus,
+              );
+            }
             final row = supplierNcrById(remainder);
             if (row == null) {
               return http.Response(jsonEncode({'message': 'Supplier NCR not found'}), 404);
@@ -6372,6 +6391,12 @@ class FakeWire {
 
           if (remainder.isNotEmpty && !remainder.contains('/')) {
             complaintReads.add(path);
+            if (complaintDetailStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': 'The Customer complaint could not be read.'}),
+                complaintDetailStatus,
+              );
+            }
             final row = complaintById(remainder);
             if (row == null) {
               return http.Response(jsonEncode({'message': 'Customer complaint not found'}), 404);

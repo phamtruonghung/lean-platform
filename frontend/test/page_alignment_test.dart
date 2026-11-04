@@ -130,6 +130,13 @@ const _pages = <_Page>[
   // the card's own padding, so the default bound holds.
   _Page('/non-conformances', 'lib/quality/nonconformances_screen.dart', 'Non-conformances',
       'What was found not to conform'),
+  // The Non-conformance detail page (issue #391's design law 3, followed up
+  // after S4): its head is `AppPageHeader('Non-conformance')`, drawn above the
+  // state switch, and the record's own number and chips are the summary card's
+  // — so the page head and the card under it start at the frame's own left
+  // edge like any other page's. Audited rather than excluded.
+  _Page('/non-conformances/701', 'lib/quality/nonconformance_detail_screen.dart',
+      'Non-conformance', ''),
   // The CAPA list (issue #211). Its rows are cards of text at the card's own
   // padding too, so the default bound holds here as well.
   _Page('/actions/capas', 'lib/actions/capas_screen.dart', 'CAPAs',
@@ -140,12 +147,23 @@ const _pages = <_Page>[
   _Page('/customers', 'lib/quality/customers_screen.dart', 'Customers', 'Who the plant'),
   _Page('/complaints', 'lib/quality/complaints_screen.dart', 'Customer complaints',
       'What customers have complained about'),
+  // The Customer complaint detail page (issue #391's design law 3, followed up
+  // after S4): `_Header()` renders outside its state switch and the title is
+  // `AppPageHeader('Customer complaint')`; the Customer and Product a reader
+  // used to see in the title are the summary card's. Audited rather than
+  // excluded.
+  _Page('/complaints/70', 'lib/quality/complaint_detail_screen.dart', 'Customer complaint', ''),
   // The Supplier list and the supplier NCR register (issue #215) — the same
   // pair turned outward, and the same shape: a page with a frame, a heading and
   // rows at the card's own padding, so the default bound holds for each.
   _Page('/suppliers', 'lib/quality/suppliers_screen.dart', 'Suppliers', 'Who the plant buys'),
   _Page('/supplier-ncrs', 'lib/quality/supplier_ncrs_screen.dart', 'Supplier NCRs',
       'What arrived wrong'),
+  // The Supplier NCR detail page (issue #391's design law 3, followed up after
+  // S4): the same shape again — `_Header()` outside the switch, the title
+  // `AppPageHeader('Supplier NCR')`, and the Supplier and Product in the
+  // summary card. Audited rather than excluded.
+  _Page('/supplier-ncrs/80', 'lib/quality/supplier_ncr_detail_screen.dart', 'Supplier NCR', ''),
   // The CAPA report (issue #212). Audited rather than excluded, and the
   // audited shape is the point of the ticket: it is a page with a frame, a
   // heading and a column of cards even though it is reached outside the Shell,
@@ -242,12 +260,6 @@ const _excluded = <String, String>{
       "its title is the Work order's own number, not a page heading",
   'lib/maintenance/store_stock_screen.dart':
       "its title is the Store's own name, not a page heading",
-  'lib/quality/nonconformance_detail_screen.dart':
-      "its title is the Non-conformance's own number, not a page heading",
-  'lib/quality/complaint_detail_screen.dart':
-      "its title is the complaint's own Customer and Product, not a page heading",
-  'lib/quality/supplier_ncr_detail_screen.dart':
-      "its title is the supplier NCR's own Supplier and Product, not a page heading",
   'lib/maintenance/floor_screen.dart': 'no page frame: a floor surface, not a page',
   'lib/auth/sign_in_screen.dart': 'a centred card on purpose, and no page frame',
   'lib/auth/awaiting_approval_screen.dart': 'a centred card on purpose, and no page frame',
@@ -339,6 +351,12 @@ FakeWire _wire() => FakeWire(
       suppliers: [supplierJson('50', 'SUP-1', 'Northwind Fasteners')],
       supplierNcrs: {
         '1': [supplierNcrJson('80', 'SN-2026-00001', responseDueDate: '2099-01-01')],
+      },
+      // The Non-conformance detail page (issue #391's design law 3, followed up
+      // after S4), so it renders its summary card rather than a failed read and
+      // the card assertion actually runs.
+      nonconformances: {
+        '1': [nonconformanceJson('701', 'NC-HCM-2026-00001')],
       },
       // The Safety incident register (issue #226), so the page renders its
       // card rather than an empty state and the row assertion actually runs.
