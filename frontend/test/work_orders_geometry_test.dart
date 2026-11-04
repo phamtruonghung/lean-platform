@@ -205,11 +205,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('at the narrowest table windows no flex cell is squeezed to nothing or overflows',
-      (tester) async {
-    // A box of 800 is a window of about 1092 at a text scale of 1; at 1.19 the
-    // 800 has grown to 952, a window of about 1245. The WO# column is fixed, so
-    // these are the windows where the flex columns have the least left.
+  testWidgets('at a narrow table window, and at 1.19 where the breakpoint has grown, '
+      'no flex cell is squeezed to nothing or overflows', (tester) async {
+    // The register compares the box its own `LayoutBuilder` is handed, which is
+    // the page box — the window less the Shell's 260px sidebar — not the inner
+    // box inside `AppPageFrame`'s 16px inset. So 800 of box is a window of 1060
+    // at a text scale of 1 (1092 would count that inset twice, and at 1060 the
+    // box is exactly 800), and at 1.19 the 800 has grown to 952, a window of
+    // 1212. The WO# column is fixed, so these two windows, each 33px above its
+    // switch, are where the flex columns have the least left.
     for (final (width, scale) in [(1093.0, 1.0), (1245.0, 1.19)]) {
       await _pump(tester, width: width, textScale: scale, wire: _realisticWire());
       expect(find.byType(AppTableHeader), findsOneWidget, reason: 'a table at $width x$scale');
