@@ -73,8 +73,10 @@ class HomeScreen extends StatelessWidget {
   static const double maxWidth = 900;
 
   /// The header's hairline (issue #375). The rule is now `AppPageHeader`'s own,
-  /// which is the same `Divider` at the same left edge; the name is kept so the
-  /// key every test and reader knows still finds it.
+  /// which is the same `Divider` at the same left edge: the constant name is kept
+  /// so every test and reader still finds it, but its *value* is now
+  /// `app-page-header-rule` — `AppPageHeader.ruleKey`'s own — where the home
+  /// Screen used to carry a key literal of its own (issue #449).
   static const ValueKey<String> headerRuleKey = AppPageHeader.ruleKey;
 
   /// The one line that says nothing is waiting (issue #395).

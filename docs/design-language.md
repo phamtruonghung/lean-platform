@@ -898,9 +898,12 @@ move onto one slice at a time; `AppConfirmDialog` is its destructive form. The K
 module is the first to adopt it (#395): `add_kpi_dialog.dart` and
 `change_target_dialog.dart` at the `form` width, and the KPI review's own note
 popup (`form`) and read-only note popup (`decision`). Their fields, keys,
-validators, enable conditions and dismissal policy did not change; only the shell
-did, which is what an adoption is. Each remaining module names its own dialogs in
-its own slice.
+validators and enable conditions did not change, and its dismissal policy is the
+shell's: `add_kpi_dialog.dart` and `change_target_dialog.dart` disable their
+dismiss action while a request is in flight, and a disabled dismiss action makes
+`Esc` inert, where an `AlertDialog` route would still have popped. Only the shell
+changed, which is what an adoption is. Each remaining module names its own dialogs
+in its own slice.
 
 ### The four widths
 
