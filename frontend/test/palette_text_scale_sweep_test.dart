@@ -17,10 +17,17 @@
 ///   ellipsize (or that is taller than the box it was given) must be disclosed
 ///   through a `Tooltip`, which is what `DisclosingText` does — an undisclosed
 ///   clip is a number the reader cannot get at any size;
-/// - every action the Screen offers is still offered: the set of controls
-///   rendered at each combination is compared with the same window at 100% text
-///   in the light palette, so a button that only disappears at twice the text
-///   fails here;
+/// - the header's actions are still offered: the controls in the page header
+///   are compared with the same window at 100% text in the light palette at
+///   *every* combination, so an action that only disappears at twice the text,
+///   or only in the dark palette, fails here;
+/// - the rest of the page's controls are compared across palettes only: the
+///   set of controls the page renders at 100% text in the light palette must
+///   survive the same window in the dark palette. Twice the text is
+///   deliberately not compared this way, because it legitimately changes a
+///   register's shape — a table row's keyed menu button becomes a card's tap —
+///   so a whole-set comparison across the text scale would fail on a design
+///   that is working;
 /// - the page's left edge has not moved: every paragraph in the page frame is at
 ///   least as far right as it was at the reference combination, and the header's
 ///   own inset is identical;
