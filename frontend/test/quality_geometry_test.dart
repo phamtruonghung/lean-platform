@@ -41,6 +41,7 @@ import 'package:lean_platform/quality/suppliers_screen.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_detail_section.dart';
 import 'package:lean_platform/widgets/app_list_card.dart';
+import 'package:lean_platform/widgets/app_page_header.dart';
 import 'package:lean_platform/widgets/app_table.dart';
 
 import 'harness.dart';
@@ -48,7 +49,11 @@ import 'harness.dart';
 /// One Site, one Customer, one Supplier, one Product, one Defect code, and one
 /// record of each kind — long enough in its own fields to exercise the columns
 /// rather than fitting in them by luck.
-FakeWire _wire() => FakeWire(
+///
+/// [readStatus] is the answer each of the three detail pages' own record read
+/// gives, so a failed-read case can pump the page without a record and assert
+/// what it still carries.
+FakeWire _wire({int readStatus = 200}) => FakeWire(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
       orgUnits: {
         null: [orgUnitJson('10', 'Assembly')],
@@ -58,6 +63,9 @@ FakeWire _wire() => FakeWire(
       products: [productJson('40', 'PRD-1', 'Gearbox')],
       suppliers: [supplierJson('50', 'SUP-1', 'Northwind Fasteners')],
       defectCodes: [defectCodeJson('41', 'DIM-OOT', 'Out of tolerance')],
+      nonconformancesStatus: readStatus,
+      complaintDetailStatus: readStatus,
+      supplierNcrDetailStatus: readStatus,
       nonconformances: {
         '1': [
           nonconformanceJson(
@@ -105,6 +113,7 @@ Future<void> _pump(
   required double width,
   double textScale = 1,
   double height = 1000,
+  FakeWire? wire,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(width, height);
@@ -114,7 +123,7 @@ Future<void> _pump(
   await pumpApp(
     tester,
     gateway: FakeAuthGateway(accessToken: 'a-token'),
-    client: _wire().client,
+    client: (wire ?? _wire()).client,
     initialLocation: location,
   );
 }
@@ -384,6 +393,67 @@ void main() {
           reason: '$name at $width x2: the stacked sections do not share a left edge',
         );
       }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // The page head of each detail page (issue #391's design law 3, followed up
+  // after S4)
+  // ---------------------------------------------------------------------------
+
+  // The head is `AppPageHeader` naming the Screen — not the record's number,
+  // Customer, Supplier or Product — and it is drawn above the state switch, so
+  // the loading, failed, missing and loaded states all carry it.
+  final detailHeads = <(String, String, String, Key)>[
+    ('Customer complaint', '/complaints/70', 'Customer complaint', ComplaintDetailScreen.backKey),
+    ('Non-conformance', '/non-conformances/701', 'Non-conformance',
+        NonconformanceDetailScreen.backKey),
+    ('Supplier NCR', '/supplier-ncrs/80', 'Supplier NCR', SupplierNcrDetailScreen.backKey),
+  ];
+
+  for (final (name, location, title, backKey) in detailHeads) {
+    testWidgets('$name: the page head names the Screen at 700, at 900, at 1280 and at twice the '
+        'text', (tester) async {
+      for (final (width, scale) in const [
+        (700.0, 1.0),
+        (900.0, 1.0),
+        (1280.0, 1.0),
+        (1280.0, 2.0),
+      ]) {
+        await _pump(tester, location: location, width: width, height: 1200, textScale: scale);
+        final label = '$name: window $width at ${scale}x';
+        expect(tester.takeException(), isNull, reason: label);
+
+        expect(find.byType(AppPageHeader), findsOneWidget, reason: '$label: no page head');
+        expect(
+          tester.widget<Text>(find.byKey(AppPageHeader.titleKey)).data,
+          title,
+          reason: '$label: the page head is not the Screen\'s own name',
+        );
+        expect(find.byKey(backKey), findsOneWidget,
+            reason: '$label: no way back under the page head');
+        expect(tester.getSize(find.byKey(backKey)).height, greaterThanOrEqualTo(44.0),
+            reason: '$label: the back control is not a tap target');
+      }
+    });
+
+    // The defect this card is about: the head used to live inside the loaded
+    // branch, so a record that failed to read rendered no title and no way
+    // back. The 500 is the answer a real API gives when the record cannot be
+    // read.
+    testWidgets('$name: a failed read still carries the page head and the retry', (tester) async {
+      await _pump(tester, location: location, width: 1280, wire: _wire(readStatus: 500));
+
+      expect(find.byType(AppPageHeader), findsOneWidget,
+          reason: 'a failed read renders no page head');
+      expect(
+        tester.widget<Text>(find.byKey(AppPageHeader.titleKey)).data,
+        title,
+        reason: 'a failed read renders the wrong title, or none',
+      );
+      expect(find.byKey(backKey), findsOneWidget,
+          reason: 'a failed read renders no way back');
+      expect(tester.takeException(), isNull);
     });
   }
 
