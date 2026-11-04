@@ -169,7 +169,7 @@ void main() {
   testWidgets('at 900 the register is cards, at the list\'s inset', (tester) async {
     await _pump(tester, width: 900);
 
-    expect(find.byType(AppTableHeader), findsNothing, reason: 'a 608 box is under 800');
+    expect(find.byType(AppTableHeader), findsNothing, reason: 'a 640 box is under 800');
     final a = find.byKey(WorkOrdersScreen.rowKey('101'));
     final b = find.byKey(WorkOrdersScreen.rowKey('102'));
     expect(a, findsOneWidget);
@@ -208,12 +208,15 @@ void main() {
   testWidgets('at a narrow table window, and at 1.19 where the breakpoint has grown, '
       'no flex cell is squeezed to nothing or overflows', (tester) async {
     // The register compares the box its own `LayoutBuilder` is handed, which is
-    // the page box — the window less the Shell's 260px sidebar — not the inner
-    // box inside `AppPageFrame`'s 16px inset. So 800 of box is a window of 1060
-    // at a text scale of 1 (1092 would count that inset twice, and at 1060 the
-    // box is exactly 800), and at 1.19 the 800 has grown to 952, a window of
-    // 1212. The WO# column is fixed, so these two windows, each 33px above its
-    // switch, are where the flex columns have the least left.
+    // the page box — the window less the Shell's 260px sidebar. It is not the
+    // rows' box: `AppPageFrame` adds no padding of its own, and the 16px each
+    // side belongs to this Screen, which insets the filter field and the list
+    // itself (work_orders_screen.dart), inside the frame. So 800 of box is a
+    // window of 1060 at a text scale of 1 (1092 would count that 32px inset
+    // twice, and at 1060 the box is exactly 800), and at 1.19 the 800 has grown
+    // to 952, a window of 1212. The WO# column is fixed, so these two windows,
+    // each 33px above its switch, are where the flex columns have the least
+    // left.
     for (final (width, scale) in [(1093.0, 1.0), (1245.0, 1.19)]) {
       await _pump(tester, width: width, textScale: scale, wire: _realisticWire());
       expect(find.byType(AppTableHeader), findsOneWidget, reason: 'a table at $width x$scale');
