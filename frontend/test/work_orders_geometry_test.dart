@@ -223,6 +223,34 @@ void main() {
     }
   });
 
+  testWidgets('at 1.19 a row offering Complete keeps its whole actions cell', (tester) async {
+    // `Complete` is the widest primary action a row can offer, and 1.19 is where
+    // it stopped fitting: the button lays out 177.49px and the cell has the
+    // kebab's 44 and `Spacing.sm` beside it, inside a column that was the 232 a
+    // scale of 1 measures. The 1.19 cases above pump `_realisticWire()`, whose
+    // one Work order is `approved` (`Start` + kebab, 127.22px), so no case in
+    // this file walked the `in_progress` arm at any text scale. `_wire()` carries
+    // one of each: 101 `approved`, 102 `in_progress`.
+    for (final width in [1245.0, 1212.0]) {
+      await _pump(tester, width: width, textScale: 1.19, wire: _wire());
+      expect(find.byType(AppTableHeader), findsOneWidget, reason: 'a table at $width');
+
+      final complete = find.byKey(WorkOrdersScreen.completeKey('102'));
+      final kebab = find.byKey(WorkOrdersScreen.rowActionsKey('102'));
+      expect(complete, findsOneWidget, reason: 'Complete is still reachable at $width');
+      expect(kebab, findsOneWidget, reason: 'the kebab is still reachable at $width');
+
+      // Side by side, in that order, and inside the row's own content box.
+      final row = tester.getBottomRight(find.byKey(WorkOrdersScreen.rowKey('102'))).dx;
+      expect(tester.getBottomRight(kebab).dx,
+          moreOrLessEquals(row - Spacing.md - Spacing.sm, epsilon: 0.01),
+          reason: 'the kebab ends where the row\'s padding says, at $width');
+      expect(tester.getBottomRight(complete).dx, lessThanOrEqualTo(tester.getBottomLeft(kebab).dx),
+          reason: 'Complete sits left of the kebab, at $width');
+      expect(tester.takeException(), isNull, reason: 'width $width x1.19');
+    }
+  });
+
   testWidgets('at 1280 and 700 the toolbar carries the count, and nothing overflows',
       (tester) async {
     for (final width in [1280.0, 700.0]) {

@@ -783,11 +783,52 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
   }
 }
 
-/// The register's own fixed width for its trailing actions column — wide
-/// enough for one primary button plus the overflow trigger side by side. It is a
-/// column of [_columns], so the band's label and every row's actions cell share
-/// it by construction, whichever row does or does not offer a primary button.
-const double _actionsColumnWidth = 232;
+/// The labels a row's primary action can carry, named once: the button prints
+/// them and [_actionsColumnWidth] measures them, so a renamed action cannot grow
+/// past the column that holds it.
+const String _startLabel = 'Start';
+const String _completeLabel = 'Complete';
+
+/// The trailing actions column's width **at a text scale of 1**: one primary
+/// button plus the overflow trigger side by side. It is the floor
+/// [_actionsColumnWidth] never goes below, because a scale under 1 must not
+/// narrow a number that was measured at 1 (the rule [AppBreakpoints.effective]
+/// applies to a box).
+const double _actionsColumnWidthAtOne = 232;
+
+/// The register's own fixed width for its trailing actions column — wide enough
+/// for one primary button plus the overflow trigger side by side, **at the
+/// reader's text scale**. It is a column of [_columns], so the band's label and
+/// every row's actions cell share it by construction, whichever row does or does
+/// not offer a primary button.
+///
+/// The width used to be the 1x constant alone, and that shipped an overflow:
+/// a row offering `Complete` at a text scale of 1.19 laid out a 177.49px button
+/// in the 224px its cell has left, and the `Row` inside it overflowed by 5.5px.
+/// A row offering `Start` (127.22px) fit, which is why only one status was ever
+/// reported. So the widest primary label is laid out in the button's own style
+/// at the reader's scale ([_statusColumnWidth] and [_workOrderNoColumnWidth] do
+/// the same for their columns) and given the room a cell spends that no label
+/// does: the button's own horizontal padding (Material's 24 a side at 1x, and
+/// its `scaledPadding` never spends more as the text grows), the `Spacing.sm`
+/// between the button and the kebab, the kebab's [AppTouchTarget.min] square,
+/// and the slot's `Spacing.sm` gutter.
+double _actionsColumnWidth(BuildContext context) {
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  );
+  final style = Theme.of(context).textTheme.labelLarge;
+  var widest = 0.0;
+  for (final label in const [_startLabel, _completeLabel]) {
+    painter.text = TextSpan(text: label, style: style);
+    painter.layout();
+    if (painter.width > widest) widest = painter.width;
+  }
+  final measured = widest + 2 * Spacing.xl + Spacing.sm + AppTouchTarget.min + Spacing.sm;
+  return measured > _actionsColumnWidthAtOne ? measured : _actionsColumnWidthAtOne;
+}
 
 double _statusColumnWidth(BuildContext context) {
   final style = Theme.of(context).textTheme.labelLarge;
@@ -830,7 +871,7 @@ List<AppTableColumn> _columns(BuildContext context) => [
       const AppTableColumn('Org Unit', flex: 2),
       AppTableColumn('Status', width: _statusColumnWidth(context)),
       const AppTableColumn('Assignee', flex: 4),
-      const AppTableColumn('Actions', width: _actionsColumnWidth, align: AppColumnAlign.end),
+      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
     ];
 
 class _WorkOrderTableRow extends StatelessWidget {
@@ -1095,14 +1136,14 @@ class _RowActions extends StatelessWidget {
         onPressed:
             busy ? null : () => context.read<WorkOrdersBloc>().add(WorkOrderStartConfirmed(workOrder.id)),
         style: OutlinedButton.styleFrom(minimumSize: buttonSize),
-        child: const Text('Start'),
+        child: const Text(_startLabel),
       );
     } else if (canWork && offersComplete(status)) {
       primary = OutlinedButton(
         key: WorkOrdersScreen.completeKey(workOrder.id),
         onPressed: busy ? null : () => context.go('${Routes.workOrders}/${workOrder.id}/complete'),
         style: OutlinedButton.styleFrom(minimumSize: buttonSize),
-        child: const Text('Complete'),
+        child: const Text(_completeLabel),
       );
     }
 
