@@ -834,11 +834,22 @@ class _MachineRowState extends State<_MachineRow> {
             ),
           ),
           const SizedBox(height: Spacing.sm),
-          TextField(
-            key: ShiftHandoverScreen.machineWatchKey(id),
-            controller: _watch,
-            enabled: widget.enabled,
-            decoration: const InputDecoration(labelText: 'What the incoming shift must watch'),
+          // The label is disclosed rather than silently ellipsized: at 200% text
+          // this field's column is narrower than the sentence, and Material
+          // ellipsizes a label that does not fit. A `Tooltip` around the field
+          // says the same words and costs no pixel (see `AppFilterField`'s own
+          // note); the sweep in `test/palette_text_scale_sweep_test.dart` is
+          // what found it.
+          Tooltip(
+            message: 'What the incoming shift must watch',
+            child: TextField(
+              key: ShiftHandoverScreen.machineWatchKey(id),
+              controller: _watch,
+              enabled: widget.enabled,
+              decoration: const InputDecoration(
+                labelText: 'What the incoming shift must watch',
+              ),
+            ),
           ),
           const SizedBox(height: Spacing.xs),
           Row(
@@ -1003,12 +1014,17 @@ class _ChangePointsState extends State<_ChangePoints> {
                 3,
               ),
               (
-                TextField(
-                  key: ShiftHandoverScreen.changePointWatchKey,
-                  controller: _watch,
-                  enabled: widget.enabled,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'What the incoming shift must watch for'),
+                Tooltip(
+                  message: 'What the incoming shift must watch for',
+                  child: TextField(
+                    key: ShiftHandoverScreen.changePointWatchKey,
+                    controller: _watch,
+                    enabled: widget.enabled,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'What the incoming shift must watch for',
+                    ),
+                  ),
                 ),
                 3,
               ),
@@ -1321,17 +1337,24 @@ class _EvidenceState extends State<_Evidence> {
         _FieldRow(
           fields: [
             (
-              DropdownButtonFormField<String>(
-                key: ShiftHandoverScreen.deviationReasonKey,
-                initialValue: _deviation,
-                isDense: true,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Deviation from the standard handover'),
-                items: [
-                  for (final choice in HandoverVocabulary.deviationReasons)
-                    DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
-                ],
-                onChanged: widget.enabled ? (value) => setState(() => _deviation = value ?? _deviation) : null,
+              Tooltip(
+                message: 'Deviation from the standard handover',
+                child: DropdownButtonFormField<String>(
+                  key: ShiftHandoverScreen.deviationReasonKey,
+                  initialValue: _deviation,
+                  isDense: true,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Deviation from the standard handover',
+                  ),
+                  items: [
+                    for (final choice in HandoverVocabulary.deviationReasons)
+                      DropdownMenuItem<String>(value: choice.wire, child: Text(choice.label)),
+                  ],
+                  onChanged: widget.enabled
+                      ? (value) => setState(() => _deviation = value ?? _deviation)
+                      : null,
+                ),
               ),
               3,
             ),

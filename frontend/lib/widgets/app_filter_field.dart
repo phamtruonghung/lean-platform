@@ -139,29 +139,51 @@ class _AppFilterFieldState extends State<AppFilterField> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        TextField(
-          key: AppFilterField.fieldKey(widget.name),
-          controller: _controller,
-          enabled: widget.enabled,
-          onChanged: widget.onChanged,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            labelText: widget.label,
-            helperText: widget.helperText,
-            prefixIcon: const Icon(Icons.search),
-            // The same pill as `AppSearchField`, so the platform's two search
-            // controls read as the same kind of thing.
-            border: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+        // **The label and the helper are disclosed, not silently ellipsized.**
+        // Material draws both as single-line `Text`s that ellipsize when the
+        // box is narrower than the words; a filter's label is how the reader
+        // knows what the box narrows, so a label cut off is a question the
+        // reader cannot answer. At 200% text in a 700px window "By summary,
+        // Work order number or Asset." no longer fits, and no width would help:
+        // the box is already the page's own width.
+        //
+        // A `Tooltip` around the field rather than a widget in the decoration's
+        // `label` slot, deliberately: `labelText` renders inside
+        // `InputDecorator`'s own label animation, and passing a widget there
+        // re-lays the whole control out (measured: a 908x166 repaint of the
+        // filter row in `goldens/work_orders_wide.png`). The tooltip costs no
+        // pixel — hover, long press and the screen reader get the same words
+        // the field already shows — and it is the same disclosure
+        // `DisclosingText` gives a clipped table cell. Found by
+        // `test/palette_text_scale_sweep_test.dart`.
+        Tooltip(
+          message: widget.helperText == null
+              ? widget.label
+              : '${widget.label} — ${widget.helperText}',
+          child: TextField(
+            key: AppFilterField.fieldKey(widget.name),
+            controller: _controller,
+            enabled: widget.enabled,
+            onChanged: widget.onChanged,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              labelText: widget.label,
+              helperText: widget.helperText,
+              prefixIcon: const Icon(Icons.search),
+              // The same pill as `AppSearchField`, so the platform's two search
+              // controls read as the same kind of thing.
+              border: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+              ),
+              suffixIcon: hasTerm
+                  ? IconButton(
+                      key: AppFilterField.clearKey(widget.name),
+                      tooltip: 'Clear',
+                      icon: const Icon(Icons.close),
+                      onPressed: widget.enabled ? () => widget.onChanged('') : null,
+                    )
+                  : null,
             ),
-            suffixIcon: hasTerm
-                ? IconButton(
-                    key: AppFilterField.clearKey(widget.name),
-                    tooltip: 'Clear',
-                    icon: const Icon(Icons.close),
-                    onPressed: widget.enabled ? () => widget.onChanged('') : null,
-                  )
-                : null,
           ),
         ),
         if (hasTerm && counts)

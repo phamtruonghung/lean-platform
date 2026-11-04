@@ -156,37 +156,46 @@ class _AppDateFieldState extends State<AppDateField> {
     final hasValue = widget.value != null && widget.value!.isNotEmpty;
     final showClear = widget.optional && hasValue && widget.enabled;
 
-    return TextField(
-      key: AppDateField.fieldKey(widget.name),
-      controller: _controller,
-      readOnly: true,
-      enabled: widget.enabled,
-      onTap: _openPicker,
-      decoration: InputDecoration(
-        labelText: widget.label,
-        helperText: widget.helperText,
-        border: const OutlineInputBorder(),
-        suffixIcon: showClear
-            ? IconButton(
-                key: AppDateField.clearKey(widget.name),
-                icon: const Icon(Icons.close),
-                tooltip: 'Clear',
-                // Reports genuine empty, not today and not a default — the
-                // whole reason ADR-0023 asks for an explicit clear affordance
-                // rather than letting a picker-only field get stuck on
-                // whatever it last held.
-                onPressed: () => widget.onChanged(null),
-              )
-            // The calendar icon: the same trailing slot the ✕ would
-            // otherwise occupy, shown whenever the ✕ is not — see this
-            // class's own doc comment on why a read-only field needs a
-            // visible cue that it is tappable at all.
-            : IconButton(
-                key: AppDateField.calendarIconKey(widget.name),
-                icon: const Icon(Icons.calendar_today_outlined),
-                tooltip: 'Choose a date',
-                onPressed: widget.enabled ? _openPicker : null,
-              ),
+    // The label and the helper are disclosed rather than silently
+    // ellipsized, the same zero-pixel device `AppFilterField` uses: a filter
+    // row states a width per control so the controls line up, and Material
+    // ellipsizes a label narrower than its words — "Detected from" in a 165px
+    // box does it at *ordinary* text size, which the sweep in
+    // `test/palette_text_scale_sweep_test.dart` caught at every window.
+    return Tooltip(
+      message: widget.helperText == null ? widget.label : '${widget.label} — ${widget.helperText}',
+      child: TextField(
+        key: AppDateField.fieldKey(widget.name),
+        controller: _controller,
+        readOnly: true,
+        enabled: widget.enabled,
+        onTap: _openPicker,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          helperText: widget.helperText,
+          border: const OutlineInputBorder(),
+          suffixIcon: showClear
+              ? IconButton(
+                  key: AppDateField.clearKey(widget.name),
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Clear',
+                  // Reports genuine empty, not today and not a default — the
+                  // whole reason ADR-0023 asks for an explicit clear affordance
+                  // rather than letting a picker-only field get stuck on
+                  // whatever it last held.
+                  onPressed: () => widget.onChanged(null),
+                )
+              // The calendar icon: the same trailing slot the ✕ would
+              // otherwise occupy, shown whenever the ✕ is not — see this
+              // class's own doc comment on why a read-only field needs a
+              // visible cue that it is tappable at all.
+              : IconButton(
+                  key: AppDateField.calendarIconKey(widget.name),
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  tooltip: 'Choose a date',
+                  onPressed: widget.enabled ? _openPicker : null,
+                ),
+        ),
       ),
     );
   }

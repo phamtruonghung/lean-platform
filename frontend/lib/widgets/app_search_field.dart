@@ -466,19 +466,29 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        TextField(
-          key: AppSearchField.fieldKey(widget.name),
-          controller: _controller,
-          enabled: widget.enabled,
-          onChanged: _handleTextChanged,
-          onSubmitted: widget.onSubmitted == null ? null : _handleSubmitted,
-          textInputAction: widget.onSubmitted == null ? TextInputAction.done : TextInputAction.search,
-          decoration: InputDecoration(
-            labelText: widget.label,
-            helperText: widget.helperText,
-            prefixIcon: const Icon(Icons.search),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+        // Disclosed, not silently ellipsized — the same reasoning and the same
+        // zero-pixel device as `AppFilterField`'s own tooltip: Material
+        // ellipsizes a label or helper narrower than its words, and at 200% text
+        // in a 700px window "Find an Org Unit by name" needs more box than the
+        // page has.
+        Tooltip(
+          message: widget.helperText == null
+              ? widget.label
+              : '${widget.label} — ${widget.helperText}',
+          child: TextField(
+            key: AppSearchField.fieldKey(widget.name),
+            controller: _controller,
+            enabled: widget.enabled,
+            onChanged: _handleTextChanged,
+            onSubmitted: widget.onSubmitted == null ? null : _handleSubmitted,
+            textInputAction: widget.onSubmitted == null ? TextInputAction.done : TextInputAction.search,
+            decoration: InputDecoration(
+              labelText: widget.label,
+              helperText: widget.helperText,
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+              ),
             ),
           ),
         ),
