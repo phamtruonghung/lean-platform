@@ -177,9 +177,15 @@ is only visible in a rendered tree (AGENTS.md §5's frontend seam).
 - **One shared page *header* is now a rule, not an exclusion.** It stopped being
   deliberately absent at #375: `AppPageHeader` (`lib/widgets/app_page_header.dart`,
   pinned by `test/app_page_header_test.dart`) draws the title, the optional
-  description, the actions, the hairline and the `below:` filter row, and 43 call
-  sites use it. What still genuinely differs per Screen is the *description* and
-  the set of actions, which are arguments rather than layout; #193's exclusion was
+  description, the actions, the hairline and the `below:` filter row, and a Screen
+  with a page head draws it rather than a title of its own. The five that place
+  their title elsewhere do so on purpose: sign-in's centred card, the Floor board's
+  device chrome, and the Employee and Training detail Screens and the Training
+  form, where the title belongs to the record. The call-site count is deliberately
+  not written down here — it moves with every Screen that adopts the widget, so a
+  number in prose is a fact that goes stale silently. What still genuinely differs per
+  Screen is the *description* and the set of actions, which are arguments rather than
+  layout; #193's exclusion was
   about the layout and no longer stands. The full order a page follows, header
   included, is [`design-language.md`](design-language.md) section 5.
 - **Page widths.** The Work orders table, the maintenance registers, the Action log
