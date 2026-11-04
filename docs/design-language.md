@@ -389,8 +389,9 @@ window that is 408, at 900 it is 608: **both are below 700, so those two are car
 at both**, and their table appears only where the list's box reaches 700, which is
 a page box of 732 and a window of about 992 and up.
 
-**The rest measure the page's box itself, because their `LayoutBuilder` sits
-outside that inset**, so each flips at its own breakpoint plus the Shell's 260:
+**Of those ten the rest, and Work orders with them, measure the page's box
+itself, because their `LayoutBuilder` sits outside that inset**, so each flips
+at its own breakpoint plus the Shell's 260:
 Assets, Stores and Job plans at 700 are tables from a window of 960
 (`assets_screen.dart:456` wraps the frame at `:462`); Work orders' 800 at 800 + 260
 = **1060** (`work_orders_screen.dart:714`, frame at `:723`, padding at `:729`);
