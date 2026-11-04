@@ -503,11 +503,11 @@ Future<void> _settle(WidgetTester tester) async {
 
 /// A paragraph that had to clip, and was not disclosed in a `Tooltip`.
 ///
-/// The Shell's sidebar is left out: it is chrome rather than a Screen, its
-/// Destination labels are the one place this sweep found a clip that belongs to
-/// `PlatformShell` rather than to the page under it, and a Screen's own sweep is
-/// not the place to change the chrome every Screen shares. That finding is filed
-/// on its own card.
+/// The Shell's sidebar is included: it is chrome rather than a Screen, so a clip
+/// found inside it belongs to `PlatformShell` and not to the page under it, but
+/// leaving the chrome out is exactly how the sidebar's one-line Destination
+/// labels survived a sweep that otherwise proved every Screen. They wrap now
+/// (issue #385, #445), so this check holds that fix in place too.
 List<String> _undisclosedClips() {
   final out = <String>[];
   for (final element in find.byType(RichText).evaluate()) {
@@ -515,7 +515,6 @@ List<String> _undisclosedClips() {
     if (object is! RenderParagraph) continue;
     if (!_clips(object)) continue;
     if (_insideTooltip(element)) continue;
-    if (_insideSidebar(element)) continue;
     out.add('${object.text.toPlainText()} '
         '[maxLines=${object.maxLines} didExceed=${object.didExceedMaxLines} '
         'size=${object.size.width}x${object.size.height} '
