@@ -96,8 +96,11 @@ void main() {
     }
   });
 
-  testWidgets('at the narrowest table windows nothing overflows and every clipped cell discloses',
-      (tester) async {
+  testWidgets('at a narrow table window, and at 1.19 where the breakpoint has grown, '
+      'nothing overflows and every clipped cell discloses', (tester) async {
+    // 800 of the page box (the window less the Shell's 260px sidebar) is a
+    // window of 1060; at 1.19, 952 is 1212. Both cases sit 33px above the
+    // switch, where the flex columns are tightest.
     for (final (width, scale) in [(1093.0, 1.0), (1245.0, 1.19)]) {
       await _pump(tester, width: width, textScale: scale, assignee: 'Nguyen Van Anh');
       expect(find.byType(AppTableHeader), findsOneWidget, reason: 'a table at $width x$scale');
