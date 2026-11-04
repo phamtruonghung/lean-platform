@@ -228,7 +228,7 @@ class _Filters extends StatelessWidget {
       filters: [
         if (loaded.sites.length > 1)
           SizedBox(
-            width: 200,
+            width: AppLayout.atTextScale(context, 200),
             child: DropdownButtonFormField<String>(
               key: SafetyObservationsScreen.siteKey,
               initialValue: loaded.siteId,
@@ -253,7 +253,7 @@ class _Filters extends StatelessWidget {
           label: Text(filters.orgUnitName ?? 'All Org Units'),
         ),
         SizedBox(
-          width: 190,
+          width: AppLayout.atTextScale(context, 190),
           child: DropdownButtonFormField<String?>(
             key: SafetyObservationsScreen.typeFilterKey,
             initialValue: filters.observationType,
@@ -271,7 +271,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 190,
+          width: AppLayout.atTextScale(context, 190),
           child: DropdownButtonFormField<String?>(
             key: SafetyObservationsScreen.categoryFilterKey,
             initialValue: filters.category,
@@ -292,7 +292,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 190,
+          width: AppLayout.atTextScale(context, 190),
           child: DropdownButtonFormField<String?>(
             key: SafetyObservationsScreen.severityPotentialFilterKey,
             initialValue: filters.severityPotential,
@@ -319,7 +319,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 170,
+          width: AppLayout.atTextScale(context, 170),
           child: DropdownButtonFormField<bool?>(
             key: SafetyObservationsScreen.stopWorkFilterKey,
             initialValue: filters.isStopWork,
@@ -340,7 +340,7 @@ class _Filters extends StatelessWidget {
         // #231) — `false` is a walk's own worklist, so its unanswered items
         // do not disappear into the register.
         SizedBox(
-          width: 170,
+          width: AppLayout.atTextScale(context, 170),
           child: DropdownButtonFormField<bool?>(
             key: SafetyObservationsScreen.hasActionFilterKey,
             initialValue: filters.hasAction,
@@ -365,7 +365,7 @@ class _Filters extends StatelessWidget {
           runSpacing: Spacing.sm,
           children: [
             SizedBox(
-              width: 165,
+              width: AppLayout.atTextScale(context, 165),
               child: AppDateField(
                 key: SafetyObservationsScreen.fromDateKey,
                 name: 'safety-observations-from',
@@ -378,7 +378,7 @@ class _Filters extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: 165,
+              width: AppLayout.atTextScale(context, 165),
               child: AppDateField(
                 key: SafetyObservationsScreen.toDateKey,
                 name: 'safety-observations-to',

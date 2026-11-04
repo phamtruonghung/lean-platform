@@ -84,6 +84,30 @@ abstract final class AppLayout {
   /// A Screen's page: the box its title, controls and list are laid out in,
   /// centred in whatever width the Shell leaves.
   static const double pageWidth = 900;
+
+  /// **A fixed width a Screen states, at the reader's text scale** — the rule
+  /// [AppBreakpoints.effective] applies to a box, applied to a control's own
+  /// width instead.
+  ///
+  /// A filter row states a width per control (`SizedBox(width: 190)`) so that a
+  /// dropdown, a date field and a search box line up whatever their contents
+  /// are. That number is a width at a text scale of 1, exactly as a breakpoint
+  /// is: at 200% text the same 190px box has room for about half the label it
+  /// had, and Material answers a label that does not fit by ellipsizing it and a
+  /// dropdown item that does not fit by wrapping it under the field's own clip —
+  /// both of them a value the reader cannot finish reading (WCAG 1.4.4, Resize
+  /// text; the same failure #379 and #381 were).
+  ///
+  /// So a control's stated width is multiplied by the reader's text scale, and
+  /// the `Wrap` that already holds these controls does the rest: a filter row
+  /// that no longer fits its line wraps, which is what a `Wrap` is for. **The
+  /// factor is clamped at 1**, for the reason [AppBreakpoints.effective] clamps
+  /// it: the number was measured at a scale of 1, so smaller text keeps the box
+  /// rather than narrowing it.
+  static double atTextScale(BuildContext context, double width) {
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    return width * (scale < 1 ? 1 : scale);
+  }
 }
 
 /// The smallest a control's tap target may be (WCAG 2.5.8, Target Size).

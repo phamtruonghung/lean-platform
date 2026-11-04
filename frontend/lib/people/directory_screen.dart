@@ -289,7 +289,7 @@ class _HeaderState extends State<_Header> {
                         label: Text(loaded.orgUnitName ?? 'All Org Units'),
                       ),
                       SizedBox(
-                        width: 220,
+                        width: AppLayout.atTextScale(context, 220),
                         child: DropdownButtonFormField<String>(
                           key: DirectoryScreen.jobRoleFilterKey,
                           initialValue: loaded.jobRoleId,

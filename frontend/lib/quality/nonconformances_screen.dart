@@ -256,7 +256,7 @@ class _Filters extends StatelessWidget {
       children: [
         if (loaded.sites.length > 1)
           SizedBox(
-            width: 200,
+            width: AppLayout.atTextScale(context, 200),
             child: DropdownButtonFormField<String>(
               key: NonconformancesScreen.siteKey,
               initialValue: loaded.siteId,
@@ -283,7 +283,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 180,
+          width: AppLayout.atTextScale(context, 180),
           child: DropdownButtonFormField<String?>(
             key: NonconformancesScreen.statusFilterKey,
             initialValue: filters.status,
@@ -304,7 +304,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 210,
+          width: AppLayout.atTextScale(context, 210),
           child: DropdownButtonFormField<String?>(
             key: NonconformancesScreen.defectCodeFilterKey,
             initialValue: filters.defectCodeId,
@@ -326,7 +326,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 200,
+          width: AppLayout.atTextScale(context, 200),
           child: DropdownButtonFormField<String?>(
             key: NonconformancesScreen.productFilterKey,
             initialValue: filters.productId,
@@ -346,7 +346,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 170,
+          width: AppLayout.atTextScale(context, 170),
           child: DropdownButtonFormField<String?>(
             key: NonconformancesScreen.severityFilterKey,
             initialValue: filters.severity,
@@ -367,7 +367,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 165,
+          width: AppLayout.atTextScale(context, 165),
           child: AppDateField(
             key: NonconformancesScreen.fromDateKey,
             name: 'nonconformances-from',
@@ -380,7 +380,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 165,
+          width: AppLayout.atTextScale(context, 165),
           child: AppDateField(
             key: NonconformancesScreen.toDateKey,
             name: 'nonconformances-to',

@@ -224,7 +224,7 @@ class _Filters extends StatelessWidget {
       filters: [
         if (loaded.sites.length > 1)
           SizedBox(
-            width: 200,
+            width: AppLayout.atTextScale(context, 200),
             child: DropdownButtonFormField<String>(
               key: SafetyIncidentsScreen.siteKey,
               initialValue: loaded.siteId,
@@ -248,7 +248,7 @@ class _Filters extends StatelessWidget {
           label: Text(filters.orgUnitName ?? 'All Org Units'),
         ),
         SizedBox(
-          width: 170,
+          width: AppLayout.atTextScale(context, 170),
           child: DropdownButtonFormField<String?>(
             key: SafetyIncidentsScreen.statusFilterKey,
             initialValue: filters.status,
@@ -269,7 +269,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 190,
+          width: AppLayout.atTextScale(context, 190),
           child: DropdownButtonFormField<String?>(
             key: SafetyIncidentsScreen.typeFilterKey,
             initialValue: filters.incidentType,
@@ -287,7 +287,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 190,
+          width: AppLayout.atTextScale(context, 190),
           child: DropdownButtonFormField<String?>(
             key: SafetyIncidentsScreen.severityFilterKey,
             initialValue: filters.severityLevel,
@@ -311,7 +311,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 170,
+          width: AppLayout.atTextScale(context, 170),
           child: DropdownButtonFormField<bool?>(
             key: SafetyIncidentsScreen.recordableFilterKey,
             initialValue: filters.isRecordable,
@@ -337,7 +337,7 @@ class _Filters extends StatelessWidget {
           runSpacing: Spacing.sm,
           children: [
             SizedBox(
-              width: 165,
+              width: AppLayout.atTextScale(context, 165),
               child: AppDateField(
                 key: SafetyIncidentsScreen.fromDateKey,
                 name: 'safety-incidents-from',
@@ -350,7 +350,7 @@ class _Filters extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: 165,
+              width: AppLayout.atTextScale(context, 165),
               child: AppDateField(
                 key: SafetyIncidentsScreen.toDateKey,
                 name: 'safety-incidents-to',

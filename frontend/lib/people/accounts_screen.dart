@@ -675,10 +675,9 @@ class _EmployeeCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final label = account.linkedEmployee == null ? 'No Employee linked' : account.linkedEmployee!.label;
-    return Text(
+    return DisclosingText(
       label,
       key: AccountsScreen.employeeKey(account.id),
-      overflow: TextOverflow.ellipsis,
       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
     );
   }
@@ -738,10 +737,9 @@ class _RowActions extends StatelessWidget {
     // all three self-actions unconditionally (issue #53), so no button here
     // would ever succeed.
     if (isSelf) {
-      return Text(
+      return DisclosingText(
         'Your own Account. Another administrator has to change it.',
         key: AccountsScreen.selfKey(account.id),
-        overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       );
     }

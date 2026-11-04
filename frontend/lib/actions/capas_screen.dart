@@ -192,7 +192,7 @@ class _Filters extends StatelessWidget {
           label: Text(loaded.orgUnitFilterName ?? 'All Org Units'),
         ),
         SizedBox(
-          width: 200,
+          width: AppLayout.atTextScale(context, 200),
           child: DropdownButtonFormField<String?>(
             key: CapasScreen.statusFilterKey,
             initialValue: loaded.statusFilter,

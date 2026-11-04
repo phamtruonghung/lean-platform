@@ -243,7 +243,7 @@ class _Filters extends StatelessWidget {
       children: [
         if (loaded.sites.length > 1)
           SizedBox(
-            width: 200,
+            width: AppLayout.atTextScale(context, 200),
             child: DropdownButtonFormField<String>(
               key: ComplaintsScreen.siteKey,
               initialValue: loaded.siteId,
@@ -270,7 +270,7 @@ class _Filters extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 190,
+          width: AppLayout.atTextScale(context, 190),
           child: DropdownButtonFormField<String?>(
             key: ComplaintsScreen.statusFilterKey,
             initialValue: filters.status,
