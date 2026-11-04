@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -86,6 +87,27 @@ const _nestedDestinations = [_nestedChild, _nestedParent];
 
 const _account = AccountActive(id: '1', email: 'a@b.c', displayName: 'A B', role: Roles.admin);
 
+/// The longest labels the real Destination list carries (issue #385's sweep).
+/// `_testDestinations`' own two are short enough to fit one line at any scale,
+/// so they cannot exercise the clip this fixture is for.
+const _longDestinations = [
+  Destination(
+    label: 'Product standard costs',
+    icon: Icons.request_quote_outlined,
+    path: '/product-standard-costs',
+  ),
+  Destination(
+    label: 'Customer complaints',
+    icon: Icons.report_outlined,
+    path: '/complaints',
+  ),
+  Destination(
+    label: 'Non-conformances',
+    icon: Icons.fact_check_outlined,
+    path: '/nonconformances',
+  ),
+];
+
 /// The Shell mounted on a real router over the stand-in destinations — the
 /// same wiring `router.dart` uses, so selecting a destination really is a
 /// change of address.
@@ -151,6 +173,41 @@ void _useWideWindow(WidgetTester tester) {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(1200, 800);
   addTearDown(tester.view.reset);
+}
+
+/// A paragraph that had to clip — the reading `palette_text_scale_sweep_test`
+/// uses (issue #385): either it ellipsized, or it was laid out shorter than the
+/// text needs at the width it was given.
+bool _clips(RenderParagraph paragraph) {
+  if (paragraph.didExceedMaxLines) return true;
+  final wanted = paragraph.getMaxIntrinsicHeight(paragraph.size.width);
+  return paragraph.size.height + 0.5 < wanted;
+}
+
+/// The message of the nearest `Tooltip` above [element], or null when there is
+/// none. Comparing it with the paragraph's own text is the point: the account
+/// footer sits inside the account menu's tooltip, whose message is "Account
+/// menu", so *a* tooltip above is not the same as the value being disclosed.
+String? _tooltipAbove(Element element) {
+  String? message;
+  element.visitAncestorElements((ancestor) {
+    final widget = ancestor.widget;
+    if (widget is Tooltip) {
+      message = widget.message;
+      return false;
+    }
+    return true;
+  });
+  return message;
+}
+
+/// The label paragraph of the Destination named [label], inside its nav item.
+RenderParagraph _labelParagraph(WidgetTester tester, String label) {
+  final finder = find.descendant(
+    of: find.byKey(ValueKey('nav-item-$label')),
+    matching: find.text(label),
+  );
+  return tester.renderObject<RenderParagraph>(finder);
 }
 
 void main() {
@@ -250,6 +307,56 @@ void main() {
       PlatformShell.expandedWidth,
     );
     expect(find.text('Approvals'), findsOneWidget);
+  });
+
+  // Issue #385's sweep found this in the Shell's chrome rather than in a
+  // Screen: at twice the text the longest Destination labels ellipsized inside
+  // the 260px rail and there was no way to read them. The rail is measured from
+  // the *window*, so it must not grow with the text — the labels have to use the
+  // width they get, and anything that still does not fit has to be disclosed the
+  // way `DisclosingText` discloses a clipped table cell.
+  testWidgets('at twice the text every Destination label is readable or disclosed (#385)',
+      (tester) async {
+    // Real Roboto, as the goldens below load: without it `flutter_test`'s
+    // placeholder font is a square per glyph, which is wider than any real
+    // label and would measure a clip the app does not have.
+    await loadAppFonts();
+    tester.view.devicePixelRatio = 1.0;
+    // The narrowest window that still draws the expanded sidebar.
+    tester.view.physicalSize = const Size(PlatformShell.railBreakpoint, 1200);
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+
+    await tester.pumpWidget(_harness(destinations: _longDestinations));
+    await tester.pumpAndSettle();
+
+    // Still the measured rail: the fix is in the labels, not in the width.
+    expect(
+      tester.getSize(find.byKey(PlatformShell.sidebarKey)).width,
+      PlatformShell.expandedWidth,
+    );
+
+    final sidebar = find.byKey(PlatformShell.sidebarKey);
+    final undisclosed = <String>[];
+    for (final element in find.descendant(of: sidebar, matching: find.byType(RichText)).evaluate()) {
+      final paragraph = element.renderObject;
+      if (paragraph is! RenderParagraph) continue;
+      if (!_clips(paragraph)) continue;
+      if (_tooltipAbove(element) == paragraph.text.toPlainText()) continue;
+      undisclosed.add('"${paragraph.text.toPlainText()}"');
+    }
+    expect(undisclosed, isEmpty, reason: 'clipped with no way to read it: $undisclosed');
+
+    // Disclosed is the floor, not the goal: the longest labels are readable in
+    // full at this scale, which is what one line could not do.
+    for (final destination in _longDestinations) {
+      expect(
+        _labelParagraph(tester, destination.label).didExceedMaxLines,
+        isFalse,
+        reason: '"${destination.label}" still ellipsizes at 200% text',
+      );
+    }
   });
 
   testWidgets('below the breakpoint the sidebar collapses to an icon rail with tooltips',
