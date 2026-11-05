@@ -27,6 +27,14 @@
 /// Its spacing is reserved by nothing — the line arrives and leaves with the
 /// term, the same way `AppSearchField`'s own suggestion box does.
 ///
+/// **The helper is a caption under the box, not a line inside it.** A
+/// `helperText` given to the input's own decoration grows the bordered control
+/// to fit it, which made this field taller than the dropdown it sits beside in
+/// every filter row that names what to type (12 of them). It renders below the
+/// box instead — disclosed twice over, since the `Tooltip` above the field
+/// carries the label and the helper together for a reader whose box is too
+/// narrow for either. `AppFilterRow` is the row that relies on this.
+///
 /// **It is controlled, the same shape `AppDateField`/`AppSearchField` are.** The
 /// term lives in the caller's state and is passed down as [term]; this widget
 /// seeds its own controller from it, re-seeds only when the caller's term has
@@ -100,6 +108,9 @@ class AppFilterField extends StatefulWidget {
   /// were given.
   static ValueKey<String> countKey(String name) => ValueKey<String>('app-filter-field-$name-count');
 
+  /// The helper caption's `Key`, present only when [helperText] was given.
+  static ValueKey<String> helperKey(String name) => ValueKey<String>('app-filter-field-$name-helper');
+
   /// The count line's text, in one place so every call site says it the same
   /// way — and so a test can assert it without hard-coding the wording.
   static String countLabel(int shown, int total) => 'Showing $shown of $total';
@@ -139,22 +150,17 @@ class _AppFilterFieldState extends State<AppFilterField> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // **The label and the helper are disclosed, not silently ellipsized.**
-        // Material draws both as single-line `Text`s that ellipsize when the
-        // box is narrower than the words; a filter's label is how the reader
-        // knows what the box narrows, so a label cut off is a question the
-        // reader cannot answer. At 200% text in a 700px window "By summary,
-        // Work order number or Asset." no longer fits, and no width would help:
-        // the box is already the page's own width.
-        //
-        // A `Tooltip` around the field rather than a widget in the decoration's
-        // `label` slot, deliberately: `labelText` renders inside
+        // **The label is disclosed, not silently ellipsized.** Material draws a
+        // label as a single-line `Text` that ellipsizes when the box is narrower
+        // than the words, and a filter's label is how the reader knows what the
+        // box narrows. A `Tooltip` around the whole field rather than a widget in
+        // the decoration's `label` slot, deliberately: `labelText` renders inside
         // `InputDecorator`'s own label animation, and passing a widget there
         // re-lays the whole control out (measured: a 908x166 repaint of the
         // filter row in `goldens/work_orders_wide.png`). The tooltip costs no
-        // pixel — hover, long press and the screen reader get the same words
-        // the field already shows — and it is the same disclosure
-        // `DisclosingText` gives a clipped table cell. Found by
+        // pixel — hover, long press and the screen reader get the same words the
+        // field already shows — and it is the same disclosure `DisclosingText`
+        // gives a clipped table cell. Found by
         // `test/palette_text_scale_sweep_test.dart`.
         Tooltip(
           message: widget.helperText == null
@@ -168,7 +174,6 @@ class _AppFilterFieldState extends State<AppFilterField> {
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               labelText: widget.label,
-              helperText: widget.helperText,
               prefixIcon: const Icon(Icons.search),
               // The same pill as `AppSearchField`, so the platform's two search
               // controls read as the same kind of thing.
@@ -186,6 +191,21 @@ class _AppFilterFieldState extends State<AppFilterField> {
             ),
           ),
         ),
+        // **The helper is a caption under the box, not a line inside it.** In
+        // the input's own `helperText` slot Material grows the bordered control
+        // to fit the line, so this widget rendered 20px taller than the dropdown
+        // beside it in the same filter row — the defect `AppFilterRow` exists to
+        // remove. Below the box it is still disclosed (and still in the tooltip
+        // above), and the box is the same height as every other control.
+        if (widget.helperText != null)
+          Padding(
+            padding: const EdgeInsets.only(top: Spacing.xs),
+            child: Text(
+              widget.helperText!,
+              key: AppFilterField.helperKey(widget.name),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
         if (hasTerm && counts)
           Padding(
             padding: const EdgeInsets.only(top: Spacing.xs),

@@ -1115,6 +1115,22 @@ ThemeData _themeFrom(ColorScheme scheme, AppPalette palette) {
   // call site, so every current and future button gets the same ring for
   // free — `work_orders_test.dart`'s own focus test reads these two
   // `ButtonStyle`s back off a pumped `Theme.of(context)` to prove it.
+  // A control's height floor, named once. Material's own button minimum is
+  // 40, a few pixels under this Platform's [AppTouchTarget.min], so without
+  // this every call site that wanted a button at the floor wrote its own
+  // `OutlinedButton.styleFrom(minimumSize: Size(44, 44))` — twenty-odd
+  // copies of one number, and a row where the copy was forgotten. Set here,
+  // the floor is a property of the theme, and a Screen that needs a taller
+  // button states that for its own reason.
+  //
+  // The input floor below is the same number for the same reason. It is a
+  // **floor**, not the height a row lands on: a labelled outline field is
+  // `AppFilterRow.controlHeight` tall (see `widgets/app_filter_row.dart`),
+  // because Material reserves a line for the floating label on top of the tap
+  // target.
+  const oneControl = WidgetStatePropertyAll<Size>(
+    Size(AppTouchTarget.min, AppTouchTarget.min),
+  );
   final focusedOverlay = WidgetStateProperty.resolveWith<Color?>(
     (states) =>
         states.contains(WidgetState.focused) ? palette.focusRing.withValues(alpha: 0.16) : null,
@@ -1143,12 +1159,16 @@ ThemeData _themeFrom(ColorScheme scheme, AppPalette palette) {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: palette.card,
+      constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: ButtonStyle(overlayColor: focusedOverlay, minimumSize: oneControl),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: ButtonStyle(overlayColor: focusedOverlay, side: focusedSide),
+      style: ButtonStyle(overlayColor: focusedOverlay, side: focusedSide, minimumSize: oneControl),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: ButtonStyle(overlayColor: focusedOverlay),
+      style: ButtonStyle(overlayColor: focusedOverlay, minimumSize: oneControl),
     ),
     iconButtonTheme: IconButtonThemeData(
       style: ButtonStyle(overlayColor: focusedOverlay, side: focusedSide),

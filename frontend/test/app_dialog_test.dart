@@ -353,10 +353,12 @@ void main() {
   // `_ActionButton._minimum` deleted: `flutter_test` mounts on Android, where a
   // Material button's `_InputPadding` already makes its target 48 tall, so they
   // measure the framework and not `AppDialog`. `shrinkWrap` lifts that padding,
-  // leaving `_minimum` as the only thing that can hold 44. The control at the end
-  // is the dialog's own invoker: a bare `FilledButton` in the same app under the
-  // same theme, which no primitive wrapped, and it measures 40.
-  testWidgets('under shrinkWrap the 44 is the action\'s own floor, not the framework\'s input padding',
+  // leaving two things that can hold 44: the theme's own `minimumSize` — one
+  // floor for every button in the app, see `theme.dart` — and the dialog's own
+  // `_minimum`. The control at the end is the dialog's own invoker: a bare
+  // `FilledButton` in the same app under the same theme, which no primitive
+  // wrapped, and it sits exactly at the theme's floor.
+  testWidgets('under shrinkWrap every action keeps its 44 and nothing wraps it in padding',
       (tester) async {
     const shrinkWrap = MaterialTapTargetSize.shrinkWrap;
     final calls = _Calls();
@@ -391,13 +393,13 @@ void main() {
           reason: 'the $id action draws its own 44px, not Material padding');
     }
     // Control: a bare `FilledButton` in the same app under the same theme that no
-    // primitive wrapped. Were it still 48 the theme would not be in force.
+    // primitive wrapped. Were the theme not in force it would still be 48.
     expect(
       tester.getSize(find.byKey(_invokerKey)).height,
-      lessThan(AppTouchTarget.min),
-      reason: 'a bare FilledButton in the same shrinkWrap theme measures 40, so the '
-          'framework\'s input padding is lifted and the 44 above can only be the action\'s '
-          'own minimumSize',
+      AppTouchTarget.min,
+      reason: 'a bare FilledButton in the same shrinkWrap theme sits at the theme\'s own '
+          'AppTouchTarget.min floor (40 before that floor existed), so the framework\'s input '
+          'padding really is lifted and the 44 above is a minimumSize, not a default',
     );
   });
 

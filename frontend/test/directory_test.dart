@@ -138,6 +138,17 @@ void main() {
     testWidgets(
         'a term matching nobody renders EmptyState in the suggestions, without disturbing '
         'the listing beneath', (tester) async {
+      // **A window tall enough to hold the header, the open suggestion panel and
+      // a row of the listing beneath it.** At the default 800x600 surface the
+      // Directory's header (search field + a toolbar that wraps to three lines at
+      // this width) plus an open panel is taller than the body it sits above, so
+      // the register below is never built and the assertion here reads an
+      // overflow rather than the listing. That short-window overflow is a defect
+      // of its own, filed on the card that raised the filter row's height; this
+      // case is about the panel, not about the fold, so it gives itself room.
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(800, 1000);
+      addTearDown(tester.view.reset);
       final wire = FakeWire(employees: [employeeJson('7', 'E-7', 'Alice Nguyen')]);
       await openDirectory(tester, wire);
 

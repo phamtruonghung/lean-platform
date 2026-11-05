@@ -403,8 +403,6 @@ class _Header extends StatelessWidget {
                           onPressed: () => _openOrgUnitFilter(context, loaded.siteId!),
                           icon: const Icon(Icons.filter_alt_outlined),
                           label: const Text('Narrow to an Org Unit'),
-                          style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min)),
                         )
                       else
                         // A `Chip` plus its own adjacent `IconButton`, not

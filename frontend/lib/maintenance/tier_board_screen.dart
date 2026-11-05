@@ -25,6 +25,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
+import '../widgets/app_filter_row.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
 import '../widgets/app_table.dart';
@@ -143,10 +144,7 @@ class _Controls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bloc = context.read<TierBoardBloc>();
-    return Wrap(
-      spacing: Spacing.sm,
-      runSpacing: Spacing.sm,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return AppFilterRow(
       children: [
         if (state.sites.length > 1)
           SizedBox(
@@ -201,7 +199,6 @@ class _Controls extends StatelessWidget {
               : () => TierBoardOrgUnitFilterDialog.open(context),
           icon: const Icon(Icons.account_tree_outlined, size: 18),
           label: Text(state.orgUnitFilterName ?? 'All Org Units'),
-          style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
         ),
       ],
     );
