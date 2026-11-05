@@ -673,14 +673,74 @@ void main() {
       });
     }
 
+    // The footer is a row of the same table, so it must be one line like every
+    // row above it: the quantity column is cut to the footer's own figure (the
+    // window's total is the longest number in its column) and not to the days'
+    // alone, or the total outgrows its slot and wraps (issue #424, S7 residue).
+    for (final width in _widths) {
+      testWidgets('at ${width.toInt()}px the totals row is one line, like the rows it sums',
+          (tester) async {
+        await _pumpAt(tester, location: _workedHours, width: width);
+        expect(tester.takeException(), isNull, reason: 'worked hours at $width');
+
+        final totals = find.byKey(WorkedHoursScreen.totalsKey);
+        expect(totals, findsOneWidget, reason: 'worked hours at $width: no totals row');
+        final totalsRow = find.descendant(of: totals, matching: find.byType(AppTableRow));
+        expect(totalsRow, findsOneWidget,
+            reason: 'worked hours at $width: the totals are not one row');
+        expect(
+          tester.getSize(totalsRow).height,
+          AppTableRow.height,
+          reason: 'worked hours at $width: the totals row grew a second line',
+        );
+
+        // The band names the columns, so the foot shows the bare figure; one
+        // line of `bodyMedium` is 20. Two lines would be 40 and a 48px row.
+        final worked = find.text('16h 30m');
+        expect(worked, findsOneWidget, reason: 'worked hours at $width: no worked total');
+        expect(
+          tester.getSize(worked).height,
+          20,
+          reason: 'worked hours at $width: the worked total wrapped onto a second line',
+        );
+        final overtime = find.text('1h 0m');
+        expect(overtime, findsOneWidget, reason: 'worked hours at $width: no overtime total');
+        expect(
+          tester.getSize(overtime).height,
+          20,
+          reason: 'worked hours at $width: the overtime total wrapped onto a second line',
+        );
+      });
+    }
+
     testWidgets('at twice the text the table still holds, at 700 and at 1280', (tester) async {
       for (final width in _widths) {
         await _pumpAt(tester, location: _workedHours, width: width, textScale: 2, height: 2400);
         expect(tester.takeException(), isNull, reason: 'worked hours at $width x2');
         expect(find.byKey(WorkedHoursScreen.totalsKey), findsOneWidget,
             reason: 'worked hours at $width x2: the totals are gone');
-        expect(find.text('1h 0m overtime'), findsOneWidget,
-            reason: 'worked hours at $width x2: the overtime total is gone');
+        final totals = find.byKey(WorkedHoursScreen.totalsKey);
+        final totalsRow = find.descendant(of: totals, matching: find.byType(AppTableRow));
+        expect(totalsRow, findsOneWidget,
+            reason: 'worked hours at $width x2: the totals are not one row');
+        // One 40px line at twice the text, plus the row's own 8px of vertical
+        // padding: 48. A wrapped foot would be 80 and an 88px row — taller than
+        // every row it sums (issue #424, S7 residue).
+        expect(
+          tester.getSize(totalsRow).height,
+          48,
+          reason: 'worked hours at $width x2: the totals row is taller than one line',
+        );
+        expect(
+          tester.getSize(find.text('16h 30m')).height,
+          40,
+          reason: 'worked hours at $width x2: the worked total wrapped onto a second line',
+        );
+        expect(
+          tester.getSize(find.text('1h 0m')).height,
+          40,
+          reason: 'worked hours at $width x2: the overtime total wrapped onto a second line',
+        );
       }
     });
 

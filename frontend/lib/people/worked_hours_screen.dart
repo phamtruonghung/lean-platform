@@ -37,7 +37,10 @@
 /// as another card to evaluate. `—` is what a day with no overtime shows
 /// (section 13: an absent value is never a blank cell). The window's two bounds
 /// moved into `AppPageHeader.below`, so the title, the window and the table's
-/// own left edge are one line.
+/// own left edge are one line. The foot's figures carry no word of their own —
+/// `16h 30m`, not `16h 30m worked` — because the band above already names the
+/// column, and a word wider than every day cell was what wrapped the totals
+/// onto a second line (issue #424, S7 residue; see `_columnWidth`).
 library;
 
 import 'package:flutter/material.dart';
@@ -101,25 +104,53 @@ class _WorkedHoursBody extends StatelessWidget {
 
   final String employeeId;
 
+  /// The cell strings, built once so the column is cut to exactly what the
+  /// cells render: a width measured from one set of strings and spent drawing
+  /// another is how the footer wrapped (see [_columnWidth]).
+  ///
+  /// **The footer shows the bare figure, not `… worked` / `… overtime`**
+  /// (issue #424, S7 residue). The band above already names the column, and the
+  /// suffix made the footer's string wider than every day cell it sums — wider
+  /// than its own column, which the days sized — so both totals wrapped onto a
+  /// second line at every window width and every text scale. The words were the
+  /// only thing wider: the figure alone is measured with the days below.
+  static String _dayWorked(WorkedHoursDay day) => formatWorkedMinutes(day.workedMinutes);
+
+  static String _dayOvertime(WorkedHoursDay day) =>
+      '(+${formatWorkedMinutes(day.overtimeMinutes)} OT)';
+
+  static String _totalWorked(WorkedHoursTotals totals) =>
+      formatWorkedMinutes(totals.workedMinutes);
+
+  static String _totalOvertime(WorkedHoursTotals totals) =>
+      formatWorkedMinutes(totals.overtimeMinutes);
+
   /// The quantity columns are as wide as their longest figure at the reader's
   /// own text size, so a duration never wraps and the column never grows a
   /// second line the row above it does not have.
-  static double _columnWidth(BuildContext context, List<WorkedHoursDay> days, double bandWidth) {
-    final style = AppTableRow.numberStyle(context);
+  ///
+  /// **The footer's figures are measured in the same pass as the days'**
+  /// (issue #424, S7 residue). Sizing the column from the day cells alone is a
+  /// column cut to yesterday's data: the window's total is the longest number
+  /// in its own column (`16h 30m` over days of `7h 30m` and `9h 0m`), so the
+  /// foot was drawn wider than the slot it inherited and wrapped. Each string is
+  /// measured in the style it is actually rendered in — the footer is heavier
+  /// ([_totalFigure]) and so is wider at the same text — and the column is cut
+  /// to the widest thing on screen, footer included.
+  static double _columnWidth(
+    BuildContext context,
+    List<(String, TextStyle?)> figures,
+    double bandWidth,
+  ) {
     var widest = bandWidth;
-    for (final day in days) {
-      for (final text in [
-        formatWorkedMinutes(day.workedMinutes),
-        '(+${formatWorkedMinutes(day.overtimeMinutes)} OT)',
-      ]) {
-        final painter = TextPainter(
-          text: TextSpan(text: text, style: style),
-          textDirection: Directionality.of(context),
-          textScaler: MediaQuery.textScalerOf(context),
-          maxLines: 1,
-        )..layout();
-        if (painter.width > widest) widest = painter.width;
-      }
+    for (final (text, style) in figures) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      if (painter.width > widest) widest = painter.width;
     }
     return widest + Spacing.sm;
   }
@@ -145,17 +176,37 @@ class _WorkedHoursBody extends StatelessWidget {
     final palette = AppColors.of(context);
     final state = context.watch<WorkedHoursBloc>().state;
     final bloc = context.read<WorkedHoursBloc>();
+    final totals = state.totals;
 
+    // The exact strings the cells below render, in the style they render in:
+    // the columns are cut to this list's widest entry (footer included).
+    final figureStyle = AppTableRow.numberStyle(context);
+    final totalStyle = _totalFigure(context);
     final columns = [
       const AppTableColumn('Day', flex: 3),
       AppTableColumn(
         'Worked',
-        width: _columnWidth(context, state.days, _bandWidth(context, 'Worked')),
+        width: _columnWidth(
+          context,
+          [
+            for (final day in state.days) (_dayWorked(day), figureStyle),
+            if (totals != null) (_totalWorked(totals), totalStyle),
+          ],
+          _bandWidth(context, 'Worked'),
+        ),
         align: AppColumnAlign.end,
       ),
       AppTableColumn(
         'Overtime',
-        width: _columnWidth(context, state.days, _bandWidth(context, 'Overtime')),
+        width: _columnWidth(
+          context,
+          [
+            for (final day in state.days) (_dayOvertime(day), figureStyle),
+            if (totals != null && totals.overtimeMinutes > 0)
+              (_totalOvertime(totals), totalStyle),
+          ],
+          _bandWidth(context, 'Overtime'),
+        ),
         align: AppColumnAlign.end,
       ),
     ];
@@ -236,13 +287,13 @@ class _WorkedHoursBody extends StatelessWidget {
                           cells: [
                             Text(day.date, style: AppTypography.dense(context)),
                             Text(
-                              formatWorkedMinutes(day.workedMinutes),
+                              _dayWorked(day),
                               key: ValueKey<String>('work-hours-worked-${day.date}'),
                               style: AppTableRow.numberStyle(context),
                             ),
                             day.overtimeMinutes > 0
                                 ? Text(
-                                    '(+${formatWorkedMinutes(day.overtimeMinutes)} OT)',
+                                    _dayOvertime(day),
                                     style: AppTableRow.numberStyle(context)
                                         ?.copyWith(color: palette.textMuted),
                                   )
@@ -267,12 +318,12 @@ class _WorkedHoursBody extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    '${formatWorkedMinutes(state.totals!.workedMinutes)} worked',
+                                    _totalWorked(state.totals!),
                                     style: _totalFigure(context),
                                   ),
                                   state.totals!.overtimeMinutes > 0
                                       ? Text(
-                                          '${formatWorkedMinutes(state.totals!.overtimeMinutes)} overtime',
+                                          _totalOvertime(state.totals!),
                                           style: _totalFigure(context),
                                         )
                                       : Text('—', style: _totalFigure(context)),

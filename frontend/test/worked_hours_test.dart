@@ -36,8 +36,10 @@ void main() {
     // 540+60 overtime pair, so assert the totals card's bottom line is the
     // server's own numbers, not a client re-derivation.
     expect(find.byKey(WorkedHoursScreen.totalsKey), findsOneWidget);
-    expect(find.text('16h 30m worked'), findsOneWidget);
-    expect(find.text('1h 0m overtime'), findsOneWidget);
+    // The foot shows the bare figure — the band above names the column
+    // (`Worked` / `Overtime`) — so the page reads `Totals | 16h 30m | 1h 0m`.
+    expect(find.text('16h 30m'), findsOneWidget);
+    expect(find.text('1h 0m'), findsOneWidget);
     expect(find.text('of 16h 30m scheduled'), findsOneWidget);
     expect(find.byKey(WorkedHoursScreen.emptyKey), findsNothing);
     // The initial read carried no filters.
