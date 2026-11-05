@@ -675,7 +675,17 @@ written only here is a rule nobody can be held to.
   `FocusHighlightMode.traditional`, so a click leaves no ring behind. A
   Destination, a tappable row and the skip control all wear it. The two surfaces
   that already drew their own ring from the same token (`AppStatTile`'s card
-  shape, the KPI catalogue's row) are unchanged and equivalent.
+  shape, the KPI catalogue's row) are unchanged and equivalent. The
+  `DecoratedBox` is always in the tree — an empty `BoxDecoration` when nothing is
+  ringed — because a slot that appears only while the ring is drawn remounts the
+  control it marks, and with it the `FocusNode` the keyboard has just landed on
+  (measured on the register's rows: one `Tab` onto a row put focus there and took
+  it straight back to the control before it).
+- **The Shell's run is walked at three widths, and they are three different
+  shells.** 1280 (sidebar), 700 — the breakpoint itself, which is the *expanded*
+  sidebar, because the collapse is `< railBreakpoint` — and 640, the 64px rail,
+  where a Destination draws its icon alone and carries its label as a `Tooltip`.
+  A case that names the rail without going below 700 measures the sidebar.
 - **`Esc` is the dialog's.** `AppDialog` maps it to `DismissIntent` and runs the
   dialog's own dismiss action — not a blind pop — and with that action disabled
   it does nothing, exactly like the button (§11).

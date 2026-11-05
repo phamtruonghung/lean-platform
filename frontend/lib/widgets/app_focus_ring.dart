@@ -89,8 +89,19 @@ class _AppFocusRingState extends State<AppFocusRing> {
       onFocusChange: (focused) {
         if (focused != _focused) setState(() => _focused = focused);
       },
-      child: Container(
-        foregroundDecoration: ringed
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        // **Always a decoration, never null.** A `Container` materialises its
+        // foreground `DecoratedBox` only when the decoration is non-null, so
+        // swapping `null` for the ring changes the widget at this slot from the
+        // control to a `DecoratedBox` around it — which deactivates the control's
+        // own element and, with it, the `FocusNode` the keyboard just landed on
+        // (measured on the register's rows: the row node was disposed in the
+        // same frame it gained focus, and `FocusManager` restored focus from its
+        // history to the control before it). An empty `BoxDecoration` paints
+        // nothing and keeps the slot's widget type stable, so gaining and losing
+        // the ring never remounts the control inside it.
+        decoration: ringed
             ? BoxDecoration(
                 borderRadius: widget.borderRadius,
                 border: Border.all(
@@ -98,7 +109,7 @@ class _AppFocusRingState extends State<AppFocusRing> {
                   width: AppFocusRing.ringWidth,
                 ),
               )
-            : null,
+            : const BoxDecoration(),
         child: widget.child,
       ),
     );
