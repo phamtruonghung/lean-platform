@@ -19,15 +19,19 @@
 /// read from the box a `LayoutBuilder` hands the list and scaled by the reader's
 /// text size (§10).
 ///
-/// **The role and the Site are not on the row, because they do not exist yet.**
+/// **The role and the Site are not on the row: the role a pending Account
+/// holds is a signup default, and no Grant exists for it yet.**
 /// `GET /api/people/accounts/pending` (`service.js`'s `listPendingAccounts`)
-/// sends an id, an email address, the instant the Account was created and the
-/// Employee it suggests — a pending Account holds no role and no Grant until the
-/// admission that grants them, so a chip claiming one would be this client
-/// inventing a fact about a record it has not been told. What the row *can* say
-/// it says as chips, and what it cannot say it does not guess at: the role and
-/// the Org Units are chosen in `AdmissionDialog`, which is where a reader first
-/// has them to look at.
+/// sends the Account row's own `role`, along with its id, email address, the
+/// instant it was created and the Employee it suggests — and that `role` is
+/// the signup default, `operator`, or `admin` only for the bootstrap first
+/// Account, not a requested role. `PendingAccount` does not parse it, and
+/// printing that default as if it were the request would misrepresent the
+/// request, so a row carries who is waiting, the Employee the request
+/// suggests (as a chip), how long it has waited and the two decisions that
+/// end it. A pending Account holds no Grant, so there is no Site to name; the
+/// role and the Org Units are chosen in `AdmissionDialog`, which is where a
+/// reader first has them to look at.
 library;
 
 import 'package:flutter/material.dart';
