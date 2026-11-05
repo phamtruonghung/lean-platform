@@ -675,7 +675,10 @@ written only here is a rule nobody can be held to.
   `FocusHighlightMode.traditional`, so a click leaves no ring behind. A
   Destination, a tappable row and the skip control all wear it. The two surfaces
   that already drew their own ring from the same token (`AppStatTile`'s card
-  shape, the KPI catalogue's row) are unchanged and equivalent. The
+  shape, the KPI catalogue's row) are unchanged and equivalent: each keeps the
+  widget at its ring slot the same type — a `Card` whose `shape` swaps, a
+  `DecoratedBox` that is there whether or not it is ringed — so neither remounts
+  the control it marks. The
   `DecoratedBox` is always in the tree — an empty `BoxDecoration` when nothing is
   ringed — because a slot that appears only while the ring is drawn remounts the
   control it marks, and with it the `FocusNode` the keyboard has just landed on

@@ -20,6 +20,7 @@ import 'package:lean_platform/widgets/app_dialog.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
 import 'package:lean_platform/widgets/app_table.dart';
 import 'package:lean_platform/widgets/empty_state.dart';
+import 'focus_order.dart';
 import 'harness.dart';
 
 const String _outside = "Outside the caller's granted Org Units";
@@ -196,6 +197,41 @@ void main() {
     final targetReads = wire.kpiReads.where((uri) => uri.path == '/api/kpi/targets').toList();
     expect(targetReads, hasLength(1));
     expect(targetReads.single.queryParameters, {'site_id': '1', 'kpi_id': '3'});
+  });
+
+  testWidgets('one Tab moves the catalogue from one row to the next, and it stays', (tester) async {
+    final wire = _wire(kpis: [_oee, _scrap]);
+    await _open(tester, wire, Routes.kpi);
+
+    final walker = FocusWalker(tester);
+    await walker.enter(find.byKey(KpiCatalogueScreen.rowKey(1)));
+    final before = FocusManager.instance.primaryFocus;
+    expect(walker.now.key, KpiCatalogueScreen.rowKey(1));
+
+    // `forward` fails the press itself when `primaryFocus` is the same
+    // `FocusNode` before and after it: that is a dead stop, not a stop. This
+    // row used to do exactly that — the ring's `foregroundDecoration` slot
+    // appeared only while it was drawn, so gaining it remounted the `InkWell`
+    // and `FocusManager` handed focus back to the row the keyboard had left.
+    final stops = await walker.forward();
+    final after = FocusManager.instance.primaryFocus;
+    expect(
+      stops.single.key,
+      KpiCatalogueScreen.rowKey(2),
+      reason: 'node ${before.hashCode} -> ${after.hashCode}: one Tab from '
+          'kpi-catalogue-row-1 must land on kpi-catalogue-row-2',
+    );
+    expect(walker.ringIsVisible, isTrue,
+        reason: 'the row that holds focus wears the 2px focusRing foreground ring');
+    // And it stays there: gaining the ring must not remount the row.
+    await tester.pumpAndSettle();
+    expect(
+      walker.now.key,
+      KpiCatalogueScreen.rowKey(2),
+      reason: 'node ${before.hashCode} -> ${after.hashCode} -> '
+          '${FocusManager.instance.primaryFocus.hashCode}: focus was handed back '
+          'to the row before it when the ring was drawn',
+    );
   });
 
   testWidgets('a KPI with no Target in any grain says none is in force', (tester) async {

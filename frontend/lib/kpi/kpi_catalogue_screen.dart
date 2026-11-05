@@ -293,12 +293,24 @@ class _KpiRowTileState extends State<_KpiRowTile> {
         _focused && FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
     final measure = kpi.valueMeasure;
 
-    return Container(
+    return DecoratedBox(
       // A foreground decoration paints the ring over the row's own bounds and
       // takes no part in layout: focus moves no pixel and no column resizes.
-      foregroundDecoration: showRing
+      //
+      // **Always a decoration, never null** — the same slot rule `AppFocusRing`
+      // records. A `Container` materialises its foreground `DecoratedBox` only
+      // when the decoration is non-null, so swapping `null` for the ring changes
+      // the widget at this slot from the control to a `DecoratedBox` around it,
+      // which deactivates the `InkWell`'s element — and with it the `FocusNode`
+      // the keyboard has just landed on. Measured on this catalogue: one `Tab`
+      // onto `kpi-catalogue-row-1` put focus on `kpi-catalogue-row-2` and then
+      // took it straight back to row 1, a dead press. An empty `BoxDecoration`
+      // paints nothing and keeps the slot's widget type stable, so gaining and
+      // losing the ring never remounts the row.
+      position: DecorationPosition.foreground,
+      decoration: showRing
           ? BoxDecoration(border: Border.all(color: palette.focusRing, width: 2))
-          : null,
+          : const BoxDecoration(),
       child: InkWell(
         key: KpiCatalogueScreen.rowKey(kpi.kpiId),
         onTap: () => context.go(Routes.kpiTargets(kpi.kpiId, siteId: widget.siteId)),
