@@ -29,6 +29,16 @@
 /// rim, so a row's rule and its card's edge are the same weight in the same
 /// family — and no `Color` literal is written here, which
 /// `theme_skeleton_test.dart` enforces across `lib/`.
+///
+/// **It clips its rows to the card's own shape (issue #461).** The rim is a
+/// 14px round rectangle (`AppRadius.card`, set once in `theme.dart`'s
+/// `cardTheme`), and a `Card` left at `Material`'s `Clip.none` default paints
+/// its children over the rim's corners. That was invisible while every row was
+/// padding and text; #395 then gave `/kpi`'s catalogue a filled
+/// `tableHeaderFill` band as this card's first row, and the band's square top
+/// corners painted two nubs of fill outside the card's rounded ones. Clipping
+/// here, on the widget that owns the shape, fixes it for any catalogue that
+/// composes a filled first row — not just for the Screen that does so today.
 library;
 
 import 'package:flutter/material.dart';
@@ -46,6 +56,12 @@ class AppListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: EdgeInsets.zero,
+      // Clip to the card's own shape: a row that fills its box (the KPI
+      // catalogue's band, #461) would otherwise paint square over the rim's
+      // rounded corners. `Clip.antiAlias` is the same clip the app's dialogs
+      // use (`app_dialog.dart`), and the shape is the one the `cardTheme`
+      // already draws, so nothing else about a row moves.
+      clipBehavior: Clip.antiAlias,
       // Stretch, not the `Column` default of `center` (issue #193). A row that
       // sizes to its own content — a `Wrap` of a name and its actions, say —
       // shrink-wraps inside a centre-aligned `Column`, and the whole row then

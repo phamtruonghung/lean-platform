@@ -117,6 +117,31 @@ sidebar's footer. For `shell_rail.png` and `work_orders_narrow.png` it is
 taller (the rail draws the menu, the switch and sign-out in a column). No box
 reaches outside the footer.
 
+**The catalogue's top edge (#461, added in this card).** `AppListCard` is a
+shared layout primitive (#189), and since #395 `/kpi`'s catalogue puts a filled
+`MatrixHeaderRow` band in it as the card's *first* row — the one place in the
+app where a row's fill is itself the card's top edge. That is exactly the case
+a widget-tree assertion cannot see: the band is the card's full width whether
+or not anything is clipped to the card's 14px rim, so only pixels tell a card
+that clips its rows from one that does not. `kpi_catalogue_band_wide_dark.png`
+and `kpi_catalogue_band_narrow_dark.png` therefore pin the card-and-band
+composite at the width the catalogue gives it in a 1280px window (`868`, the
+900px page less its 16px gutters) and a 700px one (`668`), in the dark palette,
+where the unclipped fill showed plainest (`#334155` against the `#0F172A`
+canvas). They are mounted like `app_stat_tile_test.dart` — a small `MaterialApp`
+with `buildAppTheme(Brightness.dark)` and no `FakeWire` — and they do not reopen
+the "no golden per Screen" scope above: the subject is the primitive as `/kpi`
+composes it, not the Screen.
+
+The fix also **re-recorded two existing goldens**, `sweep_matrix_light.png` and
+`sweep_matrix_dark.png`: the sweep's `matrix` archetype *is* `KpiCatalogueScreen`
+at twice the text in a 700px window, so its card carries the same band. Nothing
+moved — the measured difference (`convert a b -compose difference -composite
+-colorspace gray -threshold 5% …` and the same without the threshold) is 168
+pixels in the dark render and 145 in the light one, every one of them inside
+four 20×20 boxes around that card's corners (`276..684 × 453..821` in the
+image): the four corner arcs the fill used to paint over, and no other pixel.
+
 ## Fonts: what these goldens can and cannot see
 
 By default, `flutter_test` substitutes a solid placeholder box for every

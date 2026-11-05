@@ -35,7 +35,11 @@ at the frame's left edge plus the page's own inset (16, or 24 on Home).
 
 `AppListCard` (`lib/widgets/app_list_card.dart`) is the card a catalogue's rows
 sit in: a hairline between rows, none around the outside, and **no wrapper around
-each row**, so every row keeps its own `Key` where a test can find it.
+each row**, so every row keeps its own `Key` where a test can find it. It also
+**clips its rows to the card's own shape** (`Clip.antiAlias`): a row that fills
+its box — the KPI catalogue's `tableHeaderFill` band, #461 — would otherwise
+paint square over the card's 14px rim, so a filled first row now follows the
+rounded corners exactly as the rim does.
 
 A card that is not a catalogue — a detail Screen's Tasks or Labour section — is a
 `Card` whose `Column` states its `crossAxisAlignment`. `stretch` is the usual
