@@ -169,13 +169,15 @@ void main() {
 
     // Walked from the register's own first control, in the order a keyboard
     // meets it: the header's controls and the filter, then row 101 — the row
-    // before the two controls inside it.
+    // before the two controls inside it. `forward` fails on a press that leaves
+    // `primaryFocus` on the same `FocusNode`, so each of these four is a live
+    // press on a different control: the filter field appears once because the
+    // keyboard leaves it once.
     await walker.enter(find.byKey(WorkOrdersScreen.raiseKey));
-    final head = (await walker.forward(5)).map((stop) => stop.key).toList();
+    final head = (await walker.forward(4)).map((stop) => stop.key).toList();
     expect(head, [
       WorkOrdersScreen.filterKey,
       WorkOrdersScreen.showHistoryKey,
-      AppFilterField.fieldKey('work-orders-filter'),
       AppFilterField.fieldKey('work-orders-filter'),
       WorkOrdersScreen.detailsKey('101'),
     ]);
@@ -422,9 +424,16 @@ void main() {
     expect(announcement.properties.selected, isTrue);
   });
 
-  testWidgets('the Shell at 700px: the rail is one run too', (tester) async {
+  testWidgets('the Shell at the 700px breakpoint: the expanded sidebar is one run', (tester) async {
+    // Exactly the breakpoint, which is the *expanded* sidebar (`< railBreakpoint`
+    // collapses, so 700 does not): the narrowest window that still draws the
+    // 260px sidebar and its labels. The rail below it is the next case.
     await _pumpApp(tester, at: '/work-orders', size: const Size(700, 1000));
     final walker = FocusWalker(tester);
+
+    final sidebar = find.byKey(PlatformShell.sidebarKey);
+    expect(tester.getSize(sidebar).width, PlatformShell.expandedWidth,
+        reason: '700 is not below the breakpoint: the sidebar, not the rail');
 
     final skip = find.byKey(PlatformShell.skipToContentKey);
     expect(tester.getSize(skip).height, greaterThanOrEqualTo(AppTouchTarget.min),
@@ -443,6 +452,56 @@ void main() {
     expect(destinations.toSet().length, destinations.length);
     expect(chrome.length, greaterThan(destinations.length));
     expect(walker.now.key, WorkOrdersScreen.raiseKey);
+  });
+
+  testWidgets('the Shell below the 700px breakpoint: the rail is one run too', (tester) async {
+    // 640 is under `railBreakpoint`, so every Destination is its icon alone and
+    // its label comes back as a `Tooltip` — the surface the 700px case above
+    // does *not* walk, whatever its old name said.
+    await _pumpApp(tester, at: '/work-orders', size: const Size(640, 1000));
+    final walker = FocusWalker(tester);
+
+    final sidebar = find.byKey(PlatformShell.sidebarKey);
+    expect(tester.getSize(sidebar).width, PlatformShell.collapsedWidth,
+        reason: 'below the breakpoint the Shell draws the 64px rail');
+
+    // The rail's Destination is its icon; the label is the tooltip's job.
+    final home = find.byKey(_homeDestinationKey);
+    expect(find.descendant(of: home, matching: find.byType(Text)), findsNothing,
+        reason: 'on the rail a Destination draws no label at all');
+    final homeTooltip = tester.widget<Tooltip>(
+      find.descendant(of: home, matching: find.byType(Tooltip)).first,
+    );
+    expect(homeTooltip.message, 'Home',
+        reason: 'the label the rail drops is still announced, by the tooltip');
+
+    final skip = find.byKey(PlatformShell.skipToContentKey);
+    expect(tester.getSize(skip).height, greaterThanOrEqualTo(AppTouchTarget.min),
+        reason: 'the skip control keeps its 44px target on the rail too');
+
+    await walker.enter(find.byKey(WorkOrdersScreen.raiseKey));
+    final chrome = await _walkOutOfTheScreen(tester, walker, find.byType(WorkOrdersScreen));
+    expect(chrome.first.key, PlatformShell.skipToContentKey);
+    final destinations = [
+      for (final stop in chrome)
+        if (stop.key is ValueKey<String> &&
+            (stop.key! as ValueKey<String>).value.startsWith('nav-item-'))
+          (stop.key! as ValueKey<String>).value,
+    ];
+    // Every Destination the rail draws is on the run — read off the tree, so a
+    // rail item the walk missed fails here rather than passing quietly.
+    final rendered = {
+      for (final element in find.byWidgetPredicate(_isDestinationKey).evaluate())
+        (element.widget.key! as ValueKey<String>).value,
+    };
+    expect(rendered, isNotEmpty);
+    expect(destinations.toSet(), rendered,
+        reason: 'every Destination on the rail is a stop, none is pointer-only');
+    expect(destinations.toSet().length, destinations.length);
+    expect(chrome.length, greaterThan(destinations.length),
+        reason: 'the account footer follows them on the rail as well');
+    expect(walker.now.key, WorkOrdersScreen.raiseKey,
+        reason: 'the last chrome stop hands over to the Screen first control');
   });
 
   testWidgets('the Shell at twice the text: the run holds', (tester) async {

@@ -77,11 +77,27 @@ class FocusWalker {
   }
 
   /// Presses `Tab` [count] times, returning the stop each press landed on.
+  ///
+  /// **A press that moves nothing is a failed press, not a stop.** The stop's
+  /// `key` is the nearest *named* ancestor, so two different controls can report
+  /// the same key and a dead press between them would read as a repeat and pass
+  /// (measured: the register's filter field was listed twice — once when the
+  /// keyboard landed on it, once when the next press was swallowed and focus
+  /// never left it). Identity, not the key, is what a press changes: every press
+  /// must leave a *different* `FocusNode` primary than the one before it.
   Future<List<FocusStop>> forward([int count = 1]) async {
     final stops = <FocusStop>[];
+    var previous = FocusManager.instance.primaryFocus;
     for (var i = 0; i < count; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
+      final landed = FocusManager.instance.primaryFocus;
+      final moved = landed == null ? previous != null : !identical(landed, previous);
+      expect(moved, isTrue,
+          reason: 'Tab press ${i + 1} of $count did not move focus: '
+              '`primaryFocus` is the same FocusNode before and after the press, '
+              'so the stop it reports (${now.describe()}) is a dead stop');
+      previous = landed;
       stops.add(now);
     }
     return stops;
