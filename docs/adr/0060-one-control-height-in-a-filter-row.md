@@ -107,3 +107,32 @@ Quality registers, the slide show) now use `AppFilterRow` directly.
 - A Screen that cannot use `AppFilterRow` states why on the card rather than
   shipping a local patch; form dialogs (a button under a field, not beside one)
   are deliberately out of this decision.
+
+## Amendment: the dialog case, measured (#477)
+
+That last exclusion stands, and it is now a measurement rather than an
+assumption. Over every file under `frontend/lib/` whose name contains `dialog`
+(115 files; 54 carry a dropdown) **no dialog puts a labelled field beside a
+box-drawn button (`TextButton`, `OutlinedButton`, `FilledButton`,
+`ElevatedButton`) in one `Row` or `Wrap`** — so there is no dialog row with this
+decision's defect, and nothing to adopt. The rows that do mix a control with
+something are `pm_schedule_form_dialog`'s text field beside a dropdown (both
+`InputDecorator` boxes: 56 at 1x, 80 at 2x, level already), `action_form_dialog`'s
+two dropdowns in a `Row`, and `job_plan_form_dialog`'s two text fields beside an
+`IconButton` (an icon is not a bordered control, so it is a different question). A
+scan of the whole of `frontend/lib/` for a labelled field beside one of those four
+buttons outside `AppFilterRow` returns none.
+
+The shape does hold where a dialog would need it, which is the open question the
+split left. `test/app_filter_row_test.dart` measures `AppFilterRow` inside
+`AppDialog` at the `form` width (520), as a sheet at 200% text and as a sheet in
+a 640px box: every control is `controlHeight` (56 / 80) in all three, and the 520
+form is narrower than the row's natural width, so the row wraps there instead of
+a page's width doing the work.
+
+`test/layout_rules_test.dart`'s rule 3 keeps it that way: a `Row`/`Wrap` that
+puts a labelled field beside a button is an `AppFilterRow`, in a dialog as on a
+page, checked over the source so it covers the next row written rather than the
+ones that exist. The 44 in `AppTouchTarget.min` is not that height and never was
+— it is the floor, and a labelled field cannot be squeezed to it past 1.5x text
+(the measurement this decision opened with).
