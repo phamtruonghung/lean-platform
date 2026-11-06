@@ -226,6 +226,23 @@ void main() {
     final backwards = FocusManager.instance.primaryFocus?.context;
     expect(backwards is Element && _isInside(backwards, sidebar), isTrue,
         reason: 'Shift+Tab from the first control of a detail page lands in the Shell');
+
+    // And it is a walk, not one hop: the reverse direction keeps stepping
+    // through the chrome — the palette toggle, the account menu, then a
+    // Destination itself — every stop still inside the sidebar. A Destination
+    // is the control that wears the ring over its own focus node, so this is
+    // the walk that must not die half way: [FocusWalker.backward] fails any
+    // press that leaves the same `FocusNode` primary, the same rule forward()
+    // holds the register's rows to.
+    for (var i = 0; i < 3; i++) {
+      await walker.backward();
+      final stop = FocusManager.instance.primaryFocus?.context;
+      expect(stop is Element && _isInside(stop, sidebar), isTrue,
+          reason: 'the reverse walk stays in the chrome, but ${walker.now.describe()} is not in it');
+    }
+    final last = walker.now.key;
+    expect(last is ValueKey<String> && last.value.startsWith('nav-item-'), isTrue,
+        reason: 'the reverse walk from a detail page reaches a Destination: ${walker.now.describe()}');
   });
 
   testWidgets('a form dialog: focus starts in the field, Enter submits, and Tab cannot leave',
