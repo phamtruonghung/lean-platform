@@ -26,6 +26,26 @@ Future<void> openDirectory(WidgetTester tester, FakeWire wire, {String location 
       initialLocation: location,
     );
 
+/// Scrolls the Directory's page down until the Employee's register row is on
+/// screen, and pumps the frame that builds it.
+///
+/// The page's header scrolls with its register (t_9c6f0b38), so at the default
+/// 800x600 surface — where an open suggestion panel makes the header taller
+/// than the body — the register sits below the fold, and a lazily-built
+/// `SliverList` only builds a row once the page has been scrolled to it. The
+/// page's own [Scrollable] is the first inside its [CustomScrollView]; the
+/// suggestion panel's list is the second, so `.first` is never the panel.
+Future<void> scrollToRow(WidgetTester tester, String employeeId) async {
+  await tester.scrollUntilVisible(
+    find.byKey(DirectoryScreen.rowKey(employeeId)),
+    120,
+    scrollable: find
+        .descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable))
+        .first,
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('the Directory renders the Employees it is given, Departed excluded by default',
       (tester) async {
@@ -138,17 +158,6 @@ void main() {
     testWidgets(
         'a term matching nobody renders EmptyState in the suggestions, without disturbing '
         'the listing beneath', (tester) async {
-      // **A window tall enough to hold the header, the open suggestion panel and
-      // a row of the listing beneath it.** At the default 800x600 surface the
-      // Directory's header (search field + a toolbar that wraps to three lines at
-      // this width) plus an open panel is taller than the body it sits above, so
-      // the register below is never built and the assertion here reads an
-      // overflow rather than the listing. That short-window overflow is a defect
-      // of its own, filed on the card that raised the filter row's height; this
-      // case is about the panel, not about the fold, so it gives itself room.
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 1000);
-      addTearDown(tester.view.reset);
       final wire = FakeWire(employees: [employeeJson('7', 'E-7', 'Alice Nguyen')]);
       await openDirectory(tester, wire);
 
@@ -158,6 +167,7 @@ void main() {
 
       expect(find.byType(PlatformEmptyState), findsOneWidget);
       // The listing beneath is untouched — still every Employee, unfiltered.
+      await scrollToRow(tester, '7');
       expect(find.byKey(DirectoryScreen.rowKey('7')), findsOneWidget);
       expect(find.text('Alice Nguyen'), findsOneWidget);
     });
@@ -168,6 +178,35 @@ void main() {
     // the exact same `enterText` + `receiveAction(TextInputAction.search)` +
     // `pumpAndSettle()` sequence against the very `AppSearchField` this group
     // introduces, so it is not repeated here.
+  });
+
+  testWidgets(
+      'a short window (the default 800x600 surface, a 540x600 body) lays the Directory out '
+      'without overflowing, and the register stays reachable beneath an open suggestion panel',
+      (tester) async {
+    final wire = FakeWire(employees: [employeeJson('7', 'E-7', 'Alice Nguyen')]);
+    await openDirectory(tester, wire);
+
+    await tester.enterText(find.byKey(DirectoryScreen.searchFieldKey), 'zzz');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    // The defect this pins: the page used to be `Column([_Header,
+    // Expanded(register)])`, and at this surface the header alone — with its
+    // wrapped actions, search field, open suggestion panel and a toolbar that
+    // wraps to three lines — is taller than the body it sits in (605px into
+    // 600), so the Column overflowed by 5px and the register was never laid
+    // out. The header now scrolls with the rows instead.
+    expect(tester.takeException(), isNull);
+
+    // Not merely in the tree: the row can be brought fully into view by the
+    // page's own scroll.
+    await scrollToRow(tester, '7');
+    final row = tester.getRect(find.byKey(DirectoryScreen.rowKey('7')));
+    final viewport = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(row.top, greaterThanOrEqualTo(0));
+    expect(row.bottom, lessThanOrEqualTo(viewport));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the Org Unit filter sends orgUnitId, chosen by browsing the tree', (tester) async {
