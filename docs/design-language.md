@@ -1030,6 +1030,23 @@ would not, and a theme that passes in one is how this ships), and why
 `Colors.white` is not used at all. `app_confirm_dialog_test.dart` measures all
 three numbers from the shipped hexes with `test/contrast.dart`.
 
+### A row of controls in the content
+
+A dialog's form is a column: each field on its own line, a button *under* the
+field it submits. No dialog pairs a labelled field with a box-drawn button — 115
+dialog files, none of them such a row (#477). When one does need a field and a
+button on one line — a dropdown and the button that opens its picker — the row is
+`AppFilterRow` (`widgets/app_filter_row.dart`), the same widget a page's filter
+row uses, not a hand-built `Row`: a labelled outline field is 56px at a text
+scale of 1 and 80px at 2, a button beside it is 48 whatever the text size, so a
+bare `Row` is 8px out at 1x and 32px out at 200%. The row gives every child
+`AppFilterRow.controlHeight` as a floor, and it wraps in a dialog's narrower
+column rather than overflowing — measured in `app_filter_row_test.dart` at the
+`form` width (520), as a sheet at 200% text and as a sheet in a 640px box. Rule 3
+of `layout_rules_test.dart` fails a `Row`/`Wrap` that mixes the two anywhere under
+`lib/`, so the next one written is caught; an `IconButton` beside a field is
+outside the rule (an icon is not a bordered control).
+
 ### When a dialog is a sheet
 
 A dialog becomes a **bottom sheet** when either trigger holds:

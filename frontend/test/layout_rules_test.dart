@@ -9,7 +9,7 @@
 /// every colour in `theme.dart` — it has held the palette for dozens of pull
 /// requests precisely because it is a test and not a convention.
 ///
-/// **Two rules, both narrow, each traceable to a bug that shipped.**
+/// **Three rules, all narrow, each traceable to a bug that shipped.**
 ///
 /// 1. **A Screen's page frame is `AppPageFrame`, not a bare `ConstrainedBox`.**
 ///    `Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: X)))`
@@ -29,11 +29,25 @@
 ///    rule is *state it*, not *state `stretch`*: an explicit `start` or `center`
 ///    is a decision somebody made, and the default being the decision is what
 ///    this forbids.
+/// 3. **A `Row`/`Wrap` that puts a labelled field beside a button is an
+///    `AppFilterRow`.** Measured on the pinned SDK: a labelled outline field is
+///    56px at a text scale of 1 and 80px at 2, and a `ButtonStyleButton` beside
+///    it is 48 whatever the text size — the defect the owner reported on
+///    `/actions` ("the drop box is always higher than the others", #472). The
+///    parent card carried the filter row (`AppFilterRow.controlHeight`), and a
+///    dialog's content column has the same shape when it mixes the two: a
+///    `Row(children: [DropdownButtonFormField(...), OutlinedButton(...)])` is
+///    that defect by construction, wherever it is written. The rule is *say the
+///    height once*, not *never mix them*: `AppFilterRow` is a `Wrap` and takes
+///    any children, so a dialog row that needs this uses it too.
+///    An `IconButton` is deliberately outside the rule — an icon is not a
+///    bordered control, and a 48px icon box beside a 56px field is a different
+///    question from a button and a field that must read as one line.
 ///
 /// **What it deliberately does not enforce**, so that it is not deleted in a
 /// month: one shared page *header* (the headers still differ by Screen, a
 /// documented exclusion in #193), vertical rhythm, page widths, where a card of
-/// rows must live, or anything about copy. Only the two shapes above.
+/// rows must live, or anything about copy. Only the three shapes above.
 ///
 /// Dialogs are out of scope for rule 1: a dialog's box is a bounded content
 /// width, not a page — the Screen-versus-dialog distinction `CONTEXT.md` draws.
@@ -96,6 +110,116 @@ List<String> layoutViolations(String path, String source) {
     );
   }
 
+  return violations;
+}
+
+/// Rule 3: a `Row`/`Wrap` that mixes a labelled field with a button. The
+/// negative lookbehind is what keeps `AppFilterRow(` out of it — the widget whose
+/// whole job is the fix.
+final _rowOrWrap = RegExp(r'(?<![\w.])(?:Row|Wrap)\s*\(');
+
+/// The controls that carry a floating label and an outline. Every one of them is
+/// `AppFilterRow.controlHeight` tall (56 at a text scale of 1, 80 at 2), whatever
+/// its own `isDense`. A type argument may sit between the name and the `(`
+/// (`DropdownButtonFormField<String>(`), so it is matched as part of the shape.
+final _labelledField = RegExp(
+  r'\b(TextField|TextFormField|DropdownButtonFormField|AppFilterField|AppDateField|'
+  r'AppDateTimeField|AppSearchField)\s*(?:<[^()<>]*>)?\s*\(',
+);
+
+/// Every button is a `ButtonStyleButton`: 48 tall, whatever the reader's text
+/// size. `IconButton` is deliberately absent — an icon is not a bordered control.
+final _buttons = RegExp(r'\b(OutlinedButton|FilledButton|ElevatedButton|TextButton)\b');
+
+/// [source] with comments and string literals blanked, newlines kept: a `(` or
+/// `)` inside either cannot move a depth scan, and a line read off the result is
+/// still the line in the file.
+String _withoutProse(String source) {
+  final out = StringBuffer();
+  var i = 0;
+  while (i < source.length) {
+    final char = source[i];
+    if (char == '/' && i + 1 < source.length && source[i + 1] == '/') {
+      while (i < source.length && source[i] != '\n') {
+        out.write(' ');
+        i++;
+      }
+      continue;
+    }
+    if (char == '/' && i + 1 < source.length && source[i + 1] == '*') {
+      while (i < source.length &&
+          !(source[i] == '*' && i + 1 < source.length && source[i + 1] == '/')) {
+        out.write(source[i] == '\n' ? '\n' : ' ');
+        i++;
+      }
+      out.write('  ');
+      i = (i + 2).clamp(0, source.length);
+      continue;
+    }
+    if (char == "'" || char == '"') {
+      final triple = i + 2 < source.length && source[i + 1] == char && source[i + 2] == char;
+      final quote = triple ? char * 3 : char;
+      out.write(' ' * quote.length);
+      i += quote.length;
+      while (i < source.length) {
+        if (source.startsWith(quote, i)) {
+          out.write(' ' * quote.length);
+          i += quote.length;
+          break;
+        }
+        if (source[i] == r'\' && i + 1 < source.length) {
+          out.write('  ');
+          i += 2;
+          continue;
+        }
+        out.write(source[i] == '\n' ? '\n' : ' ');
+        i++;
+      }
+      continue;
+    }
+    out.write(char);
+    i++;
+  }
+  return out.toString();
+}
+
+/// The index of the `)` closing the `(` at [open], or the end of the source when
+/// the file is unbalanced — a syntax error is `flutter analyze`'s problem, not
+/// this rule's.
+int _matchingParen(String source, int open) {
+  var depth = 0;
+  for (var i = open; i < source.length; i++) {
+    if (source[i] == '(') depth++;
+    if (source[i] == ')') {
+      depth--;
+      if (depth == 0) return i;
+    }
+  }
+  return source.length;
+}
+
+/// Rule 3's violations in one file, as `line: message` — a *pure* function over
+/// (path, source), so the rule's own logic is testable against deliberately
+/// violating text without planting a violation in the tree.
+List<String> controlRowViolations(String path, String source) {
+  final clean = _withoutProse(source);
+  final violations = <String>[];
+  for (final match in _rowOrWrap.allMatches(clean)) {
+    final open = clean.indexOf('(', match.start);
+    final body = clean.substring(open + 1, _matchingParen(clean, open));
+    final field = _labelledField.firstMatch(body)?.group(1);
+    final button = _buttons.firstMatch(body)?.group(1);
+    if (field == null || button == null) continue;
+    final row = match.group(0)!.replaceAll(RegExp(r'\s*\($'), '');
+    final line = source.substring(0, match.start).split('\n').length;
+    violations.add(
+      '$path:$line: a $row puts a `$field` beside a `$button`. A labelled field is '
+      '`AppFilterRow.controlHeight` tall (56 at 1x text, 80 at 2x) and a button is 48, '
+      'so the box is 8px proud of the button beside it and 32px proud at 200% text. Lay '
+      'the row out in `AppFilterRow` (lib/widgets/app_filter_row.dart), which gives every '
+      'child that height as a floor; never size the button by hand.',
+    );
+  }
   return violations;
 }
 
@@ -213,6 +337,102 @@ void main() {
         ''',
       ),
       isEmpty,
+    );
+  });
+
+  test('no row puts a labelled field beside a button outside AppFilterRow', () {
+    final violations = <String>[
+      for (final file in _libSources())
+        ...controlRowViolations(file.path, file.readAsStringSync()),
+    ];
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
+  // The rule's own logic, against the shape it exists to forbid — so a change
+  // that quietly stops matching fails here instead of passing everything.
+  test('the control-row checker reports the shape it forbids', () {
+    final violations = controlRowViolations(
+      'lib/actions/some_dialog.dart',
+      '''
+      Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              items: const [],
+              onChanged: (_) {},
+            ),
+          ),
+          OutlinedButton(onPressed: () {}, child: const Text('Change')),
+        ],
+      );
+      ''',
+    );
+    expect(violations, hasLength(1));
+    expect(violations.single, contains('some_dialog.dart:'));
+    expect(violations.single, contains('AppFilterRow'));
+  });
+
+  test('the control-row checker allows the fix and the shapes it does not own', () {
+    // The fix: the same row inside AppFilterRow.
+    expect(
+      controlRowViolations(
+        'lib/actions/some_dialog.dart',
+        '''
+        AppFilterRow(
+          children: [
+            DropdownButtonFormField<String>(items: const [], onChanged: (_) {}),
+            OutlinedButton(onPressed: () {}, child: const Text('Change')),
+          ],
+        );
+        ''',
+      ),
+      isEmpty,
+    );
+    // A row of buttons only: already one height, and not this rule's business.
+    expect(
+      controlRowViolations(
+        'lib/actions/some_dialog.dart',
+        '''
+        Row(
+          children: [
+            OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
+            FilledButton(onPressed: () {}, child: const Text('Save')),
+          ],
+        );
+        ''',
+      ),
+      isEmpty,
+    );
+    // An icon beside a field: a different question, stated in the rule.
+    expect(
+      controlRowViolations(
+        'lib/actions/some_dialog.dart',
+        '''
+        Row(
+          children: [
+            Expanded(child: TextField(decoration: InputDecoration(labelText: 'Step'))),
+            IconButton(onPressed: () {}, icon: const Icon(Icons.close)),
+          ],
+        );
+        ''',
+      ),
+      isEmpty,
+    );
+    // A `)` inside a string must not end the scan early, or this row is missed.
+    expect(
+      controlRowViolations(
+        'lib/actions/some_dialog.dart',
+        '''
+        Row(
+          children: [
+            Text('Due (optional)'),
+            TextField(decoration: InputDecoration(labelText: 'Due')),
+            TextButton(onPressed: () {}, child: const Text('Today')),
+          ],
+        );
+        ''',
+      ),
+      hasLength(1),
     );
   });
 }
