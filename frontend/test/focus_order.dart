@@ -105,13 +105,38 @@ class FocusWalker {
 
   /// Presses `Shift+Tab` [count] times — the walk backwards, which is how a
   /// reader reaches the first stop of a region from inside it.
+  ///
+  /// **The same rule as [forward]: a press that moves nothing is a failed
+  /// press, not a stop.** Identity is what a press changes, in both
+  /// directions — a dead `Shift+Tab` that leaves the same `FocusNode` primary
+  /// would otherwise report the control it never left as a landed stop.
+  ///
+  /// One frame is scheduled before the read, and the read is after
+  /// `pumpAndSettle`, for two measured reasons. The chrome seam lands its
+  /// focus in a *post-frame* callback (`PlatformShell._moveTo`) and
+  /// `tester.pump()` runs no frame when none is scheduled, so a bare pump on
+  /// a settled screen reads before focus has moved and reports a false dead
+  /// stop. And a control whose ring remounts its subtree is disposed one frame
+  /// *after* the press lands, with focus restored to where it started — one
+  /// `pump()` reads that doomed node while it is still primary and calls the
+  /// press live. Settling first, then reading, is the settled truth in both
+  /// directions.
   Future<List<FocusStop>> backward([int count = 1]) async {
     final stops = <FocusStop>[];
+    var previous = FocusManager.instance.primaryFocus;
     for (var i = 0; i < count; i++) {
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-      await tester.pump();
+      tester.binding.scheduleFrame();
+      await tester.pumpAndSettle();
+      final landed = FocusManager.instance.primaryFocus;
+      final moved = landed == null ? previous != null : !identical(landed, previous);
+      expect(moved, isTrue,
+          reason: 'Shift+Tab press ${i + 1} of $count did not move focus: '
+              '`primaryFocus` is the same FocusNode before and after the press, '
+              'so the stop it reports (${now.describe()}) is a dead stop');
+      previous = landed;
       stops.add(now);
     }
     return stops;
@@ -147,6 +172,11 @@ class FocusWalker {
     final found = target;
     expect(found, isNotNull, reason: 'nothing focusable inside $subtree');
     found!.requestFocus();
+    // A frame must be scheduled explicitly: `requestFocus` applies in a
+    // microtask, and if it is the only thing pending, `tester.pump()` draws
+    // nothing — the focused control's own rebuild (the ring it must paint)
+    // would never happen.
+    tester.binding.scheduleFrame();
     await tester.pump();
     expect(now.isNothing, isFalse, reason: 'focus did not land inside $subtree');
     return now;
