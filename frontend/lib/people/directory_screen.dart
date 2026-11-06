@@ -126,38 +126,87 @@ class DirectoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<DirectoryBloc>().state;
 
+    // **The header scrolls with the register** — the first of this card's two
+    // options, and the one that keeps the rows reachable: at a 540x600 body the
+    // header alone (title, description, wrapped actions, search field, an open
+    // suggestion panel and a toolbar that wraps to three lines) measures 605px,
+    // so the `Column` of [header, `Expanded`(register)] that used to be here
+    // overflowed by 5px and the register was never laid out at all. One scroll
+    // view for the page means the header gives way instead — it scrolls away
+    // above rows that are still there to be read, at any window height.
+    //
+    // The other option the card offered — bounding the header so the register
+    // gets flexible space — cannot be had from a `Column`: a child keeps its
+    // natural height and `Expanded` can only take what is left, never a
+    // negative, so an unbounded header always wins; and a nested scroller that
+    // *bounded* it would eat the register's whole share at exactly the window
+    // heights this card is about.
     return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Header(state: state, isAdmin: isAdmin),
-          Expanded(
-            child: switch (state) {
-              DirectoryLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
-              DirectoryUnavailable(message: final message) => PlatformFailureState(
-                  key: failedKey,
-                  title: 'The Directory could not be read',
-                  message: message,
-                  retryKey: retryKey,
-                  onRetry: () => context.read<DirectoryBloc>().add(const DirectoryStarted()),
-                ),
-              DirectoryLoaded(isLoadingList: true) => const SkeletonList(rows: 5, maxWidth: maxWidth),
-              // The Directory's list is bounded by the server's own `search`, so
-              // a Directory with no rows is a search that matched nothing — the
-              // *none matched* variant, whose wording this Screen has always
-              // used. `docs/design-language.md` §7: the four states are the
-              // shared widgets, not a private copy per Screen.
-              DirectoryLoaded(employees: final employees) when employees.isEmpty =>
-                const PlatformEmptyState.noneMatched(
-                  key: emptyKey,
-                  title: 'Nobody matches this search',
-                  message: 'Try a different name, or clear a filter.',
-                  icon: Icons.people_outline,
-                ),
-              DirectoryLoaded(employees: final employees) => _DirectoryRegister(employees: employees),
-            },
-          ),
-        ],
+      // The width the register is measured against is the body this Screen was
+      // handed, never the window's (§10, the bug class of #379 and #381) — read
+      // here, outside the Frame, exactly as the register read it before.
+      body: LayoutBuilder(
+        builder: (context, page) {
+          final narrow = page.maxWidth <
+              AppBreakpoints.effective(context, DirectoryScreen.narrowBreakpoint);
+
+          return Center(
+            child: AppPageFrame(
+              maxWidth: maxWidth,
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _Header(state: state, isAdmin: isAdmin)),
+                  switch (state) {
+                    // The skeleton is a `ListView` (never-scrolling), so it is
+                    // laid out by the *scrollable* fill variant: the
+                    // non-scrollable one asks its child for intrinsic
+                    // dimensions, which a `ListView` does not answer.
+                    DirectoryLoading() => const SliverFillRemaining(
+                        hasScrollBody: true,
+                        child: SkeletonList(rows: 5, maxWidth: maxWidth),
+                      ),
+                    DirectoryUnavailable(message: final message) => SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: PlatformFailureState(
+                          key: failedKey,
+                          title: 'The Directory could not be read',
+                          message: message,
+                          retryKey: retryKey,
+                          onRetry: () =>
+                              context.read<DirectoryBloc>().add(const DirectoryStarted()),
+                        ),
+                      ),
+                    DirectoryLoaded(isLoadingList: true) => const SliverFillRemaining(
+                        hasScrollBody: true,
+                        child: SkeletonList(rows: 5, maxWidth: maxWidth),
+                      ),
+                    // The Directory's list is bounded by the server's own
+                    // `search`, so a Directory with no rows is a search that
+                    // matched nothing — the *none matched* variant, whose
+                    // wording this Screen has always used.
+                    // `docs/design-language.md` §7: the four states are the
+                    // shared widgets, not a private copy per Screen. Filling the
+                    // space left under the header keeps the state where it was —
+                    // centred in the register's own area — while still letting
+                    // the page scroll when the header is taller than the window.
+                    DirectoryLoaded(employees: final employees) when employees.isEmpty =>
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: PlatformEmptyState.noneMatched(
+                          key: emptyKey,
+                          title: 'Nobody matches this search',
+                          message: 'Try a different name, or clear a filter.',
+                          icon: Icons.people_outline,
+                        ),
+                      ),
+                    DirectoryLoaded(employees: final employees) =>
+                      _DirectoryRegister(employees: employees, narrow: narrow),
+                  },
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -394,40 +443,49 @@ double _measure(BuildContext context, String text, TextStyle? style) {
   return painter.width;
 }
 
+/// The register itself, as the page's own scroll content: the columns band and
+/// every row are slivers of the page's [CustomScrollView] (see
+/// [DirectoryScreen.build]) rather than a `ListView` of their own, so the header
+/// above them can scroll away instead of overflowing at a short window.
+///
+/// [narrow] is measured by the page from the body it was handed — not the
+/// window's width, and scaled by the reader's own text size (§10, the bug class
+/// of #379 and #381) — because the page is what now owns the scroll view.
 class _DirectoryRegister extends StatelessWidget {
-  const _DirectoryRegister({required this.employees});
+  const _DirectoryRegister({required this.employees, required this.narrow});
 
   final List<Employee> employees;
 
+  /// One card per Employee instead of one row of six columns — below
+  /// [DirectoryScreen.narrowBreakpoint] of content width.
+  final bool narrow;
+
   @override
   Widget build(BuildContext context) {
-    // The box this list actually got from its parent, scaled by the reader's
-    // text size (§10) — never the window.
-    return LayoutBuilder(
-      builder: (context, box) {
-        final narrow = box.maxWidth <
-            AppBreakpoints.effective(context, DirectoryScreen.narrowBreakpoint);
-        final columns = _columns(context, employees);
+    final columns = _columns(context, employees);
+    // The band is the first row of the register, so it scrolls with the rows it
+    // labels rather than sticking over them; a narrow box has no columns to
+    // label and goes straight to the cards.
+    final bandRows = narrow ? 0 : 1;
 
-        return Center(
-          child: AppPageFrame(
-            maxWidth: DirectoryScreen.maxWidth,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
-              children: [
-                if (!narrow) AppTableHeader(columns: columns),
-                for (var index = 0; index < employees.length; index++) ...[
-                  if (narrow && index > 0) const SizedBox(height: Spacing.sm),
-                  if (narrow)
-                    _EmployeeCard(employee: employees[index])
-                  else
-                    _EmployeeTableRow(columns: columns, employee: employees[index]),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.xl),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            if (index < bandRows) return AppTableHeader(columns: columns);
+            final row = index - bandRows;
+            if (narrow) {
+              return Padding(
+                padding: EdgeInsets.only(top: row > 0 ? Spacing.sm : 0),
+                child: _EmployeeCard(employee: employees[row]),
+              );
+            }
+            return _EmployeeTableRow(columns: columns, employee: employees[row]);
+          },
+          childCount: bandRows + employees.length,
+        ),
+      ),
     );
   }
 }
