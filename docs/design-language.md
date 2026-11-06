@@ -211,6 +211,17 @@ AppPageFrame(maxWidth)                 // 900 by default; a table/board page nam
 `AppToolbar` ships in this card (#386). A Screen that has not adopted it yet still
 composes its own filter row in that slot, at the same spacing.
 
+**A filter row has one control height.** Its dropdowns, its `AppFilterField` and
+the buttons that open a picker are all `AppFilterRow.controlHeight` tall — 56 at
+a text scale of 1, and 24 more for each 1.0 of text scale on top (ADR-0060).
+`AppFilterRow` states that number once and gives it to every child as a floor, so
+nothing is squeezed and no Screen picks its own height: use the widget rather
+than a bare `Wrap`, and take no `minimumSize` into a filter row. The 44px tap
+floor is the theme's (every button and every input carries it); it is a minimum,
+not the row height, because a labelled outline field needs a line for its label
+on top of it. `AppFilterField`'s helper text is a caption under its box for the
+same reason — a helper line inside the input grows the bordered control.
+
 **Where the toolbar sits is decided by what it narrows.** The ten maintenance
 registers (#388) put the filter in one `AppToolbar` immediately above the rows it
 narrows, inside the list's own state: the term is that list's own `setState`, so it

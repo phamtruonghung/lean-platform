@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/app_filter_row.dart';
 import 'package:lean_platform/widgets/app_toolbar.dart';
 
 import 'harness.dart';
@@ -220,17 +221,18 @@ void main() {
 
   // The four assertions above (in 'the actions are at least 44 tall, wide and
   // wrapped') and the one in 'an icon-only action keeps the label its caller
-  // gave it, and is still 44 tall' below pass even with the toolbar's floor
+  // gave it, and is still 44 tall' below pass even with the toolbar's own floor
   // deleted: `flutter_test` mounts on Android, where a Material button's
   // `_InputPadding` already makes its target 48 tall, so they measure the
-  // framework and not `AppToolbar._target`. `shrinkWrap` lifts that padding,
-  // leaving the toolbar's own `ConstrainedBox` as the only thing that can hold
-  // 44. The case first asserts the shrinkWrap theme is in force before it
-  // measures anything: theme is shrinkWrap, the toolbar holds 44, and the
-  // control experiment at the end shows a bare button the toolbar did not wrap
-  // is shorter than 44 (40) under that same theme, so the 44 is the toolbar's
-  // own floor.
-  testWidgets('under shrinkWrap the 44 is the toolbar\'s own floor, not the framework\'s input padding',
+  // framework and not the toolbar. `shrinkWrap` lifts that padding. Two things
+  // can then hold the height: the theme's own `minimumSize`
+  // (`AppTouchTarget.min`, one number for every button in the app) and the
+  // toolbar's per-action `ConstrainedBox`, which asks for the *filter row's*
+  // height — a labelled field's, above the tap floor. So the control experiment
+  // at the end shows a bare button the toolbar did not wrap sits exactly at the
+  // theme's 44 under shrinkWrap, and the toolbar's own actions sit at
+  // `AppFilterRow.controlHeight`, which no framework default provides.
+  testWidgets('under shrinkWrap the 44 is the theme\'s floor and the row height is the toolbar\'s own',
       (tester) async {
     const shrinkWrap = MaterialTapTargetSize.shrinkWrap;
     await _pump(tester, boxWidth: 1280, tapTargetSize: shrinkWrap);
@@ -245,6 +247,12 @@ void main() {
     expect(tester.getSize(find.byKey(AppToolbar.actionsKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
     expect(tester.getSize(find.byKey(_addKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
     expect(tester.getSize(find.byKey(_exportKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
+    expect(
+      tester.getSize(find.byKey(_exportKey)).height,
+      AppFilterRow.controlHeight(tester.element(find.byKey(_exportKey))),
+      reason: 'a toolbar action is laid out to the filter row\'s height, which is above the tap '
+          'floor and which no Material default provides',
+    );
     await _pump(tester, boxWidth: 440, tapTargetSize: shrinkWrap);
     expect(tester.getSize(find.byKey(AppToolbar.actionsKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
     expect(tester.getSize(find.byKey(_addKey)).height, greaterThanOrEqualTo(AppTouchTarget.min));
@@ -278,12 +286,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.getSize(find.byKey(_exportKey)).height,
-      lessThan(AppTouchTarget.min),
+      AppTouchTarget.min,
       reason: 'in the control\'s own settled theme (no animation residue) an unwrapped '
-          'OutlinedButton measures 40 tall, under 44, which shows _InputPadding is lifted '
-          'under shrinkWrap, and the toolbar case above is asserted to run under the same '
-          'shrinkWrap theme; so its 44 cannot come from the framework\'s padding and can '
-          'only come from AppToolbar\'s own ConstrainedBox',
+          'OutlinedButton sits exactly at the theme\'s AppTouchTarget.min floor under shrinkWrap, '
+          'which is less than the row height the toolbar asks for — so the toolbar\'s own '
+          'ConstrainedBox is what makes its actions a filter row tall',
     );
   });
 

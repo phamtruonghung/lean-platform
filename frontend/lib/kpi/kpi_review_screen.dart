@@ -65,6 +65,7 @@ import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_filter_field.dart';
+import '../widgets/app_filter_row.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
@@ -346,10 +347,8 @@ class _LoadedState extends State<_Loaded> {
                     ],
                   ),
                   const SizedBox(height: Spacing.md),
-                  Wrap(
-                    spacing: Spacing.md,
+                  AppFilterRow(
                     runSpacing: Spacing.md,
-                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       if (state.sites.length > 1)
                         SizedBox(

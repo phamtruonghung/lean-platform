@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_filter_row.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
 import '../widgets/app_table.dart';
@@ -185,10 +186,7 @@ class _Filters extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: Spacing.md,
-          runSpacing: Spacing.sm,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        AppFilterRow(
           children: [
             if (loaded.sites.length > 1)
               SizedBox(

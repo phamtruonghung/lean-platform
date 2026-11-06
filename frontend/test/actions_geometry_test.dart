@@ -33,6 +33,7 @@ import 'package:lean_platform/actions/capa_report_screen.dart';
 import 'package:lean_platform/actions/capas_screen.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/widgets/app_detail_section.dart';
+import 'package:lean_platform/widgets/app_filter_row.dart';
 import 'package:lean_platform/widgets/app_page_header.dart';
 import 'package:lean_platform/widgets/app_table.dart';
 import 'package:lean_platform/widgets/failure_state.dart';
@@ -206,6 +207,46 @@ void main() {
       expect(card.dx, closeTo(title.dx, 1.0),
           reason: 'the title, the filters and the first row begin at one left edge');
     });
+
+    // The owner's report on this very page: "the drop box is always higher than
+    // the others". Measured on the real Screen, through the router, at every
+    // width the log is read at and at twice the text — the row's own height, on
+    // every control, from `AppFilterRow`.
+    for (final width in <double>[700, 900, 1280]) {
+      for (final textScale in <double>[1, 2]) {
+        testWidgets('every filter control is one height — ${width}px, ${textScale}x',
+            (tester) async {
+          await _pump(tester, width: width, location: '/actions', textScale: textScale);
+
+          final anchor = tester.element(find.byKey(ActionsScreen.statusFilterKey));
+          final rowHeight = AppFilterRow.controlHeight(anchor);
+          final controls = <Finder>[
+            find.byKey(ActionsScreen.statusFilterKey),
+            find.byKey(ActionsScreen.typeFilterKey),
+            find.byKey(ActionsScreen.orgUnitFilterKey),
+            find.byKey(ActionsScreen.escalatedToFilterKey),
+          ];
+          for (final finder in controls) {
+            expect(tester.getSize(finder).height, rowHeight,
+                reason: 'a filter control on /actions is not the row height at '
+                    '${width}px, ${textScale}x');
+          }
+          // One top edge per line, which is what the eye reads as "level". Two
+          // controls that overlap vertically are on the same line (they are all
+          // one height), so they must start at the same y. Narrow boxes and 2x
+          // text wrap the row onto more than one line, and that is correct.
+          for (var i = 0; i < controls.length; i++) {
+            for (var j = i + 1; j < controls.length; j++) {
+              final a = tester.getRect(controls[i]);
+              final b = tester.getRect(controls[j]);
+              if (a.top >= b.bottom || b.top >= a.bottom) continue;
+              expect(a.top, closeTo(b.top, 0.5),
+                  reason: 'two controls on one line of /actions start at different tops');
+            }
+          }
+        });
+      }
+    }
   });
 
   group('the CAPA list is a register', () {

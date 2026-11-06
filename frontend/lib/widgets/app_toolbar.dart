@@ -23,9 +23,11 @@
 /// is listed from which ones do something to it. A column keeps the two groups
 /// as two blocks and lets each wrap inside itself.
 ///
-/// **Every action is laid out to at least [AppTouchTarget.min].** A button's own
-/// minimum is a few pixels under it, so each action is given that height here
-/// rather than trusting every call site to remember.
+/// **Every action is laid out to at least the filter row's own height.** A
+/// button's own minimum is a few pixels under a labelled filter field's, so each
+/// action is given [AppFilterRow.controlHeight] here rather than trusting every
+/// call site to remember: the buttons at the far end of a wide toolbar sit level
+/// with the dropdowns and the filter field they narrow.
 ///
 /// **It owns no padding.** Like `AppPageHeader`, the call site keeps its frame
 /// and its inset, so the toolbar's first filter starts at the page's one left
@@ -38,6 +40,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'app_filter_row.dart';
 
 class AppToolbar extends StatelessWidget {
   const AppToolbar({
@@ -69,13 +72,8 @@ class AppToolbar extends StatelessWidget {
       builder: (context, constraints) {
         final wrapped =
             constraints.maxWidth < AppBreakpoints.effective(context, AppBreakpoints.toolbarWrap);
-        final targets = [for (final action in actions) _target(action)];
-        final filterWrap = Wrap(
-          key: filtersKey,
-          spacing: Spacing.md,
-          runSpacing: Spacing.sm,
-          children: filters,
-        );
+        final targets = [for (final action in actions) _target(context, action)];
+        final filterWrap = AppFilterRow(key: filtersKey, children: filters);
 
         if (wrapped) {
           // A block, and the gap above it only when something precedes it, so a
@@ -129,8 +127,8 @@ class AppToolbar extends StatelessWidget {
     );
   }
 
-  static Widget _target(Widget action) => ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: AppTouchTarget.min),
+  static Widget _target(BuildContext context, Widget action) => ConstrainedBox(
+        constraints: BoxConstraints(minHeight: AppFilterRow.controlHeight(context)),
         child: action,
       );
 }

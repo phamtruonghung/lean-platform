@@ -38,6 +38,7 @@ import 'package:go_router/go_router.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
+import '../widgets/app_filter_row.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
 import '../widgets/app_table.dart';
@@ -215,10 +216,7 @@ class _Filters extends StatelessWidget {
     final theme = Theme.of(context);
     final filters = loaded.filters;
 
-    return Wrap(
-      spacing: Spacing.md,
-      runSpacing: Spacing.sm,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return AppFilterRow(
       children: [
         if (loaded.sites.length > 1)
           SizedBox(
@@ -244,18 +242,12 @@ class _Filters extends StatelessWidget {
           onPressed: () => SupplierNcrSupplierFilterDialog.open(context),
           icon: const Icon(Icons.local_shipping_outlined),
           label: Text(filters.supplierName ?? 'All Suppliers'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
-          ),
         ),
         OutlinedButton.icon(
           key: SupplierNcrsScreen.orgUnitFilterKey,
           onPressed: () => SupplierNcrOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
           icon: const Icon(Icons.account_tree_outlined),
           label: Text(filters.orgUnitName ?? 'All Org Units'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
-          ),
         ),
         SizedBox(
           width: AppLayout.atTextScale(context, 190),
@@ -282,9 +274,6 @@ class _Filters extends StatelessWidget {
             key: SupplierNcrsScreen.clearFiltersKey,
             onPressed: () =>
                 context.read<SupplierNcrsBloc>().add(const SupplierNcrsFiltersCleared()),
-            style: TextButton.styleFrom(
-              minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
-            ),
             child: Text('Clear filters', style: theme.textTheme.bodyMedium),
           ),
       ],

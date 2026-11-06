@@ -35,6 +35,7 @@ import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_banner.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_filter_row.dart';
 import '../widgets/app_page_frame.dart';
 import '../widgets/app_page_header.dart';
 import '../widgets/empty_state.dart';
@@ -177,9 +178,7 @@ class _Header extends StatelessWidget {
             ],
             below: loaded == null || loaded.sites.length < 2
                 ? null
-                : Wrap(
-                    spacing: Spacing.md,
-                    runSpacing: Spacing.sm,
+                : AppFilterRow(
                     children: [
                       SizedBox(
                         width: 220,

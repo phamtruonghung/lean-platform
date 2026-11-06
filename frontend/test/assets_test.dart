@@ -59,8 +59,25 @@ FakeWire wireWith({
       patchAssetMessage: patchAssetMessage,
     );
 
+/// A window a register can be read in.
+///
+/// The default `flutter_test` surface is 800x600, and at it one Asset card fills
+/// the list's own viewport — the second card lands just past the list's cache
+/// extent and is never built, so a test that reads the *register* rather than
+/// the fold fails on a control that grew 8px somewhere above it. The width is
+/// left at the default on purpose: the register is a card per Asset at 800 and a
+/// table above its own breakpoint, and these cases are about reading rows, not
+/// about which shape the register takes. The cases that assert on the fold keep
+/// the default surface.
+void _readableSurface(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(800, 1400);
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   testWidgets('the register renders what it is given, Org Unit included', (tester) async {
+    _readableSurface(tester);
     final wire = wireWith(
       assets: {
         '1': [
@@ -256,6 +273,7 @@ void main() {
 
   testWidgets('saving sends exactly one PATCH carrying exactly the four fields, and the row '
       "re-renders corrected, staying in the register's own order", (tester) async {
+    _readableSurface(tester);
     final wire = wireWith(
       assets: {
         '1': [
@@ -503,6 +521,7 @@ void main() {
 
   testWidgets('nesting is visible in the register, indented beneath its own machine',
       (tester) async {
+    _readableSurface(tester);
     final wire = wireWith(
       assets: {
         '1': [
@@ -528,6 +547,7 @@ void main() {
 
   testWidgets('an Asset whose parent is not in this list still renders as a root',
       (tester) async {
+    _readableSurface(tester);
     final wire = wireWith(
       assets: {
         '1': [
@@ -576,6 +596,7 @@ void main() {
 
   testWidgets('a retired Asset is absent until asked for, then visibly marked as retired',
       (tester) async {
+    _readableSurface(tester);
     final wire = wireWith(
       assets: {
         '1': [
@@ -681,6 +702,7 @@ void main() {
   testWidgets(
       'nesting under another Asset sends { parentId }, and detaching sends { parentId: null }',
       (tester) async {
+    _readableSurface(tester);
     final wire = wireWith(assets: {
       '1': [
         assetJson('7', 'PRESS-1', 'Press 1'),
@@ -736,6 +758,7 @@ void main() {
   testWidgets(
       'the parent chooser excludes a retired Asset too, even with "Show retired" on',
       (tester) async {
+    _readableSurface(tester);
     final wire = wireWith(assets: {
       '1': [
         assetJson('7', 'PRESS-1', 'Press 1'),
@@ -847,6 +870,7 @@ void main() {
   testWidgets(
       'changing where an Asset sits names where it is now, sends exactly { orgUnitId }, and '
       'leaves the row where the register orders it', (tester) async {
+    _readableSurface(tester);
     final wire = wireWith(assets: {
       '1': [
         // PRESS-1 at Assembly and CONV-2 at Line 1, so the register's own
