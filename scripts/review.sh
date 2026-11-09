@@ -69,10 +69,10 @@ die()  { printf '%s\n' "  ${RED}✗${RESET} $*" >&2; exit 1; }
 #
 # A raw byte below 0x20 is not legal inside a JSON string either — the
 # credential path only enforces a minimum length, so a password can carry one
-# (0x0b was measured) — and JSON has no short escape for most of them. The four
-# with one are escaped by name below; every other C0 byte becomes \u00XX. The
-# loop runs after the backslash escape so the backslashes it introduces stay
-# single.
+# (0x0b was measured) — and JSON has no short escape for most of them. The five
+# with one (`\b \f \n \r \t`) are escaped by name below; every other C0 byte
+# becomes \u00XX. The loop runs after the backslash escape so the backslashes it
+# introduces stay single.
 json_escape() {
   local s="$1"
   local i c esc
