@@ -14,13 +14,12 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 const { hashSecret } = require('../../src/platform/secrets');
 
 const REFUSAL = { message: 'Email or password is not recognised.' };
 const PASSWORD = 'correct horse battery';
 
-let jwks;
 let server;
 let base;
 let pool;
@@ -70,10 +69,6 @@ function login(body) {
 const bearer = (token) => ({ authorization: `Bearer ${token}` });
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = 'https://example.supabase.co/auth/v1';
-  process.env.SUPABASE_JWT_AUDIENCE = 'authenticated';
   process.env.BACKEND_PORT = '0';
   previousMode = process.env.AUTH_PASSWORD_MODE;
 
@@ -101,7 +96,6 @@ test.after(async () => {
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [employeeIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 test('a correct email and password return a token that opens GET /api/people/me', async () => {

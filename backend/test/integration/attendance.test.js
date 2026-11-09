@@ -1,6 +1,6 @@
 /*
  * The attendance sheet over HTTP (issue #249), against a real database and a
- * real (locally issued) JWKS — the same seam safety-incidents.test.js uses,
+ * real local session — the same seam safety-incidents.test.js uses,
  * and this file's own scaffolding mirrors it closely.
  *
  * `generate_shift_instances` (the baseline's own calendar generator) never
@@ -21,12 +21,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -47,10 +43,7 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   return { authorization: `Bearer ${token}` };
 }
 
@@ -245,10 +238,6 @@ let admin;
 let adminToken;
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -288,7 +277,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 // ---------------------------------------------------------------------------

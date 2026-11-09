@@ -1,24 +1,31 @@
 /*
  * Sign-in, Account creation and the awaiting-Approval state — issue #6, over
- * HTTP, against a real database and a real (locally issued) JWKS, per the
- * Platform's one test seam (see README's Tests section and
+ * HTTP, against a real database and a real local session, per the Platform's
+ * one test seam (see README's Tests section and
  * test/integration/health.test.js's own header).
  *
- * `test/helpers/jwks.js` stands up a real `node:http` JWKS server and signs
- * real tokens against it, and `SUPABASE_JWKS_URL`/`SUPABASE_JWT_ISSUER` are
- * pointed at it before the app is required — so every request below runs the
- * API's actual `verifyToken()` over actual HTTP, not a stub of it. This is
- * the local reproduction issue #6 asks for in place of a live Supabase
- * project (see that issue's own note on why hard-requiring one here is out).
+ * A session is a row in `account_sessions` (test/helpers/session.js), so every
+ * request below runs the middleware's own `findSessionIdentity` ->
+ * `resolveAccountForIdentity` path, the one a signed-in client takes.
+ *
+ * Account *creation* is the one thing a session cannot trigger: it used to
+ * happen when an unknown subject reached the API with a token, and a local
+ * session only exists for a row that is already there. The groups below that
+ * are about creation therefore drive that step through
+ * `resolveAccountForIdentity` — the function the middleware itself calls — and
+ * then assert the result over HTTP. What they assert is still the production
+ * rule and not a fixture's own INSERT: the first Account on an empty table is
+ * an administrator granted every Site's root Org Unit, everyone after starts
+ * pending, and the insert is audited with no actor.
  *
  * `app_users`/`app_user_org_units` are truncated in test.before(): unlike
  * schema.test.js's per-test withRollback, these tests each make their own
  * real HTTP requests against the running server's own connection pool, which
  * would not see an uncommitted transaction's rows even if one were open
- * across requests. A clean table is what makes "the first sign-in on an
- * empty database becomes administrator" an assertion this suite can actually
- * make, rather than depending on whatever an earlier run or another test
- * file happened to leave behind — sites/org_units are not touched, this
+ * across requests. A clean table is what makes "the first Account created on
+ * an empty database becomes administrator" an assertion this suite can
+ * actually make, rather than depending on whatever an earlier run or another
+ * test file happened to leave behind — sites/org_units are not touched, this
  * file's own root Org Unit grant assertion inserts and cleans up its own.
  *
  * Needs a database with every migration applied. Set DATABASE_URL first —
@@ -27,26 +34,17 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
+const { resolveAccountForIdentity } = require('../../src/modules/people/service');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
 let closePool;
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
-  // Required only once the JWKS env vars above are in place, so tokens.js
-  // never has a chance to read the unconfigured environment.
   ({ server } = require('../../src/index'));
   ({ closePool } = require('../../src/platform/db'));
   pool = require('../../src/platform/db').getPool();
@@ -68,27 +66,27 @@ test.before(async () => {
 test.after(async () => {
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
+// `subject`'s Account, created the way the middleware creates one for a
+// subject it has not seen, then visited through `/me` with a session of its
+// own. The creation is setup, not the subject of these tests: a local session
+// cannot be opened for an Account that does not exist yet, so this drives the
+// same `resolveAccountForIdentity` call the middleware makes and leaves every
+// assertion below to the HTTP response, unchanged.
 async function signIn(subject, { email = `${subject}@example.com`, name } = {}) {
-  const token = await jwks.signToken(
-    { sub: subject, email, user_metadata: name ? { full_name: name } : undefined },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  await resolveAccountForIdentity({ subject, email, name });
+  const token = await tokenFor(subject);
   return fetch(`${base}/api/people/me`, { headers: { authorization: `Bearer ${token}` } });
 }
 
 async function callAccounts(subject) {
-  const token = await jwks.signToken({ sub: subject, email: `${subject}@example.com` }, {
-    issuer: ISSUER,
-    audience: AUDIENCE
-  });
+  const token = await tokenFor(subject);
   return fetch(`${base}/api/people/accounts`, { headers: { authorization: `Bearer ${token}` } });
 }
 
 // ---------------------------------------------------------------------------
-// 1. No token, or a garbage one, is refused before ever reaching an Account.
+// 1. No session, or a garbage one, is refused before ever reaching an Account.
 // ---------------------------------------------------------------------------
 
 test('a request with no bearer token is refused', async () => {
@@ -104,16 +102,16 @@ test('a request with a garbage bearer token is refused', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. First sign-in on an empty database: administrator, active immediately,
-//    granted every (current) Site's root Org Unit.
+// 2. The first Account on an empty database: administrator, active
+//    immediately, granted every (current) Site's root Org Unit.
 // ---------------------------------------------------------------------------
 
 test('the first Account ever created is activated as an administrator and granted every Site', async (t) => {
   // A Site and a root Org Unit beneath it, created directly against
-  // Postgres before anyone signs in — Sites themselves are issue #7's
+  // Postgres before any Account exists — Sites themselves are issue #7's
   // surface, not #6's, so this reaches straight for the schema the way
   // schema.test.js does for baseline tables with no Module in front of them
-  // yet. Created before the sign-in below so "granted every Site that
+  // yet. Created before the creation below so "granted every Site that
   // exists at that moment" has a Site to actually grant. Cleaned up
   // afterwards (org_units before its Site, since sites has no ON DELETE
   // CASCADE onto it) so a second run of this suite starts from the same
@@ -136,7 +134,7 @@ test('the first Account ever created is activated as an administrator and grante
 
   // subject-first is reused by the later tests below as "the" active,
   // administrator Account for this suite — test.before()'s cleanup is what
-  // makes this genuinely the first sign-in against an empty app_users table.
+  // makes this genuinely the first Account against an empty app_users table.
   const response = await signIn('subject-first', { name: 'Ada First' });
   assert.strictEqual(response.status, 200);
 
@@ -169,7 +167,7 @@ test('the first Account ever created is activated as an administrator and grante
 //    their own status, and that refusal is distinguishable from a failure.
 // ---------------------------------------------------------------------------
 
-test('the second sign-in ever creates an inactive Account, not an administrator', async () => {
+test('the second Account ever created is an inactive operator, not an administrator', async () => {
   // The suite-wide first Account already exists from the tests above — this
   // subject is deliberately a new one, so it is the second Account, not the
   // first.
@@ -215,9 +213,9 @@ test('an active Account can reach a route that requires one', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. The provider's subject identifier is what identifies returning Accounts
-//    — a second sign-in with the same subject resolves to the same Account
-//    rather than creating a new one.
+// 4. The subject identifier is what identifies returning Accounts — a second
+//    visit by the same subject resolves to the same Account rather than
+//    creating a new one.
 // ---------------------------------------------------------------------------
 
 test('signing in twice with the same subject resolves to the same Account', async () => {

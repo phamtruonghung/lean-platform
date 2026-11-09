@@ -1,7 +1,7 @@
 /*
  * Raising a Concern from a Safety incident, and a CAPA on that Concern (issue
- * #229) — over HTTP, against a real database and a real (locally issued)
- * JWKS. The seam and the fixture scaffolding mirror
+ * #229) — over HTTP, against a real database and a real local
+ * session. The seam and the fixture scaffolding mirror
  * `concern-nonconformances.test.js` closely: this is the same shape of path,
  * built out of the same three writes in the Actions Module, with the Safety
  * incident standing where the Non-conformance stood.
@@ -27,12 +27,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -52,10 +48,7 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   return { authorization: 'Bearer ' + token };
 }
 
@@ -190,10 +183,6 @@ async function makeGround(overrides = {}) {
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -233,7 +222,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 // ---------------------------------------------------------------------------

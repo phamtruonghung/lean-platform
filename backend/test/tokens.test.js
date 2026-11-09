@@ -3,11 +3,16 @@
  *
  * Per issue #6: this environment has no live Supabase project to verify a
  * real token against, but the resolve-subject logic still needs a real test
- * rather than being skipped outright. test/helpers/jwks.js stands up a
+ * rather than being skipped outright. The factory below stands up a
  * `node:http` server publishing a locally generated RSA JWKS and signs tokens
  * with its private half, so every test below drives verifyToken()'s actual
  * `createRemoteJWKSet` + `jwtVerify` path — the same code that runs against
  * Supabase's real JWKS endpoint in production — rather than a stub of it.
+ *
+ * This is the only test that still needs a hosted-provider-shaped token: the
+ * integration suite authenticates with local sessions (test/helpers/session.js),
+ * so the factory that used to be shared with it lives here now, where its one
+ * remaining subject is.
  *
  * Needs no database: this is a unit test of one platform module, run via
  * `npm test`.
@@ -15,10 +20,52 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('./helpers/jwks');
+const http = require('node:http');
+const { generateKeyPair, exportJWK, SignJWT } = require('jose');
 
 const ISSUER = 'https://example.supabase.co/auth/v1';
 const AUDIENCE = 'authenticated';
+
+// A locally-issued JWKS, and a signer for it. `src/platform/tokens.js`
+// verifies over real HTTP via `createRemoteJWKSet` — there is no test-only
+// code path in that module — so the only way to exercise it without a live
+// Supabase project is to stand up something that answers like one.
+const KID = 'test-key';
+
+async function createTestJwks() {
+  const { publicKey, privateKey } = await generateKeyPair('RS256');
+  const jwk = await exportJWK(publicKey);
+  jwk.kid = KID;
+  jwk.alg = 'RS256';
+  jwk.use = 'sig';
+
+  const server = http.createServer((_req, res) => {
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ keys: [jwk] }));
+  });
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  // signToken defaults to a token that verifyToken() should accept outright;
+  // each test overrides individual fields to build its rejection case (wrong
+  // issuer, expired, ...).
+  async function signToken(claims = {}, { issuer, audience, expiresIn = '1h', kid = KID } = {}) {
+    let builder = new SignJWT(claims)
+      .setProtectedHeader({ alg: 'RS256', kid })
+      .setIssuedAt();
+    if (issuer !== undefined) builder = builder.setIssuer(issuer);
+    if (audience !== undefined) builder = builder.setAudience(audience);
+    builder = builder.setExpirationTime(expiresIn);
+    return builder.sign(privateKey);
+  }
+
+  function close() {
+    return new Promise((resolve) => server.close(resolve));
+  }
+
+  return { url: `http://127.0.0.1:${port}/jwks.json`, signToken, close };
+}
 
 // tokens.js reads SUPABASE_JWKS_URL/SUPABASE_JWT_ISSUER/SUPABASE_JWT_AUDIENCE
 // lazily, per call, and caches its JWKS keyed by URL — so each test gets its

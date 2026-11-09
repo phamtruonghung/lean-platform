@@ -10,14 +10,13 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 const { hashSecret } = require('../../src/platform/secrets');
 
 const PASSWORD = 'correct horse battery';
 const tag = `lt${process.pid}`;
 const emailOf = (name) => `${tag}-${name}@example.com`;
 
-let jwks;
 let server;
 let base;
 let pool;
@@ -65,10 +64,6 @@ const login = (email, password, from) => fetch(`${base}/api/auth/login`, {
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = 'https://example.supabase.co/auth/v1';
-  process.env.SUPABASE_JWT_AUDIENCE = 'authenticated';
   process.env.BACKEND_PORT = '0';
   previousMode = process.env.AUTH_PASSWORD_MODE;
   process.env.AUTH_PASSWORD_MODE = 'local';
@@ -100,7 +95,6 @@ test.after(async () => {
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [employeeIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 test('repeated failures for one email end in 429 with Retry-After, even for the right password', async () => {

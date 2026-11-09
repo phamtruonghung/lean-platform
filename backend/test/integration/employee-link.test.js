@@ -2,9 +2,9 @@
  * The Employee link (issue #115, ADR-0022): email matching produces a
  * *suggestion* on the Approval queue, an administrator *confirms* it at
  * Approval, and PUT /accounts/:id/employee corrects it afterwards. Over HTTP,
- * against a real database and a real (locally issued) JWKS — the same seam
- * as accounts.test.js, plant.test.js, approval.test.js and directory.test.js
- * (see any of their own headers, and the README's Tests section).
+ * against a real database and a real local session — the same seam as
+ * accounts.test.js, plant.test.js, approval.test.js and directory.test.js (see
+ * any of their own headers, and the README's Tests section).
  *
  * This file does not truncate `app_users` or `employees`: both are shared
  * with other integration files, and `npm run test:integration` runs every
@@ -19,12 +19,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -43,22 +39,11 @@ function uniqueCode(prefix) {
   return `${prefix}${process.pid}${codeCounter}`;
 }
 
-async function signToken(subject, email) {
-  return jwks.signToken(
-    { sub: subject, email: email ?? `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
-}
-
-async function authHeader(subject, email) {
-  return { authorization: `Bearer ${await signToken(subject, email)}` };
+async function authHeader(subject) {
+  return { authorization: `Bearer ${await tokenFor(subject)}` };
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -92,21 +77,27 @@ test.after(async () => {
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [insertedEmployeeIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
-// A brand-new pending Account, through the real sign-in path, with a chosen
-// email — the email is what the suggestion matches against, so tests need to
-// pick it deliberately rather than accept the default subject@example.com.
+// A brand-new pending Account with a chosen email — the email is what the
+// suggestion matches against, so tests need to pick it deliberately rather
+// than accept the default subject@example.com. Inserted directly: a local
+// session is opened for an Account row that already exists, where this used
+// to appear as the side effect of a subject's first sign-in.
 async function createPendingAccount(subjectPrefix, email) {
   const subject = uniqueCode(subjectPrefix);
   const accountEmail = email ?? `${subject}@example.com`;
-  const token = await signToken(subject, accountEmail);
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO app_users (email, display_name, role, external_subject, is_active, approval_status)
+     VALUES ($1, 'Employee Link Test Account', 'operator', $2, FALSE, 'pending') RETURNING id`,
+    [accountEmail, subject]
+  );
+  insertedAccountIds.push(row.id);
+  const token = await tokenFor(subject);
   const response = await fetch(`${base}/api/people/me`, {
     headers: { authorization: `Bearer ${token}` }
   });
   const { account } = await response.json();
-  insertedAccountIds.push(account.id);
   return { subject, token, account, email: accountEmail };
 }
 

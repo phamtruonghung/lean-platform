@@ -2,8 +2,8 @@
  * Leave requests (issue #265, ADR-0042), over HTTP: an Employee asks for time
  * off, a holder of an edit Grant reaching their Org Unit approves or rejects,
  * and the requester may cancel while it is pending. Same seam as
- * work-hours.test.js and plant.test.js — a real database and a real (locally
- * issued) JWKS, every row inserted by this file and deleted again in
+ * work-hours.test.js and plant.test.js — a real database and a real local
+ * session, every row inserted by this file and deleted again in
  * `test.after()`, no shared table truncated.
  *
  * Needs a database with every migration applied. Set DATABASE_URL first —
@@ -12,12 +12,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -41,10 +37,7 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   return { authorization: `Bearer ${token}` };
 }
 
@@ -115,10 +108,6 @@ async function pendingFor(employee, startsOn = '2026-11-02', endsOn = '2026-11-0
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -157,7 +146,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 // ---------------------------------------------------------------------------
