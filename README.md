@@ -311,10 +311,14 @@ script prints a warning in that case.
 the command above. It must still be enabled and the password must match. Its
 identity is `local-account:<id>`, assigned at first sign-in.
 
-First-time setup of a deployment — DNS, Docker, certificates and the runner —
-is walked through by `scripts/setup-deployment.sh`. It has no stage for
-self-hosted PostgreSQL or local passwords; VIProd's CT100 database setup is not
-scripted in this repository.
+First-time setup of a deployment is walked through by
+`scripts/setup-deployment.sh`: it creates the hosted PostgreSQL database project
+first ([ADR-0002](./docs/adr/0002-supabase-cloud-and-a-self-hosted-api.md)),
+then DNS, Docker, certificates and the runner. It has no stage for self-hosted
+PostgreSQL or the local-password configuration; VIProd's CT100 database setup is
+not scripted in this repository. The hosted project is a database host only —
+its own auth service is unused, and sign-in is the Platform's local passwords
+on every deployment.
 
 ## Modules
 
