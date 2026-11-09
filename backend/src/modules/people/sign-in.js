@@ -4,10 +4,10 @@
  * session is the answer to "which Account is this", and the credential row is
  * keyed to the Account. `auth-routes.js` owns the HTTP surface.
  *
- * `AUTH_PASSWORD_MODE` says which door a deployment uses: `local` (this file,
- * `account_credentials` and `account_sessions`) or `supabase` (platform/
- * tokens.js, ADR-0002), the default. It is read on every call, never at load,
- * so a test or an operator flipping it needs no restart of the module graph.
+ * This is the only door. The credentials live in `account_credentials` and
+ * the sessions in `account_sessions`, both in this deployment's own
+ * PostgreSQL; the hosted-provider branch and the switch that chose between
+ * the two were deleted in issue #480.
  *
  * ## One refusal
  *
@@ -44,10 +44,6 @@ const { httpError } = require('./errors');
 
 const SESSION_TTL_HOURS = 12;
 const NOT_RECOGNISED = 'Email or password is not recognised.';
-
-function passwordMode() {
-  return process.env.AUTH_PASSWORD_MODE === 'local' ? 'local' : 'supabase';
-}
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -148,9 +144,8 @@ async function signIn({ email, password }) {
   };
 }
 
-// Resolves a presented session token to the identity `verifyToken` would have
-// produced, plus the session's id, or null. `authenticate` feeds the identity
-// to resolveAccountForIdentity unchanged.
+// Resolves a presented session token to the identity `authenticate` feeds to
+// resolveAccountForIdentity, plus the session's id, or null.
 //
 // Deliberately does NOT require `app_users.is_active`: a pending Account has
 // is_active = FALSE and is meant to hold a working session that requireActive
@@ -187,4 +182,4 @@ async function revokeSessionByToken(token) {
   return rowCount > 0;
 }
 
-module.exports = { passwordMode, signIn, findSessionIdentity, revokeSessionByToken };
+module.exports = { signIn, findSessionIdentity, revokeSessionByToken };

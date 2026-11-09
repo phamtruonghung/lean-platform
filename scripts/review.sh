@@ -13,16 +13,13 @@
 # this script does the local equivalent so a reviewer lands on a stack that is
 # actually usable rather than a backend erroring against an empty database.
 #
-# Two things a reviewer needs to know up front, both already true of this
-# repo's setup rather than invented here:
-#   - Sign-in defaults to Supabase (ADR-0002; production runs the "local"
-#     door instead, ADR-0051). SUPABASE_URL/SUPABASE_ANON_KEY are baked
-#     into the Flutter bundle at build time and have no local default, so on a
-#     clean checkout the app builds and serves fine but nobody can sign in
-#     until .env points at a real Supabase project.
-#   - The very first Account to sign in on an empty database is activated
-#     immediately as an administrator (README, "Accounts and sign-in") — that
-#     is how a reviewer with a working Supabase project gets in at all.
+# What a reviewer needs to know up front:
+#   - Sign-in is the Platform's own passwords (ADR-0051, issue #480): there is
+#     no identity provider to configure and no SUPABASE_* value to fill in.
+#   - Nobody can sign in until an Account with a password exists, and this
+#     script's demo seed deliberately inserts no `app_users` row. Set the
+#     first administrator's password per README, "The first administrator's
+#     password" (dev/set-a-password.mjs), after the stack is up.
 # ==============================================================================
 
 set -euo pipefail
@@ -101,25 +98,7 @@ ensure_env_file() {
   if [[ ! -f "$ENV_FILE" ]]; then
     [[ -f .env.example ]] || die ".env is missing and there is no .env.example to copy it from"
     cp .env.example "$ENV_FILE"
-    log "copied .env.example to .env (fill in SUPABASE_* to enable sign-in)"
-  fi
-}
-
-# Warns, but never blocks: the stack is genuinely useful to review — browsing
-# the UI, hitting the API, checking migrations — without a real Supabase
-# project wired up. Only sign-in itself needs one. Never echo the values
-# themselves; an anon key is public by design, but keeping this output clean
-# means nobody has to think about that each time this prints.
-check_supabase_config() {
-  local url_state="not set" key_state="not set"
-  [[ -n "${SUPABASE_URL:-}" ]] && url_state="set"
-  [[ -n "${SUPABASE_ANON_KEY:-}" ]] && key_state="set"
-
-  if [[ "$url_state" == "not set" || "$key_state" == "not set" ]]; then
-    warn "SUPABASE_URL: ${url_state}, SUPABASE_ANON_KEY: ${key_state}"
-    warn "the app will build and serve, but sign-in will not work until .env points at a real Supabase project"
-  else
-    ok "Supabase configured (SUPABASE_URL: ${url_state}, SUPABASE_ANON_KEY: ${key_state})"
+    log "copied .env.example to .env"
   fi
 }
 
@@ -240,7 +219,6 @@ cmd_up() {
   # shellcheck source=/dev/null
   source "$ENV_FILE"
   set +a
-  check_supabase_config
 
   log "building and starting the stack — the first Flutter web build is slow (several minutes on a cold cache); this has not hung"
   docker compose -f "$COMPOSE_FILE" up -d --build
@@ -270,12 +248,9 @@ cmd_up() {
   # confusing. The Postgres password is still needed when opening the
   # pre-registered server, so that one is worth naming.
   log "pgAdmin: ${PGADMIN_URL} (no login; the pre-registered server asks for the Postgres password above)"
-  if [[ -n "${SUPABASE_URL:-}" && -n "${SUPABASE_ANON_KEY:-}" ]]; then
-    log "Supabase: configured — sign-in works"
-  else
-    log "Supabase: not configured — sign-in will not work (see the warning above)"
-  fi
-  log "the first Account to sign in on an empty database becomes an administrator automatically"
+  log "sign-in: no Account exists yet, and sign-in creates none (issue #480) — insert one and set its password:"
+  log "  docker compose exec -T -e PGPASSWORD=${POSTGRES_PASSWORD} postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c \"INSERT INTO app_users (email, display_name, role, is_active, approval_status) VALUES ('admin@demo.local', 'Demo Admin', 'admin', TRUE, 'approved')\""
+  log "  printf '%s' \"\$PW\" | DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:5434/${POSTGRES_DB} node dev/set-a-password.mjs admin@demo.local"
 }
 
 cmd_down() {
@@ -370,7 +345,7 @@ SQL
   ) \
     || die "promoting ${email} failed — run './scripts/review.sh logs postgres' to see why"
 
-  [[ -n "$result" ]] || die "no Account found for ${email} — sign in through the app once first (it starts as pending/operator), then run this again"
+  [[ -n "$result" ]] || die "no Account found for ${email} — insert its app_users row first (see the hint 'up' prints), then run this again"
   ok "${email} is now an approved admin"
 }
 

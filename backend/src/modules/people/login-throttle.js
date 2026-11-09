@@ -29,7 +29,7 @@
  * second factor, and the pause is capped. The client address is `req.ip`,
  * which `trust proxy` (src/index.js) resolves to the address Caddy saw.
  *
- * Tunable by environment, read on every call like AUTH_PASSWORD_MODE:
+ * Tunable by environment, read on every call:
  * LOGIN_THROTTLE_WINDOW_MS, LOGIN_THROTTLE_EMAIL_MAX, LOGIN_THROTTLE_IP_MAX,
  * LOGIN_THROTTLE_BASE_MS.
  */

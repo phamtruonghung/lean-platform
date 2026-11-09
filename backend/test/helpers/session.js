@@ -1,16 +1,14 @@
 /*
  * A real local session, for tests that need a signed-in Account.
  *
- * `src/modules/people/middleware.js` picks the door from `AUTH_PASSWORD_MODE`
- * (issue #268): `local` resolves an opaque token out of `account_sessions`,
- * anything else verifies a hosted-provider JWT. The integration suite
- * authenticates through the local door, so a test's token is a real
- * `account_sessions` row and no part of the hosted provider is involved.
+ * `src/modules/people/middleware.js` resolves an opaque token out of
+ * `account_sessions` (issue #480 made that the only door). The integration
+ * suite authenticates through it, so a test's token is a real
+ * `account_sessions` row and no part of a hosted provider is involved.
  *
  * `tokenFor(subject)` opens a session for the Account whose
- * `app_users.external_subject` is `subject` — the identity the token's own
- * `sub` claim used to carry, and the one thing either door uses to resolve an
- * Account. `findSessionIdentity` reads the row's own email and display name,
+ * `app_users.external_subject` is `subject` — the identity the Account is
+ * known by. `findSessionIdentity` reads the row's own email and display name,
  * so a caller only names the subject; role, approval status and whether the
  * Account is switched on all live on the row, never in the token.
  *
@@ -23,12 +21,6 @@
  */
 
 const crypto = require('node:crypto');
-
-// The door every importing file authenticates through. Read per request by
-// passwordMode(), never at load, so setting it here is enough for the whole
-// run; a file that flips the mode itself (auth-login.test.js, to prove the
-// mode decides the door) still can, in its own test hooks.
-process.env.AUTH_PASSWORD_MODE = 'local';
 
 // The same lifetime a real sign-in gives a session (sign-in.js's
 // SESSION_TTL_HOURS). Any future instant would do; matching the real one

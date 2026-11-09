@@ -2,12 +2,13 @@
  * Signing in with an email and a password from our own database (issue #268),
  * over HTTP against a real database — the same seam as plant.test.js.
  *
- * The local-mode tests set AUTH_PASSWORD_MODE=local and restore it afterwards;
- * the app reads it per request, so nothing needs reloading. Like plant.test.js
- * this inserts its own rows (Employees, Accounts, credentials), each under a
- * value unique to this process, and deletes them in test.after(): it never
- * truncates `app_users`, which accounts.test.js's bootstrap assertion shares.
- * Sessions go with their Account (ON DELETE CASCADE).
+ * The app keeps its own passwords and sessions (issue #480 removed the
+ * hosted-provider branch), so the whole file runs against that one door.
+ * Like plant.test.js this inserts its own rows (Employees, Accounts,
+ * credentials), each under a value unique to this process, and deletes them in
+ * test.after(): it never truncates `app_users`, which accounts.test.js's
+ * bootstrap assertion shares. Sessions go with their Account (ON DELETE
+ * CASCADE).
  *
  * Needs a database with every migration applied. Set DATABASE_URL first.
  */
@@ -24,7 +25,6 @@ let server;
 let base;
 let pool;
 let closePool;
-let previousMode;
 const employeeIds = [];
 const accountIds = [];
 
@@ -70,7 +70,6 @@ const bearer = (token) => ({ authorization: `Bearer ${token}` });
 
 test.before(async () => {
   process.env.BACKEND_PORT = '0';
-  previousMode = process.env.AUTH_PASSWORD_MODE;
 
   ({ server } = require('../../src/index'));
   ({ closePool } = require('../../src/platform/db'));
@@ -85,13 +84,7 @@ test.before(async () => {
   base = `http://127.0.0.1:${server.address().port}`;
 });
 
-test.beforeEach(() => {
-  process.env.AUTH_PASSWORD_MODE = 'local';
-});
-
 test.after(async () => {
-  if (previousMode === undefined) delete process.env.AUTH_PASSWORD_MODE;
-  else process.env.AUTH_PASSWORD_MODE = previousMode;
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [accountIds]);
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [employeeIds]);
   await new Promise((resolve) => server.close(resolve));
@@ -209,24 +202,10 @@ test('a pending Account signs in, then is refused where Approval is required', a
   assert.strictEqual((await refused.json()).status, 'pending_approval');
 });
 
-test('GET /api/auth/mode reports the deployment mode, defaulting to supabase', async () => {
-  const read = async () => (await (await fetch(`${base}/api/auth/mode`)).json()).password;
-
-  process.env.AUTH_PASSWORD_MODE = 'local';
-  assert.strictEqual(await read(), 'local');
-  process.env.AUTH_PASSWORD_MODE = 'supabase';
-  assert.strictEqual(await read(), 'supabase');
-  delete process.env.AUTH_PASSWORD_MODE;
-  assert.strictEqual(await read(), 'supabase');
-});
-
-test('with the mode unset, a local session token is not accepted', async () => {
-  const who = await makeAccount('unset');
-  const { token } = await (await login({ email: who.email, password: PASSWORD })).json();
-
-  delete process.env.AUTH_PASSWORD_MODE;
-  const me = await fetch(`${base}/api/people/me`, { headers: bearer(token) });
-  assert.strictEqual(me.status, 401);
+test('GET /api/auth/mode reports local, the only door', async () => {
+  const response = await fetch(`${base}/api/auth/mode`);
+  assert.strictEqual(response.status, 200);
+  assert.deepStrictEqual(await response.json(), { password: 'local' });
 });
 
 test('an admin with no Employee signs in, and is identified as local-account:<id>', async () => {

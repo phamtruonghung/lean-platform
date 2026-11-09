@@ -3,9 +3,8 @@
  * database — the same seam as plant.test.js. Signing in goes through
  * POST /api/auth/login, so every Account here holds a real local session.
  *
- * The local-mode tests set AUTH_PASSWORD_MODE=local and restore it afterwards;
- * the app reads it per request, so nothing needs reloading. Like plant.test.js
- * this inserts its own rows (Employees, Accounts, credentials), each under a
+ * Like plant.test.js this inserts its own rows (Employees, Accounts,
+ * credentials), each under a
  * value unique to this process, and deletes them in test.after(): it never
  * truncates `app_users`, which accounts.test.js's bootstrap assertion shares.
  * Sessions go with their Account (ON DELETE CASCADE).
@@ -24,7 +23,6 @@ let server;
 let base;
 let pool;
 let closePool;
-let previousMode;
 const employeeIds = [];
 const accountIds = [];
 
@@ -70,7 +68,6 @@ const bearer = (token) => ({ authorization: `Bearer ${token}` });
 
 test.before(async () => {
   process.env.BACKEND_PORT = '0';
-  previousMode = process.env.AUTH_PASSWORD_MODE;
 
   ({ server } = require('../../src/index'));
   ({ closePool } = require('../../src/platform/db'));
@@ -85,13 +82,7 @@ test.before(async () => {
   base = `http://127.0.0.1:${server.address().port}`;
 });
 
-test.beforeEach(() => {
-  process.env.AUTH_PASSWORD_MODE = 'local';
-});
-
 test.after(async () => {
-  if (previousMode === undefined) delete process.env.AUTH_PASSWORD_MODE;
-  else process.env.AUTH_PASSWORD_MODE = previousMode;
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [accountIds]);
   await pool.query('DELETE FROM employees WHERE id = ANY($1)', [employeeIds]);
   await new Promise((resolve) => server.close(resolve));

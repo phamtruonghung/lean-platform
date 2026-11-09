@@ -22,21 +22,10 @@ RUN flutter pub get
 
 COPY . .
 
-# Supabase project config (ADR-0002), baked into the bundle at build time —
-# see lib/supabase_config.dart for why this is --dart-define rather than a
-# file read at runtime. Both default to empty, matching
-# String.fromEnvironment's own default when a define is omitted, so a build
-# with neither ARG supplied still succeeds — that is what lets CI keep
-# building this image on every push without needing the real project's
-# secrets (see the frontend CI job). Deploying against a real Supabase
-# project means passing both as --build-arg.
-ARG SUPABASE_URL=""
-ARG SUPABASE_ANON_KEY=""
-
 # The identity of this build (lib/app_version.dart), shown in the app footer
 # and written to /version.txt below. The release workflow passes the image
-# tag (sha-<short sha>). Empty by default, like the ARGs above; an empty
-# value is read as `dev`, in both the footer and version.txt.
+# tag (sha-<short sha>). Empty by default; an empty value is read as `dev`, in
+# both the footer and version.txt.
 ARG APP_VERSION=""
 
 # --no-web-resources-cdn makes the app load CanvasKit from its own origin
@@ -44,8 +33,6 @@ ARG APP_VERSION=""
 # way; without this flag the copy in the image is never used, and the app cannot
 # start without reaching a public CDN.
 RUN flutter build web --release --no-web-resources-cdn \
-      --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
-      --dart-define=SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}" \
       --dart-define=APP_VERSION="${APP_VERSION}"
 
 # The same string over HTTP, so `curl <origin>/version.txt` establishes which

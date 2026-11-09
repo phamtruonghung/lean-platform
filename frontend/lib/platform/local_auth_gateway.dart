@@ -1,12 +1,10 @@
-/// Sign-in against this Platform's own API (issue #269), for a deployment that
-/// keeps its passwords itself rather than in Supabase Auth.
+/// Sign-in against this Platform's own API (issue #269), the only door since
+/// issue #480.
 ///
 /// The API answers `POST /api/auth/login` with an opaque token and an expiry;
-/// the token is sent as a bearer token exactly where the Supabase access token
-/// goes (platform/account_bloc.dart), so nothing downstream knows which
-/// provider issued it. The session is kept in `shared_preferences` so a reload
-/// does not sign the person out, as Supabase's own persistence does for the
-/// other provider.
+/// the token is sent as a bearer token on every request
+/// (platform/account_bloc.dart). The session is kept in `shared_preferences`
+/// so a reload does not sign the person out.
 ///
 /// [currentAccessToken] is synchronous, so the stored session is read before
 /// the gateway is built — see [LocalAuthGateway.load].

@@ -11,10 +11,11 @@ behind the shape of it in [`docs/adr/`](./docs/adr).
 Flutter Web frontend, Express API, PostgreSQL. Production ("VIProd") runs the
 API and frontend on LXC CT102, with PostgreSQL self-hosted on LXC CT100 and
 sign-in by the Platform's own passwords ([ADR-0051](./docs/adr/0051-production-data-is-self-hosted-postgres-and-identity-is-local.md)).
-The code also supports a Supabase deployment (Supabase Cloud Postgres and
-Supabase Auth, `AUTH_PASSWORD_MODE=supabase`), which the home LXC 150
-deployment uses. The API runs as a
-container on a self-hosted LXC behind a reverse proxy; the frontend is served
+The code also supports a database hosted elsewhere — the home LXC 150
+deployment keeps its PostgreSQL with a hosted provider — but identity is local
+in every deployment: the Platform's own passwords, never a hosted identity
+provider. The API runs as a container on a self-hosted LXC behind a reverse
+proxy; the frontend is served
 from the same hostname, so the browser sees one origin and there is no CORS
 anywhere in this repository.
 
@@ -211,7 +212,7 @@ reports `kpi_catalogue: "unconfigured"`.
 `migrations/1756000000001_schedule-maintenance.js` — creates the next three
 months of partitions for `measurements` and `audit_log`, then refreshes
 `mv_daily_oee`. `pg_cron` runs it at 03:17 UTC every day, inside the database itself, where
-`pg_cron` is installed (Supabase Cloud has it; **pg_cron on CT100: not
+`pg_cron` is installed (a hosted Postgres may have it; **pg_cron on CT100: not
 recorded** - check it, see below); there is no CronJob or scheduler process on the LXC, because
 none of this depends on the API being up. A fixed UTC time is correct here —
 neither partition creation nor rollup refresh is Site-specific, unlike shift
@@ -239,7 +240,7 @@ works if `pg_cron` is installed there, which is not recorded; if the `cron`
 schema is missing, nothing is scheduling the job and it needs another scheduler.
 
 The migration that schedules this only installs `pg_cron` where
-`pg_available_extensions` says it exists — Supabase Cloud has it, CT100 is
+`pg_available_extensions` says it exists — a hosted Postgres may have it, CT100 is
 not recorded, stock
 `postgres:17-alpine` (CI, local `docker compose`) does not — and says so with
 a `RAISE NOTICE` where it skips. CI cannot exercise the schedule itself for
@@ -253,8 +254,8 @@ dedicated read-only role reads through it.**
 ([ADR-0004](./docs/adr/0004-deny-all-rls-with-two-database-clients.md)). Two
 clients reach this database: the API, which connects as `postgres` —
 unaffected by deny-all RLS because it owns every table in this schema and
-holds `rolbypassrls = true`, not because of any "service role" (Supabase's
-`service_role` is `NOLOGIN`; it is a PostgREST-level JWT claim, not a
+holds `rolbypassrls = true`, not because of any "service role" (a hosted
+platform's `service_role` is `NOLOGIN`; it is a PostgREST-level JWT claim, not a
 Postgres login role a `DATABASE_URL` could ever connect as) — and owns every
 write; and Power BI, over `powerbi_reader`, created by
 `migrations/1756000000002_deny-all-rls.js`, which can `SELECT` everywhere in
@@ -271,23 +272,13 @@ project name means the first deploy removes TLS termination.
 Images are tagged `sha-<commit>`, never `latest`. A floating tag would make a
 rollback meaningless, because the tag it rolls back to may since have moved.
 
-**The deploy takes its authentication settings from repository variables, not
-from the box.** On VIProd `AUTH_PASSWORD_MODE` is `local` and the `SUPABASE_*`
-variables are still set but unused. `SUPABASE_URL` and `SUPABASE_ANON_KEY` are baked into the
-frontend at build; `SUPABASE_JWKS_URL` and `SUPABASE_JWT_ISSUER` reach the
-backend at deploy; so does `AUTH_PASSWORD_MODE`, which picks the door:
-`supabase` verifies a Supabase JWT, `local` keeps passwords in the
-deployment's own PostgreSQL (`POST /api/auth/login`). Unset means `supabase`.
-It is a variable, not a secret — set it with
-`gh variable set AUTH_PASSWORD_MODE --body local` — and it must live there
-because a runner deploy does not read `/opt/lean-platform/.env`; otherwise the
-next deploy would quietly switch a `local` deployment back. The deploy log's
-"Report what is serving" step prints the mode that was deployed. Caveat: it is
-a repository-level variable, not a per-target one, so every deployment this
-workflow drives gets the same door. A second deployment that wanted the other
-door would need this made per-target (a GitHub environment, say) first.
+**The deploy carries no authentication settings.** Sign-in is the Platform's
+own passwords in PostgreSQL (ADR-0051), so there is no identity provider to
+configure and no door to switch: `GET /api/auth/mode` always answers
+`local`. Nothing about sign-in belongs in a repository variable, and the
+deploy log's "Report what is serving" step has only the image tag to report.
 
-**The first administrator's password.** In `local` mode nobody can sign in
+**The first administrator's password.** Nobody can sign in
 until an Account has a password, and the route that sets one (#270) needs a
 signed-in administrator, so the first one is set by hand, once, by a person
 at the deployment's database. On VIProd that is CT100's PostgreSQL, so
@@ -306,8 +297,8 @@ The password is read from stdin only and stored as temporary
 refuses to overwrite an existing password unless run with `--force`, and
 prints only the email and the time.
 
-**Two separate steps, in this order, for everyone but an administrator.** In
-`local` mode a non-admin Account signs in only when both are true: (1) it is
+**Two separate steps, in this order, for everyone but an administrator.** A
+non-admin Account signs in only when both are true: (1) it is
 linked to an active Employee, and (2) it has a password. Linking is not the
 script's job and setting a password does not link; do the link first (the
 Approval queue or the Account's Employee dialog, both need a signed-in
@@ -320,10 +311,10 @@ script prints a warning in that case.
 the command above. It must still be enabled and the password must match. Its
 identity is `local-account:<id>`, assigned at first sign-in.
 
-First-time setup of a **Supabase** deployment — Supabase, DNS, Docker,
-certificates and the runner — is walked through by `scripts/setup-deployment.sh`.
-It has no stage for self-hosted PostgreSQL or local passwords; VIProd's CT100
-database setup is not scripted in this repository.
+First-time setup of a deployment — DNS, Docker, certificates and the runner —
+is walked through by `scripts/setup-deployment.sh`. It has no stage for
+self-hosted PostgreSQL or local passwords; VIProd's CT100 database setup is not
+scripted in this repository.
 
 ## Modules
 
@@ -348,17 +339,19 @@ the API is unaffected
 
 ## Authentication
 
-Two doors, picked by `AUTH_PASSWORD_MODE` (ADR-0051). Production (VIProd) runs
-`local`: the Platform keeps its own passwords in PostgreSQL on CT100
-(`POST /api/auth/login`, ADR-0022, ADR-0045) and the paragraphs on Supabase
-below do not apply to it. In `supabase` mode (the default, used by the home
-LXC 150 deployment) Supabase Auth is the identity provider (ADR-0002); this
-Platform never sees a password. The Flutter app signs up/in against Supabase directly — password or
-Google — and sends the session's JWT to the API as a bearer token on every
-request. `backend/src/platform/tokens.js` verifies it against the project's
-JWKS and resolves it to a Supabase subject; `backend/src/modules/people`
-resolves that subject to an Account (`app_users.external_subject`), creating
-one, inactive, on a subject's first sign-in. Every endpoint except an
+One door: the Platform's own passwords. `POST /api/auth/login` takes an email
+and a password held in this deployment's PostgreSQL (`account_credentials`,
+ADR-0022, ADR-0045) and answers an opaque session token, stored hashed in
+`account_sessions`; the Flutter app sends that token as a bearer token on every
+request. `GET /api/auth/mode` answers `{"password":"local"}`, which the app asks
+before it holds a token. There is no hosted identity provider and no switch
+between doors — issue #480 deleted that branch, so production
+([ADR-0051](./docs/adr/0051-production-data-is-self-hosted-postgres-and-identity-is-local.md))
+runs the same one everywhere.
+
+`backend/src/modules/people/middleware.js` resolves the token to an Account
+(`app_users.external_subject`), creating one, inactive, on a first sign-in.
+Every endpoint except an
 Account's own status (`GET /api/people/me`) refuses an inactive Account with a
 403 and a `status` the Flutter app can distinguish from a real failure —
 `"pending_approval"` for an Account nobody has decided about yet,
@@ -372,18 +365,15 @@ Org Units, or rejecting or deactivating one — and role/Org Unit scope
 enforcement on every other route are issue #8. See issues #6 and #8 and
 `CONTEXT.md`'s Account/Approval entries.
 
-In `supabase` mode, configuration — `SUPABASE_JWKS_URL`/`SUPABASE_JWT_ISSUER` for the backend,
-`SUPABASE_URL`/`SUPABASE_ANON_KEY` for the frontend — lives in `.env.example`,
-with no local default: verifying or issuing a real session needs a real
-Supabase project. The test suite does not depend on one — see
-`backend/test/helpers/jwks.js`. Beside them, `AUTH_PASSWORD_MODE` picks which
-door authenticates (`supabase`, the default, or `local`); on a deployment it
-comes from a repository variable — see Deployment above.
+Signing in needs no configuration beyond `DATABASE_URL`: there is no key to
+set, and the integration suite mints real sessions
+(`backend/test/helpers/session.js`) rather than depending on an external
+identity service.
 
 ## Known gaps
 
 This is the walking skeleton, plus sign-in, plus Approval. It proves the path
-from browser to database and lets a person sign up, sign in, wait for
+from browser to database and lets a person sign in, wait for
 Approval, and — once an administrator approves them — act within the Org
 Units they were granted (issue #8).
 

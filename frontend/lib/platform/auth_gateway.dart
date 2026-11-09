@@ -1,16 +1,13 @@
-/// The one seam between this client and whichever identity provider the
-/// deployment uses: Supabase Auth (ADR-0002) or the API's own sign-in
-/// (platform/local_auth_gateway.dart, issue #269).
+/// The one seam between this client and the API's own sign-in
+/// (platform/local_auth_gateway.dart, issue #269). There is no second
+/// implementation: issue #480 deleted the hosted-provider gateway along with
+/// the deployment switch that chose between them.
 library;
 
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-/// A sign-in the provider refused, in words already fit to show a person.
+/// A sign-in the API refused, in words already fit to show a person.
 ///
-/// Provider-neutral on purpose (issue #269): Supabase refusals arrive as its
-/// own `AuthException` and keep their code-to-copy mapping in
-/// auth/auth_error_messages.dart, while the API's own sign-in answers with a
-/// `message` the screen must show verbatim, inventing no copy of its own.
+/// The API answers a `message` and the screen shows it verbatim, inventing no
+/// copy of its own.
 class AuthRefusal implements Exception {
   const AuthRefusal(this.message);
 
@@ -24,36 +21,14 @@ abstract class AuthGateway {
   String? get currentAccessToken;
   Stream<String?> get accessTokenChanges;
   Future<void> signInWithPassword({required String email, required String password});
+
+  /// Refused on this deployment: an administrator creates Accounts (issue
+  /// #270), so there is no self-service sign-up to reach.
   Future<void> signUp({required String email, required String password});
+
+  /// Refused on this deployment: sign-in is an email and a password, nothing
+  /// else.
   Future<void> signInWithGoogle();
+
   Future<void> signOut();
-}
-
-class SupabaseAuthGateway implements AuthGateway {
-  SupabaseAuthGateway({GoTrueClient? auth}) : _auth = auth ?? Supabase.instance.client.auth;
-
-  final GoTrueClient _auth;
-
-  @override
-  String? get currentAccessToken => _auth.currentSession?.accessToken;
-
-  @override
-  Stream<String?> get accessTokenChanges async* {
-    yield _auth.currentSession?.accessToken;
-    yield* _auth.onAuthStateChange.map((event) => event.session?.accessToken);
-  }
-
-  @override
-  Future<void> signInWithPassword({required String email, required String password}) =>
-      _auth.signInWithPassword(email: email, password: password);
-
-  @override
-  Future<void> signUp({required String email, required String password}) =>
-      _auth.signUp(email: email, password: password);
-
-  @override
-  Future<void> signInWithGoogle() => _auth.signInWithOAuth(OAuthProvider.google);
-
-  @override
-  Future<void> signOut() => _auth.signOut();
 }

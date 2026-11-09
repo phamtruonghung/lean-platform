@@ -1,20 +1,16 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lean_platform/auth/sign_in_screen.dart';
-import 'package:lean_platform/platform/auth_bootstrap.dart';
-import 'package:lean_platform/platform/auth_gateway.dart';
 import 'package:lean_platform/platform/local_auth_gateway.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/sign_out_on_unauthorized.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'harness.dart' show FakeAuthApi, FakeAuthGateway, FakeWire, pumpApp;
+import 'harness.dart' show FakeAuthApi, FakeWire, pumpApp;
 
-/// Issue #269: signing in against the API's own endpoints, chosen at boot.
+/// Issue #269: signing in against the API's own endpoints — the only door
+/// since issue #480.
 
 Future<void> signInWith(WidgetTester tester) async {
   await tester.enterText(find.widgetWithText(TextFormField, 'Email'), 'a@b.c');
@@ -25,54 +21,6 @@ Future<void> signInWith(WidgetTester tester) async {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
-
-  group('boot selects the gateway from /api/auth/mode', () {
-    test('local selects the local gateway and never calls Supabase', () async {
-      var supabaseCalls = 0;
-      final gateway = await bootstrapAuth(
-        client: FakeAuthApi(mode: 'local').client,
-        supabase: () async {
-          supabaseCalls++;
-          return FakeAuthGateway();
-        },
-      );
-      expect(gateway, isA<LocalAuthGateway>());
-      expect(supabaseCalls, 0);
-    });
-
-    for (final (name, client) in <(String, http.Client)>[
-      ('supabase', FakeAuthApi(mode: 'supabase').client),
-      ('an unknown value', FakeAuthApi(mode: 'ldap').client),
-      ('a 500', MockClient((_) async => http.Response('boom', 500))),
-      ('garbage', MockClient((_) async => http.Response('<html>', 200))),
-      ('an unreachable API', MockClient((_) async => throw Exception('offline'))),
-    ]) {
-      test('$name calls the Supabase path', () async {
-        var supabaseCalls = 0;
-        final gateway = await bootstrapAuth(
-          client: client,
-          supabase: () async {
-            supabaseCalls++;
-            return FakeAuthGateway();
-          },
-        );
-        expect(gateway, isA<FakeAuthGateway>());
-        expect(supabaseCalls, 1);
-      });
-    }
-  });
-
-  testWidgets('an API that never answers still reaches the sign-in screen', (tester) async {
-    final neverAnswers = MockClient((_) => Completer<http.Response>().future);
-    AuthGateway? gateway;
-    unawaited(bootstrapAuth(client: neverAnswers, supabase: () async => FakeAuthGateway())
-        .then((g) => gateway = g));
-    await tester.pump(const Duration(seconds: 6));
-
-    expect(gateway, isA<FakeAuthGateway>());
-    await pumpApp(tester, gateway: gateway!, client: FakeAuthApi().client);
-    expect(find.byType(SignInScreen), findsOneWidget);
-  });
 
   testWidgets('a refused login shows the API message verbatim', (tester) async {
     final api = FakeAuthApi(loginStatus: 401);

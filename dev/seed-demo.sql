@@ -7,12 +7,12 @@
 -- production, where `deploy/deploy.sh` runs migrations and nothing else.
 --
 -- Two things this file deliberately does NOT do:
---   - It never inserts `app_users`. An Account row is created by
---     `resolveAccountForIdentity` on a person's first Supabase sign-in (see
---     `cmd_promote_admin` in scripts/review.sh); pre-creating one would make
---     that sign-in try to INSERT a second row with the same unique email and
---     fail. Use `./scripts/review.sh grant-account` to give an Account that
---     has signed in a Grant on a Demo Org Unit.
+--   - It never inserts `app_users`. An Account row is inserted by hand for the
+--     first sign-in (see `cmd_up`'s own hint in scripts/review.sh —
+--     `set-a-password.mjs` sets its password); pre-creating one here would
+--     turn the demo seed into account provisioning. Use
+--     `./scripts/review.sh grant-account` to give an Account a Grant on a Demo
+--     Org Unit.
 --   - It seeds no Floor device or technician PIN. A device credential is a
 --     build-time `--dart-define`, and a technician PIN is hashed with salt by
 --     the API; neither is something SQL can produce.

@@ -15,9 +15,8 @@
  * what a given Account's status is called.
  */
 
-const { verifyToken } = require('../../platform/tokens');
 const { resolveAccountForIdentity } = require('./service');
-const { passwordMode, findSessionIdentity } = require('./sign-in');
+const { findSessionIdentity } = require('./sign-in');
 
 // Verifies the bearer token and resolves it to an Account, creating one on a
 // subject's first sign-in (see service.js). Attaches the result as
@@ -30,20 +29,14 @@ async function authenticate(req, res, next) {
     return res.status(401).json({ message: 'Missing bearer token' });
   }
 
-  // The deployment's AUTH_PASSWORD_MODE (issue #268) picks the door, per
-  // request: `local` resolves an opaque session token from account_sessions,
-  // anything else verifies a Supabase JWT exactly as before. Both produce the
-  // same identity shape, so everything below is shared.
+  // The token is an opaque session token minted by sign-in.js: resolve it out
+  // of `account_sessions` to the identity shape everything below shares.
   let identity;
   try {
-    if (passwordMode() === 'local') {
-      const found = await findSessionIdentity(token);
-      if (!found) throw new Error('no such session');
-      identity = found.identity;
-      req.sessionId = found.sessionId;
-    } else {
-      identity = await verifyToken(token);
-    }
+    const found = await findSessionIdentity(token);
+    if (!found) throw new Error('no such session');
+    identity = found.identity;
+    req.sessionId = found.sessionId;
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }

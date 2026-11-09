@@ -1,7 +1,7 @@
 /// The identity of the build being served, baked in at build time.
 ///
-/// Read via `--dart-define` for the same reason `supabase_config.dart` is: a
-/// Flutter web bundle resolves nothing at runtime. The release workflow passes
+/// Read via `--dart-define` because a Flutter web bundle resolves nothing at
+/// runtime. The release workflow passes
 /// the image tag (`sha-<short sha>`) as the `APP_VERSION` build arg, the
 /// Dockerfile forwards it here and also writes it to `/version.txt`.
 ///

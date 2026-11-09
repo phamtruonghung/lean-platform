@@ -7,10 +7,10 @@
  * Approval definitions.
  *
  * `app_users` is the Account table (see the baseline's own comment on why it
- * is not `employees`); `external_subject` is the Supabase provider subject
- * `src/platform/tokens.js` resolves a token to. This module is the one place
- * that column is ever read or written — platform code stays ignorant of what
- * an Account is, per ADR-0006.
+ * is not `employees`); `external_subject` is the identity a signed-in Account
+ * is known by — `local:<employee_no>` or `local-account:<id>`, assigned by
+ * sign-in.js. This module is where that column is resolved to an Account —
+ * platform code stays ignorant of what an Account is, per ADR-0006.
  *
  * `approval_status` (migrations/1788295040758_account-approval-status.js) is
  * the decision an administrator has made, if any; `is_active` is whether the
@@ -216,8 +216,8 @@ async function createAccountForSubject({ subject, email, name }) {
 // The one place "is this subject's Account there yet, and if not, create it"
 // happens — called from the authenticate middleware on every request, which
 // is what makes first sign-in the moment an Account is created rather than a
-// separate sign-up endpoint (there is no session for the API to issue;
-// Supabase Auth already issued one).
+// separate sign-up endpoint (the API mints no session on that path; the login
+// request already issued one).
 async function resolveAccountForIdentity({ subject, email, name }) {
   const existing = await findAccountBySubject(subject);
   if (existing) return existing;

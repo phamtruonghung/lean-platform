@@ -88,9 +88,9 @@ class AwaitingApprovalScreen extends StatelessWidget {
                         ),
                         OutlinedButton(
                           // Dispatched through AccountBloc, not called on
-                          // Supabase directly (issue #38): the Bloc is the only
-                          // place the session is resolved, so it must also be
-                          // the only place it ends.
+                          // the gateway directly (issue #38): the Bloc is the
+                          // only place the session is resolved, so it must
+                          // also be the only place it ends.
                           key: signOutKey,
                           onPressed: () => context
                               .read<AccountBloc>()

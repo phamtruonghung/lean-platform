@@ -199,7 +199,8 @@ test('a partition created after this migration by ensure_time_partitions() is bo
 //    under SET ROLE proves that absence actually stops a read, not just that
 //    the bookkeeping looks right.
 //
-//    Both roles are Supabase-provisioned and do not exist on the stock
+//    Both roles are provisioned by the hosting platform and do not exist on
+//    the stock
 //    postgres image this repository's CI and local docker compose run
 //    against — see migrations/1756000000002_deny-all-rls.js's own guard for
 //    the same gap. Where a role does not exist, the privilege-count half of
@@ -218,7 +219,7 @@ for (const role of ['anon', 'authenticated']) {
     // well so that gap does not exist here.
     // Scoped to table_schema = 'public': on production, `anon` holds 1002
     // grants total, 973 of them in `public` and the remaining 29 in
-    // `realtime`/`storage` — Supabase-owned schemas this migration must
+    // `realtime`/`storage` — hosting-platform schemas this migration must
     // never touch (see the migration's own comment on why every REVOKE
     // below names `anon`/`authenticated` explicitly rather than reaching
     // for a broader target). An unscoped count here would fail this test
@@ -253,7 +254,8 @@ for (const role of ['anon', 'authenticated']) {
     if (!roleExists) {
       t.skip(
         `role "${role}" does not exist on this Postgres — expected on the stock image ` +
-        `CI and local docker compose run; only a Supabase-provisioned project has it, ` +
+        `CI and local docker compose run; only a project whose hosting ` +
+        `platform provisions them has them, ` +
         `and that is where this assertion actually exercises anything.`
       );
       return;
@@ -323,7 +325,8 @@ for (const role of ['anon', 'authenticated']) {
     if (!roleExists) {
       t.skip(
         `role "${role}" does not exist on this Postgres — expected on the stock image ` +
-        `CI and local docker compose run; only a Supabase-provisioned project has it, ` +
+        `CI and local docker compose run; only a project whose hosting ` +
+        `platform provisions them has them, ` +
         `and that is where this assertion actually exercises anything.`
       );
       return;
