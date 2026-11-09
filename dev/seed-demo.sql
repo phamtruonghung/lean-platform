@@ -7,10 +7,11 @@
 -- production, where `deploy/deploy.sh` runs migrations and nothing else.
 --
 -- Two things this file deliberately does NOT do:
---   - It never inserts `app_users`. An Account row is inserted by hand for the
---     first sign-in (see `cmd_up`'s own hint in scripts/review.sh —
---     `set-a-password.mjs` sets its password); pre-creating one here would
---     turn the demo seed into account provisioning. Use
+--   - It never inserts `app_users`. An Account is the review stack's own way
+--     in, not plant data: `./scripts/review.sh up` provisions one demo
+--     administrator itself (`provision_demo_admin` in that script, issue #485)
+--     and prints the credential it created; pre-creating one here would turn
+--     the demo seed into account provisioning. Use
 --     `./scripts/review.sh grant-account` to give an Account a Grant on a Demo
 --     Org Unit.
 --   - It seeds no Floor device or technician PIN. A device credential is a

@@ -74,6 +74,15 @@ without rebuilding. An Account only gains a Grant after signing in, so
 signed-in Account a Grant on a Demo Org Unit — the thing that makes the
 Org-Unit-scoped behaviour visible.
 
+The seed inserts no Account, deliberately — an Account is the stack's way in,
+not plant data — and signing in creates none (issue #480), so `up` provisions
+one demo administrator itself, then signs in as it to prove the password
+verifies, and prints the credential pair it created — `admin@demo.local` with
+the password shown in that block, both overridable in `.env`. It is
+local-development furniture and is never the way into a deployment, where the
+first administrator's password is set by hand (`dev/set-a-password.mjs`,
+below).
+
 ## Tests
 
 The Platform has **one test seam**: HTTP against the running API, with a real
