@@ -16,10 +16,13 @@
 # What a reviewer needs to know up front:
 #   - Sign-in is the Platform's own passwords (ADR-0051, issue #480): there is
 #     no identity provider to configure and no SUPABASE_* value to fill in.
-#   - Nobody can sign in until an Account with a password exists, and this
-#     script's demo seed deliberately inserts no `app_users` row. Set the
-#     first administrator's password per README, "The first administrator's
-#     password" (dev/set-a-password.mjs), after the stack is up.
+#   - Nobody can sign in until an Account with a password exists. Signing in
+#     creates no Account, and this script's demo seed deliberately inserts no
+#     `app_users` row, so `up` provisions one demo administrator itself
+#     (provision_demo_admin, issue #485) and prints the credential pair it
+#     created — local development only. Override either half in .env.
+#   - A deployment's first administrator is still a person's job, not this
+#     script's: README, "The first administrator's password".
 # ==============================================================================
 
 set -euo pipefail
@@ -63,8 +66,9 @@ usage: ./scripts/review.sh [command]
 
 commands:
   up                     build and start the whole stack, migrate the schema,
-                         and wait until it answers — the default if no
-                         command is given
+                         seed the demo data, provision the demo
+                         administrator and wait until it answers — the
+                         default if no command is given
   down                   stop the stack (docker compose down); data is kept
   reset [-y]             destroy the Postgres volume and bring the stack back
                          up from empty — asks to confirm first unless
@@ -208,6 +212,96 @@ seed_demo_data() {
   ok "demo data ready (Demo Plant: Org Units, Employees, Assets, inventory, maintenance and production)"
 }
 
+# Provision one demo administrator, end to end, so a reviewer who runs only
+# Docker can sign in (issue #485). `POST /api/auth/login` creates no Account —
+# it resolves an existing `app_users` row with a credential — and the demo seed
+# deliberately inserts none, so without this `up` leaves a stack that answers
+# health checks and refuses every sign-in.
+#
+# The work happens inside the already-running backend container: it carries
+# both `pg` and the hashing path sign-in verifies against
+# (src/platform/secrets.js), so this needs no Node on the host and no
+# `backend/node_modules` on the host — which is what dev/set-a-password.mjs
+# needs and a reviewer running only Docker does not have. The password arrives
+# on stdin, never argv or the environment, the same rule that script follows.
+#
+# On a re-run the Account row is re-promoted and its password replaced with
+# the one `up` prints, stored temporary (`must_change_password`), exactly as a
+# reset does (#270). That is what makes `up` reproducible: a reviewer who
+# changed the demo administrator's password, or never wrote it down, can
+# always get back in by reading the block `up` prints at the end.
+provision_demo_admin() {
+  local email="$1" password="$2" result
+
+  log "provisioning the demo administrator ${email}"
+  result=$(printf '%s' "$password" | docker compose -f "$COMPOSE_FILE" exec -T \
+    -e DEMO_ADMIN_EMAIL="$email" backend node -e "$(cat <<'JS'
+const pg = require('pg');
+const { hashSecret } = require('./src/platform/secrets');
+// people/passwords.js's own floor, imported rather than copied.
+const { MIN_PASSWORD_LENGTH } = require('./src/modules/people/passwords');
+
+async function readPassword() {
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  return Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/, '');
+}
+
+async function main() {
+  const email = process.env.DEMO_ADMIN_EMAIL;
+  if (!email) throw new Error('DEMO_ADMIN_EMAIL is not set');
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set in the backend container');
+
+  const password = await readPassword();
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`The demo administrator password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
+
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
+  try {
+    await pool.query('BEGIN');
+    // `email` is CITEXT, so this matches case-insensitively. An existing row is
+    // re-promoted rather than replaced: its id keys any Grant a reviewer has
+    // already given it with `grant-account`.
+    const { rows: [account] } = await pool.query(
+      `INSERT INTO app_users (email, display_name, role, is_active, approval_status)
+       VALUES ($1, 'Demo Admin', 'admin', TRUE, 'approved')
+       ON CONFLICT (email) DO UPDATE
+         SET role = 'admin', is_active = TRUE, approval_status = 'approved'
+       RETURNING id, email`,
+      [email]
+    );
+    const { rows: [credential] } = await pool.query(
+      `INSERT INTO account_credentials (app_user_id, password_hash, must_change_password)
+       VALUES ($1, $2, TRUE)
+       ON CONFLICT (app_user_id) DO UPDATE
+         SET password_hash = EXCLUDED.password_hash,
+             must_change_password = TRUE,
+             updated_at = now()
+       RETURNING must_change_password`,
+      [account.id, await hashSecret(password)]
+    );
+    await pool.query('COMMIT');
+    process.stdout.write(`demo administrator id=${account.id} email=${account.email} must_change_password=${credential.must_change_password}`);
+  } catch (error) {
+    await pool.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+main().catch((error) => {
+  console.error(`FAILED: ${error.message}`);
+  process.exit(1);
+});
+JS
+)") \
+    || die "provisioning the demo administrator failed — run './scripts/review.sh logs backend' to see why"
+
+  ok "${result} (local development only)"
+}
+
 # ------------------------------------------------------------------------------
 # Commands
 # ------------------------------------------------------------------------------
@@ -227,8 +321,30 @@ cmd_up() {
   run_migrations
   seed_demo_data
 
+  # Both resolved after .env is sourced, so a reviewer can override the demo
+  # administrator's address or password there. The defaults are local
+  # development furniture — a stack on 127.0.0.1 — never a deployment's door;
+  # a deployment's first administrator is set by hand per README.
+  local demo_admin_email="${DEMO_ADMIN_EMAIL:-admin@demo.local}"
+  local demo_admin_password="${DEMO_ADMIN_PASSWORD:-demo-admin}"
+  provision_demo_admin "$demo_admin_email" "$demo_admin_password"
+
   wait_for_http_200 "${EDGE_URL}/api/health" "backend, through the edge" "$APP_WAIT_TIMEOUT_SECONDS"
   wait_for_http_200 "${EDGE_URL}/" "the Flutter bundle, through the edge" "$APP_WAIT_TIMEOUT_SECONDS"
+
+  # The stack answering /api/health is not the same as a reviewer being able to
+  # get into it: that is the exact failure this provisioning exists to prevent,
+  # so the sign-in itself is checked, from the host, over the same edge the
+  # browser uses. A successful sign-in mints a session row in this local
+  # database; harmless, and it is what proves the password verifies.
+  local sign_in_status
+  sign_in_status=$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST "${EDGE_URL}/api/auth/login" \
+    -H 'content-type: application/json' \
+    -d "{\"email\":\"${demo_admin_email}\",\"password\":\"${demo_admin_password}\"}" \
+    2>/dev/null || echo 000)
+  [[ "$sign_in_status" == "200" ]] \
+    || die "the stack is up, but signing in as ${demo_admin_email} answered ${sign_in_status}, not 200 — run './scripts/review.sh logs backend' to see why"
   # warn, not die: pgAdmin is a convenience for browsing Postgres, not the app
   # under review, so a slow or failed pgAdmin boot should never stop a
   # reviewer from reaching the actual stack above. /misc/ping is pgAdmin's own
@@ -248,9 +364,13 @@ cmd_up() {
   # confusing. The Postgres password is still needed when opening the
   # pre-registered server, so that one is worth naming.
   log "pgAdmin: ${PGADMIN_URL} (no login; the pre-registered server asks for the Postgres password above)"
-  log "sign-in: no Account exists yet, and sign-in creates none (issue #480) — insert one and set its password:"
-  log "  docker compose exec -T -e PGPASSWORD=${POSTGRES_PASSWORD} postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c \"INSERT INTO app_users (email, display_name, role, is_active, approval_status) VALUES ('admin@demo.local', 'Demo Admin', 'admin', TRUE, 'approved')\""
-  log "  printf '%s' \"\$PW\" | DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:5434/${POSTGRES_DB} node dev/set-a-password.mjs admin@demo.local"
+  # The one credential pair a reviewer needs, printed because `up` created it.
+  # Say plainly that it is local development furniture: the same words appear on
+  # a deployment's screen would be a security incident, not a convenience.
+  log "sign-in (local development only — not a deployment credential):"
+  log "  email:    ${demo_admin_email}"
+  log "  password: ${demo_admin_password}"
+  log "  POST ${EDGE_URL}/api/auth/login -> ${sign_in_status} (verified just now; stored as temporary, so the app asks for a change on first sign-in)"
 }
 
 cmd_down() {
@@ -345,7 +465,7 @@ SQL
   ) \
     || die "promoting ${email} failed — run './scripts/review.sh logs postgres' to see why"
 
-  [[ -n "$result" ]] || die "no Account found for ${email} — insert its app_users row first (see the hint 'up' prints), then run this again"
+  [[ -n "$result" ]] || die "no Account found for ${email} — signing in creates no Account since #480, so insert its app_users row first ('up' provisions only the demo administrator)"
   ok "${email} is now an approved admin"
 }
 
