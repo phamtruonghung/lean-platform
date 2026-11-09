@@ -1,6 +1,6 @@
 /*
  * The floor PIN lockout over HTTP (ADR-0047, ADR-0016), against a real
- * database and a real (locally issued) JWKS: wrong PINs are counted per
+ * database and a real local session: wrong PINs are counted per
  * (device, Employee number) and per device, a locked pair is refused with 423
  * even for the right PIN, a right PIN clears the Employee's count, and an
  * administrator setting a PIN lifts a lock.
@@ -8,12 +8,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -88,10 +84,6 @@ async function failTimes(device, employee, times) {
 let orgUnitId;
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -112,10 +104,7 @@ test.before(async () => {
     [`${subject}@example.com`, subject]
   );
   insertedAccountIds.push(account.id);
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   admin = { authorization: `Bearer ${token}` };
 
   const { rows: [site] } = await pool.query(
@@ -144,7 +133,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 test('a wrong PIN stays a 401 until the fifth, then the pair is locked with a 423 even for the right PIN', async () => {

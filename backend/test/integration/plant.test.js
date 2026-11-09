@@ -1,6 +1,6 @@
 /*
  * Sites and the Org Unit tree, over HTTP (issue #7), against a real database
- * and a real (locally issued) JWKS — the same seam as accounts.test.js (see
+ * and a real local session — the same seam as accounts.test.js (see
  * that file's own header, and the README's Tests section).
  *
  * Unlike accounts.test.js, this file does not truncate `app_users`: that
@@ -22,12 +22,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -47,18 +43,11 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   return { authorization: `Bearer ${token}` };
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -103,7 +92,6 @@ test.after(async () => {
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 async function createSite(overrides = {}) {

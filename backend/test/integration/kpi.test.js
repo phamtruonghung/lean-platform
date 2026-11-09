@@ -1,6 +1,6 @@
 /*
  * The MTU KPI catalogue over HTTP (ADR-0055): the catalogue, its Targets and the
- * daily Review, against a real database and a real (locally issued) JWKS, the
+ * daily Review, against a real database and a real local session, the
  * same seam as plant.test.js and handovers.test.js (see those files' headers).
  *
  * In production the catalogue is another database on another host. Here
@@ -23,14 +23,11 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
 const TIMEZONE = 'Asia/Ho_Chi_Minh';
 const REVIEW_DATE = '2026-03-02';
 
-let jwks;
 let server;
 let base;
 let pool;
@@ -55,10 +52,7 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   return { authorization: `Bearer ${token}` };
 }
 
@@ -92,10 +86,6 @@ const get = (token, urlPath) => send('GET', token, urlPath);
 const post = (token, urlPath, body) => send('POST', token, urlPath, body);
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
   // The 503 case asserts the unconfigured state first, so the variable must not
   // leak in from the environment or a .env file.
@@ -149,7 +139,6 @@ test.after(async () => {
   await new Promise((resolve) => server.close(resolve));
   await closePool();
   await closeMtuPool();
-  await jwks.close();
 });
 
 // This case must run first. The second Pool is created lazily and cached, so the

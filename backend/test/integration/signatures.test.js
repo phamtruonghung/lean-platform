@@ -1,6 +1,6 @@
 /*
  * An Employee keeps a Signature, over HTTP (issue #317, ADR-0052), against a
- * real database and a real (locally issued) JWKS - the same seam as
+ * real database and a real local session - the same seam as
  * plant.test.js (see that file's own header, and the README's Tests section).
  *
  * This file does not truncate any table another file shares: it inserts its
@@ -19,12 +19,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const zlib = require('node:zlib');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -82,15 +78,8 @@ function makePngOfSize(size) {
   return Buffer.concat([plain.subarray(0, plain.length - 12), padding, iend]);
 }
 
-async function signToken(subject) {
-  return jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
-}
-
 async function authHeader(subject) {
-  return { authorization: `Bearer ${await signToken(subject)}` };
+  return { authorization: `Bearer ${await tokenFor(subject)}` };
 }
 
 async function putSignature(headers, body) {
@@ -120,10 +109,6 @@ async function insertAccount(subject, employeeId) {
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -168,7 +153,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 async function rowsFor(employeeId) {
@@ -313,7 +297,6 @@ test('an Account linked to no Employee has no Signature: GET, PUT and DELETE ans
 test('the Signature routes need a signed-in Account', async () => {
   assert.strictEqual((await getSignature({})).status, 401);
 });
-
 
 // ---------------------------------------------------------------------------
 // A Trainee's answer carries their Signature (issue #318, ADR-0052).
@@ -559,7 +542,6 @@ test('the record reads each answer\'s Site-local day: 18:00 UTC at a UTC+7 Site 
   assert.strictEqual((await readTrainee(pending.recordId, pending.traineeId)).answeredOn, null);
 });
 
-
 // ---------------------------------------------------------------------------
 // The floor device signs the same way (issue #319, ADR-0052).
 // ---------------------------------------------------------------------------
@@ -790,7 +772,6 @@ test('no device route can create or supersede a kept Signature', async () => {
   assert.ok(Buffer.from(await (await getSignature(ownerToken)).arrayBuffer()).equals(keptImage));
 });
 
-
 // ---------------------------------------------------------------------------
 // An administrator sets a Signature for an Employee who cannot (issue #320).
 // ---------------------------------------------------------------------------
@@ -953,7 +934,6 @@ test('a non-administrator is refused every Employee Signature route', async () =
   assert.strictEqual((await fetch(forEmployee(employeeId), { method: 'DELETE', headers: ownerToken })).status, 403);
   assert.strictEqual((await rowsFor(employeeId)).length, 0);
 });
-
 
 // ---------------------------------------------------------------------------
 // The rule holds in the database (issue #326, ADR-0053).

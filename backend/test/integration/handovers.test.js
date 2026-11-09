@@ -1,8 +1,8 @@
 /*
  * Shift handovers over HTTP (issue #333, ADR-0054): opening a draft for a
  * Section and one of its shift instances, reading it back, and reading the
- * Section's production day — against a real database and a real (locally
- * issued) JWKS, the same seam as plant.test.js (see that file's own header).
+ * Section's production day — against a real database and a real local
+ * session, the same seam as plant.test.js (see that file's own header).
  *
  * This file builds its own plant and never assumes a shared table is empty: a
  * Site, a department with a section beneath it and an area with two Assets
@@ -18,14 +18,11 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
 const TIMEZONE = 'Asia/Ho_Chi_Minh';
 const PRODUCTION_DATE = '2026-05-04';
 
-let jwks;
 let server;
 let base;
 let pool;
@@ -65,10 +62,7 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   return { authorization: `Bearer ${token}` };
 }
 
@@ -306,10 +300,6 @@ function round6(value) {
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -387,7 +377,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 test('a Team Leader opens a draft handover and reads it back with its number and production day', async () => {

@@ -1,8 +1,8 @@
 /*
  * The fishbone on a CAPA (issue #213) — candidate causes by 6M category, their
  * verdicts with the evidence behind them, and starting a Why chain from a
- * confirmed one, over HTTP, against a real database and a real (locally issued)
- * JWKS. The seam, the fixture scaffolding and the dependency-ordered cleanup
+ * confirmed one, over HTTP, against a real database and a real local
+ * session. The seam, the fixture scaffolding and the dependency-ordered cleanup
  * are the ones capa-whys.test.js, capas.test.js and actions.test.js already
  * establish.
  *
@@ -34,12 +34,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -59,10 +55,7 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   // Concatenated rather than written as one template literal: an auth header
   // in a file's own content is masked in transit by the tooling that writes
   // it, which would land a syntax error here.
@@ -316,10 +309,6 @@ async function makeGround({ teamLead = null, teamMembers = [] } = {}) {
 let admin;
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -361,7 +350,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 // ---------------------------------------------------------------------------

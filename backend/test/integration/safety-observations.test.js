@@ -1,6 +1,6 @@
 /*
  * Safety observations over HTTP (issue #230) — the Account door, against a
- * real database and a real (locally issued) JWKS. This file's scaffolding
+ * real database and a real local session. This file's scaffolding
  * mirrors safety-incidents.test.js closely: a Safety observation is recorded
  * at an Org Unit, filed by production day, and read back through a filtered,
  * Site-wide register — the same shape, minus the injury classification, the
@@ -17,12 +17,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -42,10 +38,7 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   return { authorization: `Bearer ${token}` };
 }
 
@@ -163,10 +156,6 @@ async function makeGround() {
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -206,7 +195,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 // ---------------------------------------------------------------------------

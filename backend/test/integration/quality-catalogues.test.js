@@ -2,8 +2,8 @@
  * The Product and Defect code catalogues, over HTTP (issue #203) — the first
  * slice of the Quality Module, exercised through the same seam as
  * plant.test.js/approval.test.js: the real app on a real socket, a real
- * database, and a real (locally issued) JWKS standing behind
- * `src/platform/tokens.js`'s actual verification.
+ * database, and a real local session resolved by
+ * `middleware.authenticate`'s own `findSessionIdentity`.
  *
  * Like plant.test.js, this file does not truncate `app_users` — that table is
  * shared with accounts.test.js's own "the first Account becomes administrator"
@@ -27,12 +27,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -54,15 +50,8 @@ function uniqueCode(prefix) {
   return `${prefix}${process.pid}${codeCounter}`;
 }
 
-async function signToken(subject) {
-  return jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
-}
-
 async function authHeader(subject) {
-  return { authorization: `Bearer ${await signToken(subject)}` };
+  return { authorization: `Bearer ${await tokenFor(subject)}` };
 }
 
 async function json(response) {
@@ -70,10 +59,6 @@ async function json(response) {
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -121,7 +106,6 @@ test.after(async () => {
   await pool.query('DELETE FROM app_users WHERE id = ANY($1)', [insertedAccountIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 // Creates a Product through the API as the administrator and remembers its

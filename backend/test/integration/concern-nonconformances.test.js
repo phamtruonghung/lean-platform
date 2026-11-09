@@ -1,7 +1,7 @@
 /*
  * Raising a Concern from a Non-conformance, linking further occurrences and
- * unlinking them — over HTTP, against a real database and a real (locally
- * issued) JWKS (issue #208). The seam, the fixture scaffolding and the
+ * unlinking them — over HTTP, against a real database and a real local
+ * session (issue #208). The seam, the fixture scaffolding and the
  * dependency-ordered cleanup are the ones
  * `nonconformance-dispositions.test.js` and `actions.test.js` already
  * establish.
@@ -36,12 +36,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { createTestJwks } = require('../helpers/jwks');
+const { tokenFor } = require('../helpers/session');
 
-const ISSUER = 'https://example.supabase.co/auth/v1';
-const AUDIENCE = 'authenticated';
-
-let jwks;
 let server;
 let base;
 let pool;
@@ -63,10 +59,7 @@ function uniqueCode(prefix) {
 }
 
 async function authHeader(subject) {
-  const token = await jwks.signToken(
-    { sub: subject, email: `${subject}@example.com` },
-    { issuer: ISSUER, audience: AUDIENCE }
-  );
+  const token = await tokenFor(subject);
   // Concatenated rather than written as one template literal: an auth header
   // in a file's own content is masked in transit by the tooling that writes
   // it, which would land a syntax error here.
@@ -311,10 +304,6 @@ async function recordAgain(ground, quantity = 8, orgUnitId = null) {
 }
 
 test.before(async () => {
-  jwks = await createTestJwks();
-  process.env.SUPABASE_JWKS_URL = jwks.url;
-  process.env.SUPABASE_JWT_ISSUER = ISSUER;
-  process.env.SUPABASE_JWT_AUDIENCE = AUDIENCE;
   process.env.BACKEND_PORT = '0';
 
   ({ server } = require('../../src/index'));
@@ -364,7 +353,6 @@ test.after(async () => {
   await pool.query('DELETE FROM sites WHERE id = ANY($1)', [insertedSiteIds]);
   await new Promise((resolve) => server.close(resolve));
   await closePool();
-  await jwks.close();
 });
 
 // ---------------------------------------------------------------------------
