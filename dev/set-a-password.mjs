@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /*
  * Sets one existing Account's password (issue #280), creating its row in
- * `account_credentials` if it has none, so the deployment's first
- * administrator can sign in once AUTH_PASSWORD_MODE=local. Everything after
- * that happens through the change flow of #270.
+ * `account_credentials` if it has none, so a deployment's first
+ * administrator can sign in (issue #480 made that the only door). Everything
+ * after that happens through the change flow of #270.
  *
  *   printf '%s' "$PW" | DATABASE_URL=postgresql://... node dev/set-a-password.mjs <email> [--force]
  *

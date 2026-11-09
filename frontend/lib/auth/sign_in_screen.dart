@@ -1,9 +1,8 @@
-/// Sign up and sign in — password, and Google — through whichever
-/// [AuthGateway] the deployment runs on. Against Supabase Auth there is no
-/// backend involved at all: the API never sees a password (ADR-0002), it only
-/// ever verifies the session Supabase issues. Against the API's own sign-in
-/// (issue #269) the gateway posts the password to the API, and what the API
-/// refuses with is shown verbatim as an [AuthRefusal].
+/// Sign in — password — through the [AuthGateway] this app runs on, which is
+/// the API's own sign-in (issue #269, issue #480). The gateway posts the
+/// password to the API, and what the API refuses with is shown verbatim as an
+/// [AuthRefusal]. The Google and sign-up buttons are refusals on this
+/// deployment, not a second door.
 ///
 /// **The front door has an identity (issue #375).** It used to be an `AppBar`
 /// reading "Platform" over a 400px column floating on an empty canvas. At
@@ -32,13 +31,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_form_submit.dart';
 import '../widgets/palette_toggle.dart';
-import 'auth_error_messages.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({
@@ -107,8 +104,6 @@ class _SignInScreenState extends State<SignInScreen> {
       // listener — nothing to navigate to here.
     } on AuthRefusal catch (error) {
       setState(() => _error = error.message);
-    } on AuthException catch (error) {
-      setState(() => _error = authErrorMessage(error));
     } catch (error) {
       setState(() => _error = 'Something went wrong: $error');
     } finally {
@@ -137,11 +132,8 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    // On Flutter Web this navigates the browser to Google and back via
-    // Supabase's own redirect — there is no separate "callback screen" to
-    // build: the app reloads at this same URL with a session already
-    // established, and AccountBloc's listener picks it up like any other
-    // sign-in.
+    // Kept as an honest refusal rather than a hidden control: this deployment
+    // signs in with an email and a password only, and the gateway says so.
     await _run(() => context.read<AuthGateway>().signInWithGoogle());
   }
 

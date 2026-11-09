@@ -10,9 +10,9 @@
 /// anything about the signed-in person. A 403 is a role refusal, not a dead session, so it does not sign
 /// anyone out.
 ///
-/// Wired only when the local gateway is selected (main.dart), leaving the
-/// Supabase path exactly as it was. The gateway's own login and logout use the
-/// raw client, never this one, because a failed login is itself a 401.
+/// Wired around every Module's client (main.dart). The gateway's own login and
+/// logout use the raw client, never this one, because a failed login is
+/// itself a 401.
 library;
 
 import 'package:http/http.dart' as http;

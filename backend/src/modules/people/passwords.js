@@ -1,7 +1,7 @@
 /*
  * Setting an Account's password in our own database (issue #270, part of
- * #267), for deployments running AUTH_PASSWORD_MODE=local (sign-in.js). Two
- * doors, one hashing path (platform/secrets.js, the one the login verifies):
+ * #267, sign-in.js). One hashing path (platform/secrets.js, the one the login
+ * verifies), two doors:
  *
  *   - an administrator resets another Account's password, and
  *   - a person changes their own, proving the current one first.
@@ -88,8 +88,7 @@ async function resetPassword(id, password, actingAccountId) {
 }
 
 // Whether the Account must change its password before using the Platform. An
-// Account with no credential row (Supabase mode, or none set) has nothing to
-// change here, so false.
+// Account with no credential row has nothing to change here, so false.
 async function mustChangePassword(accountId) {
   const { rows: [row] } = await getPool().query(
     'SELECT must_change_password FROM account_credentials WHERE app_user_id = $1',

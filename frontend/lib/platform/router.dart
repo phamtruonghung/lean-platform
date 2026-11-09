@@ -768,12 +768,12 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
             // back button work because navigation is a real route change.
             onDestinationSelected: (destination) => context.go(destination.path),
             account: account.account,
-            // Ends the session Supabase issued — the refresh token is
-            // revoked server-side and the locally persisted session is
+            // Ends the session the API issued — the session row is revoked
+            // server-side and the locally persisted token is
             // cleared, which is what "signing out ends the session" means:
             // a reload after this shows the sign-in screen again, not a
             // restored session. Dispatched through AccountBloc, not called on
-            // Supabase directly (issue #38): the Bloc is the only place the
+            // the gateway directly (issue #38): the Bloc is the only place the
             // session is resolved, so it must also be the only place it ends.
             onSignOut: () => context.read<AccountBloc>().add(const AccountSignOutRequested()),
             // The palette toggle (issue #366), now also drawn in the footer

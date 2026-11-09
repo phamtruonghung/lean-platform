@@ -2,12 +2,12 @@
  * The Platform's connection to Postgres.
  *
  * Production (VIProd) is self-hosted PostgreSQL on LXC CT100 (ADR-0051); the
- * home LXC 150 deployment still uses Supabase Cloud (ADR-0002). Either way the
- * API reaches it as `postgres`, the role that ran the baseline and every migration since — it
+ * home LXC 150 deployment keeps its Postgres with a hosted provider (ADR-0002).
+ * Either way the API reaches it as `postgres`, the role that ran the baseline and every migration since — it
  * owns every table in this schema and holds `rolbypassrls = true`, which is
  * what actually lets it keep reading and writing under the deny-all RLS
- * floor (ADR-0004), not any "service role": Supabase's `service_role` is
- * `NOLOGIN` and exists as a PostgREST-level JWT claim, not a Postgres login
+ * floor (ADR-0004), not any "service role": a hosted platform's `service_role`
+ * is `NOLOGIN` and exists as a PostgREST-level JWT claim, not a Postgres login
  * role a connection string could ever authenticate as. See
  * migrations/1756000000002_deny-all-rls.js's own file header for the same
  * fact, stated where the RLS floor itself is defined. Nothing here creates
@@ -63,7 +63,7 @@ async function closePool() {
 
 // Runs `fn` inside one transaction, with the audit actor set transaction
 // -locally first — `SET LOCAL`, not a plain session `SET`, because this pool
-// (and Supabase's own transaction-mode pooler in production, per ADR-0002's
+// (and the hosted transaction-mode pooler in production, per ADR-0002's
 // Consequences) hands the same physical connection to different requests
 // between transactions. A session-level setting would leak into whichever
 // request happens to reuse the connection next and misattribute its writes;

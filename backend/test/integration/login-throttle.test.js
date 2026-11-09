@@ -21,7 +21,6 @@ let server;
 let base;
 let pool;
 let closePool;
-let previousMode;
 const accountIds = [];
 const employeeIds = [];
 const saved = {};
@@ -65,8 +64,6 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 test.before(async () => {
   process.env.BACKEND_PORT = '0';
-  previousMode = process.env.AUTH_PASSWORD_MODE;
-  process.env.AUTH_PASSWORD_MODE = 'local';
   for (const [key, value] of Object.entries(THROTTLE_ENV)) {
     saved[key] = process.env[key];
     process.env[key] = value;
@@ -85,8 +82,6 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  if (previousMode === undefined) delete process.env.AUTH_PASSWORD_MODE;
-  else process.env.AUTH_PASSWORD_MODE = previousMode;
   for (const key of Object.keys(THROTTLE_ENV)) {
     if (saved[key] === undefined) delete process.env[key];
     else process.env[key] = saved[key];
@@ -154,14 +149,5 @@ test('an address that tries many emails is stopped by the per-address limit', as
     assert.strictEqual((await login(`${tag}-nobody-next@example.com`, 'wrong password', '203.0.113.8')).status, 401);
   } finally {
     process.env.LOGIN_THROTTLE_IP_MAX = THROTTLE_ENV.LOGIN_THROTTLE_IP_MAX;
-  }
-});
-
-test('outside local mode the login route does not exist', async () => {
-  process.env.AUTH_PASSWORD_MODE = 'supabase';
-  try {
-    assert.strictEqual((await login(emailOf('burst'), PASSWORD)).status, 404);
-  } finally {
-    process.env.AUTH_PASSWORD_MODE = 'local';
   }
 });
