@@ -66,8 +66,16 @@ die()  { printf '%s\n' "  ${RED}✗${RESET} $*" >&2; exit 1; }
 # early, provision fine, and then have the probe fail on malformed JSON instead
 # of proving the password. Deliberately not `jq`: this script advertises a
 # Docker-only reviewer, and jq is one more thing their host might not have.
+#
+# A raw byte below 0x20 is not legal inside a JSON string either — the
+# credential path only enforces a minimum length, so a password can carry one
+# (0x0b was measured) — and JSON has no short escape for most of them. The four
+# with one are escaped by name below; every other C0 byte becomes \u00XX. The
+# loop runs after the backslash escape so the backslashes it introduces stay
+# single.
 json_escape() {
   local s="$1"
+  local i c esc
   s=${s//\\/\\\\}
   s=${s//\"/\\\"}
   s=${s//$'\n'/\\n}
@@ -75,6 +83,12 @@ json_escape() {
   s=${s//$'\t'/\\t}
   s=${s//$'\b'/\\b}
   s=${s//$'\f'/\\f}
+  for i in $(seq 1 31); do
+    case $i in 8 | 9 | 10 | 12 | 13) continue ;; esac
+    printf -v c '%b' "\\$(printf '%03o' "$i")"
+    printf -v esc '\\u%04x' "$i"
+    s=${s//"$c"/$esc}
+  done
   printf '%s' "$s"
 }
 
@@ -460,7 +474,7 @@ cmd_seed() {
 # existing row that holds a credential and creates none — a person who has
 # never been given a password cannot sign in at all, so there is no
 # first-sign-in INSERT for a pre-created row to collide with. `up` provisions
-# its own row this way (provision_demo_admin); this command therefore only ever
+# its own row (provision_demo_admin); this command therefore only ever
 # re-promotes a row that already exists, and dies loudly when nothing matches.
 cmd_promote_admin() {
   [[ $# -eq 1 ]] || die "usage: ./scripts/review.sh promote-admin <email>"
@@ -497,8 +511,10 @@ SQL
 # code within the Demo Site.
 #
 # The Account must already exist, for the same reason `promote-admin` only
-# updates: an `app_users` row belongs to a person's credential, and only
-# `up`'s provisioning (or a deployment's hand-set password) creates one. A
+# updates: an `app_users` row belongs to a person's credential, never to the
+# demo seed. `up` provisions the demo administrator's row itself; on a
+# deployment the roster load (`dev/seed-relats-vietnam.mjs`) creates people's
+# rows, and `dev/set-a-password.mjs` only gives an existing row a password. A
 # Grant hangs off that row, so there is nothing to grant before it exists —
 # this never INSERTs an `app_users` row, and the person signs in with the
 # password their row already carries.
