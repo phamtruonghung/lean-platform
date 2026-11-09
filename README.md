@@ -343,8 +343,9 @@ One door: the Platform's own passwords. `POST /api/auth/login` takes an email
 and a password held in this deployment's PostgreSQL (`account_credentials`,
 ADR-0022, ADR-0045) and answers an opaque session token, stored hashed in
 `account_sessions`; the Flutter app sends that token as a bearer token on every
-request. `GET /api/auth/mode` answers `{"password":"local"}`, which the app asks
-before it holds a token. There is no hosted identity provider and no switch
+request. `GET /api/auth/mode` answers `{"password":"local"}` as an
+unauthenticated constant, for any client that asks the question before it holds
+a token. There is no hosted identity provider and no switch
 between doors — issue #480 deleted that branch, so production
 ([ADR-0051](./docs/adr/0051-production-data-is-self-hosted-postgres-and-identity-is-local.md))
 runs the same one everywhere.

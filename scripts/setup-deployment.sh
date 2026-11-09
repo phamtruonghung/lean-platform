@@ -184,7 +184,7 @@ finish() {
 # STAGES
 # ──────────────────────────────────────────────────────────────────────────
 
-TOTAL_STAGES=8
+TOTAL_STAGES=7
 
 # Production values are kept apart from the local development .env, which has
 # defaults for a throwaway Postgres and should never hold a Supabase credential.
@@ -229,30 +229,6 @@ write_env MTU_DATABASE_URL "$MTU_DATABASE_URL"
 set_secret MTU_DATABASE_URL "$MTU_DATABASE_URL"
 
 # ── 2 ─────────────────────────────────────────────────────────────────────
-stage "Supabase: API keys"
-say "Three values from one page. The API needs the service role key; the"
-say "Flutter app needs the URL and the anon key, which ship to the browser."
-open_url "https://supabase.com/dashboard/project/_/settings/api"
-step "Copy the Project URL (looks like https://<ref>.supabase.co)."
-ask SUPABASE_URL "Paste the project URL:"
-step "Copy the anon / public key. Newer projects may label this 'publishable'."
-ask SUPABASE_ANON_KEY "Paste the anon key:"
-step "Reveal and copy the service_role key. Newer projects label this 'secret'."
-say "This key bypasses Row Level Security entirely. It belongs only to the API,"
-say "and must never reach the Flutter bundle."
-ask_secret SUPABASE_SERVICE_ROLE_KEY "Paste the service role key:"
-
-write_env SUPABASE_URL "$SUPABASE_URL"
-write_env SUPABASE_ANON_KEY "$SUPABASE_ANON_KEY"
-write_env SUPABASE_SERVICE_ROLE_KEY "$SUPABASE_SERVICE_ROLE_KEY"
-# The anon key is meant to be public: it is shipped to every browser. That is
-# precisely why the database is a deny-all floor (ADR-0004), and why this one
-# is a variable rather than a secret.
-set_var SUPABASE_URL "$SUPABASE_URL"
-set_var SUPABASE_ANON_KEY "$SUPABASE_ANON_KEY"
-set_secret SUPABASE_SERVICE_ROLE_KEY "$SUPABASE_SERVICE_ROLE_KEY"
-
-# ── 3 ─────────────────────────────────────────────────────────────────────
 stage "Hostname, DNS and port forwarding"
 say "The Platform is served from one hostname: /api goes to the API and"
 say "everything else to the Flutter app, so the browser sees a single origin"
@@ -284,7 +260,7 @@ write_env ACME_EMAIL "$ACME_EMAIL"
 write_env LXC_HOST "$LXC_HOST"
 set_var APP_HOSTNAME "$APP_HOSTNAME"
 
-# ── 4 ─────────────────────────────────────────────────────────────────────
+# ── 3 ─────────────────────────────────────────────────────────────────────
 stage "LXC: Docker Engine and the compose plugin"
 say "Everything on the box runs as containers, so this is the only software"
 say "the LXC needs installed directly."
@@ -302,7 +278,7 @@ say "    sudo mkdir -p /opt/lean-platform && sudo chown \$USER /opt/lean-platfor
 say "    docker network create platform"
 pause "Docker installed, directory and network created?"
 
-# ── 5 ─────────────────────────────────────────────────────────────────────
+# ── 4 ─────────────────────────────────────────────────────────────────────
 stage "LXC: sign in to GHCR"
 say "The images are private, so the LXC needs credentials to pull them."
 say "Workflows use the built-in token, but pulling by hand needs your own."
@@ -316,7 +292,7 @@ say "The wizard deliberately does not capture this value: it is typed straight"
 say "into the box that uses it and stored nowhere else."
 pause "Signed in to GHCR from the LXC?"
 
-# ── 6 ─────────────────────────────────────────────────────────────────────
+# ── 5 ─────────────────────────────────────────────────────────────────────
 stage "LXC: the reverse proxy, with staging certificates"
 say "Caddy terminates TLS and splits the hostname: /api to the API, the rest"
 say "to the Flutter app. It obtains and renews certificates by itself."
@@ -349,7 +325,7 @@ say "Nothing is behind the proxy yet, so a 502 from outside is the correct answe
 say "at this point. What matters is that a certificate was issued."
 pause "Certificate issued (from the staging service)?"
 
-# ── 7 ─────────────────────────────────────────────────────────────────────
+# ── 6 ─────────────────────────────────────────────────────────────────────
 stage "LXC: register the self-hosted Actions runner"
 say "The runner polls GitHub outbound and runs the deploy on the box, so"
 say "nothing inbound is exposed and no SSH key is stored in GitHub."
@@ -365,7 +341,7 @@ say "    sudo ./svc.sh install && sudo ./svc.sh start"
 step "Confirm the runner shows as Idle on the page above."
 pause "Runner registered, labelled and idle?"
 
-# ── 8 ─────────────────────────────────────────────────────────────────────
+# ── 7 ─────────────────────────────────────────────────────────────────────
 stage "Switch to production certificates"
 say "The hostname resolves, the ports are forwarded, and staging proved the"
 say "whole path works. Now swap in real certificates."
