@@ -60,6 +60,24 @@ ok()   { printf '%s\n' "  ${GREEN}✓${RESET} $*"; }
 warn() { printf '%s\n' "  ${YELLOW}!${RESET} $*"; }
 die()  { printf '%s\n' "  ${RED}✗${RESET} $*" >&2; exit 1; }
 
+# Quote a value as the inside of a JSON string literal. The login probe below
+# sends email and password in a hand-built body, and both are reviewer-supplied
+# in .env: a password such as `p@ss"word` would otherwise close the string
+# early, provision fine, and then have the probe fail on malformed JSON instead
+# of proving the password. Deliberately not `jq`: this script advertises a
+# Docker-only reviewer, and jq is one more thing their host might not have.
+json_escape() {
+  local s="$1"
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\r'/\\r}
+  s=${s//$'\t'/\\t}
+  s=${s//$'\b'/\\b}
+  s=${s//$'\f'/\\f}
+  printf '%s' "$s"
+}
+
 usage() {
   cat <<'EOF'
 usage: ./scripts/review.sh [command]
@@ -338,10 +356,12 @@ cmd_up() {
   # browser uses. A successful sign-in mints a session row in this local
   # database; harmless, and it is what proves the password verifies.
   local sign_in_status
+  local sign_in_body
+  sign_in_body="{\"email\":\"$(json_escape "$demo_admin_email")\",\"password\":\"$(json_escape "$demo_admin_password")\"}"
   sign_in_status=$(curl -s -o /dev/null -w '%{http_code}' \
     -X POST "${EDGE_URL}/api/auth/login" \
     -H 'content-type: application/json' \
-    -d "{\"email\":\"${demo_admin_email}\",\"password\":\"${demo_admin_password}\"}" \
+    -d "$sign_in_body" \
     2>/dev/null || echo 000)
   [[ "$sign_in_status" == "200" ]] \
     || die "the stack is up, but signing in as ${demo_admin_email} answered ${sign_in_status}, not 200 — run './scripts/review.sh logs backend' to see why"
@@ -435,13 +455,13 @@ cmd_seed() {
 # backend/src/modules/people/routes.js) — promote an Account that has already
 # signed in once (sitting pending/operator in the queue) to admin/approved.
 #
-# This must never INSERT a row. `resolveAccountForIdentity`
-# (backend/src/modules/people/service.js) looks an Account up by
-# `external_subject` only and INSERTs a fresh row when there is no match;
-# `app_users.email` is UNIQUE, so pre-creating a row here ahead of that
-# person's real first sign-in would make their sign-in try to INSERT a second
-# row with the same email and fail outright. Only ever UPDATE a row that
-# already exists, and die loudly when there is nothing to update.
+# An `app_users` row is a person's credential, never demo plant data: password
+# sign-in (backend/src/modules/people/sign-in.js, ADR-0051) resolves an
+# existing row that holds a credential and creates none — a person who has
+# never been given a password cannot sign in at all, so there is no
+# first-sign-in INSERT for a pre-created row to collide with. `up` provisions
+# its own row this way (provision_demo_admin); this command therefore only ever
+# re-promotes a row that already exists, and dies loudly when nothing matches.
 cmd_promote_admin() {
   [[ $# -eq 1 ]] || die "usage: ./scripts/review.sh promote-admin <email>"
   local email="$1" id result
@@ -476,9 +496,12 @@ SQL
 # Account gets a write Grant as well as a read one. The Org Unit is resolved by
 # code within the Demo Site.
 #
-# The Account must already exist: like `promote-admin`, this never INSERTs an
-# `app_users` row. Sign-in creates that row itself (`email` is UNIQUE), and a
-# pre-created one makes the real sign-in fail.
+# The Account must already exist, for the same reason `promote-admin` only
+# updates: an `app_users` row belongs to a person's credential, and only
+# `up`'s provisioning (or a deployment's hand-set password) creates one. A
+# Grant hangs off that row, so there is nothing to grant before it exists —
+# this never INSERTs an `app_users` row, and the person signs in with the
+# password their row already carries.
 cmd_grant_account() {
   local write=0 email="" code="" can_write="FALSE"
   for arg in "$@"; do
