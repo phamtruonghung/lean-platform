@@ -79,6 +79,7 @@
 const { getPool } = require('../../platform/db');
 const { parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 const plant = require('./plant');
+const roles = require('./roles');
 
 // Mirrors the CHECK constraint on app_users.role in the baseline
 // (`operator`, `supervisor`, `engineer`, `manager`, `admin`). Kept here,
@@ -394,6 +395,50 @@ function requireAdminWithCode(req, res, next) {
   return next();
 }
 
+// "May this Account use this function at all?" — the role half of the model,
+// asked with a permission code from `permissions.js` (issue #492, ADR-0061).
+//
+// The code is looked up on every guarded request rather than trusted from the
+// token, for the same freshness reason this file's header gives for `canAct`:
+// an administrator editing a role takes effect on the caller's next request.
+//
+// The refusal names the code, not the role: an Account can hold the function
+// through any of its roles, and telling a caller "you need supervisor" when a
+// role they do not have would also do it is a sentence that sends them to the
+// wrong person. The `code` field is the stable half — match on
+// `PERMISSION_REQUIRED` and read `permission` for which one.
+function requirePermission(permission) {
+  const required = String(permission).trim().toUpperCase();
+
+  return async function requirePermissionMiddleware(req, res, next) {
+    try {
+      const held = await roles.effectivePermissions(req.account);
+      if (!held.some((row) => row.code === required)) {
+        return res.status(403).json({
+          message: `This action requires the ${required} permission.`,
+          code: 'PERMISSION_REQUIRED',
+          permission: required
+        });
+      }
+      return next();
+    } catch (error) {
+      return handleError(error, res, next);
+    }
+  };
+}
+
+// The caller's own effective permissions and roles, in the shape `/me`
+// answers with and `requirePermission` decides with. Kept here beside
+// `orgUnitScopeFor` for the same reason: both answer "what is true of the
+// caller right now", not "what is true of this one row".
+async function permissionsForAccount(account) {
+  const [permissions, roleCodes] = await Promise.all([
+    roles.effectivePermissions(account),
+    roles.roleCodesForAccount(account)
+  ]);
+  return { permissions: permissions.map((row) => row.code), roles: roleCodes };
+}
+
 // "Must hold {read,write} scope on the Org Unit this route names" —
 // issue #8's own 403-vs-404 rule, settled in this order and no other:
 // existence first (plant.getOrgUnit's own 404 if the route's id names
@@ -490,6 +535,8 @@ module.exports = {
   writeReachOrgUnitIds,
   grantedEntryPointIds,
   orgUnitScopeFor,
+  permissionsForAccount,
+  requirePermission,
   requireAdmin,
   requireAdminWithCode,
   requireOrgUnitScope,

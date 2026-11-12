@@ -37,6 +37,7 @@ import '../widgets/status_chip.dart';
 import 'account_correction_dialog.dart';
 import 'account_employee_dialog.dart';
 import 'account_password_dialog.dart';
+import 'account_roles_dialog.dart';
 import 'accounts_bloc.dart';
 import 'managed_account.dart';
 import 'pending_account.dart' show waitingFor;
@@ -107,6 +108,12 @@ class AccountsScreen extends StatelessWidget {
   /// [linkEmployeeKey].
   static ValueKey<String> resetPasswordKey(String id) =>
       ValueKey<String>('accounts-reset-password-$id');
+
+  /// The control that opens [AccountRolesDialog] (issue #492, ADR-0061) — the
+  /// "put this person in that group and press Assign" act. Absent on the
+  /// caller's own row and on a pending row, for the same two reasons the three
+  /// controls above it are.
+  static ValueKey<String> rolesKey(String id) => ValueKey<String>('accounts-roles-$id');
 
   /// The pending row's own action (issue #112, Decision E): neither
   /// correction nor deactivation, since the server refuses both for a
@@ -800,6 +807,28 @@ class _RowActions extends StatelessWidget {
           tooltip: 'Reset password',
           visualDensity: VisualDensity.compact,
           onPressed: busy ? null : () => AccountPasswordDialog.open(context, account),
+        ),
+        // The groups this person is in (issue #492, ADR-0061): one control that
+        // opens the Assign dialog. A `Roles` label would not fit the fixed
+        // [_actionsColumnWidth] beside four other controls, so this is the same
+        // icon-button shape the password reset takes.
+        IconButton(
+          key: AccountsScreen.rolesKey(account.id),
+          icon: const Icon(Icons.admin_panel_settings_outlined, size: 20),
+          tooltip: 'Roles',
+          visualDensity: VisualDensity.compact,
+          onPressed: busy
+              ? null
+              : () async {
+                  final notice = await AccountRolesDialog.open(
+                    context,
+                    accountId: account.id,
+                    accountName: account.displayName,
+                  );
+                  if (notice == null || !context.mounted) return;
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(notice)));
+                },
         ),
       ],
     );

@@ -12,6 +12,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import 'people/assignee_candidate.dart';
+import 'people/app_role.dart';
 import 'people/attendance.dart';
 import 'people/leave_request.dart';
 import 'people/worked_hours.dart';
@@ -49,6 +50,8 @@ class AccountActive extends AccountStatus {
     this.employeeId,
     this.orgUnitScope = const OrgUnitScope.nowhere(),
     this.mustChangePassword = false,
+    this.permissions = const <String>[],
+    this.roles = const <String>[],
   });
 
   /// The caller's own Account id — what the Accounts Screen compares each row
@@ -57,6 +60,22 @@ class AccountActive extends AccountStatus {
   final String id;
   final String displayName;
   final String role;
+
+  /// Every permission code this Account holds right now (issue #492,
+  /// ADR-0061) — `/me`'s own `permissions`, computed server-side from the
+  /// default role, the role the Account's own [role] earns, and whatever an
+  /// administrator assigned. The Shell filters its sidebar on these rather
+  /// than on [role], which is what makes an administrator's edit to a role
+  /// visible without a release.
+  ///
+  /// Empty is the truthful default for a response that predates this field
+  /// (a cached client outliving a deploy): the sidebar then falls back to its
+  /// own `roles` sets, exactly as it did before.
+  final List<String> permissions;
+
+  /// The role codes that got this Account its permissions — `ROLE_STANDARD`,
+  /// `ROLE_SUPERVISOR`, and any assigned role. Shown, not decided on.
+  final List<String> roles;
 
   /// The Employee this Account is linked to, when it is linked to one
   /// (issue #210). `app_users.employee_id` has been on the row since the
@@ -199,6 +218,13 @@ class PeopleApi {
       employeeId: account['employeeId']?.toString(),
       orgUnitScope: _orgUnitScopeFrom(body['orgUnitScope']),
       mustChangePassword: account['mustChangePassword'] == true,
+      permissions: [
+        for (final permission in (body['permissions'] as List<dynamic>? ?? const []))
+          permission.toString(),
+      ],
+      roles: [
+        for (final role in (body['roles'] as List<dynamic>? ?? const [])) role.toString(),
+      ],
     );
   }
 
@@ -1064,6 +1090,181 @@ class PeopleApi {
         body: jsonEncode(changes),
       ),
       path,
+    );
+  }
+
+  /// The permission catalogue (`GET /api/people/permissions`, issue #492,
+  /// ADR-0061): every code this Platform can grant, in the sidebar's own
+  /// group order. Read-only — a code is born in
+  /// `backend/src/modules/people/permissions.js`, never here.
+  Future<List<Permission>> fetchPermissions(String accessToken) async {
+    const path = '/api/people/permissions';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final permission in body['permissions'] as List<dynamic>)
+          _permissionFrom(permission as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  static Permission _permissionFrom(Map<String, dynamic> permission) => Permission(
+        code: permission['code'] as String,
+        module: permission['module'] as String,
+        label: permission['label'] as String,
+        description: permission['description'] as String,
+      );
+
+  static AppRole _roleFrom(Map<String, dynamic> role) => AppRole(
+        id: role['id'].toString(),
+        code: role['code'] as String,
+        name: role['name'] as String,
+        description: role['description'] as String? ?? '',
+        isDefault: role['isDefault'] == true,
+        legacyRole: role['legacyRole'] as String?,
+        isActive: role['isActive'] == true,
+        permissionCodes: {
+          for (final code in (role['permissionCodes'] as List<dynamic>? ?? const []))
+            code.toString(),
+        },
+        holderCount: (role['holderCount'] as num?)?.toInt() ?? 0,
+        isAutomatic: role['isAutomatic'] == true,
+        isAssigned: role['isAssigned'] == true,
+      );
+
+  /// Every role and what it carries (`GET /api/people/roles`), retired ones
+  /// included — this is the editor's own list, so it must be able to reach a
+  /// retired role to bring it back.
+  Future<List<AppRole>> fetchRoles(String accessToken, {bool includeInactive = true}) async {
+    const path = '/api/people/roles';
+    final uri = Uri.parse(path).replace(
+      queryParameters: includeInactive ? {'includeInactive': 'true'} : null,
+    );
+    final response = await _send(
+      () => _client.get(uri, headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return [
+        for (final role in body['roles'] as List<dynamic>) _roleFrom(role as Map<String, dynamic>),
+      ];
+    } catch (error) {
+      throw PeopleApiException('The API answered with something this app could not read: $error');
+    }
+  }
+
+  /// Create a role (`POST /api/people/roles`). The server normalises the code
+  /// to upper case and drops a code this image does not know; the created role
+  /// it answers with is what was actually stored.
+  Future<AppRole> createRole(
+    String accessToken, {
+    required String code,
+    required String name,
+    String description = '',
+    List<String> permissions = const [],
+  }) async {
+    const path = '/api/people/roles';
+    final response = await _send(
+      () => _client.post(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({
+          'code': code,
+          'name': name,
+          'description': description,
+          'permissions': permissions,
+        }),
+      ),
+      path,
+    );
+    return _roleFrom(jsonDecode(response.body)['role'] as Map<String, dynamic>);
+  }
+
+  /// Correct a role's name, description, or whether it is still in use
+  /// (`PATCH /api/people/roles/:id`). Only the keys present are sent, the same
+  /// `hasOwnProperty` contract [updateJobRole] keeps. There is no delete.
+  Future<AppRole> updateRole(String accessToken, String id, Map<String, Object?> changes) async {
+    final path = '/api/people/roles/$id';
+    final response = await _send(
+      () => _client.patch(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode(changes),
+      ),
+      path,
+    );
+    return _roleFrom(jsonDecode(response.body)['role'] as Map<String, dynamic>);
+  }
+
+  /// Replace a role's permission set whole (`PUT /roles/:id/permissions`) —
+  /// what the administrator just ticked, not a patch of additions.
+  Future<AppRole> setRolePermissions(
+    String accessToken,
+    String id,
+    List<String> permissions,
+  ) async {
+    final path = '/api/people/roles/$id/permissions';
+    final response = await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'permissions': permissions}),
+      ),
+      path,
+    );
+    return _roleFrom(jsonDecode(response.body)['role'] as Map<String, dynamic>);
+  }
+
+  /// One Account's roles and the permissions they carry
+  /// (`GET /api/people/accounts/:id/roles`) — what the Assign dialog draws.
+  Future<AccountRoles> fetchAccountRoles(String accessToken, String accountId) async {
+    final path = '/api/people/accounts/$accountId/roles';
+    final response = await _send(
+      () => _client.get(Uri.parse(path), headers: {'authorization': 'Bearer $accessToken'}),
+      path,
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return AccountRoles(
+      accountId: body['accountId'].toString(),
+      accountRole: body['accountRole'] as String,
+      roles: [
+        for (final role in body['roles'] as List<dynamic>) _roleFrom(role as Map<String, dynamic>),
+      ],
+    );
+  }
+
+  /// The Assign button (`PUT /accounts/:id/roles`): the complete set of roles
+  /// an administrator wants this Account to hold, replacing what it held. A
+  /// role the Account already holds automatically is refused by the server
+  /// with a sentence naming it, which is what the dialog shows.
+  Future<AccountRoles> assignAccountRoles(
+    String accessToken,
+    String accountId,
+    List<String> roleIds,
+  ) async {
+    final path = '/api/people/accounts/$accountId/roles';
+    final response = await _send(
+      () => _client.put(
+        Uri.parse(path),
+        headers: {'authorization': 'Bearer $accessToken', 'content-type': 'application/json'},
+        body: jsonEncode({'roleIds': roleIds}),
+      ),
+      path,
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return AccountRoles(
+      accountId: body['accountId'].toString(),
+      accountRole: body['accountRole'] as String,
+      roles: [
+        for (final role in body['roles'] as List<dynamic>) _roleFrom(role as Map<String, dynamic>),
+      ],
     );
   }
 

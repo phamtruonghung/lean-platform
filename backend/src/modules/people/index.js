@@ -246,6 +246,7 @@ const productCostRoutes = require('./product-cost-routes');
 const floorRoutes = require('./floor-routes');
 const floorTrainingRoutes = require('./floor-training-routes');
 const authRoutes = require('./auth-routes');
+const roleRoutes = require('./role-routes');
 const { authenticate, requireActive } = require('./middleware');
 const { canAct, canSeeSite, safetyAuthorityOrgUnitIds, writeReachOrgUnitIds } = require('./authorization');
 const { findOrgUnit, findSite } = require('./plant');
@@ -263,6 +264,9 @@ const { OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 const kpiRegistry = require('./kpi-registry');
 
 const router = express.Router();
+// Before the Account surface: role-routes.js names `/accounts/:id/roles`, and
+// Express matches in mount order, so the more specific paths go first.
+router.use(roleRoutes);
 router.use(accountRoutes);
 router.use(plantRoutes);
 router.use(directoryRoutes);

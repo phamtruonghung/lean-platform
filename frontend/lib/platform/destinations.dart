@@ -73,6 +73,13 @@ class Destination {
 
   /// The roles that earn this destination, or null for one every admitted
   /// Account may reach.
+  ///
+  /// Superseded by [destinationPermissions] whenever the caller's permission
+  /// codes are known (issue #492, ADR-0061): a permission is what decides a
+  /// door now, and this set is the fallback for a response that carried none —
+  /// exactly the shape the client had before roles were editable. Both are
+  /// kept, not one replaced, because a cached client outliving a deploy must
+  /// still show a usable sidebar.
   final Set<String>? roles;
 
   /// The heading this destination is filed under — one of
@@ -83,7 +90,19 @@ class Destination {
   /// [DestinationGroupNames.order].
   final String? group;
 
-  bool isVisibleTo(String role) => roles == null || roles!.contains(role);
+  /// Whether this Account may open this destination.
+  ///
+  /// [permissions] is the caller's effective permission codes from `/me`. When
+  /// it is non-null the permission table is the one answer, whatever [roles]
+  /// says; when it is null (an older server, a fixture that predates the
+  /// field) the role set decides, as it always did.
+  bool isVisibleTo(String role, {Set<String>? permissions}) {
+    if (permissions != null) {
+      final code = destinationPermissions[path];
+      return code == null || permissions.contains(code);
+    }
+    return roles == null || roles!.contains(role);
+  }
 
   /// Whether [location] is this destination or something beneath it.
   bool matches(String location) =>
@@ -678,15 +697,103 @@ const List<Destination> platformDestinations = [
     roles: {Roles.admin},
     group: DestinationGroupNames.administration,
   ),
+  // What an Account may do (issue #492, ADR-0061): the catalogue of
+  // permissions and the editable groups that carry them. Administrator-only
+  // through its permission code, like the two above it — the door is the
+  // code, the role set is only the fallback.
+  Destination(
+    label: 'Roles',
+    icon: Icons.admin_panel_settings_outlined,
+    path: Routes.roles,
+    roles: {Roles.admin},
+    group: DestinationGroupNames.administration,
+  ),
 ];
 
-/// The destinations an Account holding [role] may use.
+/// The permission code each Destination's door is guarded by (issue #492,
+/// ADR-0061).
+///
+/// **One table, not a field on each `Destination`**, so the sidebar's doors and
+/// `backend/src/modules/people/permissions.js` can be compared line by line —
+/// and so a new Screen added to [platformDestinations] without a code here is
+/// visible as a one-line omission rather than hidden in forty edits. Home is
+/// absent on purpose: it is a landing page, not a function, so it stays
+/// ungated for every admitted Account exactly as it was.
+///
+/// The codes are the backend catalogue's own strings. A path missing from this
+/// map is offered to everyone (`isVisibleTo` treats a missing code as no gate),
+/// which is the truthful reading of a Destination nobody has classified yet —
+/// and the reason a new Screen must be added here in the same change that
+/// gives it a permission.
+const Map<String, String> destinationPermissions = {
+  Routes.directory: 'PPL_DIRECTORY_DISPLAY',
+  Routes.jobRoles: 'PPL_JOB_ROLES_DISPLAY',
+  Routes.skills: 'PPL_SKILLS_DISPLAY',
+  Routes.orgUnits: 'PPL_ORG_UNITS_DISPLAY',
+  Routes.attendance: 'PPL_ATTENDANCE_DISPLAY',
+  Routes.training: 'PPL_TRAINING_DISPLAY',
+  Routes.mySignature: 'PPL_SIGNATURE_OWN',
+  Routes.leaveRequests: 'PPL_LEAVE_REQUESTS_DISPLAY',
+  Routes.costRates: 'PPL_COST_RATES_MAINTAIN',
+  Routes.productCosts: 'PPL_PRODUCT_COSTS_MAINTAIN',
+  Routes.assets: 'MTN_ASSETS_DISPLAY',
+  Routes.parts: 'MTN_PARTS_DISPLAY',
+  Routes.stores: 'MTN_STORES_DISPLAY',
+  Routes.workOrders: 'MTN_WORK_ORDERS_DISPLAY',
+  Routes.myRequests: 'MTN_REQUESTS_RAISE',
+  Routes.requests: 'MTN_REQUESTS_TRIAGE',
+  Routes.downtime: 'MTN_DOWNTIME_DISPLAY',
+  Routes.pmSchedules: 'MTN_PM_SCHEDULES_DISPLAY',
+  Routes.meters: 'MTN_METERS_DISPLAY',
+  Routes.jobPlans: 'MTN_JOB_PLANS_MAINTAIN',
+  Routes.tierBoard: 'INS_TIER_BOARD_DISPLAY',
+  Routes.skillCoverage: 'INS_SKILL_COVERAGE_DISPLAY',
+  Routes.kpi: 'INS_KPI_CATALOGUE_DISPLAY',
+  Routes.kpiReview: 'INS_KPI_REVIEW_DISPLAY',
+  Routes.actions: 'ACT_LOG_DISPLAY',
+  Routes.capas: 'ACT_CAPA_DISPLAY',
+  Routes.products: 'QLT_PRODUCTS_DISPLAY',
+  Routes.defectCodes: 'QLT_DEFECT_CODES_DISPLAY',
+  Routes.nonConformances: 'QLT_NONCONFORMANCES_DISPLAY',
+  Routes.customers: 'QLT_CUSTOMERS_DISPLAY',
+  Routes.complaints: 'QLT_COMPLAINTS_DISPLAY',
+  Routes.slideShow: 'QLT_SLIDESHOW_DISPLAY',
+  Routes.suppliers: 'QLT_SUPPLIERS_DISPLAY',
+  Routes.supplierNcrs: 'QLT_SUPPLIER_NCRS_DISPLAY',
+  Routes.safetyIncidents: 'SAF_INCIDENTS_DISPLAY',
+  Routes.safetyObservations: 'SAF_OBSERVATIONS_DISPLAY',
+  Routes.injuryTypes: 'SAF_INJURY_TYPES_MAINTAIN',
+  Routes.bodyParts: 'SAF_BODY_PARTS_MAINTAIN',
+  Routes.production: 'PRD_HANDOVER_DISPLAY',
+  Routes.approvals: 'ADM_APPROVALS_DISPLAY',
+  Routes.accounts: 'ADM_ACCOUNTS_DISPLAY',
+  Routes.roles: rolesPermission,
+};
+
+/// The code that opens the Roles Screen (issue #492).
+///
+/// Named rather than repeated as a string literal, because it is asked in two
+/// places that must agree: the table above (which hides the sidebar entry) and
+/// `router.dart`'s per-Screen check (which locks the address). A literal in
+/// each is one typo away from a door that is shut in the sidebar and open by
+/// URL.
+const String rolesPermission = 'ADM_ROLES_DISPLAY';
+
+/// The destinations an Account holding [role] may use — and, since issue #492,
+/// an Account holding [permissions].
+///
+/// [permissions] is the caller's effective set from `/me`. Passed, it decides
+/// every door through [destinationPermissions] and [role] is not consulted at
+/// all. Left null, this is exactly the function it was before: the role sets
+/// decide, which is what an older server's answer or a test fixture's own
+/// construction falls back to.
 List<Destination> destinationsFor({
   required String role,
+  Set<String>? permissions,
   List<Destination> destinations = platformDestinations,
 }) {
   return [
     for (final destination in destinations)
-      if (destination.isVisibleTo(role)) destination,
+      if (destination.isVisibleTo(role, permissions: permissions)) destination,
   ];
 }
