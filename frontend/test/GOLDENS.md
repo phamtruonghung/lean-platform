@@ -238,6 +238,18 @@ engine the wrapper prints `SKIP: design gate not installed` and exits `0` —
 GitHub-hosted runners have neither the engine nor the images, and CI stays on
 plain `flutter test` on purpose.
 
+One side effect worth knowing before you commit: the gate runs `flutter test`
+in `frontend/` itself, so on a local SDK the implicit `pub get` can rewrite
+`frontend/pubspec.lock` before the first golden is even compared — the exact
+failure mode §3 of `AGENTS.md` warns about for every other Flutter command.
+The goldens are unaffected (the lockfile rewrite is the local SDK resolving
+its own transitive versions, not a dependency change this repo made), but
+restore it before you commit anything:
+
+```bash
+git checkout -- frontend/pubspec.lock
+```
+
 Read the ratio, not the failure count:
 
 | ratio | what it is | what to do |
