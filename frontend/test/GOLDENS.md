@@ -130,6 +130,50 @@ A failure that disappears under this command was never a regression. A
 failure that survives it is real — go read the diff as the next section
 describes.
 
+## When a golden fails
+
+A red `flutter test` is not automatically a regression, and the test output
+cannot tell you which one it is: `flutter_test`'s comparator is exact, so six
+goldens shifted by a tenth of a pixel read exactly like six goldens shifted by
+a hundred. Measure it instead of guessing:
+
+```bash
+# From the repo root.
+bash scripts/design_gate.sh
+```
+
+The wrapper runs the golden tests and then measures every pair they leave in
+`frontend/test/failures/` — reading each `_masterImage.png` (expected) against
+its `_testImage.png` (actual) — and prints a `ratio` per golden, as a
+percentage of pixels that changed. Exit `0` means pass or noise only, `1` means
+a blocking finding, `2` means it could not run. The report and diff PNGs land
+in `.design-gate/` at the repo root, which is gitignored. On a host without the
+engine the wrapper prints `SKIP: design gate not installed` and exits `0` —
+GitHub-hosted runners have neither the engine nor the images, and CI stays on
+plain `flutter test` on purpose.
+
+Read the ratio, not the failure count:
+
+| ratio | what it is | what to do |
+|---|---|---|
+| ≤ 0.1% | anti-aliasing: Skia and font hinting differ between SDK versions | not a regression. State the number and move on |
+| 0.1–1% | something moved, but not a layout | open the diff PNG, decide, and record the decision in the pull request |
+| ≥ 1% | a layout shift | blocking. The diff PNG shows the box that moved |
+
+**These goldens reproduce on Flutter `3.44.0` — CI's pin and the base of
+`frontend/Dockerfile`'s build stage — and not on an arbitrary local SDK.** A
+differing Skia produces real pixel differences with no code change involved
+(issue #236), and they land in the ≤ 0.1% band. So the first question a red run
+asks is which Flutter version produced it, not what changed in the widgets.
+
+**`--update-goldens` is never the answer to a red run.** It overwrites the
+assertion with whatever the current rendering happens to be, which deletes the
+regression test — and on a mismatched SDK it would bake that SDK's rendering
+into the repo. A mismatch you accept becomes a threshold or an `ignore` region
+in `.designgate.json`, with the reason in the pull request; the next section
+covers when regenerating is the right move (a deliberate, reviewed visual
+change, never a red run on its own).
+
 ## Regenerating a golden
 
 **Only for a deliberate, reviewed visual change** — a token value, a layout

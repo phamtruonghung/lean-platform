@@ -1,0 +1,7 @@
+{
+  "noise": 0.001,
+  "block": 0.01,
+  "ignore": [],
+  "web": { "include": [], "exclude": [] },
+  "flutter": { "dir": null, "test_files": [] }
+}
