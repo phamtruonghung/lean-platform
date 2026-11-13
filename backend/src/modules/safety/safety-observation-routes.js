@@ -41,6 +41,12 @@
  * information about a named person, so `res.json` is used directly rather
  * than routed through a redacting helper the way safety-incident-routes.js's
  * `respondWithIncident`/`respondWithIncidents` are.
+ *
+ * **The ADR-0061 retrofit (issue #507).** All three routes now ask a code beside
+ * the standing they already asked: the register and the one-observation read ask
+ * `SAF_OBSERVATIONS_DISPLAY`, recording asks `SAF_OBSERVATIONS_RECORD`. Both are
+ * seeded on ROLE_STANDARD, so no Account gained or lost access; the refusal, when
+ * one comes, names the permission instead of a Grant sentence only.
  */
 
 const express = require('express');
@@ -49,6 +55,15 @@ const safetyObservations = require('./safety-observations');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
+
+// The two codes this file asks (ADR-0061, issue #507). Both are seeded on
+// ROLE_STANDARD — the default group every approved Account carries — so neither
+// gate refuses anybody who could reach its route before the retrofit: the
+// register was open to anyone who can see the Site, and recording to anyone
+// holding an edit Grant reaching the Org Unit. The Grant questions stay exactly
+// as they were; a permission says *what*, a Grant says *where*.
+const mayReadObservations = people.requirePermission('SAF_OBSERVATIONS_DISPLAY');
+const mayRecordObservations = people.requirePermission('SAF_OBSERVATIONS_RECORD');
 
 // Mirrors safety-incident-routes.js's own requireKnownSite exactly: an
 // unknown Site is a 404, never a silently empty 200.
@@ -135,6 +150,7 @@ router.get(
   '/sites/:siteId/observations',
   people.authenticate,
   people.requireActive,
+  mayReadObservations,
   requireKnownSite,
   requireSiteVisible,
   async (req, res, next) => {
@@ -191,6 +207,7 @@ router.post(
   '/sites/:siteId/observations',
   people.authenticate,
   people.requireActive,
+  mayRecordObservations,
   requireKnownSite,
   async (req, res, next) => {
     try {
@@ -233,6 +250,7 @@ router.get(
   '/observations/:id',
   people.authenticate,
   people.requireActive,
+  mayReadObservations,
   requireSafetyObservationVisible,
   async (req, res, next) => {
     try {

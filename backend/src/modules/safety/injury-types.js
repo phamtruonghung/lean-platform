@@ -17,8 +17,8 @@
  * administrator's (injury-type-routes.js owns that half).
  *
  * Mirrors quality/products.js exactly: no HTTP, no caller awareness, no other
- * Module. injury-type-routes.js owns authenticate, requireActive, requireAdmin
- * and the 404s.
+ * Module. injury-type-routes.js owns authenticate, requireActive,
+ * `SAF_INJURY_TYPES_MAINTAIN` and the 404s.
  *
  * Deactivation, never deletion. A deactivated Injury type is excluded from the
  * choices offered to whoever is classifying (`includeInactive` is what widens

@@ -26,6 +26,14 @@
  * `people.deviceReachesOrgUnit` (People's own tree, reached through its entry
  * point like every other cross-Module question) is what answers that.
  *
+ * **Not retrofitted under ADR-0061, deliberately (issue #507).** This door's
+ * actor is a device credential plus an identified Employee, and there is no
+ * `req.account` on the path at all (ADR-0016); a permission code is a fact about
+ * an Account's roles, so there is nothing here for `requirePermission` to ask and
+ * adding one would refuse the shared floor device. That is a finding on the
+ * retrofit card, not a hole: the device's own reach is the standing. The Account
+ * door for the same record (`safety-incident-routes.js`) does ask its codes.
+ *
  * No injury classification is accepted from this door — issue #223's own
  * binding comment on the floor form's fields. As of issue #224 that is
  * **enforced rather than assumed**: `employeeId`, `injuryTypeId` and

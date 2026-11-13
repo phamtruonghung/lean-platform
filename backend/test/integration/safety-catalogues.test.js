@@ -16,7 +16,11 @@
  * no Grants, and an ordinary approved, active `operator`. Neither catalogue is
  * Org-Unit scoped — an Injury type and a Body part are shared reference data,
  * not records placed in the tree — so the only scope question either route
- * asks is the administrator's role, which is what the refusal tests pin down.
+ * asks is the catalogue's own permission code
+ * (`SAF_INJURY_TYPES_MAINTAIN` / `SAF_BODY_PARTS_MAINTAIN`, ADR-0061 issue
+ * #507), seeded on the administrator role alone, which is what the refusal
+ * tests pin down. The reads carry no gate at all, which the same tests assert:
+ * a classifier needs both lists as a set of choices.
  *
  * Nothing here is restricted. ADR-0037 restricts three structured fields on a
  * Safety *incident*, because together they are one person's diagnosis; a list
@@ -214,11 +218,13 @@ test('a non-administrator is refused every Injury type write, and may still read
     name: 'Anything'
   });
   assert.strictEqual(refusedCreate.status, 403);
-  assert.strictEqual(refusedCreate.body.message, 'This action requires the administrator role.');
+  assert.strictEqual(refusedCreate.body.code, 'PERMISSION_REQUIRED');
+  assert.strictEqual(refusedCreate.body.permission, 'SAF_INJURY_TYPES_MAINTAIN');
 
   const refusedCorrect = await correctInjuryType(memberToken, id, { name: 'Anything' });
   assert.strictEqual(refusedCorrect.status, 403);
-  assert.strictEqual(refusedCorrect.body.message, 'This action requires the administrator role.');
+  assert.strictEqual(refusedCorrect.body.code, 'PERMISSION_REQUIRED');
+  assert.strictEqual(refusedCorrect.body.permission, 'SAF_INJURY_TYPES_MAINTAIN');
 
   const read = await listInjuryTypes(memberToken);
   assert.strictEqual(read.status, 200);
@@ -337,11 +343,13 @@ test('a non-administrator is refused every Body part write, and may still read t
     name: 'Anything'
   });
   assert.strictEqual(refusedCreate.status, 403);
-  assert.strictEqual(refusedCreate.body.message, 'This action requires the administrator role.');
+  assert.strictEqual(refusedCreate.body.code, 'PERMISSION_REQUIRED');
+  assert.strictEqual(refusedCreate.body.permission, 'SAF_BODY_PARTS_MAINTAIN');
 
   const refusedCorrect = await correctBodyPart(memberToken, id, { name: 'Anything' });
   assert.strictEqual(refusedCorrect.status, 403);
-  assert.strictEqual(refusedCorrect.body.message, 'This action requires the administrator role.');
+  assert.strictEqual(refusedCorrect.body.code, 'PERMISSION_REQUIRED');
+  assert.strictEqual(refusedCorrect.body.permission, 'SAF_BODY_PARTS_MAINTAIN');
 
   const read = await listBodyParts(memberToken);
   assert.strictEqual(read.status, 200);

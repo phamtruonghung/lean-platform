@@ -18,15 +18,21 @@
  *     is no Org Unit to scope a catalogue write by, so the scope half of
  *     "existence before scope" is the role check.
  *
- * `requireAdmin` is defined here rather than imported from People: People's
- * entry point deliberately does not export `requireAdmin`/`isAdmin` (see
- * people/index.js's own "deliberately NOT exported" list), so a Module outside
- * it carries its own copy — matching product-routes.js's and
- * defect-code-routes.js's, and People's own refusal sentence word for word.
+ * **The ADR-0061 retrofit (issue #507).** The two writes now ask
+ * `people.requirePermission('SAF_INJURY_TYPES_MAINTAIN')` instead of comparing
+ * `app_users.role` to `'admin'`. That code is seeded on ROLE_ADMIN alone — the
+ * exact set the comparison admitted — and an administrator answers every
+ * permission true before any role is read, so no Account gained or lost access;
+ * only the refusal body changed, from the administrator sentence to a
+ * `PERMISSION_REQUIRED` naming the code. The `GET` keeps no gate at all: a
+ * classifier needs this list as a set of choices (ADR-0023), and the read names
+ * nobody, so applying the catalogue's *maintenance* code to its read would
+ * refuse the supervisors who classify injuries — a finding on the card, not a
+ * retrofit.
  *
  * Existence before scope on every write (AGENTS.md §6): the Injury type named
  * in the URL is resolved first — a 404 naming it, malformed id included — and
- * only then is `requireAdmin` asked, so the same address answers 404 for a
+ * only then is the permission asked, so the same address answers 404 for a
  * type that is not there and 403 for one that is.
  */
 
@@ -37,7 +43,12 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-const { requireAdmin } = require('./admin');
+// The catalogue's own code (ADR-0061, issue #507), seeded on ROLE_ADMIN alone —
+// the exact set the administrator check it replaces admitted — and an
+// administrator answers every permission true before any role is read, so this
+// is a retrofit rather than a new decision: no Account gains or loses access,
+// and the refusal names the permission instead of the role.
+const mayMaintainInjuryTypes = people.requirePermission('SAF_INJURY_TYPES_MAINTAIN');
 
 // The Injury type named in the URL must exist before anything else — a clean
 // 404, even for an administrator, and even for a malformed id (`parseId`
@@ -75,7 +86,7 @@ router.post(
   '/injury-types',
   people.authenticate,
   people.requireActive,
-  requireAdmin,
+  mayMaintainInjuryTypes,
   async (req, res, next) => {
     try {
       const injuryType = await injuryTypes.createInjuryType(req.body ?? {}, req.account.id);
@@ -95,7 +106,7 @@ router.patch(
   people.authenticate,
   people.requireActive,
   requireKnownInjuryType,
-  requireAdmin,
+  mayMaintainInjuryTypes,
   async (req, res, next) => {
     try {
       const injuryType = await injuryTypes.updateInjuryType(

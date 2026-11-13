@@ -102,6 +102,25 @@
  *     read; "you may always read back what you just wrote" would be a second,
  *     weaker rule sitting beside the ADR's one rule, and it is the one a later
  *     change would copy to the eleventh route.
+ *
+ * **The ADR-0061 retrofit (issue #507).** Six of these ten routes ask
+ * `people.requirePermission` beside the standing they already asked: the
+ * register, the overdue listing and one record's read (`SAF_INCIDENTS_DISPLAY`),
+ * and recording, the due-date PATCH and the ordinary status move
+ * (`SAF_INCIDENTS_RECORD`). Both codes are seeded on ROLE_STANDARD, the default
+ * group every approved Account holds, so neither gate refuses anybody who could
+ * reach its route before it — and every Grant question those routes already
+ * asked is untouched, because a permission says *what* and a Grant says *where*.
+ *
+ * The other four are recorded as findings rather than retrofitted: a severity
+ * correction, the classification, the days and the close would ask
+ * `SAF_CLASSIFY`, which the seed gives to supervisor-and-above, while the
+ * standing they ask today is `canAct({ safety: true })` — Safety authority on a
+ * Grant, a flag any role may carry. Adding that code would narrow today's users,
+ * which is the owner's decision (parent card t_3271c590, comment 1308). It is
+ * also why classification is not folded into `SAF_INCIDENTS_RECORD`: recording
+ * an incident and deciding what the injury was are two different standings, and
+ * the one code names only the first.
  */
 
 const express = require('express');
@@ -110,6 +129,26 @@ const safetyIncidents = require('./safety-incidents');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
+
+// The two codes this file asks (ADR-0061, issue #507). Both are seeded on
+// ROLE_STANDARD — the default group every approved Account carries — so
+// neither gate refuses anybody the route admitted before the retrofit: the
+// registers and the one-record read were open to any Account that can see the
+// Site, and the writes were open to any Account holding an edit Grant reaching
+// the Org Unit. What the retrofit adds is a code an administrator can revoke
+// per role, read from `roles.effectivePermissions` on every request rather
+// than cached, so an edit takes effect on the affected Account's next call.
+//
+// The four Safety-authority writes below (severity, classify, days, close) do
+// **not** ask `SAF_CLASSIFY`, and that is a finding rather than an oversight:
+// the code is seeded on supervisor-and-above, while the standing those routes
+// ask is `canAct({ safety: true })` — a flag on a Grant that any role may
+// carry (ADR-0035, ADR-0039). Adding the code would refuse an operator holding
+// Safety authority on its own line, which is a narrowing an owner decides, not
+// a retrofit. See the card handoff, and the same reasoning
+// nonconformance-routes.js records for `QLT_NONCONFORMANCES_DISPOSE`.
+const mayReadIncidents = people.requirePermission('SAF_INCIDENTS_DISPLAY');
+const mayRecordIncidents = people.requirePermission('SAF_INCIDENTS_RECORD');
 
 // Mirrors nonconformance-routes.js's own requireKnownSite exactly: an unknown
 // Site is a 404, never a silently empty 200.
@@ -315,6 +354,7 @@ router.get(
   '/sites/:siteId/incidents',
   people.authenticate,
   people.requireActive,
+  mayReadIncidents,
   requireKnownSite,
   requireSiteVisible,
   async (req, res, next) => {
@@ -376,6 +416,7 @@ router.get(
   '/sites/:siteId/incidents/overdue',
   people.authenticate,
   people.requireActive,
+  mayReadIncidents,
   requireKnownSite,
   requireSiteVisible,
   async (req, res, next) => {
@@ -409,6 +450,7 @@ router.post(
   '/sites/:siteId/incidents',
   people.authenticate,
   people.requireActive,
+  mayRecordIncidents,
   requireKnownSite,
   async (req, res, next) => {
     try {
@@ -467,6 +509,7 @@ router.get(
   '/incidents/:id',
   people.authenticate,
   people.requireActive,
+  mayReadIncidents,
   requireSafetyIncidentVisible,
   async (req, res, next) => {
     try {
@@ -486,6 +529,7 @@ router.patch(
   '/incidents/:id/investigation-due-date',
   people.authenticate,
   people.requireActive,
+  mayRecordIncidents,
   requireSafetyIncidentWriteScope,
   async (req, res, next) => {
     try {
@@ -509,6 +553,7 @@ router.post(
   '/incidents/:id/status',
   people.authenticate,
   people.requireActive,
+  mayRecordIncidents,
   requireSafetyIncidentWriteScope,
   async (req, res, next) => {
     try {

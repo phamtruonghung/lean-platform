@@ -17,6 +17,14 @@
  * `people.deviceReachesOrgUnit` (People's own tree, reached through its entry
  * point like every other cross-Module question) is what answers that.
  *
+ * **Not retrofitted under ADR-0061, deliberately (issue #507).** The actor here
+ * is a device credential plus an identified Employee, and there is no
+ * `req.account` on the path at all (ADR-0016), so a permission code — a fact
+ * about an Account's roles — has nothing to ask. Adding one would refuse the
+ * shared floor device; the device's own reach is its standing. Same finding as
+ * floor-safety-incident-routes.js records, and the Account door for this same
+ * record (`safety-observation-routes.js`) does ask its codes.
+ *
  * ## The door, and the ordering behind it
  *
  * `x-floor-device` selects this door and `x-technician-identification` says
