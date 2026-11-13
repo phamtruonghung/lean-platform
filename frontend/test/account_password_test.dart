@@ -26,17 +26,26 @@ FakeWire _wire() => FakeWire(accounts: [
       accountJson('7', 'other@b.c'),
     ]);
 
+/// Opens one row's overflow menu: the reset control lives in it since the
+/// actions column stopped being an always-open row of four controls.
+Future<void> openRowMenu(WidgetTester tester, String id) =>
+    tapIn(tester, find.byKey(AccountsScreen.rowActionsKey(id)));
+
 void main() {
   group('an administrator resets another Account\'s password', () {
     testWidgets('the administrator\'s own row offers no reset', (tester) async {
       await _open(tester, _wire());
+      // The caller's own row carries no trigger at all, so the reset is absent
+      // for a stronger reason than a hidden menu item.
+      expect(find.byKey(AccountsScreen.rowActionsKey('1')), findsNothing);
+      await openRowMenu(tester, '7');
       expect(find.byKey(AccountsScreen.resetPasswordKey('7')), findsOneWidget);
-      expect(find.byKey(AccountsScreen.resetPasswordKey('1')), findsNothing);
     });
 
     testWidgets('cancel sends nothing', (tester) async {
       final wire = _wire();
       await _open(tester, wire);
+      await openRowMenu(tester, '7');
       await tapIn(tester, find.byKey(AccountsScreen.resetPasswordKey('7')));
       await tester.enterText(find.byKey(AccountPasswordDialog.passwordFieldKey), 'new-secret-1');
       await tapIn(tester, find.byKey(AccountPasswordDialog.cancelKey));
@@ -48,6 +57,7 @@ void main() {
     testWidgets('confirm sends one POST with the typed password and closes', (tester) async {
       final wire = _wire();
       await _open(tester, wire);
+      await openRowMenu(tester, '7');
       await tapIn(tester, find.byKey(AccountsScreen.resetPasswordKey('7')));
       await tester.enterText(find.byKey(AccountPasswordDialog.passwordFieldKey), 'new-secret-1');
       await tapIn(tester, find.byKey(AccountPasswordDialog.submitKey));
@@ -64,6 +74,7 @@ void main() {
         ..resetPasswordStatus = 400
         ..resetPasswordMessage = 'Password must be at least 8 characters.';
       await _open(tester, wire);
+      await openRowMenu(tester, '7');
       await tapIn(tester, find.byKey(AccountsScreen.resetPasswordKey('7')));
       await tester.enterText(find.byKey(AccountPasswordDialog.passwordFieldKey), 'long-enough');
       await tapIn(tester, find.byKey(AccountPasswordDialog.submitKey));
@@ -82,6 +93,7 @@ void main() {
     testWidgets('a password under 8 characters is caught before anything is sent', (tester) async {
       final wire = _wire();
       await _open(tester, wire);
+      await openRowMenu(tester, '7');
       await tapIn(tester, find.byKey(AccountsScreen.resetPasswordKey('7')));
       await tester.enterText(find.byKey(AccountPasswordDialog.passwordFieldKey), 'short');
       await tapIn(tester, find.byKey(AccountPasswordDialog.submitKey));
