@@ -12,7 +12,7 @@
 
 const express = require('express');
 const { authenticate, requireActive, statusFor } = require('./middleware');
-const { requireAdmin, orgUnitScopeFor } = require('./authorization');
+const { requireAdmin, orgUnitScopeFor, permissionsForAccount } = require('./authorization');
 const { parseId, httpError, handleError } = require('./errors');
 const {
   listAccounts,
@@ -72,10 +72,20 @@ function requireAccountId(req) {
 // walking the tree on the client.
 router.get('/me', authenticate, async (req, res, next) => {
   try {
+    const { permissions, roles } = await permissionsForAccount(req.account);
     res.json({
       status: statusFor(req.account),
       account: { ...req.account, mustChangePassword: await mustChangePassword(req.account.id) },
-      orgUnitScope: await orgUnitScopeFor({ account: req.account })
+      orgUnitScope: await orgUnitScopeFor({ account: req.account }),
+      // The caller's own effective permissions (issue #492, ADR-0061): every
+      // code this Account may use, and the role codes that got it there. The
+      // client filters its sidebar on the codes rather than on the role string,
+      // which is what makes an administrator's edit to a role visible without
+      // a release. Computed here rather than folded into `account` because —
+      // like `orgUnitScope` above — it is a fact about the caller right now,
+      // not a column on `app_users`.
+      permissions,
+      roles
     });
   } catch (error) {
     handleError(error, res, next);

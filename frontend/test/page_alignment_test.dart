@@ -71,6 +71,10 @@ const _pages = <_Page>[
   _Page('/directory', 'lib/people/directory_screen.dart', 'Directory', 'Who works here',
       maxRowInset: 68),
   _Page('/job-roles', 'lib/people/job_roles_screen.dart', 'Job roles', 'What an Employee does'),
+  // What an Account may do (issue #492, ADR-0061): title, description and the
+  // first role row all start at the card's own inset, like the job role
+  // catalogue it is laid out after.
+  _Page('/roles', 'lib/people/roles_screen.dart', 'Roles', 'What an Account may do'),
   _Page('/skills', 'lib/people/skills_screen.dart', 'Skills', 'What the plant qualifies'),
   // The two cost catalogues (issue #252). Flat lists of rows at the card's own
   // padding, like the Product catalogue, so the default bound holds for each.
@@ -286,6 +290,17 @@ const _excluded = <String, String>{
 /// placeholder or a failed read.
 FakeWire _wire() => FakeWire(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      // The roles editor's own two reads (issue #492, ADR-0061), so the page's
+      // first card is the role list rather than its empty state: the audit
+      // measures where a list's first row sits, and an empty state would be
+      // measuring the wrong card.
+      permissions: [
+        permissionJson('PPL_DIRECTORY_DISPLAY', module: 'People', label: 'Directory'),
+      ],
+      roles: [
+        appRoleJson('1', 'ROLE_STANDARD',
+            name: 'Standard', isDefault: true, permissionCodes: ['PPL_DIRECTORY_DISPLAY'], holderCount: 1),
+      ],
       orgUnits: {
         null: [orgUnitJson('10', 'Assembly')],
         '10': [orgUnitJson('11', 'Line 1', parentId: '10', unitType: 'line')],

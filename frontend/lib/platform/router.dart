@@ -67,6 +67,8 @@ import '../maintenance/work_orders_bloc.dart';
 import '../maintenance/work_orders_screen.dart';
 import '../people/accounts_bloc.dart';
 import '../people/accounts_screen.dart';
+import '../people/roles_bloc.dart';
+import '../people/roles_screen.dart';
 import '../people/approval_queue_bloc.dart';
 import '../people/approval_queue_screen.dart';
 import '../people/attendance_picker_screen.dart';
@@ -200,6 +202,7 @@ abstract final class Routes {
   static const String changePassword = '/change-password';
   static const String approvals = '/approvals';
   static const String accounts = '/accounts';
+  static const String roles = '/roles';
   static const String assets = '/assets';
   static const String workOrders = '/work-orders';
   static const String requests = '/requests';
@@ -762,7 +765,15 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
           final themeMode = context.watch<ThemeModeCubit>().state;
           final platformBrightness = MediaQuery.platformBrightnessOf(context);
           return PlatformShell(
-            destinations: destinationsFor(role: account.account.role),
+            // The caller's own permission codes decide each door (issue #492);
+            // an empty list means the server sent none, and `destinationsFor`
+            // then falls back to the role sets exactly as before.
+            destinations: destinationsFor(
+              role: account.account.role,
+              permissions: account.account.permissions.isEmpty
+                  ? null
+                  : account.account.permissions.toSet(),
+            ),
             currentLocation: state.uri.path,
             // By address, not by swapping a widget: the browser's history and
             // back button work because navigation is a real route change.
@@ -3692,6 +3703,37 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                   authGateway: context.read<AuthGateway>(),
                 )..add(const AccountsRequested()),
                 child: AccountsScreen(selfAccountId: account.account.id),
+              );
+            },
+          ),
+          // What an Account may do (issue #492, ADR-0061): the permission
+          // catalogue and the editable groups that carry it. The same
+          // per-Screen check the two above make — the sidebar omits the door,
+          // this locks it for a caller who types the address — and it is asked
+          // of the permission code rather than the role string, which is what
+          // makes delegated role administration a server-side decision later
+          // rather than a second release of this router.
+          //
+          // The fallback is the Shell's own (`destinationsFor`): a response
+          // that carried no codes is a client older than this Screen, and the
+          // administrator role is then the door, exactly as it was before the
+          // codes existed. Without it, an empty list would lock out the very
+          // Account the server admits.
+          GoRoute(
+            path: Routes.roles,
+            builder: (context, state) {
+              final account = context.watch<AccountBloc>().state;
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              final mayOpen = account.account.permissions.isEmpty
+                  ? account.account.role == Roles.admin
+                  : account.account.permissions.contains(rolesPermission);
+              if (!mayOpen) return const AccessDeniedScreen();
+              return BlocProvider<RolesBloc>(
+                create: (context) => RolesBloc(
+                  peopleApi: context.read<PeopleApi>(),
+                  authGateway: context.read<AuthGateway>(),
+                )..add(const RolesStarted()),
+                child: const RolesScreen(),
               );
             },
           ),

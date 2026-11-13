@@ -126,6 +126,33 @@ an administrator need not be an Employee at all.
 _Avoid_: User, login, profile, identity (an identity is what the sign-in
 provider holds; the Account is what this Platform grants)
 
+**Permission**:
+One thing an Account may do, named by a code the Platform's own code checks
+against — `MTN_WORK_ORDERS_CHANGE`, `ADM_ROLES_CHANGE`. A Permission is not
+something an administrator invents: the catalogue is written in code and offered
+read-only, so a code means the same thing on every deployment. It answers *what*
+an Account may do; a Grant answers *where*.
+_Avoid_: Privilege, right, capability, scope (a scope is where, not what),
+authorization object (SAP's own word, not this Platform's)
+
+**Role**:
+A named group of Permissions with a code of its own (`ROLE_STORE_ROOM`) — the
+unit an administrator edits and assigns. Editing what a Role carries changes it
+for everybody holding the Role, on their next request. An Account holds Roles
+three ways: the default group every Account has, the Role its own account role
+earns automatically, and the ones an administrator assigned it. A Role is retired
+with `is_active = false`, never deleted, because a Role that was held is history.
+_Avoid_: Group, permission set, profile (SAP's generated profile is a different
+thing), permission (a Role carries Permissions; it is not one)
+
+**Default group**:
+The one Role every Account holds without being assigned anything —
+`ROLE_STANDARD`. It is what makes the Platform usable the moment an Account is
+admitted: the Directory, the registers every Account reads, and raising a
+Concern or a Request. Exactly one Role may be the default, and it is edited like
+any other.
+_Avoid_: Base role, everyone role, built-in permission
+
 **Approval**:
 An administrator admitting a person to the Platform and deciding which Org Units
 they may work in. Signing in successfully is not admission: until Approval the
@@ -611,7 +638,8 @@ An entry in the Shell's sidebar — a Screen an Account can reach directly, name
 for what a person does there (the Directory, the Approval queue). Every
 Destination is a Screen; not every Screen is one, since sign-in and
 awaiting-Approval are reached without ever being offered. Which Destinations an
-Account is offered follows from its role.
+Account is offered follows from the Permission code each one is guarded by
+(ADR-0061); a Destination with no code is offered to every admitted Account.
 _Avoid_: Menu item, tab, nav link
 
 **Destination group**:

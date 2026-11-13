@@ -134,8 +134,32 @@ class _Screen {
 /// placeholder. A Screen whose own fixture is not here still renders (its empty
 /// or failed state is laid out, and must hold too); the eight goldens pick the
 /// content-rich ones.
+/// The roles editor's two reads (issue #492, ADR-0061): the catalogue and a
+/// couple of groups, so the sweep judges a populated editor rather than its
+/// empty state — the rows carry chips and a code tail, which is what a text
+/// scale and a dark palette break first.
+List<Map<String, dynamic>> _sweepPermissions() => [
+      permissionJson('PPL_DIRECTORY_DISPLAY', module: 'People', label: 'Directory'),
+      permissionJson('MTN_WORK_ORDERS_DISPLAY', label: 'Work orders'),
+    ];
+
+List<Map<String, dynamic>> _sweepRoles() => [
+      appRoleJson('1', 'ROLE_STANDARD',
+          name: 'Standard',
+          isDefault: true,
+          permissionCodes: ['PPL_DIRECTORY_DISPLAY'],
+          holderCount: 12),
+      appRoleJson('2', 'ROLE_SUPERVISOR',
+          name: 'Supervisor',
+          legacyRole: 'supervisor',
+          permissionCodes: ['PPL_DIRECTORY_DISPLAY', 'MTN_WORK_ORDERS_DISPLAY'],
+          holderCount: 3),
+    ];
+
 FakeWire _wire() => FakeWire(
       sites: [siteJson('1', 'HCM', 'Ho Chi Minh')],
+      permissions: _sweepPermissions(),
+      roles: _sweepRoles(),
       orgUnits: {
         null: [orgUnitJson('10', 'Assembly')],
         '10': [orgUnitJson('11', 'Line 1', parentId: '10', unitType: 'line')],
@@ -331,6 +355,11 @@ final List<_Screen> _screens = [
   const _Screen('MetersScreen', 'lib/maintenance/meters_screen.dart', route: '/meters'),
   const _Screen('JobPlansScreen', 'lib/maintenance/job_plans_screen.dart', route: '/job-plans'),
   const _Screen('AccountsScreen', 'lib/people/accounts_screen.dart', route: '/accounts'),
+  // What an Account may do (issue #492, ADR-0061): the roles editor. In the
+  // sweep because it is a Screen with its own address, and because its rows
+  // carry chips and a code tail at the far end — the two things a text scale
+  // and a dark palette break first.
+  const _Screen('RolesScreen', 'lib/people/roles_screen.dart', route: '/roles'),
   const _Screen('ApprovalQueueScreen', 'lib/people/approval_queue_screen.dart',
       route: '/approvals'),
   const _Screen('ActionsScreen', 'lib/actions/actions_screen.dart', route: '/actions'),
@@ -441,6 +470,17 @@ FakeWire _stateWire(_Screen screen) {
       orgUnits: {
         null: [orgUnitJson('10', 'Line 1')],
       },
+    );
+  }
+  // The roles editor is behind `ADM_ROLES_DISPLAY` on its address (ADR-0061),
+  // and the shared wire's `/me` carries no codes at all — so this Screen alone
+  // gets the one code that opens it, or the sweep would be judging the
+  // AccessDenied Screen that stands in its place.
+  if (screen.name == 'RolesScreen') {
+    return FakeWire(
+      mePermissions: const ['ADM_ROLES_DISPLAY'],
+      permissions: _sweepPermissions(),
+      roles: _sweepRoles(),
     );
   }
   return _wire();

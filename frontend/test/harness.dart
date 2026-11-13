@@ -104,8 +104,10 @@ Map<String, dynamic> _meBody(
   String role,
   String selfId,
   String? selfEmployeeId,
-  Map<String, dynamic>? orgUnitScope,
-) =>
+  Map<String, dynamic>? orgUnitScope, {
+  List<String> permissions = const <String>[],
+  List<String> roleCodes = const <String>[],
+}) =>
     {
       'status': 'active',
       'account': {
@@ -117,6 +119,12 @@ Map<String, dynamic> _meBody(
       },
       'orgUnitScope':
           orgUnitScope ?? {'everywhere': role == Roles.admin, 'grants': const <dynamic>[]},
+      // The caller's effective permission codes (issue #492, ADR-0061). Empty
+      // by default, which is what makes every test written before roles were
+      // editable keep the role-set fallback `destinationsFor` still honours:
+      // a test that asserts on the sidebar says what it means either way.
+      'permissions': permissions,
+      'roles': roleCodes,
     };
 
 /// One Grant as `/me` reports it — `canWrite` is what decides whether a Screen
@@ -1533,6 +1541,66 @@ Map<String, dynamic> jobRoleJson(String id, String code, String name, {bool isAc
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
 
+/// One row of `GET /api/people/permissions` (issue #492, ADR-0061) —
+/// `permissions.js`'s own `{ code, module, label, description }`.
+Map<String, dynamic> permissionJson(
+  String code, {
+  String module = 'Maintenance',
+  String? label,
+  String description = 'What this permission permits.',
+}) =>
+    {
+      'code': code,
+      'module': module,
+      'label': label ?? code,
+      'description': description,
+    };
+
+/// One row of `GET /api/people/roles` (`roles.js`'s own `toRole`, issue #492).
+/// [isAutomatic] and [isAssigned] are the two facts only an Account's own view
+/// carries; they are `false` here because a role list does not know an Account.
+Map<String, dynamic> appRoleJson(
+  String id,
+  String code, {
+  String? name,
+  String description = '',
+  bool isDefault = false,
+  String? legacyRole,
+  bool isActive = true,
+  List<String> permissionCodes = const [],
+  int holderCount = 0,
+  bool isAutomatic = false,
+  bool isAssigned = false,
+}) =>
+    {
+      'id': id,
+      'code': code,
+      'name': name ?? code,
+      'description': description,
+      'isDefault': isDefault,
+      'legacyRole': legacyRole,
+      'isActive': isActive,
+      'permissionCodes': permissionCodes,
+      'holderCount': holderCount,
+      'isAutomatic': isAutomatic,
+      'isAssigned': isAssigned,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+/// One Account's roles as `GET /api/people/accounts/:id/roles` answers —
+/// `roles.js`'s own `accountRoles` (issue #492).
+Map<String, dynamic> accountRolesJson(
+  String accountId, {
+  String accountRole = 'operator',
+  List<Map<String, dynamic>> roles = const [],
+}) =>
+    {
+      'accountId': accountId,
+      'accountRole': accountRole,
+      'roles': roles,
+    };
+
 /// One row of `GET /api/people/cost-rates` (`cost-rates.js`'s own
 /// `toCostRate`, issue #252). `effectiveTo` null is an open period — the rate
 /// that is still current.
@@ -2234,6 +2302,26 @@ class FakeWire {
     this.patchStatus = 200,
     this.putEmployeeLinkStatus = 200,
     this.putEmployeeLinkMessage = 'That Employee link could not be changed.',
+    // The roles editor (issue #492, ADR-0061). `/me`'s own permission codes are
+    // the two `me…` fields, because what a caller may reach is answered there
+    // rather than by a second request.
+    this.mePermissions = const <String>[],
+    this.meRoleCodes = const <String>[],
+    List<Map<String, dynamic>>? roles,
+    List<Map<String, dynamic>>? permissions,
+    Map<String, Map<String, dynamic>>? accountRoles,
+    this.rolesStatus = 200,
+    this.permissionsStatus = 200,
+    this.createRoleStatus = 201,
+    this.createRoleMessage = 'a role with this code already exists',
+    this.updateRoleStatus = 200,
+    this.updateRoleMessage = 'That role could not be changed.',
+    this.setRolePermissionsStatus = 200,
+    this.setRolePermissionsMessage = 'That role could not be changed.',
+    this.accountRolesStatus = 200,
+    this.assignAccountRolesStatus = 200,
+    this.assignAccountRolesMessage =
+        'ROLE_STANDARD is held automatically by the Accounts it applies to and is not assignable',
     Map<String, Map<String, dynamic>>? employeeLinkedAccounts,
     List<Map<String, dynamic>>? sites,
     Map<String?, List<Map<String, dynamic>>>? orgUnits,
@@ -2646,6 +2734,9 @@ class FakeWire {
         employees = employees ?? [],
         employeeDetails = employeeDetails ?? {},
         jobRoles = jobRoles ?? [],
+        roles = roles ?? [],
+        permissions = permissions ?? [],
+        accountRoles = accountRoles ?? {},
         costRates = costRates ?? [],
         costRateScopes = costRateScopes ?? [],
         productCosts = productCosts ?? [],
@@ -4366,6 +4457,54 @@ class FakeWire {
   int jobRolesStatus;
 
   // ---------------------------------------------------------------------
+  // The roles editor (issue #492, ADR-0061): the permission catalogue, the
+  // groups that carry it, and one Account's view of them.
+  // ---------------------------------------------------------------------
+
+  /// `/me`'s `permissions` — the caller's effective codes. Empty means "the
+  /// server sent none", which is what makes `destinationsFor` fall back to the
+  /// role sets, so every test written before this field existed keeps passing.
+  List<String> mePermissions;
+  List<String> meRoleCodes;
+
+  /// `GET /api/people/roles`.
+  List<Map<String, dynamic>> roles;
+  int rolesStatus;
+
+  /// `GET /api/people/permissions`.
+  List<Map<String, dynamic>> permissions;
+  int permissionsStatus;
+
+  /// `GET`/`PUT` `/api/people/accounts/:id/roles`, keyed by Account id.
+  Map<String, Map<String, dynamic>> accountRoles;
+  int accountRolesStatus;
+  int assignAccountRolesStatus;
+  String assignAccountRolesMessage;
+
+  int createRoleStatus;
+  String createRoleMessage;
+
+  /// Every role create body that actually reached the wire, decoded.
+  final List<Map<String, dynamic>> rolePosts = [];
+
+  int updateRoleStatus;
+  String updateRoleMessage;
+
+  /// Every role correction body that reached the wire, as `(id, body)`.
+  final List<(String, Map<String, dynamic>)> rolePatches = [];
+
+  int setRolePermissionsStatus;
+  String setRolePermissionsMessage;
+
+  /// Every permission-set replacement that reached the wire, as
+  /// `(id, codes)` — what a test asserts on to prove the whole set was sent
+  /// rather than a patch.
+  final List<(String, List<String>)> rolePermissionPuts = [];
+
+  /// Every assignment that reached the wire, as `(accountId, roleIds)`.
+  final List<(String, List<String>)> accountRolePuts = [];
+
+  // ---------------------------------------------------------------------
   // The two cost catalogues (issue #252). Both are versioned, so beside the
   // ordinary create and correct there is a *revision*, which closes the row it
   // names and opens a new one — this wire does the same, so a test can assert
@@ -5035,6 +5174,7 @@ class FakeWire {
   int _nextAttendanceRecordId = 600;
   int _nextAssignmentId = 500;
   int _nextJobRoleId = 950;
+  int _nextRoleId = 970;
   int _nextSkillId = 970;
   int _nextEmployeeSkillId = 800;
   int _nextSiteId = 90;
@@ -7490,7 +7630,14 @@ class FakeWire {
         }
         if (path == '/api/people/me') {
           return http.Response(
-            jsonEncode(_meBody(role, selfId, selfEmployeeId, orgUnitScope)),
+            jsonEncode(_meBody(
+              role,
+              selfId,
+              selfEmployeeId,
+              orgUnitScope,
+              permissions: mePermissions,
+              roleCodes: meRoleCodes,
+            )),
             200,
           );
         }
@@ -8856,6 +9003,136 @@ class FakeWire {
           return http.Response(jsonEncode({'productCosts': productCosts}), 200);
         }
 
+        // --- The roles editor (issue #492, ADR-0061) ---------------------
+        if (request.method == 'GET' && path == '/api/people/permissions') {
+          if (permissionsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': 'This action requires the ADM_ROLES_DISPLAY permission.',
+                'code': 'PERMISSION_REQUIRED', 'permission': 'ADM_ROLES_DISPLAY'}),
+              permissionsStatus,
+            );
+          }
+          return http.Response(jsonEncode({'permissions': permissions}), 200);
+        }
+        if (request.method == 'POST' && path == '/api/people/roles') {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          rolePosts.add(sent);
+          if (createRoleStatus != 201) {
+            return http.Response(jsonEncode({'message': createRoleMessage}), createRoleStatus);
+          }
+          final id = (_nextRoleId++).toString();
+          final created = appRoleJson(
+            id,
+            (sent['code'] as String).trim().toUpperCase(),
+            name: sent['name'] as String,
+            description: sent['description'] as String? ?? '',
+            permissionCodes: [
+              for (final code in (sent['permissions'] as List<dynamic>? ?? const []))
+                if (permissions.any((permission) => permission['code'] == code)) code as String,
+            ],
+          );
+          roles = [...roles, created];
+          return http.Response(jsonEncode({'role': created}), 201);
+        }
+        if (request.method == 'PUT' &&
+            path.startsWith('/api/people/roles/') &&
+            path.endsWith('/permissions')) {
+          final id = path.substring(
+            '/api/people/roles/'.length,
+            path.length - '/permissions'.length,
+          );
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          final codes = [
+            for (final code in (sent['permissions'] as List<dynamic>? ?? const [])) code as String,
+          ];
+          rolePermissionPuts.add((id, codes));
+          if (setRolePermissionsStatus != 200) {
+            return http.Response(
+              jsonEncode({'message': setRolePermissionsMessage}),
+              setRolePermissionsStatus,
+            );
+          }
+          Map<String, dynamic>? updated;
+          roles = [
+            for (final role in roles)
+              if (role['id'] == id)
+                (updated = {...role, 'permissionCodes': codes})
+              else
+                role,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Role not found'}), 404);
+          }
+          return http.Response(jsonEncode({'role': updated}), 200);
+        }
+        if (request.method == 'PATCH' && path.startsWith('/api/people/roles/')) {
+          final id = path.substring('/api/people/roles/'.length);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          rolePatches.add((id, body));
+          if (updateRoleStatus != 200) {
+            return http.Response(jsonEncode({'message': updateRoleMessage}), updateRoleStatus);
+          }
+          Map<String, dynamic>? updated;
+          roles = [
+            for (final role in roles)
+              if (role['id'] == id) (updated = {...role, ...body}) else role,
+          ];
+          if (updated == null) {
+            return http.Response(jsonEncode({'message': 'Role not found'}), 404);
+          }
+          return http.Response(jsonEncode({'role': updated}), 200);
+        }
+        if (path == '/api/people/roles') {
+          if (rolesStatus != 200) {
+            return http.Response(jsonEncode({'message': 'Roles are unavailable.'}), rolesStatus);
+          }
+          final includeInactive = request.url.queryParameters['includeInactive'] == 'true';
+          final sent = includeInactive
+              ? roles
+              : [for (final role in roles) if (role['isActive'] != false) role];
+          return http.Response(jsonEncode({'roles': sent}), 200);
+        }
+        if (path.startsWith('/api/people/accounts/') && path.endsWith('/roles')) {
+          final id = path.substring(
+            '/api/people/accounts/'.length,
+            path.length - '/roles'.length,
+          );
+          if (request.method == 'PUT') {
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            final wanted = [
+              for (final roleId in (body['roleIds'] as List<dynamic>? ?? const []))
+                roleId.toString(),
+            ];
+            accountRolePuts.add((id, wanted));
+            if (assignAccountRolesStatus != 200) {
+              return http.Response(
+                jsonEncode({'message': assignAccountRolesMessage}),
+                assignAccountRolesStatus,
+              );
+            }
+            // The automatic roles stay automatic; the rest are ticked exactly
+            // when an assignment names them — the server's own replace.
+            final view = [
+              for (final role in roles)
+                {
+                  ...role,
+                  'isAutomatic': role['isDefault'] == true || role['legacyRole'] != null,
+                  'isAssigned':
+                      role['isDefault'] != true &&
+                      role['legacyRole'] == null &&
+                      wanted.contains(role['id']),
+                },
+            ];
+            final answered = accountRolesJson(id, roles: view);
+            accountRoles[id] = answered;
+            return http.Response(jsonEncode(answered), 200);
+          }
+          if (accountRolesStatus != 200) {
+            return http.Response(jsonEncode({'message': 'Roles are unavailable.'}), accountRolesStatus);
+          }
+          final stored = accountRoles[id] ?? accountRolesJson(id, roles: roles);
+          return http.Response(jsonEncode(stored), 200);
+        }
         if (request.method == 'POST' && path == '/api/people/job-roles') {
           final sent = jsonDecode(request.body) as Map<String, dynamic>;
           jobRolePosts.add(sent);
