@@ -22,7 +22,8 @@
  * Mirrors customers.js exactly, which mirrors products.js before it: this file
  * knows nothing about HTTP or about who is calling. It accepts ids it is handed
  * and assumes the caller already checked what needed checking;
- * supplier-routes.js owns authenticate, requireActive, requireAdmin and the
+ * supplier-routes.js owns authenticate, requireActive,
+ * `QLT_SUPPLIERS_DISPLAY` / `QLT_SUPPLIERS_CHANGE` and the
  * 404s. The two catalogues are deliberately two files rather than one
  * parameterised one: each keeps its own private helpers and its own projection,
  * and the duplication is the seam (errors.js's header argues the same thing).

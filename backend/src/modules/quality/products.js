@@ -15,7 +15,7 @@
  * Mirrors job-roles.js/plant.js exactly: this file knows nothing about HTTP or
  * about who is calling. It accepts ids it is handed and assumes the caller
  * already checked what needed checking; product-routes.js owns authenticate,
- * requireActive, requireAdmin and the 404s.
+ * requireActive, `QLT_PRODUCTS_DISPLAY` / `QLT_PRODUCTS_CHANGE` and the 404s.
  *
  * The unit of measure a Product is measured in is a baseline reference value
  * (`units_of_measure`, seeded by the baseline migration) and is CHOSEN, never

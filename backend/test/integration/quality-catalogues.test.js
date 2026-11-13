@@ -489,7 +489,10 @@ test('an administrator creates a Product and a Defect code, and an ordinary Acco
     });
     const answer = await json(response);
     assert.strictEqual(answer.status, 403, `${method} ${path} should be refused`);
-    assert.strictEqual(answer.body.message, 'This action requires the administrator role.');
+    assert.strictEqual(answer.body.code, 'PERMISSION_REQUIRED');
+    assert.strictEqual(answer.body.permission, path.startsWith('/api/quality/products')
+      ? 'QLT_PRODUCTS_CHANGE'
+      : 'QLT_DEFECT_CODES_CHANGE');
   }
 
   // Nothing was written: both rows still read as they were.

@@ -21,7 +21,7 @@
  * Mirrors products.js exactly: this file knows nothing about HTTP or about who
  * is calling. It accepts ids it is handed and assumes the caller already
  * checked what needed checking; customer-routes.js owns authenticate,
- * requireActive, requireAdmin and the 404s.
+ * requireActive, `QLT_CUSTOMERS_DISPLAY` / `QLT_CUSTOMERS_CHANGE` and the 404s.
  *
  * Deactivation, never deletion — products.js's own reasoning, and the same one
  * here: a Customer that has complained is history that a

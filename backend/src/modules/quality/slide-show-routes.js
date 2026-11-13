@@ -23,6 +23,16 @@
  * write scope is asked per entry for the same reason it is asked per record
  * elsewhere: an Account that may write one issue and not another must not be
  * able to move the second one through this door.
+ *
+ * **The ADR-0061 retrofit (issue #503).** Reading a Site's show asks
+ * `QLT_SLIDESHOW_DISPLAY`, which is seeded on ROLE_STANDARD — the default group
+ * every approved Account carries — so it refuses nobody who could read the show
+ * before it. Both writes are recorded as findings rather than retrofitted:
+ * choosing an issue and ordering the wall would ask `QLT_SLIDESHOW_CHOOSE`, which
+ * the seed gives to ROLE_ADMIN alone, where today any write Grant reaching an
+ * issue's Org Unit may put it on the wall — that would narrow every Team Leader
+ * who curates the show to the administrator. Their write-scope question is
+ * untouched.
  */
 
 const express = require('express');
@@ -34,6 +44,10 @@ const { ISSUE_KINDS } = require('./issue-images');
 const { httpError, notFound, handleError } = require('./errors');
 
 const router = express.Router();
+
+// The code this file's one retrofitted read asks (ADR-0061, issue #503), seeded
+// on ROLE_STANDARD so it refuses nobody who could read the show before it.
+const mayReadSlideShow = people.requirePermission('QLT_SLIDESHOW_DISPLAY');
 
 const FINDERS = {
   nonconformance: (id) => nonconformances.findNonconformance(id),
@@ -94,6 +108,7 @@ router.get(
   people.requireActive,
   requireKnownSite,
   requireSiteVisible,
+  mayReadSlideShow,
   async (req, res, next) => {
     try {
       const issues = await slideShow.listForSite(req.site.id);

@@ -4,9 +4,9 @@
  *
  * This is the second file in the Module that talks to People, and it does so
  * only through `modules/people`'s entry point (ADR-0006): `authenticate`,
- * `requireActive`, `findSite`, `findOrgUnit`, `canAct`, `canSeeSite` and the
- * shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything else about a
- * Non-conformance is nonconformances.js's own business.
+ * `requireActive`, `requirePermission`, `findSite`, `findOrgUnit`, `canAct`,
+ * `canSeeSite` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
+ * else about a Non-conformance is nonconformances.js's own business.
  *
  * Two scope rules, and they are deliberately different — the same asymmetry
  * the action log records (ADR-0032), and the one issue #205's own acceptance
@@ -52,6 +52,27 @@
  * in this Site), and only then `canAct`. `canAct` returns true for role
  * `admin` before it even looks at the Org Unit id, so asking scope first would
  * turn an administrator's typo into a raw 500 rather than a clean 404.
+ *
+ * **The ADR-0061 retrofit (issue #503).** Five of these ten routes ask
+ * `people.requirePermission` beside the Grant question they already asked: the
+ * register and one record's read (`QLT_NONCONFORMANCES_DISPLAY`), and recording,
+ * the PATCH that raises a severity or records containment, and the quantity
+ * increase (`QLT_NONCONFORMANCES_RECORD`). Both codes are seeded on
+ * ROLE_STANDARD, the default group every approved Account holds, so neither gate
+ * refuses anybody who could reach its route before it — and the Grant half of
+ * every route is untouched, because a permission says *what* and a Grant says
+ * *where*.
+ *
+ * The other five are recorded as findings rather than retrofitted. A Disposition
+ * and the four decisions would ask `QLT_NONCONFORMANCES_DISPOSE`, which the seed
+ * gives to engineer-and-above, where today a Disposition admits any write Grant
+ * reaching the record's Org Unit and the four decisions admit any Grant carrying
+ * Quality authority there — regardless of the Account's role, which is the whole
+ * point of ADR-0035's separate flag. Adding that code would narrow today's users,
+ * which is the owner's decision (parent card t_3271c590, comment 1308). It also
+ * does not name all of them: a Disposition is the work rather than the decision
+ * (see the paragraph above), and no code in the catalogue names lowering a
+ * severity, reopening or cancelling.
  *
  * A query value that names a closed set is checked, not forwarded (ADR-0023's
  * rule read the other way round): `?status=opne` is a mistake the caller can
@@ -176,6 +197,13 @@ async function requireNonconformanceQualityAuthority(req, res, next) {
   });
 }
 
+// The two codes this retrofit asks (ADR-0061, issue #503). Both are seeded on
+// ROLE_STANDARD — the default group every approved Account carries — which is
+// what makes them a retrofit rather than a narrowing: they refuse nobody who
+// could reach these routes before them.
+const mayReadNonconformances = people.requirePermission('QLT_NONCONFORMANCES_DISPLAY');
+const mayRecordNonconformance = people.requirePermission('QLT_NONCONFORMANCES_RECORD');
+
 function requireQueryMemberOf(field, value, allowed) {
   if (value === undefined) return null;
   if (!allowed.includes(value)) {
@@ -214,6 +242,7 @@ router.get(
   people.requireActive,
   requireKnownSite,
   requireSiteVisible,
+  mayReadNonconformances,
   async (req, res, next) => {
     try {
       const status = requireQueryMemberOf(
@@ -265,6 +294,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayRecordNonconformance,
   async (req, res, next) => {
     try {
       const body = req.body ?? {};
@@ -310,6 +340,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireNonconformanceVisible,
+  mayReadNonconformances,
   async (req, res, next) => {
     try {
       const nonconformance = await nonconformances.getNonconformanceDetail(req.params.id);
@@ -329,6 +360,7 @@ router.patch(
   people.authenticate,
   people.requireActive,
   requireNonconformanceWriteScope,
+  mayRecordNonconformance,
   async (req, res, next) => {
     try {
       const nonconformance = await nonconformances.updateNonconformance(
@@ -353,6 +385,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireNonconformanceWriteScope,
+  mayRecordNonconformance,
   async (req, res, next) => {
     try {
       const nonconformance = await nonconformances.increaseQuantity(

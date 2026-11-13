@@ -412,7 +412,8 @@ test("Supplier writes are the administrator's, and a code already taken is refus
       name: 'Not this caller to define'
     });
     assert.strictEqual(created.status, 403, JSON.stringify(created.body));
-    assert.match(created.body.message, /administrator/);
+    assert.strictEqual(created.body.code, 'PERMISSION_REQUIRED');
+    assert.strictEqual(created.body.permission, 'QLT_SUPPLIERS_CHANGE');
 
     const corrected = await correctSupplier(caller.token, ground.supplier.id, {
       name: 'Not this caller to correct'

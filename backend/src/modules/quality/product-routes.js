@@ -8,29 +8,35 @@
  * the Asset register and job-role-routes.js gives the job role catalogue:
  *
  *   - Reads are open to any approved Account. `GET /products` sits behind
- *     `authenticate` + `requireActive` and nothing else: a Product is shared
- *     reference data (ADR-0005, one catalogue many plants), so where an
+ *     `authenticate` + `requireActive` and `QLT_PRODUCTS_DISPLAY`: a Product is
+ *     shared reference data (ADR-0005, one catalogue many plants), so where an
  *     Account may act has nothing to do with what it may know about being
  *     built. A later Quality slice needs this list as a set of choices
  *     (ADR-0023), which is a read whoever is recording the problem.
- *   - Writes are the administrator's. Creating a Product, correcting its name
- *     and deactivating or reactivating it are the acts that decide what the
- *     plant's catalogue says, the same rule job-plan-routes.js's catalogue
- *     writes follow.
+ *   - Writes ask the catalogue's own code. Creating a Product, correcting its
+ *     name and deactivating or reactivating it ask `QLT_PRODUCTS_CHANGE`, the
+ *     same rule job-plan-routes.js's catalogue writes follow. That code is
+ *     seeded on ROLE_ADMIN alone — the exact set the administrator check it
+ *     replaces admitted — and an administrator answers every permission true
+ *     before any role is read (ADR-0061), so this is a retrofit rather than a
+ *     new decision: no Account gains or loses access, and the refusal names the
+ *     permission instead of the role. The act is still the administrator's; it
+ *     is a code an administrator can grant later rather than a role this route
+ *     spells out.
  *
- * `requireAdmin` is defined here rather than imported from People: People's
- * entry point deliberately does not export `requireAdmin`/`isAdmin` (see
- * people/index.js's own "deliberately NOT exported" list), so a Module outside
- * it carries its own copy, matching inventory-routes.js's and
- * job-plan-routes.js's copies and People's own refusal sentence word for word.
+ * `QLT_PRODUCTS_DISPLAY` is seeded on ROLE_STANDARD — the default group every
+ * approved Account carries — so the read gate refuses nobody who could reach
+ * this list before the retrofit. A permission says *what*, a Grant says *where*
+ * (ADR-0061): the read stays open to any approved Account because a Product is
+ * shared reference data (ADR-0005).
  *
  * Existence before scope on every write (AGENTS.md §6): the Product named in
  * the URL is resolved first — a 404 naming it, malformed id included, exactly
- * as requireKnownStore does for a Store — and only then is `requireAdmin`
- * asked, so the same address answers 404 for a Product that is not there and
- * 403 for one that is. A Product is not Org-Unit scoped (products.js's own
- * header), so the scope half of that ordering is the role check rather than
- * `canAct`; the order itself is the convention.
+ * as requireKnownStore does for a Store — and only then is
+ * `QLT_PRODUCTS_CHANGE` asked, so the same address answers 404 for a Product
+ * that is not there and 403 for one that is. A Product is not Org-Unit scoped
+ * (products.js's own header), so the scope half of that ordering is the
+ * permission rather than `canAct`; the order itself is the convention.
  */
 
 const express = require('express');
@@ -40,7 +46,11 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-const { requireAdmin } = require('./admin');
+// The two codes this catalogue asks (ADR-0061, issue #503). Both are answered
+// from `roles.effectivePermissions` on every request, never cached, so an
+// administrator's edit takes effect on the affected Account's next call.
+const mayReadProducts = people.requirePermission('QLT_PRODUCTS_DISPLAY');
+const mayChangeProducts = people.requirePermission('QLT_PRODUCTS_CHANGE');
 
 // The Product named in the URL must exist before anything else — a clean 404,
 // even for an administrator, and even for a malformed id (`parseId` answers
@@ -62,15 +72,21 @@ async function requireKnownProduct(req, res, next) {
 // silently widen the list past "in use" (job-role-routes.js's own
 // includeInactive reasoning). `?search=` matches code or name, so a caller
 // holding either can find the Product they mean.
-router.get('/products', people.authenticate, people.requireActive, async (req, res, next) => {
-  try {
-    const includeInactive = req.query.includeInactive === 'true';
-    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
-    res.json({ products: await products.listProducts({ search, includeInactive }) });
-  } catch (error) {
-    handleError(error, res, next);
+router.get(
+  '/products',
+  people.authenticate,
+  people.requireActive,
+  mayReadProducts,
+  async (req, res, next) => {
+    try {
+      const includeInactive = req.query.includeInactive === 'true';
+      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+      res.json({ products: await products.listProducts({ search, includeInactive }) });
+    } catch (error) {
+      handleError(error, res, next);
+    }
   }
-});
+);
 
 // A Product is created with its code, its name and the unit of measure it is
 // measured in. The unit is a choice from `units_of_measure` (ADR-0023) and an
@@ -78,14 +94,20 @@ router.get('/products', people.authenticate, people.requireActive, async (req, r
 // that is already taken is a 409, and that clash is the one refusal this route
 // can raise with no Product to name — which is why it is mapped in the service
 // rather than resolved here.
-router.post('/products', people.authenticate, people.requireActive, requireAdmin, async (req, res, next) => {
-  try {
-    const product = await products.createProduct(req.body ?? {}, req.account.id);
-    res.status(201).json({ product });
-  } catch (error) {
-    handleError(error, res, next);
+router.post(
+  '/products',
+  people.authenticate,
+  people.requireActive,
+  mayChangeProducts,
+  async (req, res, next) => {
+    try {
+      const product = await products.createProduct(req.body ?? {}, req.account.id);
+      res.status(201).json({ product });
+    } catch (error) {
+      handleError(error, res, next);
+    }
   }
-});
+);
 
 // Correcting a Product: its name, and whether it is still in use. Its code and
 // its unit of measure are refused by products.js rather than silently ignored.
@@ -94,7 +116,7 @@ router.patch(
   people.authenticate,
   people.requireActive,
   requireKnownProduct,
-  requireAdmin,
+  mayChangeProducts,
   async (req, res, next) => {
     try {
       const product = await products.updateProduct(req.product.id, req.body ?? {}, req.account.id);
