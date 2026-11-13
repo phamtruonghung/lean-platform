@@ -12,6 +12,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/maintenance/asset.dart';
@@ -27,6 +28,7 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/theme.dart';
 import 'package:lean_platform/widgets/app_confirm_dialog.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/app_form_submit.dart';
 import 'package:lean_platform/widgets/empty_state.dart';
 import 'package:lean_platform/widgets/failure_state.dart';
 import 'package:lean_platform/widgets/skeleton_list.dart';
@@ -200,6 +202,38 @@ void main() {
     expect(find.byType(AssetFormDialog), findsNothing);
     expect(find.text('Press 9'), findsOneWidget);
     expect(wire.requests.where((r) => r == 'GET /api/maintenance/sites/1/assets').length, 1);
+  });
+
+  testWidgets('the Asset code field takes a scanner: focus on open, the reader\'s Enter cleans the code',
+      (tester) async {
+    final wire = wireWith(assets: {'1': []});
+    await pumpApp(
+      tester,
+      gateway: FakeAuthGateway(accessToken: 'a-token'),
+      client: wire.client,
+      initialLocation: '/assets',
+    );
+
+    await tapIn(tester, find.byKey(AssetsScreen.addKey));
+
+    // The dialog's first field is where a badge or asset reader's burst lands,
+    // with nobody tapping into it first.
+    expect(AppFormSubmit.focusIsInSingleLineField(), isTrue);
+
+    // A reader types the code and ends with Enter — a key event, not the soft
+    // keyboard's action key — and its own terminator never reaches the form.
+    await tester.enterText(find.byKey(AssetFormDialog.codeKey), 'PRESS-9\r\n');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(find.byKey(AssetFormDialog.codeKey)).controller?.text,
+      'PRESS-9',
+    );
+    // Mid-form, not submitted: the form still needs a name, a kind, a
+    // criticality and a place.
+    expect(find.byType(AssetFormDialog), findsOneWidget);
+    expect(wire.assetPosts, isEmpty);
   });
 
   testWidgets('a duplicate code is reported in the form, which stays open', (tester) async {

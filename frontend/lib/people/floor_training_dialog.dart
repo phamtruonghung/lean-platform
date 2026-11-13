@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
+import '../widgets/app_scan_field.dart';
 import 'floor_training_bloc.dart';
 import 'training_answer_dialog.dart';
 import 'training_record.dart';
@@ -128,12 +129,15 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
-        TextField(
+        AppScanField(
           key: FloorTrainingDialog.employeeNoKey,
           controller: _employeeNo,
+          label: 'Employee number',
+          helperText: 'Scan the badge or type the number.',
           enabled: !state.isBusy,
+          autofocus: true,
+          advanceFocusOnScan: true,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(labelText: 'Employee number', border: OutlineInputBorder()),
         ),
         const SizedBox(height: Spacing.md),
         TextField(

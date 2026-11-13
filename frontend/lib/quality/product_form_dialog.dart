@@ -32,6 +32,7 @@ import '../maintenance/maintenance.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import '../widgets/failure_state.dart';
 import 'product.dart';
 import 'products_bloc.dart';
@@ -226,17 +227,15 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: ProductFormDialog.codeKey,
               controller: _code,
               // A code is the one field a correction cannot rewrite.
               enabled: !_isCorrection && !_awaiting,
+              autofocus: !_isCorrection,
+              label: 'Code',
+              helperText: _isCorrection ? 'A Product\'s code cannot be corrected' : null,
               onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'Code',
-                border: const OutlineInputBorder(),
-                helperText: _isCorrection ? 'A Product\'s code cannot be corrected' : null,
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(

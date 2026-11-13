@@ -727,6 +727,20 @@ written only here is a rule nobody can be held to.
   shortcuts swallows the button's activation (measured: the button stopped
   firing). `onSubmitted` stays as well, for a soft keyboard's own action key; on
   a hardware `Enter` in the pinned image it is not reached, and this is.
+- **A code field takes a scanner, and the reader's `Enter` stops there.**
+  `AppScanField` (`lib/widgets/app_scan_field.dart`) is the field an Asset code,
+  a Product code, an Org Unit code and an Employee badge are typed or scanned
+  into. A shop-floor reader is a keyboard: it types the code as a burst and ends
+  with `Enter`, so the field takes focus when its dialog opens (`autofocus`, set
+  on the first field only), keeps that hardware `Enter` as its own terminator —
+  `Focus.onKeyEvent`, the same device and the same measured reason as
+  `AppFormSubmit` above — cleans what the reader added (`AppScanField.normalize`:
+  control characters including GS1's `0x1D`, a BOM, zero-width characters,
+  surrounding whitespace) and reports the code through `onScanned`. **That is a
+  deliberate exception to the `Enter`-submits rule one line up:** the key arrives
+  mid-form, before the rest of the code's own form may be filled, so a terminator
+  that submitted would post a half-filled form. The stopping place is the field,
+  and the previous rule still holds for every field that is not a code.
 - **The skip control comes before the Shell's own chrome.** "Skip to content" is
   drawn at the top-left of the Shell in a `Stack`, invisible until it takes
   focus (`Opacity` 0 plus `IgnorePointer`, so it never eats a click on the brand

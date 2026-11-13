@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import 'floor_bloc.dart';
 
 class FloorTechnicianDialog extends StatefulWidget {
@@ -141,15 +142,15 @@ class _FloorTechnicianDialogState extends State<FloorTechnicianDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: FloorTechnicianDialog.employeeNoKey,
               controller: _employeeNo,
+              label: 'Employee number',
+              helperText: 'Scan the badge or type the number.',
               enabled: !_awaiting,
+              autofocus: true,
+              advanceFocusOnScan: true,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Employee number',
-                border: OutlineInputBorder(),
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(

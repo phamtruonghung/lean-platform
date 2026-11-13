@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import '../widgets/failure_state.dart';
 import 'maintenance_api.dart';
 import 'part.dart';
@@ -169,15 +170,13 @@ class _PartFormDialogState extends State<PartFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: PartFormDialog.partNoKey,
               controller: _partNo,
+              label: 'Part number',
               enabled: !_awaiting,
+              autofocus: true,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Part number',
-                border: OutlineInputBorder(),
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
