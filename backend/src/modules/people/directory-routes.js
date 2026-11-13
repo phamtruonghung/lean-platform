@@ -59,12 +59,32 @@
  * why this is a deliberate deviation from ADR-0009's reasoning, not an
  * inconsistency: an Org Unit assignment, unlike an Employee record itself,
  * genuinely is "owned" by the Org Unit it names.
+ *
+ * **The ADR-0061 retrofit (issue #509).** The four reads now ask
+ * `PPL_DIRECTORY_DISPLAY` and the four administrator writes ask
+ * `PPL_DIRECTORY_CHANGE`, in place of "no role check" and `requireAdmin`
+ * respectively. Both codes are seeded on exactly the callers those rules
+ * admitted: the display code on ROLE_STANDARD — the default group every
+ * approved Account carries — and the change code on ROLE_ADMIN alone. So no
+ * Account gained or lost access; only the refusal body changed, from the
+ * administrator sentence to a `PERMISSION_REQUIRED` naming the code.
+ *
+ * GET /employees/me keeps the directory's own display code rather than an
+ * ungateable self-service one: the catalogue has no `PPL_DIRECTORY_OWN`, and a
+ * code every approved Account holds is the truthful reading of a route
+ * criterion 7 says every Member may call.
+ *
+ * POST /employees/:id/assignments keeps its edit-Grant standing. No People code
+ * names "say where in the plant a person works", and the two nearest —
+ * `PPL_DIRECTORY_CHANGE` and `PPL_ORG_UNITS_CHANGE` — are administrator-only,
+ * while a supervisor holding a write Grant on the destination Org Unit can
+ * assign today (ADR-0010). Adding either would narrow that, so it is a finding
+ * on the retrofit card, not a change made here.
  */
 
 const express = require('express');
 const { authenticate, requireActive } = require('./middleware');
 const authorization = require('./authorization');
-const { requireAdmin } = authorization;
 const plant = require('./plant');
 const { httpError, parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 const {
@@ -80,7 +100,13 @@ const {
 
 const router = express.Router();
 
-router.get('/employees', authenticate, requireActive, async (req, res, next) => {
+// The directory's two codes (ADR-0061, issue #509): the display code is seeded
+// on ROLE_STANDARD, the default group every approved Account carries, and the
+// change code on ROLE_ADMIN alone — each the same set its old rule admitted.
+const mayReadDirectory = authorization.requirePermission('PPL_DIRECTORY_DISPLAY');
+const mayMaintainEmployees = authorization.requirePermission('PPL_DIRECTORY_CHANGE');
+
+router.get('/employees', authenticate, requireActive, mayReadDirectory, async (req, res, next) => {
   try {
     let orgUnitId;
     if (req.query.orgUnitId !== undefined) {
@@ -134,7 +160,7 @@ router.get('/employees', authenticate, requireActive, async (req, res, next) => 
 // Account with none, which is a different fact than "no Employee with this
 // id" (getEmployee's own notFound message), so this writes its own 404
 // rather than calling into directory.js just to get the generic one.
-router.get('/employees/me', authenticate, requireActive, async (req, res, next) => {
+router.get('/employees/me', authenticate, requireActive, mayReadDirectory, async (req, res, next) => {
   try {
     if (req.account.employeeId === null || req.account.employeeId === undefined) {
       throw httpError(404, 'This Account has no linked Employee record');
@@ -156,7 +182,7 @@ router.get('/employees/me', authenticate, requireActive, async (req, res, next) 
 // :id matches anything, so declared after /employees/:id, the literal
 // segment "assignee-candidates" would become the :id param and parseId
 // would turn it into a 400 rather than ever reaching this handler.
-router.get('/employees/assignee-candidates', authenticate, requireActive, async (req, res, next) => {
+router.get('/employees/assignee-candidates', authenticate, requireActive, mayReadDirectory, async (req, res, next) => {
   try {
     let orgUnitId;
     if (req.query.orgUnitId !== undefined) {
@@ -174,7 +200,7 @@ router.get('/employees/assignee-candidates', authenticate, requireActive, async 
 
 // The detail view (criterion 4): job role, Org Unit assignments and skills,
 // alongside the Employee record itself.
-router.get('/employees/:id', authenticate, requireActive, async (req, res, next) => {
+router.get('/employees/:id', authenticate, requireActive, mayReadDirectory, async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
     if (id === null) {
@@ -205,7 +231,7 @@ function requireEmployeeId(req) {
 // "who may change an Employee's record", not "who may know about one".
 // ---------------------------------------------------------------------------
 
-router.post('/employees', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/employees', authenticate, requireActive, mayMaintainEmployees, async (req, res, next) => {
   try {
     const employee = await createEmployee(req.body ?? {}, req.account.id);
     res.status(201).json({ employee });
@@ -214,7 +240,7 @@ router.post('/employees', authenticate, requireActive, requireAdmin, async (req,
   }
 });
 
-router.patch('/employees/:id', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.patch('/employees/:id', authenticate, requireActive, mayMaintainEmployees, async (req, res, next) => {
   try {
     const id = requireEmployeeId(req);
     const employee = await updateEmployee(id, req.body ?? {}, req.account.id);
@@ -230,7 +256,7 @@ router.patch('/employees/:id', authenticate, requireActive, requireAdmin, async 
 // field edit — and, per updateEmployee's own comment, PATCH /employees/:id
 // above has no way to reach is_active or terminated_on at all, so this is
 // the only route that can.
-router.post('/employees/:id/departure', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/employees/:id/departure', authenticate, requireActive, mayMaintainEmployees, async (req, res, next) => {
   try {
     const id = requireEmployeeId(req);
     const employee = await setEmployeeDeparted(id, req.body ?? {}, req.account.id);
@@ -240,7 +266,7 @@ router.post('/employees/:id/departure', authenticate, requireActive, requireAdmi
   }
 });
 
-router.post('/employees/:id/reinstatement', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/employees/:id/reinstatement', authenticate, requireActive, mayMaintainEmployees, async (req, res, next) => {
   try {
     const id = requireEmployeeId(req);
     const employee = await reinstateEmployee(id, req.account.id);

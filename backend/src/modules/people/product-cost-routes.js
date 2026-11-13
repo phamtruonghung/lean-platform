@@ -3,9 +3,18 @@
  * index.js under `/api/people` beside cost-rate-routes.js. See
  * product-costs.js's header for what the catalogue is and why it lives in this
  * Module, and cost-rate-routes.js's header for the two access rules — they are
- * the same two, for the same reasons, and the local `requireAdmin` below is
- * that file's copy verbatim (the per-file duplication injury-type-routes.js and
- * body-part-routes.js already keep for the Safety Module's pair).
+ * the same two, for the same reasons, and the identical `mayMaintainProductCosts`
+ * gate below asks this catalogue's own code (the per-file duplication
+ * injury-type-routes.js and body-part-routes.js already keep for the Safety
+ * Module's pair).
+ *
+ * **The ADR-0061 retrofit (issue #509).** The three writes ask
+ * `PPL_PRODUCT_COSTS_MAINTAIN`, seeded on ROLE_ADMIN alone — the exact set the
+ * administrator comparison it replaces admitted — so no Account gained or lost
+ * access; the refusal now carries `PERMISSION_REQUIRED` and the code instead of
+ * `ADMIN_ROLE_REQUIRED`. The two reads keep no gate, a finding on the card for
+ * cost-rate-routes.js's own reason: the only code naming this catalogue is its
+ * administrator-only *maintenance* code.
  *
  * There is no resolution read here, deliberately: `product_standard_cost` has
  * no fallback rule to make visible, unlike `resolve_cost_rate`. See the note at
@@ -19,7 +28,10 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-const { requireAdminWithCode: requireAdmin } = require('./authorization');
+const { requirePermission } = require('./authorization');
+
+// See cost-rate-routes.js's own gate: the same shape, this catalogue's code.
+const mayMaintainProductCosts = requirePermission('PPL_PRODUCT_COSTS_MAINTAIN');
 
 async function requireKnownProductCost(req, res, next) {
   try {
@@ -54,7 +66,7 @@ router.get('/product-costs/products', authenticate, requireActive, async (_req, 
 
 // A standard cost is created with its Product, the cost, its currency and the
 // day it takes effect.
-router.post('/product-costs', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/product-costs', authenticate, requireActive, mayMaintainProductCosts, async (req, res, next) => {
   try {
     const productCost = await productCosts.createProductCost(req.body ?? {}, req.account.id);
     res.status(201).json({ productCost });
@@ -70,7 +82,7 @@ router.patch(
   authenticate,
   requireActive,
   requireKnownProductCost,
-  requireAdmin,
+  mayMaintainProductCosts,
   async (req, res, next) => {
     try {
       const productCost = await productCosts.updateProductCost(
@@ -93,7 +105,7 @@ router.post(
   authenticate,
   requireActive,
   requireKnownProductCost,
-  requireAdmin,
+  mayMaintainProductCosts,
   async (req, res, next) => {
     try {
       const { closed, opened } = await productCosts.reviseProductCost(

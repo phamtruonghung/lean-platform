@@ -62,6 +62,11 @@ const attendance = require('./attendance');
 
 const router = express.Router();
 
+// The Sheet's own read code (ADR-0061, issue #509), seeded on ROLE_STANDARD —
+// the default group every approved Account carries — so it refuses nobody who
+// could open a sheet before; `canSeeSite` below still decides which Site's.
+const mayReadAttendance = authorization.requirePermission('PPL_ATTENDANCE_DISPLAY');
+
 async function requireKnownShiftInstance(req, res, next) {
   try {
     const shiftInstance = await attendance.findShiftInstance(req.params.shiftInstanceId);
@@ -102,7 +107,7 @@ async function requireShiftInstanceWriteScope(req, res, next) {
 // they mean to open — there is no shift calendar Screen to link from yet
 // (#250 is the worklist that will do that job properly). Site-wide read,
 // the same `canSeeSite` question every other read in this file asks.
-router.get('/org-units/:orgUnitId/shift-instances', authenticate, requireActive, async (req, res, next) => {
+router.get('/org-units/:orgUnitId/shift-instances', authenticate, requireActive, mayReadAttendance, async (req, res, next) => {
   try {
     const orgUnitId = parseId(req.params.orgUnitId);
     if (orgUnitId === null) {
@@ -137,6 +142,18 @@ router.get('/org-units/:orgUnitId/shift-instances', authenticate, requireActive,
 // caller with no write Grant anywhere sees an empty list (200), never a
 // 403 — there is nothing to refuse when the query already answers "nowhere"
 // honestly.
+//
+// **The ADR-0061 retrofit (issue #509).** The five reads ask
+// `PPL_ATTENDANCE_DISPLAY`, seeded on ROLE_STANDARD — the default group every
+// approved Account carries — so the Sheet, the picker, the worklist, the
+// absence reasons and one Employee's worked hours admit exactly the Accounts
+// they admitted before; the scope checks below still decide *which* sheet, so
+// the permission never widened a read past its own Site visibility. The four
+// writes (confirm, add a stand-in, correct one, remove one) keep their
+// edit-Grant standing: `PPL_ATTENDANCE_CHANGE` is seeded on supervisor-and-above,
+// while ADR-0040's rule admits any role holding a write Grant — an operator's
+// edit Grant can confirm a sheet today — so adding the code would narrow that.
+// A finding on the retrofit card, not a change made here.
 const WORKLIST_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function requireWorklistQueryDate(field, value) {
@@ -147,7 +164,7 @@ function requireWorklistQueryDate(field, value) {
   return value;
 }
 
-router.get('/attendance-to-confirm', authenticate, requireActive, async (req, res, next) => {
+router.get('/attendance-to-confirm', authenticate, requireActive, mayReadAttendance, async (req, res, next) => {
   try {
     // `writeGrantOrgUnitIds === null` means "everywhere" (administrator);
     // otherwise the flattened `orgUnitIds` of every grant carrying
@@ -186,7 +203,7 @@ router.get('/attendance-to-confirm', authenticate, requireActive, async (req, re
   }
 });
 
-router.get('/absence-reasons', authenticate, requireActive, async (req, res, next) => {
+router.get('/absence-reasons', authenticate, requireActive, mayReadAttendance, async (req, res, next) => {
   try {
     const includeInactive = req.query.includeInactive === 'true';
     const requestable = req.query.requestable === 'true';
@@ -224,7 +241,7 @@ router.get('/absence-reasons', authenticate, requireActive, async (req, res, nex
 // unconfirmed sheet is a draft a supervisor may still correct. An unconfirmed
 // shift in the window is simply absent — never a planted zero — exactly how
 // `EXPOSURE_HOURS` treats it.
-router.get('/employees/:employeeId/work-hours', authenticate, requireActive, async (req, res, next) => {
+router.get('/employees/:employeeId/work-hours', authenticate, requireActive, mayReadAttendance, async (req, res, next) => {
   try {
     const employeeId = parseId(req.params.employeeId);
     if (employeeId === null) {
@@ -243,6 +260,7 @@ router.get(
   '/shift-instances/:shiftInstanceId/attendance-sheet',
   authenticate,
   requireActive,
+  mayReadAttendance,
   requireShiftInstanceVisible,
   async (req, res, next) => {
     try {

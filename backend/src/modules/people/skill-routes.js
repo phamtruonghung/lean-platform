@@ -49,11 +49,23 @@
  * no 403-vs-404 leak the way authorization.js's own header warns about for
  * scope checks — so the Site is resolved via plant.getSite (404) only after
  * the admin gate, inside the handler itself.
+ *
+ * **The ADR-0061 retrofit (issue #509).** The four reads an approved Account
+ * always had now ask `PPL_SKILLS_DISPLAY` — seeded on ROLE_STANDARD, the
+ * default group every approved Account carries, so nobody was refused — and the
+ * three catalogue writes ask `PPL_SKILLS_CHANGE`, seeded on ROLE_ADMIN alone,
+ * the same set `requireAdmin` admitted. GET /sites/:siteId/skill-coverage asks
+ * `INS_SKILL_COVERAGE_DISPLAY` rather than the Skills display code: it is the
+ * Insights Module's workforce-planning report (destinations.dart already names
+ * that Screen with that code), the one read here deliberately narrower than an
+ * ordinary directory read, and that code is seeded on ROLE_ADMIN alone — the
+ * exact set the administrator check it replaces admitted. So no Account gained
+ * or lost access anywhere in this file.
  */
 
 const express = require('express');
 const { authenticate, requireActive } = require('./middleware');
-const { requireAdmin } = require('./authorization');
+const { requirePermission } = require('./authorization');
 const plant = require('./plant');
 const { parseId, handleError } = require('./errors');
 const {
@@ -67,7 +79,15 @@ const {
 
 const router = express.Router();
 
-router.get('/skills', authenticate, requireActive, async (req, res, next) => {
+// The Skills catalogue's codes (ADR-0061, issue #509). Display is seeded on
+// ROLE_STANDARD (the default group), change on ROLE_ADMIN alone — each the same
+// set its old rule admitted. The coverage report asks the Insights code its own
+// Destination is named by, also seeded on ROLE_ADMIN alone.
+const mayReadSkills = requirePermission('PPL_SKILLS_DISPLAY');
+const mayMaintainSkills = requirePermission('PPL_SKILLS_CHANGE');
+const mayReadSkillCoverage = requirePermission('INS_SKILL_COVERAGE_DISPLAY');
+
+router.get('/skills', authenticate, requireActive, mayReadSkills, async (req, res, next) => {
   try {
     // Exact string "true" only — same reasoning as every other boolean query
     // flag in this Module (job-role-routes.js's own includeInactive, e.g.).
@@ -80,7 +100,7 @@ router.get('/skills', authenticate, requireActive, async (req, res, next) => {
   }
 });
 
-router.post('/skills', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/skills', authenticate, requireActive, mayMaintainSkills, async (req, res, next) => {
   try {
     const skill = await createSkill(req.body ?? {}, req.account.id);
     res.status(201).json({ skill });
@@ -89,7 +109,7 @@ router.post('/skills', authenticate, requireActive, requireAdmin, async (req, re
   }
 });
 
-router.patch('/skills/:id', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.patch('/skills/:id', authenticate, requireActive, mayMaintainSkills, async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
     if (id === null) {
@@ -112,7 +132,7 @@ router.put(
   '/employees/:id/skills/:skillId',
   authenticate,
   requireActive,
-  requireAdmin,
+  mayMaintainSkills,
   async (req, res, next) => {
     try {
       const employeeId = parseId(req.params.id);
@@ -145,7 +165,7 @@ function parseMinimumLevel(value) {
   return /^[1-4]$/.test(str) ? Number(str) : null;
 }
 
-router.get('/skills/:id/qualified-employees', authenticate, requireActive, async (req, res, next) => {
+router.get('/skills/:id/qualified-employees', authenticate, requireActive, mayReadSkills, async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
     if (id === null) {
@@ -174,7 +194,7 @@ router.get('/skills/:id/qualified-employees', authenticate, requireActive, async
   }
 });
 
-router.get('/sites/:siteId/skill-coverage', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.get('/sites/:siteId/skill-coverage', authenticate, requireActive, mayReadSkillCoverage, async (req, res, next) => {
   try {
     const siteId = parseId(req.params.siteId);
     const site = await plant.getSite(siteId); // throws the 404 (also covers a malformed id, same as GET /sites/:siteId).
