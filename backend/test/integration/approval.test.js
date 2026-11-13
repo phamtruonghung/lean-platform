@@ -24,6 +24,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { tokenFor } = require('../helpers/session');
+const { temporaryCode } = require('../helpers/permissions');
 
 let server;
 let base;
@@ -496,7 +497,10 @@ test('a grant on a Site\'s root Org Unit reaches every unit beneath it', async (
 // 6. Read and write access are grantable separately on an Org Unit.
 // ---------------------------------------------------------------------------
 
-test('read and write access are grantable separately on an Org Unit', async () => {
+test('read and write access are grantable separately on an Org Unit', async (t) => {
+  // The claim is about the GRANT half of the model: `PATCH /org-units/:id` asks
+  // `PPL_ORG_UNITS_CHANGE` since phase 2d, so the operator borrows it here.
+  t.after(await temporaryCode(pool, 'ROLE_OPERATOR', 'PPL_ORG_UNITS_CHANGE'));
   const { child } = await createSiteWithTree();
   const { token, account } = await approveFreshAccount('operator', [{ orgUnitId: child.id, canWrite: false }]);
 
@@ -531,7 +535,8 @@ test('read and write access are grantable separately on an Org Unit', async () =
 //    takes effect on the very next request, reusing the same token.
 // ---------------------------------------------------------------------------
 
-test('a grant change in the database takes effect on the next request, with no caching against the same token', async () => {
+test('a grant change in the database takes effect on the next request, with no caching against the same token', async (t) => {
+  t.after(await temporaryCode(pool, 'ROLE_OPERATOR', 'PPL_ORG_UNITS_CHANGE'));
   const { child } = await createSiteWithTree();
   const { token, account } = await approveFreshAccount('operator', [{ orgUnitId: child.id, canWrite: false }]);
 
@@ -636,7 +641,11 @@ test('creating a root Org Unit (no parentId) is administrator-only, even for a c
   assert.strictEqual(response.status, 403);
 });
 
-test('creating an Org Unit under a parent requires write scope on that parent (or an ancestor)', async () => {
+test('creating an Org Unit under a parent requires write scope on that parent (or an ancestor)', async (t) => {
+  // A manager no longer reaches this route on a Grant alone — phase 2d asks
+  // `PPL_ORG_UNITS_CHANGE` first — so the role borrows the code for the test and
+  // the two Grants below still decide, which is the claim.
+  t.after(await temporaryCode(pool, 'ROLE_MANAGER', 'PPL_ORG_UNITS_CHANGE'));
   const { site, root, child } = await createSiteWithTree();
 
   const { token: writeToken } = await approveFreshAccount('manager', [{ orgUnitId: root.id, canWrite: true }]);
@@ -1415,7 +1424,11 @@ test('a Grant carrying Quality authority reaches every Org Unit beneath it, and 
 // decided at: the flag alone does not authorise a write at the Org Unit
 // (requireOrgUnitScope's own `canAct({ write: true })` refuses it, 403), and
 // an edit Grant with no flag reports no Quality authority to the client.
-test('Quality authority on a view-only Grant does not authorise a write, and an edit Grant holds none', async () => {
+test('Quality authority on a view-only Grant does not authorise a write, and an edit Grant holds none', async (t) => {
+  // Both Accounts reach the route's code via their role; what this test
+  // measures is the Grant and the flag behind it (ADR-0035).
+  t.after(await temporaryCode(pool, 'ROLE_ENGINEER', 'PPL_ORG_UNITS_CHANGE'));
+  t.after(await temporaryCode(pool, 'ROLE_SUPERVISOR', 'PPL_ORG_UNITS_CHANGE'));
   const { child } = await createSiteWithTree();
   const { token: qualityOnlyToken } = await approveFreshAccount('engineer', [
     { orgUnitId: child.id, canWrite: false, qualityAuthority: true }
@@ -1585,7 +1598,9 @@ test('a Grant carrying Safety authority reaches every Org Unit beneath it, and n
   assert.ok(!reached.includes(String(root.id)), 'never an ancestor above it');
 });
 
-test('Safety authority on a view-only Grant does not authorise a write, and an edit Grant holds none', async () => {
+test('Safety authority on a view-only Grant does not authorise a write, and an edit Grant holds none', async (t) => {
+  t.after(await temporaryCode(pool, 'ROLE_ENGINEER', 'PPL_ORG_UNITS_CHANGE'));
+  t.after(await temporaryCode(pool, 'ROLE_SUPERVISOR', 'PPL_ORG_UNITS_CHANGE'));
   const { child } = await createSiteWithTree();
   const { token: safetyOnlyToken } = await approveFreshAccount('engineer', [
     { orgUnitId: child.id, canWrite: false, safetyAuthority: true }

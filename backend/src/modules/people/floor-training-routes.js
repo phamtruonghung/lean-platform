@@ -38,13 +38,18 @@
  * an answer is a person's own signature), then the write. There is no Account
  * on this path, so the audit carries no Account, as Safety's floor writes do.
  *
- * **No permission code on this door (ADR-0061, slice 5b).** The Account door's
- * answer asks `PPL_TRAINING_ANSWER_OWN`; this door asks a device credential and
- * an individual identification instead, with no Account anywhere on the path, so
- * there is no role to read and nothing for `requirePermission` to ask - the same
- * reason the Maintenance floor door gives for its own writes. The identification
- * IS this door's authority, it is the identified Employee's own, and the
- * identity check below still confines the write to their own Trainee row.
+ * **No permission code on this door (ADR-0061, slice 5b; re-examined in phase
+ * 2d).** The Account door's answer asks `PPL_TRAINING_ANSWER_OWN`; this door
+ * asks a device credential and an individual identification instead, with no
+ * Account anywhere on the path, so there is no role to read and nothing for
+ * `requirePermission` to ask — it reads the permissions of `req.account`, and
+ * `req.account` does not exist here. The identification IS this door's
+ * authority, it is the identified Employee's own, and the identity check below
+ * still confines the write to their own Trainee row; adding a code in front of
+ * it would answer 500 or 403 to every answer a tablet in the plant sends, which
+ * is the one thing a retrofit may not do. The same split the Safety write slice
+ * settled for its own floor pair. What proves the door still works is
+ * `test/integration/people-write-permission-roles.test.js`'s floor case.
  */
 
 const express = require('express');

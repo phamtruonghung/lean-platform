@@ -519,10 +519,10 @@ test('the administrator-only routes refuse an operator with the code and admit a
 });
 
 // ---------------------------------------------------------------------------
-// The writes slice 5b narrowed. Each is measured as the operator whose edit
-// Grant admitted it before: the code now refuses it, and a supervisor holding
-// the same Grant keeps the write. The assignment route is here as the control —
-// out of the retrofit's scope, it still answers to an edit Grant alone.
+// The writes slice 5b narrowed, and the one phase 2d narrowed after it. Each is
+// measured as the operator whose edit Grant admitted it before: the code now
+// refuses it, and (for the three managing codes slice 5b gated) a supervisor
+// holding the same Grant keeps the write.
 // ---------------------------------------------------------------------------
 
 test('the managing writes refuse an edit-Grant operator by code, and admit a supervisor holding the same Grant', async () => {
@@ -544,12 +544,16 @@ test('the managing writes refuse an edit-Grant operator by code, and admit a sup
   assert.strictEqual(confirmed.status, 403, JSON.stringify(confirmed.body));
   assert.strictEqual(confirmed.body.permission, 'PPL_ATTENDANCE_CHANGE');
 
-  // The assignment write keeps its edit-Grant standing: directory-routes.js's
-  // own note, and outside this retrofit's scope.
+  // The assignment write asks `PPL_DIRECTORY_CHANGE` since phase 2d: it stood
+  // on the destination's edit Grant alone, which admitted this operator, and
+  // directory-routes.js's own header plus the phase 2d PR body state that
+  // narrowing. The administrator reaches it; this operator does not.
   const assignment = await post(`/api/people/employees/${otherEmployee.id}/assignments`, operator.token, {
     orgUnitId: area.id
   });
-  assert.strictEqual(assignment.status, 201, JSON.stringify(assignment.body));
+  assert.strictEqual(assignment.status, 403, JSON.stringify(assignment.body));
+  assert.strictEqual(assignment.body.code, 'PERMISSION_REQUIRED');
+  assert.strictEqual(assignment.body.permission, 'PPL_DIRECTORY_CHANGE');
 
   // A leave request for somebody else, then the decision on it. Raising asks
   // PPL_LEAVE_REQUESTS_RAISE and this operator holds it; deciding asks

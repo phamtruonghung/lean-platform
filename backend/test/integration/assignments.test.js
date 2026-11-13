@@ -28,6 +28,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { tokenFor } = require('../helpers/session');
+const { temporaryCode } = require('../helpers/permissions');
 
 let server;
 let base;
@@ -442,10 +443,14 @@ test('criterion 3: a transfer closes the first assignment (same id, same Org Uni
 });
 
 // ---------------------------------------------------------------------------
-// Authorization: write scope on the DESTINATION Org Unit.
+// Authorization: `PPL_DIRECTORY_CHANGE` (ADR-0061, phase 2d) *and* write scope
+// on the DESTINATION Org Unit. These two tests measure the second half — the
+// code is lent to the operator role for their duration, since the seed keeps it
+// on ROLE_ADMIN and the claim here is about the Grant.
 // ---------------------------------------------------------------------------
 
-test('a caller with a write grant on the destination Org Unit can assign (201)', async () => {
+test('a caller with a write grant on the destination Org Unit can assign (201)', async (t) => {
+  t.after(await temporaryCode(pool, 'ROLE_OPERATOR', 'PPL_DIRECTORY_CHANGE'));
   const employeeId = await insertEmployee({ firstName: 'WriteGrant', lastName: 'Employee' });
   const response = await createAssignmentRequest(
     employeeId,
@@ -465,7 +470,8 @@ test('an administrator with no grants at all can assign (201)', async () => {
   assert.strictEqual(response.status, 201);
 });
 
-test('a caller with only a read grant on the destination Org Unit cannot assign (403)', async () => {
+test('a caller with only a read grant on the destination Org Unit cannot assign (403)', async (t) => {
+  t.after(await temporaryCode(pool, 'ROLE_OPERATOR', 'PPL_DIRECTORY_CHANGE'));
   const employeeId = await insertEmployee({ firstName: 'ReadGrant', lastName: 'Employee' });
   const response = await createAssignmentRequest(
     employeeId,

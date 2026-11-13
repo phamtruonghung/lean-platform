@@ -12,7 +12,7 @@
 
 const express = require('express');
 const { authenticate, requireActive, statusFor } = require('./middleware');
-const { requireAdmin, requirePermission, orgUnitScopeFor, permissionsForAccount } = require('./authorization');
+const { requirePermission, orgUnitScopeFor, permissionsForAccount } = require('./authorization');
 const { parseId, httpError, handleError } = require('./errors');
 const {
   listAccounts,
@@ -97,10 +97,21 @@ router.get('/me', authenticate, async (req, res, next) => {
 // answered this door until slice 8; `ADM_ACCOUNTS_DISPLAY` is seeded on
 // `ROLE_ADMIN` alone, so the answer is unchanged for every caller — what
 // changed is that an administrator can now take the Accounts register off a
-// role, which is the point of the model. The five writes below still ask
-// `requireAdmin`: each needs its own choice between `ADM_APPROVALS_DECIDE` and
-// `ADM_ACCOUNTS_CHANGE`, and that is a decision this slice does not make.
+// role, which is the point of the model.
 const mayDisplayAccounts = requirePermission('ADM_ACCOUNTS_DISPLAY');
+
+// The five writes below, each on the code that names its own act (ADR-0061,
+// phase 2d). Deciding an Approval is `ADM_APPROVALS_DECIDE` — "admit an Account
+// with its role and Grants, or reject it", which is exactly the pair of routes
+// an administrator works the queue with. Every other Account write —
+// deactivation, the Employee link, a password reset — is `ADM_ACCOUNTS_CHANGE`,
+// whose own description names all three. Both are seeded on `ROLE_ADMIN` alone,
+// the set `requireAdmin` admitted, so no Account gained or lost a door; what
+// changed is the refusal body, from the administrator sentence to a
+// `PERMISSION_REQUIRED` naming the code, and that an administrator can now take
+// one of the two apart from the other in the Roles Screen.
+const mayDecideApprovals = requirePermission('ADM_APPROVALS_DECIDE');
+const mayChangeAccounts = requirePermission('ADM_ACCOUNTS_CHANGE');
 
 // Everything else sits behind requireActive. A directory listing is the
 // first thing worth protecting this way: real, useful once approved, and
@@ -140,7 +151,7 @@ router.get('/accounts/pending', authenticate, requireActive, mayDisplayAccounts,
 // Sets role and grants in the same act (issue #8's own criterion — see
 // service.js's approveAccount for the single transaction that makes a
 // partial Approval unobservable).
-router.post('/accounts/:id/approval', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/accounts/:id/approval', authenticate, requireActive, mayDecideApprovals, async (req, res, next) => {
   try {
     const id = requireAccountId(req);
 
@@ -162,7 +173,7 @@ router.post('/accounts/:id/approval', authenticate, requireActive, requireAdmin,
   }
 });
 
-router.post('/accounts/:id/rejection', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/accounts/:id/rejection', authenticate, requireActive, mayDecideApprovals, async (req, res, next) => {
   try {
     const id = requireAccountId(req);
 
@@ -179,7 +190,7 @@ router.post('/accounts/:id/rejection', authenticate, requireActive, requireAdmin
 
 // Deactivation (or reactivation), not deletion — issue #8's own criterion,
 // restricted to an already-approved Account (service.js's setAccountActive).
-router.patch('/accounts/:id', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.patch('/accounts/:id', authenticate, requireActive, mayChangeAccounts, async (req, res, next) => {
   try {
     const id = requireAccountId(req);
 
@@ -204,7 +215,7 @@ router.patch('/accounts/:id', authenticate, requireActive, requireAdmin, async (
 // statement — ADR-0013's rule, extended here (see ADR-0022): asserting which
 // Employee an Account belongs to is exactly the kind of identity claim that
 // ADR-0013 already refuses an administrator making about their own Account.
-router.put('/accounts/:id/employee', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.put('/accounts/:id/employee', authenticate, requireActive, mayChangeAccounts, async (req, res, next) => {
   try {
     const id = requireAccountId(req);
 
@@ -220,7 +231,7 @@ router.put('/accounts/:id/employee', authenticate, requireActive, requireAdmin, 
 
 // An administrator sets another Account's password (issue #270). ADR-0013's
 // refusal applies: not their own. The body's password is never echoed.
-router.post('/accounts/:id/password', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/accounts/:id/password', authenticate, requireActive, mayChangeAccounts, async (req, res, next) => {
   try {
     const id = requireAccountId(req);
     const account = await resetPassword(id, req.body?.password, req.account.id);

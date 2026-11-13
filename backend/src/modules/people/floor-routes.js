@@ -15,11 +15,12 @@
  *     scope, but a device has to come into existence somehow, and this is the
  *     one door that does it.
  *
- *   - PUT /floor-technician-credentials/:employeeId — an administrator sets
- *     the PIN an Employee presents at a machine. It is keyed to the Employee,
- *     never to an Account: most of a plant cannot sign in (CONTEXT.md), and
- *     this credential must not require that they can. The PIN is never
- *     returned.
+ *   - PUT /floor-technician-credentials/:employeeId — a `PPL_DIRECTORY_CHANGE`
+ *     holder (seeded on ROLE_ADMIN alone, the set the administrator role
+ *     comparison admitted before phase 2d) sets the PIN an Employee presents at
+ *     a machine. It is keyed to the Employee, never to an Account: most of a
+ *     plant cannot sign in (CONTEXT.md), and this credential must not require
+ *     that they can. The PIN is never returned.
  *
  *   - POST /floor/identify — the device presents its own credential and an
  *     Employee presents their number and PIN; back comes a short-lived
@@ -56,8 +57,9 @@
  * `authenticate`/`requireActive`/`findOrgUnit`/`findEmployee`/`canAct` are
  * this Module's own files, reached directly as every other People route
  * reaches them (AGENTS.md §6) — this file is inside People, so there is no
- * entry point in between. The admin gate is a role check on the resolved
- * Account, the same shape People's own administrator routes use. Existence is
+ * entry point in between. The technician credential's gate is a permission code
+ * on the resolved Account (`PPL_DIRECTORY_CHANGE`, since ADR-0061's phase 2d),
+ * the same shape People's own administrator-shaped routes use. Existence is
  * resolved before anything is written.
  */
 
@@ -65,26 +67,22 @@ const express = require('express');
 const floorDevices = require('./floor-devices');
 const { authenticate, requireActive } = require('./middleware');
 const { requireFloorDevice } = require('./floor-device-middleware');
-const { canAct } = require('./authorization');
+const { canAct, requirePermission } = require('./authorization');
 const { findOrgUnit } = require('./plant');
 const { findEmployee } = require('./directory');
 const { httpError, notFound, parseId, handleError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
 
-// Administrator-only, expressed at this Module's own route. Runs after
-// authenticate + requireActive, so `req.account` is a real, admitted Account.
-// The wording matches the other administrator-only routes in this backend
-// (maintenance/job-plan-routes.js, maintenance/inventory-routes.js). Only the
-// technician credential is gated this way — it is a People-shaped write about
-// one Employee, not an Org-Unit-scoped one. Registering a device is scoped by
-// its Org Unit Grant (see registerDevice below), not by role.
-function requireAdmin(req, res, next) {
-  if (req.account.role !== 'admin') {
-    return res.status(403).json({ message: 'This action requires the administrator role.' });
-  }
-  return next();
-}
+// The technician credential's code (ADR-0061, phase 2d): setting the PIN an
+// Employee presents at a machine is a People-shaped write about one Employee,
+// not an Org-Unit-scoped one, so it asks the Directory's maintain code. That
+// code is seeded on ROLE_ADMIN alone, which is the set the local `role !==
+// 'admin'` comparison this replaces admitted, so no caller gained or lost the
+// door — the refusal body now names `PPL_DIRECTORY_CHANGE` and an administrator
+// can take it off a role. Only the credential is gated this way; registering a
+// device is scoped by its Org Unit Grant (see registerDevice below).
+const maySetTechnicianCredential = requirePermission('PPL_DIRECTORY_CHANGE');
 
 async function registerDevice(req, res, next) {
   try {
@@ -193,7 +191,7 @@ router.put(
   '/floor-technician-credentials/:employeeId',
   authenticate,
   requireActive,
-  requireAdmin,
+  maySetTechnicianCredential,
   setTechnicianCredential
 );
 

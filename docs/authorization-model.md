@@ -236,11 +236,13 @@ left this shape:
   and store reads). Several Screens read the same endpoints, so a read gate
   would narrow Screens that never asked for it — the rule, its exception list
   and the test that holds it are ADR-0061 §7.
-- **Some People writes still compare the role string**: the five Account writes
-  in `people/routes.js`, `POST /sites`, a root Org Unit create and the
-  technician-credential write. Each needs its own code chosen between
-  `ADM_APPROVALS_*` and `ADM_ACCOUNTS_CHANGE`, which is the next slice rather
-  than a rename.
+- **The People and KPI writes are gated too** (ADR-0061, phase 2d — the
+  section at the end of this file): the five Account writes, the Site and Org
+  Unit writes, the technician-credential write, the Employee-assignment write
+  and the two MTU KPI catalogue writes. With that slice, **no route chain in
+  `backend/src/modules/**/[a-z-]*routes.js` compares the role string any more**;
+  the only role comparison left in a write path is the root-row check inside
+  `org-unit-import.js`, which the route's own code now precedes.
 
 The Actions Module's sixteen write routes were retrofitted next (ADR-0061,
 issue #533). Every write asks the code that names its act — `ACT_CHANGE`,
@@ -349,3 +351,67 @@ supervisor's act takes `SAF_CLASSIFY` off `ROLE_STANDARD` and `ROLE_OPERATOR` an
 every operator loses it at once, which a Grant cannot express. This slice does
 not enforce the seed's original supervisor-and-above declaration on its own —
 that would take a live capability off the plant, which is the owner's decision.
+
+The People and KPI writes were retrofitted last (ADR-0061, phase 2d, issue
+#539), and that slice is what makes the rule above ("no route compares the role
+string") true for the whole backend. Each route asks the code that names its act
+*and* keeps its scope middleware behind it, so the code answers which door and
+the middleware still answers which Site, which Org Unit, which part of the tree:
+
+| Route | Code | Scope kept behind it |
+| --- | --- | --- |
+| `POST /sites` | `PPL_ORG_UNITS_CHANGE` | — (a Site is not owned by a Grant) |
+| `PATCH /sites/:siteId` | `PPL_ORG_UNITS_CHANGE` | existence: 404 before the code (`requireSitePermission`) |
+| `POST /sites/:siteId/org-units` | `PPL_ORG_UNITS_CHANGE` | write scope on the parent, when the body names one |
+| `POST /sites/:siteId/org-units/import` | `PPL_ORG_UNITS_CHANGE` | Site scope |
+| `PATCH /org-units/:id` | `PPL_ORG_UNITS_CHANGE` | write scope on the Org Unit |
+| `PUT /floor-technician-credentials/:employeeId` | `PPL_DIRECTORY_CHANGE` | — (keyed to an Employee, not an Org Unit) |
+| `POST /employees/:id/assignments` | `PPL_DIRECTORY_CHANGE` | write scope on the destination Org Unit |
+| `POST /accounts/:id/approval`, `POST /accounts/:id/rejection` | `ADM_APPROVALS_DECIDE` | — |
+| `PATCH /accounts/:id`, `PUT /accounts/:id/employee`, `POST /accounts/:id/password` | `ADM_ACCOUNTS_CHANGE` | — |
+| `POST /catalogue`, `POST /targets` (Insights/KPI) | `INS_KPI_CATALOGUE_CHANGE` | `canAct({ write: true })` on the Site's root Org Unit |
+
+The split is the catalogue's own sentences: `PPL_ORG_UNITS_CHANGE` is "add or
+change a Site or an Org Unit, or import a tree"; `PPL_DIRECTORY_CHANGE` is "add
+an Employee, correct one, record an assignment, or mark one departed", which is
+why the Employee link inside Administration does **not** ask it — it is an
+Account's own row, so it is `ADM_ACCOUNTS_CHANGE`; deciding an Approval is a
+decision of its own, so it is `ADM_APPROVALS_DECIDE`.
+
+Every code above except `INS_KPI_CATALOGUE_CHANGE` was already seeded on exactly
+the callers the role comparison it replaced admitted, so **eight of these
+fourteen routes change no caller's answer** — only the refusal body, from "This
+action requires the administrator role." to a `PERMISSION_REQUIRED` naming the
+code. The rest are declared narrowings and each is written down in its route
+file:
+
+- **`PATCH /org-units/:id`**, the child branch of **`POST /sites/:siteId/org-units`**
+  and **`POST /sites/:siteId/org-units/import`** were scope-only: any Account
+  holding a write Grant on the Org Unit could deactivate it, add a child to it
+  or import beneath it, whatever its role. They now also ask
+  `PPL_ORG_UNITS_CHANGE`, which is administrator-only, so a supervisor holding
+  such a Grant loses the write until an administrator adds the code to a role it
+  holds. Seeding the code up to today's reachers is not the fix here: the same
+  code also names creating a Site, so widening it would hand every role in that
+  seed the power to create Sites.
+- **`POST /employees/:id/assignments`** was scope-only for the same reason and
+  now asks `PPL_DIRECTORY_CHANGE`, also administrator-only. Widening that code
+  instead would take four administrator-only payroll writes (create, correct,
+  mark departed, reinstate) and hand them to every supervisor — a bigger and
+  worse change than the one it would avoid.
+- **`POST /catalogue` / `POST /targets`** were Grant-only. `1804100000000_kpi-catalogue-write-roles.js`
+  seeds `INS_KPI_CATALOGUE_CHANGE` onto supervisor, engineer and manager — the
+  three roles `ModuleRoles.kpi` offers the Screen to, so every role the UI
+  enables "Add KPI" for keeps it. An operator-role Account with a root write
+  Grant loses the two writes, which is the same declared narrowing
+  `1803500000000_supervisor-holds-maintenance-writes.js` accepted for
+  Maintenance.
+
+**Left ungated, with reasons.** `POST /login` and `POST /logout` run before and
+after a session; `POST /floor/identify` and `POST /floor-devices` are the device
+enrolment door of ADR-0016; `POST /leave-requests/:id/cancel` is decided inside
+by `requireCancelDoor` (requester versus supervisor), which slice 5b kept on
+purpose; and `POST /floor/training/trainees/:traineeId/answer` is the shared
+floor device's door, where there is no Account at all for a code to be read
+from — `requireTechnicianIdentification` is that door's whole authority, the
+same class ADR-0061 §7 registers for Safety's floor pair.
