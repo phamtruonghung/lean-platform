@@ -1,0 +1,14 @@
+# Where the Platform's own words live: one ARB catalogue per language, read by
+# Flutter's own `gen-l10n` — no third-party i18n package.
+#
+# The generated files sit beside the catalogues and are committed, so a checkout
+# can run `flutter analyze` and `flutter test` without a code-generation step of
+# its own. `generate: true` in pubspec.yaml regenerates them on every `pub get`.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+# Non-null, so a Screen writes `AppLocalizations.of(context).settingsTitle`
+# rather than a `!` at every call site: `supportedLocales` is fixed, so a
+# missing localisation is a bug in the tree, not a runtime state to handle.
+nullable-getter: false

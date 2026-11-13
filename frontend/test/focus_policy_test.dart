@@ -21,6 +21,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:lean_platform/auth/sign_in_screen.dart';
+import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/maintenance/work_order_detail_screen.dart';
 import 'package:lean_platform/maintenance/work_orders_screen.dart';
 import 'package:lean_platform/people_api.dart';
@@ -73,6 +74,11 @@ Widget _shellHarness({MaterialTapTargetSize tapTargetSize = MaterialTapTargetSiz
   return MaterialApp.router(
     theme: buildAppTheme(Brightness.light).copyWith(materialTapTargetSize: tapTargetSize),
     routerConfig: router,
+    // The Shell is localised (issue t_c68dfd6e); a mount outside `PlatformApp`
+    // supplies the catalogues the app itself supplies.
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
   );
 }
 

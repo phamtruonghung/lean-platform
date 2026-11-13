@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:lean_platform/app_version.dart';
+import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/shell.dart';
@@ -141,7 +142,17 @@ Widget _harness({
       ),
     ],
   );
-  return MaterialApp.router(theme: buildAppTheme(), routerConfig: router);
+  // The Shell is localised (issue t_c68dfd6e), so a mount outside `PlatformApp`
+  // supplies the catalogues the app itself supplies — the same way this harness
+  // supplies the theme and the router. English, because every assertion here
+  // names an English label.
+  return MaterialApp.router(
+    theme: buildAppTheme(),
+    routerConfig: router,
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+  );
 }
 
 BoxDecoration? _highlightOf(WidgetTester tester, String label) {
