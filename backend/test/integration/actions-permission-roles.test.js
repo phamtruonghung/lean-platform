@@ -10,11 +10,14 @@
  * passes" cannot on its own show that the retrofit refused nobody: a gate that
  * only admitted supervisors would leave that suite green.
  *
- * Nor can the suite show the other half of the card's claim. Sixteen Actions
- * routes are deliberately left on their Grant check rather than retrofitted
- * (the findings in the handoff), and those must still admit the operator who
- * holds a write Grant on its line — that is the "behaviour changes for nobody"
- * half that a role-narrowing would break.
+ * The other half of the claim used to be that sixteen write routes were
+ * deliberately left on their Grant check, so an operator had to keep reaching
+ * them. Issue #533 retired that half too: the sixteen writes now ask their codes
+ * (`ACT_CHANGE`, `ACT_MEASURE`, `ACT_VERIFY` and the three CAPA codes), and every
+ * one of them is seeded on every role — so the operator this file speaks for
+ * still reaches them, and the third section below stays its honest measure.
+ * actions-write-permission-roles.test.js proves the other direction, by taking a
+ * code off every role for the length of one request.
  *
  * Both questions are asked here as the Account that would notice first: an
  * operator, holding the default group ROLE_STANDARD and nothing else.
@@ -122,9 +125,9 @@ test.before(async () => {
   siteId = await insertSite();
   orgUnitId = await insertOrgUnit(siteId);
 
-  // A write Grant on its own line: today's Actions writes are governed by the
-  // Grant, so this is what makes the operator able to raise, record a measure
-  // and move a phase — the acts the findings table says were left alone.
+  // A write Grant on its own line: the operator still holds exactly this, and
+  // with the write codes seeded on its roles (issue #533) the Grant remains what
+  // decides the writes it makes. Raising a Concern needs no Grant at all.
   await insertGrant({ accountId: operator.id, orgUnitId, canWrite: true });
 });
 
@@ -197,8 +200,10 @@ test('an operator reaches the one-Action, one-CAPA and escalation-target reads',
 });
 
 // ---------------------------------------------------------------------------
-// The write half: raising is retrofitted (ACT_RAISE, held by everyone), and the
-// routes left on their Grant check still admit this operator.
+// The write half: raising and the writes that now ask their codes. Every code
+// is seeded on every role (1803800000000_actions-write-codes.js), so the
+// operator that reaches these routes today still reaches them — a gate that
+// admitted only supervisors would leave this test red, which is the point.
 // ---------------------------------------------------------------------------
 
 test('an operator raises a Concern, records a measure and moves a phase', async () => {
@@ -210,8 +215,9 @@ test('an operator raises a Concern, records a measure and moves a phase', async 
   const concernId = raised.payload.action.id;
   insertedActionIds.push(concernId);
 
-  // `POST /:id/measures` is a finding, not a retrofit (`ACT_MEASURE` is
-  // supervisor-and-above). The operator's write Grant is the whole gate there.
+  // `POST /:id/measures` asks ACT_MEASURE in front of the write Grant now
+  // (issue #533), and the operator carries the code, so its own write Grant
+  // still decides.
   const measure = await post(`/api/actions/${concernId}/measures`, operator.token, {
     actionType: 'containment',
     title: 'Clamp the guard'
@@ -219,8 +225,8 @@ test('an operator raises a Concern, records a measure and moves a phase', async 
   assert.strictEqual(measure.response.status, 201, JSON.stringify(measure.payload));
   insertedActionIds.push(measure.payload.action.id);
 
-  // `POST /:id/phases/:phase/complete` likewise (`ACT_VERIFY` names verifying
-  // one phase, and is supervisor-and-above): the write Grant still decides.
+  // `POST /:id/phases/:phase/complete` asks ACT_VERIFY, likewise: the operator
+  // carries it, and the write Grant on its line decides.
   const phase = await post(`/api/actions/${concernId}/phases/plan/complete`, operator.token, {
     note: 'Planned'
   });

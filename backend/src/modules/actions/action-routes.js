@@ -40,28 +40,32 @@
  * same answer board-routes.js gives — from this endpoint's point of view there
  * is no such Org Unit in this Site), and only then canAct.
  *
- * **The ADR-0061 retrofit (issue #499).** Ten routes here ask
- * `people.requirePermission` beside the Grant question they already asked: the
+ * **The ADR-0061 retrofit (issues #499 and #533).** Every route here asks
+ * `people.requirePermission` beside the Grant question it already asked: the
  * register and one Action's read, the Pillar catalogue, an Action's escalation
  * targets, the CAPA list and one CAPA's read (`ACT_LOG_DISPLAY`,
- * `ACT_CAPA_DISPLAY`), and the four addresses that raise an Action
- * (`ACT_RAISE`). Those three codes are seeded on every role, and every
- * approved Account holds ROLE_STANDARD, the default group, which carries all
- * three — so each of these gates refuses nobody who could reach the route
- * before it. A permission says *what*, a Grant says *where*; the Grant check
- * is untouched in every case.
+ * `ACT_CAPA_DISPLAY`), the four addresses that raise an Action (`ACT_RAISE`),
+ * and — since #533 — the sixteen addresses that change one afterwards
+ * (`ACT_CHANGE`, `ACT_MEASURE`, `ACT_VERIFY`, `ACT_CAPA_OPEN`,
+ * `ACT_CAPA_VERIFY`, `ACT_CAPA_EFFECTIVENESS`). A permission says *what*, a
+ * Grant says *where*: the scope or authority helper stays behind every code and
+ * answers the same question it always did.
  *
- * The other sixteen routes are left on their Grant check and recorded as
- * findings rather than retrofitted, because the code naming each one is
- * seeded narrowly or does not exist: `ACT_MEASURE` and `ACT_VERIFY` are
- * supervisor-and-above and `ACT_CAPA_OPEN`, `ACT_CAPA_VERIFY` and
- * `ACT_CAPA_EFFECTIVENESS` are engineer-and-above, where today every one of
- * these routes is reachable by any Grant-holder — including the CAPA team
- * member who holds no Grant at all and is exactly who `requireCapaWhyWrite`
- * admits; and no code in the catalogue names completing a phase, escalating an
- * Action, calling one off, or linking a Non-conformance. Adding those codes
- * would narrow today's users, which is the owner's decision (parent card
- * t_3271c590, comment 1308) rather than this card's.
+ * All nine codes are seeded on every role, so every one of these gates refuses
+ * nobody who could reach its route before it: the retrofit takes no act away
+ * from anyone. What it buys is that each door is now visible and removable —
+ * an administrator who decides verifying an Action is a supervisor's act takes
+ * `ACT_VERIFY` off `ROLE_OPERATOR` in the Roles Screen and every operator loses
+ * it at once, which a Grant cannot express.
+ * `1803800000000_actions-write-codes.js` seeds the six write codes on the six
+ * seeded roles and states the reasoning; the test seam
+ * (`test/integration/actions-write-permission-roles.test.js`) proves both
+ * directions per code by taking the code off every role for one request, which
+ * is that administrator's own edit.
+ *
+ * The code runs **before** the existence check, deliberately: an Account
+ * without the code is told `PERMISSION_REQUIRED` before any row is read, which
+ * is the order the Production handover acknowledgement set (issue #512).
  */
 
 const express = require('express');
@@ -328,7 +332,7 @@ async function requireCapaEffectivenessAuthority(req, res, next) {
   });
 }
 
-// The three permission codes this retrofit asks (ADR-0061, issue #499).
+// The three read codes this Module's reads ask (ADR-0061, issue #499).
 //
 // Each is seeded on every role: `ROLE_STANDARD` — the default group every
 // Account holds — carries `ACT_LOG_DISPLAY`, `ACT_RAISE` and
@@ -336,11 +340,39 @@ async function requireCapaEffectivenessAuthority(req, res, next) {
 // (migration 1803400000000, the ROLE_STANDARD and ROLE_OPERATOR arrays). That
 // is what makes these gates a retrofit rather than a new decision: they refuse
 // nobody who could reach these routes before. The Grant half of every route is
-// unchanged — see this file's header for the sixteen routes where adding the
-// naming code would narrow today's users.
+// unchanged.
 const mayReadActionLog = people.requirePermission('ACT_LOG_DISPLAY');
 const mayReadCapas = people.requirePermission('ACT_CAPA_DISPLAY');
 const mayRaiseAction = people.requirePermission('ACT_RAISE');
+
+// The six write codes, one per act (ADR-0061, issue #533). Every write route
+// asks one of these **in front of** the scope or authority middleware it
+// already had, which is kept and unchanged: the code answers "may this Account
+// do this act at all", the helper answers "whose Action, which Org Unit".
+//
+// Which code a route asks is a judgement about the act, not about the record it
+// happens to name:
+//
+//   - `ACT_CHANGE` — the four acts the catalogue had no code for: link or
+//     unlink a Non-conformance, hand an Action up, call one off. One code for
+//     four addresses, the shape `MTN_WORK_ORDERS_CHANGE` already has for
+//     raising, assigning, completing and cancelling a Work order.
+//   - `ACT_MEASURE` — recording an immediate measure against a Concern.
+//   - `ACT_VERIFY` — completing the Action's open phase, which is the one door
+//     its cycle moves through.
+//   - `ACT_CAPA_OPEN` — opening an investigation on a Concern, and filling in
+//     the same three fields afterwards (`PATCH /capas/:id` writes the problem
+//     statement, the team and the effectiveness delay the open route writes,
+//     and shares that route's authority helper and refusal message).
+//   - `ACT_CAPA_VERIFY` — the investigation's reasoning: its Why chains and its
+//     fishbone.
+//   - `ACT_CAPA_EFFECTIVENESS` — recording whether the measures held.
+const mayChangeAction = people.requirePermission('ACT_CHANGE');
+const mayMeasureAction = people.requirePermission('ACT_MEASURE');
+const mayVerifyAction = people.requirePermission('ACT_VERIFY');
+const mayOpenCapa = people.requirePermission('ACT_CAPA_OPEN');
+const mayVerifyCapa = people.requirePermission('ACT_CAPA_VERIFY');
+const mayCheckCapaEffectiveness = people.requirePermission('ACT_CAPA_EFFECTIVENESS');
 
 // The register: a Site's open Actions, worst first, history on request.
 router.get(
@@ -730,6 +762,7 @@ router.post(
   '/:id/nonconformances',
   people.authenticate,
   people.requireActive,
+  mayChangeAction,
   requireActionWriteScope,
   async (req, res, next) => {
     try {
@@ -776,6 +809,7 @@ router.post(
   '/:id/nonconformances/:nonconformanceId/unlink',
   people.authenticate,
   people.requireActive,
+  mayChangeAction,
   requireActionWriteScope,
   async (req, res, next) => {
     try {
@@ -813,6 +847,7 @@ router.post(
   '/:id/measures',
   people.authenticate,
   people.requireActive,
+  mayMeasureAction,
   requireKnownAction,
   async (req, res, next) => {
     try {
@@ -994,6 +1029,7 @@ router.post(
   '/:id/capa',
   people.authenticate,
   people.requireActive,
+  mayOpenCapa,
   requireKnownAction,
   async (req, res, next) => {
     try {
@@ -1073,6 +1109,7 @@ router.patch(
   '/capas/:id',
   people.authenticate,
   people.requireActive,
+  mayOpenCapa,
   requireCapaQualityAuthority,
   async (req, res, next) => {
     try {
@@ -1157,6 +1194,7 @@ router.post(
   '/capas/:id/effectiveness',
   people.authenticate,
   people.requireActive,
+  mayCheckCapaEffectiveness,
   requireCapaEffectivenessAuthority,
   async (req, res, next) => {
     try {
@@ -1209,6 +1247,7 @@ router.post(
   '/capas/:id/whys',
   people.authenticate,
   people.requireActive,
+  mayVerifyCapa,
   requireCapaWhyWrite,
   async (req, res, next) => {
     try {
@@ -1238,6 +1277,7 @@ router.patch(
   '/capas/:id/whys/:whyId',
   people.authenticate,
   people.requireActive,
+  mayVerifyCapa,
   requireCapaWhyWrite,
   async (req, res, next) => {
     try {
@@ -1266,6 +1306,7 @@ router.delete(
   '/capas/:id/whys/:whyId',
   people.authenticate,
   people.requireActive,
+  mayVerifyCapa,
   requireCapaWhyWrite,
   async (req, res, next) => {
     try {
@@ -1320,6 +1361,7 @@ router.post(
   '/capas/:id/causes',
   people.authenticate,
   people.requireActive,
+  mayVerifyCapa,
   requireCapaWhyWrite,
   async (req, res, next) => {
     try {
@@ -1346,6 +1388,7 @@ router.patch(
   '/capas/:id/causes/:causeId',
   people.authenticate,
   people.requireActive,
+  mayVerifyCapa,
   requireCapaWhyWrite,
   async (req, res, next) => {
     try {
@@ -1375,6 +1418,7 @@ router.delete(
   '/capas/:id/causes/:causeId',
   people.authenticate,
   people.requireActive,
+  mayVerifyCapa,
   requireCapaWhyWrite,
   async (req, res, next) => {
     try {
@@ -1398,6 +1442,7 @@ router.post(
   '/capas/:id/causes/:causeId/whys',
   people.authenticate,
   people.requireActive,
+  mayVerifyCapa,
   requireCapaWhyWrite,
   async (req, res, next) => {
     try {
@@ -1447,6 +1492,7 @@ router.post(
   '/:id/phases/:phase/complete',
   people.authenticate,
   people.requireActive,
+  mayVerifyAction,
   requireActionWriteScope,
   async (req, res, next) => {
     try {
@@ -1491,15 +1537,17 @@ router.get(
 
 // Handing one Action up the tree (issue #180).
 //
-// Four refusals, in this order and for this reason: the id must be real (404,
-// from requireKnownAction), the Action must not have ended (409 — the row it
-// would hand up is a closed decision), the target must be an Org Unit *above*
-// this Action's own (400, asked of the same ltree walk the read above serves,
-// so there is one implementation of "above" and it is not re-spelled here), and
-// only then the Grant (403, `write: true` at the **target** — not at the Org
-// Unit the Action sits at: what this route changes is who has been told, and
-// the caller is asking somebody else's Org Unit to take it, which is a right
-// over the target and nowhere else).
+// Five refusals, in this order and for this reason: the caller must hold
+// `ACT_CHANGE` (403, from the code — asked before any row is read, the
+// retrofit's own order), the id must be real (404, from requireKnownAction),
+// the Action must not have ended (409 — the row it would hand up is a closed
+// decision), the target must be an Org Unit *above* this Action's own (400,
+// asked of the same ltree walk the read above serves, so there is one
+// implementation of "above" and it is not re-spelled here), and only then the
+// Grant (403, `write: true` at the **target** — not at the Org Unit the Action
+// sits at: what this route changes is who has been told, and the caller is
+// asking somebody else's Org Unit to take it, which is a right over the target
+// and nowhere else).
 //
 // The 400 before the 403 matters: a caller who names an Org Unit below the
 // Action is wrong about the tree, and telling them so beats telling them they
@@ -1508,6 +1556,7 @@ router.post(
   '/:id/escalate',
   people.authenticate,
   people.requireActive,
+  mayChangeAction,
   requireKnownAction,
   async (req, res, next) => {
     try {
@@ -1551,6 +1600,7 @@ router.post(
   '/:id/cancel',
   people.authenticate,
   people.requireActive,
+  mayChangeAction,
   requireActionWriteScope,
   async (req, res, next) => {
     try {

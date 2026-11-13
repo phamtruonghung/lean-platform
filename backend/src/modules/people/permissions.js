@@ -170,10 +170,12 @@ const CATALOGUE = [
 // renumbering a released one (the header's own rule): the migration that adds a
 // code is insert-only and idempotent (ADR-0007), so it can only append, and
 // `sort_order` is this array's index. The Roles Screen groups by `module`, so
-// these render inside the People group even though their positions come last.
+// each of these renders inside its own Module's group even though their
+// positions come last.
 const LATE_ADDITIONS = [
   ['PPL_TRAINING_ANSWER_OWN', 'People', 'Answer my Training', 'Answer the caller\'s own training question as its Trainee.'],
   ['PPL_LEAVE_REQUESTS_RAISE', 'People', 'Raise my Leave', 'Raise the caller\'s own leave request, and cancel it before a decision.'],
+  ['ACT_CHANGE', 'Actions', 'Change an Action', 'Link or unlink a Non-conformance, hand an Action up, or call one off.'],
 ];
 
 // Flattened, with the position an administrator sees. Frozen by the migrations
