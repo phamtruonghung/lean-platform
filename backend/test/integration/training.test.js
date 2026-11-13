@@ -122,6 +122,14 @@ let admin;
 let sender; // edit Grant on `line`
 let reader; // approved, no Grants
 let viewer; // read-only Grant on `line`
+
+// `reader` carries `supervisor` on purpose. Since ADR-0061's slice 5b the seven
+// writes ask `PPL_TRAINING_CHANGE` before the Grant, and this file measures
+// ADR-0043's Grant rule — that an Account with no or a read-only Grant is
+// refused — so the Accounts it tries as writers must hold the code, or every
+// refusal here would be the code's instead of the Grant's.
+// people-self-service-permission-roles.test.js is where the code itself is the
+// variable.
 let trainer;
 
 test.before(async () => {
@@ -148,7 +156,7 @@ test.before(async () => {
 
   admin = await insertAccount({ role: 'admin' });
   sender = await insertAccount();
-  reader = await insertAccount({ role: 'operator' });
+  reader = await insertAccount();
   viewer = await insertAccount();
   await insertGrant({ accountId: sender.id, orgUnitId: line.id, canWrite: true });
   await insertGrant({ accountId: viewer.id, orgUnitId: line.id, canWrite: false });

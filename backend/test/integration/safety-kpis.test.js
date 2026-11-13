@@ -76,7 +76,11 @@ async function json(response) {
   return { status: response.status, body: await response.json() };
 }
 
-async function insertAccount({ role = 'operator', grants = [] } = {}) {
+// The default role is `supervisor` because the tests below confirm Attendance
+// sheets through the API, and since ADR-0061's slice 5b that write asks
+// `PPL_ATTENDANCE_CHANGE`, seeded on supervisor-and-above. This file measures
+// the Safety rates, not the door.
+async function insertAccount({ role = 'supervisor', grants = [] } = {}) {
   const subject = uniqueCode('safkpi');
   const { rows: [account] } = await pool.query(
     `INSERT INTO app_users (email, display_name, role, external_subject, is_active, approval_status)

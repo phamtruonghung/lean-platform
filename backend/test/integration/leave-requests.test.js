@@ -1,10 +1,16 @@
 /*
  * Leave requests (issue #265, ADR-0042), over HTTP: an Employee asks for time
- * off, a holder of an edit Grant reaching their Org Unit approves or rejects,
- * and the requester may cancel while it is pending. Same seam as
+ * off, a supervisor holding an edit Grant reaching their Org Unit approves or
+ * rejects, and the requester may cancel while it is pending. Same seam as
  * work-hours.test.js and plant.test.js — a real database and a real local
  * session, every row inserted by this file and deleted again in
  * `test.after()`, no shared table truncated.
+ *
+ * Since ADR-0061's slice 5b the deciding Accounts carry `supervisor`:
+ * `PPL_LEAVE_REQUESTS_DECIDE` is seeded on supervisor-and-above, and this file
+ * is about ADR-0042's Grant rule, so the Grant is what varies between its
+ * Accounts. Raising and cancelling stay on `operator` Accounts on purpose —
+ * those are the self-service acts, seeded on every role.
  *
  * Needs a database with every migration applied. Set DATABASE_URL first —
  * see the README's Tests section.
@@ -291,7 +297,7 @@ test('overlap with a pending or approved request is a 409; rejected and cancelle
   assert.equal((await submit(admin.token, body('2027-01-15', '2027-01-15'))).status, 201);
 
   // Rejected frees the days.
-  const decider = await insertAccount({ grants: [{ orgUnitId: unitA.id }] });
+  const decider = await insertAccount({ role: 'supervisor', grants: [{ orgUnitId: unitA.id }] });
   assert.equal((await call(decider.token, 'POST', `/leave-requests/${first.id}/reject`, {})).status, 200);
   assert.equal((await submit(admin.token, body('2027-01-12', '2027-01-12'))).status, 201);
 
@@ -390,7 +396,7 @@ test('GET by id is visible to the requester, the Employee, a reaching decider an
 test('an edit-Grant holder approves, recording the decider, time and note; the decision is audited', async () => {
   const employee = await insertEmployee({ orgUnitId: unitA.id });
   const lr = await pendingFor(employee);
-  const decider = await insertAccount({ grants: [{ orgUnitId: unitA.id }] });
+  const decider = await insertAccount({ role: 'supervisor', grants: [{ orgUnitId: unitA.id }] });
 
   const { status, body } = await call(decider.token, 'POST', `/leave-requests/${lr.id}/approve`, { note: 'Enjoy' });
   assert.equal(status, 200);
@@ -412,7 +418,7 @@ test('an edit-Grant holder approves, recording the decider, time and note; the d
 
 test('reject carries an optional note, and none is also fine', async () => {
   const employee = await insertEmployee({ orgUnitId: unitA.id });
-  const decider = await insertAccount({ grants: [{ orgUnitId: unitA.id }] });
+  const decider = await insertAccount({ role: 'supervisor', grants: [{ orgUnitId: unitA.id }] });
 
   const withNote = await call(decider.token, 'POST', `/leave-requests/${(await pendingFor(employee, '2027-06-01', '2027-06-02')).id}/reject`, { note: 'Peak week' });
   assert.equal(withNote.status, 200);
@@ -424,24 +430,51 @@ test('reject carries an optional note, and none is also fine', async () => {
   assert.equal(bare.body.leaveRequest.decisionNote, null);
 });
 
-test('a read-only Grant or one elsewhere cannot decide (it cannot even see the request: 404), and the Employee own Account is refused with 403', async () => {
+test('deciding asks the code before the record: a role without DECIDE is refused 403, a decider who cannot see the request still gets 404', async () => {
   const employee = await insertEmployee({ orgUnitId: unitA.id });
   const lr = await pendingFor(employee);
 
-  const readOnly = await insertAccount({ grants: [{ orgUnitId: unitA.id, write: false }] });
-  // A read-only Grant cannot see the request at all, so deciding it is a 404.
+  // No DECIDE code on the door, so the refusal is the code's whatever the
+  // Account's Grants reach — the code answers which door, the Grant below it
+  // answers which Org Units.
+  const operatorReadOnly = await insertAccount({ grants: [{ orgUnitId: unitA.id, write: false }] });
+  const refusedReadOnly = await call(operatorReadOnly.token, 'POST', `/leave-requests/${lr.id}/approve`, {});
+  assert.equal(refusedReadOnly.status, 403);
+  assert.equal(refusedReadOnly.body.code, 'PERMISSION_REQUIRED');
+  assert.equal(refusedReadOnly.body.permission, 'PPL_LEAVE_REQUESTS_DECIDE');
+
+  const operatorElsewhere = await insertAccount({ grants: [{ orgUnitId: unitB.id }] });
+  const refusedElsewhere = await call(operatorElsewhere.token, 'POST', `/leave-requests/${lr.id}/approve`, {});
+  assert.equal(refusedElsewhere.status, 403);
+  assert.equal(refusedElsewhere.body.permission, 'PPL_LEAVE_REQUESTS_DECIDE');
+
+  // A supervisor holds the code, so the request's own visibility decides: a
+  // read-only Grant, or one elsewhere, cannot see it at all — 404.
+  const readOnly = await insertAccount({ role: 'supervisor', grants: [{ orgUnitId: unitA.id, write: false }] });
   assert.equal((await call(readOnly.token, 'POST', `/leave-requests/${lr.id}/approve`, {})).status, 404);
 
-  // Neither does a Grant elsewhere.
-  const elsewhere = await insertAccount({ grants: [{ orgUnitId: unitB.id }] });
+  const elsewhere = await insertAccount({ role: 'supervisor', grants: [{ orgUnitId: unitB.id }] });
   assert.equal((await call(elsewhere.token, 'POST', `/leave-requests/${lr.id}/approve`, {})).status, 404);
 
-  // The Employee's own Account can see its request but may not decide it: 403.
+  // The Employee's own Account can see its request and still may not decide it:
+  // an operator meets the code first, a supervisor meets the self-decision rule.
   const subjectEmployee = await insertEmployee({ orgUnitId: unitA.id });
   const subjectAccount = await insertAccount({ employeeId: subjectEmployee.id });
   const own = (await submit(subjectAccount.token, { absenceReasonId: holId, startsOn: '2027-07-10', endsOn: '2027-07-10' })).body.leaveRequest;
-  assert.equal((await call(subjectAccount.token, 'POST', `/leave-requests/${own.id}/approve`, {})).status, 403);
-  assert.equal((await call(subjectAccount.token, 'POST', `/leave-requests/${own.id}/reject`, {})).status, 403);
+  const refusedOwn = await call(subjectAccount.token, 'POST', `/leave-requests/${own.id}/approve`, {});
+  assert.equal(refusedOwn.status, 403);
+  assert.equal(refusedOwn.body.permission, 'PPL_LEAVE_REQUESTS_DECIDE');
+
+  const supervisorEmployee = await insertEmployee({ orgUnitId: unitA.id });
+  const supervisorAccount = await insertAccount({
+    role: 'supervisor',
+    employeeId: supervisorEmployee.id,
+    grants: [{ orgUnitId: unitA.id }]
+  });
+  const ownSupervisor = (await submit(supervisorAccount.token, { absenceReasonId: holId, startsOn: '2027-07-12', endsOn: '2027-07-12' })).body.leaveRequest;
+  const refusedSelf = await call(supervisorAccount.token, 'POST', `/leave-requests/${ownSupervisor.id}/approve`, {});
+  assert.equal(refusedSelf.status, 403);
+  assert.match(refusedSelf.body.message, /cannot decide your own/);
 
   assert.equal((await call(admin.token, 'POST', '/leave-requests/999999999/approve', {})).status, 404);
 });
@@ -464,7 +497,7 @@ test('nobody decides their own leave, an administrator linked to that Employee i
 test('deciding a request that is no longer pending is a 409', async () => {
   const employee = await insertEmployee({ orgUnitId: unitA.id });
   const lr = await pendingFor(employee);
-  const decider = await insertAccount({ grants: [{ orgUnitId: unitA.id }] });
+  const decider = await insertAccount({ role: 'supervisor', grants: [{ orgUnitId: unitA.id }] });
   assert.equal((await call(decider.token, 'POST', `/leave-requests/${lr.id}/approve`, {})).status, 200);
   assert.equal((await call(decider.token, 'POST', `/leave-requests/${lr.id}/approve`, {})).status, 409);
   assert.equal((await call(decider.token, 'POST', `/leave-requests/${lr.id}/reject`, {})).status, 409);
@@ -499,7 +532,7 @@ test('the requester cancels a pending request; the Employee\'s own Account may t
 test('someone else cannot cancel: a decider who can see it gets 403, a stranger 404', async () => {
   const employee = await insertEmployee({ orgUnitId: unitA.id });
   const lr = await pendingFor(employee);
-  const decider = await insertAccount({ grants: [{ orgUnitId: unitA.id }] });
+  const decider = await insertAccount({ role: 'supervisor', grants: [{ orgUnitId: unitA.id }] });
   assert.equal((await call(decider.token, 'POST', `/leave-requests/${lr.id}/cancel`)).status, 403);
   const stranger = await insertAccount();
   assert.equal((await call(stranger.token, 'POST', `/leave-requests/${lr.id}/cancel`)).status, 404);
@@ -509,7 +542,7 @@ test('a request cannot be cancelled once approved: 409', async () => {
   const employee = await insertEmployee({ orgUnitId: unitA.id });
   const subject = await insertAccount({ employeeId: employee.id });
   const lr = (await submit(subject.token, { absenceReasonId: holId, startsOn: '2027-10-01', endsOn: '2027-10-01' })).body.leaveRequest;
-  const decider = await insertAccount({ grants: [{ orgUnitId: unitA.id }] });
+  const decider = await insertAccount({ role: 'supervisor', grants: [{ orgUnitId: unitA.id }] });
   assert.equal((await call(decider.token, 'POST', `/leave-requests/${lr.id}/approve`, {})).status, 200);
   assert.equal((await call(subject.token, 'POST', `/leave-requests/${lr.id}/cancel`)).status, 409);
 });

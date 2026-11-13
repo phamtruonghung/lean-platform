@@ -23,7 +23,12 @@
  *     instance's own Org Unit: `authorization.canAct({ write: true })`, true
  *     unconditionally for role `admin`. `write: true` is spelled out because
  *     it defaults to FALSE, and a route that forgot it would be authorised
- *     by any read Grant with no error anywhere to notice.
+ *     by any read Grant with no error anywhere to notice. Since ADR-0061's
+ *     slice 5b each of the four also asks `PPL_ATTENDANCE_CHANGE` first,
+ *     seeded on supervisor-and-above: the code answers which door, and the
+ *     Grant below it still answers which Org Units. An operator holding an
+ *     edit Grant loses these writes until an administrator adds the code to its
+ *     role — the deliberate narrowing the seed migration states.
  *
  * Existence before scope, the order AGENTS.md §6 fixes and
  * safety-incident-routes.js's own middleware chain already follows: the
@@ -66,6 +71,14 @@ const router = express.Router();
 // the default group every approved Account carries — so it refuses nobody who
 // could open a sheet before; `canSeeSite` below still decides which Site's.
 const mayReadAttendance = authorization.requirePermission('PPL_ATTENDANCE_DISPLAY');
+
+// The four write doors — confirm the sheet, add, correct and remove a record —
+// ask `PPL_ATTENDANCE_CHANGE` (ADR-0061, slice 5b), seeded on
+// supervisor-and-above. `requireShiftInstanceWriteScope` stays behind it: the
+// code answers which door, the Grant still answers which Org Units and the shift
+// instance. That narrows the writes on purpose — an operator holding an edit
+// Grant loses them until an administrator adds the code to its role.
+const mayChangeAttendance = authorization.requirePermission('PPL_ATTENDANCE_CHANGE');
 
 async function requireKnownShiftInstance(req, res, next) {
   try {
@@ -285,6 +298,7 @@ router.post(
   '/shift-instances/:shiftInstanceId/attendance-sheet/confirm',
   authenticate,
   requireActive,
+  mayChangeAttendance,
   requireShiftInstanceWriteScope,
   async (req, res, next) => {
     try {
@@ -300,6 +314,7 @@ router.post(
   '/shift-instances/:shiftInstanceId/attendance-records',
   authenticate,
   requireActive,
+  mayChangeAttendance,
   requireShiftInstanceWriteScope,
   async (req, res, next) => {
     try {
@@ -315,6 +330,7 @@ router.patch(
   '/shift-instances/:shiftInstanceId/attendance-records/:recordId',
   authenticate,
   requireActive,
+  mayChangeAttendance,
   requireShiftInstanceWriteScope,
   async (req, res, next) => {
     try {
@@ -335,6 +351,7 @@ router.delete(
   '/shift-instances/:shiftInstanceId/attendance-records/:recordId',
   authenticate,
   requireActive,
+  mayChangeAttendance,
   requireShiftInstanceWriteScope,
   async (req, res, next) => {
     try {
