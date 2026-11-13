@@ -11,12 +11,12 @@
  * `assets.findAsset`; the Job plan through this Module's own
  * `job-plans.findJobPlan`.
  *
- * Same two scope rules as Work orders (#57), applied to schedules:
+ * Same two rules as Work orders (#57), applied to schedules, with the read's
+ * permission code (ADR-0061):
  *
- *   - Reads are Site-wide. GET /sites/:siteId/pm-schedules sits behind
- *     `authenticate` + `requireActive` and a known-Site check only — no role
- *     check, no Grant filter (ADR-0009: scope decides where an Account may
- *     act, not what it may know about). `?includeInactive=true` widens what
+ *   - Reads are Site-wide and gated by `MTN_PM_SCHEDULES_DISPLAY`, with no
+ *     Grant filter (ADR-0009: scope decides where an Account may act, not what
+ *     it may know about). `?includeInactive=true` widens what
  *     is returned (active-only by default), not who may ask.
  *   - Writes are branch-scoped. A schedule is scoped from its Asset, so both
  *     creating one and raising work from one need a WRITE Grant reaching the
@@ -100,6 +100,22 @@ async function requirePmScheduleWriteScope(req, res, next) {
   }
 }
 
+// "May this Account use the PM schedules Screen at all?" — the role half of the
+// model (ADR-0061), on this file's read. `MTN_PM_SCHEDULES_DISPLAY` is seeded on
+// supervisor/engineer/manager/administrator, exactly the roles the sidebar
+// offers the Screen to, so the retrofit refuses nobody who could read a
+// schedule before it.
+//
+// The writes below do NOT take a code yet, deliberately: a supervisor holding a
+// write Grant can create, deactivate and raise from a schedule today, while
+// `MTN_PM_SCHEDULES_CHANGE` is seeded on engineer/manager/administrator only.
+// Adding it would refuse a role that uses these routes — the retrofit card's
+// finding (t_3271c590). POST /sites/:siteId/pm-schedules/raise has a second
+// candidate code (`MTN_WORK_ORDERS_CHANGE`, since what it writes is Work
+// orders) and the same supervisor gap either way, so it is named in that
+// finding rather than guessed at here.
+const mayReadPmSchedules = people.requirePermission('MTN_PM_SCHEDULES_DISPLAY');
+
 // The Site-wide read: active schedules by default ("what comes round next"),
 // inactive ones too when the caller asks for them by name. Only the exact
 // string 'true' widens the list, mirroring the rest of this Module's
@@ -109,6 +125,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayReadPmSchedules,
   async (req, res, next) => {
     try {
       const includeInactive = req.query.includeInactive === 'true';

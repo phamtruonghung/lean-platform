@@ -44,7 +44,7 @@ const assert = require('node:assert');
 
 const people = require('../src/modules/people');
 
-test('the People Module entry point exposes exactly seventeen names', () => {
+test('the People Module entry point exposes exactly nineteen names', () => {
   assert.deepStrictEqual(
     Object.keys(people).sort(),
     [
@@ -65,6 +65,8 @@ test('the People Module entry point exposes exactly seventeen names', () => {
       'writeReachOrgUnitIds',
       'floorRouter',
       'requireActive',
+      // ADR-0061's role half, exported for the retrofit's own callers.
+      'requirePermission',
       'router'
     ].sort()
   );
