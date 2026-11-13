@@ -53,26 +53,32 @@
  * `admin` before it even looks at the Org Unit id, so asking scope first would
  * turn an administrator's typo into a raw 500 rather than a clean 404.
  *
- * **The ADR-0061 retrofit (issue #503).** Five of these ten routes ask
- * `people.requirePermission` beside the Grant question they already asked: the
- * register and one record's read (`QLT_NONCONFORMANCES_DISPLAY`), and recording,
- * the PATCH that raises a severity or records containment, and the quantity
- * increase (`QLT_NONCONFORMANCES_RECORD`). Both codes are seeded on
- * ROLE_STANDARD, the default group every approved Account holds, so neither gate
- * refuses anybody who could reach its route before it — and the Grant half of
- * every route is untouched, because a permission says *what* and a Grant says
- * *where*.
+ * **The ADR-0061 retrofit (issues #503 and #535).** Every route here asks
+ * `people.requirePermission` beside the Grant question it already asked: the
+ * register and one record's read (`QLT_NONCONFORMANCES_DISPLAY`); recording,
+ * the PATCH that raises a severity or records containment, the quantity
+ * increase and a Disposition (`QLT_NONCONFORMANCES_RECORD` — a Disposition is
+ * the work, not the decision: see the paragraph above); and a Concession and
+ * the three decisions that move the record's status (`QLT_NONCONFORMANCES_DISPOSE`).
  *
- * The other five are recorded as findings rather than retrofitted. A Disposition
- * and the four decisions would ask `QLT_NONCONFORMANCES_DISPOSE`, which the seed
- * gives to engineer-and-above, where today a Disposition admits any write Grant
- * reaching the record's Org Unit and the four decisions admit any Grant carrying
- * Quality authority there — regardless of the Account's role, which is the whole
- * point of ADR-0035's separate flag. Adding that code would narrow today's users,
- * which is the owner's decision (parent card t_3271c590, comment 1308). It also
- * does not name all of them: a Disposition is the work rather than the decision
- * (see the paragraph above), and no code in the catalogue names lowering a
- * severity, reopening or cancelling.
+ * A Concession is a decision about the product and a Disposition is the work
+ * that carries it out, so the split those two acts always had is kept rather
+ * than collapsed into one code. Lowering a severity, reopening and cancelling
+ * are the same Quality authority over the same record as a Concession, so they
+ * ask the disposal code; a code naming something else would make the Roles
+ * Screen lie, which is the shape `ACT_CHANGE` gave the four Actions acts the
+ * catalogue had no code for (issue #533).
+ *
+ * `QLT_NONCONFORMANCES_RECORD` was already seeded on every role, so the writes
+ * that ask it refuse nobody new. `QLT_NONCONFORMANCES_DISPOSE` is
+ * engineer-and-above, where today a Concession and the three decisions admit
+ * any Grant carrying Quality authority at the record's Org Unit — regardless of
+ * the Account's role, which is the whole point of ADR-0035's separate flag.
+ * `1803900000000_quality-write-codes.js` therefore widens it onto the default
+ * group, operator and supervisor too: the retrofit takes no decision away from
+ * anyone who could make it yesterday, and each door becomes visible and
+ * removable in the Roles Screen. The Grant half of every route is untouched,
+ * because a permission says *what* and a Grant says *where*.
  *
  * A query value that names a closed set is checked, not forwarded (ADR-0023's
  * rule read the other way round): `?status=opne` is a mistake the caller can
@@ -197,12 +203,15 @@ async function requireNonconformanceQualityAuthority(req, res, next) {
   });
 }
 
-// The two codes this retrofit asks (ADR-0061, issue #503). Both are seeded on
-// ROLE_STANDARD — the default group every approved Account carries — which is
-// what makes them a retrofit rather than a narrowing: they refuse nobody who
+// The three codes this Module's writes ask (ADR-0061, issues #503 and #535).
+// `QLT_NONCONFORMANCES_RECORD` is seeded on every role already;
+// `QLT_NONCONFORMANCES_DISPOSE` is widened onto every role by
+// `1803900000000_quality-write-codes.js`, because today's reach is the Quality
+// authority on the Grant, not the role. Either way these gates refuse nobody who
 // could reach these routes before them.
 const mayReadNonconformances = people.requirePermission('QLT_NONCONFORMANCES_DISPLAY');
 const mayRecordNonconformance = people.requirePermission('QLT_NONCONFORMANCES_RECORD');
+const mayDisposeNonconformance = people.requirePermission('QLT_NONCONFORMANCES_DISPOSE');
 
 function requireQueryMemberOf(field, value, allowed) {
   if (value === undefined) return null;
@@ -410,6 +419,7 @@ router.post(
   '/nonconformances/:id/dispositions',
   people.authenticate,
   people.requireActive,
+  mayRecordNonconformance,
   requireNonconformanceWriteScope,
   async (req, res, next) => {
     try {
@@ -440,6 +450,7 @@ router.post(
   '/nonconformances/:id/concession',
   people.authenticate,
   people.requireActive,
+  mayDisposeNonconformance,
   requireNonconformanceQualityAuthority,
   async (req, res, next) => {
     try {
@@ -465,6 +476,7 @@ router.post(
   '/nonconformances/:id/lower-severity',
   people.authenticate,
   people.requireActive,
+  mayDisposeNonconformance,
   requireNonconformanceQualityAuthority,
   async (req, res, next) => {
     try {
@@ -486,6 +498,7 @@ router.post(
   '/nonconformances/:id/reopen',
   people.authenticate,
   people.requireActive,
+  mayDisposeNonconformance,
   requireNonconformanceQualityAuthority,
   async (req, res, next) => {
     try {
@@ -506,6 +519,7 @@ router.post(
   '/nonconformances/:id/cancel',
   people.authenticate,
   people.requireActive,
+  mayDisposeNonconformance,
   requireNonconformanceQualityAuthority,
   async (req, res, next) => {
     try {

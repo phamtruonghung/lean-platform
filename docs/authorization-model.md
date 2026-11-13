@@ -182,10 +182,10 @@ groups by module, shows them inside the People group.
 
 | Role code | Name | Held automatically by | What it adds |
 | --- | --- | --- | --- |
-| `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board, the Section handover, the two self-service acts — answering the caller's own training question and raising (or cancelling) their own leave request — and, since the Actions write retrofit (issue #533), every Actions write code (`ACT_CHANGE`, `ACT_MEASURE`, `ACT_VERIFY`, the three CAPA codes), because those writes were reachable by any Grant-holder before it and the retrofit takes no act away from the shop floor |
+| `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board, the Section handover, the two self-service acts — answering the caller's own training question and raising (or cancelling) their own leave request — and, since the Actions write retrofit (issue #533) and the Quality write retrofit (issue #535), every Actions and Quality write code those slices gate, because those writes were reachable by any Grant-holder before them and the retrofit takes no act away from the shop floor |
 | `ROLE_OPERATOR` | Operator | `app_users.role = operator` | Nothing beyond the default group — today an operator is offered nothing more, and the group says so rather than showing an empty list |
 | `ROLE_SUPERVISOR` | Supervisor | `app_users.role = supervisor` | The Maintenance Screens (Assets, Work orders, Parts, Stores, Triage, Downtime, PM schedules, Meters) **and the writes behind them** — add an Asset, raise/assign/start/complete/cancel a Work order, book labour and parts, record a task's meter reading, open a Store and record a stock movement, create or deactivate a PM schedule and run its sweep — plus the Insights registers, confirming Attendance, raising Training, deciding Leave, recording measures and incidents |
-| `ROLE_ENGINEER` | Engineer | `app_users.role = engineer` | A supervisor's set plus the writes behind an Asset, Work order, Part, Store and PM schedule, opening and verifying a CAPA, and disposing of nonconforming product |
+| `ROLE_ENGINEER` | Engineer | `app_users.role = engineer` | A supervisor's set plus the writes behind an Asset, Work order, Part, Store and PM schedule, and opening and verifying a CAPA |
 | `ROLE_MANAGER` | Manager | `app_users.role = manager` | An engineer's set — the two are seamed apart so they can diverge without another release |
 | `ROLE_ADMIN` | Administrator | `app_users.role = admin` | Every permission (see §5 of ADR-0061 for the short-circuit that makes this true regardless) |
 
@@ -264,3 +264,46 @@ decision, not a migration's.
 Retrofitting `requirePermission` onto the other Modules' routes is a follow-on
 card per Module, because each write needs its own code chosen against the ADR
 that governs that Module's authority.
+
+The Quality Module's thirteen write routes were retrofitted next (ADR-0061,
+issue #535). Every one asks the code that names its act *and* keeps the scope or
+authority helper behind it, so the code answers which door and the helper still
+answers which Site, which record:
+
+| Route | Code |
+| --- | --- |
+| `POST /complaints/:id/respond`, `POST /complaints/:id/link` | `QLT_COMPLAINTS_RECORD` |
+| `POST /nonconformances/:id/dispositions` | `QLT_NONCONFORMANCES_RECORD` |
+| `POST /nonconformances/:id/concession`, `/lower-severity`, `/reopen`, `/cancel` | `QLT_NONCONFORMANCES_DISPOSE` |
+| `PUT /slide-show/:kind/:id`, `PUT /sites/:siteId/slide-show/order` | `QLT_SLIDESHOW_CHOOSE` |
+| `POST /sites/:siteId/supplier-ncrs`, `POST /supplier-ncrs/:id/disposition`, `/close`, `/link` | `QLT_SUPPLIER_NCRS_RECORD` |
+
+The Concession/Disposition split is deliberate and is kept: a Concession is a
+**decision** about the product (`QLT_NONCONFORMANCES_DISPOSE`), a Disposition is
+recorded **work** (`QLT_NONCONFORMANCES_RECORD`). Lowering a severity, reopening
+and cancelling are the same Quality authority over the same record as a
+Concession, so they ask the disposal code — the shape `ACT_CHANGE` gave the four
+Actions acts the catalogue had no code for. `POST /floor/nonconformances` is the
+one Quality write left ungated: it is the shared floor device's door
+(`requireTechnicianIdentification`, ADR-0016), the class ADR-0061 §7 registers as
+having no code that could name it.
+
+`1803900000000_quality-write-codes.js` widens the seed wherever today's reach was
+wider than the code's, which is every case where the seed did not already say
+"every role":
+
+- `QLT_NONCONFORMANCES_DISPOSE` — engineer, manager, administrator → the default
+  group, operator, supervisor, engineer, manager, administrator.
+- `QLT_SLIDESHOW_CHOOSE` — administrator → the same six.
+- `QLT_SUPPLIER_NCRS_RECORD` — administrator → the same six.
+- `QLT_NONCONFORMANCES_RECORD` and `QLT_COMPLAINTS_RECORD` already sat on the
+  same six roles; no row was written for them.
+
+Thirteen rows, every one a widening, and **no caller's answer changes**: a
+disposition, a Concession, a slide-show choice and a supplier NCR were all
+reachable by any Account holding the right Grant before this slice, whatever its
+role, and are still reachable by it. What these codes buy is the same thing the
+Actions slice bought — each door is visible and removable in the Roles Screen. An
+administrator who decides that granting a Concession is an engineer's act takes
+`QLT_NONCONFORMANCES_DISPOSE` off `ROLE_OPERATOR` and every operator loses it at
+once, which a Grant cannot express.
