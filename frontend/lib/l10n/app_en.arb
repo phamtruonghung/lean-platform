@@ -126,5 +126,1018 @@
   "navShiftHandovers": "Shift handovers",
   "navApprovals": "Approvals",
   "navAccounts": "Accounts",
-  "navRoles": "Roles"
+  "navRoles": "Roles",
+  "commonCancel": "Cancel",
+  "@commonCancel": {
+    "description": "A dialog's button that abandons it without saving anything."
+  },
+  "commonSaving": "Saving…",
+  "@commonSaving": {
+    "description": "A submit button's label while its request is in flight."
+  },
+  "accountPasswordCurrent": "Current password",
+  "@accountPasswordCurrent": {
+    "description": "Label of the field where the signed-in person types the password they already have."
+  },
+  "accountPasswordNew": "New password",
+  "@accountPasswordNew": {
+    "description": "Label of the field where the signed-in person types the password they want."
+  },
+  "accountPasswordMinimum": "At least {count} characters.",
+  "@accountPasswordMinimum": {
+    "description": "Helper text under the new-password field, stating the shortest password the server accepts.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "accountPasswordCurrentRequired": "Enter your current password.",
+  "@accountPasswordCurrentRequired": {
+    "description": "Shown in the change-password dialog when the current-password field was left empty."
+  },
+  "accountPasswordTooShort": "Use at least {count} characters for the new password.",
+  "@accountPasswordTooShort": {
+    "description": "Shown in the change-password dialog when the new password is shorter than the server's minimum.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "accountPasswordChanged": "Your password was changed.",
+  "@accountPasswordChanged": {
+    "description": "Confirmation shown on the Shell once the change has landed."
+  },
+  "homeGreeting": "Welcome, {name}",
+  "@homeGreeting": {
+    "description": "The Home Screen's title, greeting the signed-in person by their display name.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "homeNothingWaiting": "Nothing is waiting on you.",
+  "@homeNothingWaiting": {
+    "description": "What Home says when every count it shows is zero."
+  },
+  "homeActionsUnavailable": "Your Actions are unavailable",
+  "@homeActionsUnavailable": {
+    "description": "Home's Actions group when its count could not be read."
+  },
+  "homeAssignedToYou": "Assigned to you",
+  "@homeAssignedToYou": {
+    "description": "Home's card counting the open Actions whose owner is the signed-in person."
+  },
+  "homeAssignedToYouCaption": "Open Actions whose owner is you",
+  "@homeAssignedToYouCaption": {
+    "description": "What the Assigned-to-you card counts, under its figure."
+  },
+  "homeAccountNotLinked": "Your Account is not linked to an Employee record, so no Action can be assigned to you — link one under Accounts",
+  "@homeAccountNotLinked": {
+    "description": "Stands in for the Assigned-to-you caption when the signed-in Account is not linked to an Employee."
+  },
+  "homeTrainingUnavailable": "Your Training to confirm is unavailable",
+  "@homeTrainingUnavailable": {
+    "description": "Home's People group when the Training-to-confirm count could not be read."
+  },
+  "trainingToConfirm": "Training to confirm",
+  "@trainingToConfirm": {
+    "description": "The count of Training records sent to a person that they have not answered yet; a Home card, and a Screen title in the browser tab."
+  },
+  "homeTrainingToConfirmCaption": "Training records sent to you that you have not answered",
+  "@homeTrainingToConfirmCaption": {
+    "description": "What the Training-to-confirm card counts, under its figure."
+  },
+  "homeWorkOrdersUnavailable": "Work orders are unavailable",
+  "@homeWorkOrdersUnavailable": {
+    "description": "Home's Maintenance group when the Work order counts could not be read."
+  },
+  "homeOpenWorkOrders": "Open work orders",
+  "@homeOpenWorkOrders": {
+    "description": "Home's card counting the Work orders raised and not yet complete."
+  },
+  "homeOpenWorkOrdersCaption": "Raised and not yet complete",
+  "@homeOpenWorkOrdersCaption": {
+    "description": "What the Open-work-orders card counts, under its figure."
+  },
+  "homeAwaitingAssignment": "Awaiting assignment",
+  "@homeAwaitingAssignment": {
+    "description": "Home's card counting the open Work orders nobody holds yet."
+  },
+  "homeAwaitingAssignmentScopedCaption": "On the Org Units granted to you, and everything beneath them",
+  "@homeAwaitingAssignmentScopedCaption": {
+    "description": "What the Awaiting-assignment card counts for a person whose view is narrowed to their own Grants."
+  },
+  "homeAwaitingAssignmentCaption": "Open, with nobody holding them yet",
+  "@homeAwaitingAssignmentCaption": {
+    "description": "What the Awaiting-assignment card counts for a person who sees the whole Site."
+  },
+  "homeApprovalsUnavailable": "Approvals are unavailable",
+  "@homeApprovalsUnavailable": {
+    "description": "Home's People group when the Approvals count could not be read."
+  },
+  "accountsAwaitingApproval": "Accounts awaiting Approval",
+  "@accountsAwaitingApproval": {
+    "description": "Home's card counting the Accounts that are waiting to be admitted to the Platform."
+  },
+  "homeAccountsAwaitingApprovalCaption": "Waiting to be admitted",
+  "@homeAccountsAwaitingApprovalCaption": {
+    "description": "What the Accounts-awaiting-Approval card counts, under its figure."
+  },
+  "commonSite": "Site",
+  "@commonSite": {
+    "description": "A Site's own name in a filter: the plant a list is narrowed to."
+  },
+  "commonSummary": "Summary",
+  "@commonSummary": {
+    "description": "Column header over a record's one-line description, and the field that holds it."
+  },
+  "commonAsset": "Asset",
+  "@commonAsset": {
+    "description": "The Asset a record is against. The same word the sidebar's Assets Destination uses."
+  },
+  "commonOrgUnit": "Org Unit",
+  "@commonOrgUnit": {
+    "description": "Column header over the Org Unit a record belongs to. The same word the sidebar's own Destination uses."
+  },
+  "commonStatus": "Status",
+  "@commonStatus": {
+    "description": "Column header over a record's status chip."
+  },
+  "commonAssignee": "Assignee",
+  "@commonAssignee": {
+    "description": "Column header over the person a record is assigned to."
+  },
+  "commonActions": "Actions",
+  "@commonActions": {
+    "description": "Column header over a row's own buttons and overflow menu."
+  },
+  "commonUnassigned": "Unassigned",
+  "@commonUnassigned": {
+    "description": "Stands where an assignee's name would be when nobody holds the record yet."
+  },
+  "commonMoreActions": "More actions",
+  "@commonMoreActions": {
+    "description": "Tooltip on a row's overflow trigger, which opens the actions that do not fit as buttons."
+  },
+  "workOrdersCount": "{count, plural, =1{1 Work order} other{{count} Work orders}}",
+  "@workOrdersCount": {
+    "description": "How many Work orders the list is showing, above the register.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "workOrdersCountNarrowed": ", narrowed to {name}",
+  "@workOrdersCountNarrowed": {
+    "description": "Appended to the count of Work orders on screen while an Org Unit narrows the list.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrdersCountHistory": ", including completed and cancelled",
+  "@workOrdersCountHistory": {
+    "description": "Appended to the count of Work orders on screen while the history toggle is on."
+  },
+  "workOrdersUnavailableTitle": "The Work orders could not be read",
+  "@workOrdersUnavailableTitle": {
+    "description": "The failure state's heading when the list of Work orders could not be fetched."
+  },
+  "workOrdersDescription": "The work raised at this Site, which Asset it is against, and who has it.",
+  "@workOrdersDescription": {
+    "description": "One-line description under the Work orders title."
+  },
+  "workOrdersRaise": "Raise a Work order",
+  "@workOrdersRaise": {
+    "description": "The button that opens the form for raising a new Work order, and the empty state's own action."
+  },
+  "workOrdersNarrowToOrgUnit": "Narrow to an Org Unit",
+  "@workOrdersNarrowToOrgUnit": {
+    "description": "The button, and the picker's title, that narrow the Work order list to one Org Unit."
+  },
+  "workOrdersNarrowedTo": "Narrowed to {name}",
+  "@workOrdersNarrowedTo": {
+    "description": "The chip naming the Org Unit the list is currently narrowed to.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrdersShowWholeSite": "Show the whole Site again",
+  "@workOrdersShowWholeSite": {
+    "description": "Tooltip on the control that clears the Org Unit narrowing from the Work order list."
+  },
+  "workOrdersShowHistory": "Show completed and cancelled",
+  "@workOrdersShowHistory": {
+    "description": "The toggle that brings completed and cancelled Work orders into the list."
+  },
+  "workOrdersNarrowTitle": "Narrow the list",
+  "@workOrdersNarrowTitle": {
+    "description": "Title of the Org Unit tree inside the Work order list's narrowing picker."
+  },
+  "workOrdersNarrowDescription": "Choose the Org Unit to narrow the list to. Everything beneath it is included too.",
+  "@workOrdersNarrowDescription": {
+    "description": "What the narrowing picker's tree is for, under its title."
+  },
+  "workOrdersTruncated": "There are more Work orders than this list shows. Narrow it by Org Unit, or turn history off, to see the rest.",
+  "@workOrdersTruncated": {
+    "description": "Said above the list when the read was capped, rather than leaving the cap to be inferred."
+  },
+  "workOrdersFilter": "Filter Work orders",
+  "@workOrdersFilter": {
+    "description": "Label of the search box above the Work order list."
+  },
+  "workOrdersFilterHelp": "By summary, Work order number or Asset.",
+  "@workOrdersFilterHelp": {
+    "description": "What the Work order list's search box matches on, under its label."
+  },
+  "workOrdersNoMatch": "No Work orders match",
+  "@workOrdersNoMatch": {
+    "description": "The empty state the search box shows when its term matches none of the rows on screen."
+  },
+  "workOrdersNoMatchMessage": "Work is open at this Site, but none of it matches “{term}”. Try a different summary or Asset, or clear the filter.",
+  "@workOrdersNoMatchMessage": {
+    "description": "What the search box's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "workOrdersStart": "Start",
+  "@workOrdersStart": {
+    "description": "The primary action on an approved Work order, which starts it."
+  },
+  "workOrdersComplete": "Complete",
+  "@workOrdersComplete": {
+    "description": "The primary action on a Work order that is in progress, which opens its completion form."
+  },
+  "workOrdersNumberColumn": "WO#",
+  "@workOrdersNumberColumn": {
+    "description": "Column header over the number a Work order is known by."
+  },
+  "workOrdersAssign": "Assign",
+  "@workOrdersAssign": {
+    "description": "The menu item that assigns a Work order nobody holds yet."
+  },
+  "workOrdersReassign": "Reassign",
+  "@workOrdersReassign": {
+    "description": "The menu item that changes who a Work order is assigned to."
+  },
+  "workOrdersFilteredEmptyTitle": "No work orders match",
+  "@workOrdersFilteredEmptyTitle": {
+    "description": "The empty state shown when the list is narrowed to an Org Unit that has no open work."
+  },
+  "workOrdersFilteredEmptyMessage": "There is work at this Site, but none of it is raised at {name} or beneath it.",
+  "@workOrdersFilteredEmptyMessage": {
+    "description": "What the narrowed-to-an-Org-Unit empty state says, with history shown.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrdersFilteredEmptyMessageOpen": "There is work at this Site, but none of it is raised at {name} or beneath it and still open.",
+  "@workOrdersFilteredEmptyMessageOpen": {
+    "description": "What the narrowed-to-an-Org-Unit empty state says while the list is still open-work only.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrdersThisOrgUnit": "this Org Unit",
+  "@workOrdersThisOrgUnit": {
+    "description": "Stands in for the Org Unit's name in the narrowed empty state when the list was narrowed without a name to show."
+  },
+  "workOrdersClearFilters": "Clear filters",
+  "@workOrdersClearFilters": {
+    "description": "The action the narrowed empty state offers, which clears the Org Unit narrowing."
+  },
+  "workOrdersNoneExistTitle": "No work at this Site",
+  "@workOrdersNoneExistTitle": {
+    "description": "The empty state shown when there is no work at all, with completed and cancelled included."
+  },
+  "workOrdersNoneOpenTitle": "No open work at this Site",
+  "@workOrdersNoneOpenTitle": {
+    "description": "The empty state shown when no Work order is open, with history hidden."
+  },
+  "workOrdersNoneExistMessage": "Nothing has been raised against the Org Units you can act in. Raise a Work order and it will show up right away.",
+  "@workOrdersNoneExistMessage": {
+    "description": "What the genuinely-empty Work order state says, under its title."
+  },
+  "commonWorkType": "Work type",
+  "@commonWorkType": {
+    "description": "Label over a Work order's kind of work (corrective, preventive, and the rest)."
+  },
+  "commonPriority": "Priority",
+  "@commonPriority": {
+    "description": "Label over a Work order's priority number."
+  },
+  "commonHours": "{hours} h",
+  "@commonHours": {
+    "description": "A number of booked hours, with its unit. The figure is already formatted without a pointless trailing zero.",
+    "placeholders": {
+      "hours": {"type": "String"}
+    }
+  },
+  "commonNoCostRecorded": "No cost recorded",
+  "@commonNoCostRecorded": {
+    "description": "Stands where a money figure would be when nothing has priced that line yet."
+  },
+  "workOrderUnavailableTitle": "This Work order could not be read",
+  "@workOrderUnavailableTitle": {
+    "description": "The failure state's heading when one Work order's detail could not be fetched."
+  },
+  "workOrderBackToList": "Back to Work orders",
+  "@workOrderBackToList": {
+    "description": "The link at the top of a Work order's detail that returns to the list."
+  },
+  "workOrderTitle": "Work order",
+  "@workOrderTitle": {
+    "description": "The detail Screen's title, and the browser tab's name for it."
+  },
+  "workOrderTasksDescription": "The tasks copied from the Job plan that raised it.",
+  "@workOrderTasksDescription": {
+    "description": "What a Work order's detail holds, shown under the title while it is still loading."
+  },
+  "workOrderBookLabour": "Book labour",
+  "@workOrderBookLabour": {
+    "description": "The action that books hours against a Work order."
+  },
+  "workOrderBookPart": "Book a part",
+  "@workOrderBookPart": {
+    "description": "The action that fits a part from a Store against a Work order."
+  },
+  "workOrderTasks": "Tasks",
+  "@workOrderTasks": {
+    "description": "Heading of the section listing the steps copied onto a Work order from its Job plan."
+  },
+  "workOrderNoTasks": "No steps were copied onto this Work order.",
+  "@workOrderNoTasks": {
+    "description": "Shown in the Tasks section when the Job plan behind the Work order had no steps."
+  },
+  "workOrderCostSoFar": "Cost so far",
+  "@workOrderCostSoFar": {
+    "description": "Heading of the section reporting the labour and parts booked against a Work order."
+  },
+  "workOrderNoLabour": "No labour has been booked.",
+  "@workOrderNoLabour": {
+    "description": "Shown in the cost section when no hours have been booked against the Work order."
+  },
+  "workOrderOvertime": "{hours} · {overtime} overtime",
+  "@workOrderOvertime": {
+    "description": "One activity's booked hours, with how much of them was worked overtime.",
+    "placeholders": {
+      "hours": {"type": "String"},
+      "overtime": {"type": "String"}
+    }
+  },
+  "workOrderLabourNote": "Booked labour is part of the plant labour cost already reported, not new money.",
+  "@workOrderLabourNote": {
+    "description": "The warning under the labour figures, which stops them being added to plant labour cost."
+  },
+  "workOrderOvertimeNote": "{hours} of it is overtime.",
+  "@workOrderOvertimeNote": {
+    "description": "How much of the booked labour was worked overtime.",
+    "placeholders": {
+      "hours": {"type": "String"}
+    }
+  },
+  "workOrderNoParts": "No parts have been fitted.",
+  "@workOrderNoParts": {
+    "description": "Shown in the cost section when no part has been fitted to the Work order."
+  },
+  "workOrderPartsNote": "Parts are new cost — the one maintenance component that adds.",
+  "@workOrderPartsNote": {
+    "description": "The note beside the parts total, which explains why it is added rather than reported."
+  },
+  "workOrderRequiresSkill": "Requires {name}",
+  "@workOrderRequiresSkill": {
+    "description": "A Work order task's required Skill, named under its instruction.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrderNoSkill": "No skill required",
+  "@workOrderNoSkill": {
+    "description": "Stands in for a task's required Skill when it names none."
+  },
+  "workOrderRecordsMeter": "Records {name}",
+  "@workOrderRecordsMeter": {
+    "description": "The meter a Work order task records a reading from, under its instruction.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrderReading": "Reading {value}",
+  "@workOrderReading": {
+    "description": "The reading already recorded against a Work order task.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "workOrderRecordReading": "Record a reading",
+  "@workOrderRecordReading": {
+    "description": "The action on a Work order task that records a meter reading."
+  },
+  "requestsUnavailableTitle": "The requests could not be read",
+  "@requestsUnavailableTitle": {
+    "description": "The failure state's heading when the triage queue could not be fetched."
+  },
+  "requestsDescription": "The Requests waiting for a decision at this Site. Accepting one raises a Work order for it.",
+  "@requestsDescription": {
+    "description": "One-line description under the Triage queue title."
+  },
+  "requestsFilter": "Filter requests",
+  "@requestsFilter": {
+    "description": "Label of the search box above the triage queue."
+  },
+  "requestsFilterHelp": "By description, Request number or Asset.",
+  "@requestsFilterHelp": {
+    "description": "What the triage queue's search box matches on, under its label."
+  },
+  "requestsNoMatch": "No requests match",
+  "@requestsNoMatch": {
+    "description": "The empty state the triage queue's search box shows when its term matches nothing."
+  },
+  "requestsNoMatchMessage": "Requests are waiting at this Site, but none matches “{term}”. Try a different description or Asset.",
+  "@requestsNoMatchMessage": {
+    "description": "What the triage queue's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "requestsNumberColumn": "Request",
+  "@requestsNumberColumn": {
+    "description": "Column header over the number a Request is known by."
+  },
+  "requestsRaisedBy": "Raised by",
+  "@requestsRaisedBy": {
+    "description": "Column header over the person who raised a Request."
+  },
+  "requestsRaisedDate": "Raised",
+  "@requestsRaisedDate": {
+    "description": "Column header over the date a Request was raised."
+  },
+  "requestsUrgency": "Urgency",
+  "@requestsUrgency": {
+    "description": "Column header over how urgent a Request is."
+  },
+  "requestsProductionStopped": "Production is stopped",
+  "@requestsProductionStopped": {
+    "description": "Said beside a Request whose own flag says production is stopped because of it."
+  },
+  "requestsAccept": "Accept",
+  "@requestsAccept": {
+    "description": "The triage action that accepts a Request and raises the Work order for it."
+  },
+  "requestsDecline": "Decline",
+  "@requestsDecline": {
+    "description": "The triage action that declines a Request."
+  },
+  "requestsMarkDuplicate": "Mark duplicate",
+  "@requestsMarkDuplicate": {
+    "description": "The triage action that files a Request as a duplicate of another."
+  },
+  "requestsRaisedByPerson": "Raised by {name}",
+  "@requestsRaisedByPerson": {
+    "description": "Who raised a Request, on the narrow card.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "requestsNoneExistTitle": "Nothing is waiting",
+  "@requestsNoneExistTitle": {
+    "description": "The triage queue's empty state when no Request is waiting for a decision."
+  },
+  "requestsNoneExistMessage": "No Requests are waiting for a decision at this Site.",
+  "@requestsNoneExistMessage": {
+    "description": "What the triage queue's empty state says, under its title."
+  },
+  "downtimeDescription": "The machines not running at this Site, the reasons they stopped, and how long they have been down.",
+  "@downtimeDescription": {
+    "description": "One-line description under the Downtime title."
+  },
+  "downtimeUnavailableTitle": "The downtime events could not be read",
+  "@downtimeUnavailableTitle": {
+    "description": "The failure state's heading when the downtime register could not be fetched."
+  },
+  "downtimeReport": "Report a breakdown",
+  "@downtimeReport": {
+    "description": "The button that opens the form for reporting a machine that has stopped."
+  },
+  "downtimeTruncated": "There are more downtime events than this list shows.",
+  "@downtimeTruncated": {
+    "description": "Said above the register when the read was capped."
+  },
+  "downtimeFilter": "Filter downtime",
+  "@downtimeFilter": {
+    "description": "Label of the search box above the downtime register."
+  },
+  "downtimeFilterHelp": "By Asset, reason or description.",
+  "@downtimeFilterHelp": {
+    "description": "What the downtime register's search box matches on, under its label."
+  },
+  "downtimeNoMatch": "No downtime matches",
+  "@downtimeNoMatch": {
+    "description": "The empty state the downtime search box shows when its term matches nothing."
+  },
+  "downtimeNoMatchMessage": "This Site has downtime recorded, but none matches “{term}”. Try a different Asset, reason or description.",
+  "@downtimeNoMatchMessage": {
+    "description": "What the downtime register's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "downtimeStarted": "Started",
+  "@downtimeStarted": {
+    "description": "Column header over the instant a machine stopped."
+  },
+  "downtimeReason": "Reason",
+  "@downtimeReason": {
+    "description": "Column header over the reason a machine stopped."
+  },
+  "downtimeReportedByColumn": "Reported by",
+  "@downtimeReportedByColumn": {
+    "description": "Column header over the person who reported a machine stopped."
+  },
+  "downtimeClose": "Close",
+  "@downtimeClose": {
+    "description": "The action that closes a machine's stop, once it is running again."
+  },
+  "downtimeClassify": "Classify",
+  "@downtimeClassify": {
+    "description": "The action that records the reason a stop happened, after it has been closed."
+  },
+  "downtimeStartedAt": "Started {instant}",
+  "@downtimeStartedAt": {
+    "description": "When a machine stopped, on the narrow card.",
+    "placeholders": {
+      "instant": {"type": "String"}
+    }
+  },
+  "downtimeReasonLine": "Reason: {name}",
+  "@downtimeReasonLine": {
+    "description": "The reason a machine stopped, on the narrow card.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "downtimeReportedByPerson": "Reported by {name}",
+  "@downtimeReportedByPerson": {
+    "description": "Who reported a machine stopped, on the narrow card.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "downtimeNoneExistTitle": "Nothing is down",
+  "@downtimeNoneExistTitle": {
+    "description": "The downtime register's empty state when no machine is stopped."
+  },
+  "downtimeNoneExistMessage": "No machine is recorded as down at this Site.",
+  "@downtimeNoneExistMessage": {
+    "description": "What the downtime register's empty state says, under its title."
+  },
+  "commonDetails": "Details",
+  "@commonDetails": {
+    "description": "Column header over the toggle that discloses one row's longer text."
+  },
+  "commonDescription": "Description",
+  "@commonDescription": {
+    "description": "The label of a longer free-text field on a record, and the toggle that reveals it."
+  },
+  "commonNow": "now",
+  "@commonNow": {
+    "description": "Stands in for an instant that could not be read from the wire, so a time is never blank."
+  },
+  "metersDescription": "The running counts a PM schedule can come due on, and the readings taken against them.",
+  "@metersDescription": {
+    "description": "One-line description under the Meters title."
+  },
+  "metersUnavailableTitle": "The meters could not be read",
+  "@metersUnavailableTitle": {
+    "description": "The failure state's heading when the meter register could not be fetched."
+  },
+  "metersDefine": "Define a meter",
+  "@metersDefine": {
+    "description": "The button that opens the form for defining a meter on an Asset."
+  },
+  "metersFilter": "Filter meters",
+  "@metersFilter": {
+    "description": "Label of the search box above the meter register."
+  },
+  "metersFilterHelp": "By meter name, code or Asset.",
+  "@metersFilterHelp": {
+    "description": "What the meter register's search box matches on, under its label."
+  },
+  "metersNoMatch": "No meters match",
+  "@metersNoMatch": {
+    "description": "The empty state the meter search box shows when its term matches nothing."
+  },
+  "metersNoMatchMessage": "This Site has meters, but none matches “{term}”. Try a different name, code or Asset.",
+  "@metersNoMatchMessage": {
+    "description": "What the meter register's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "metersNoReading": "No reading yet",
+  "@metersNoReading": {
+    "description": "Stands in the latest-reading column for a meter nobody has read yet."
+  },
+  "metersType": "Type",
+  "@metersType": {
+    "description": "Column header over a meter's kind (running total, or reset each cycle)."
+  },
+  "metersUnit": "Unit",
+  "@metersUnit": {
+    "description": "Column header over the unit a meter counts in."
+  },
+  "metersLatestReading": "Latest reading",
+  "@metersLatestReading": {
+    "description": "Column header over the last reading recorded against a meter."
+  },
+  "metersAccumulated": "Accumulated use",
+  "@metersAccumulated": {
+    "description": "Column header over the total a meter has counted, carried-forward included."
+  },
+  "metersCarriedForward": "Carried forward: {value} {unit}",
+  "@metersCarriedForward": {
+    "description": "The amount a replaced meter counted before it was swapped, under a meter's total.",
+    "placeholders": {
+      "value": {"type": "String"},
+      "unit": {"type": "String"}
+    }
+  },
+  "metersLatestLine": "Latest: {label}",
+  "@metersLatestLine": {
+    "description": "A meter's last reading, on the narrow card.",
+    "placeholders": {
+      "label": {"type": "String"}
+    }
+  },
+  "metersAccumulatedLine": "Accumulated use: {label}",
+  "@metersAccumulatedLine": {
+    "description": "A meter's total, on the narrow card.",
+    "placeholders": {
+      "label": {"type": "String"}
+    }
+  },
+  "metersNoneExistTitle": "No meters yet",
+  "@metersNoneExistTitle": {
+    "description": "The meter register's empty state when the Site has none defined."
+  },
+  "metersNoneExistMessage": "No meter is defined on this Site's Assets yet.",
+  "@metersNoneExistMessage": {
+    "description": "What the meter register's empty state says, under its title."
+  },
+  "commonCode": "Code",
+  "@commonCode": {
+    "description": "Column header over the short code a record is known by."
+  },
+  "commonName": "Name",
+  "@commonName": {
+    "description": "Column header over a record's own name."
+  },
+  "jobPlansUnavailableTitle": "The Job plans could not be read",
+  "@jobPlansUnavailableTitle": {
+    "description": "The failure state's heading when the register of Job plans could not be fetched."
+  },
+  "jobPlansDescription": "How each recurring job is done — the steps it takes and what each one requires. A Work order follows a plan; it does not change one.",
+  "@jobPlansDescription": {
+    "description": "One-line description under the Job plans title."
+  },
+  "jobPlansAdd": "Add a Job plan",
+  "@jobPlansAdd": {
+    "description": "The button that opens the form for adding a reusable Job plan."
+  },
+  "jobPlansFilter": "Filter Job plans",
+  "@jobPlansFilter": {
+    "description": "Label of the search box above the Job plan register."
+  },
+  "jobPlansFilterHelp": "By name, code or description.",
+  "@jobPlansFilterHelp": {
+    "description": "What the Job plan register's search box matches on, under its label."
+  },
+  "jobPlansNoMatch": "No Job plans match",
+  "@jobPlansNoMatch": {
+    "description": "The empty state the Job plan search box shows when its term matches nothing."
+  },
+  "jobPlansNoMatchMessage": "The plant has Job plans, but none matches “{term}”. Try a different name, code or description.",
+  "@jobPlansNoMatchMessage": {
+    "description": "What the Job plan register's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "jobPlansPlanColumn": "Plan",
+  "@jobPlansPlanColumn": {
+    "description": "Column header over a Job plan's own name, code and kind."
+  },
+  "jobPlansSteps": "Steps",
+  "@jobPlansSteps": {
+    "description": "Column header over the toggle that discloses a Job plan's steps."
+  },
+  "jobPlansEstimatedHours": "Estimated hours",
+  "@jobPlansEstimatedHours": {
+    "description": "Column header over the hours a Job plan is estimated to take."
+  },
+  "jobPlansShutdown": "Shutdown",
+  "@jobPlansShutdown": {
+    "description": "Column header over whether a Job plan needs the machine stopped to be done."
+  },
+  "jobPlansStepCount": "{count, plural, =1{1 step} other{{count} steps}}",
+  "@jobPlansStepCount": {
+    "description": "How many steps a Job plan has, on its disclosure toggle.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "jobPlansInactive": "Inactive",
+  "@jobPlansInactive": {
+    "description": "The chip on a Job plan that has been deactivated, so no Work order follows it."
+  },
+  "jobPlansRequiresShutdown": "Requires a shutdown",
+  "@jobPlansRequiresShutdown": {
+    "description": "Said of a Job plan that cannot be done with the machine running."
+  },
+  "jobPlansAboutHours": "About {hours} h",
+  "@jobPlansAboutHours": {
+    "description": "A Job plan's estimated hours, on the narrow card.",
+    "placeholders": {
+      "hours": {"type": "String"}
+    }
+  },
+  "jobPlansNoSteps": "No steps recorded.",
+  "@jobPlansNoSteps": {
+    "description": "Shown when a Job plan has no steps at all."
+  },
+  "jobPlansDeactivate": "Deactivate",
+  "@jobPlansDeactivate": {
+    "description": "The action that stops a Job plan being followed by new Work orders."
+  },
+  "jobPlansReactivate": "Reactivate",
+  "@jobPlansReactivate": {
+    "description": "The action that lets a deactivated Job plan be followed again."
+  },
+  "jobPlansNoneExistTitle": "No Job plans yet",
+  "@jobPlansNoneExistTitle": {
+    "description": "The Job plan register's empty state when nothing reusable has been defined."
+  },
+  "jobPlansNoneExistMessage": "No reusable job plan has been defined. Add one and its steps will show here.",
+  "@jobPlansNoneExistMessage": {
+    "description": "What the Job plan register's empty state says, under its title."
+  },
+  "pmSchedulesUnavailableTitle": "The PM schedules could not be read",
+  "@pmSchedulesUnavailableTitle": {
+    "description": "The failure state's heading when the register of PM schedules could not be fetched."
+  },
+  "pmSchedulesDescription": "The Job plans attached to this Site's Assets that raise a Work order before something breaks.",
+  "@pmSchedulesDescription": {
+    "description": "One-line description under the PM schedules title."
+  },
+  "pmSchedulesAdd": "Add a PM schedule",
+  "@pmSchedulesAdd": {
+    "description": "The button that opens the form for attaching a Job plan to an Asset on an interval."
+  },
+  "pmSchedulesFilter": "Filter PM schedules",
+  "@pmSchedulesFilter": {
+    "description": "Label of the search box above the PM schedule register."
+  },
+  "pmSchedulesFilterHelp": "By schedule name, Asset or Job plan.",
+  "@pmSchedulesFilterHelp": {
+    "description": "What the PM schedule register's search box matches on, under its label."
+  },
+  "pmSchedulesNoMatch": "No PM schedules match",
+  "@pmSchedulesNoMatch": {
+    "description": "The empty state the PM schedule search box shows when its term matches nothing."
+  },
+  "pmSchedulesNoMatchMessage": "This Site has PM schedules, but none matches “{term}”. Try a different name, Asset or Job plan.",
+  "@pmSchedulesNoMatchMessage": {
+    "description": "What the PM schedule register's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "pmSchedulesJobPlanColumn": "Job plan",
+  "@pmSchedulesJobPlanColumn": {
+    "description": "Column header over the Job plan a PM schedule follows."
+  },
+  "pmSchedulesInterval": "Interval",
+  "@pmSchedulesInterval": {
+    "description": "Column header over how often a PM schedule comes due."
+  },
+  "pmSchedulesDue": "Due",
+  "@pmSchedulesDue": {
+    "description": "Column header over when a PM schedule is next due."
+  },
+  "pmSchedulesRules": "Rules",
+  "@pmSchedulesRules": {
+    "description": "Column header over the toggle that discloses a PM schedule's rules in words."
+  },
+  "pmSchedulesRuleCount": "{count, plural, =1{1 rule} other{{count} rules}}",
+  "@pmSchedulesRuleCount": {
+    "description": "How many rules a PM schedule has, on its disclosure toggle.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "pmSchedulesRollsFrom": "Rolls from {anchor}",
+  "@pmSchedulesRollsFrom": {
+    "description": "The point a PM schedule's interval counts from.",
+    "placeholders": {
+      "anchor": {"type": "String"}
+    }
+  },
+  "pmSchedulesLeadTime": "{days, plural, =1{Raised 1 day early} other{Raised {days} days early}}",
+  "@pmSchedulesLeadTime": {
+    "description": "How many days before the due point a PM schedule raises its Work order.",
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "pmSchedulesAccumulated": "Accumulated {current} of {target}",
+  "@pmSchedulesAccumulated": {
+    "description": "How far a meter-driven PM schedule has counted towards its next due point.",
+    "placeholders": {
+      "current": {"type": "String"},
+      "target": {"type": "String"}
+    }
+  },
+  "pmSchedulesEveryMeter": "Every {interval} of {meter}",
+  "@pmSchedulesEveryMeter": {
+    "description": "A PM schedule's interval, counted on a meter.",
+    "placeholders": {
+      "interval": {"type": "String"},
+      "meter": {"type": "String"}
+    }
+  },
+  "pmSchedulesEveryDays": "{days, plural, =1{Every day} other{Every {days} days}}",
+  "@pmSchedulesEveryDays": {
+    "description": "A PM schedule's interval, counted in days.",
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "pmSchedulesTheMeter": "the meter",
+  "@pmSchedulesTheMeter": {
+    "description": "Stands in for a meter's name when neither its name nor its code came through."
+  },
+  "pmSchedulesPriorityLine": "Priority {priority}",
+  "@pmSchedulesPriorityLine": {
+    "description": "The priority a PM schedule's Work orders are raised at, on the narrow card.",
+    "placeholders": {
+      "priority": {"type": "String"}
+    }
+  },
+  "pmSchedulesDueNow": "Due now",
+  "@pmSchedulesDueNow": {
+    "description": "A meter-driven PM schedule whose accumulated use has reached its target."
+  },
+  "pmSchedulesNoMeterTarget": "No meter target yet",
+  "@pmSchedulesNoMeterTarget": {
+    "description": "A meter-driven PM schedule that has not been given its next target yet."
+  },
+  "pmSchedulesDueAt": "Due at {value}",
+  "@pmSchedulesDueAt": {
+    "description": "A meter-driven PM schedule's next due point, as a meter value.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "pmSchedulesNoDueDate": "No due date yet",
+  "@pmSchedulesNoDueDate": {
+    "description": "A date-driven PM schedule that has not been given a first due date yet."
+  },
+  "pmSchedulesNextDue": "Next due {date}",
+  "@pmSchedulesNextDue": {
+    "description": "A date-driven PM schedule's next due date, with no day count to report.",
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "pmSchedulesOverdueSince": "Overdue since {date}",
+  "@pmSchedulesOverdueSince": {
+    "description": "A date-driven PM schedule whose due date has passed.",
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "pmSchedulesDueToday": "Due today",
+  "@pmSchedulesDueToday": {
+    "description": "A date-driven PM schedule whose due date is today."
+  },
+  "pmSchedulesDueIn": "Due {date} (in {days} days)",
+  "@pmSchedulesDueIn": {
+    "description": "A date-driven PM schedule's next due date, with how many days away it is.",
+    "placeholders": {
+      "date": {"type": "String"},
+      "days": {"type": "int"}
+    }
+  },
+  "pmSchedulesNoneExistTitle": "Nothing is scheduled",
+  "@pmSchedulesNoneExistTitle": {
+    "description": "The PM schedule register's empty state when nothing is attached to the Site's Assets."
+  },
+  "pmSchedulesNoneExistMessage": "No PM schedule is attached to this Site's Assets yet.",
+  "@pmSchedulesNoneExistMessage": {
+    "description": "What the PM schedule register's empty state says, under its title."
+  },
+  "titleSignIn": "Sign in",
+  "@titleSignIn": {
+    "description": "The browser tab's name for the sign-in Screen."
+  },
+  "titleAwaitingApproval": "Awaiting approval",
+  "@titleAwaitingApproval": {
+    "description": "The browser tab's name for the Screen shown to an Account that has not been admitted."
+  },
+  "titleChooseNewPassword": "Choose a new password",
+  "@titleChooseNewPassword": {
+    "description": "The browser tab's name for the Screen that forces a new password at first sign-in."
+  },
+  "titleFloor": "Floor",
+  "@titleFloor": {
+    "description": "The browser tab's name for the Floor Screens a shared device opens on."
+  },
+  "titleCapaReport": "CAPA report",
+  "@titleCapaReport": {
+    "description": "The browser tab's name for the printable CAPA report."
+  },
+  "titleTrainingRecordForm": "Training record form",
+  "@titleTrainingRecordForm": {
+    "description": "The browser tab's name for the printable training record form."
+  },
+  "titleWelcome": "Welcome",
+  "@titleWelcome": {
+    "description": "The browser tab's name for Home, whose own heading is a greeting."
+  },
+  "titleEmployee": "Employee",
+  "@titleEmployee": {
+    "description": "The browser tab's name for one Employee's detail."
+  },
+  "titleWorkedHours": "Worked hours",
+  "@titleWorkedHours": {
+    "description": "The browser tab's name for one Employee's worked-hours Screen."
+  },
+  "titleAttendanceToConfirm": "Attendance to confirm",
+  "@titleAttendanceToConfirm": {
+    "description": "The browser tab's name for the attendance board's to-confirm list."
+  },
+  "titleAttendanceSheet": "Attendance sheet",
+  "@titleAttendanceSheet": {
+    "description": "The browser tab's name for one shift's attendance sheet."
+  },
+  "titleTrainingRecords": "Training records",
+  "@titleTrainingRecords": {
+    "description": "The browser tab's name for the register of training records."
+  },
+  "titleTrainingRecord": "Training record",
+  "@titleTrainingRecord": {
+    "description": "The browser tab's name for one training record."
+  },
+  "titleQualitySlideShow": "Quality slide show",
+  "@titleQualitySlideShow": {
+    "description": "The browser tab's name for the Quality slide show."
+  },
+  "titleCustomerComplaint": "Customer complaint",
+  "@titleCustomerComplaint": {
+    "description": "The browser tab's name for one customer complaint."
+  },
+  "titleSupplierNcr": "Supplier NCR",
+  "@titleSupplierNcr": {
+    "description": "The browser tab's name for one supplier NCR."
+  },
+  "titleNonConformance": "Non-conformance",
+  "@titleNonConformance": {
+    "description": "The browser tab's name for one non-conformance."
+  },
+  "titleShiftHandover": "Shift handover",
+  "@titleShiftHandover": {
+    "description": "The browser tab's name for one shift handover."
+  },
+  "titleSafetyIncidents": "Safety incidents",
+  "@titleSafetyIncidents": {
+    "description": "The browser tab's name for the register of safety incidents."
+  },
+  "titleSafetyIncident": "Safety incident",
+  "@titleSafetyIncident": {
+    "description": "The browser tab's name for one safety incident."
+  },
+  "titleSafetyObservations": "Safety observations",
+  "@titleSafetyObservations": {
+    "description": "The browser tab's name for the register of safety observations."
+  },
+  "titleSafetyObservation": "Safety observation",
+  "@titleSafetyObservation": {
+    "description": "The browser tab's name for one safety observation."
+  },
+  "titleKpiTargets": "KPI targets",
+  "@titleKpiTargets": {
+    "description": "The browser tab's name for one KPI's targets."
+  },
+  "titleActions": "Actions",
+  "@titleActions": {
+    "description": "The browser tab's name for the Action log."
+  },
+  "titleAction": "Action",
+  "@titleAction": {
+    "description": "The browser tab's name for one Action."
+  },
+  "titleApprovalQueue": "Approval queue",
+  "@titleApprovalQueue": {
+    "description": "The browser tab's name for the Screen an administrator admits Accounts from."
+  },
+  "titleStoreStock": "Store stock",
+  "@titleStoreStock": {
+    "description": "The browser tab's name for one Store's stock, which the Store's own name would otherwise stand in for."
+  }
 }

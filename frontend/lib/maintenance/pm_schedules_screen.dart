@@ -27,6 +27,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -104,6 +105,7 @@ class PmSchedulesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<PmSchedulesBloc>().state;
 
     return Scaffold(
@@ -117,7 +119,7 @@ class PmSchedulesScreen extends StatelessWidget {
               PmSchedulesLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               PmSchedulesUnavailable(message: final message) => PlatformFailureState(
                 key: PmSchedulesScreen.failedKey,
-                title: 'The PM schedules could not be read',
+                title: l10n.pmSchedulesUnavailableTitle,
                 message: message,
                 retryKey: PmSchedulesScreen.retryKey,
                 onRetry: () => context.read<PmSchedulesBloc>().add(const PmSchedulesStarted()),
@@ -148,6 +150,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is PmSchedulesLoaded ? state as PmSchedulesLoaded : null;
 
     return Center(
@@ -156,10 +159,8 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'PM schedules',
-            description:
-                'The Job plans attached to this Site\'s Assets that raise a Work order '
-                'before something breaks.',
+            title: l10n.navPmSchedules,
+            description: l10n.pmSchedulesDescription,
             actions: [
               if (canAct && loaded != null)
                 FilledButton.icon(
@@ -168,7 +169,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => PmScheduleFormDialog.open(context, siteId: loaded.siteId!),
                   icon: const Icon(Icons.event_repeat_outlined),
-                  label: const Text('Add a PM schedule'),
+                  label: Text(l10n.pmSchedulesAdd),
                   style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
                 ),
             ],
@@ -179,9 +180,9 @@ class _Header extends StatelessWidget {
                       key: PmSchedulesScreen.siteKey,
                       initialValue: loaded.siteId,
                       isDense: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Site',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.commonSite,
+                        border: const OutlineInputBorder(),
                       ),
                       items: [
                         for (final site in loaded.sites)
@@ -285,6 +286,7 @@ class _PmSchedulesListState extends State<_PmSchedulesList> {
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingSchedules;
+    final l10n = AppLocalizations.of(context);
     // The box this Screen actually got from its parent, scaled by the reader's
     // text size (design-language §10) — never the window.
     return LayoutBuilder(
@@ -310,8 +312,8 @@ class _PmSchedulesListState extends State<_PmSchedulesList> {
                           width: box.maxWidth,
                           child: AppFilterField(
                             name: PmSchedulesScreen.filterFieldName,
-                            label: 'Filter PM schedules',
-                            helperText: 'By schedule name, Asset or Job plan.',
+                            label: l10n.pmSchedulesFilter,
+                            helperText: l10n.pmSchedulesFilterHelp,
                             term: _term,
                             onChanged: (term) => setState(() => _term = term),
                             shown: matches.length,
@@ -327,10 +329,8 @@ class _PmSchedulesListState extends State<_PmSchedulesList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: PmSchedulesScreen.noMatchKey,
-                          title: 'No PM schedules match',
-                          message:
-                              'This Site has PM schedules, but none matches '
-                              '"${_term.trim()}". Try a different name, Asset or Job plan.',
+                          title: l10n.pmSchedulesNoMatch,
+                          message: l10n.pmSchedulesNoMatchMessage(_term.trim()),
                         )
                       : narrow
                       ? ListView.separated(
@@ -404,28 +404,32 @@ double _bandLabelWidth(BuildContext context, String label) {
 /// does; the Asset cell is the card's own `name (code) · Org Unit` line; the
 /// priority is a number, so end-aligned in tabular figures. Only a caller who can
 /// act has the Actions column, because only they are offered the act.
-List<AppTableColumn> _columns(BuildContext context, {required bool canAct}) => [
-  const AppTableColumn('Job plan', flex: 3),
-  const AppTableColumn('Asset', flex: 4),
-  const AppTableColumn('Interval', flex: 3),
-  // A number column is sized to its label, which is wider than its digits.
-  AppTableColumn(
-    'Priority',
-    width: _bandLabelWidth(context, 'Priority') + Spacing.sm,
-    align: AppColumnAlign.end,
-  ),
-  const AppTableColumn('Due', flex: 3),
-  const AppTableColumn('Rules', flex: 2),
-  if (canAct)
+List<AppTableColumn> _columns(BuildContext context, {required bool canAct}) {
+  final l10n = AppLocalizations.of(context);
+  return [
+    AppTableColumn(l10n.pmSchedulesJobPlanColumn, flex: 3),
+    AppTableColumn(l10n.commonAsset, flex: 4),
+    AppTableColumn(l10n.pmSchedulesInterval, flex: 3),
+    // A number column is sized to its label, which is wider than its digits.
     AppTableColumn(
-      'Actions',
-      // The button's widest label, its own horizontal padding either side
-      // (`Spacing.xl`), and the slot's gutter.
-      width:
-          _widestLabel(context, const ['Deactivate', 'Reactivate']) + 2 * Spacing.xl + Spacing.sm,
+      l10n.commonPriority,
+      width: _bandLabelWidth(context, l10n.commonPriority) + Spacing.sm,
       align: AppColumnAlign.end,
     ),
-];
+    AppTableColumn(l10n.pmSchedulesDue, flex: 3),
+    AppTableColumn(l10n.pmSchedulesRules, flex: 2),
+    if (canAct)
+      AppTableColumn(
+        l10n.commonActions,
+        // The button's widest label, its own horizontal padding either side
+        // (`Spacing.xl`), and the slot's gutter.
+        width: _widestLabel(context, [l10n.jobPlansDeactivate, l10n.jobPlansReactivate]) +
+            2 * Spacing.xl +
+            Spacing.sm,
+        align: AppColumnAlign.end,
+      ),
+  ];
+}
 
 class _PmScheduleTableRow extends StatelessWidget {
   const _PmScheduleTableRow({
@@ -441,6 +445,7 @@ class _PmScheduleTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final state = context.watch<PmSchedulesBloc>().state;
     final busy = state is PmSchedulesLoaded && state.isMutating;
@@ -458,7 +463,7 @@ class _PmScheduleTableRow extends StatelessWidget {
 
     return RowDisclosure(
       toggleKey: PmSchedulesScreen.rulesKey(schedule.id),
-      label: '$ruleCount rules',
+      label: l10n.pmSchedulesRuleCount(ruleCount),
       rowBuilder: (context, toggle) => KeyedSubtree(
         key: PmSchedulesScreen.rowKey(schedule.id),
         child: AppTableRow(
@@ -469,13 +474,13 @@ class _PmScheduleTableRow extends StatelessWidget {
                 schedule.jobPlanName,
                 style: dense?.copyWith(color: palette.textPrimary),
               ),
-              chipLabel: 'Inactive',
+              chipLabel: l10n.jobPlansInactive,
               chip: schedule.isActive
                   ? null
                   : shrinkWrapTargets(
                       StatusChip(
                         key: PmSchedulesScreen.inactiveChipKey(schedule.id),
-                        label: 'Inactive',
+                        label: l10n.jobPlansInactive,
                         tone: StatusTone.neutral,
                       ),
                     ),
@@ -484,13 +489,13 @@ class _PmScheduleTableRow extends StatelessWidget {
               '${schedule.assetName} (${schedule.assetCode}) · ${schedule.orgUnitName}',
               style: muted,
             ),
-            DisclosingText(_intervalLabel(schedule), style: muted),
+            DisclosingText(_intervalLabel(l10n, schedule), style: muted),
             Text(
               '${schedule.priority}',
               maxLines: 1,
               style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
             ),
-            DisclosingText(_PmScheduleCard._dueLabel(schedule), style: muted),
+            DisclosingText(_PmScheduleCard._dueLabel(l10n, schedule), style: muted),
             toggle,
             if (canAct)
               shrinkWrapTargets(
@@ -507,7 +512,8 @@ class _PmScheduleTableRow extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: Text(schedule.isActive ? 'Deactivate' : 'Reactivate'),
+                  child:
+                      Text(schedule.isActive ? l10n.jobPlansDeactivate : l10n.jobPlansReactivate),
                 ),
               ),
           ],
@@ -518,12 +524,14 @@ class _PmScheduleTableRow extends StatelessWidget {
         spacing: Spacing.md,
         runSpacing: Spacing.xxs,
         children: [
-          Text('Rolls from ${schedule.anchorLabel}', style: muted),
-          Text('Raised ${schedule.leadTimeDays} days early', style: muted),
+          Text(l10n.pmSchedulesRollsFrom(schedule.anchorLabel), style: muted),
+          Text(l10n.pmSchedulesLeadTime(schedule.leadTimeDays), style: muted),
           if (hasAccumulated)
             Text(
-              'Accumulated ${_PmScheduleCard._trim(schedule.currentMeter)} of '
-              '${_PmScheduleCard._trim(schedule.nextDueMeter)}',
+              l10n.pmSchedulesAccumulated(
+                _PmScheduleCard._trim(schedule.currentMeter),
+                _PmScheduleCard._trim(schedule.nextDueMeter),
+              ),
               style: muted,
             ),
         ],
@@ -533,12 +541,14 @@ class _PmScheduleTableRow extends StatelessWidget {
 }
 
 /// The interval in the card's words: a meter target or a number of days.
-String _intervalLabel(PmSchedule schedule) {
+String _intervalLabel(AppLocalizations l10n, PmSchedule schedule) {
   if (schedule.isMeterDriven) {
-    return 'Every ${_PmScheduleCard._trim(schedule.intervalMeter)} of '
-        '${schedule.meterName ?? schedule.meterCode ?? 'the meter'}';
+    return l10n.pmSchedulesEveryMeter(
+      _PmScheduleCard._trim(schedule.intervalMeter),
+      schedule.meterName ?? schedule.meterCode ?? l10n.pmSchedulesTheMeter,
+    );
   }
-  return 'Every ${schedule.intervalDays} days';
+  return l10n.pmSchedulesEveryDays(schedule.intervalDays ?? 0);
 }
 
 class _PmScheduleCard extends StatelessWidget {
@@ -549,6 +559,7 @@ class _PmScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final state = context.watch<PmSchedulesBloc>().state;
     final busy = state is PmSchedulesLoaded && state.isMutating;
@@ -584,7 +595,7 @@ class _PmScheduleCard extends StatelessWidget {
                 if (!schedule.isActive)
                   StatusChip(
                     key: PmSchedulesScreen.inactiveChipKey(schedule.id),
-                    label: 'Inactive',
+                    label: l10n.jobPlansInactive,
                     tone: StatusTone.neutral,
                   ),
               ],
@@ -597,22 +608,28 @@ class _PmScheduleCard extends StatelessWidget {
               children: [
                 if (schedule.isMeterDriven)
                   Text(
-                    'Every ${_trim(schedule.intervalMeter)} of ${schedule.meterName ?? schedule.meterCode ?? 'the meter'}',
+                    l10n.pmSchedulesEveryMeter(
+                      _trim(schedule.intervalMeter),
+                      schedule.meterName ?? schedule.meterCode ?? l10n.pmSchedulesTheMeter,
+                    ),
                     style: muted,
                   )
                 else
-                  Text('Every ${schedule.intervalDays} days', style: muted),
-                Text('Rolls from ${schedule.anchorLabel}', style: muted),
-                Text('Raised ${schedule.leadTimeDays} days early', style: muted),
-                Text('Priority ${schedule.priority}', style: muted),
+                  Text(l10n.pmSchedulesEveryDays(schedule.intervalDays ?? 0), style: muted),
+                Text(l10n.pmSchedulesRollsFrom(schedule.anchorLabel), style: muted),
+                Text(l10n.pmSchedulesLeadTime(schedule.leadTimeDays), style: muted),
+                Text(l10n.pmSchedulesPriorityLine('${schedule.priority}'), style: muted),
                 if (schedule.isMeterDriven &&
                     schedule.currentMeter != null &&
                     schedule.nextDueMeter != null)
                   Text(
-                    'Accumulated ${_trim(schedule.currentMeter)} of ${_trim(schedule.nextDueMeter)}',
+                    l10n.pmSchedulesAccumulated(
+                      _trim(schedule.currentMeter),
+                      _trim(schedule.nextDueMeter),
+                    ),
                     style: muted,
                   ),
-                Text(_dueLabel(schedule), style: muted),
+                Text(_dueLabel(l10n, schedule), style: muted),
               ],
             ),
             if (canAct) ...[
@@ -628,7 +645,8 @@ class _PmScheduleCard extends StatelessWidget {
                         ),
                       ),
                 style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                child: Text(schedule.isActive ? 'Deactivate' : 'Reactivate'),
+                child:
+                    Text(schedule.isActive ? l10n.jobPlansDeactivate : l10n.jobPlansReactivate),
               ),
             ],
           ],
@@ -640,19 +658,19 @@ class _PmScheduleCard extends StatelessWidget {
   /// The next due point in words, using the server's own computed state
   /// rather than doing arithmetic on the client. A meter-driven schedule has
   /// no date; it is due once accumulated use reaches its target (ADR-0029).
-  static String _dueLabel(PmSchedule schedule) {
+  static String _dueLabel(AppLocalizations l10n, PmSchedule schedule) {
     if (schedule.isMeterDriven) {
-      if (schedule.meterDue) return 'Due now';
-      if (schedule.nextDueMeter == null) return 'No meter target yet';
-      return 'Due at ${_trim(schedule.nextDueMeter)}';
+      if (schedule.meterDue) return l10n.pmSchedulesDueNow;
+      if (schedule.nextDueMeter == null) return l10n.pmSchedulesNoMeterTarget;
+      return l10n.pmSchedulesDueAt(_trim(schedule.nextDueMeter));
     }
     final nextDueOn = schedule.nextDueOn;
-    if (nextDueOn == null) return 'No due date yet';
+    if (nextDueOn == null) return l10n.pmSchedulesNoDueDate;
     final days = schedule.daysUntilDue;
-    if (days == null) return 'Next due $nextDueOn';
-    if (days < 0) return 'Overdue since $nextDueOn';
-    if (days == 0) return 'Due today';
-    return 'Due $nextDueOn (in $days days)';
+    if (days == null) return l10n.pmSchedulesNextDue(nextDueOn);
+    if (days < 0) return l10n.pmSchedulesOverdueSince(nextDueOn);
+    if (days == 0) return l10n.pmSchedulesDueToday;
+    return l10n.pmSchedulesDueIn(nextDueOn, days);
   }
 
   /// A number without a trailing `.0`, the same way the meter list shows its
@@ -669,10 +687,11 @@ class _PmSchedulesEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const PlatformEmptyState.noneExist(
+    final l10n = AppLocalizations.of(context);
+    return PlatformEmptyState.noneExist(
       key: PmSchedulesScreen.emptyKey,
-      title: 'Nothing is scheduled',
-      message: 'No PM schedule is attached to this Site\'s Assets yet.',
+      title: l10n.pmSchedulesNoneExistTitle,
+      message: l10n.pmSchedulesNoneExistMessage,
     );
   }
 }

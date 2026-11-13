@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../theme.dart';
 import '../widgets/app_form_submit.dart';
@@ -26,12 +27,15 @@ class ChangePasswordDialog extends StatefulWidget {
   static const ValueKey<String> submitKey = ValueKey<String>('change-password-submit');
   static const ValueKey<String> cancelKey = ValueKey<String>('change-password-cancel');
 
-  /// What the Shell shows once the change has landed.
-  static const String changedMessage = 'Your password was changed.';
-
   /// Opens the dialog; on success closes it and confirms on the Shell's own
   /// messenger. The Bloc is dialog-scoped and built fresh on every open.
+  ///
+  /// The catalogue is read **before** the first `await`: `showDialog` returns a
+  /// future, and the `BuildContext` that resolved it belongs to the Screen
+  /// behind the dialog. The `AppLocalizations` object itself is a plain value
+  /// and stays usable after the dialog closes.
   static Future<void> open(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final peopleApi = context.read<PeopleApi>();
     final authGateway = context.read<AuthGateway>();
     final messenger = ScaffoldMessenger.of(context);
@@ -44,7 +48,7 @@ class ChangePasswordDialog extends StatefulWidget {
       ),
     );
     if (changed ?? false) {
-      messenger.showSnackBar(const SnackBar(content: Text(changedMessage)));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.accountPasswordChanged)));
     }
   }
 
@@ -68,13 +72,14 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
 
   void _submit(ChangePasswordState state) {
     if (state is ChangePasswordInProgress) return;
+    final l10n = AppLocalizations.of(context);
     if (_current.text.isEmpty) {
-      setState(() => _localFailure = 'Enter your current password.');
+      setState(() => _localFailure = l10n.accountPasswordCurrentRequired);
       return;
     }
     if (_new.text.length < PeopleApi.minimumPasswordLength) {
-      setState(() => _localFailure =
-          'Use at least ${PeopleApi.minimumPasswordLength} characters for the new password.');
+      setState(() =>
+          _localFailure = l10n.accountPasswordTooShort(PeopleApi.minimumPasswordLength));
       return;
     }
     setState(() => _localFailure = null);
@@ -85,6 +90,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocConsumer<ChangePasswordBloc, ChangePasswordState>(
       listener: (context, state) {
@@ -94,7 +100,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
         final awaiting = state is ChangePasswordInProgress;
         final failure = _localFailure ?? (state is ChangePasswordFailed ? state.message : null);
         return AlertDialog(
-          title: const Text('Change password'),
+          title: Text(l10n.shellChangePassword),
           content: SizedBox(
             width: 420,
             child: SingleChildScrollView(
@@ -114,7 +120,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                       enabled: !awaiting,
                       obscureText: true,
                       autofocus: true,
-                      decoration: const InputDecoration(labelText: 'Current password'),
+                      decoration: InputDecoration(labelText: l10n.accountPasswordCurrent),
                     ),
                     const SizedBox(height: Spacing.md),
                     TextField(
@@ -123,8 +129,8 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                       enabled: !awaiting,
                       obscureText: true,
                       decoration: InputDecoration(
-                        labelText: 'New password',
-                        helperText: 'At least ${PeopleApi.minimumPasswordLength} characters.',
+                        labelText: l10n.accountPasswordNew,
+                        helperText: l10n.accountPasswordMinimum(PeopleApi.minimumPasswordLength),
                       ),
                       onSubmitted: (_) => _submit(state),
                     ),
@@ -147,12 +153,12 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
             TextButton(
               key: ChangePasswordDialog.cancelKey,
               onPressed: awaiting ? null : () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(l10n.commonCancel),
             ),
             FilledButton(
               key: ChangePasswordDialog.submitKey,
               onPressed: awaiting ? null : () => _submit(state),
-              child: Text(awaiting ? 'Saving…' : 'Change password'),
+              child: Text(awaiting ? l10n.commonSaving : l10n.shellChangePassword),
             ),
           ],
         );

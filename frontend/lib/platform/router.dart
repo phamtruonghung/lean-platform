@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../l10n/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -598,6 +600,86 @@ const String _titleSuffix = 'Platform';
 /// the one `Shift handover · ${…}` already uses between two names on a page.
 const String _titleSeparator = ' · ';
 
+/// [_screenTitles]'s labels in [l10n]'s language, for the caller that has a
+/// catalogue to ask (issue t_0ac0eb9e).
+///
+/// A Destination's row asks for the very same word the sidebar shows
+/// (`l10n.navWorkOrders`), so the tab and the rail cannot drift apart; the rows
+/// that name a **record** rather than a Screen get words of their own. `null`
+/// means this switch has no row for that path, and [documentTitle] falls back to
+/// [_screenTitles]'s English — the same way `destinationLabel` falls back to the
+/// Destination's own label, because an English tab is better than a blank one.
+String? _translatedScreenTitle(AppLocalizations l10n, String path) => switch (path) {
+      '/sign-in' => l10n.titleSignIn,
+      '/awaiting-approval' => l10n.titleAwaitingApproval,
+      '/change-password' => l10n.titleChooseNewPassword,
+      '/floor' => l10n.titleFloor,
+      '/actions/capas/:id/report' => l10n.titleCapaReport,
+      '/training/:id/form' => l10n.titleTrainingRecordForm,
+      '/' => l10n.titleWelcome,
+      '/directory' => l10n.navDirectory,
+      '/directory/:id' => l10n.titleEmployee,
+      '/directory/:employeeId/work-hours' => l10n.titleWorkedHours,
+      '/attendance' => l10n.navAttendance,
+      '/attendance/to-confirm' => l10n.titleAttendanceToConfirm,
+      '/attendance/:shiftInstanceId' => l10n.titleAttendanceSheet,
+      '/training' => l10n.titleTrainingRecords,
+      '/training/to-confirm' => l10n.trainingToConfirm,
+      '/training/:id' => l10n.titleTrainingRecord,
+      '/me/signature' => l10n.navMySignature,
+      '/job-roles' => l10n.navJobRoles,
+      '/org-units' => l10n.navOrgUnits,
+      '/skills' => l10n.navSkills,
+      '/leave-requests' => l10n.navLeaveRequests,
+      '/cost-rates' => l10n.navCostRates,
+      '/product-costs' => l10n.navProductStandardCosts,
+      '/products' => l10n.navProducts,
+      '/defect-codes' => l10n.navDefectCodes,
+      '/customers' => l10n.navCustomers,
+      '/slide-show' => l10n.titleQualitySlideShow,
+      '/complaints' => l10n.navCustomerComplaints,
+      '/complaints/:id' => l10n.titleCustomerComplaint,
+      '/suppliers' => l10n.navSuppliers,
+      '/supplier-ncrs' => l10n.navSupplierNcrs,
+      '/supplier-ncrs/:id' => l10n.titleSupplierNcr,
+      '/non-conformances' => l10n.navNonConformances,
+      '/non-conformances/:id' => l10n.titleNonConformance,
+      '/production/sections' => l10n.navShiftHandovers,
+      '/production/sections/:orgUnitId/board' => l10n.navShiftHandovers,
+      '/production/sections/:orgUnitId/handover/:shiftInstanceId' => l10n.titleShiftHandover,
+      '/safety/incidents' => l10n.titleSafetyIncidents,
+      '/safety/incidents/:id' => l10n.titleSafetyIncident,
+      '/safety/observations' => l10n.titleSafetyObservations,
+      '/safety/observations/:id' => l10n.titleSafetyObservation,
+      '/safety/injury-types' => l10n.navInjuryTypes,
+      '/safety/body-parts' => l10n.navBodyParts,
+      '/skill-coverage' => l10n.navSkillCoverage,
+      '/kpi' => l10n.navKpiCatalogue,
+      '/kpi/review' => l10n.navKpiReview,
+      '/kpi/:kpiId/targets' => l10n.titleKpiTargets,
+      '/tier-board' => l10n.navTierBoard,
+      '/actions/capas' => l10n.navCapas,
+      '/actions' => l10n.titleActions,
+      '/actions/:id' => l10n.titleAction,
+      '/actions/capas/:id' => l10n.navCapas,
+      '/approvals' => l10n.titleApprovalQueue,
+      '/assets' => l10n.navAssets,
+      '/parts' => l10n.navParts,
+      '/stores' => l10n.navStores,
+      '/stores/:id' => l10n.titleStoreStock,
+      '/work-orders' => l10n.navWorkOrders,
+      '/work-orders/:id' => l10n.workOrderTitle,
+      '/my-requests' => l10n.navMyRequests,
+      '/requests' => l10n.navTriageQueue,
+      '/downtime' => l10n.navDowntime,
+      '/pm-schedules' => l10n.navPmSchedules,
+      '/meters' => l10n.navMeters,
+      '/job-plans' => l10n.navJobPlans,
+      '/accounts' => l10n.navAccounts,
+      '/settings' => l10n.settingsTitle,
+      _ => null,
+    };
+
 /// The browser tab's title for the address whose **declared** path is
 /// [fullPath] — `RouteMatchList.fullPath`, e.g. `/work-orders/:id` for
 /// `/work-orders/42`.
@@ -606,10 +688,17 @@ const String _titleSeparator = ' · ';
 /// the enclosing Screen answers (see [_screenTitles]). An address the router
 /// could not match at all — an empty path, which `errorBuilder` renders as the
 /// not-found Screen — is the bare app name rather than a wrong Screen's.
-String documentTitle(String fullPath) {
+///
+/// **[l10n] is the language the tab is written in.** Passed rather than read
+/// from a `BuildContext` because the caller owns the address, not the widget
+/// tree: `PlatformApp` rebuilds the title from the locale cubit, and a test asks
+/// for one language without pumping an app. Omitted, the title is the shipped
+/// English, which is what a caller with no catalogue to hand should get.
+String documentTitle(String fullPath, {AppLocalizations? l10n}) {
   var path = fullPath;
   while (path.isNotEmpty) {
-    final label = _screenTitles[path];
+    final label =
+        (l10n == null ? null : _translatedScreenTitle(l10n, path)) ?? _screenTitles[path];
     if (label != null) return '$label$_titleSeparator$_titleSuffix';
     final parent = path.lastIndexOf('/');
     // `<= 0` rather than `< 0`: `/` and `` have no parent left to ask.

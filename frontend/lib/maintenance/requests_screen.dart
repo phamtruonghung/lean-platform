@@ -31,6 +31,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
@@ -108,6 +109,7 @@ class RequestsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<RequestsBloc>().state;
 
     return Scaffold(
@@ -121,7 +123,7 @@ class RequestsScreen extends StatelessWidget {
               RequestsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               RequestsUnavailable(message: final message) => PlatformFailureState(
                 key: RequestsScreen.failedKey,
-                title: 'The requests could not be read',
+                title: l10n.requestsUnavailableTitle,
                 message: message,
                 retryKey: RequestsScreen.retryKey,
                 onRetry: () => context.read<RequestsBloc>().add(const RequestsStarted()),
@@ -151,6 +153,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is RequestsLoaded ? state as RequestsLoaded : null;
 
     return Center(
@@ -159,10 +162,8 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Triage queue',
-            description:
-                'The Requests waiting for a decision at this Site. Accepting one raises '
-                'a Work order for it.',
+            title: l10n.navTriageQueue,
+            description: l10n.requestsDescription,
             below: loaded != null && loaded.sites.length > 1
                 ? SizedBox(
                     width: 280,
@@ -170,9 +171,9 @@ class _Header extends StatelessWidget {
                       key: RequestsScreen.siteKey,
                       initialValue: loaded.siteId,
                       isDense: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Site',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.commonSite,
+                        border: const OutlineInputBorder(),
                       ),
                       items: [
                         for (final site in loaded.sites)
@@ -275,6 +276,7 @@ class _RequestsListState extends State<_RequestsList> {
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingRequests;
+    final l10n = AppLocalizations.of(context);
     // The box this Screen actually got from its parent, scaled by the reader's
     // text size (design-language §10) — never the window.
     return LayoutBuilder(
@@ -300,8 +302,8 @@ class _RequestsListState extends State<_RequestsList> {
                           width: box.maxWidth,
                           child: AppFilterField(
                             name: RequestsScreen.filterFieldName,
-                            label: 'Filter requests',
-                            helperText: 'By description, Request number or Asset.',
+                            label: l10n.requestsFilter,
+                            helperText: l10n.requestsFilterHelp,
                             term: _term,
                             onChanged: (term) => setState(() => _term = term),
                             shown: matches.length,
@@ -317,10 +319,8 @@ class _RequestsListState extends State<_RequestsList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: RequestsScreen.noMatchKey,
-                          title: 'No requests match',
-                          message:
-                              'Requests are waiting at this Site, but none matches '
-                              '"${_term.trim()}". Try a different description or Asset.',
+                          title: l10n.requestsNoMatch,
+                          message: l10n.requestsNoMatchMessage(_term.trim()),
                         )
                       : narrow
                       ? ListView.separated(
@@ -400,25 +400,26 @@ List<AppTableColumn> _columns(
     return (content > bandLabel ? content : bandLabel) + Spacing.sm;
   }
 
+  final l10n = AppLocalizations.of(context);
   final numeric = AppTableRow.numberStyle(context);
   final labelLarge = Theme.of(context).textTheme.labelLarge;
   return [
-    const AppTableColumn('Request', flex: 4),
-    const AppTableColumn('Summary', flex: 4),
-    const AppTableColumn('Asset', flex: 3),
-    const AppTableColumn('Raised by', flex: 2),
+    AppTableColumn(l10n.requestsNumberColumn, flex: 4),
+    AppTableColumn(l10n.commonSummary, flex: 4),
+    AppTableColumn(l10n.commonAsset, flex: 3),
+    AppTableColumn(l10n.requestsRaisedBy, flex: 2),
     AppTableColumn(
-      'Raised',
+      l10n.requestsRaisedDate,
       // The widest month, with the digits of a number cell (tabular, so each is
       // as wide as the next).
       width: sized(
         _widest(context, [for (final month in requestDateMonths) '00 $month 0000'], numeric),
-        'Raised',
+        l10n.requestsRaisedDate,
       ),
       align: AppColumnAlign.end,
     ),
     AppTableColumn(
-      'Status',
+      l10n.commonStatus,
       // A chip's own padding and label padding (`Spacing.xxl`).
       width: sized(
         // The five states the database allows (`maintenance_requests.status`), and
@@ -433,27 +434,27 @@ List<AppTableColumn> _columns(
               for (final r in requests) r.statusLabel,
             ], labelLarge) +
             Spacing.xxl,
-        'Status',
+        l10n.commonStatus,
       ),
     ),
     AppTableColumn(
-      'Urgency',
+      l10n.requestsUrgency,
       width: sized(
         _widest(context, [
               for (final u in RequestUrgency.values) u.label,
               for (final r in requests) r.urgencyLabel,
             ], labelLarge) +
             Spacing.xxl,
-        'Urgency',
+        l10n.requestsUrgency,
       ),
     ),
     if (canTriage)
       AppTableColumn(
-        'Actions',
+        l10n.commonActions,
         // Accept (its label and the button's horizontal padding either side, in
         // `Spacing.xl`), the gap, and the kebab at the 44px floor.
         width:
-            _widest(context, const ['Accept'], labelLarge) +
+            _widest(context, [l10n.requestsAccept], labelLarge) +
             2 * Spacing.xl +
             Spacing.sm +
             AppTouchTarget.min +
@@ -477,6 +478,7 @@ class _RequestTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final muted = dense?.copyWith(color: palette.textMuted);
@@ -511,7 +513,7 @@ class _RequestTableRow extends StatelessWidget {
                     const SizedBox(width: Spacing.xxs),
                     Flexible(
                       child: Text(
-                        'Production is stopped',
+                        l10n.requestsProductionStopped,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: dense?.copyWith(color: palette.statusDanger),
@@ -553,6 +555,7 @@ class _RequestRowActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<RequestsBloc>().state;
     final busy = state is RequestsLoaded && state.isTriaging;
     const size = Size(AppTouchTarget.min, AppTouchTarget.min);
@@ -563,13 +566,13 @@ class _RequestRowActions extends StatelessWidget {
           key: RequestsScreen.acceptKey(request.id),
           onPressed: busy ? null : () => _openAccept(context, request),
           style: FilledButton.styleFrom(minimumSize: size),
-          child: const Text('Accept'),
+          child: Text(l10n.requestsAccept),
         ),
         const SizedBox(width: Spacing.sm),
         Builder(
           builder: (buttonContext) => IconButton(
             key: RequestsScreen.rowActionsKey(request.id),
-            tooltip: 'More actions',
+            tooltip: l10n.commonMoreActions,
             icon: const Icon(Icons.more_vert),
             style: IconButton.styleFrom(minimumSize: size),
             onPressed: busy ? null : () => _openMenu(buttonContext),
@@ -589,14 +592,16 @@ class _RequestRowActions extends StatelessWidget {
       ),
       Offset.zero & overlay.size,
     );
+    final l10n = AppLocalizations.of(context);
     final decline = RequestsScreen.declineKey(request.id);
     final duplicate = RequestsScreen.duplicateKey(request.id);
     final selected = await showMenu<Key>(
       context: context,
       position: position,
       items: [
-        PopupMenuItem<Key>(key: decline, value: decline, child: const Text('Decline')),
-        PopupMenuItem<Key>(key: duplicate, value: duplicate, child: const Text('Mark duplicate')),
+        PopupMenuItem<Key>(key: decline, value: decline, child: Text(l10n.requestsDecline)),
+        PopupMenuItem<Key>(
+            key: duplicate, value: duplicate, child: Text(l10n.requestsMarkDuplicate)),
       ],
     );
     if (selected == null || !context.mounted) return;
@@ -659,6 +664,7 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<RequestsBloc>().state;
     final busy = state is RequestsLoaded && state.isTriaging;
     final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
@@ -703,7 +709,7 @@ class _RequestCard extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 if (request.reporterName != null)
-                  Text('Raised by ${request.reporterName}', style: muted),
+                  Text(l10n.requestsRaisedByPerson(request.reporterName!), style: muted),
                 if (request.productionStopped)
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -718,7 +724,7 @@ class _RequestCard extends StatelessWidget {
                       // card rather than running past its edge.
                       Flexible(
                         child: Text(
-                          'Production is stopped',
+                          l10n.requestsProductionStopped,
                           style: AppTypography.floor(context)
                               ?.copyWith(color: AppColors.of(context).statusDanger),
                         ),
@@ -737,19 +743,19 @@ class _RequestCard extends StatelessWidget {
                     key: RequestsScreen.acceptKey(request.id),
                     onPressed: busy ? null : () => _openAccept(context),
                     style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
-                    child: const Text('Accept'),
+                    child: Text(l10n.requestsAccept),
                   ),
                   OutlinedButton(
                     key: RequestsScreen.declineKey(request.id),
                     onPressed: busy ? null : () => _openDecline(context),
                     style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                    child: const Text('Decline'),
+                    child: Text(l10n.requestsDecline),
                   ),
                   OutlinedButton(
                     key: RequestsScreen.duplicateKey(request.id),
                     onPressed: busy ? null : () => _openDuplicate(context),
                     style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                    child: const Text('Mark duplicate'),
+                    child: Text(l10n.requestsMarkDuplicate),
                   ),
                 ],
               ),
@@ -812,10 +818,11 @@ class _RequestsEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const PlatformEmptyState.noneExist(
+    final l10n = AppLocalizations.of(context);
+    return PlatformEmptyState.noneExist(
       key: RequestsScreen.emptyKey,
-      title: 'Nothing is waiting',
-      message: 'No Requests are waiting for a decision at this Site.',
+      title: l10n.requestsNoneExistTitle,
+      message: l10n.requestsNoneExistMessage,
     );
   }
 }

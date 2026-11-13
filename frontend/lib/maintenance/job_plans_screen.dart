@@ -24,6 +24,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -90,6 +91,7 @@ class JobPlansScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<JobPlansBloc>().state;
 
     return Scaffold(
@@ -103,7 +105,7 @@ class JobPlansScreen extends StatelessWidget {
               JobPlansLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               JobPlansUnavailable(message: final message) => PlatformFailureState(
                 key: JobPlansScreen.failedKey,
-                title: 'The Job plans could not be read',
+                title: l10n.jobPlansUnavailableTitle,
                 message: message,
                 retryKey: JobPlansScreen.retryKey,
                 onRetry: () => context.read<JobPlansBloc>().add(const JobPlansStarted()),
@@ -126,6 +128,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is JobPlansLoaded ? state as JobPlansLoaded : null;
 
     return Center(
@@ -134,17 +137,15 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Job plans',
-            description:
-                'How each recurring job is done — the steps it takes and what each one '
-                'requires. A Work order follows a plan; it does not change one.',
+            title: l10n.navJobPlans,
+            description: l10n.jobPlansDescription,
             actions: [
               if (isAdmin && loaded != null)
                 FilledButton.icon(
                   key: JobPlansScreen.addKey,
                   onPressed: loaded.isMutating ? null : () => JobPlanFormDialog.open(context),
                   icon: const Icon(Icons.add),
-                  label: const Text('Add a Job plan'),
+                  label: Text(l10n.jobPlansAdd),
                   style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
                 ),
             ],
@@ -236,6 +237,7 @@ class _JobPlansListState extends State<_JobPlansList> {
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingPlans;
+    final l10n = AppLocalizations.of(context);
     // The box this Screen actually got from its parent, scaled by the reader's
     // text size (design-language §10) — never the window.
     return LayoutBuilder(
@@ -261,8 +263,8 @@ class _JobPlansListState extends State<_JobPlansList> {
                           width: box.maxWidth,
                           child: AppFilterField(
                             name: JobPlansScreen.filterFieldName,
-                            label: 'Filter Job plans',
-                            helperText: 'By name, code or description.',
+                            label: l10n.jobPlansFilter,
+                            helperText: l10n.jobPlansFilterHelp,
                             term: _term,
                             onChanged: (term) => setState(() => _term = term),
                             shown: matches.length,
@@ -278,10 +280,8 @@ class _JobPlansListState extends State<_JobPlansList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: JobPlansScreen.noMatchKey,
-                          title: 'No Job plans match',
-                          message:
-                              'The plant has Job plans, but none matches '
-                              '"${_term.trim()}". Try a different name, code or description.',
+                          title: l10n.jobPlansNoMatch,
+                          message: l10n.jobPlansNoMatchMessage(_term.trim()),
                         )
                       : narrow
                       ? ListView.separated(
@@ -354,26 +354,30 @@ double _bandLabelWidth(BuildContext context, String label) {
 /// card's header does; the hours are a number, so end-aligned in tabular
 /// figures; the shutdown marker is the card's own words. Only an administrator
 /// has the Actions column, because only an administrator is offered the act.
-List<AppTableColumn> _columns(BuildContext context, {required bool isAdmin}) => [
-  const AppTableColumn('Plan', flex: 4),
-  const AppTableColumn('Steps', flex: 2),
-  // A number column is sized to its label, which is wider than its digits.
-  AppTableColumn(
-    'Estimated hours',
-    width: _bandLabelWidth(context, 'Estimated hours') + Spacing.sm,
-    align: AppColumnAlign.end,
-  ),
-  const AppTableColumn('Shutdown', flex: 2),
-  if (isAdmin)
+List<AppTableColumn> _columns(BuildContext context, {required bool isAdmin}) {
+  final l10n = AppLocalizations.of(context);
+  return [
+    AppTableColumn(l10n.jobPlansPlanColumn, flex: 4),
+    AppTableColumn(l10n.jobPlansSteps, flex: 2),
+    // A number column is sized to its label, which is wider than its digits.
     AppTableColumn(
-      'Actions',
-      // The button's widest label, its own horizontal padding either side
-      // (`Spacing.xl`), and the slot's gutter.
-      width:
-          _widestLabel(context, const ['Deactivate', 'Reactivate']) + 2 * Spacing.xl + Spacing.sm,
+      l10n.jobPlansEstimatedHours,
+      width: _bandLabelWidth(context, l10n.jobPlansEstimatedHours) + Spacing.sm,
       align: AppColumnAlign.end,
     ),
-];
+    AppTableColumn(l10n.jobPlansShutdown, flex: 2),
+    if (isAdmin)
+      AppTableColumn(
+        l10n.commonActions,
+        // The button's widest label, its own horizontal padding either side
+        // (`Spacing.xl`), and the slot's gutter.
+        width: _widestLabel(context, [l10n.jobPlansDeactivate, l10n.jobPlansReactivate]) +
+            2 * Spacing.xl +
+            Spacing.sm,
+        align: AppColumnAlign.end,
+      ),
+  ];
+}
 
 class _JobPlanTableRow extends StatelessWidget {
   const _JobPlanTableRow({
@@ -389,6 +393,7 @@ class _JobPlanTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final state = context.watch<JobPlansBloc>().state;
     final busy = state is JobPlansLoaded && state.isMutating;
@@ -404,7 +409,7 @@ class _JobPlanTableRow extends StatelessWidget {
 
     return RowDisclosure(
       toggleKey: JobPlansScreen.stepsKey(plan.id),
-      label: '$stepCount ${stepCount == 1 ? 'step' : 'steps'}',
+      label: l10n.jobPlansStepCount(stepCount),
       rowBuilder: (context, toggle) => KeyedSubtree(
         key: JobPlansScreen.rowKey(plan.id),
         child: AppTableRow(
@@ -419,13 +424,13 @@ class _JobPlanTableRow extends StatelessWidget {
                   DisclosingText('${plan.code} · ${plan.workTypeLabel}', style: muted),
                 ],
               ),
-              chipLabel: 'Inactive',
+              chipLabel: l10n.jobPlansInactive,
               chip: plan.isActive
                   ? null
                   : shrinkWrapTargets(
                       StatusChip(
                         key: JobPlansScreen.inactiveChipKey(plan.id),
-                        label: 'Inactive',
+                        label: l10n.jobPlansInactive,
                         tone: StatusTone.neutral,
                       ),
                     ),
@@ -443,7 +448,7 @@ class _JobPlanTableRow extends StatelessWidget {
               ),
             ),
             plan.requiresShutdown
-                ? DisclosingText('Requires a shutdown', style: muted)
+                ? DisclosingText(l10n.jobPlansRequiresShutdown, style: muted)
                 : const SizedBox.shrink(),
             if (isAdmin)
               shrinkWrapTargets(
@@ -457,7 +462,7 @@ class _JobPlanTableRow extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: Text(plan.isActive ? 'Deactivate' : 'Reactivate'),
+                  child: Text(plan.isActive ? l10n.jobPlansDeactivate : l10n.jobPlansReactivate),
                 ),
               ),
           ],
@@ -473,7 +478,7 @@ class _JobPlanTableRow extends StatelessWidget {
             const SizedBox(height: Spacing.sm),
           ],
           if (plan.tasks.isEmpty)
-            Text('No steps recorded.', style: muted)
+            Text(l10n.jobPlansNoSteps, style: muted)
           else
             for (final task in plan.tasks) _JobPlanTaskRow(plan: plan, task: task),
         ],
@@ -490,6 +495,7 @@ class _JobPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final state = context.watch<JobPlansBloc>().state;
     final busy = state is JobPlansLoaded && state.isMutating;
@@ -522,7 +528,7 @@ class _JobPlanCard extends StatelessWidget {
                 if (!plan.isActive)
                   StatusChip(
                     key: JobPlansScreen.inactiveChipKey(plan.id),
-                    label: 'Inactive',
+                    label: l10n.jobPlansInactive,
                     tone: StatusTone.neutral,
                   ),
               ],
@@ -535,15 +541,16 @@ class _JobPlanCard extends StatelessWidget {
               const SizedBox(height: Spacing.xs),
               Text(
                 [
-                  if (plan.requiresShutdown) 'Requires a shutdown',
-                  if (plan.estimatedHours != null) 'About ${plan.estimatedHours} h',
+                  if (plan.requiresShutdown) l10n.jobPlansRequiresShutdown,
+                  if (plan.estimatedHours != null)
+                    l10n.jobPlansAboutHours('${plan.estimatedHours}'),
                 ].join(' · '),
                 style: muted,
               ),
             ],
             const SizedBox(height: Spacing.md),
             if (plan.tasks.isEmpty)
-              Text('No steps recorded.', style: muted)
+              Text(l10n.jobPlansNoSteps, style: muted)
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,7 +566,8 @@ class _JobPlanCard extends StatelessWidget {
                         JobPlanActiveToggled(jobPlanId: plan.id, isActive: !plan.isActive),
                       ),
                 style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                child: Text(plan.isActive ? 'Deactivate' : 'Reactivate'),
+                child:
+                    Text(plan.isActive ? l10n.jobPlansDeactivate : l10n.jobPlansReactivate),
               ),
             ],
           ],
@@ -579,6 +587,7 @@ class _JobPlanTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     return Padding(
       key: JobPlansScreen.taskKey(plan.id, task.id),
@@ -593,9 +602,9 @@ class _JobPlanTaskRow extends StatelessWidget {
               children: [
                 Text(task.instruction, style: AppTypography.dense(context)),
                 if (task.hasSkill)
-                  Text('Requires ${task.skillName}', style: muted)
+                  Text(l10n.workOrderRequiresSkill(task.skillName!), style: muted)
                 else
-                  Text('No skill required', style: muted),
+                  Text(l10n.workOrderNoSkill, style: muted),
               ],
             ),
           ),
@@ -610,10 +619,11 @@ class _JobPlansEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const PlatformEmptyState.noneExist(
+    final l10n = AppLocalizations.of(context);
+    return PlatformEmptyState.noneExist(
       key: JobPlansScreen.emptyKey,
-      title: 'No Job plans yet',
-      message: 'No reusable job plan has been defined. Add one and its steps will show here.',
+      title: l10n.jobPlansNoneExistTitle,
+      message: l10n.jobPlansNoneExistMessage,
     );
   }
 }

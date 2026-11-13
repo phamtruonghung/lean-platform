@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -97,6 +99,9 @@ class _PlatformAppState extends State<PlatformApp> {
   late final QualityPhotoPicker _qualityPhotoPicker;
   late final ThemeModeCubit _themeModeCubit;
   late final LocaleCubit _localeCubit;
+
+  /// Re-titles the tab when the language changes (see [_applyDocumentTitle]).
+  late final StreamSubscription<Locale> _localeSubscription;
   late final DocumentChrome _documentChrome;
 
   // Built once, not per rebuild: a mode change rebuilds `MaterialApp.router`,
@@ -130,16 +135,30 @@ class _PlatformAppState extends State<PlatformApp> {
     // opened on, so a reload of `/work-orders/42` is titled before anything
     // else touches it.
     _router.routerDelegate.addListener(_applyDocumentTitle);
+    // Choosing a language re-titles the tab too: the address did not change, so
+    // the router's own listener would never fire.
+    _localeSubscription = _localeCubit.stream.listen((_) => _applyDocumentTitle());
     _applyDocumentTitle();
   }
 
   /// The address on top of the stack, as the title table names it (see
-  /// [documentTitle] in `router.dart`).
-  void _applyDocumentTitle() => _documentChrome
-      .setTitle(documentTitle(_router.routerDelegate.currentConfiguration.fullPath));
+  /// [documentTitle] in `router.dart`), in the language the Platform is
+  /// speaking.
+  ///
+  /// The catalogue is taken from the locale cubit rather than from a
+  /// `BuildContext`: the `MaterialApp` that *has* one is built by this widget,
+  /// below it, so there is no ancestor `Localizations` to ask here — and the
+  /// tab is written from this State, not from a Screen.
+  void _applyDocumentTitle() => _documentChrome.setTitle(
+        documentTitle(
+          _router.routerDelegate.currentConfiguration.fullPath,
+          l10n: lookupAppLocalizations(_localeCubit.state),
+        ),
+      );
 
   @override
   void dispose() {
+    _localeSubscription.cancel();
     _router.routerDelegate.removeListener(_applyDocumentTitle);
     _router.dispose();
     _accountBloc.close();

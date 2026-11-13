@@ -126,5 +126,1018 @@
   "navShiftHandovers": "Bàn giao ca",
   "navApprovals": "Phê duyệt",
   "navAccounts": "Tài khoản",
-  "navRoles": "Vai trò"
+  "navRoles": "Vai trò",
+  "commonCancel": "Huỷ",
+  "@commonCancel": {
+    "description": "A dialog's button that abandons it without saving anything."
+  },
+  "commonSaving": "Đang lưu…",
+  "@commonSaving": {
+    "description": "A submit button's label while its request is in flight."
+  },
+  "accountPasswordCurrent": "Mật khẩu hiện tại",
+  "@accountPasswordCurrent": {
+    "description": "Label of the field where the signed-in person types the password they already have."
+  },
+  "accountPasswordNew": "Mật khẩu mới",
+  "@accountPasswordNew": {
+    "description": "Label of the field where the signed-in person types the password they want."
+  },
+  "accountPasswordMinimum": "Ít nhất {count} ký tự.",
+  "@accountPasswordMinimum": {
+    "description": "Helper text under the new-password field, stating the shortest password the server accepts.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "accountPasswordCurrentRequired": "Hãy nhập mật khẩu hiện tại.",
+  "@accountPasswordCurrentRequired": {
+    "description": "Shown in the change-password dialog when the current-password field was left empty."
+  },
+  "accountPasswordTooShort": "Mật khẩu mới phải có ít nhất {count} ký tự.",
+  "@accountPasswordTooShort": {
+    "description": "Shown in the change-password dialog when the new password is shorter than the server's minimum.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "accountPasswordChanged": "Mật khẩu của bạn đã được đổi.",
+  "@accountPasswordChanged": {
+    "description": "Confirmation shown on the Shell once the change has landed."
+  },
+  "homeGreeting": "Chào {name}",
+  "@homeGreeting": {
+    "description": "The Home Screen's title, greeting the signed-in person by their display name.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "homeNothingWaiting": "Không có gì đang chờ bạn.",
+  "@homeNothingWaiting": {
+    "description": "What Home says when every count it shows is zero."
+  },
+  "homeActionsUnavailable": "Không đọc được Hành động của bạn",
+  "@homeActionsUnavailable": {
+    "description": "Home's Actions group when its count could not be read."
+  },
+  "homeAssignedToYou": "Được giao cho bạn",
+  "@homeAssignedToYou": {
+    "description": "Home's card counting the open Actions whose owner is the signed-in person."
+  },
+  "homeAssignedToYouCaption": "Hành động đang mở mà bạn là người phụ trách",
+  "@homeAssignedToYouCaption": {
+    "description": "What the Assigned-to-you card counts, under its figure."
+  },
+  "homeAccountNotLinked": "Tài khoản của bạn chưa gắn với hồ sơ Nhân viên, nên không Hành động nào có thể giao cho bạn — hãy gắn ở mục Tài khoản",
+  "@homeAccountNotLinked": {
+    "description": "Stands in for the Assigned-to-you caption when the signed-in Account is not linked to an Employee."
+  },
+  "homeTrainingUnavailable": "Không đọc được Đào tạo cần xác nhận của bạn",
+  "@homeTrainingUnavailable": {
+    "description": "Home's People group when the Training-to-confirm count could not be read."
+  },
+  "trainingToConfirm": "Đào tạo cần xác nhận",
+  "@trainingToConfirm": {
+    "description": "The count of Training records sent to a person that they have not answered yet; a Home card, and a Screen title in the browser tab."
+  },
+  "homeTrainingToConfirmCaption": "Bản ghi đào tạo gửi cho bạn mà bạn chưa trả lời",
+  "@homeTrainingToConfirmCaption": {
+    "description": "What the Training-to-confirm card counts, under its figure."
+  },
+  "homeWorkOrdersUnavailable": "Không đọc được lệnh công việc",
+  "@homeWorkOrdersUnavailable": {
+    "description": "Home's Maintenance group when the Work order counts could not be read."
+  },
+  "homeOpenWorkOrders": "Lệnh công việc đang mở",
+  "@homeOpenWorkOrders": {
+    "description": "Home's card counting the Work orders raised and not yet complete."
+  },
+  "homeOpenWorkOrdersCaption": "Đã tạo và chưa hoàn thành",
+  "@homeOpenWorkOrdersCaption": {
+    "description": "What the Open-work-orders card counts, under its figure."
+  },
+  "homeAwaitingAssignment": "Chờ phân công",
+  "@homeAwaitingAssignment": {
+    "description": "Home's card counting the open Work orders nobody holds yet."
+  },
+  "homeAwaitingAssignmentScopedCaption": "Trong các Đơn vị tổ chức được cấp cho bạn và mọi đơn vị bên dưới",
+  "@homeAwaitingAssignmentScopedCaption": {
+    "description": "What the Awaiting-assignment card counts for a person whose view is narrowed to their own Grants."
+  },
+  "homeAwaitingAssignmentCaption": "Đang mở, chưa có người nhận",
+  "@homeAwaitingAssignmentCaption": {
+    "description": "What the Awaiting-assignment card counts for a person who sees the whole Site."
+  },
+  "homeApprovalsUnavailable": "Không đọc được Phê duyệt",
+  "@homeApprovalsUnavailable": {
+    "description": "Home's People group when the Approvals count could not be read."
+  },
+  "accountsAwaitingApproval": "Tài khoản chờ phê duyệt",
+  "@accountsAwaitingApproval": {
+    "description": "Home's card counting the Accounts that are waiting to be admitted to the Platform."
+  },
+  "homeAccountsAwaitingApprovalCaption": "Đang chờ được chấp nhận",
+  "@homeAccountsAwaitingApprovalCaption": {
+    "description": "What the Accounts-awaiting-Approval card counts, under its figure."
+  },
+  "commonSite": "Nhà máy",
+  "@commonSite": {
+    "description": "A Site's own name in a filter: the plant a list is narrowed to."
+  },
+  "commonSummary": "Nội dung",
+  "@commonSummary": {
+    "description": "Column header over a record's one-line description, and the field that holds it."
+  },
+  "commonAsset": "Tài sản",
+  "@commonAsset": {
+    "description": "The Asset a record is against. The same word the sidebar's Assets Destination uses."
+  },
+  "commonOrgUnit": "Đơn vị tổ chức",
+  "@commonOrgUnit": {
+    "description": "Column header over the Org Unit a record belongs to. The same word the sidebar's own Destination uses."
+  },
+  "commonStatus": "Trạng thái",
+  "@commonStatus": {
+    "description": "Column header over a record's status chip."
+  },
+  "commonAssignee": "Người phụ trách",
+  "@commonAssignee": {
+    "description": "Column header over the person a record is assigned to."
+  },
+  "commonActions": "Thao tác",
+  "@commonActions": {
+    "description": "Column header over a row's own buttons and overflow menu."
+  },
+  "commonUnassigned": "Chưa phân công",
+  "@commonUnassigned": {
+    "description": "Stands where an assignee's name would be when nobody holds the record yet."
+  },
+  "commonMoreActions": "Thêm thao tác",
+  "@commonMoreActions": {
+    "description": "Tooltip on a row's overflow trigger, which opens the actions that do not fit as buttons."
+  },
+  "workOrdersCount": "{count} lệnh công việc",
+  "@workOrdersCount": {
+    "description": "How many Work orders the list is showing, above the register.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "workOrdersCountNarrowed": ", thu hẹp theo {name}",
+  "@workOrdersCountNarrowed": {
+    "description": "Appended to the count of Work orders on screen while an Org Unit narrows the list.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrdersCountHistory": ", gồm cả đã hoàn thành và đã huỷ",
+  "@workOrdersCountHistory": {
+    "description": "Appended to the count of Work orders on screen while the history toggle is on."
+  },
+  "workOrdersUnavailableTitle": "Không đọc được lệnh công việc",
+  "@workOrdersUnavailableTitle": {
+    "description": "The failure state's heading when the list of Work orders could not be fetched."
+  },
+  "workOrdersDescription": "Công việc được tạo tại Nhà máy này, gắn với Thiết bị nào và ai đang phụ trách.",
+  "@workOrdersDescription": {
+    "description": "One-line description under the Work orders title."
+  },
+  "workOrdersRaise": "Tạo lệnh công việc",
+  "@workOrdersRaise": {
+    "description": "The button that opens the form for raising a new Work order, and the empty state's own action."
+  },
+  "workOrdersNarrowToOrgUnit": "Thu hẹp theo Đơn vị tổ chức",
+  "@workOrdersNarrowToOrgUnit": {
+    "description": "The button, and the picker's title, that narrow the Work order list to one Org Unit."
+  },
+  "workOrdersNarrowedTo": "Đã thu hẹp theo {name}",
+  "@workOrdersNarrowedTo": {
+    "description": "The chip naming the Org Unit the list is currently narrowed to.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrdersShowWholeSite": "Hiện lại toàn bộ Nhà máy",
+  "@workOrdersShowWholeSite": {
+    "description": "Tooltip on the control that clears the Org Unit narrowing from the Work order list."
+  },
+  "workOrdersShowHistory": "Hiện cả đã hoàn thành và đã huỷ",
+  "@workOrdersShowHistory": {
+    "description": "The toggle that brings completed and cancelled Work orders into the list."
+  },
+  "workOrdersNarrowTitle": "Thu hẹp danh sách",
+  "@workOrdersNarrowTitle": {
+    "description": "Title of the Org Unit tree inside the Work order list's narrowing picker."
+  },
+  "workOrdersNarrowDescription": "Chọn Đơn vị tổ chức để thu hẹp danh sách. Mọi đơn vị bên dưới cũng được tính.",
+  "@workOrdersNarrowDescription": {
+    "description": "What the narrowing picker's tree is for, under its title."
+  },
+  "workOrdersTruncated": "Có nhiều lệnh công việc hơn danh sách này hiển thị. Hãy thu hẹp theo Đơn vị tổ chức, hoặc tắt phần lịch sử, để xem phần còn lại.",
+  "@workOrdersTruncated": {
+    "description": "Said above the list when the read was capped, rather than leaving the cap to be inferred."
+  },
+  "workOrdersFilter": "Lọc lệnh công việc",
+  "@workOrdersFilter": {
+    "description": "Label of the search box above the Work order list."
+  },
+  "workOrdersFilterHelp": "Theo nội dung, số lệnh công việc hoặc Thiết bị.",
+  "@workOrdersFilterHelp": {
+    "description": "What the Work order list's search box matches on, under its label."
+  },
+  "workOrdersNoMatch": "Không có lệnh công việc nào khớp",
+  "@workOrdersNoMatch": {
+    "description": "The empty state the search box shows when its term matches none of the rows on screen."
+  },
+  "workOrdersNoMatchMessage": "Có công việc đang mở tại Nhà máy này, nhưng không việc nào khớp với “{term}”. Hãy thử nội dung hoặc Thiết bị khác, hoặc xoá bộ lọc.",
+  "@workOrdersNoMatchMessage": {
+    "description": "What the search box's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "workOrdersStart": "Bắt đầu",
+  "@workOrdersStart": {
+    "description": "The primary action on an approved Work order, which starts it."
+  },
+  "workOrdersComplete": "Hoàn thành",
+  "@workOrdersComplete": {
+    "description": "The primary action on a Work order that is in progress, which opens its completion form."
+  },
+  "workOrdersNumberColumn": "Số WO",
+  "@workOrdersNumberColumn": {
+    "description": "Column header over the number a Work order is known by."
+  },
+  "workOrdersAssign": "Phân công",
+  "@workOrdersAssign": {
+    "description": "The menu item that assigns a Work order nobody holds yet."
+  },
+  "workOrdersReassign": "Phân công lại",
+  "@workOrdersReassign": {
+    "description": "The menu item that changes who a Work order is assigned to."
+  },
+  "workOrdersFilteredEmptyTitle": "Không có lệnh công việc nào khớp",
+  "@workOrdersFilteredEmptyTitle": {
+    "description": "The empty state shown when the list is narrowed to an Org Unit that has no open work."
+  },
+  "workOrdersFilteredEmptyMessage": "Có công việc tại Nhà máy này, nhưng không việc nào được tạo tại {name} hoặc bên dưới đơn vị đó.",
+  "@workOrdersFilteredEmptyMessage": {
+    "description": "What the narrowed-to-an-Org-Unit empty state says, with history shown.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrdersFilteredEmptyMessageOpen": "Có công việc tại Nhà máy này, nhưng không việc nào được tạo tại {name} hoặc bên dưới đơn vị đó và còn đang mở.",
+  "@workOrdersFilteredEmptyMessageOpen": {
+    "description": "What the narrowed-to-an-Org-Unit empty state says while the list is still open-work only.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrdersThisOrgUnit": "Đơn vị tổ chức này",
+  "@workOrdersThisOrgUnit": {
+    "description": "Stands in for the Org Unit's name in the narrowed empty state when the list was narrowed without a name to show."
+  },
+  "workOrdersClearFilters": "Xoá bộ lọc",
+  "@workOrdersClearFilters": {
+    "description": "The action the narrowed empty state offers, which clears the Org Unit narrowing."
+  },
+  "workOrdersNoneExistTitle": "Không có công việc tại Nhà máy này",
+  "@workOrdersNoneExistTitle": {
+    "description": "The empty state shown when there is no work at all, with completed and cancelled included."
+  },
+  "workOrdersNoneOpenTitle": "Không có công việc nào đang mở tại Nhà máy này",
+  "@workOrdersNoneOpenTitle": {
+    "description": "The empty state shown when no Work order is open, with history hidden."
+  },
+  "workOrdersNoneExistMessage": "Chưa có việc nào được tạo trong các Đơn vị tổ chức bạn có thể thao tác. Hãy tạo một lệnh công việc, lệnh sẽ hiện ra ngay.",
+  "@workOrdersNoneExistMessage": {
+    "description": "What the genuinely-empty Work order state says, under its title."
+  },
+  "commonWorkType": "Loại công việc",
+  "@commonWorkType": {
+    "description": "Label over a Work order's kind of work (corrective, preventive, and the rest)."
+  },
+  "commonPriority": "Mức ưu tiên",
+  "@commonPriority": {
+    "description": "Label over a Work order's priority number."
+  },
+  "commonHours": "{hours} giờ",
+  "@commonHours": {
+    "description": "A number of booked hours, with its unit. The figure is already formatted without a pointless trailing zero.",
+    "placeholders": {
+      "hours": {"type": "String"}
+    }
+  },
+  "commonNoCostRecorded": "Chưa ghi nhận chi phí",
+  "@commonNoCostRecorded": {
+    "description": "Stands where a money figure would be when nothing has priced that line yet."
+  },
+  "workOrderUnavailableTitle": "Không đọc được lệnh công việc này",
+  "@workOrderUnavailableTitle": {
+    "description": "The failure state's heading when one Work order's detail could not be fetched."
+  },
+  "workOrderBackToList": "Về danh sách lệnh công việc",
+  "@workOrderBackToList": {
+    "description": "The link at the top of a Work order's detail that returns to the list."
+  },
+  "workOrderTitle": "Lệnh công việc",
+  "@workOrderTitle": {
+    "description": "The detail Screen's title, and the browser tab's name for it."
+  },
+  "workOrderTasksDescription": "Các bước được sao từ Kế hoạch công việc đã tạo ra lệnh này.",
+  "@workOrderTasksDescription": {
+    "description": "What a Work order's detail holds, shown under the title while it is still loading."
+  },
+  "workOrderBookLabour": "Ghi giờ công",
+  "@workOrderBookLabour": {
+    "description": "The action that books hours against a Work order."
+  },
+  "workOrderBookPart": "Xuất phụ tùng",
+  "@workOrderBookPart": {
+    "description": "The action that fits a part from a Store against a Work order."
+  },
+  "workOrderTasks": "Các bước",
+  "@workOrderTasks": {
+    "description": "Heading of the section listing the steps copied onto a Work order from its Job plan."
+  },
+  "workOrderNoTasks": "Lệnh công việc này chưa có bước nào được sao vào.",
+  "@workOrderNoTasks": {
+    "description": "Shown in the Tasks section when the Job plan behind the Work order had no steps."
+  },
+  "workOrderCostSoFar": "Chi phí đến nay",
+  "@workOrderCostSoFar": {
+    "description": "Heading of the section reporting the labour and parts booked against a Work order."
+  },
+  "workOrderNoLabour": "Chưa ghi giờ công nào.",
+  "@workOrderNoLabour": {
+    "description": "Shown in the cost section when no hours have been booked against the Work order."
+  },
+  "workOrderOvertime": "{hours} · {overtime} ngoài giờ",
+  "@workOrderOvertime": {
+    "description": "One activity's booked hours, with how much of them was worked overtime.",
+    "placeholders": {
+      "hours": {"type": "String"},
+      "overtime": {"type": "String"}
+    }
+  },
+  "workOrderLabourNote": "Giờ công đã ghi nằm trong chi phí nhân công của nhà máy đã báo cáo, không phải chi phí mới.",
+  "@workOrderLabourNote": {
+    "description": "The warning under the labour figures, which stops them being added to plant labour cost."
+  },
+  "workOrderOvertimeNote": "{hours} trong đó là ngoài giờ.",
+  "@workOrderOvertimeNote": {
+    "description": "How much of the booked labour was worked overtime.",
+    "placeholders": {
+      "hours": {"type": "String"}
+    }
+  },
+  "workOrderNoParts": "Chưa lắp phụ tùng nào.",
+  "@workOrderNoParts": {
+    "description": "Shown in the cost section when no part has been fitted to the Work order."
+  },
+  "workOrderPartsNote": "Phụ tùng là chi phí mới — thành phần duy nhất của bảo trì làm tăng chi phí.",
+  "@workOrderPartsNote": {
+    "description": "The note beside the parts total, which explains why it is added rather than reported."
+  },
+  "workOrderRequiresSkill": "Yêu cầu {name}",
+  "@workOrderRequiresSkill": {
+    "description": "A Work order task's required Skill, named under its instruction.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrderNoSkill": "Không yêu cầu kỹ năng",
+  "@workOrderNoSkill": {
+    "description": "Stands in for a task's required Skill when it names none."
+  },
+  "workOrderRecordsMeter": "Ghi chỉ số {name}",
+  "@workOrderRecordsMeter": {
+    "description": "The meter a Work order task records a reading from, under its instruction.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "workOrderReading": "Chỉ số {value}",
+  "@workOrderReading": {
+    "description": "The reading already recorded against a Work order task.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "workOrderRecordReading": "Ghi chỉ số",
+  "@workOrderRecordReading": {
+    "description": "The action on a Work order task that records a meter reading."
+  },
+  "requestsUnavailableTitle": "Không đọc được các yêu cầu",
+  "@requestsUnavailableTitle": {
+    "description": "The failure state's heading when the triage queue could not be fetched."
+  },
+  "requestsDescription": "Các Yêu cầu đang chờ quyết định tại Nhà máy này. Chấp nhận một yêu cầu sẽ tạo lệnh công việc cho yêu cầu đó.",
+  "@requestsDescription": {
+    "description": "One-line description under the Triage queue title."
+  },
+  "requestsFilter": "Lọc yêu cầu",
+  "@requestsFilter": {
+    "description": "Label of the search box above the triage queue."
+  },
+  "requestsFilterHelp": "Theo mô tả, số yêu cầu hoặc Tài sản.",
+  "@requestsFilterHelp": {
+    "description": "What the triage queue's search box matches on, under its label."
+  },
+  "requestsNoMatch": "Không có yêu cầu nào khớp",
+  "@requestsNoMatch": {
+    "description": "The empty state the triage queue's search box shows when its term matches nothing."
+  },
+  "requestsNoMatchMessage": "Có yêu cầu đang chờ tại Nhà máy này, nhưng không yêu cầu nào khớp với “{term}”. Hãy thử mô tả hoặc Tài sản khác.",
+  "@requestsNoMatchMessage": {
+    "description": "What the triage queue's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "requestsNumberColumn": "Số yêu cầu",
+  "@requestsNumberColumn": {
+    "description": "Column header over the number a Request is known by."
+  },
+  "requestsRaisedBy": "Người tạo",
+  "@requestsRaisedBy": {
+    "description": "Column header over the person who raised a Request."
+  },
+  "requestsRaisedDate": "Ngày tạo",
+  "@requestsRaisedDate": {
+    "description": "Column header over the date a Request was raised."
+  },
+  "requestsUrgency": "Mức khẩn",
+  "@requestsUrgency": {
+    "description": "Column header over how urgent a Request is."
+  },
+  "requestsProductionStopped": "Sản xuất đang dừng",
+  "@requestsProductionStopped": {
+    "description": "Said beside a Request whose own flag says production is stopped because of it."
+  },
+  "requestsAccept": "Chấp nhận",
+  "@requestsAccept": {
+    "description": "The triage action that accepts a Request and raises the Work order for it."
+  },
+  "requestsDecline": "Từ chối",
+  "@requestsDecline": {
+    "description": "The triage action that declines a Request."
+  },
+  "requestsMarkDuplicate": "Đánh dấu trùng",
+  "@requestsMarkDuplicate": {
+    "description": "The triage action that files a Request as a duplicate of another."
+  },
+  "requestsRaisedByPerson": "Do {name} tạo",
+  "@requestsRaisedByPerson": {
+    "description": "Who raised a Request, on the narrow card.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "requestsNoneExistTitle": "Không có gì đang chờ",
+  "@requestsNoneExistTitle": {
+    "description": "The triage queue's empty state when no Request is waiting for a decision."
+  },
+  "requestsNoneExistMessage": "Không có Yêu cầu nào đang chờ quyết định tại Nhà máy này.",
+  "@requestsNoneExistMessage": {
+    "description": "What the triage queue's empty state says, under its title."
+  },
+  "downtimeDescription": "Các máy đang không chạy tại Nhà máy này, lý do dừng và thời gian đã dừng.",
+  "@downtimeDescription": {
+    "description": "One-line description under the Downtime title."
+  },
+  "downtimeUnavailableTitle": "Không đọc được các lần dừng máy",
+  "@downtimeUnavailableTitle": {
+    "description": "The failure state's heading when the downtime register could not be fetched."
+  },
+  "downtimeReport": "Báo máy hỏng",
+  "@downtimeReport": {
+    "description": "The button that opens the form for reporting a machine that has stopped."
+  },
+  "downtimeTruncated": "Có nhiều lần dừng máy hơn danh sách này hiển thị.",
+  "@downtimeTruncated": {
+    "description": "Said above the register when the read was capped."
+  },
+  "downtimeFilter": "Lọc thời gian dừng máy",
+  "@downtimeFilter": {
+    "description": "Label of the search box above the downtime register."
+  },
+  "downtimeFilterHelp": "Theo Tài sản, lý do hoặc mô tả.",
+  "@downtimeFilterHelp": {
+    "description": "What the downtime register's search box matches on, under its label."
+  },
+  "downtimeNoMatch": "Không có lần dừng máy nào khớp",
+  "@downtimeNoMatch": {
+    "description": "The empty state the downtime search box shows when its term matches nothing."
+  },
+  "downtimeNoMatchMessage": "Nhà máy này có ghi nhận thời gian dừng máy, nhưng không lần nào khớp với “{term}”. Hãy thử Tài sản, lý do hoặc mô tả khác.",
+  "@downtimeNoMatchMessage": {
+    "description": "What the downtime register's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "downtimeStarted": "Bắt đầu dừng",
+  "@downtimeStarted": {
+    "description": "Column header over the instant a machine stopped."
+  },
+  "downtimeReason": "Lý do",
+  "@downtimeReason": {
+    "description": "Column header over the reason a machine stopped."
+  },
+  "downtimeReportedByColumn": "Người báo",
+  "@downtimeReportedByColumn": {
+    "description": "Column header over the person who reported a machine stopped."
+  },
+  "downtimeClose": "Đóng",
+  "@downtimeClose": {
+    "description": "The action that closes a machine's stop, once it is running again."
+  },
+  "downtimeClassify": "Phân loại",
+  "@downtimeClassify": {
+    "description": "The action that records the reason a stop happened, after it has been closed."
+  },
+  "downtimeStartedAt": "Bắt đầu {instant}",
+  "@downtimeStartedAt": {
+    "description": "When a machine stopped, on the narrow card.",
+    "placeholders": {
+      "instant": {"type": "String"}
+    }
+  },
+  "downtimeReasonLine": "Lý do: {name}",
+  "@downtimeReasonLine": {
+    "description": "The reason a machine stopped, on the narrow card.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "downtimeReportedByPerson": "Do {name} báo",
+  "@downtimeReportedByPerson": {
+    "description": "Who reported a machine stopped, on the narrow card.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "downtimeNoneExistTitle": "Không có máy nào đang dừng",
+  "@downtimeNoneExistTitle": {
+    "description": "The downtime register's empty state when no machine is stopped."
+  },
+  "downtimeNoneExistMessage": "Không có máy nào được ghi nhận là đang dừng tại Nhà máy này.",
+  "@downtimeNoneExistMessage": {
+    "description": "What the downtime register's empty state says, under its title."
+  },
+  "commonDetails": "Chi tiết",
+  "@commonDetails": {
+    "description": "Column header over the toggle that discloses one row's longer text."
+  },
+  "commonDescription": "Mô tả",
+  "@commonDescription": {
+    "description": "The label of a longer free-text field on a record, and the toggle that reveals it."
+  },
+  "commonNow": "bây giờ",
+  "@commonNow": {
+    "description": "Stands in for an instant that could not be read from the wire, so a time is never blank."
+  },
+  "metersDescription": "Các chỉ số chạy mà lịch bảo trì định kỳ có thể đến hạn theo, và các lần ghi chỉ số cho chúng.",
+  "@metersDescription": {
+    "description": "One-line description under the Meters title."
+  },
+  "metersUnavailableTitle": "Không đọc được các đồng hồ đo",
+  "@metersUnavailableTitle": {
+    "description": "The failure state's heading when the meter register could not be fetched."
+  },
+  "metersDefine": "Định nghĩa đồng hồ đo",
+  "@metersDefine": {
+    "description": "The button that opens the form for defining a meter on an Asset."
+  },
+  "metersFilter": "Lọc đồng hồ đo",
+  "@metersFilter": {
+    "description": "Label of the search box above the meter register."
+  },
+  "metersFilterHelp": "Theo tên, mã hoặc Tài sản.",
+  "@metersFilterHelp": {
+    "description": "What the meter register's search box matches on, under its label."
+  },
+  "metersNoMatch": "Không có đồng hồ đo nào khớp",
+  "@metersNoMatch": {
+    "description": "The empty state the meter search box shows when its term matches nothing."
+  },
+  "metersNoMatchMessage": "Nhà máy này có đồng hồ đo, nhưng không cái nào khớp với “{term}”. Hãy thử tên, mã hoặc Tài sản khác.",
+  "@metersNoMatchMessage": {
+    "description": "What the meter register's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "metersNoReading": "Chưa có chỉ số",
+  "@metersNoReading": {
+    "description": "Stands in the latest-reading column for a meter nobody has read yet."
+  },
+  "metersType": "Loại",
+  "@metersType": {
+    "description": "Column header over a meter's kind (running total, or reset each cycle)."
+  },
+  "metersUnit": "Đơn vị đo",
+  "@metersUnit": {
+    "description": "Column header over the unit a meter counts in."
+  },
+  "metersLatestReading": "Chỉ số mới nhất",
+  "@metersLatestReading": {
+    "description": "Column header over the last reading recorded against a meter."
+  },
+  "metersAccumulated": "Tổng sử dụng",
+  "@metersAccumulated": {
+    "description": "Column header over the total a meter has counted, carried-forward included."
+  },
+  "metersCarriedForward": "Chuyển tiếp: {value} {unit}",
+  "@metersCarriedForward": {
+    "description": "The amount a replaced meter counted before it was swapped, under a meter's total.",
+    "placeholders": {
+      "value": {"type": "String"},
+      "unit": {"type": "String"}
+    }
+  },
+  "metersLatestLine": "Mới nhất: {label}",
+  "@metersLatestLine": {
+    "description": "A meter's last reading, on the narrow card.",
+    "placeholders": {
+      "label": {"type": "String"}
+    }
+  },
+  "metersAccumulatedLine": "Tổng sử dụng: {label}",
+  "@metersAccumulatedLine": {
+    "description": "A meter's total, on the narrow card.",
+    "placeholders": {
+      "label": {"type": "String"}
+    }
+  },
+  "metersNoneExistTitle": "Chưa có đồng hồ đo",
+  "@metersNoneExistTitle": {
+    "description": "The meter register's empty state when the Site has none defined."
+  },
+  "metersNoneExistMessage": "Chưa có đồng hồ đo nào được định nghĩa trên Tài sản của Nhà máy này.",
+  "@metersNoneExistMessage": {
+    "description": "What the meter register's empty state says, under its title."
+  },
+  "commonCode": "Mã",
+  "@commonCode": {
+    "description": "Column header over the short code a record is known by."
+  },
+  "commonName": "Tên",
+  "@commonName": {
+    "description": "Column header over a record's own name."
+  },
+  "jobPlansUnavailableTitle": "Không đọc được các kế hoạch công việc",
+  "@jobPlansUnavailableTitle": {
+    "description": "The failure state's heading when the register of Job plans could not be fetched."
+  },
+  "jobPlansDescription": "Cách thực hiện mỗi công việc định kỳ — các bước cần làm và mỗi bước yêu cầu gì. Lệnh công việc đi theo kế hoạch chứ không sửa kế hoạch.",
+  "@jobPlansDescription": {
+    "description": "One-line description under the Job plans title."
+  },
+  "jobPlansAdd": "Thêm kế hoạch công việc",
+  "@jobPlansAdd": {
+    "description": "The button that opens the form for adding a reusable Job plan."
+  },
+  "jobPlansFilter": "Lọc kế hoạch công việc",
+  "@jobPlansFilter": {
+    "description": "Label of the search box above the Job plan register."
+  },
+  "jobPlansFilterHelp": "Theo tên, mã hoặc mô tả.",
+  "@jobPlansFilterHelp": {
+    "description": "What the Job plan register's search box matches on, under its label."
+  },
+  "jobPlansNoMatch": "Không có kế hoạch công việc nào khớp",
+  "@jobPlansNoMatch": {
+    "description": "The empty state the Job plan search box shows when its term matches nothing."
+  },
+  "jobPlansNoMatchMessage": "Nhà máy có kế hoạch công việc, nhưng không kế hoạch nào khớp với “{term}”. Hãy thử tên, mã hoặc mô tả khác.",
+  "@jobPlansNoMatchMessage": {
+    "description": "What the Job plan register's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "jobPlansPlanColumn": "Kế hoạch",
+  "@jobPlansPlanColumn": {
+    "description": "Column header over a Job plan's own name, code and kind."
+  },
+  "jobPlansSteps": "Số bước",
+  "@jobPlansSteps": {
+    "description": "Column header over the toggle that discloses a Job plan's steps."
+  },
+  "jobPlansEstimatedHours": "Giờ ước tính",
+  "@jobPlansEstimatedHours": {
+    "description": "Column header over the hours a Job plan is estimated to take."
+  },
+  "jobPlansShutdown": "Dừng máy",
+  "@jobPlansShutdown": {
+    "description": "Column header over whether a Job plan needs the machine stopped to be done."
+  },
+  "jobPlansStepCount": "{count} bước",
+  "@jobPlansStepCount": {
+    "description": "How many steps a Job plan has, on its disclosure toggle.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "jobPlansInactive": "Ngừng dùng",
+  "@jobPlansInactive": {
+    "description": "The chip on a Job plan that has been deactivated, so no Work order follows it."
+  },
+  "jobPlansRequiresShutdown": "Cần dừng máy",
+  "@jobPlansRequiresShutdown": {
+    "description": "Said of a Job plan that cannot be done with the machine running."
+  },
+  "jobPlansAboutHours": "Khoảng {hours} giờ",
+  "@jobPlansAboutHours": {
+    "description": "A Job plan's estimated hours, on the narrow card.",
+    "placeholders": {
+      "hours": {"type": "String"}
+    }
+  },
+  "jobPlansNoSteps": "Chưa ghi bước nào.",
+  "@jobPlansNoSteps": {
+    "description": "Shown when a Job plan has no steps at all."
+  },
+  "jobPlansDeactivate": "Ngừng kích hoạt",
+  "@jobPlansDeactivate": {
+    "description": "The action that stops a Job plan being followed by new Work orders."
+  },
+  "jobPlansReactivate": "Kích hoạt lại",
+  "@jobPlansReactivate": {
+    "description": "The action that lets a deactivated Job plan be followed again."
+  },
+  "jobPlansNoneExistTitle": "Chưa có kế hoạch công việc",
+  "@jobPlansNoneExistTitle": {
+    "description": "The Job plan register's empty state when nothing reusable has been defined."
+  },
+  "jobPlansNoneExistMessage": "Chưa có kế hoạch công việc dùng lại được nào. Hãy thêm một kế hoạch, các bước của nó sẽ hiện ở đây.",
+  "@jobPlansNoneExistMessage": {
+    "description": "What the Job plan register's empty state says, under its title."
+  },
+  "pmSchedulesUnavailableTitle": "Không đọc được các lịch bảo trì định kỳ",
+  "@pmSchedulesUnavailableTitle": {
+    "description": "The failure state's heading when the register of PM schedules could not be fetched."
+  },
+  "pmSchedulesDescription": "Các kế hoạch công việc gắn với Tài sản của Nhà máy này, tự tạo lệnh công việc trước khi máy hỏng.",
+  "@pmSchedulesDescription": {
+    "description": "One-line description under the PM schedules title."
+  },
+  "pmSchedulesAdd": "Thêm lịch bảo trì định kỳ",
+  "@pmSchedulesAdd": {
+    "description": "The button that opens the form for attaching a Job plan to an Asset on an interval."
+  },
+  "pmSchedulesFilter": "Lọc lịch bảo trì định kỳ",
+  "@pmSchedulesFilter": {
+    "description": "Label of the search box above the PM schedule register."
+  },
+  "pmSchedulesFilterHelp": "Theo tên lịch, Tài sản hoặc kế hoạch công việc.",
+  "@pmSchedulesFilterHelp": {
+    "description": "What the PM schedule register's search box matches on, under its label."
+  },
+  "pmSchedulesNoMatch": "Không có lịch bảo trì định kỳ nào khớp",
+  "@pmSchedulesNoMatch": {
+    "description": "The empty state the PM schedule search box shows when its term matches nothing."
+  },
+  "pmSchedulesNoMatchMessage": "Nhà máy này có lịch bảo trì định kỳ, nhưng không lịch nào khớp với “{term}”. Hãy thử tên, Tài sản hoặc kế hoạch công việc khác.",
+  "@pmSchedulesNoMatchMessage": {
+    "description": "What the PM schedule register's no-match state says, quoting the term that matched nothing.",
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "pmSchedulesJobPlanColumn": "Kế hoạch công việc",
+  "@pmSchedulesJobPlanColumn": {
+    "description": "Column header over the Job plan a PM schedule follows."
+  },
+  "pmSchedulesInterval": "Chu kỳ",
+  "@pmSchedulesInterval": {
+    "description": "Column header over how often a PM schedule comes due."
+  },
+  "pmSchedulesDue": "Đến hạn",
+  "@pmSchedulesDue": {
+    "description": "Column header over when a PM schedule is next due."
+  },
+  "pmSchedulesRules": "Quy tắc",
+  "@pmSchedulesRules": {
+    "description": "Column header over the toggle that discloses a PM schedule's rules in words."
+  },
+  "pmSchedulesRuleCount": "{count} quy tắc",
+  "@pmSchedulesRuleCount": {
+    "description": "How many rules a PM schedule has, on its disclosure toggle.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "pmSchedulesRollsFrom": "Tính từ {anchor}",
+  "@pmSchedulesRollsFrom": {
+    "description": "The point a PM schedule's interval counts from.",
+    "placeholders": {
+      "anchor": {"type": "String"}
+    }
+  },
+  "pmSchedulesLeadTime": "Tạo sớm {days} ngày",
+  "@pmSchedulesLeadTime": {
+    "description": "How many days before the due point a PM schedule raises its Work order.",
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "pmSchedulesAccumulated": "Đã tích lũy {current} trên {target}",
+  "@pmSchedulesAccumulated": {
+    "description": "How far a meter-driven PM schedule has counted towards its next due point.",
+    "placeholders": {
+      "current": {"type": "String"},
+      "target": {"type": "String"}
+    }
+  },
+  "pmSchedulesEveryMeter": "Mỗi {interval} của {meter}",
+  "@pmSchedulesEveryMeter": {
+    "description": "A PM schedule's interval, counted on a meter.",
+    "placeholders": {
+      "interval": {"type": "String"},
+      "meter": {"type": "String"}
+    }
+  },
+  "pmSchedulesEveryDays": "Mỗi {days} ngày",
+  "@pmSchedulesEveryDays": {
+    "description": "A PM schedule's interval, counted in days.",
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
+  "pmSchedulesTheMeter": "đồng hồ đo",
+  "@pmSchedulesTheMeter": {
+    "description": "Stands in for a meter's name when neither its name nor its code came through."
+  },
+  "pmSchedulesPriorityLine": "Mức ưu tiên {priority}",
+  "@pmSchedulesPriorityLine": {
+    "description": "The priority a PM schedule's Work orders are raised at, on the narrow card.",
+    "placeholders": {
+      "priority": {"type": "String"}
+    }
+  },
+  "pmSchedulesDueNow": "Đến hạn ngay",
+  "@pmSchedulesDueNow": {
+    "description": "A meter-driven PM schedule whose accumulated use has reached its target."
+  },
+  "pmSchedulesNoMeterTarget": "Chưa có mốc đồng hồ đo",
+  "@pmSchedulesNoMeterTarget": {
+    "description": "A meter-driven PM schedule that has not been given its next target yet."
+  },
+  "pmSchedulesDueAt": "Đến hạn ở {value}",
+  "@pmSchedulesDueAt": {
+    "description": "A meter-driven PM schedule's next due point, as a meter value.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "pmSchedulesNoDueDate": "Chưa có ngày đến hạn",
+  "@pmSchedulesNoDueDate": {
+    "description": "A date-driven PM schedule that has not been given a first due date yet."
+  },
+  "pmSchedulesNextDue": "Đến hạn tiếp theo {date}",
+  "@pmSchedulesNextDue": {
+    "description": "A date-driven PM schedule's next due date, with no day count to report.",
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "pmSchedulesOverdueSince": "Quá hạn từ {date}",
+  "@pmSchedulesOverdueSince": {
+    "description": "A date-driven PM schedule whose due date has passed.",
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "pmSchedulesDueToday": "Đến hạn hôm nay",
+  "@pmSchedulesDueToday": {
+    "description": "A date-driven PM schedule whose due date is today."
+  },
+  "pmSchedulesDueIn": "Đến hạn {date} (còn {days} ngày)",
+  "@pmSchedulesDueIn": {
+    "description": "A date-driven PM schedule's next due date, with how many days away it is.",
+    "placeholders": {
+      "date": {"type": "String"},
+      "days": {"type": "int"}
+    }
+  },
+  "pmSchedulesNoneExistTitle": "Chưa có lịch nào",
+  "@pmSchedulesNoneExistTitle": {
+    "description": "The PM schedule register's empty state when nothing is attached to the Site's Assets."
+  },
+  "pmSchedulesNoneExistMessage": "Chưa có lịch bảo trì định kỳ nào được gắn với Tài sản của Nhà máy này.",
+  "@pmSchedulesNoneExistMessage": {
+    "description": "What the PM schedule register's empty state says, under its title."
+  },
+  "titleSignIn": "Đăng nhập",
+  "@titleSignIn": {
+    "description": "The browser tab's name for the sign-in Screen."
+  },
+  "titleAwaitingApproval": "Chờ phê duyệt",
+  "@titleAwaitingApproval": {
+    "description": "The browser tab's name for the Screen shown to an Account that has not been admitted."
+  },
+  "titleChooseNewPassword": "Chọn mật khẩu mới",
+  "@titleChooseNewPassword": {
+    "description": "The browser tab's name for the Screen that forces a new password at first sign-in."
+  },
+  "titleFloor": "Xưởng",
+  "@titleFloor": {
+    "description": "The browser tab's name for the Floor Screens a shared device opens on."
+  },
+  "titleCapaReport": "Báo cáo CAPA",
+  "@titleCapaReport": {
+    "description": "The browser tab's name for the printable CAPA report."
+  },
+  "titleTrainingRecordForm": "Mẫu bản ghi đào tạo",
+  "@titleTrainingRecordForm": {
+    "description": "The browser tab's name for the printable training record form."
+  },
+  "titleWelcome": "Chào mừng",
+  "@titleWelcome": {
+    "description": "The browser tab's name for Home, whose own heading is a greeting."
+  },
+  "titleEmployee": "Nhân viên",
+  "@titleEmployee": {
+    "description": "The browser tab's name for one Employee's detail."
+  },
+  "titleWorkedHours": "Giờ đã làm",
+  "@titleWorkedHours": {
+    "description": "The browser tab's name for one Employee's worked-hours Screen."
+  },
+  "titleAttendanceToConfirm": "Chấm công cần xác nhận",
+  "@titleAttendanceToConfirm": {
+    "description": "The browser tab's name for the attendance board's to-confirm list."
+  },
+  "titleAttendanceSheet": "Bảng chấm công",
+  "@titleAttendanceSheet": {
+    "description": "The browser tab's name for one shift's attendance sheet."
+  },
+  "titleTrainingRecords": "Bản ghi đào tạo",
+  "@titleTrainingRecords": {
+    "description": "The browser tab's name for the register of training records."
+  },
+  "titleTrainingRecord": "Bản ghi đào tạo",
+  "@titleTrainingRecord": {
+    "description": "The browser tab's name for one training record."
+  },
+  "titleQualitySlideShow": "Trình chiếu chất lượng",
+  "@titleQualitySlideShow": {
+    "description": "The browser tab's name for the Quality slide show."
+  },
+  "titleCustomerComplaint": "Khiếu nại khách hàng",
+  "@titleCustomerComplaint": {
+    "description": "The browser tab's name for one customer complaint."
+  },
+  "titleSupplierNcr": "NCR nhà cung cấp",
+  "@titleSupplierNcr": {
+    "description": "The browser tab's name for one supplier NCR."
+  },
+  "titleNonConformance": "Sản phẩm không phù hợp",
+  "@titleNonConformance": {
+    "description": "The browser tab's name for one non-conformance."
+  },
+  "titleShiftHandover": "Bàn giao ca",
+  "@titleShiftHandover": {
+    "description": "The browser tab's name for one shift handover."
+  },
+  "titleSafetyIncidents": "Sự cố an toàn",
+  "@titleSafetyIncidents": {
+    "description": "The browser tab's name for the register of safety incidents."
+  },
+  "titleSafetyIncident": "Sự cố an toàn",
+  "@titleSafetyIncident": {
+    "description": "The browser tab's name for one safety incident."
+  },
+  "titleSafetyObservations": "Quan sát an toàn",
+  "@titleSafetyObservations": {
+    "description": "The browser tab's name for the register of safety observations."
+  },
+  "titleSafetyObservation": "Quan sát an toàn",
+  "@titleSafetyObservation": {
+    "description": "The browser tab's name for one safety observation."
+  },
+  "titleKpiTargets": "Mục tiêu KPI",
+  "@titleKpiTargets": {
+    "description": "The browser tab's name for one KPI's targets."
+  },
+  "titleActions": "Hành động",
+  "@titleActions": {
+    "description": "The browser tab's name for the Action log."
+  },
+  "titleAction": "Hành động",
+  "@titleAction": {
+    "description": "The browser tab's name for one Action."
+  },
+  "titleApprovalQueue": "Hàng chờ phê duyệt",
+  "@titleApprovalQueue": {
+    "description": "The browser tab's name for the Screen an administrator admits Accounts from."
+  },
+  "titleStoreStock": "Tồn kho",
+  "@titleStoreStock": {
+    "description": "The browser tab's name for one Store's stock, which the Store's own name would otherwise stand in for."
+  }
 }
