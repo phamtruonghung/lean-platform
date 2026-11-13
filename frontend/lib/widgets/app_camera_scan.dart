@@ -8,26 +8,25 @@
 ///
 /// **Why a package rather than the browser's own `BarcodeDetector`.** The
 /// Platform ships as a web bundle, so a browser API would be the cheapest
-/// decoder — but `BarcodeDetector` is the engine's, not the Platform's: it is
-/// absent wherever the browser does not implement it, which is a failure a
-/// person discovers only after opening the dialog. `mobile_scanner` puts one
-/// widget over three decoders (ML Kit and Apple Vision on the native builds,
-/// the browser's own API on web) and lets a caller pick which one, so the same
-/// button can serve a phone, a tablet and a desk camera without the app knowing
-/// which it is on.
+/// decoder — and it was the first choice here. It is absent exactly where a
+/// phone matters: `BarcodeDetector` is behind an off-by-default flag in Safari
+/// on iPhone, and Firefox and Chrome on Windows and Linux do not implement it at
+/// all. A reader that works on one Android phone and refuses on an iPhone is not
+/// a reader the plant can standardise on. `mobile_scanner` puts one widget over
+/// decoders that are there everywhere (ML Kit and Apple Vision on the native
+/// builds, ZXing on web), so the same button serves whichever device a person
+/// carries.
 ///
-/// **The web decoder is forced to the browser's own, and that is deliberate.**
-/// Left to itself the package falls back to a decoder script it fetches from
-/// jsDelivr, and its other web reader fetches from unpkg. This Platform is
-/// deployed on the plant's own network (`frontend/Dockerfile` already bundles
-/// CanvasKit and Roboto rather than reach a CDN), so a reader that needs the
-/// public internet is a reader that works in the office and not on the floor.
-/// `MobileScannerPlatform.instance.setWebBarcodeReader(WebBarcodeReader.
-/// barcodeDetector)` therefore pins the browser's own decoder: on any browser
-/// that has it the camera works with no network fetch at all, and on one that
-/// does not the dialog says so in words instead of quietly trying the internet.
-/// The cost is honest and named: Firefox has no `BarcodeDetector`, so a code is
-/// typed or read there, as it was before this file existed.
+/// **The web decoder is vendored, and that is deliberate.** Left to itself the
+/// package loads ZXing's script from unpkg (and its WebAssembly reader from
+/// jsDelivr). This Platform is deployed on the plant's own network
+/// (`frontend/Dockerfile` already bundles CanvasKit and Roboto rather than reach
+/// a CDN), so a decoder fetched from the public internet is one that works in
+/// the office and not on the floor. `frontend/web/vendor/zxing/` carries the
+/// exact version the package pins, and
+/// `setBarcodeLibraryScriptUrl` points the package at it;
+/// `setWebBarcodeReader(WebBarcodeReader.zxingJs)` selects that reader, so no
+/// runtime feature detection decides whether a code can be read.
 ///
 /// **What is scanned is a code, not an intent.** A QR code can carry a URL, a
 /// contact card or a Wi-Fi credential — `mobile_scanner` decodes all of them —
@@ -154,9 +153,12 @@ class _CameraScanDialogState extends State<CameraScanDialog> {
       autoTorch: false,
     );
     if (kIsWeb) {
-      // See this library's doc comment: the browser's own decoder or nothing,
-      // never a script fetched from a CDN.
-      MobileScannerPlatform.instance.setWebBarcodeReader(WebBarcodeReader.barcodeDetector);
+      // The vendored decoder, not the package's own script URLs: see this
+      // library's doc comment. Both calls must precede `start()`, which the
+      // `MobileScanner` widget runs in its own `initState`.
+      final platform = MobileScannerPlatform.instance;
+      platform.setBarcodeLibraryScriptUrl('vendor/zxing/zxing-library-0.23.0.js');
+      platform.setWebBarcodeReader(WebBarcodeReader.zxingJs);
     }
   }
 
