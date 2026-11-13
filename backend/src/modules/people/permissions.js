@@ -166,11 +166,23 @@ const CATALOGUE = [
   ],
 ];
 
-// Flattened, with the position an administrator sees. Frozen by the migration
-// that seeded it; see the header.
+// Codes added after the catalogue shipped take the next positions rather than
+// renumbering a released one (the header's own rule): the migration that adds a
+// code is insert-only and idempotent (ADR-0007), so it can only append, and
+// `sort_order` is this array's index. The Roles Screen groups by `module`, so
+// these render inside the People group even though their positions come last.
+const LATE_ADDITIONS = [
+  ['PPL_TRAINING_ANSWER_OWN', 'People', 'Answer my Training', 'Answer the caller\'s own training question as its Trainee.'],
+  ['PPL_LEAVE_REQUESTS_RAISE', 'People', 'Raise my Leave', 'Raise the caller\'s own leave request, and cancel it before a decision.'],
+];
+
+// Flattened, with the position an administrator sees. Frozen by the migrations
+// that seed it; see the header.
 const PERMISSIONS = CATALOGUE.flatMap(([module, entries]) =>
   entries.map(([code, label, description]) => ({ code, module, label, description }))
-).map((permission, index) => ({ ...permission, sortOrder: index }));
+)
+  .concat(LATE_ADDITIONS.map(([code, module, label, description]) => ({ code, module, label, description })))
+  .map((permission, index) => ({ ...permission, sortOrder: index }));
 
 const PERMISSION_CODES = PERMISSIONS.map((permission) => permission.code);
 

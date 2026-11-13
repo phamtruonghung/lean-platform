@@ -19,6 +19,14 @@
  * tests go the other way and prove the gates are wired at all, by removing one
  * code from every role and watching exactly its own addresses start refusing.
  *
+ * ADR-0061's slice 5b then gated the People writes: the Attendance, Training and
+ * leave-decision routes ask their managing codes, which are supervisor-and-above,
+ * while the two self-service acts — answering one's own training question and
+ * raising one's own leave request — ask codes every role holds. Both halves are
+ * measured here as the same operator and a `supervisor` beside it;
+ * people-self-service-permission-roles.test.js carries the same proof written
+ * round the card's own acceptance list.
+ *
  * Needs a database with every migration applied, including
  * 1803400000000_permissions-and-roles.js. Set DATABASE_URL first.
  */
@@ -303,7 +311,9 @@ const retrofittedCodes = [
   'PPL_SKILLS_DISPLAY',
   'PPL_ATTENDANCE_DISPLAY',
   'PPL_TRAINING_DISPLAY',
+  'PPL_TRAINING_ANSWER_OWN',
   'PPL_LEAVE_REQUESTS_DISPLAY',
+  'PPL_LEAVE_REQUESTS_RAISE',
   'PPL_SIGNATURE_OWN'
 ];
 
@@ -509,36 +519,41 @@ test('the administrator-only routes refuse an operator with the code and admit a
 });
 
 // ---------------------------------------------------------------------------
-// The routes this round left on their standing. Each is measured as the operator
-// whose edit Grant is exactly what admitted it before: adding the CHANGE/DECIDE
-// code would have refused every one of them, which is why none was added.
+// The writes slice 5b narrowed. Each is measured as the operator whose edit
+// Grant admitted it before: the code now refuses it, and a supervisor holding
+// the same Grant keeps the write. The assignment route is here as the control —
+// out of the retrofit's scope, it still answers to an edit Grant alone.
 // ---------------------------------------------------------------------------
 
-test('the Attendance, Training, leave-transition and assignment writes still admit an edit-Grant operator', async () => {
+test('the managing writes refuse an edit-Grant operator by code, and admit a supervisor holding the same Grant', async () => {
   const training = await post('/api/people/training', operator.token, {
     orgUnitId: area.id,
     title: 'Raised by an operator with an edit Grant',
     trainedOn: '2026-04-01',
     durationHours: 1
   });
-  assert.strictEqual(training.status, 201, JSON.stringify(training.body));
+  assert.strictEqual(training.status, 403, JSON.stringify(training.body));
+  assert.strictEqual(training.body.code, 'PERMISSION_REQUIRED');
+  assert.strictEqual(training.body.permission, 'PPL_TRAINING_CHANGE');
 
   const confirmed = await post(
     `/api/people/shift-instances/${shiftInstance.id}/attendance-sheet/confirm`,
     operator.token,
     {}
   );
-  assert.strictEqual(confirmed.status, 200, JSON.stringify(confirmed.body));
-  assert.ok(confirmed.body.sheet.confirmedAt);
+  assert.strictEqual(confirmed.status, 403, JSON.stringify(confirmed.body));
+  assert.strictEqual(confirmed.body.permission, 'PPL_ATTENDANCE_CHANGE');
 
+  // The assignment write keeps its edit-Grant standing: directory-routes.js's
+  // own note, and outside this retrofit's scope.
   const assignment = await post(`/api/people/employees/${otherEmployee.id}/assignments`, operator.token, {
     orgUnitId: area.id
   });
   assert.strictEqual(assignment.status, 201, JSON.stringify(assignment.body));
 
-  // A leave request for somebody else, then the decision on it: the deciding
-  // caller must not be the subject, and an edit Grant on its Org Unit is what
-  // ADR-0042 asks for.
+  // A leave request for somebody else, then the decision on it. Raising asks
+  // PPL_LEAVE_REQUESTS_RAISE and this operator holds it; deciding asks
+  // PPL_LEAVE_REQUESTS_DECIDE and it does not.
   const request = await post('/api/people/leave-requests', operator.token, {
     employeeId: otherEmployee.id,
     absenceReasonId,
@@ -551,8 +566,38 @@ test('the Attendance, Training, leave-transition and assignment writes still adm
   const decided = await post(`/api/people/leave-requests/${request.body.leaveRequest.id}/approve`, operator.token, {
     note: 'Approved by the edit-Grant holder.'
   });
-  assert.strictEqual(decided.status, 200, JSON.stringify(decided.body));
-  assert.strictEqual(decided.body.leaveRequest.status, 'approved');
+  assert.strictEqual(decided.status, 403, JSON.stringify(decided.body));
+  assert.strictEqual(decided.body.permission, 'PPL_LEAVE_REQUESTS_DECIDE');
+
+  // The supervisor holds the three managing codes, and the same three writes
+  // answer: the seed migration's whole point.
+  const supervisor = await insertAccount({
+    role: 'supervisor',
+    grants: [{ orgUnitId: area.id, write: true }]
+  });
+
+  const supervisorTraining = await post('/api/people/training', supervisor.token, {
+    orgUnitId: area.id,
+    title: 'Raised by a supervisor with an edit Grant',
+    trainedOn: '2026-04-01',
+    durationHours: 1
+  });
+  assert.strictEqual(supervisorTraining.status, 201, JSON.stringify(supervisorTraining.body));
+
+  const supervisorConfirmed = await post(
+    `/api/people/shift-instances/${shiftInstance.id}/attendance-sheet/confirm`,
+    supervisor.token,
+    {}
+  );
+  assert.strictEqual(supervisorConfirmed.status, 200, JSON.stringify(supervisorConfirmed.body));
+
+  const supervisorDecided = await post(
+    `/api/people/leave-requests/${request.body.leaveRequest.id}/approve`,
+    supervisor.token,
+    { note: 'Approved by a supervisor.' }
+  );
+  assert.strictEqual(supervisorDecided.status, 200, JSON.stringify(supervisorDecided.body));
+  assert.strictEqual(supervisorDecided.body.leaveRequest.status, 'approved');
 });
 
 // ---------------------------------------------------------------------------
@@ -597,7 +642,7 @@ test('removing PPL_TRAINING_DISPLAY from every role refuses the Training reads a
     }
 
     // Neighbouring gates are untouched: the directory asks its own code, and
-    // raising a Training record asks no code at all (the finding).
+    // raising a Training record asks PPL_TRAINING_CHANGE, which nobody removed.
     const directory = await get('/api/people/employees', operator.token);
     assert.strictEqual(directory.status, 200, JSON.stringify(directory.body));
 
@@ -607,7 +652,8 @@ test('removing PPL_TRAINING_DISPLAY from every role refuses the Training reads a
       trainedOn: '2026-04-02',
       durationHours: 1
     });
-    assert.strictEqual(raised.status, 201, JSON.stringify(raised.body));
+    assert.strictEqual(raised.status, 403, JSON.stringify(raised.body));
+    assert.strictEqual(raised.body.permission, 'PPL_TRAINING_CHANGE');
   } finally {
     await restoreCodeEverywhere(roleIds, 'PPL_TRAINING_DISPLAY');
   }

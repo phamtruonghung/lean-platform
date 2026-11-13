@@ -37,6 +37,14 @@
  * OUTSIDE_GRANTED_ORG_UNITS), the Trainee not the identified Employee (403 -
  * an answer is a person's own signature), then the write. There is no Account
  * on this path, so the audit carries no Account, as Safety's floor writes do.
+ *
+ * **No permission code on this door (ADR-0061, slice 5b).** The Account door's
+ * answer asks `PPL_TRAINING_ANSWER_OWN`; this door asks a device credential and
+ * an individual identification instead, with no Account anywhere on the path, so
+ * there is no role to read and nothing for `requirePermission` to ask - the same
+ * reason the Maintenance floor door gives for its own writes. The identification
+ * IS this door's authority, it is the identified Employee's own, and the
+ * identity check below still confines the write to their own Trainee row.
  */
 
 const express = require('express');

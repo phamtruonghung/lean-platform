@@ -53,7 +53,13 @@ async function json(response) {
 
 // `grants` are `{ orgUnitId, write }` pairs; `write` defaults to true, since
 // most of this file's Accounts are recording rather than merely reading.
-async function insertAccount({ role = 'operator', grants = [] } = {}) {
+//
+// The role defaults to `supervisor` because ADR-0061's slice 5b gates the four
+// Attendance writes with `PPL_ATTENDANCE_CHANGE`, seeded on supervisor-and-above.
+// This file is about ADR-0040's Grant rule — what varies between its Accounts is
+// the Grant, not the role — so the role has to be one that opens the door;
+// people-self-service-permission-roles.test.js is where the role is the variable.
+async function insertAccount({ role = 'supervisor', grants = [] } = {}) {
   const subject = uniqueCode('atacct');
   const { rows: [account] } = await pool.query(
     `INSERT INTO app_users (email, display_name, role, external_subject, is_active, approval_status)

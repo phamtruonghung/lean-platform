@@ -42,7 +42,7 @@ An Account whose `app_users.role` is `admin` is answered with the whole
 catalogue before any of that is read (ADR-0061 §5: a mis-edited role must not
 be able to lock the last administrator out).
 
-## The catalogue — 81 permissions
+## The catalogue — 83 permissions
 
 Grouped by the sidebar's own headings, in its own order. Every Destination is
 guarded by the `…_DISPLAY` code below; the other codes name a decision or a
@@ -64,11 +64,18 @@ write behind that Screen.
 | `PPL_ATTENDANCE_CHANGE` | Confirm Attendance | Confirm an Attendance sheet for a shift instance. |
 | `PPL_TRAINING_DISPLAY` | Training | Read Training records and follow one that names the caller. |
 | `PPL_TRAINING_CHANGE` | Raise Training | Raise a Training record, add a trainee, or sign one off. |
+| `PPL_TRAINING_ANSWER_OWN` | Answer my Training | Answer the caller's own training question as its Trainee. |
 | `PPL_SIGNATURE_OWN` | My signature | Store and change the caller's own signature. |
 | `PPL_LEAVE_REQUESTS_DISPLAY` | Leave requests | Read the caller's own leave requests and those they decide. |
 | `PPL_LEAVE_REQUESTS_DECIDE` | Decide Leave | Approve or decline a leave request for an Employee in the caller's scope. |
+| `PPL_LEAVE_REQUESTS_RAISE` | Raise my Leave | Raise the caller's own leave request, and cancel it before a decision. |
 | `PPL_COST_RATES_MAINTAIN` | Cost rates | Maintain the cost rates an Employee's hours are priced at. |
 | `PPL_PRODUCT_COSTS_MAINTAIN` | Product standard costs | Maintain a product's standard cost. |
+
+`PPL_TRAINING_ANSWER_OWN` and `PPL_LEAVE_REQUESTS_RAISE` were added after the
+catalogue shipped (ADR-0061, slice 5b). Their `sort_order` values are 81 and 82 —
+appended rather than a released list renumbered — and the Roles Screen, which
+groups by module, shows them inside the People group.
 
 ### Maintenance
 
@@ -174,7 +181,7 @@ write behind that Screen.
 
 | Role code | Name | Held automatically by | What it adds |
 | --- | --- | --- | --- |
-| `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board and the Section handover |
+| `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board, the Section handover, and the two self-service acts — answering the caller's own training question and raising (or cancelling) their own leave request |
 | `ROLE_OPERATOR` | Operator | `app_users.role = operator` | Nothing beyond the default group — today an operator is offered nothing more, and the group says so rather than showing an empty list |
 | `ROLE_SUPERVISOR` | Supervisor | `app_users.role = supervisor` | The Maintenance Screens (Assets, Work orders, Parts, Stores, Triage, Downtime, PM schedules, Meters) **and the writes behind them** — add an Asset, raise/assign/start/complete/cancel a Work order, book labour and parts, record a task's meter reading, open a Store and record a stock movement, create or deactivate a PM schedule and run its sweep — plus the Insights registers, confirming Attendance, raising Training, deciding Leave, recording measures and incidents |
 | `ROLE_ENGINEER` | Engineer | `app_users.role = engineer` | A supervisor's set plus the writes behind an Asset, Work order, Part, Store and PM schedule, opening and verifying a CAPA, and disposing of nonconforming product |
@@ -206,7 +213,13 @@ The codes decide the **sidebar** and the **roles surface**
 (`ADM_ROLES_DISPLAY` / `ADM_ROLES_CHANGE`). The Maintenance Module's sixteen
 write routes were retrofitted in ADR-0061's slice 2b: each asks its `…_CHANGE`
 code *and* keeps the Grant check behind it, because the code answers which door
-and the Grant answers which Org Units. Two deliberate gaps remain:
+and the Grant answers which Org Units. The People Module's writes followed in
+slice 5b — the Training writes, the Attendance writes and the leave decisions
+ask their managing codes, and the two self-service acts ask the pair added
+above — so an operator who holds an edit Grant on a People Screen no longer
+performs the managing writes unless an administrator adds the code to its role
+(the seed migration and that release's PR body state this narrowing). Two
+deliberate gaps remain:
 
 - **`POST /parts` stays administrator-only.** `MTN_PARTS_CHANGE` is carried by
   engineer and manager too, so gating the route with it would *widen* the write

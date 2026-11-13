@@ -53,14 +53,18 @@
  * `PPL_TRAINING_DISPLAY`, seeded on ROLE_STANDARD — the default group every
  * approved Account carries — so the register, one record, the caller's own
  * to-confirm list and a Trainee's Signature image admit exactly the Accounts
- * they admitted before; the draft rule inside them is unchanged. The seven
- * writes (raise, correct, discard, add and remove a Trainee, evaluate one, send)
- * and the Trainee's own answer keep their edit-Grant standing: `PPL_TRAINING_CHANGE`
- * is seeded on supervisor-and-above, while ADR-0043's rule admits any role
- * holding an edit Grant on the record's Org Unit, so adding the code would
- * refuse an operator's edit Grant today. Findings on the retrofit card, not
- * changes made here — and the answer route must never take a code at all: it is
- * the Trainee's own act, not an authority over a record.
+ * they admitted before; the draft rule inside them is unchanged.
+ *
+ * **The write retrofit (ADR-0061, slice 5b).** The seven writes (raise, correct,
+ * discard, add and remove a Trainee, evaluate one, send) ask
+ * `PPL_TRAINING_CHANGE`, seeded on supervisor-and-above, and keep the edit-Grant
+ * check behind it: the code answers which door, the Grant still answers which
+ * Org Units. That narrows the writes on purpose — an operator holding an edit
+ * Grant loses them until an administrator adds the code to its role, which the
+ * seed migration and the PR body state. The Trainee's own answer is the one
+ * self-service act here: it asks `PPL_TRAINING_ANSWER_OWN`, seeded on every
+ * role, and the identity check below it is unchanged — no code, and no
+ * administrator, may answer for someone else.
  */
 
 const express = require('express');
@@ -76,10 +80,17 @@ const router = express.Router();
 
 // The register's own read code (ADR-0061, issue #509), seeded on ROLE_STANDARD —
 // the default group every approved Account carries — so it refuses nobody who
-// could read the register before. The writes keep their edit-Grant standing:
-// `PPL_TRAINING_CHANGE` is supervisor-and-above, ADR-0043's rule is any write
-// Grant, so that is a finding on the card rather than a gate here.
+// could read the register before.
 const mayReadTraining = authorization.requirePermission('PPL_TRAINING_DISPLAY');
+
+// The seven writes' door, supervisor-and-above (ADR-0061, slice 5b). The
+// edit-Grant question inside each handler stays behind it.
+const mayChangeTraining = authorization.requirePermission('PPL_TRAINING_CHANGE');
+
+// The Trainee's own answer, seeded on every role so a person keeps it. It is a
+// door, not an authority: the handler's identity check still confines it to the
+// caller's own Trainee row.
+const mayAnswerOwnTraining = authorization.requirePermission('PPL_TRAINING_ANSWER_OWN');
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -97,7 +108,7 @@ async function requireKnownTrainer(trainerEmployeeId) {
   if (!trainer) throw notFound('Employee');
 }
 
-router.post('/training', authenticate, requireActive, async (req, res, next) => {
+router.post('/training', authenticate, requireActive, mayChangeTraining, async (req, res, next) => {
   try {
     const body = req.body ?? {};
     const orgUnitId = parseId(body.orgUnitId);
@@ -123,7 +134,7 @@ router.post('/training', authenticate, requireActive, async (req, res, next) => 
   }
 });
 
-router.patch('/training/:id', authenticate, requireActive, async (req, res, next) => {
+router.patch('/training/:id', authenticate, requireActive, mayChangeTraining, async (req, res, next) => {
   try {
     const record = await training.getTrainingRecord(req.params.id); // 404s.
     const allowed = await authorization.canAct({
@@ -160,7 +171,7 @@ async function resolveRecordForTrainees(req, res) {
   return record;
 }
 
-router.delete('/training/:id', authenticate, requireActive, async (req, res, next) => {
+router.delete('/training/:id', authenticate, requireActive, mayChangeTraining, async (req, res, next) => {
   try {
     const record = await training.getTrainingRecord(req.params.id); // 404s.
     const allowed = await authorization.canAct({
@@ -179,7 +190,7 @@ router.delete('/training/:id', authenticate, requireActive, async (req, res, nex
   }
 });
 
-router.post('/training/:id/trainees', authenticate, requireActive, async (req, res, next) => {
+router.post('/training/:id/trainees', authenticate, requireActive, mayChangeTraining, async (req, res, next) => {
   try {
     const record = await resolveRecordForTrainees(req, res);
     if (record === null) return undefined;
@@ -199,7 +210,7 @@ router.post('/training/:id/trainees', authenticate, requireActive, async (req, r
   }
 });
 
-router.delete('/training/:id/trainees/:traineeId', authenticate, requireActive, async (req, res, next) => {
+router.delete('/training/:id/trainees/:traineeId', authenticate, requireActive, mayChangeTraining, async (req, res, next) => {
   try {
     const record = await resolveRecordForTrainees(req, res);
     if (record === null) return undefined;
@@ -217,7 +228,7 @@ router.delete('/training/:id/trainees/:traineeId', authenticate, requireActive, 
 // The trainer's own field, so unlike add and remove it is allowed on a sent
 // record as well as a draft: the record (404), its scope (403), the body (400),
 // then the Trainee on THIS record (404).
-router.patch('/training/:id/trainees/:traineeId', authenticate, requireActive, async (req, res, next) => {
+router.patch('/training/:id/trainees/:traineeId', authenticate, requireActive, mayChangeTraining, async (req, res, next) => {
   try {
     const record = await training.getTrainingRecord(req.params.id); // 404s.
     const allowed = await authorization.canAct({
@@ -240,7 +251,7 @@ router.patch('/training/:id/trainees/:traineeId', authenticate, requireActive, a
   }
 });
 
-router.post('/training/:id/send', authenticate, requireActive, async (req, res, next) => {
+router.post('/training/:id/send', authenticate, requireActive, mayChangeTraining, async (req, res, next) => {
   try {
     const record = await training.getTrainingRecord(req.params.id); // 404s.
     const allowed = await authorization.canAct({
@@ -264,7 +275,7 @@ router.post('/training/:id/send', authenticate, requireActive, async (req, res, 
   }
 });
 
-router.post('/training/trainees/:traineeId/answer', authenticate, requireActive, async (req, res, next) => {
+router.post('/training/trainees/:traineeId/answer', authenticate, requireActive, mayAnswerOwnTraining, async (req, res, next) => {
   try {
     const answer = training.requireAnswer(req.body?.answer);
     const applied = parseApplied(req.body?.signature);

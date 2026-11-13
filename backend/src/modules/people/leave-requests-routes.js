@@ -40,13 +40,22 @@
  * they decide**" — one code for two audiences — and gating the read with it is
  * right precisely because these routes serve *one* read: the list is a single
  * query filtered by reach, not two endpoints with two audiences, and everybody
- * holds the code. The decision routes are the other half: approving and
- * rejecting would ask `PPL_LEAVE_REQUESTS_DECIDE`, seeded on supervisor-and-above,
- * while ADR-0042 admits any role holding an edit Grant on the request's Org Unit
- * (an operator's edit Grant can approve today) — a finding on the retrofit card,
- * so no code is added there. Submitting and cancelling name no code at all:
- * submitting is the person's own act or an edit-Grant one, and cancelling is the
- * requester's or the subject's by construction.
+ * holds the code.
+ *
+ * **The write retrofit (ADR-0061, slice 5b).** Raising asks
+ * `PPL_LEAVE_REQUESTS_RAISE` — seeded on every role, because raising one's own
+ * request is a person's act, not an authority over a record — and the edit-Grant
+ * rule for recording on somebody else's behalf stays inside the handler behind
+ * it. Approving, rejecting and cancelling somebody else's request ask
+ * `PPL_LEAVE_REQUESTS_DECIDE`, supervisor-and-above; the identity and Grant
+ * checks stay behind it. Cancelling one's own asks `PPL_LEAVE_REQUESTS_RAISE`
+ * instead. Two consequences are deliberate, not accidents: an operator holding
+ * an edit Grant on the request's Org Unit can no longer approve it (ADR-0042's
+ * Grant rule is unchanged, but the code is the door, and an administrator can
+ * add it to `ROLE_OPERATOR`), and a caller who holds no `DECIDE` code now meets
+ * `PERMISSION_REQUIRED` **before** the visibility 404 on a decision route, so a
+ * request they could not see is refused with the code's 403 rather than a 404.
+ * Nothing about what they can see changes: the read routes are untouched.
  */
 
 const express = require('express');
@@ -63,6 +72,15 @@ const router = express.Router();
 // refuses nobody. The reach filter inside the handlers stays what hides a
 // note, and the decision routes keep their edit-Grant standing (finding).
 const mayReadLeaveRequests = authorization.requirePermission('PPL_LEAVE_REQUESTS_DISPLAY');
+
+// The two write doors (ADR-0061, slice 5b). Raising is the caller's own act, or
+// an edit-Grant one on behalf of an Employee who cannot sign in, so it asks
+// `PPL_LEAVE_REQUESTS_RAISE` — seeded on every role, and revoked only if an
+// administrator means to take the act away. Deciding is authority over someone
+// else's record and asks `PPL_LEAVE_REQUESTS_DECIDE`, supervisor-and-above;
+// cancelling picks between the two from the row's requester, below.
+const mayRaiseLeaveRequests = authorization.requirePermission('PPL_LEAVE_REQUESTS_RAISE');
+const mayDecideLeaveRequests = authorization.requirePermission('PPL_LEAVE_REQUESTS_DECIDE');
 
 // The Org Units the caller's edit Grants reach, as a Set of id strings — or
 // null for "everywhere" (an administrator). A read-only Grant contributes
@@ -106,7 +124,7 @@ function withCallerFlags(account, reach, leaveRequest) {
   };
 }
 
-router.post('/leave-requests', authenticate, requireActive, async (req, res, next) => {
+router.post('/leave-requests', authenticate, requireActive, mayRaiseLeaveRequests, async (req, res, next) => {
   try {
     const body = req.body ?? {};
 
@@ -224,23 +242,49 @@ function decisionRoute(decision) {
   };
 }
 
-router.post('/leave-requests/:id/approve', authenticate, requireActive, decisionRoute('approved'));
-router.post('/leave-requests/:id/reject', authenticate, requireActive, decisionRoute('rejected'));
+router.post('/leave-requests/:id/approve', authenticate, requireActive, mayDecideLeaveRequests, decisionRoute('approved'));
+router.post('/leave-requests/:id/reject', authenticate, requireActive, mayDecideLeaveRequests, decisionRoute('rejected'));
 
-router.post('/leave-requests/:id/cancel', authenticate, requireActive, async (req, res, next) => {
+// The cancel route has two doors, and the row is what tells them apart: a
+// requester withdrawing what they raised knocks on `PPL_LEAVE_REQUESTS_RAISE`,
+// anyone else asking to cancel knocks on `PPL_LEAVE_REQUESTS_DECIDE` (they still
+// meet the identity refusal below — the code is the door, not the authority).
+// Visibility comes first because `loadVisible` 404s a request this caller may
+// not see at all, and the code is asked only once the row is known.
+async function requireVisibleLeaveRequest(req, res, next) {
   try {
-    const { leaveRequest } = await loadVisible(req);
-    if (!isRequesterOrSubject(req.account, leaveRequest)) {
-      return res.status(403).json({
-        message: 'Only the Account that submitted a leave request, or the Employee it is for, can cancel it'
-      });
-    }
-    const cancelled = await leave.cancelLeaveRequest(leaveRequest.id, req.account.id);
-    const reach = await writeReach(req.account);
-    res.json({ leaveRequest: withCallerFlags(req.account, reach, cancelled) });
+    req.leaveRequestContext = await loadVisible(req);
+    return next();
   } catch (error) {
-    handleError(error, res, next);
+    return handleError(error, res, next);
   }
-});
+}
+
+function requireCancelDoor(req, res, next) {
+  const own = isRequesterOrSubject(req.account, req.leaveRequestContext.leaveRequest);
+  return (own ? mayRaiseLeaveRequests : mayDecideLeaveRequests)(req, res, next);
+}
+
+router.post(
+  '/leave-requests/:id/cancel',
+  authenticate,
+  requireActive,
+  requireVisibleLeaveRequest,
+  requireCancelDoor,
+  async (req, res, next) => {
+    try {
+      const { leaveRequest, reach } = req.leaveRequestContext;
+      if (!isRequesterOrSubject(req.account, leaveRequest)) {
+        return res.status(403).json({
+          message: 'Only the Account that submitted a leave request, or the Employee it is for, can cancel it'
+        });
+      }
+      const cancelled = await leave.cancelLeaveRequest(leaveRequest.id, req.account.id);
+      res.json({ leaveRequest: withCallerFlags(req.account, reach, cancelled) });
+    } catch (error) {
+      handleError(error, res, next);
+    }
+  }
+);
 
 module.exports = router;
