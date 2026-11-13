@@ -333,6 +333,7 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
             ),
             idOf: (employee) => employee.id,
             displayStringFor: (employee) => employee.displayName,
+            codeOf: (employee) => employee.employeeNo,
           ),
           const SizedBox(height: Spacing.md),
           TextField(

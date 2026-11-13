@@ -637,6 +637,7 @@ class _AssetField extends StatelessWidget {
           ),
           idOf: (asset) => asset.id,
           displayStringFor: (asset) => '${asset.name} (${asset.code})',
+          codeOf: (asset) => asset.code,
         );
     }
   }
@@ -723,6 +724,7 @@ class _JobPlanField extends StatelessWidget {
           ),
           idOf: (plan) => plan.id,
           displayStringFor: (plan) => plan.name,
+          codeOf: (plan) => plan.code,
         );
     }
   }

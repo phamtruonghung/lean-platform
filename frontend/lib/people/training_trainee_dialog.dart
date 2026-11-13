@@ -189,6 +189,7 @@ class _TrainingTraineeDialogState extends State<TrainingTraineeDialog> {
                 ),
                 idOf: (employee) => employee.id,
                 displayStringFor: (employee) => employee.displayName,
+                codeOf: (employee) => employee.employeeNo,
               ),
             ),
             if (failure != null)

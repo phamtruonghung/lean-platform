@@ -238,6 +238,7 @@ class _EmployeeSkillFormDialogState extends State<EmployeeSkillFormDialog> {
                   ),
                   idOf: (skill) => skill.id,
                   displayStringFor: (skill) => skill.name,
+                  codeOf: (skill) => skill.code,
                 ),
                 const SizedBox(height: Spacing.md),
                 DropdownButtonFormField<int>(

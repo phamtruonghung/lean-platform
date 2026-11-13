@@ -214,6 +214,7 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                   suggestionBuilder: _suggestionRow,
                   idOf: (employee) => employee.id,
                   displayStringFor: (employee) => employee.displayName,
+                  codeOf: (employee) => employee.employeeNo,
                   onSelected: (employee) => setState(() => _lead = employee),
                 ),
                 const SizedBox(height: Spacing.md),
@@ -232,6 +233,7 @@ class _OpenCapaDialogState extends State<OpenCapaDialog> {
                   suggestionBuilder: _suggestionRow,
                   idOf: (employee) => employee.id,
                   displayStringFor: (employee) => employee.displayName,
+                  codeOf: (employee) => employee.employeeNo,
                   onSelected: _addMember,
                 ),
                 if (_members.isEmpty)

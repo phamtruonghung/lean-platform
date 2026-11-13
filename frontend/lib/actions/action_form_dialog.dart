@@ -302,6 +302,7 @@ class _ActionFormDialogState extends State<ActionFormDialog> {
                     ),
                     idOf: (employee) => employee.id,
                     displayStringFor: (employee) => employee.displayName,
+                    codeOf: (employee) => employee.employeeNo,
                     onSelected: (employee) => setState(() => _owner = employee),
                   ),
                   const SizedBox(height: Spacing.md),

@@ -319,6 +319,7 @@ class _HeaderState extends State<_Header> {
                   },
                   idOf: (employee) => employee.id,
                   displayStringFor: (employee) => employee.displayName,
+                  codeOf: (employee) => employee.employeeNo,
                   onSubmitted: (value) =>
                       context.read<DirectoryBloc>().add(DirectorySearchChanged(value)),
                 ),

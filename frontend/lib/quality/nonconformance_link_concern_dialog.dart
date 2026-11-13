@@ -229,6 +229,7 @@ class _NonconformanceLinkConcernDialogState extends State<NonconformanceLinkConc
                           fetchSuggestions: _suggestions,
                           idOf: (concern) => concern.id,
                           displayStringFor: (concern) => '${concern.actionNo} · ${concern.title}',
+                          codeOf: (concern) => concern.actionNo,
                           suggestionBuilder: (context, concern) => Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [

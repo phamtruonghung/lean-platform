@@ -378,6 +378,7 @@ class _SafetyIncidentFormDialogState extends State<SafetyIncidentFormDialog> {
                     ),
                     idOf: (employee) => employee.id,
                     displayStringFor: (employee) => employee.displayName,
+                    codeOf: (employee) => employee.employeeNo,
                   ),
                   ],
                   const SizedBox(height: Spacing.md),
@@ -525,6 +526,7 @@ class _AssetField extends StatelessWidget {
           ),
           idOf: (asset) => asset.id,
           displayStringFor: (asset) => '${asset.name} (${asset.code})',
+          codeOf: (asset) => asset.code,
         );
     }
   }

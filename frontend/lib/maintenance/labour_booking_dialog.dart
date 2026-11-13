@@ -362,6 +362,7 @@ class _EmployeeField extends StatelessWidget {
           ),
           idOf: (employee) => employee.id,
           displayStringFor: (employee) => employee.displayName,
+          codeOf: (employee) => employee.employeeNo,
         );
     }
   }

@@ -1240,6 +1240,7 @@ class _OpenActionRowState extends State<_OpenActionRow> {
               ),
               idOf: (employee) => employee.id,
               displayStringFor: (employee) => employee.displayName,
+              codeOf: (employee) => employee.employeeNo,
               onSelected: (employee) => setState(() => _owner = employee),
             ),
           ],

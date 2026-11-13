@@ -559,6 +559,7 @@ class _TaskFields extends StatelessWidget {
                   ),
                   idOf: (skill) => skill.id,
                   displayStringFor: (skill) => skill.name,
+                  codeOf: (skill) => skill.code,
                 ),
               ),
               const SizedBox(width: Spacing.sm),

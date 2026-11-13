@@ -117,6 +117,7 @@ class SupplierNcrSupplierFilterDialog extends StatelessWidget {
             },
             idOf: (supplier) => supplier.id,
             displayStringFor: (supplier) => supplier.summary,
+            codeOf: (supplier) => supplier.code,
             suggestionBuilder: (context, supplier) => Text(
               supplier.summary,
               style: theme.textTheme.bodyMedium,
