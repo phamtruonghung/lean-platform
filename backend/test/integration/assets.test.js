@@ -114,7 +114,7 @@ let noGrantAccount;   // approved, no Grant anywhere at all.
 let readOnlyAccount;  // read Grant on grantedLine.
 let writerAccount;    // write Grant on grantedArea (an ancestor of grantedLine).
 let siblingWriter;    // write Grant on otherLine only.
-let operatorWriter;   // role operator, write Grant on grantedLine — role gates Screens, not this route.
+let operatorWriter;   // role operator, write Grant on grantedLine — refused since slice 2b; see the test below.
 
 let site;
 let otherSite;
@@ -285,15 +285,19 @@ test('an approved Account with no Grant anywhere cannot add', async () => {
   assert.strictEqual(response.status, 403);
 });
 
-// This is deliberate, not a hole: ADR-0009's addendum for the Asset register
-// documents both halves of it. Role decides which Screens are offered (the
-// Shell never offers operator the Maintenance destination); Grants decide
-// where an Account may act, and that check does not care what role holds the
-// Grant. Pinned here so a future reader who takes the missing role check for
-// a bug finds this test saying otherwise.
-test('an operator holding a write Grant may add an Asset — role gates Screens, Grants gate acts', async () => {
-  const { response } = await postAsset(operatorWriter.token, assetBody(grantedLine.id));
-  assert.strictEqual(response.status, 201);
+// The narrowing ADR-0061 slice 2b makes on purpose, pinned where the old
+// behaviour used to be pinned: this Account holds an edit Grant on the line it
+// names, and the route it used to reach is now behind `MTN_ASSETS_CHANGE`,
+// which an operator's role does not carry. ADR-0009's addendum said role gates
+// Screens and Grants gate acts; since ADR-0061 a route asks both, so the Grant
+// alone no longer opens this door. An administrator adds the code to the
+// operator's role (or assigns a role that holds it) to restore the write —
+// that is the point of the code being visible in the Roles Screen.
+test('an operator holding a write Grant is refused adding an Asset until a role carries MTN_ASSETS_CHANGE', async () => {
+  const { response, payload } = await postAsset(operatorWriter.token, assetBody(grantedLine.id));
+  assert.strictEqual(response.status, 403);
+  assert.strictEqual(payload.code, 'PERMISSION_REQUIRED');
+  assert.strictEqual(payload.permission, 'MTN_ASSETS_CHANGE');
 });
 
 // ---------------------------------------------------------------------------

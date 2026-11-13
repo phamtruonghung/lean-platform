@@ -8,8 +8,8 @@
  *
  * Like asset-routes.js, this is the one file in the pairing that talks to
  * People, and only through `modules/people`'s entry point (ADR-0006):
- * `authenticate`, `requireActive`, `findSite`, `findOrgUnit`, `canAct` and
- * the shared `OUTSIDE_GRANTED_ORG_UNITS` wording.
+ * `authenticate`, `requireActive`, `requirePermission`, `findSite`,
+ * `findOrgUnit`, `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording.
  *
  * Two rules, deliberately different, the same asymmetry ADR-0009 gives
  * the Asset register:
@@ -27,7 +27,11 @@
  *     shared reads refused Accounts that could read them before the retrofit
  *     — the card's finding (t_3271c590), not a policy chosen in passing.
  *   - Writes are branch-scoped. Creating a store and recording a movement
- *     each require a write Grant reaching the relevant Org Unit.
+ *     each require `MTN_STORES_CHANGE` and a write Grant reaching the relevant
+ *     Org Unit: the code says which door, the Grant says which Org Units
+ *     (ADR-0061), and both are asked on every write here. POST /parts stays
+ *     administrator-only — see the comment above it for why that one is not
+ *     this code.
  *
  * Every write resolves existence BEFORE asking about scope (issue #8's own
  * 403-vs-404 ordering): `canAct` returns true for role `admin` before it
@@ -127,23 +131,31 @@ async function requireStoreWriteScope(req, res, next) {
   }
 }
 
-// The two permission codes this file's writes will eventually ask (ADR-0061),
-// and the reason neither is wired to a read here yet. Both belong to the
-// retrofit card (t_3271c590):
-//   - `MTN_PARTS_DISPLAY` / `MTN_STORES_DISPLAY` gate the Screens of those
-//     names, but neither surface is private to its Screen: the unit-of-measure
-//     catalogue is shared reference data (Quality reads this same address) and
-//     nothing that read the parts catalogue or a store before this card held
-//     only an Account. Gating the reads narrowed Accounts that use them today,
-//     so the reads stay open and the narrowing is the card's finding.
+// "May this Account maintain Stores at all?" — the role half of ADR-0061's
+// model, on this file's three store writes: creating one, receiving stock and
+// correcting a count. The Grants checked below still answer which Org Unit;
+// both questions are asked, and the code is asked first so a caller without it
+// is refused before any row is looked up.
+//
+// `MTN_STORES_CHANGE` is seeded on supervisor/engineer/manager/administrator —
+// every role that could reach these writes through a Grant before the code was
+// asked. The one Account it narrows is named in the seed migration
+// `1803500000000_supervisor-holds-maintenance-writes.js`: an operator holding
+// an edit Grant on a store's Org Unit, until an administrator adds the code to
+// a role it holds.
+const mayChangeStores = people.requirePermission('MTN_STORES_CHANGE');
+
+// Two codes this file's writes deliberately do NOT ask (ADR-0061):
+//   - `MTN_PARTS_DISPLAY` / `MTN_STORES_DISPLAY` name the Screens, but neither
+//     surface is private to its Screen: the unit-of-measure catalogue is shared
+//     reference data (Quality reads this same address) and nothing that read
+//     the parts catalogue or a store before this card held only an Account.
+//     Gating the reads narrowed Accounts that use them today, so the reads stay
+//     open and the narrowing is recorded as a finding.
 //   - POST /parts is administrator-only today. `MTN_PARTS_CHANGE` is seeded on
 //     engineer/manager/administrator, so adding it would *widen* the write to
-//     two roles that are refused it today — a behaviour change, not a
-//     retrofit.
-//   - POST /stores, /receipts and /adjustments are reachable today by a
-//     supervisor holding a write Grant, while `MTN_STORES_CHANGE` is seeded on
-//     engineer/manager/administrator only; adding it would *narrow* a role that
-//     uses these routes.
+//     two roles that are refused it today — a behaviour change of its own, not
+//     a retrofit, and out of scope for this card.
 
 // ---------------------------------------------------------------------------
 // Parts — the shared catalogue.
@@ -212,6 +224,7 @@ router.post(
   '/stores',
   people.authenticate,
   people.requireActive,
+  mayChangeStores,
   requireOrgUnitWriteScope,
   async (req, res, next) => {
     try {
@@ -287,6 +300,7 @@ router.post(
   '/stores/:storeId/receipts',
   people.authenticate,
   people.requireActive,
+  mayChangeStores,
   requireKnownStore,
   requireStoreWriteScope,
   async (req, res, next) => {
@@ -303,6 +317,7 @@ router.post(
   '/stores/:storeId/adjustments',
   people.authenticate,
   people.requireActive,
+  mayChangeStores,
   requireKnownStore,
   requireStoreWriteScope,
   async (req, res, next) => {

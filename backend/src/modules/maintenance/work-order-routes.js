@@ -28,23 +28,29 @@
  *     act, not what it may know about. `?includeHistory=true` widens the
  *     statuses returned (see work-orders.js's listWorkOrdersAtSite) but does
  *     not change who may ask.
- *   - Writes are branch-scoped. POST /work-orders requires a write Grant
- *     reaching the Org Unit the named Asset already sits at — there is no
- *     orgUnitId in the body at all, since work_orders.org_unit_id is filled
- *     by trigger from asset_id (see work-orders.js's own header), so the
- *     client does not send one and any that is sent is ignored, exactly as
- *     work-orders.js's createWorkOrder does not read it off its own input.
- *     PUT /work-orders/:id/assignee (issue #62) and the three POST
- *     transition routes below (issue #63) all require a write Grant reaching
- *     the Org Unit the Work order's own org_unit_id already names — see
- *     requireWorkOrderWriteScope below. There is no exception for the
- *     assignee acting on their own job without a Grant. Issue #77's floor
- *     device door is not that exception either: a device is allowed a
- *     transition only within its own Org Unit's subtree, and only with an
- *     individual technician identification attached, never on its own. Both
- *     the device and the identification are People's records (issue #201), so
- *     this file asks for them through that Module's entry point rather than
- *     reading them itself.
+ *   - Writes are branch-scoped and ask the Screen's code. POST /work-orders
+ *     requires `MTN_WORK_ORDERS_CHANGE` and a write Grant reaching the Org
+ *     Unit the named Asset already sits at — there is no orgUnitId in the body
+ *     at all, since work_orders.org_unit_id is filled by trigger from asset_id
+ *     (see work-orders.js's own header), so the client does not send one and
+ *     any that is sent is ignored, exactly as work-orders.js's createWorkOrder
+ *     does not read it off its own input. PUT /work-orders/:id/assignee (issue
+ *     #62), the three POST transition routes (issue #63), the two bookings
+ *     (issue #75) and a task's meter reading (issue #79) all require
+ *     `MTN_WORK_ORDERS_CHANGE` and a write Grant reaching the Org Unit the
+ *     Work order's own org_unit_id already names — see
+ *     requireWorkOrderWriteScope below. The code says which door, the Grant
+ *     says which Org Units (ADR-0061); neither replaces the other. There is no
+ *     exception for the assignee acting on their own job without a Grant.
+ *     Issue #77's floor device door is not that exception either: a device is
+ *     allowed a transition only within its own Org Unit's subtree, and only
+ *     with an individual technician identification attached, never on its own.
+ *     Both the device and the identification are People's records (issue
+ *     #201), so this file asks for them through that Module's entry point
+ *     rather than reading them itself. A permission is held by an *Account*
+ *     through its roles, and the device door presents no Account at all, so
+ *     the code is asked on the Account door only — see
+ *     `mayChangeWorkOrdersOnTheAccountDoor` below.
  *
  * PUT /work-orders/:id/assignee never reads a qualification, and never will
  * from this file: see ADR-0018. What a candidate holds is shown by People's
@@ -78,16 +84,36 @@ const router = express.Router();
 // `MTN_WORK_ORDERS_DISPLAY` on exactly the four roles the sidebar offers that
 // Screen to (supervisor, engineer, manager, administrator), so no one who could
 // read a Work order before this code can be refused by it.
-//
-// The writes below do NOT take a code yet, and that is deliberate: every one of
-// them is reachable today by a supervisor holding a write Grant, while
-// `MTN_WORK_ORDERS_CHANGE` is seeded on engineer/manager/administrator only.
-// Adding it would refuse a role that uses these routes — the retrofit card's
-// finding (t_3271c590), not a change to make blind here. The two floor-device
-// transitions (/start, /complete) have a second reason: their actor is a
-// device with an identified technician and no `req.account` at all, so a
-// permission check keyed on an Account would refuse the floor outright.
 const mayReadWorkOrders = people.requirePermission('MTN_WORK_ORDERS_DISPLAY');
+
+// "May this Account maintain Work orders at all?" — the second half of
+// ADR-0061's model, on every write below. The code answers *which door*; the
+// `requireWorkOrder*Scope` middlewares that follow it still answer *which Org
+// Units*, and both are asked: a caller without the code is refused before any
+// row is looked up, and a caller with it then meets the existence-then-scope
+// ordering every write in this Module has always used (AGENTS.md §6).
+//
+// `MTN_WORK_ORDERS_CHANGE` is seeded on supervisor/engineer/manager/
+// administrator — every role that could reach these writes through a Grant
+// before this code was asked, so the retrofit refuses nobody who was working
+// here. The one Account it does narrow is named in the seed migration
+// `1803500000000_supervisor-holds-maintenance-writes.js`: an operator holding
+// an edit Grant holds no role carrying the code until an administrator adds it.
+const mayChangeWorkOrders = people.requirePermission('MTN_WORK_ORDERS_CHANGE');
+
+// The floor door (issue #77, ADR-0016) presents a device credential and an
+// individual technician identification, and NO Account — so there is no role to
+// read and nothing for `requirePermission` to ask. The identification is that
+// door's own authority, and `requireWorkOrderWriteScope` below still confines
+// it to the device's Org Unit subtree. Asking for a code here would refuse
+// every shop-floor start and completion, which is the write that surface
+// exists for; so the code is asked only when `authenticateWorkOrderActor`
+// resolved an Account. It must run AFTER that middleware (it reads what it
+// resolved) and BEFORE the scope middleware.
+function mayChangeWorkOrdersOnTheAccountDoor(req, res, next) {
+  if (req.floorDevice) return next();
+  return mayChangeWorkOrders(req, res, next);
+}
 
 // Mirrors asset-routes.js's own requireKnownSite exactly — see that file's
 // header for why an unknown Site is a 404, never a silently empty 200.
@@ -137,6 +163,7 @@ router.post(
   '/work-orders',
   people.authenticate,
   people.requireActive,
+  mayChangeWorkOrders,
   requireAssetWriteScope,
   async (req, res, next) => {
     try {
@@ -285,6 +312,7 @@ router.put(
   '/work-orders/:id/assignee',
   people.authenticate,
   people.requireActive,
+  mayChangeWorkOrders,
   requireWorkOrderWriteScope,
   async (req, res, next) => {
     try {
@@ -325,6 +353,7 @@ router.put(
 router.post(
   '/work-orders/:id/start',
   authenticateWorkOrderActor,
+  mayChangeWorkOrdersOnTheAccountDoor,
   requireWorkOrderWriteScope,
   async (req, res, next) => {
     try {
@@ -342,6 +371,7 @@ router.post(
 router.post(
   '/work-orders/:id/complete',
   authenticateWorkOrderActor,
+  mayChangeWorkOrdersOnTheAccountDoor,
   requireWorkOrderWriteScope,
   async (req, res, next) => {
     try {
@@ -364,6 +394,7 @@ router.post(
   '/work-orders/:id/cancel',
   people.authenticate,
   people.requireActive,
+  mayChangeWorkOrders,
   requireWorkOrderWriteScope,
   async (req, res, next) => {
     try {
@@ -394,6 +425,7 @@ router.post(
   '/work-orders/:id/labour',
   people.authenticate,
   people.requireActive,
+  mayChangeWorkOrders,
   requireWorkOrderAssetWriteScope,
   async (req, res, next) => {
     try {
@@ -427,6 +459,7 @@ router.post(
   '/work-orders/:id/parts',
   people.authenticate,
   people.requireActive,
+  mayChangeWorkOrders,
   requireWorkOrderAssetWriteScope,
   async (req, res, next) => {
     try {
@@ -494,6 +527,7 @@ router.post(
   '/work-orders/:id/tasks/:taskId/reading',
   people.authenticate,
   people.requireActive,
+  mayChangeWorkOrders,
   requireWorkOrderWriteScope,
   async (req, res, next) => {
     try {
