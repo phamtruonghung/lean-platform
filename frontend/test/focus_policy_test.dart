@@ -263,6 +263,10 @@ void main() {
           create: (_) => FakeAuthGateway(),
           child: MaterialApp(
             theme: buildAppTheme(Brightness.light),
+            // The dialog takes its own words from the catalogue now (issue
+            // t_0ac0eb9e), so this harness provides the delegates the app does.
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               body: Builder(
                 builder: (context) => FilledButton(

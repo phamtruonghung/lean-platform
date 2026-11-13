@@ -56,6 +56,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'home_bloc.dart';
+import 'l10n/app_localizations.dart';
 import 'people_api.dart';
 import 'platform/router.dart';
 import 'theme.dart';
@@ -95,9 +96,6 @@ class HomeScreen extends StatelessWidget {
   static const ValueKey<String> approvalsRetryKey = ValueKey<String>('home-approvals-retry');
   static const ValueKey<String> myActionsRetryKey = ValueKey<String>('home-my-actions-retry');
 
-  /// What the page says when every count it shows is zero.
-  static const String nothingWaiting = 'Nothing is waiting on you.';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,9 +118,16 @@ class HomeScreen extends StatelessWidget {
 
 /// One Module's share of Home: its heading and the cells beneath it.
 class _ModuleGroup {
-  const _ModuleGroup({required this.name, required this.cells});
+  const _ModuleGroup({required this.name, required this.label, required this.cells});
 
+  /// The Module's English name — the group's **identity**, not its words: a
+  /// test finds a heading by `HomeScreen.groupKey('Maintenance')` in either
+  /// language, so this stays `Maintenance` while the page reads "Bảo trì".
   final String name;
+
+  /// The heading as this reader's language spells it (`groupMaintenance`).
+  final String label;
+
   final List<Widget> cells;
 }
 
@@ -137,21 +142,33 @@ class _HomeBody extends StatelessWidget {
   /// hook for, and the reason most people open Home at all), then the Work
   /// order pair, then the People pair. A Module with no section read for this
   /// role contributes no group at all rather than an empty heading.
-  List<_ModuleGroup> _groups(BuildContext context) => [
-        if (state.myActions != null)
-          _ModuleGroup(name: 'Actions', cells: _myActionsCells(context, state.myActions!)),
-        if (state.workSummary != null)
-          _ModuleGroup(name: 'Maintenance', cells: _workSummaryCells(context, state.workSummary!)),
-        if (state.approvals != null || state.trainingToConfirm != null)
-          _ModuleGroup(
-            name: 'People',
-            cells: [
-              if (state.approvals != null) ..._approvalsCells(context, state.approvals!),
-              if (state.trainingToConfirm != null)
-                ..._trainingToConfirmCells(context, state.trainingToConfirm!),
-            ],
-          ),
-      ];
+  List<_ModuleGroup> _groups(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [
+      if (state.myActions != null)
+        _ModuleGroup(
+          name: 'Actions',
+          label: l10n.groupActions,
+          cells: _myActionsCells(context, state.myActions!),
+        ),
+      if (state.workSummary != null)
+        _ModuleGroup(
+          name: 'Maintenance',
+          label: l10n.groupMaintenance,
+          cells: _workSummaryCells(context, state.workSummary!),
+        ),
+      if (state.approvals != null || state.trainingToConfirm != null)
+        _ModuleGroup(
+          name: 'People',
+          label: l10n.groupPeople,
+          cells: [
+            if (state.approvals != null) ..._approvalsCells(context, state.approvals!),
+            if (state.trainingToConfirm != null)
+              ..._trainingToConfirmCells(context, state.trainingToConfirm!),
+          ],
+        ),
+    ];
+  }
 
   /// Whether every number the page shows is zero *and* every section has
   /// loaded. A section still in flight, or one that failed, answers false: the
@@ -180,6 +197,7 @@ class _HomeBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final groups = _groups(context);
     return Center(
@@ -195,13 +213,13 @@ class _HomeBody extends StatelessWidget {
               // Account's own `email · role` under it, and the header's hairline
               // under both — the same left edge for all three.
               AppPageHeader(
-                title: 'Welcome, ${account.displayName}',
+                title: l10n.homeGreeting(account.displayName),
                 description: '${account.email} · ${account.role}',
               ),
               const SizedBox(height: Spacing.lg),
               if (_everythingZero) ...[
                 Text(
-                  HomeScreen.nothingWaiting,
+                  l10n.homeNothingWaiting,
                   key: HomeScreen.nothingWaitingKey,
                   style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                 ),
@@ -209,7 +227,7 @@ class _HomeBody extends StatelessWidget {
               ],
               for (var index = 0; index < groups.length; index++) ...[
                 if (index > 0) const SizedBox(height: Spacing.xl),
-                _GroupHeading(name: groups[index].name),
+                _GroupHeading(name: groups[index].name, label: groups[index].label),
                 const SizedBox(height: Spacing.md),
                 _CardGrid(cells: groups[index].cells),
               ],
@@ -227,16 +245,21 @@ class _HomeBody extends StatelessWidget {
 /// Shell's Destination-group device and is deliberately not repeated inside a
 /// page.
 class _GroupHeading extends StatelessWidget {
-  const _GroupHeading({required this.name});
+  const _GroupHeading({required this.name, required this.label});
 
+  /// The Module's English name, which the heading is keyed by so a test finds
+  /// it in either language (see [_ModuleGroup.name]).
   final String name;
+
+  /// The heading as this reader's language spells it.
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       header: true,
       child: Text(
-        name,
+        label,
         key: HomeScreen.groupKey(name),
         style: Theme.of(context)
             .textTheme
@@ -256,6 +279,7 @@ class _GroupHeading extends StatelessWidget {
 /// "0" and "nothing can be assigned to you" look the same in a number and mean
 /// very different things to the person reading it.
 List<Widget> _myActionsCells(BuildContext context, HomeSectionState<HomeMyActions> section) {
+  final l10n = AppLocalizations.of(context);
   return switch (section) {
     HomeSectionLoading<HomeMyActions>() => [
         const _SpanningCell(
@@ -272,7 +296,7 @@ List<Widget> _myActionsCells(BuildContext context, HomeSectionState<HomeMyAction
           child: isScopeRefused
               ? const PlatformScopeRefusedState()
               : PlatformFailureState(
-                  title: 'Your Actions are unavailable',
+                  title: l10n.homeActionsUnavailable,
                   message: message,
                   retryKey: HomeScreen.myActionsRetryKey,
                   onRetry: () => context.read<HomeBloc>().add(const HomeMyActionsRetried()),
@@ -283,12 +307,11 @@ List<Widget> _myActionsCells(BuildContext context, HomeSectionState<HomeMyAction
         _HomeCard(
           cardKey: HomeScreen.myActionsCardKey,
           icon: Icons.assignment_ind_outlined,
-          label: 'Assigned to you',
+          label: l10n.homeAssignedToYou,
           count: data.openCount,
           caption: data.hasEmployeeLink
-              ? 'Open Actions whose owner is you'
-              : 'Your Account is not linked to an Employee record, so no Action can be '
-                  'assigned to you — link one under Accounts',
+              ? l10n.homeAssignedToYouCaption
+              : l10n.homeAccountNotLinked,
           destination: Routes.actions,
         ),
       ],
@@ -299,6 +322,7 @@ List<Widget> _myActionsCells(BuildContext context, HomeSectionState<HomeMyAction
 /// a bare count that carries to `/training/to-confirm`, where the answers are
 /// given. Every role earns it — any approved Account may be a Trainee.
 List<Widget> _trainingToConfirmCells(BuildContext context, HomeSectionState<int> section) {
+  final l10n = AppLocalizations.of(context);
   return switch (section) {
     HomeSectionLoading<int>() => [
         const _SpanningCell(
@@ -315,7 +339,7 @@ List<Widget> _trainingToConfirmCells(BuildContext context, HomeSectionState<int>
           child: isScopeRefused
               ? const PlatformScopeRefusedState()
               : PlatformFailureState(
-                  title: 'Your Training to confirm is unavailable',
+                  title: l10n.homeTrainingUnavailable,
                   message: message,
                   retryKey: HomeScreen.trainingToConfirmRetryKey,
                   onRetry: () => context.read<HomeBloc>().add(const HomeTrainingToConfirmRetried()),
@@ -326,9 +350,9 @@ List<Widget> _trainingToConfirmCells(BuildContext context, HomeSectionState<int>
         _HomeCard(
           cardKey: HomeScreen.trainingToConfirmCardKey,
           icon: Icons.school_outlined,
-          label: 'Training to confirm',
+          label: l10n.trainingToConfirm,
           count: data,
-          caption: 'Training records sent to you that you have not answered',
+          caption: l10n.homeTrainingToConfirmCaption,
           destination: Routes.trainingToConfirm,
         ),
       ],
@@ -341,6 +365,7 @@ List<Widget> _trainingToConfirmCells(BuildContext context, HomeSectionState<int>
 /// `Routes.workOrders` offers no deep link into a pre-applied filter, so
 /// this only carries a caller there, the way every other card here does.
 List<Widget> _workSummaryCells(BuildContext context, HomeSectionState<HomeWorkSummary> section) {
+  final l10n = AppLocalizations.of(context);
   return switch (section) {
     HomeSectionLoading<HomeWorkSummary>() => [
         const _SpanningCell(
@@ -357,7 +382,7 @@ List<Widget> _workSummaryCells(BuildContext context, HomeSectionState<HomeWorkSu
           child: isScopeRefused
               ? const PlatformScopeRefusedState()
               : PlatformFailureState(
-                  title: 'Work orders are unavailable',
+                  title: l10n.homeWorkOrdersUnavailable,
                   message: message,
                   retryKey: HomeScreen.workRetryKey,
                   onRetry: () => context.read<HomeBloc>().add(const HomeWorkSummaryRetried()),
@@ -368,15 +393,15 @@ List<Widget> _workSummaryCells(BuildContext context, HomeSectionState<HomeWorkSu
         _HomeCard(
           cardKey: HomeScreen.openWorkOrdersCardKey,
           icon: Icons.build_outlined,
-          label: 'Open work orders',
+          label: l10n.homeOpenWorkOrders,
           count: data.openCount,
-          caption: 'Raised and not yet complete',
+          caption: l10n.homeOpenWorkOrdersCaption,
           destination: Routes.workOrders,
         ),
         _HomeCard(
           cardKey: HomeScreen.unassignedCardKey,
           icon: Icons.person_off_outlined,
-          label: 'Awaiting assignment',
+          label: l10n.homeAwaitingAssignment,
           count: data.unassignedCount,
           // Issue #110 (ADR-0027): the count now includes Work orders
           // anywhere beneath a granted Org Unit, because `/me` reports each
@@ -385,8 +410,8 @@ List<Widget> _workSummaryCells(BuildContext context, HomeSectionState<HomeWorkSu
           // from an administrator's: a scoped Account's number is complete
           // across its Grants, not across the Site, and the card says so.
           caption: data.unassignedScopedToGrants
-              ? 'On the Org Units granted to you, and everything beneath them'
-              : 'Open, with nobody holding them yet',
+              ? l10n.homeAwaitingAssignmentScopedCaption
+              : l10n.homeAwaitingAssignmentCaption,
           destination: Routes.workOrders,
         ),
       ],
@@ -396,6 +421,7 @@ List<Widget> _workSummaryCells(BuildContext context, HomeSectionState<HomeWorkSu
 /// The People Module's approvals section: Accounts nobody has decided about
 /// yet (administrators only).
 List<Widget> _approvalsCells(BuildContext context, HomeSectionState<int> section) {
+  final l10n = AppLocalizations.of(context);
   return switch (section) {
     HomeSectionLoading<int>() => [
         const _SpanningCell(
@@ -412,7 +438,7 @@ List<Widget> _approvalsCells(BuildContext context, HomeSectionState<int> section
           child: isScopeRefused
               ? const PlatformScopeRefusedState()
               : PlatformFailureState(
-                  title: 'Approvals are unavailable',
+                  title: l10n.homeApprovalsUnavailable,
                   message: message,
                   retryKey: HomeScreen.approvalsRetryKey,
                   onRetry: () => context.read<HomeBloc>().add(const HomeApprovalsRetried()),
@@ -423,9 +449,9 @@ List<Widget> _approvalsCells(BuildContext context, HomeSectionState<int> section
         _HomeCard(
           cardKey: HomeScreen.approvalsCardKey,
           icon: Icons.how_to_reg_outlined,
-          label: 'Accounts awaiting Approval',
+          label: l10n.accountsAwaitingApproval,
           count: data,
-          caption: 'Waiting to be admitted',
+          caption: l10n.homeAccountsAwaitingApprovalCaption,
           destination: Routes.approvals,
         ),
       ],

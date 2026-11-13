@@ -71,6 +71,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people/people.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
@@ -179,13 +180,13 @@ class WorkOrdersScreen extends StatelessWidget {
   /// The noun is the domain's own ("Work order", per CONTEXT.md), singular
   /// when there is exactly one. Narrowing and history are named only when
   /// they are actually in force, so nothing here claims a filter nobody set.
-  static String _countLabel(WorkOrdersLoaded loaded) {
+  static String _countLabel(AppLocalizations l10n, WorkOrdersLoaded loaded) {
     final count = loaded.workOrders.length;
-    final noun = count == 1 ? 'Work order' : 'Work orders';
-    final narrowed =
-        loaded.orgUnitFilterName == null ? '' : ', narrowed to ${loaded.orgUnitFilterName}';
-    final history = loaded.showHistory ? ', including completed and cancelled' : '';
-    return '$count $noun$narrowed$history';
+    final narrowed = loaded.orgUnitFilterName == null
+        ? ''
+        : l10n.workOrdersCountNarrowed(loaded.orgUnitFilterName!);
+    final history = loaded.showHistory ? l10n.workOrdersCountHistory : '';
+    return '${l10n.workOrdersCount(count)}$narrowed$history';
   }
 
   /// The "nothing has ever been raised" empty state (issue #103's
@@ -262,6 +263,7 @@ class WorkOrdersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<WorkOrdersBloc>().state;
 
     return Scaffold(
@@ -285,7 +287,7 @@ class WorkOrdersScreen extends StatelessWidget {
                 const PlatformScopeRefusedState(key: WorkOrdersScreen.scopeRefusedKey),
               WorkOrdersUnavailable(message: final message) => PlatformFailureState(
                   key: WorkOrdersScreen.failedKey,
-                  title: 'The Work orders could not be read',
+                  title: l10n.workOrdersUnavailableTitle,
                   message: message,
                   retryKey: WorkOrdersScreen.retryKey,
                   onRetry: () => context.read<WorkOrdersBloc>().add(const WorkOrdersStarted()),
@@ -326,6 +328,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final loaded = state is WorkOrdersLoaded ? state as WorkOrdersLoaded : null;
 
@@ -335,13 +338,11 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Work orders',
+            title: l10n.navWorkOrders,
             // "Every open job" stopped being true once the history
             // toggle can bring completed and cancelled rows back
             // (issue #63) — neutral wording that holds either way.
-            description:
-                'The work raised at this Site, which Asset it is '
-                'against, and who has it.',
+            description: l10n.workOrdersDescription,
             actions: [
               if (canRaiseWorkOrder && loaded != null)
                 FilledButton.icon(
@@ -355,7 +356,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.workOrders}/new'),
                   icon: const Icon(Icons.add),
-                  label: const Text('Raise a Work order'),
+                  label: Text(l10n.workOrdersRaise),
                   style: FilledButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min)),
                 ),
@@ -374,8 +375,8 @@ class _Header extends StatelessWidget {
                             key: WorkOrdersScreen.siteKey,
                             initialValue: loaded.siteId,
                             isDense: true,
-                            decoration: const InputDecoration(
-                                labelText: 'Site', border: OutlineInputBorder()),
+                            decoration: InputDecoration(
+                                labelText: l10n.commonSite, border: const OutlineInputBorder()),
                             items: [
                               for (final site in loaded.sites)
                                 DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -402,7 +403,7 @@ class _Header extends StatelessWidget {
                           key: WorkOrdersScreen.filterKey,
                           onPressed: () => _openOrgUnitFilter(context, loaded.siteId!),
                           icon: const Icon(Icons.filter_alt_outlined),
-                          label: const Text('Narrow to an Org Unit'),
+                          label: Text(l10n.workOrdersNarrowToOrgUnit),
                         )
                       else
                         // A `Chip` plus its own adjacent `IconButton`, not
@@ -423,13 +424,13 @@ class _Header extends StatelessWidget {
                           children: [
                             Chip(
                               label: Text(
-                                'Narrowed to ${loaded.orgUnitFilterName}',
+                                l10n.workOrdersNarrowedTo(loaded.orgUnitFilterName!),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             IconButton(
                               key: WorkOrdersScreen.clearFilterKey,
-                              tooltip: 'Show the whole Site again',
+                              tooltip: l10n.workOrdersShowWholeSite,
                               icon: const Icon(Icons.close),
                               style: IconButton.styleFrom(
                                   minimumSize:
@@ -442,7 +443,7 @@ class _Header extends StatelessWidget {
                         ),
                       FilterChip(
                         key: WorkOrdersScreen.showHistoryKey,
-                        label: const Text('Show completed and cancelled'),
+                        label: Text(l10n.workOrdersShowHistory),
                         selected: loaded.showHistory,
                         // Same guard `AssetsScreen.showRetiredKey` uses for its own
                         // chip: toggling while a raise, assign or transition is in
@@ -470,7 +471,7 @@ class _Header extends StatelessWidget {
                     count: loaded.workOrders.isEmpty
                         ? null
                         : Text(
-                            WorkOrdersScreen._countLabel(loaded),
+                            WorkOrdersScreen._countLabel(l10n, loaded),
                             key: WorkOrdersScreen.countKey,
                             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                           ),
@@ -523,13 +524,14 @@ class _OrgUnitFilterDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     // A picker (460): a tree to choose one Org Unit from. It stays a bare
     // `showDialog` that returns the node, and adopts the shell (§11).
+    final l10n = AppLocalizations.of(context);
     return AppDialog(
-      title: 'Narrow to an Org Unit',
+      title: l10n.workOrdersNarrowToOrgUnit,
       size: AppDialogSize.picker,
       actions: [
         AppDialogAction(
           id: 'work-orders-org-unit-picker-cancel',
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -541,9 +543,8 @@ class _OrgUnitFilterDialog extends StatelessWidget {
         // browsing a different Site's tree from inside it would let the
         // header end up naming an Org Unit outside that Site.
         showSitePicker: false,
-        title: 'Narrow the list',
-        description: 'Choose the Org Unit to narrow the list to. Everything beneath it is '
-            'included too.',
+        title: l10n.workOrdersNarrowTitle,
+        description: l10n.workOrdersNarrowDescription,
       ),
     );
   }
@@ -556,6 +557,7 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: WorkOrdersScreen.maxWidth,
@@ -563,7 +565,7 @@ class _Truncated extends StatelessWidget {
           key: WorkOrdersScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
-            'There are more Work orders than this list shows. Narrow it by Org Unit, or turn history off, to see the rest.',
+            l10n.workOrdersTruncated,
             style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
           ),
         ),
@@ -697,6 +699,7 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
     // Filtered here, immediately before the rows are built, so a term can
     // only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingWorkOrders;
+    final l10n = AppLocalizations.of(context);
     // `constraints.maxWidth` — the box this Screen actually got from its own
     // parent — not `MediaQuery.sizeOf(context).width`, the whole browser
     // window (issue #105). This Screen always renders inside the Shell's
@@ -727,8 +730,8 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
                   padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
                   child: AppFilterField(
                     name: WorkOrdersScreen.filterFieldName,
-                    label: 'Filter Work orders',
-                    helperText: 'By summary, Work order number or Asset.',
+                    label: l10n.workOrdersFilter,
+                    helperText: l10n.workOrdersFilterHelp,
                     term: _term,
                     onChanged: (term) => setState(() => _term = term),
                     shown: matches.length,
@@ -740,10 +743,8 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: WorkOrdersScreen.noMatchKey,
-                          title: 'No Work orders match',
-                          message: 'Work is open at this Site, but none of it matches '
-                              '"${_term.trim()}". Try a different summary or Asset, or clear '
-                              'the filter.',
+                          title: l10n.workOrdersNoMatch,
+                          message: l10n.workOrdersNoMatchMessage(_term.trim()),
                         )
                       : narrow
                           ? ListView.separated(
@@ -781,12 +782,6 @@ class _WorkOrdersListState extends State<_WorkOrdersList> {
   }
 }
 
-/// The labels a row's primary action can carry, named once: the button prints
-/// them and [_actionsColumnWidth] measures them, so a renamed action cannot grow
-/// past the column that holds it.
-const String _startLabel = 'Start';
-const String _completeLabel = 'Complete';
-
 /// The trailing actions column's width **at a text scale of 1**: one primary
 /// button plus the overflow trigger side by side. It is the floor
 /// [_actionsColumnWidth] never goes below, because a scale under 1 must not
@@ -819,7 +814,11 @@ double _actionsColumnWidth(BuildContext context) {
   );
   final style = Theme.of(context).textTheme.labelLarge;
   var widest = 0.0;
-  for (final label in const [_startLabel, _completeLabel]) {
+  final l10n = AppLocalizations.of(context);
+  // The labels a row's primary action can carry, in this reader's language:
+  // the button prints them and this width is measured from them, so a
+  // translation wider than English still fits its column.
+  for (final label in [l10n.workOrdersStart, l10n.workOrdersComplete]) {
     painter.text = TextSpan(text: label, style: style);
     painter.layout();
     if (painter.width > widest) widest = painter.width;
@@ -862,15 +861,18 @@ double _workOrderNoColumnWidth(BuildContext context) {
 
 /// The register's one column spec. [AppTableHeader] and every [AppTableRow] are
 /// built from this list, so a header label and its cells start at the same x.
-List<AppTableColumn> _columns(BuildContext context) => [
-      AppTableColumn('WO#', width: _workOrderNoColumnWidth(context)),
-      const AppTableColumn('Summary', flex: 6),
-      const AppTableColumn('Asset', flex: 2),
-      const AppTableColumn('Org Unit', flex: 2),
-      AppTableColumn('Status', width: _statusColumnWidth(context)),
-      const AppTableColumn('Assignee', flex: 4),
-      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
-    ];
+List<AppTableColumn> _columns(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return [
+    AppTableColumn(l10n.workOrdersNumberColumn, width: _workOrderNoColumnWidth(context)),
+    AppTableColumn(l10n.commonSummary, flex: 6),
+    AppTableColumn(l10n.commonAsset, flex: 2),
+    AppTableColumn(l10n.commonOrgUnit, flex: 2),
+    AppTableColumn(l10n.commonStatus, width: _statusColumnWidth(context)),
+    AppTableColumn(l10n.commonAssignee, flex: 4),
+    AppTableColumn(l10n.commonActions, width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+  ];
+}
 
 class _WorkOrderTableRow extends StatelessWidget {
   const _WorkOrderTableRow({
@@ -887,6 +889,7 @@ class _WorkOrderTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final state = context.watch<WorkOrdersBloc>().state;
     final busy = state is WorkOrdersLoaded && (state.isAssigning || state.isTransitioning);
@@ -935,7 +938,7 @@ class _WorkOrderTableRow extends StatelessWidget {
                 style: muted, disclose: true),
             cell(workOrder.orgUnitName, style: muted, disclose: true),
             shrinkWrapTargets(StatusChip(label: workOrder.statusLabel, tone: workOrder.statusTone)),
-            cell(workOrder.assigneeName ?? 'Unassigned', style: primary, disclose: true),
+            cell(workOrder.assigneeName ?? l10n.commonUnassigned, style: primary, disclose: true),
             shrinkWrapTargets(_RowActions(
               workOrder: workOrder,
               canAssign: canAssign,
@@ -966,6 +969,7 @@ class _WorkOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final state = context.watch<WorkOrdersBloc>().state;
     final busy = state is WorkOrdersLoaded && (state.isAssigning || state.isTransitioning);
@@ -1037,7 +1041,7 @@ class _WorkOrderCard extends StatelessWidget {
                       // plainly, the contract issue #57 sets for a null assignee.
                       Flexible(
                         child: Text(
-                          workOrder.assigneeName ?? 'Unassigned',
+                          workOrder.assigneeName ?? l10n.commonUnassigned,
                           style: dense?.copyWith(color: palette.textPrimary),
                         ),
                       ),
@@ -1110,19 +1114,20 @@ class _RowActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final status = workOrder.status;
     const buttonSize = Size(AppTouchTarget.min, AppTouchTarget.min);
     final items = <_RowOverflowItem>[
       if (canAssign)
         _RowOverflowItem(
           key: WorkOrdersScreen.assignKey(workOrder.id),
-          label: workOrder.assignedTo == null ? 'Assign' : 'Reassign',
+          label: workOrder.assignedTo == null ? l10n.workOrdersAssign : l10n.workOrdersReassign,
           onSelected: () => context.go('${Routes.workOrders}/${workOrder.id}/assign'),
         ),
       if (canWork && offersCancel(status))
         _RowOverflowItem(
           key: WorkOrdersScreen.cancelKey(workOrder.id),
-          label: 'Cancel',
+          label: l10n.commonCancel,
           onSelected: () => context.go('${Routes.workOrders}/${workOrder.id}/cancel'),
         ),
     ];
@@ -1134,14 +1139,14 @@ class _RowActions extends StatelessWidget {
         onPressed:
             busy ? null : () => context.read<WorkOrdersBloc>().add(WorkOrderStartConfirmed(workOrder.id)),
         style: OutlinedButton.styleFrom(minimumSize: buttonSize),
-        child: const Text(_startLabel),
+        child: Text(l10n.workOrdersStart),
       );
     } else if (canWork && offersComplete(status)) {
       primary = OutlinedButton(
         key: WorkOrdersScreen.completeKey(workOrder.id),
         onPressed: busy ? null : () => context.go('${Routes.workOrders}/${workOrder.id}/complete'),
         style: OutlinedButton.styleFrom(minimumSize: buttonSize),
-        child: const Text(_completeLabel),
+        child: Text(l10n.workOrdersComplete),
       );
     }
 
@@ -1195,7 +1200,7 @@ class _RowOverflowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       key: WorkOrdersScreen.rowActionsKey(workOrderId),
-      tooltip: 'More actions',
+      tooltip: AppLocalizations.of(context).commonMoreActions,
       icon: const Icon(Icons.more_vert),
       style: IconButton.styleFrom(minimumSize: size),
       onPressed: enabled ? () => _open(context) : null,
@@ -1264,14 +1269,16 @@ class _WorkOrdersEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (orgUnitFilterId != null) {
+      final name = orgUnitFilterName ?? l10n.workOrdersThisOrgUnit;
       return PlatformEmptyState.noneMatched(
         key: WorkOrdersScreen.emptyFilteredKey,
-        title: 'No work orders match',
-        message: 'There is work at this Site, but none of it is raised at '
-            '${orgUnitFilterName ?? 'this Org Unit'} or beneath it'
-            '${showHistory ? '' : ' and still open'}.',
-        actionLabel: 'Clear filters',
+        title: l10n.workOrdersFilteredEmptyTitle,
+        message: showHistory
+            ? l10n.workOrdersFilteredEmptyMessage(name)
+            : l10n.workOrdersFilteredEmptyMessageOpen(name),
+        actionLabel: l10n.workOrdersClearFilters,
         actionKey: WorkOrdersScreen.emptyClearFiltersKey,
         onAction: () => context.read<WorkOrdersBloc>().add(const WorkOrdersOrgUnitFilterCleared()),
       );
@@ -1281,10 +1288,9 @@ class _WorkOrdersEmpty extends StatelessWidget {
     final loaded = state is WorkOrdersLoaded ? state : null;
     return PlatformEmptyState.noneExist(
       key: WorkOrdersScreen.emptyKey,
-      title: showHistory ? 'No work at this Site' : 'No open work at this Site',
-      message: 'Nothing has been raised against the Org Units you can act in. Raise a '
-          'Work order and it will show up right away.',
-      actionLabel: canRaiseWorkOrder && loaded?.siteId != null ? 'Raise a Work order' : null,
+      title: showHistory ? l10n.workOrdersNoneExistTitle : l10n.workOrdersNoneOpenTitle,
+      message: l10n.workOrdersNoneExistMessage,
+      actionLabel: canRaiseWorkOrder && loaded?.siteId != null ? l10n.workOrdersRaise : null,
       actionKey: WorkOrdersScreen.emptyRaiseKey,
       onAction: canRaiseWorkOrder && loaded?.siteId != null
           ? () => context.go('${Routes.workOrders}/new')

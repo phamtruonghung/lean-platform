@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_detail_section.dart';
@@ -78,6 +79,7 @@ class WorkOrderDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<WorkOrderDetailBloc>().state;
 
     return Scaffold(
@@ -92,7 +94,7 @@ class WorkOrderDetailScreen extends StatelessWidget {
               WorkOrderDetailLoading() => const SkeletonDetail(maxWidth: maxWidth),
               WorkOrderDetailUnavailable(message: final message) => PlatformFailureState(
                   key: WorkOrderDetailScreen.failedKey,
-                  title: 'This Work order could not be read',
+                  title: l10n.workOrderUnavailableTitle,
                   message: message,
                   retryKey: WorkOrderDetailScreen.retryKey,
                   onRetry: () =>
@@ -171,6 +173,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: WorkOrderDetailScreen.maxWidth,
@@ -183,12 +186,12 @@ class _Header extends StatelessWidget {
                 key: WorkOrderDetailScreen.backKey,
                 onPressed: () => context.go(Routes.workOrders),
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Work orders'),
+                label: Text(l10n.workOrderBackToList),
               ),
               const SizedBox(height: Spacing.sm),
               AppPageHeader(
-                title: 'Work order',
-                description: loaded ? null : 'The tasks copied from the Job plan that raised it.',
+                title: l10n.workOrderTitle,
+                description: loaded ? null : l10n.workOrderTasksDescription,
               ),
             ],
           ),
@@ -268,6 +271,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
 
@@ -313,11 +317,11 @@ class _SummaryCard extends StatelessWidget {
               spacing: Spacing.xl,
               runSpacing: Spacing.md,
               children: [
-                fact('Asset', '${workOrder.assetName} (${workOrder.assetCode})'),
-                fact('Org Unit', workOrder.orgUnitName),
-                fact('Work type', workOrder.workTypeLabel),
-                fact('Priority', '${workOrder.priority}'),
-                fact('Assignee', workOrder.assigneeName ?? 'Unassigned'),
+                fact(l10n.commonAsset, '${workOrder.assetName} (${workOrder.assetCode})'),
+                fact(l10n.commonOrgUnit, workOrder.orgUnitName),
+                fact(l10n.commonWorkType, workOrder.workTypeLabel),
+                fact(l10n.commonPriority, '${workOrder.priority}'),
+                fact(l10n.commonAssignee, workOrder.assigneeName ?? l10n.commonUnassigned),
               ],
             ),
             if (actions != null) ...[
@@ -344,19 +348,20 @@ class _BookingActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final labour = FilledButton.icon(
       key: WorkOrderDetailScreen.bookLabourKey,
       onPressed: () => _openDialog(context, LabourBookingDialog(workOrderId: workOrder.id)),
       style: _style,
       icon: const Icon(Icons.schedule),
-      label: const Text('Book labour'),
+      label: Text(l10n.workOrderBookLabour),
     );
     final part = FilledButton.icon(
       key: WorkOrderDetailScreen.bookPartKey,
       onPressed: () => _openDialog(context, PartBookingDialog(siteId: workOrder.siteId)),
       style: _style,
       icon: const Icon(Icons.inventory_2_outlined),
-      label: const Text('Book a part'),
+      label: Text(l10n.workOrderBookPart),
     );
     if (stacked) {
       return Column(
@@ -376,13 +381,14 @@ class _TasksSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return AppDetailSection(
-      title: 'Tasks',
+      title: l10n.workOrderTasks,
       children: [
         if (workOrder.tasks.isEmpty)
           Text(
-            'No steps were copied onto this Work order.',
+            l10n.workOrderNoTasks,
             key: WorkOrderDetailScreen.emptyTasksKey,
             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           )
@@ -405,6 +411,7 @@ class _CostSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context)?.copyWith(color: palette.textPrimary);
     final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
@@ -412,10 +419,10 @@ class _CostSection extends StatelessWidget {
     final shown = cost ?? const WorkOrderCost.empty();
 
     return AppDetailSection(
-      title: 'Cost so far',
+      title: l10n.workOrderCostSoFar,
       children: [
         if (!shown.hasLabour)
-          Text('No labour has been booked.', key: WorkOrderDetailScreen.emptyLabourKey, style: muted)
+          Text(l10n.workOrderNoLabour, key: WorkOrderDetailScreen.emptyLabourKey, style: muted)
         else
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -428,14 +435,15 @@ class _CostSection extends StatelessWidget {
                     Text(activity.label, style: dense),
                     Text(
                       activity.overtimeHours > 0
-                          ? '${_hours(activity.hours)} · ${_hours(activity.overtimeHours)} overtime'
-                          : _hours(activity.hours),
+                          ? l10n.workOrderOvertime(_hours(l10n, activity.hours),
+                              _hours(l10n, activity.overtimeHours))
+                          : _hours(l10n, activity.hours),
                       style: dense,
                     ),
                   ),
                 ),
               Text(
-                'Booked labour is part of the plant labour cost already reported, not new money.',
+                l10n.workOrderLabourNote,
                 key: WorkOrderDetailScreen.labourHoursKey,
                 style: note,
               ),
@@ -443,12 +451,13 @@ class _CostSection extends StatelessWidget {
                 Padding(
                   key: WorkOrderDetailScreen.overtimeKey,
                   padding: const EdgeInsets.only(top: Spacing.xs),
-                  child: Text('${_hours(shown.overtimeHours)} of it is overtime.', style: dense),
+                  child: Text(l10n.workOrderOvertimeNote(_hours(l10n, shown.overtimeHours)),
+                      style: dense),
                 ),
             ],
           ),
         if (!shown.hasParts)
-          Text('No parts have been fitted.', key: WorkOrderDetailScreen.emptyPartsKey, style: muted)
+          Text(l10n.workOrderNoParts, key: WorkOrderDetailScreen.emptyPartsKey, style: muted)
         else
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -468,7 +477,7 @@ class _CostSection extends StatelessWidget {
                     ),
                     Text(
                       part.totalCost == null
-                          ? 'No cost recorded'
+                          ? l10n.commonNoCostRecorded
                           : _money(part.totalCost!, part.currency),
                       style: dense,
                     ),
@@ -479,15 +488,12 @@ class _CostSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      'Parts are new cost — the one maintenance component that adds.',
-                      style: note,
-                    ),
+                    child: Text(l10n.workOrderPartsNote, style: note),
                   ),
                   const SizedBox(width: Spacing.sm),
                   Text(
                     shown.partsCost == null
-                        ? 'No cost recorded'
+                        ? l10n.commonNoCostRecorded
                         : _money(shown.partsCost!, shown.parts.first.currency),
                     style: Theme.of(context)
                         .textTheme
@@ -518,7 +524,7 @@ class _CostSection extends StatelessWidget {
   static String _count(num value) =>
       value == value.roundToDouble() ? value.toInt().toString() : value.toString();
 
-  static String _hours(num value) => '${_count(value)} h';
+  static String _hours(AppLocalizations l10n, num value) => l10n.commonHours(_count(value));
 
   static String _money(num value, String currency) => '${_count(value)} $currency';
 }
@@ -531,6 +537,7 @@ class _WorkOrderTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     return Row(
@@ -558,13 +565,14 @@ class _WorkOrderTaskRow extends StatelessWidget {
                   // The required Skill's name is the fact the ticket's own
                   // criterion asks to be visible on a Work order's task.
                   if (task.hasSkill)
-                    Text('Requires ${task.skillName}', style: muted)
+                    Text(l10n.workOrderRequiresSkill(task.skillName!), style: muted)
                   else
-                    Text('No skill required', style: muted),
+                    Text(l10n.workOrderNoSkill, style: muted),
                   if (task.hasMeter)
-                    Text('Records ${task.meterName ?? task.meterCode}', style: muted),
+                    Text(l10n.workOrderRecordsMeter(task.meterName ?? task.meterCode!), style: muted),
                   if (task.note != null) Text(task.note!, style: muted),
-                  if (task.reading != null) Text('Reading ${task.reading}', style: muted),
+                  if (task.reading != null)
+                    Text(l10n.workOrderReading('${task.reading}'), style: muted),
                 ],
               ),
               if (task.hasMeter && canRecord) ...[
@@ -575,7 +583,7 @@ class _WorkOrderTaskRow extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: const Text('Record a reading'),
+                  child: Text(l10n.workOrderRecordReading),
                 ),
               ],
             ],
