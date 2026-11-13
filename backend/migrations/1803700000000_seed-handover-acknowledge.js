@@ -22,7 +22,7 @@
  * separation this card asks for: a distinct act behind a distinct code, so an
  * administrator can later restrict acknowledging to supervisors without
  * touching who may write the handover. Nothing else about the Module changes;
- * the four reads and the eleven writes are gated by codes already seeded on
+ * the four reads and the ten writes are gated by codes already seeded on
  * every role.
  *
  * **`ROLE_ADMIN` is not named here.** It already holds the code from
