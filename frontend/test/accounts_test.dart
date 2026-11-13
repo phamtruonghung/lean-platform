@@ -771,6 +771,51 @@ void main() {
     expect(wire.activations, [('7', false)]);
   });
 
+  // `AccountsScreen.rowActionsKey`'s own doc, and the contract the four
+  // sibling Screens' tests already prove (work_orders_test.dart:1057 and 1313,
+  // assets_test.dart:1153, downtime_test.dart:501, requests_test.dart:747):
+  // the kebab's own `onPressed` is null while that row has an action in
+  // flight, which is what stops a caller from even opening the menu. Read off
+  // the trigger's own field — not off a menu item that cannot be reached.
+  testWidgets(
+      "a row's own kebab is disabled while an action on that row is in flight, "
+      'and usable again once it settles', (tester) async {
+    final wire = _plant(
+      accounts: [accountJson('7', 'admitted@b.c'), accountJson('8', 'second@b.c')],
+    )..patchGate = Completer<void>();
+    await openAccounts(tester, wire);
+
+    IconButton trigger(String id) =>
+        tester.widget<IconButton>(find.byKey(AccountsScreen.rowActionsKey(id)));
+
+    expect(trigger('7').onPressed, isNotNull);
+
+    // Row 7's deactivation starts and hangs on the gate — the same device the
+    // "second row's action" test above uses to make "in flight" observable.
+    await toggleActive(tester, '7');
+    await tapIn(tester, find.widgetWithText(FilledButton, 'Deactivate'));
+
+    expect(
+      trigger('7').onPressed,
+      isNull,
+      reason: "row 7's own kebab must be disabled while its deactivation is in flight",
+    );
+    // The other row is untouched: the guard is that row's own, not a
+    // Screen-wide flag (`isBusy(id)`), even though the Bloc would refuse a
+    // second action it could not run.
+    expect(trigger('8').onPressed, isNotNull);
+
+    wire.patchGate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(
+      trigger('7').onPressed,
+      isNotNull,
+      reason: "row 7's kebab must be usable again once its action settles",
+    );
+    expect(trigger('8').onPressed, isNotNull);
+  });
+
   testWidgets('a non-administrator reaches neither the destination nor the Screen',
       (tester) async {
     final wire = _plant(accounts: [accountJson('7', 'admitted@b.c')])..accountsStatus = 200;

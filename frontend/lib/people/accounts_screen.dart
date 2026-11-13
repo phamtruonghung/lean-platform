@@ -137,9 +137,12 @@ class AccountsScreen extends StatelessWidget {
   /// `WorkOrdersScreen.rowActionsKey` and its own menu items already are.
   ///
   /// Its own `onPressed` is `null` (disabled) while that row has an action in
-  /// flight, which is what stops a caller from even opening the menu — a test
-  /// proves "nothing offered while busy" by reading this key's own field
-  /// rather than reaching into a menu that cannot be open.
+  /// flight, which is what stops a caller from even opening the menu — so
+  /// "nothing offered while busy" is read off this key's own field rather than
+  /// reached for inside a menu that cannot be open. The test that proves it is
+  /// `accounts_test.dart`'s "a row's own kebab is disabled while an action on
+  /// that row is in flight, and usable again once it settles", the same
+  /// assertion `work_orders_test.dart` and its three siblings already make.
   static ValueKey<String> rowActionsKey(String id) => ValueKey<String>('accounts-actions-$id');
 
   /// The filter box's `name` (issue #191), seeding [filterFieldKey],
