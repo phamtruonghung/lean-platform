@@ -22,6 +22,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/app_camera_scan.dart';
 import 'package:lean_platform/widgets/app_form_submit.dart';
 import 'package:lean_platform/widgets/app_search_field.dart';
 import 'package:lean_platform/widgets/empty_state.dart';
@@ -681,6 +682,51 @@ void main() {
       // The Directory narrows its listing; it does not pick the Employee.
       expect(harnessKey.currentState!.submitted, ['asset-2']);
       expect(harnessKey.currentState!.selected, isEmpty);
+    });
+  });
+
+  group('the camera beside the search', () {
+    tearDown(() => AppCameraScan.reader = AppCameraScan.readWithCamera);
+
+    testWidgets('a code the camera read picks the record it names, with no tap',
+        (WidgetTester tester) async {
+      AppCameraScan.reader = (_) async => 'ASSET-2';
+      final harnessKey = GlobalKey<_HarnessState>();
+      await tester.pumpWidget(
+        _Harness(
+          key: harnessKey,
+          fetchSuggestions: (term) async => const [
+            (id: 'ASSET-1', label: 'Pump house'),
+            (id: 'ASSET-2', label: 'Compressor'),
+          ],
+          codeOf: (record) => record.id,
+        ),
+      );
+
+      await tester.tap(find.byKey(AppCameraScanButton.keyOf('employee')));
+      await tester.pumpAndSettle();
+
+      expect(harnessKey.currentState!.selected.map((record) => record.id), ['ASSET-2']);
+      expect(find.byKey(AppSearchField.suggestionListKey('employee')), findsNothing);
+    });
+
+    testWidgets('a camera the person closed picks nothing and leaves the field alone',
+        (WidgetTester tester) async {
+      AppCameraScan.reader = (_) async => null;
+      final harnessKey = GlobalKey<_HarnessState>();
+      await tester.pumpWidget(
+        _Harness(
+          key: harnessKey,
+          fetchSuggestions: (term) async => const [(id: 'ASSET-2', label: 'Compressor')],
+          codeOf: (record) => record.id,
+        ),
+      );
+
+      await tester.tap(find.byKey(AppCameraScanButton.keyOf('employee')));
+      await tester.pumpAndSettle();
+
+      expect(harnessKey.currentState!.selected, isEmpty);
+      expect(find.byKey(AppSearchField.fieldKey('employee')), findsOneWidget);
     });
   });
 }

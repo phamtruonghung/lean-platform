@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/app_camera_scan.dart';
 import 'package:lean_platform/widgets/app_form_submit.dart';
 import 'package:lean_platform/widgets/app_scan_field.dart';
 
@@ -225,5 +226,62 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
     expect(scanned, isEmpty);
+  });
+
+  group('the camera beside the reader', () {
+    tearDown(() => AppCameraScan.reader = AppCameraScan.readWithCamera);
+
+    testWidgets('a code the camera read fills the field and is reported as scanned',
+        (WidgetTester tester) async {
+      // A widget test has no camera: the seam is the camera. Everything after
+      // the code comes back — the write, the cleaning, the callback — is the
+      // widget under test.
+      AppCameraScan.reader = (_) async => '\uFEFFAST-0042\r\n';
+      final controller = TextEditingController();
+      final scanned = <String>[];
+
+      await tester.pumpWidget(_app(AppScanField(
+        key: _codeKey,
+        controller: controller,
+        label: 'Code',
+        onScanned: scanned.add,
+      )));
+
+      await tester.tap(find.byKey(AppCameraScanButton.keyOf('scan-test-code')));
+      await tester.pumpAndSettle();
+
+      expect(controller.text, 'AST-0042');
+      expect(scanned, ['AST-0042']);
+    });
+
+    testWidgets('a camera the person closed changes nothing', (WidgetTester tester) async {
+      AppCameraScan.reader = (_) async => null;
+      final controller = TextEditingController();
+      final scanned = <String>[];
+
+      await tester.pumpWidget(_app(AppScanField(
+        key: _codeKey,
+        controller: controller,
+        label: 'Code',
+        onScanned: scanned.add,
+      )));
+
+      await tester.tap(find.byKey(AppCameraScanButton.keyOf('scan-test-code')));
+      await tester.pumpAndSettle();
+
+      expect(controller.text, '');
+      expect(scanned, isEmpty);
+    });
+
+    testWidgets('a field that is not taking input offers no camera', (WidgetTester tester) async {
+      await tester.pumpWidget(_app(AppScanField(
+        key: _codeKey,
+        controller: TextEditingController(),
+        label: 'Code',
+        enabled: false,
+      )));
+
+      expect(find.byKey(AppCameraScanButton.keyOf('scan-test-code')), findsNothing);
+    });
   });
 }

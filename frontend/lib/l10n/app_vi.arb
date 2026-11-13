@@ -2218,5 +2218,37 @@
   "routerBackToList": "Về danh sách",
   "@routerBackToList": {
     "description": "The way out of the write-Grant refusal back to the register it was opened from."
+  },
+  "cameraScanButton": "Quét bằng camera",
+  "@cameraScanButton": {
+    "description": "The tooltip of the button on a code field or a picker that opens the camera to read a code."
+  },
+  "cameraScanTitle": "Quét mã",
+  "@cameraScanTitle": {
+    "description": "The camera dialog's own title, and the screen reader's name for its preview."
+  },
+  "cameraScanPointAtCode": "Hướng camera vào mã — hệ thống đọc ngay khi nhận ra.",
+  "@cameraScanPointAtCode": {
+    "description": "What to do with the camera, under the camera dialog's title."
+  },
+  "cameraScanClose": "Đóng",
+  "@cameraScanClose": {
+    "description": "The camera dialog's one way out that changes nothing."
+  },
+  "cameraScanRefusedTitle": "Không mở được camera",
+  "@cameraScanRefusedTitle": {
+    "description": "The camera dialog's heading when the browser refuses the camera or the permission was denied."
+  },
+  "cameraScanRefusedBody": "Hãy cho phép trang này dùng camera trong trình duyệt rồi thử lại.",
+  "@cameraScanRefusedBody": {
+    "description": "Why the camera did not open, and what the person can do about it in the browser's own chrome."
+  },
+  "cameraScanUnsupportedTitle": "Trình duyệt này không đọc được mã bằng camera",
+  "@cameraScanUnsupportedTitle": {
+    "description": "The camera dialog's heading when the browser has no code decoder at all."
+  },
+  "cameraScanUnsupportedBody": "Hãy nhập mã bằng tay, hoặc dùng đầu đọc ở xưởng.",
+  "@cameraScanUnsupportedBody": {
+    "description": "What a person does instead when their browser cannot decode a code from the camera."
   }
 }

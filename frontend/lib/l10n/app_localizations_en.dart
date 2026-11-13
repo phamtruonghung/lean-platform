@@ -1879,4 +1879,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routerBackToList => 'Back to the list';
+
+  @override
+  String get cameraScanButton => 'Scan with the camera';
+
+  @override
+  String get cameraScanTitle => 'Scan a code';
+
+  @override
+  String get cameraScanPointAtCode =>
+      'Point the camera at the code — it is read as soon as it is recognised.';
+
+  @override
+  String get cameraScanClose => 'Close';
+
+  @override
+  String get cameraScanRefusedTitle => 'The camera could not be opened';
+
+  @override
+  String get cameraScanRefusedBody =>
+      'Allow this site to use the camera in the browser, then try again.';
+
+  @override
+  String get cameraScanUnsupportedTitle =>
+      'This browser cannot read a code with the camera';
+
+  @override
+  String get cameraScanUnsupportedBody =>
+      'Type the code instead, or use the shop-floor reader.';
 }

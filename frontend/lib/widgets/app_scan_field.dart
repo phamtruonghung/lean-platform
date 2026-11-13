@@ -50,6 +50,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'app_camera_scan.dart';
+
 class AppScanField extends StatelessWidget {
   const AppScanField._({
     required this.fieldKey,
@@ -149,7 +151,55 @@ class AppScanField extends StatelessWidget {
       onChanged?.call(code);
     }
     onScanned?.call(code);
-    if (advanceFocusOnScan) FocusScope.of(context).nextFocus();
+    if (advanceFocusOnScan) _advanceToNextTextField(context);
+  }
+
+  /// Moves focus to the next control that takes text — the badge-then-PIN shape
+  /// this is for ends on a field, not on the camera button this field now
+  /// carries in its own decoration. A plain `nextFocus` would land on that
+  /// button, which would leave the PIN untyped and the reader's next burst
+  /// nowhere.
+  void _advanceToNextTextField(BuildContext context) {
+    final scope = FocusScope.of(context);
+    final nodes = scope.traversalDescendants.where((node) => node.canRequestFocus).toList(growable: false);
+    final current = FocusManager.instance.primaryFocus;
+    final from = current == null ? -1 : nodes.indexOf(current);
+    for (final node in nodes.skip(from < 0 ? 0 : from + 1)) {
+      if (_holdsTextField(node)) {
+        node.requestFocus();
+        return;
+      }
+    }
+    scope.nextFocus();
+  }
+
+  /// Whether [node] is the focus of a text field rather than of a button: the
+  /// field's node sits under an `EditableText`, a button's does not.
+  static bool _holdsTextField(FocusNode node) {
+    final context = node.context;
+    if (context is! Element) return false;
+    return context.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  /// A code a phone's camera read (see `app_camera_scan.dart`), written into the
+  /// field and committed exactly as a reader's burst is: same cleaning already
+  /// applied by the button, same [onChanged] so a caller's submit gate sees it,
+  /// same [onScanned].
+  void _takeScanned(String code) {
+    if (!enabled || code.isEmpty) return;
+    controller.value = TextEditingValue(
+      text: code,
+      selection: TextSelection.collapsed(offset: code.length),
+    );
+    onChanged?.call(code);
+    onScanned?.call(code);
+  }
+
+  /// Names the camera button in this field's own `Key` when it carries one, so
+  /// two code fields in one dialog do not share a key.
+  String get _scanName {
+    final key = fieldKey;
+    return key is ValueKey<String> ? key.value : 'code';
   }
 
   @override
@@ -181,6 +231,9 @@ class AppScanField extends StatelessWidget {
           labelText: label,
           helperText: helperText,
           border: const OutlineInputBorder(),
+          // The second reader, beside the first: a phone's camera. A field that
+          // is not taking input has no business offering one.
+          suffixIcon: enabled ? AppCameraScanButton(name: _scanName, onScanned: _takeScanned) : null,
         ),
       ),
     );
