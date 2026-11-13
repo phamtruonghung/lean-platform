@@ -218,17 +218,27 @@ slice 5b — the Training writes, the Attendance writes and the leave decisions
 ask their managing codes, and the two self-service acts ask the pair added
 above — so an operator who holds an edit Grant on a People Screen no longer
 performs the managing writes unless an administrator adds the code to its role
-(the seed migration and that release's PR body state this narrowing). Two
-deliberate gaps remain:
+(the seed migration and that release's PR body state this narrowing). ADR-0061's
+slice 8 closed the last three doors that still compared the role string outside
+Production, and left this shape:
 
-- **`POST /parts` stays administrator-only.** `MTN_PARTS_CHANGE` is carried by
-  engineer and manager too, so gating the route with it would *widen* the write
-  to two roles that are refused it today — a decision of its own, not a
-  retrofit.
+- **`POST /parts` asks `MTN_PARTS_CHANGE`** (ADR-0061 slice 8). That gate
+  *widened* the write: the code is carried by engineer and manager as well as
+  administrator, so an engineer can now define a Part where the `requireAdmin`
+  comparison refused it. The widening is deliberate — the seed already declared
+  that an engineer maintains Part master data — and an administrator reverses it
+  by taking the code off `ROLE_ENGINEER` / `ROLE_MANAGER` in the Roles Screen.
+- **The Accounts reads ask `ADM_ACCOUNTS_DISPLAY`**, a pure rename: the code is
+  carried by `ROLE_ADMIN` alone, exactly the set `requireAdmin` admitted.
 - **The Maintenance reads stay open** (`GET /sites/:siteId/assets`, the parts
   and store reads). Several Screens read the same endpoints, so a read gate
   would narrow Screens that never asked for it — the rule, its exception list
   and the test that holds it are ADR-0061 §7.
+- **Some People writes still compare the role string**: the five Account writes
+  in `people/routes.js`, `POST /sites`, a root Org Unit create and the
+  technician-credential write. Each needs its own code chosen between
+  `ADM_APPROVALS_*` and `ADM_ACCOUNTS_CHANGE`, which is the next slice rather
+  than a rename.
 
 Retrofitting `requirePermission` onto the other Modules' routes is a follow-on
 card per Module, because each write needs its own code chosen against the ADR

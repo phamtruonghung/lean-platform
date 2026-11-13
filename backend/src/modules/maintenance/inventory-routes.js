@@ -29,9 +29,9 @@
  *   - Writes are branch-scoped. Creating a store and recording a movement
  *     each require `MTN_STORES_CHANGE` and a write Grant reaching the relevant
  *     Org Unit: the code says which door, the Grant says which Org Units
- *     (ADR-0061), and both are asked on every write here. POST /parts stays
- *     administrator-only — see the comment above it for why that one is not
- *     this code.
+ *     (ADR-0061), and both are asked on every write here. POST /parts asks
+ *     `MTN_PARTS_CHANGE` and no Grant — a Part is a shared catalogue with no
+ *     Org Unit in play (ADR-0005).
  *
  * Every write resolves existence BEFORE asking about scope (issue #8's own
  * 403-vs-404 ordering): `canAct` returns true for role `admin` before it
@@ -39,11 +39,9 @@
  * turn an administrator's typo into a 500 on a NOT NULL foreign key rather
  * than a clean 404.
  *
- * `requireAdmin` is defined here rather than imported from People: People's
- * entry point deliberately does not export `requireAdmin`/`isAdmin` (see
- * people/index.js's own "deliberately NOT exported" list), so a Module outside
- * it carries its own copy of the role check, matching job-plan-routes.js's
- * copy and People's own refusal sentence word for word.
+ * Every write here asks a permission code, never a role comparison: the codes
+ * are what an administrator edits in the Roles Screen (ADR-0061), which is
+ * also why this file carries no copy of a `requireAdmin` helper any more.
  */
 
 const express = require('express');
@@ -52,8 +50,6 @@ const inventory = require('./inventory');
 const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
-
-const { requireAdmin } = require('./admin');
 
 // The Site a listing names must exist, whoever is asking — a 404, never a
 // silently empty 200, the same answer asset-routes.js's requireKnownSite
@@ -152,10 +148,13 @@ const mayChangeStores = people.requirePermission('MTN_STORES_CHANGE');
 //     the parts catalogue or a store before this card held only an Account.
 //     Gating the reads narrowed Accounts that use them today, so the reads stay
 //     open and the narrowing is recorded as a finding.
-//   - POST /parts is administrator-only today. `MTN_PARTS_CHANGE` is seeded on
-//     engineer/manager/administrator, so adding it would *widen* the write to
-//     two roles that are refused it today — a behaviour change of its own, not
-//     a retrofit, and out of scope for this card.
+//   - POST /parts asks `MTN_PARTS_CHANGE` (ADR-0061 slice 8). The seed carries
+//     it on engineer/manager/administrator, so gating this write *widened* what
+//     it admits: `requireAdmin` let administrators alone define a Part, while
+//     the seed already declared that an engineer maintains Part master data.
+//     The widening is deliberate and recorded in ADR-0061 §7 and the slice's PR
+//     body; taking the code off ROLE_ENGINEER/ROLE_MANAGER in the Roles Screen
+//     is how an administrator reverses it, which is the point of the model.
 
 // ---------------------------------------------------------------------------
 // Parts — the shared catalogue.
@@ -186,10 +185,14 @@ router.get('/parts', people.authenticate, people.requireActive, async (req, res,
   }
 });
 
-// Defining a part is administrator-only, the same gate job-plan-routes.js and
-// People's own job-role writes use: a part is a shared catalogue (ADR-0005),
-// so there is no Org Unit in play to scope it to and no Grant to check.
-router.post('/parts', people.authenticate, people.requireActive, requireAdmin, async (req, res, next) => {
+// Defining a part is a catalogue write, not a branch one: `MTN_PARTS_CHANGE`
+// names the door and there is no Org Unit in play to scope it to (ADR-0005),
+// so no Grant is asked. The code is seeded on engineer, manager and
+// administrator — a widening of the `requireAdmin` comparison that stood here,
+// stated in the comment above and in ADR-0061 §7.
+const mayChangeParts = people.requirePermission('MTN_PARTS_CHANGE');
+
+router.post('/parts', people.authenticate, people.requireActive, mayChangeParts, async (req, res, next) => {
   try {
     const part = await inventory.createPart(req.body ?? {}, req.account.id);
     res.status(201).json({ part });
