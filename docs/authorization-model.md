@@ -111,6 +111,7 @@ groups by module, shows them inside the People group.
 | `ACT_CAPA_OPEN` | Open a CAPA | Open an investigation on a Concern. |
 | `ACT_CAPA_VERIFY` | Verify a CAPA | Sign off an investigation's root causes and whys. |
 | `ACT_CAPA_EFFECTIVENESS` | Check effectiveness | Check whether an investigation's measures held. |
+| `ACT_CHANGE` | Change an Action | Link or unlink a Non-conformance, hand an Action up, or call one off. |
 
 ### Quality
 
@@ -181,7 +182,7 @@ groups by module, shows them inside the People group.
 
 | Role code | Name | Held automatically by | What it adds |
 | --- | --- | --- | --- |
-| `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board, the Section handover, and the two self-service acts — answering the caller's own training question and raising (or cancelling) their own leave request |
+| `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board, the Section handover, the two self-service acts — answering the caller's own training question and raising (or cancelling) their own leave request — and, since the Actions write retrofit (issue #533), every Actions write code (`ACT_CHANGE`, `ACT_MEASURE`, `ACT_VERIFY`, the three CAPA codes), because those writes were reachable by any Grant-holder before it and the retrofit takes no act away from the shop floor |
 | `ROLE_OPERATOR` | Operator | `app_users.role = operator` | Nothing beyond the default group — today an operator is offered nothing more, and the group says so rather than showing an empty list |
 | `ROLE_SUPERVISOR` | Supervisor | `app_users.role = supervisor` | The Maintenance Screens (Assets, Work orders, Parts, Stores, Triage, Downtime, PM schedules, Meters) **and the writes behind them** — add an Asset, raise/assign/start/complete/cancel a Work order, book labour and parts, record a task's meter reading, open a Store and record a stock movement, create or deactivate a PM schedule and run its sweep — plus the Insights registers, confirming Attendance, raising Training, deciding Leave, recording measures and incidents |
 | `ROLE_ENGINEER` | Engineer | `app_users.role = engineer` | A supervisor's set plus the writes behind an Asset, Work order, Part, Store and PM schedule, opening and verifying a CAPA, and disposing of nonconforming product |
@@ -239,6 +240,25 @@ Production, and left this shape:
   technician-credential write. Each needs its own code chosen between
   `ADM_APPROVALS_*` and `ADM_ACCOUNTS_CHANGE`, which is the next slice rather
   than a rename.
+
+The Actions Module's sixteen write routes were retrofitted next (ADR-0061,
+issue #533). Every write asks the code that names its act — `ACT_CHANGE`,
+`ACT_MEASURE`, `ACT_VERIFY`, `ACT_CAPA_OPEN`, `ACT_CAPA_VERIFY`,
+`ACT_CAPA_EFFECTIVENESS` — *and* keeps the scope or authority helper behind it,
+so the code answers which door and the helper still answers whose Action, which
+Org Unit. `ACT_CHANGE` is the one code this slice added, for the four acts the
+catalogue had no code for: linking or unlinking a Non-conformance, handing an
+Action up, calling one off. `1803800000000_actions-write-codes.js` seeds all six
+on every role, which is a widening in every case — `ACT_MEASURE` and `ACT_VERIFY`
+were supervisor-and-above, the three CAPA codes engineer-and-above, and the
+writes themselves were reachable by any Account holding the right Grant, or a
+place on a CAPA team, whatever its role. So **no caller's answer changes**: what
+these codes buy is that each door is now visible and removable in the Roles
+Screen. An administrator who decides verifying an Action belongs to supervisors
+takes `ACT_VERIFY` off `ROLE_OPERATOR` and every operator loses it at once,
+which a Grant cannot express. This slice does not enforce the seed's narrower
+declaration on its own — taking live capabilities off a plant is the owner's
+decision, not a migration's.
 
 Retrofitting `requirePermission` onto the other Modules' routes is a follow-on
 card per Module, because each write needs its own code chosen against the ADR
