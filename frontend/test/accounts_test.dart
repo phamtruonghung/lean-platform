@@ -21,9 +21,10 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/shell.dart';
 import 'package:lean_platform/widgets/app_filter_field.dart';
+import 'package:lean_platform/widgets/app_table.dart';
 import 'harness.dart'
-    show FakeAuthGateway, FakeWire, accountJson, employeeJson, grantJson, orgUnitJson, pumpApp,
-        siteJson, tapIn;
+    show FakeAuthGateway, FakeWire, accountJson, employeeJson, grantJson, loadAppFonts, orgUnitJson,
+        pumpApp, siteJson, tapIn;
 import 'org_unit_picker_test.dart' show grant;
 
 Future<void> openAccounts(WidgetTester tester, FakeWire wire) => pumpApp(
@@ -44,12 +45,29 @@ FakeWire _plant({List<Map<String, dynamic>>? accounts, List<Map<String, dynamic>
       },
     );
 
+/// Opens one row's overflow menu — every row action sits behind
+/// [AccountsScreen.rowActionsKey] since the actions column stopped occupying a
+/// third of the register's width, so a test that wants one of them opens the
+/// menu first. The action each key names, and what tapping it does, is
+/// unchanged; only where in the tree it sits moved. The helpers below are the
+/// four acts a test reaches most often, each one menu-open plus one tap.
+Future<void> openRowMenu(WidgetTester tester, String id) async {
+  await tapIn(tester, find.byKey(AccountsScreen.rowActionsKey(id)));
+}
+
 Future<void> openEmployeeLink(WidgetTester tester, String id) async {
+  await openRowMenu(tester, id);
   await tapIn(tester, find.byKey(AccountsScreen.linkEmployeeKey(id)));
 }
 
 Future<void> openCorrection(WidgetTester tester, String id) async {
+  await openRowMenu(tester, id);
   await tapIn(tester, find.byKey(AccountsScreen.correctKey(id)));
+}
+
+Future<void> toggleActive(WidgetTester tester, String id) async {
+  await openRowMenu(tester, id);
+  await tapIn(tester, find.byKey(AccountsScreen.activeKey(id)));
 }
 
 /// Switches the pumped app to the narrow (<850px of content) layout — the
@@ -73,6 +91,27 @@ void goWide(WidgetTester tester) {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(1200, 900);
   addTearDown(tester.view.reset);
+}
+
+/// Asserts that the text at [finder] was drawn at the width it needs — i.e.
+/// nothing was ellipsized. The widget-test fallback font draws a square glyph
+/// per em, so a caller that means to measure production type must have loaded
+/// the app's own Roboto first (`loadAppFonts`).
+void expectNotClipped(WidgetTester tester, Finder finder, String text, String reason) {
+  final rendered = tester.getSize(finder).width;
+  final style = tester.widget<Text>(finder).style;
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: TextDirection.ltr,
+    textScaler: MediaQuery.textScalerOf(tester.element(finder)),
+    maxLines: 1,
+  )..layout();
+  expect(
+    rendered + 0.5,
+    greaterThanOrEqualTo(painter.width),
+    reason: '$reason: drew ${rendered.toStringAsFixed(1)}px of the '
+        '${painter.width.toStringAsFixed(1)}px it needs',
+  );
 }
 
 void main() {
@@ -132,6 +171,83 @@ void main() {
       findsNothing,
     );
   });
+
+  // The Name column, measured at the two window sizes the owner named. Before
+  // the actions moved behind one trigger, this page drew a 1068px row with a
+  // ~300px actions column in it and the Name cell was 86px wide: the name below
+  // rendered 46 of the 114px it needed, at 1366 *and* at 1920 (the page is
+  // capped at [AccountsScreen.maxWidth], so a bigger window did not help).
+  //
+  // Measured against the app's own Roboto (`loadAppFonts`), not the
+  // widget-test fallback font — that one draws a square glyph per em, which
+  // would make "the name fits" true or false for reasons the product never
+  // sees.
+  for (final window in const [Size(1366, 768), Size(1920, 1080)]) {
+    testWidgets(
+        'at ${window.width.toInt()}×${window.height.toInt()} the Name column draws a whole name, '
+        'the actions column costs one target, and the page never scrolls sideways', (tester) async {
+      await loadAppFonts();
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = window;
+      addTearDown(tester.view.reset);
+
+      const name = 'Nguyen Van Tung';
+      await openAccounts(
+        tester,
+        _plant(accounts: [
+          {
+            ...accountJson('7', 'tung.nguyen@relats.com',
+                role: Roles.supervisor, grants: [grantJson('10', canWrite: true)]),
+            'displayName': name,
+          },
+        ]),
+      );
+
+      final at = '${window.width.toInt()}×${window.height.toInt()}';
+      final row = find.byKey(AccountsScreen.rowKey('7'));
+      expect(row, findsOneWidget, reason: '$at: no row');
+
+      // The name, in full, with no ellipsis.
+      expectNotClipped(
+        tester,
+        find.descendant(of: row, matching: find.text(name)),
+        name,
+        '$at: the Name cell',
+      );
+
+      // One trigger, not four controls: the column costs a tap target and the
+      // cell's own gutter, nothing more.
+      final actionsCell = find.descendant(of: row, matching: find.byKey(AppTableRow.cellKey(7)));
+      expect(tester.getSize(actionsCell).width, lessThanOrEqualTo(60),
+          reason: '$at: the actions column grew back into the table');
+      expect(find.byKey(AccountsScreen.rowActionsKey('7')), findsOneWidget,
+          reason: '$at: the row offers no way to its actions');
+
+      // …and every column label still reads in full, the Actions label
+      // included — the one that would be clipped by a 44px column.
+      for (final label in ['Name', 'Email', 'Role', 'Standing', 'Since', 'Grants', 'Employee', 'Actions']) {
+        expectNotClipped(
+          tester,
+          find.descendant(
+            of: find.byType(AccountsScreen),
+            matching: find.byKey(AppTableHeader.labelKey(label)),
+          ),
+          label,
+          '$at: the "$label" header',
+        );
+      }
+
+      // No sideways scroll anywhere on the page.
+      expect(
+        find.descendant(
+          of: find.byType(AccountsScreen),
+          matching: find.byType(SingleChildScrollView),
+        ),
+        findsNothing,
+        reason: '$at: the page scrolls horizontally',
+      );
+    });
+  }
 
   // The narrow layout (issue #112, Decision A) — Grants rendering (Decision
   // D) is unchanged from what this Screen rendered before this issue.
@@ -237,8 +353,10 @@ void main() {
         findsNothing);
     expect(find.byKey(AccountsScreen.rowKey('7')), findsOneWidget);
     expect(find.text('admitted@b.c'), findsOneWidget);
-    // The card's actions wrap rather than overflow at this width (issue #270),
-    // and the password reset is still offered here, not dropped.
+    // The card's actions sit behind the same one trigger the table uses (the
+    // actions column stopped being a four-control row), and the password reset
+    // is still offered there, not dropped.
+    await openRowMenu(tester, '7');
     expect(find.byKey(AccountsScreen.resetPasswordKey('7')), findsOneWidget);
   });
 
@@ -348,6 +466,9 @@ void main() {
       ]),
     );
 
+    // Everything the row offers is behind its one trigger, and a pending
+    // Account offers exactly one thing there.
+    await openRowMenu(tester, '8');
     expect(find.byKey(AccountsScreen.correctKey('8')), findsNothing);
     expect(find.byKey(AccountsScreen.activeKey('8')), findsNothing);
     expect(find.byKey(AccountsScreen.reviewInApprovalsKey('8')), findsOneWidget);
@@ -602,18 +723,18 @@ void main() {
     final wire = _plant(accounts: [accountJson('7', 'admitted@b.c')]);
     await openAccounts(tester, wire);
 
-    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
+    await toggleActive(tester, '7');
     expect(find.text('Deactivate this Account?'), findsOneWidget);
     await tapIn(tester, find.widgetWithText(OutlinedButton, 'Cancel'));
     expect(wire.activations, isEmpty);
 
-    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
+    await toggleActive(tester, '7');
     await tapIn(tester, find.widgetWithText(FilledButton, 'Deactivate'));
     expect(wire.activations, [('7', false)]);
     expect(find.text('Deactivated'), findsOneWidget);
 
     // Back in, with no question asked: reactivating takes nothing away.
-    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
+    await toggleActive(tester, '7');
     expect(wire.activations, [('7', false), ('7', true)]);
     expect(find.text('Active'), findsOneWidget);
   });
@@ -630,7 +751,7 @@ void main() {
     // Row 7's deactivation starts, and hangs — the patchGate holds it open,
     // the same device the Approval queue's own admission tests use to make
     // "in flight" observable.
-    await tapIn(tester, find.byKey(AccountsScreen.activeKey('7')));
+    await toggleActive(tester, '7');
     await tapIn(tester, find.widgetWithText(FilledButton, 'Deactivate'));
 
     // Row 8's correction is opened and submitted while row 7 is still busy.
@@ -692,13 +813,15 @@ void main() {
       ]),
     );
 
-    expect(find.byKey(AccountsScreen.activeKey('1')), findsNothing);
-    expect(find.byKey(AccountsScreen.correctKey('1')), findsNothing);
+    // The caller's own row carries no trigger at all, so no action of any kind
+    // can be reached on it — the explanation is the cell's own content.
+    expect(find.byKey(AccountsScreen.rowActionsKey('1')), findsNothing);
     expect(find.byKey(AccountsScreen.selfKey('1')), findsOneWidget);
 
+    expect(find.byKey(AccountsScreen.selfKey('7')), findsNothing);
+    await openRowMenu(tester, '7');
     expect(find.byKey(AccountsScreen.activeKey('7')), findsOneWidget);
     expect(find.byKey(AccountsScreen.correctKey('7')), findsOneWidget);
-    expect(find.byKey(AccountsScreen.selfKey('7')), findsNothing);
   });
 
   testWidgets("a different administrator's row keeps both actions — the guard keys on identity, not the admin role",
@@ -710,9 +833,10 @@ void main() {
       ]),
     );
 
+    expect(find.byKey(AccountsScreen.selfKey('9')), findsNothing);
+    await openRowMenu(tester, '9');
     expect(find.byKey(AccountsScreen.activeKey('9')), findsOneWidget);
     expect(find.byKey(AccountsScreen.correctKey('9')), findsOneWidget);
-    expect(find.byKey(AccountsScreen.selfKey('9')), findsNothing);
   });
 
   // The narrow card shares `_RowActions` with the wide table (issue #112,
@@ -737,13 +861,16 @@ void main() {
       ]),
     );
 
-    expect(find.byKey(AccountsScreen.activeKey('1')), findsNothing);
-    expect(find.byKey(AccountsScreen.correctKey('1')), findsNothing);
+    // Same two facts as the wide table's version above, through the card's own
+    // markup: no trigger on the caller's row, the full sentence instead.
+    expect(find.byKey(AccountsScreen.rowActionsKey('1')), findsNothing);
     expect(find.byKey(AccountsScreen.selfKey('1')), findsOneWidget);
+    expect(find.text('Your own Account. Another administrator has to change it.'), findsOneWidget);
 
+    expect(find.byKey(AccountsScreen.selfKey('7')), findsNothing);
+    await openRowMenu(tester, '7');
     expect(find.byKey(AccountsScreen.activeKey('7')), findsOneWidget);
     expect(find.byKey(AccountsScreen.correctKey('7')), findsOneWidget);
-    expect(find.byKey(AccountsScreen.selfKey('7')), findsNothing);
   });
 
   testWidgets("at < 850px of content a pending row still offers only Review in Approvals", (tester) async {
@@ -755,6 +882,7 @@ void main() {
       ]),
     );
 
+    await openRowMenu(tester, '8');
     expect(find.byKey(AccountsScreen.correctKey('8')), findsNothing);
     expect(find.byKey(AccountsScreen.activeKey('8')), findsNothing);
     expect(find.byKey(AccountsScreen.reviewInApprovalsKey('8')), findsOneWidget);
@@ -765,6 +893,7 @@ void main() {
     goNarrow(tester);
     await openAccounts(tester, _plant(accounts: [accountJson('7', 'admitted@b.c')]));
 
+    await openRowMenu(tester, '7');
     expect(find.byKey(AccountsScreen.activeKey('7')), findsOneWidget);
     expect(find.byKey(AccountsScreen.correctKey('7')), findsOneWidget);
   });
@@ -842,11 +971,12 @@ void main() {
       ),
     );
 
-    expect(find.byKey(AccountsScreen.linkEmployeeKey('1')), findsNothing);
+    expect(find.byKey(AccountsScreen.rowActionsKey('1')), findsNothing);
     // The value cell still names the link — showing it is not an action.
     expect(find.byKey(AccountsScreen.employeeKey('1')), findsOneWidget);
     expect(find.text('EMP-40 · Jane Doe'), findsOneWidget);
 
+    await openRowMenu(tester, '7');
     expect(find.byKey(AccountsScreen.linkEmployeeKey('7')), findsOneWidget);
   });
 

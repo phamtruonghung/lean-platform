@@ -352,6 +352,9 @@ void main() {
       initialLocation: Routes.accounts,
     );
 
+    // The Roles control lives in the row's overflow menu since the actions
+    // column stopped being an always-open row of controls.
+    await tapIn(tester, find.byKey(AccountsScreen.rowActionsKey('8')));
     await tapIn(tester, find.byKey(AccountsScreen.rolesKey('8')));
 
     // The two automatic groups are drawn ticked and disabled; the ordinary one
@@ -392,6 +395,9 @@ void main() {
       initialLocation: Routes.accounts,
     );
 
+    // The Roles control lives in the row's overflow menu since the actions
+    // column stopped being an always-open row of controls.
+    await tapIn(tester, find.byKey(AccountsScreen.rowActionsKey('8')));
     await tapIn(tester, find.byKey(AccountsScreen.rolesKey('8')));
     await tapIn(tester, find.byKey(AccountRolesDialog.checkboxKey('3')));
     await tapIn(tester, find.byKey(AccountRolesDialog.submitKey));
@@ -417,7 +423,10 @@ void main() {
       initialLocation: Routes.accounts,
     );
 
-    expect(find.byKey(AccountsScreen.rolesKey('1')), findsNothing);
+    // The caller's own row has no trigger, so nothing of the sort can be
+    // reached there; the row that does have one offers Roles inside it.
+    expect(find.byKey(AccountsScreen.rowActionsKey('1')), findsNothing);
+    await tapIn(tester, find.byKey(AccountsScreen.rowActionsKey('8')));
     expect(find.byKey(AccountsScreen.rolesKey('8')), findsOneWidget);
   });
 

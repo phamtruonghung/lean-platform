@@ -64,17 +64,21 @@ class AccountsScreen extends StatelessWidget {
   /// window figure says nothing about the box this table is drawn in.
   ///
   /// **900, and read through [AppBreakpoints.effective]** — both halves changed
-  /// in #392. The old number was 850, chosen when the actions column was a fixed
-  /// 420-width box; it is now measured from the widest label it actually draws
-  /// (~300), so more of the box goes to the seven flexible columns, and at a 1280
-  /// window this page is handed 988 — every header label (`Standing`,
-  /// `Employee`, `Grants`) is single-line there. At 900 the leftover for the
-  /// names would be 283px across seven columns, which is clipped to nothing; that
-  /// is why the number moved up rather than down. And the comparison now
-  /// multiplies the breakpoint by the reader's text size: the same 988px box at
-  /// twice the text needs 1800, so the cards come back instead of squeezing eight
-  /// columns past legibility (§10; the bug class of #379 and #381, which this
-  /// line was one of).
+  /// in #392. The number has survived two shapes of the actions column: a
+  /// hand-set 420, then one measured from the four controls a row drew (~335).
+  /// It stays now that those four are behind one 44px trigger (52 with the
+  /// cell's own gutter), because the table's floor is the seven text columns,
+  /// not the actions: at 900 of content the actions take 52 of the 844 a row has
+  /// inside its padding, the seven flex columns share the other 792, and the
+  /// Name cell gets 172 of them — a whole name reads there (measured at the
+  /// app's own font, a 16-character name needs 114). Anything narrower hands the
+  /// rows to the cards. At a 1366 window this page is handed 1106, the row is
+  /// 1068, and the Name cell is 208.
+  ///
+  /// And the comparison multiplies the breakpoint by the reader's text size: the
+  /// same box at twice the text needs 1800, so the cards come back instead of
+  /// squeezing eight columns past legibility (§10; the bug class of #379 and
+  /// #381, which this line was one of).
   static const double narrowBreakpoint = 900;
 
   static const ValueKey<String> noticeKey = ValueKey<String>('accounts-notice');
@@ -120,6 +124,23 @@ class AccountsScreen extends StatelessWidget {
   /// pending Account — a link to the one place Approval is actually decided.
   static ValueKey<String> reviewInApprovalsKey(String id) =>
       ValueKey<String>('accounts-review-$id');
+
+  /// The overflow trigger for one row — the single control every row's actions
+  /// sit behind, in the wide table and in the narrow card alike.
+  ///
+  /// Since the Name column was being clipped to a couple of characters by the
+  /// four always-on controls this replaced, [_RowActions] draws one kebab
+  /// `IconButton` and puts the same controls in the menu it opens, so the
+  /// actions column costs one 44px target instead of ~300px of the register's
+  /// width. Every other action key above still names the same act and is still
+  /// tappable — it is now in the tree only while the menu is open, exactly as
+  /// `WorkOrdersScreen.rowActionsKey` and its own menu items already are.
+  ///
+  /// Its own `onPressed` is `null` (disabled) while that row has an action in
+  /// flight, which is what stops a caller from even opening the menu — a test
+  /// proves "nothing offered while busy" by reading this key's own field
+  /// rather than reaching into a menu that cannot be open.
+  static ValueKey<String> rowActionsKey(String id) => ValueKey<String>('accounts-actions-$id');
 
   /// The filter box's `name` (issue #191), seeding [filterFieldKey],
   /// [filterClearKey] and [filterCountKey] — kept in one place so the field's
@@ -255,7 +276,7 @@ class _Notice extends StatelessWidget {
 /// a third, horizontally-scrolling shape, copying `work_orders_screen.dart`'s
 /// own `_WorkOrdersList` (issue #104) rather than re-deciding the shape:
 ///
-/// - At or above [AccountsScreen.narrowBreakpoint] (850px of content): a table — a
+/// - At or above [AccountsScreen.narrowBreakpoint] (900px of content): a table — a
 ///   header row of column labels (Name, Email, Role, Standing, Since,
 ///   Grants, Actions — issue #112, Decision C), then one `Row` of cells per
 ///   Account, built from `Expanded`/`Flexible` cells with
@@ -420,45 +441,31 @@ class _AccountsListState extends State<_AccountsList> {
   }
 }
 
-/// The trailing actions column, measured from the widest controls a row can
-/// actually draw: `Reactivate` (the longer of Deactivate/Reactivate) plus
-/// `Change` plus the two icon buttons, each at its 44px floor, plus the gutters
-/// between them. Measured rather than fixed (it was a hand-set 420 before #392),
-/// so the seven flexible columns get every pixel the actions do not need — and
-/// at twice the reader's text the column grows with the labels instead of
-/// clipping them.
-double _actionsColumnWidth(BuildContext context) {
-  final label = Theme.of(context).textTheme.labelLarge;
-  final reactivate = _measure(context, 'Reactivate', label) + 2 * Spacing.xl;
-  final change = _measure(context, 'Change', label) + 2 * Spacing.xl;
-  // The two icon buttons are 48 apiece (an `IconButton`'s own default target),
-  // so the column is never asked to hold less than they are.
-  return reactivate +
-      change +
-      48 +
-      48 +
-      3 * Spacing.xs +
-      2 * Spacing.sm;
-}
-
-/// The register's one column spec: [AppTableHeader] and every
-/// [_AccountTableRow]'s cells are built from it, so a band label and its cells
-/// start at the same x.
+/// The trailing actions column: one kebab target, or the "Actions" label it
+/// sits under — whichever is wider — plus the cell's own trailing gutter.
 ///
-/// The Employee link's own control deliberately lives in the actions column
-/// rather than in the Employee cell itself (a flex-sized column): that cell is
-/// narrow enough at ordinary widths that a button folded into it overflowed,
-/// where the measured actions column has room to spare.
-List<AppTableColumn> _columns(BuildContext context) => [
-      const AppTableColumn('Name', flex: 2),
-      const AppTableColumn('Email', flex: 3),
-      const AppTableColumn('Role', flex: 2),
-      const AppTableColumn('Standing', flex: 2),
-      const AppTableColumn('Since', flex: 2),
-      const AppTableColumn('Grants', flex: 2),
-      const AppTableColumn('Employee', flex: 2),
-      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
-    ];
+/// It used to be measured from the labels it drew — `Reactivate` + `Change` +
+/// the two icon buttons — which came to 335px in a 1068px row, and left the
+/// Name cell (flex 2 of 15) 86px wide at every window this page is not `narrow`
+/// at: measured, the name rendered 46 of its 114px, so the column showed two or
+/// three characters and an ellipsis. [_RowActions] now draws one
+/// [AppTouchTarget.min]-square trigger, so the column costs 52 (that square plus
+/// the cell's own gutter, or the "Actions" label when the reader's text is large
+/// enough for the label to win) and the register's seven text columns get the
+/// other 283px.
+double _actionsColumnWidth(BuildContext context) {
+  // The header's own style (`AppTableHeader`), so the label and the column are
+  // measured against the same thing — and scaled with the reader's text, like
+  // every other stated width (``AppLayout.atTextScale``).
+  final label = Theme.of(context).textTheme.labelMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.2,
+      );
+  final headerLabel = _measure(context, 'Actions', label);
+  final target = AppLayout.atTextScale(context, AppTouchTarget.min);
+  final widest = headerLabel > target ? headerLabel : target;
+  return widest + Spacing.sm;
+}
 
 double _measure(BuildContext context, String text, TextStyle? style) {
   final painter = TextPainter(
@@ -469,6 +476,32 @@ double _measure(BuildContext context, String text, TextStyle? style) {
   )..layout();
   return painter.width;
 }
+
+/// The register's one column spec: [AppTableHeader] and every
+/// [_AccountTableRow]'s cells are built from it, so a band label and its cells
+/// start at the same x.
+///
+/// The flex split is name-first on purpose. The Name cell holds an avatar and
+/// the one value a reader scans for, so it takes the largest share; Standing
+/// carries a chip that has to stay on one line ("Awaiting Approval" is the
+/// longest), and Employee holds a person's name, so both get more than the
+/// narrow count-and-date columns. Measured at the four-column widths below,
+/// this is what stops the name clipping (see [_RowActions]'s own header for
+/// the numbers).
+///
+/// The Employee link's own control deliberately lives in the actions column
+/// rather than in the Employee cell itself (a flex-sized column): that cell is
+/// narrow enough at ordinary widths that a button folded into it overflowed.
+List<AppTableColumn> _columns(BuildContext context) => [
+      const AppTableColumn('Name', flex: 5),
+      const AppTableColumn('Email', flex: 4),
+      const AppTableColumn('Role', flex: 3),
+      const AppTableColumn('Standing', flex: 4),
+      const AppTableColumn('Since', flex: 2),
+      const AppTableColumn('Grants', flex: 2),
+      const AppTableColumn('Employee', flex: 3),
+      AppTableColumn('Actions', width: _actionsColumnWidth(context), align: AppColumnAlign.end),
+    ];
 
 /// The tone a standing carries: an Account that may act reads as finished, one
 /// still waiting on an administrator reads as a decision owed, one turned away
@@ -581,7 +614,7 @@ class _AccountTableRow extends StatelessWidget {
           Theme(
             data: Theme.of(context)
                 .copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
-            child: _RowActions(account: account, busy: busy, isSelf: isSelf),
+            child: _RowActions(account: account, busy: busy, isSelf: isSelf, compact: true),
           ),
         ],
       ),
@@ -589,7 +622,7 @@ class _AccountTableRow extends StatelessWidget {
   }
 }
 
-/// The narrow (<850px of content) card — unchanged from what this Screen
+/// The narrow (<900px of content) card — unchanged from what this Screen
 /// rendered before issue #112, apart from carrying the same
 /// [AccountsScreen.rowKey] the wide table row now carries too, and apart
 /// from where [_RowActions] sits (issue #120 — see its own header below).
@@ -695,143 +728,199 @@ class _EmployeeCell extends StatelessWidget {
 /// actions through exactly the same keys — the same reasoning
 /// `work_orders_screen.dart`'s own `_RowActions` documents.
 ///
-/// - The caller's own row (issue #53): neither action, an explanation
-///   instead. Checked first, since the server refuses every action on it
-///   unconditionally regardless of standing.
-/// - A pending Account: neither correction nor deactivation — the server
-///   refuses both — but a "Review in Approvals" link to the one place
-///   Approval is actually decided, never a disabled button and never an
-///   inline approve/reject here.
-/// - Otherwise: "Deactivate"/"Reactivate", offered only for an approved
-///   Account (the server refuses it for a rejected one, whose way back in is
-///   a correction), plus "Change", offered for both an approved and a
-///   rejected Account.
+/// **One overflow trigger, not four controls in the open.** This widget used to
+/// draw Deactivate/Reactivate, Change, and two icon buttons side by side, which
+/// made [_actionsColumnWidth] ~300px of a 1068px row and left the Name cell 86px
+/// wide — measured, the name rendered 46px of its 114px and read as two or three
+/// characters and an ellipsis, at 1366 *and* at 1920 (this page is capped at
+/// [AccountsScreen.maxWidth], so both windows hand it the same 1068px row). So
+/// the actions moved behind the kebab [AccountsScreen.rowActionsKey] names, in
+/// both layouts: the same acts, one trigger, and the ~300px returned to the
+/// seven text columns.
 ///
-/// Sizing is the caller's job, not this widget's: the self-row branch is a
-/// `Text` with no width of its own, long enough to overflow a `Row` that
-/// hands it unbounded space. [_AccountTableRow] constrains it with a
-/// fixed-width `SizedBox`; [_AccountCard] gives it a full-width line of its
-/// own at the bottom of the card, below the info row, Grants and Employee
-/// cell (issue #120) — the same shape `work_orders_screen.dart`'s own
-/// `_WorkOrderCard` already uses for its `_RowActions`, and copied here for
-/// the same reason: a `CircleAvatar` plus an info column plus this widget
-/// side by side in one `Row`, as this card used to lay them out, does not
-/// leave enough width for the two-button case (Deactivate/Reactivate plus
-/// Change plus the Employee-link icon) once this Screen actually measures
-/// its own content width instead of the browser window — at the 700px window
-/// where the Shell's own sidebar breakpoint used to collide with this
-/// Screen's old one, the content box is 440px, and three controls beside an
-/// avatar and an info column do not fit at that width no matter how they are
-/// wrapped. Giving `_RowActions` its own line, rather than trying to squeeze
-/// it beside the info column with a `Flexible` (tried once already, and
-/// rejected because `Flexible` next to this `Row`'s own `Expanded` splits the
-/// remaining space between the two instead of letting the info column keep
-/// whatever the actions do not need), removes the competition for width
-/// entirely: neither branch needs a `Flexible`, and neither can overflow the
-/// other.
+/// - The caller's own row (issue #53): no trigger at all, and an explanation
+///   instead — checked first, since the server refuses every action on it
+///   unconditionally regardless of standing. In the table (where the column is
+///   one 44px target) the explanation is a `Tooltip`; on the card it is the
+///   sentence, on a line of its own.
+/// - A pending Account: one menu item, "Review in Approvals" — neither
+///   correction nor deactivation, which the server refuses — never an inline
+///   approve/reject here.
+/// - Otherwise, in the menu: Deactivate/Reactivate (approved Accounts only),
+///   Change (approved and rejected alike), the Employee link, Reset password,
+///   and Roles.
+///
+/// [compact] is the table's shape: the column is 44px wide there, so the
+/// self-row explanation is disclosed by a tooltip rather than drawn.
 class _RowActions extends StatelessWidget {
-  const _RowActions({required this.account, required this.busy, required this.isSelf});
+  const _RowActions({
+    required this.account,
+    required this.busy,
+    required this.isSelf,
+    this.compact = false,
+  });
 
   final ManagedAccount account;
   final bool busy;
   final bool isSelf;
+
+  /// Whether this widget is drawn in the table's 44px actions column rather
+  /// than on the card's own full-width line.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     // Neither action is offered on the caller's own row: the server refuses
-    // all three self-actions unconditionally (issue #53), so no button here
+    // all three self-actions unconditionally (issue #53), so no control here
     // would ever succeed.
     if (isSelf) {
+      const explanation = 'Your own Account. Another administrator has to change it.';
+      if (compact) {
+        // Reachable the three ways `DisclosingText` documents — hover, long
+        // press, and the screen reader's own label — because a tooltip is what
+        // fits a column sized for a single 44px target.
+        return Tooltip(
+          key: AccountsScreen.selfKey(account.id),
+          message: explanation,
+          waitDuration: const Duration(milliseconds: 500),
+          child: Icon(Icons.lock_outline, size: 20, color: theme.colorScheme.onSurfaceVariant),
+        );
+      }
       return DisclosingText(
-        'Your own Account. Another administrator has to change it.',
+        explanation,
         key: AccountsScreen.selfKey(account.id),
         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       );
     }
 
-    if (account.isPending) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: OutlinedButton(
+    final items = <_RowOverflowItem>[
+      if (account.isPending)
+        _RowOverflowItem(
           key: AccountsScreen.reviewInApprovalsKey(account.id),
-          onPressed: () => context.go(Routes.approvals),
-          child: const Text('Review in Approvals'),
-        ),
-      );
-    }
-
-    // A `Wrap`, not a `Row` (issue #270): four controls fit on one line in the
-    // table's fixed [_actionsColumnWidth], but the card at the 700px window
-    // hands this widget only 376px, so there they flow onto a second line
-    // rather than overflow — and are never dropped, since an administrator
-    // needs them most on the phone-sized layout.
-    return Wrap(
-      spacing: Spacing.xs,
-      runSpacing: Spacing.xs,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
+          label: 'Review in Approvals',
+          onSelected: () => context.go(Routes.approvals),
+        )
+      else ...[
         // Only an approved Account can be deactivated or reactivated: the
         // server refuses either for a rejected one, whose way back in is a
         // correction (`setAccountActive`, service.js).
         if (account.isApproved)
-          OutlinedButton(
+          _RowOverflowItem(
             key: AccountsScreen.activeKey(account.id),
-            onPressed: busy ? null : () => _toggleActive(context, account),
-            child: Text(account.isActive ? 'Deactivate' : 'Reactivate'),
+            label: account.isActive ? 'Deactivate' : 'Reactivate',
+            onSelected: () => _toggleActive(context, account),
           ),
-        FilledButton(
+        _RowOverflowItem(
           key: AccountsScreen.correctKey(account.id),
-          onPressed: busy ? null : () => AccountCorrectionDialog.open(context, account),
-          child: const Text('Change'),
+          label: 'Change',
+          onSelected: () => AccountCorrectionDialog.open(context, account),
         ),
-        // The Employee link's own control (issue #116, ADR-0022) — an icon
-        // button, not a labelled one, so it fits this fixed-width column
-        // alongside the two above; [_actionsColumnWidth] was widened to make
-        // room for it. Absent on the caller's own row and on a pending row
-        // for free, by sitting after the two early returns above rather than
-        // needing an exclusion of its own.
-        IconButton(
+        // The Employee link's own control (issue #116, ADR-0022), the password
+        // reset (issue #270) and the Roles dialog (issue #492, ADR-0061) — all
+        // three absent on the caller's own row and on a pending row for free,
+        // by sitting in this branch rather than needing an exclusion of their
+        // own.
+        _RowOverflowItem(
           key: AccountsScreen.linkEmployeeKey(account.id),
-          icon: const Icon(Icons.badge_outlined, size: 20),
-          tooltip: account.linkedEmployee == null ? 'Link an Employee' : 'Change Employee link',
-          visualDensity: VisualDensity.compact,
-          onPressed: busy ? null : () => AccountEmployeeDialog.open(context, account),
+          label: account.linkedEmployee == null ? 'Link an Employee' : 'Change Employee link',
+          onSelected: () => AccountEmployeeDialog.open(context, account),
         ),
-        // Reset the Account's password (issue #270) — after the two early
-        // returns above, so absent on the caller's own row and a pending one.
-        IconButton(
+        _RowOverflowItem(
           key: AccountsScreen.resetPasswordKey(account.id),
-          icon: const Icon(Icons.lock_reset, size: 20),
-          tooltip: 'Reset password',
-          visualDensity: VisualDensity.compact,
-          onPressed: busy ? null : () => AccountPasswordDialog.open(context, account),
+          label: 'Reset password',
+          onSelected: () => AccountPasswordDialog.open(context, account),
         ),
-        // The groups this person is in (issue #492, ADR-0061): one control that
-        // opens the Assign dialog. A `Roles` label would not fit the fixed
-        // [_actionsColumnWidth] beside four other controls, so this is the same
-        // icon-button shape the password reset takes.
-        IconButton(
+        _RowOverflowItem(
           key: AccountsScreen.rolesKey(account.id),
-          icon: const Icon(Icons.admin_panel_settings_outlined, size: 20),
-          tooltip: 'Roles',
-          visualDensity: VisualDensity.compact,
-          onPressed: busy
-              ? null
-              : () async {
-                  final notice = await AccountRolesDialog.open(
-                    context,
-                    accountId: account.id,
-                    accountName: account.displayName,
-                  );
-                  if (notice == null || !context.mounted) return;
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text(notice)));
-                },
+          label: 'Roles',
+          onSelected: () => _openRoles(context),
         ),
       ],
+    ];
+
+    return _RowOverflowButton(accountId: account.id, items: items, enabled: !busy);
+  }
+
+  /// Opens [AccountRolesDialog] and reports whatever it says back on the
+  /// Screen's own SnackBar, as this control always has.
+  Future<void> _openRoles(BuildContext context) async {
+    final notice = await AccountRolesDialog.open(
+      context,
+      accountId: account.id,
+      accountName: account.displayName,
     );
+    if (notice == null || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(notice)));
+  }
+}
+
+/// One entry in a row's overflow menu — a [key] so a test can find it once the
+/// menu is open, a [label], and what happens when it is chosen.
+class _RowOverflowItem {
+  const _RowOverflowItem({required this.key, required this.label, required this.onSelected});
+
+  final Key key;
+  final String label;
+  final VoidCallback onSelected;
+}
+
+/// The kebab trigger a row's overflow menu opens from. A plain `IconButton`
+/// driving [showMenu] directly, rather than `PopupMenuButton` wrapping it:
+/// [AccountsScreen.rowActionsKey]'s own contract is that a test can read this
+/// trigger's `onPressed` field directly to prove it is disabled while that row
+/// has an action in flight — the same shape `work_orders_screen.dart`'s own
+/// `_RowOverflowButton` uses, and for the same reason.
+class _RowOverflowButton extends StatelessWidget {
+  const _RowOverflowButton({
+    required this.accountId,
+    required this.items,
+    required this.enabled,
+  });
+
+  final String accountId;
+  final List<_RowOverflowItem> items;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      key: AccountsScreen.rowActionsKey(accountId),
+      tooltip: 'Actions',
+      icon: const Icon(Icons.more_vert, size: 20),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
+      ),
+      onPressed: enabled ? () => _open(context) : null,
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final button = context.findRenderObject() as RenderBox;
+    final overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+    final selectedKey = await showMenu<Key>(
+      context: context,
+      position: position,
+      items: [
+        for (final item in items)
+          PopupMenuItem<Key>(key: item.key, value: item.key, child: Text(item.label)),
+      ],
+    );
+    if (selectedKey == null) return;
+    for (final item in items) {
+      if (item.key == selectedKey) {
+        item.onSelected();
+        return;
+      }
+    }
   }
 }
 
