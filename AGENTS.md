@@ -419,6 +419,10 @@ workflow it was written for.
   the machine; its `-j 2` matters as much as the CPU cap.
 - Every acceptance criterion in the ticket is covered by a test you can point
   to by name — not merely "the feature works when I tried it".
+- Any change to a Screen or the Shell runs `bash scripts/design_gate.sh` before
+  the pull request — a red `flutter test` is measured, not guessed at
+  (`frontend/test/GOLDENS.md`, "When a golden fails") — and a waiver or a
+  threshold change in `.designgate.json` needs its reason in the pull request.
 - No schema migration was added unless the ticket explicitly calls for one.
 - New code, tests, commits and any UI copy use `CONTEXT.md`'s glossary terms,
   not a word listed under that term's `_Avoid_`.
