@@ -173,6 +173,7 @@ class _EmployeeLinkPickerState extends State<EmployeeLinkPicker> {
           ),
           idOf: (employee) => employee.id,
           displayStringFor: (employee) => '${employee.employeeNo} · ${employee.displayName}',
+          codeOf: (employee) => employee.employeeNo,
         ),
       ],
     );

@@ -741,6 +741,22 @@ written only here is a rule nobody can be held to.
   mid-form, before the rest of the code's own form may be filled, so a terminator
   that submitted would post a half-filled form. The stopping place is the field,
   and the previous rule still holds for every field that is not a code.
+- **A picker takes a scanner too, and a scan is a pick.** Where the Platform asks
+  a person to *choose* a record a reader can name — an Asset on a breakdown, a
+  Part on a booking, a Product on a non-conformance, an Employee on a labour
+  booking — the control is `AppSearchField` (`lib/widgets/app_search_field.dart`),
+  not a code field, and a burst into it used to land as search text and stop:
+  the person still had to find the row and tap it. So the same hardware `Enter`
+  now resolves the term immediately (no debounce — a committed term is not still
+  being typed) and picks the single record whose `codeOf` (or, with no `codeOf`,
+  whose display string) equals the scanned code exactly, case-insensitively.
+  Nothing short of an exact match picks: a near miss leaves the suggestions on
+  screen, and two records carrying one code pick nothing rather than guess. This
+  is the same exception to the `Enter`-submits rule as the bullet above, for the
+  same reason — the key arrives mid-form, before the value it names has been
+  chosen — and it stops at the picker. A field whose submit caller is set (the
+  Directory, which filters its own listing) is not a picker: its `Enter` still
+  goes to that caller.
 - **The skip control comes before the Shell's own chrome.** "Skip to content" is
   drawn at the top-left of the Shell in a `Stack`, invisible until it takes
   focus (`Opacity` 0 plus `IgnorePointer`, so it never eats a click on the brand

@@ -330,6 +330,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     ),
                     idOf: (product) => product.id,
                     displayStringFor: (product) => '${product.name} (${product.code})',
+                    codeOf: (product) => product.code,
                   ),
                   const SizedBox(height: Spacing.md),
                   DropdownButtonFormField<String?>(
@@ -629,6 +630,7 @@ class _AssetField extends StatelessWidget {
           ),
           idOf: (asset) => asset.id,
           displayStringFor: (asset) => '${asset.name} (${asset.code})',
+          codeOf: (asset) => asset.code,
         );
     }
   }

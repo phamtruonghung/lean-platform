@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme.dart';
+import 'app_scan_field.dart';
 import 'empty_state.dart';
 import 'failure_state.dart';
 
@@ -163,6 +165,29 @@ import 'failure_state.dart';
 /// (never `noneExist`: this widget has no idea whether the backing
 /// collection is itself empty).
 ///
+/// **A code field takes a scanner, and a scan is a pick.** A shop-floor reader
+/// is a keyboard: it types the code as a burst and ends with `Enter`. On a
+/// field that only *suggests* (this one), that burst used to land as text and
+/// then stop — the person still had to find the row with a mouse and tap it,
+/// which is exactly what scanning was meant to save. So a commit that arrives
+/// with no [onSubmitted] caller (every picker: the field's job is to choose,
+/// never to filter) resolves the term immediately — no debounce, because there
+/// is nothing left to wait for — and picks the one record whose [codeOf] (or,
+/// with no [codeOf], whose [displayStringFor]) equals the scanned code exactly,
+/// case-insensitively. Two records carrying that code pick nothing: ambiguity
+/// is shown as a list, never guessed at. Anything short of an exact match
+/// leaves the suggestions on screen for a tap, so a mis-scan costs nothing.
+///
+/// The `Enter` that does this is a `Focus.onKeyEvent` ancestor around the
+/// field — the same device, and the same measured reason, as
+/// `AppScanField`'s own doc comment: a hardware `Enter` never reaches
+/// `TextField.onSubmitted`. That is a deliberate exception to
+/// "`Enter` submits the form" (design-language §8): on a picker the key
+/// arrives mid-form, before the value it is naming has even been chosen, so
+/// committing it there is the only reading that can be right. The exception
+/// stops at this field — see `app_scan_field.dart` for the same argument — and
+/// a soft keyboard's own done action still commits by the [onSubmitted] route.
+///
 /// [name] seeds [fieldKey]/[suggestionListKey]/[suggestionKey], the same
 /// parameterised-key shape `AppDateField.fieldKey(name)` already uses
 /// (AGENTS.md §7) — needed because the Org Units search and the Employee
@@ -181,6 +206,7 @@ class AppSearchField<T> extends StatefulWidget {
     required this.suggestionBuilder,
     required this.idOf,
     required this.displayStringFor,
+    this.codeOf,
     this.onSubmitted,
     this.enabled = true,
   });
@@ -237,6 +263,17 @@ class AppSearchField<T> extends StatefulWidget {
   /// suggestion list is showing.
   final String Function(T record) displayStringFor;
 
+  /// The code a reader would send for this record, when that is not what
+  /// [displayStringFor] shows. An Asset's display string is `Name (CODE)`;
+  /// a scanner sends the code alone, so a picker over Assets passes
+  /// `codeOf: (asset) => asset.code` and a scan of `PUMP-7` finds that Asset.
+  /// Left null where the display string *is* the identifier a reader would
+  /// send (a Store's name, an Employee's badge number if the display string is
+  /// the number) — a null [codeOf] compares the scanned code against
+  /// [displayStringFor] instead. Only ever consulted to match a scan; it never
+  /// affects what the field shows or what typing searches for.
+  final String Function(T record)? codeOf;
+
   /// Fired when the field's own submit action (Enter, or a keyboard's
   /// "search"/"done" action) is pressed — carrying whatever text is on
   /// screen at that moment, trimmed. This is the Directory's own "commit to
@@ -253,6 +290,9 @@ class AppSearchField<T> extends StatefulWidget {
   /// renders beneath this field on its own terms, so a suggestion for the
   /// same term hanging around (or a debounced fetch still in flight landing
   /// a moment later) would otherwise show the same match twice over.
+  ///
+  /// Also carries the term a hardware `Enter` commits when this field is a
+  /// picker — the reader's own terminator — see this class's doc comment.
   final ValueChanged<String>? onSubmitted;
 
   final bool enabled;
@@ -407,6 +447,71 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
       return;
     }
     if (!mounted || mySeq != _requestSeq) return;
+    _applyResults(results);
+  }
+
+  /// Resolves a committed term the moment the reader's `Enter` arrives — the
+  /// picker's own commit, where [_handleSubmitted] is the Directory's (see this
+  /// class's own doc comment).
+  ///
+  /// No debounce: a committed term is not still being typed. The minimum-length
+  /// rule does still apply — ADR-0023 point 5's "not even after the debounce
+  /// elapses", a one-character term against an unindexed `ILIKE` being the most
+  /// expensive query this widget could issue — and the `_requestSeq` ordering
+  /// rule is the same one [_issueFetch] uses, so a burst's own debounced fetch
+  /// landing after the `Enter` that followed it cannot overwrite what this
+  /// resolves.
+  Future<void> _commitScan(String term) async {
+    if (term.length < _minLength) return;
+    _debounceTimer?.cancel();
+    final mySeq = ++_requestSeq;
+    _lastQueriedTerm = term;
+    setState(() => _status = _SuggestStatus.loading);
+    List<T> results;
+    try {
+      results = await widget.fetchSuggestions(term);
+    } catch (_) {
+      if (!mounted || mySeq != _requestSeq) return;
+      setState(() {
+        _status = _SuggestStatus.failure;
+        _hasMore = false;
+      });
+      _reportNoUsableValue();
+      return;
+    }
+    if (!mounted || mySeq != _requestSeq) return;
+    final exact = _exactMatch(results, term);
+    if (exact != null) {
+      _select(exact);
+      return;
+    }
+    // Not an exact code: show what the term did match, so a near miss is one tap
+    // away rather than a dead end.
+    _applyResults(results);
+  }
+
+  /// The single record a scan names, or `null` when it names none of them or
+  /// more than one.
+  ///
+  /// The comparison is against [AppSearchField.codeOf] where a caller supplies
+  /// one and [AppSearchField.displayStringFor] otherwise, trimmed and
+  /// case-insensitive: a reader sends the code, not the label. Two records
+  /// carrying one code is a register that needs a person, not a guess — this
+  /// returns `null` and leaves both on screen.
+  T? _exactMatch(List<T> results, String term) {
+    final wanted = term.trim().toLowerCase();
+    if (wanted.isEmpty) return null;
+    T? found;
+    for (final record in results) {
+      final code = (widget.codeOf?.call(record) ?? widget.displayStringFor(record)).trim().toLowerCase();
+      if (code != wanted) continue;
+      if (found != null) return null;
+      found = record;
+    }
+    return found;
+  }
+
+  void _applyResults(List<T> results) {
     final bounded = results.take(_maxSuggestions).toList(growable: false);
     setState(() {
       _suggestions = bounded;
@@ -441,23 +546,50 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
     });
   }
 
-  /// Handles the field's own submit action (Enter, or a keyboard's "search"
-  /// action) when a caller supplies [AppSearchField.onSubmitted] — the
-  /// Directory (#128) is the first, and so far only, caller that does.
+  /// Handles a commit — the reader's hardware `Enter` via [_handleKeyEvent], or
+  /// a keyboard's own "search"/"done" action via `TextField.onSubmitted`.
   ///
-  /// A pending debounce is cancelled and any suggestions already on screen
-  /// are collapsed back to idle before [AppSearchField.onSubmitted] itself
-  /// runs: committing to a term is this field's caller taking over — the
-  /// Directory re-reads its whole listing narrowed to this term — so a
-  /// suggestion box for the same term hanging around (or a debounced fetch
-  /// still in flight landing a moment later) would show the same match twice
-  /// over, once as a suggestion and once as the row the narrowed listing now
-  /// renders. [_collapse] does the work; bumping `_requestSeq` there is what
-  /// stops an already in-flight fetch from landing after this and reopening
-  /// the box.
+  /// When a caller supplies [AppSearchField.onSubmitted] (the Directory, #128),
+  /// a pending debounce is cancelled and any suggestions already on screen are
+  /// collapsed back to idle before that callback runs: committing to a term is
+  /// this field's caller taking over — the Directory re-reads its whole listing
+  /// narrowed to this term — so a suggestion box for the same term hanging
+  /// around (or a debounced fetch still in flight landing a moment later) would
+  /// show the same match twice over, once as a suggestion and once as the row
+  /// the narrowed listing now renders. [_collapse] does the work; bumping
+  /// `_requestSeq` there is what stops an already in-flight fetch from landing
+  /// after this and reopening the box.
+  ///
+  /// With no such caller the field is a picker and the commit is a scan: see
+  /// [_commitScan] and this class's own doc comment.
   void _handleSubmitted(String text) {
-    _collapse();
-    widget.onSubmitted!(text.trim());
+    // A reader prefixes a BOM, ends with `CR`/`LF` or GS1's separator, and can
+    // append a space — `AppScanField.normalize` is the Platform's one set of
+    // rules for what a reader adds around a code, and a picker takes the same
+    // burst a code field does (see this class's own doc comment).
+    final term = AppScanField.normalize(text);
+    final onSubmitted = widget.onSubmitted;
+    if (onSubmitted != null) {
+      _collapse();
+      onSubmitted(term);
+      return;
+    }
+    _commitScan(term);
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key != LogicalKeyboardKey.enter && key != LogicalKeyboardKey.numpadEnter) {
+      return KeyEventResult.ignored;
+    }
+    if (!widget.enabled) return KeyEventResult.ignored;
+    _handleSubmitted(_controller.text);
+    // Handled so the reader's terminator stops at the field: on a picker the
+    // key arrives before the value it names has been chosen, so letting it
+    // travel on to `AppFormSubmit` would post a form missing what was just
+    // scanned.
+    return KeyEventResult.handled;
   }
 
   @override
@@ -475,19 +607,31 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
           message: widget.helperText == null
               ? widget.label
               : '${widget.label} — ${widget.helperText}',
-          child: TextField(
-            key: AppSearchField.fieldKey(widget.name),
-            controller: _controller,
-            enabled: widget.enabled,
-            onChanged: _handleTextChanged,
-            onSubmitted: widget.onSubmitted == null ? null : _handleSubmitted,
-            textInputAction: widget.onSubmitted == null ? TextInputAction.done : TextInputAction.search,
-            decoration: InputDecoration(
-              labelText: widget.label,
-              helperText: widget.helperText,
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+          child: Focus(
+            // The reader's `Enter` is a key event, and a hardware one never
+            // reaches `TextField.onSubmitted` — the same measured reason
+            // `AppScanField` and `AppFormSubmit` install this same node. It
+            // adds no Tab stop and no focus ring of its own.
+            canRequestFocus: false,
+            skipTraversal: true,
+            onKeyEvent: _handleKeyEvent,
+            child: TextField(
+              key: AppSearchField.fieldKey(widget.name),
+              controller: _controller,
+              enabled: widget.enabled,
+              onChanged: _handleTextChanged,
+              // Never null: a commit on a picker resolves the term itself
+              // (`_handleSubmitted` → `_commitScan`), and on the Directory it is
+              // the caller's own filter.
+              onSubmitted: _handleSubmitted,
+              textInputAction: widget.onSubmitted == null ? TextInputAction.done : TextInputAction.search,
+              decoration: InputDecoration(
+                labelText: widget.label,
+                helperText: widget.helperText,
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+                ),
               ),
             ),
           ),

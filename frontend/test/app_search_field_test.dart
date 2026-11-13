@@ -18,9 +18,11 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/app_form_submit.dart';
 import 'package:lean_platform/widgets/app_search_field.dart';
 import 'package:lean_platform/widgets/empty_state.dart';
 import 'package:lean_platform/widgets/failure_state.dart';
@@ -41,10 +43,14 @@ class _Harness extends StatefulWidget {
     super.key,
     required this.fetchSuggestions,
     this.initialValue,
+    this.codeOf,
+    this.onSubmitted,
   });
 
   final Future<List<_Record>> Function(String term) fetchSuggestions;
   final _Record? initialValue;
+  final String Function(_Record record)? codeOf;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   State<_Harness> createState() => _HarnessState();
@@ -59,6 +65,10 @@ class _HarnessState extends State<_Harness> {
 
   /// Every record `onSelected` was called with, in order.
   final List<_Record> selected = [];
+
+  /// Every term `onSubmitted` was called with, in order — the Directory's own
+  /// "commit to this term and filter" path.
+  final List<String> submitted = [];
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +87,13 @@ class _HarnessState extends State<_Harness> {
             selected.add(record);
             setState(() => value = record);
           },
+          codeOf: widget.codeOf,
+          onSubmitted: widget.onSubmitted == null
+              ? null
+              : (term) {
+                  submitted.add(term);
+                  widget.onSubmitted!(term);
+                },
           fetchSuggestions: widget.fetchSuggestions,
           suggestionBuilder: (context, record) => Text(record.label),
           idOf: (record) => record.id,
@@ -485,5 +502,185 @@ void main() {
 
     expect(harnessKey.currentState!.reported, isEmpty);
     expect(harnessKey.currentState!.value, initial);
+  });
+
+  group('a picker takes a scanner', () {
+    /// The two records these tests pick between. `id` is what a reader would
+    /// send — the same role an Asset's `code` plays at a real call site, which
+    /// is why `codeOf` maps it.
+    const records = [
+      (id: 'ASSET-1', label: 'Pump house'),
+      (id: 'ASSET-2', label: 'Compressor'),
+    ];
+
+    /// The caller's own dumb fetch: a case-insensitive substring match over the
+    /// code and the label, exactly as the real pickers' in-memory filters are.
+    Future<List<_Record>> fetch(String term) async {
+      final lower = term.toLowerCase();
+      return [
+        for (final record in records)
+          if (record.id.toLowerCase().contains(lower) || record.label.toLowerCase().contains(lower)) record,
+      ];
+    }
+
+    testWidgets('a scan picks the record whose code it is, with no tap', (WidgetTester tester) async {
+      final harnessKey = GlobalKey<_HarnessState>();
+      await tester.pumpWidget(
+        _Harness(key: harnessKey, fetchSuggestions: fetch, codeOf: (record) => record.id),
+      );
+
+      // A reader types the whole code as a burst and ends with Enter — a key
+      // event, not the soft keyboard's action key.
+      await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'ASSET-2');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(harnessKey.currentState!.selected.map((record) => record.id), ['ASSET-2']);
+      // The search is over: the box is not left showing what has just been
+      // chosen.
+      expect(find.byKey(AppSearchField.suggestionListKey('employee')), findsNothing);
+    });
+
+    testWidgets('the scanned code is matched case-insensitively, with the reader’s noise stripped',
+        (WidgetTester tester) async {
+      final harnessKey = GlobalKey<_HarnessState>();
+      await tester.pumpWidget(
+        _Harness(key: harnessKey, fetchSuggestions: fetch, codeOf: (record) => record.id),
+      );
+
+      // A reader prefixes a BOM in some configurations and appends a space in
+      // others — neither is part of the code (`AppScanField.normalize`).
+      await tester.enterText(
+        find.byKey(AppSearchField.fieldKey('employee')),
+        '\uFEFFasset-2 ',
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(harnessKey.currentState!.selected.map((record) => record.id), ['ASSET-2']);
+    });
+
+    testWidgets('a scan that names no record picks nothing, and leaves the matches on screen',
+        (WidgetTester tester) async {
+      final harnessKey = GlobalKey<_HarnessState>();
+      await tester.pumpWidget(
+        _Harness(key: harnessKey, fetchSuggestions: fetch, codeOf: (record) => record.id),
+      );
+
+      // Neither code *is* "ASSET": both merely contain it. A near miss must
+      // cost a tap, never a wrong pick.
+      await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'ASSET');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(harnessKey.currentState!.selected, isEmpty);
+      expect(find.byKey(AppSearchField.suggestionListKey('employee')), findsOneWidget);
+      expect(find.byKey(AppSearchField.suggestionKey('employee', 'ASSET-1')), findsOneWidget);
+      expect(find.byKey(AppSearchField.suggestionKey('employee', 'ASSET-2')), findsOneWidget);
+    });
+
+    testWidgets('two records carrying one code pick nothing — ambiguity is shown, never guessed',
+        (WidgetTester tester) async {
+      const duplicated = [
+        (id: 'DUP-1', label: 'First'),
+        (id: 'DUP-1', label: 'Second'),
+      ];
+      final harnessKey = GlobalKey<_HarnessState>();
+      await tester.pumpWidget(
+        _Harness(
+          key: harnessKey,
+          fetchSuggestions: (term) async => [
+            for (final record in duplicated)
+              if (record.id.toLowerCase().contains(term.toLowerCase())) record,
+          ],
+          codeOf: (record) => record.id,
+        ),
+      );
+
+      await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'dup-1');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(harnessKey.currentState!.selected, isEmpty);
+      expect(find.byKey(AppSearchField.suggestionListKey('employee')), findsOneWidget);
+    });
+
+    testWidgets('a one-character scan issues no fetch at all (ADR-0023 point 5)',
+        (WidgetTester tester) async {
+      final calls = <String>[];
+      await tester.pumpWidget(
+        _Harness(
+          fetchSuggestions: (term) async {
+            calls.add(term);
+            return records;
+          },
+          codeOf: (record) => record.id,
+        ),
+      );
+
+      await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'A');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(calls, isEmpty);
+    });
+
+    testWidgets('the reader’s Enter stops at the picker and never submits the form around it',
+        (WidgetTester tester) async {
+      var submits = 0;
+      final picked = <_Record>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(),
+          home: Scaffold(
+            body: AppFormSubmit(
+              onSubmit: () => submits++,
+              child: AppSearchField<_Record>(
+                name: 'asset',
+                label: 'Asset',
+                value: null,
+                onChanged: (_) {},
+                onSelected: picked.add,
+                codeOf: (record) => record.id,
+                fetchSuggestions: fetch,
+                suggestionBuilder: (context, record) => Text(record.label),
+                idOf: (record) => record.id,
+                displayStringFor: (record) => '${record.label} (${record.id})',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byKey(AppSearchField.fieldKey('asset')), 'ASSET-1');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(picked.map((record) => record.id), ['ASSET-1']);
+      // Mid-form: the value the key just named is set, but the form it sits in
+      // has not been sent.
+      expect(submits, 0);
+    });
+
+    testWidgets('with a submit caller the same Enter is that caller’s term, and picks nothing',
+        (WidgetTester tester) async {
+      final harnessKey = GlobalKey<_HarnessState>();
+      await tester.pumpWidget(
+        _Harness(
+          key: harnessKey,
+          fetchSuggestions: fetch,
+          codeOf: (record) => record.id,
+          onSubmitted: (_) {},
+        ),
+      );
+
+      await tester.enterText(find.byKey(AppSearchField.fieldKey('employee')), 'asset-2');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      // The Directory narrows its listing; it does not pick the Employee.
+      expect(harnessKey.currentState!.submitted, ['asset-2']);
+      expect(harnessKey.currentState!.selected, isEmpty);
+    });
   });
 }

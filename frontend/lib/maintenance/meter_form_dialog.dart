@@ -398,6 +398,7 @@ class _AssetField extends StatelessWidget {
           ),
           idOf: (asset) => asset.id,
           displayStringFor: (asset) => '${asset.name} (${asset.code})',
+          codeOf: (asset) => asset.code,
         );
     }
   }

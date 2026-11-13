@@ -328,6 +328,7 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
                 ),
                 idOf: (part) => part.id,
                 displayStringFor: (part) => part.label,
+                codeOf: (part) => part.partNo,
               ),
               const SizedBox(height: Spacing.md),
               AppSearchField<Store>(

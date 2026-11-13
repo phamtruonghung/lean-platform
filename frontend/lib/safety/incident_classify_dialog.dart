@@ -364,6 +364,7 @@ class _SafetyIncidentClassifyDialogState extends State<SafetyIncidentClassifyDia
                   ),
                   idOf: (employee) => employee.id,
                   displayStringFor: (employee) => employee.displayName,
+                  codeOf: (employee) => employee.employeeNo,
                 ),
                 _ClearRow(
                   clearKey: SafetyIncidentClassifyDialog.clearEmployeeKey,

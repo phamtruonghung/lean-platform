@@ -281,6 +281,7 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                       ),
                       idOf: (orgUnit) => orgUnit.id,
                       displayStringFor: (orgUnit) => orgUnit.name,
+                      codeOf: (orgUnit) => orgUnit.code,
                     ),
                     const SizedBox(height: Spacing.md),
                     AppToolbar(

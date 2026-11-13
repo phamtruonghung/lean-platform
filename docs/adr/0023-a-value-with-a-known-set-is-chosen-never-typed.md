@@ -147,3 +147,17 @@ and needs none. Every timezone-aware interpretation in this Platform happens
 inside Postgres — `plant_date`, `shift_instance_at`, `fill_shift_instance` —
 against the *Site's* zone, because a production day belongs to the plant, not
 to the person reading the screen (ADR-0017, CONTEXT.md's **Production day**).
+
+## Amendment: a scan is a pick (2026-11-14)
+
+`AppSearchField` gained a fifth way to produce a value: a shop-floor reader's
+burst into it. The `Enter` a reader ends a code with — a hardware key event,
+arriving where `TextField.onSubmitted` never does — resolves the typed code
+immediately and, when exactly one record's `codeOf` (or display string) equals
+that code, picks it. Nothing is loosened: typed text is still never itself a
+value, no debounce or minimum-length rule changes, a near miss still leaves
+the suggestions for a tap, and an ambiguous code is shown rather than guessed
+at. The reason this belongs here rather than in a decision of its own: the
+rule "a value with a known set is chosen, never typed" was being satisfied by
+a mouse. A person who had to tap the row a reader had just named had not
+chosen it — they had re-typed it with a pointer.
