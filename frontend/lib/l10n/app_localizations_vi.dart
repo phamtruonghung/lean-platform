@@ -24,6 +24,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get shellDarkPalette => 'Giao diện tối';
 
   @override
+  String get shellLightPalette => 'Giao diện sáng';
+
+  @override
   String get shellSignOut => 'Đăng xuất';
 
   @override

@@ -18,7 +18,11 @@
   },
   "shellDarkPalette": "Giao diện tối",
   "@shellDarkPalette": {
-    "description": "Account menu item that switches between the light and dark palettes."
+    "description": "Account menu item that switches between the light and dark palettes, and the tooltip on the Shell's palette switch when a tap gives the dark palette."
+  },
+  "shellLightPalette": "Giao diện sáng",
+  "@shellLightPalette": {
+    "description": "Tooltip on the Shell's palette switch when a tap gives the light palette."
   },
   "shellSignOut": "Đăng xuất",
   "@shellSignOut": {

@@ -715,8 +715,11 @@ class _NavItem extends StatelessWidget {
     );
 
     // On the rail the icon is all there is, so the label has to come back as a
-    // tooltip or the destination is a guess.
-    if (collapsed) item = Tooltip(message: destination.label, child: item);
+    // tooltip or the destination is a guess — in the language the reader chose,
+    // the same word the expanded sidebar draws (issue t_c68dfd6e's review):
+    // handing `destination.label` here left all 44 rail tooltips English while
+    // the sidebar beside them spoke Vietnamese.
+    if (collapsed) item = Tooltip(message: label, child: item);
 
     return KeyedSubtree(
       key: ValueKey('nav-item-${destination.label}'),
@@ -810,10 +813,14 @@ class _AccountFooter extends StatelessWidget {
     // The palette switch, beside sign-out (issue #415). The menu item below is
     // still there; this is the visible route to the same cubit, because a
     // setting a person has to find under their own name is one they report as
-    // missing.
+    // missing. Its words come from the catalogue, like the menu item beside it
+    // (issue t_c68dfd6e's review): a hardcoded English tooltip was the last
+    // English surface in a Shell that had already learned to speak Vietnamese.
     final paletteToggle = PaletteToggle(
       darkPalette: darkPalette,
       onPressed: onToggleDarkPalette,
+      darkTooltip: l10n.shellDarkPalette,
+      lightTooltip: l10n.shellLightPalette,
     );
 
     return Column(

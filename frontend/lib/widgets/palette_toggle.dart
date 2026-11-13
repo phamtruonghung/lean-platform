@@ -34,6 +34,8 @@ class PaletteToggle extends StatelessWidget {
     super.key,
     required this.darkPalette,
     required this.onPressed,
+    this.darkTooltip,
+    this.lightTooltip,
   });
 
   /// Whether the dark palette is the one on screen right now.
@@ -41,6 +43,17 @@ class PaletteToggle extends StatelessWidget {
 
   /// Switches to the other one. The caller owns which palette that is.
   final VoidCallback onPressed;
+
+  /// The words to offer when a tap gives the dark palette, or null for
+  /// [toDarkTooltip]. The Shell passes its own catalogue's words, because it is
+  /// drawn inside the app's language (issue t_c68dfd6e's review); the sign-in
+  /// Screen passes nothing and keeps the English constants below until its own
+  /// slice translates that Screen's copy.
+  final String? darkTooltip;
+
+  /// The words to offer when a tap gives the light palette, or null for
+  /// [toLightTooltip].
+  final String? lightTooltip;
 
   static const ValueKey<String> buttonKey = ValueKey<String>('app-palette-toggle');
 
@@ -53,7 +66,7 @@ class PaletteToggle extends StatelessWidget {
     final theme = Theme.of(context);
     return IconButton(
       key: buttonKey,
-      tooltip: darkPalette ? toLightTooltip : toDarkTooltip,
+      tooltip: darkPalette ? (lightTooltip ?? toLightTooltip) : (darkTooltip ?? toDarkTooltip),
       color: theme.colorScheme.onSurfaceVariant,
       onPressed: onPressed,
       // The icon names the palette a tap brings, not the one already on screen.

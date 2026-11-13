@@ -24,6 +24,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shellDarkPalette => 'Dark palette';
 
   @override
+  String get shellLightPalette => 'Light palette';
+
+  @override
   String get shellSignOut => 'Sign out';
 
   @override

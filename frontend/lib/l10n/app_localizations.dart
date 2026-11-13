@@ -122,11 +122,17 @@ abstract class AppLocalizations {
   /// **'Change password'**
   String get shellChangePassword;
 
-  /// Account menu item that switches between the light and dark palettes.
+  /// Account menu item that switches between the light and dark palettes, and the tooltip on the Shell's palette switch when a tap gives the dark palette.
   ///
   /// In en, this message translates to:
   /// **'Dark palette'**
   String get shellDarkPalette;
+
+  /// Tooltip on the Shell's palette switch when a tap gives the light palette.
+  ///
+  /// In en, this message translates to:
+  /// **'Light palette'**
+  String get shellLightPalette;
 
   /// Tooltip on the sign-out button in the Shell's footer.
   ///

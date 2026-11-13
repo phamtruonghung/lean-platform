@@ -7,8 +7,10 @@ import 'package:lean_platform/app_version.dart';
 import 'package:lean_platform/l10n/app_localizations.dart';
 import 'package:lean_platform/people_api.dart';
 import 'package:lean_platform/platform/destinations.dart';
+import 'package:lean_platform/platform/router.dart' show Routes;
 import 'package:lean_platform/platform/shell.dart';
 import 'package:lean_platform/theme.dart';
+import 'package:lean_platform/widgets/palette_toggle.dart';
 
 import 'harness.dart' show loadAppFonts;
 
@@ -69,6 +71,21 @@ const _groupedDestinations = [
   _groupedApprovals,
 ];
 
+/// Destinations on the real `Routes` addresses, so the catalogue has a word for
+/// each one — `_groupedHome`'s `/home` is a fixture-only path the catalogue
+/// cannot know, and would render its English fallback. Used by the rail's
+/// language test, which is about the catalogue's words rather than grouping.
+const _localisedDestinations = [
+  Destination(label: 'Home', icon: Icons.home_outlined, path: Routes.home),
+  Destination(
+    label: 'Assets',
+    icon: Icons.precision_manufacturing_outlined,
+    path: Routes.assets,
+  ),
+  Destination(label: 'Work orders', icon: Icons.assignment_outlined, path: Routes.workOrders),
+  Destination(label: 'Approvals', icon: Icons.how_to_reg_outlined, path: Routes.approvals),
+];
+
 /// Two Destinations where one address sits *under* another's (issue #211): the
 /// CAPA list at `/actions/capas` beneath the action log's own `/actions`. Kept
 /// out of `_groupedDestinations` on purpose — the goldens render that fixture's
@@ -117,6 +134,7 @@ Widget _harness({
   VoidCallback? onSignOut,
   bool darkPalette = false,
   VoidCallback? onToggleDarkPalette,
+  Locale locale = const Locale('en'),
 }) {
   final router = GoRouter(
     initialLocation: destinations.first.path,
@@ -144,12 +162,13 @@ Widget _harness({
   );
   // The Shell is localised (issue t_c68dfd6e), so a mount outside `PlatformApp`
   // supplies the catalogues the app itself supplies — the same way this harness
-  // supplies the theme and the router. English, because every assertion here
-  // names an English label.
+  // supplies the theme and the router. English by default, because the
+  // assertions that name a label name the English one; a test about the chosen
+  // language passes `locale:`.
   return MaterialApp.router(
     theme: buildAppTheme(),
     routerConfig: router,
-    locale: const Locale('en'),
+    locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
   );
@@ -389,6 +408,39 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-item-Approvals')));
     await tester.pumpAndSettle();
     expect(find.text('Approvals Screen'), findsOneWidget);
+  });
+
+  // The rail is the one place a Destination's name is not drawn as text, so it
+  // is the one place the language sweep over `Text('…')` could not see — and it
+  // stayed English all the way through the first Vietnamese Shell (issue
+  // t_c68dfd6e's review). On the rail the tooltip *is* the label: it is the only
+  // way a reader learns the Destination's name, so it has to follow the reader's
+  // language like the expanded sidebar's own words do.
+  testWidgets('on the rail, the only words a Destination has are in the chosen language',
+      (tester) async {
+    _useNarrowWindow(tester);
+    await tester.pumpWidget(
+      _harness(destinations: _localisedDestinations, locale: const Locale('vi')),
+    );
+    await tester.pumpAndSettle();
+
+    for (final (english, vietnamese) in [
+      ('Home', 'Trang chủ'),
+      ('Assets', 'Tài sản'),
+      ('Work orders', 'Lệnh công việc'),
+      ('Approvals', 'Phê duyệt'),
+    ]) {
+      expect(find.byTooltip(vietnamese), findsOneWidget, reason: vietnamese);
+      expect(find.byTooltip(english), findsNothing, reason: '$english stayed English');
+    }
+
+    // The footer's two controls carry words too: sign-out was translated with the
+    // rest of the chrome, and the palette switch's tooltip used to be a constant
+    // written into the widget itself.
+    expect(find.byTooltip('Đăng xuất'), findsOneWidget);
+    expect(find.byTooltip('Giao diện tối'), findsOneWidget);
+    expect(find.byTooltip(PaletteToggle.toDarkTooltip), findsNothing,
+        reason: "the footer's palette switch speaks the reader's language");
   });
 
   // Grouping (#100, ADR-0020): the sidebar files destinations under headings
