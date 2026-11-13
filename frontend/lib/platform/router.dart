@@ -3713,14 +3713,21 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
           // of the permission code rather than the role string, which is what
           // makes delegated role administration a server-side decision later
           // rather than a second release of this router.
+          //
+          // The fallback is the Shell's own (`destinationsFor`): a response
+          // that carried no codes is a client older than this Screen, and the
+          // administrator role is then the door, exactly as it was before the
+          // codes existed. Without it, an empty list would lock out the very
+          // Account the server admits.
           GoRoute(
             path: Routes.roles,
             builder: (context, state) {
               final account = context.watch<AccountBloc>().state;
-              if (account is! AccountApproved ||
-                  !account.account.permissions.contains(rolesPermission)) {
-                return const AccessDeniedScreen();
-              }
+              if (account is! AccountApproved) return const AccessDeniedScreen();
+              final mayOpen = account.account.permissions.isEmpty
+                  ? account.account.role == Roles.admin
+                  : account.account.permissions.contains(rolesPermission);
+              if (!mayOpen) return const AccessDeniedScreen();
               return BlocProvider<RolesBloc>(
                 create: (context) => RolesBloc(
                   peopleApi: context.read<PeopleApi>(),
