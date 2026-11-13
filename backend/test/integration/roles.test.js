@@ -130,11 +130,16 @@ test('an operator holds the default group and not the administration codes', asy
   assert.deepStrictEqual(body.roles.sort(), ['ROLE_OPERATOR', 'ROLE_STANDARD']);
 });
 
-test('a supervisor holds the Maintenance Screens but not the writes behind them', async () => {
+test('a supervisor holds the Maintenance Screens and, since slice 2b, the writes behind them', async () => {
   const { body } = await call(SUPERVISOR, '/me');
   assert.ok(body.permissions.includes('MTN_WORK_ORDERS_DISPLAY'));
   assert.ok(body.permissions.includes('MTN_REQUESTS_TRIAGE'));
-  assert.ok(!body.permissions.includes('MTN_WORK_ORDERS_CHANGE'));
+  // Migration 1803500000000 put the four Maintenance write codes on this role:
+  // a supervisor runs the shop floor, so the retrofit that gates those routes
+  // had to seed the codes here first or it would have refused the day's work.
+  for (const code of ['MTN_ASSETS_CHANGE', 'MTN_WORK_ORDERS_CHANGE', 'MTN_STORES_CHANGE', 'MTN_PM_SCHEDULES_CHANGE']) {
+    assert.ok(body.permissions.includes(code), `expected a supervisor to hold ${code}`);
+  }
   assert.ok(body.roles.includes('ROLE_SUPERVISOR'));
 });
 

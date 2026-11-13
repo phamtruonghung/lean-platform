@@ -4,11 +4,11 @@
  *
  * Like work-order-routes.js, this is the one file in this pairing that talks
  * to People, and only through `modules/people`'s entry point (ADR-0006):
- * `authenticate`, `requireActive`, `findSite`, `canAct` and the shared
- * `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything about a schedule's own
- * fields, including whether it is due and what a raise writes, is
- * pm-schedules.js's business. The Asset is resolved through Maintenance's own
- * `assets.findAsset`; the Job plan through this Module's own
+ * `authenticate`, `requireActive`, `requirePermission`, `findSite`, `canAct`
+ * and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything about a
+ * schedule's own fields, including whether it is due and what a raise writes,
+ * is pm-schedules.js's business. The Asset is resolved through Maintenance's
+ * own `assets.findAsset`; the Job plan through this Module's own
  * `job-plans.findJobPlan`.
  *
  * Same two rules as Work orders (#57), applied to schedules, with the read's
@@ -18,10 +18,12 @@
  *     Grant filter (ADR-0009: scope decides where an Account may act, not what
  *     it may know about). `?includeInactive=true` widens what
  *     is returned (active-only by default), not who may ask.
- *   - Writes are branch-scoped. A schedule is scoped from its Asset, so both
- *     creating one and raising work from one need a WRITE Grant reaching the
- *     Org Unit the Asset sits at; deactivating one needs a WRITE Grant
- *     reaching the Org Unit the schedule's own Asset sits at.
+ *   - Writes are branch-scoped and ask `MTN_PM_SCHEDULES_CHANGE`. A schedule
+ *     is scoped from its Asset, so creating one, deactivating one and raising
+ *     work from one all need both the code and a WRITE Grant reaching the Org
+ *     Unit the schedule's Asset sits at. The code says which door, the Grant
+ *     says which Org Units; the scheduling sweep keeps its own per-candidate
+ *     Grant filter, which is a read of what the caller may raise.
  *
  * Existence before scope on every write (AGENTS.md §6): the Asset is found (a
  * 404 naming it) before `canAct` is asked (a 403), and only then is the Job
@@ -105,16 +107,22 @@ async function requirePmScheduleWriteScope(req, res, next) {
 // supervisor/engineer/manager/administrator, exactly the roles the sidebar
 // offers the Screen to, so the retrofit refuses nobody who could read a
 // schedule before it.
-//
-// The writes below do NOT take a code yet, deliberately: a supervisor holding a
-// write Grant can create, deactivate and raise from a schedule today, while
-// `MTN_PM_SCHEDULES_CHANGE` is seeded on engineer/manager/administrator only.
-// Adding it would refuse a role that uses these routes — the retrofit card's
-// finding (t_3271c590). POST /sites/:siteId/pm-schedules/raise has a second
-// candidate code (`MTN_WORK_ORDERS_CHANGE`, since what it writes is Work
-// orders) and the same supervisor gap either way, so it is named in that
-// finding rather than guessed at here.
 const mayReadPmSchedules = people.requirePermission('MTN_PM_SCHEDULES_DISPLAY');
+
+// "May this Account maintain PM schedules at all?" — the role half of the model
+// (ADR-0061), on all three writes below. `MTN_PM_SCHEDULES_CHANGE` is seeded on
+// supervisor/engineer/manager/administrator, every role that could reach these
+// writes through a Grant before the code was asked; the seed migration
+// `1803500000000_supervisor-holds-maintenance-writes.js` names the one Account
+// it narrows (an operator holding an edit Grant, until an administrator adds
+// the code to a role it holds).
+//
+// `POST /sites/:siteId/pm-schedules/raise` writes Work orders rather than
+// schedules, so `MTN_WORK_ORDERS_CHANGE` was the other candidate for it. It asks
+// this code instead because the route is the schedule Screen's own sweep — the
+// caller is acting on schedules, and the four candidate codes are held by the
+// same four roles either way, so the choice changes nobody's reach today.
+const mayChangePmSchedules = people.requirePermission('MTN_PM_SCHEDULES_CHANGE');
 
 // The Site-wide read: active schedules by default ("what comes round next"),
 // inactive ones too when the caller asks for them by name. Only the exact
@@ -148,6 +156,7 @@ router.post(
   '/pm-schedules',
   people.authenticate,
   people.requireActive,
+  mayChangePmSchedules,
   requireAssetWriteScope,
   async (req, res, next) => {
     try {
@@ -195,6 +204,7 @@ router.patch(
   '/pm-schedules/:id',
   people.authenticate,
   people.requireActive,
+  mayChangePmSchedules,
   requirePmScheduleWriteScope,
   async (req, res, next) => {
     try {
@@ -227,6 +237,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayChangePmSchedules,
   async (req, res, next) => {
     try {
       const candidates = await pmSchedules.listDuePmSchedules(req.site.id);
