@@ -9,7 +9,7 @@
  *
  * Who may act: the code answers *which door* and the Grant answers *which
  * Sections* (ADR-0061, slice 7). The four reads ask `PRD_HANDOVER_DISPLAY`,
- * the eleven writes — opening, the header, the machine lines, the change
+ * the ten writes — opening, the header, the machine lines, the change
  * points, the actions, submit and amendments — ask `PRD_HANDOVER_WRITE`, and
  * acknowledging asks `PRD_HANDOVER_ACKNOWLEDGE`. All three codes are seeded on
  * every role, so this retrofit changes nothing for anyone today; what it buys
