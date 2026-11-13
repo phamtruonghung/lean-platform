@@ -34,6 +34,7 @@ import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_scan_field.dart';
 import 'asset.dart';
 import 'assets_bloc.dart';
 import 'org_unit_chooser.dart';
@@ -291,16 +292,14 @@ class _AssetFormDialogState extends State<AssetFormDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppScanField(
               key: AssetFormDialog.codeKey,
               controller: _code,
+              label: 'Code',
+              helperText: 'Unique across the whole Platform, not just this Site.',
               enabled: !_awaiting,
+              autofocus: true,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Code',
-                helperText: 'Unique across the whole Platform, not just this Site.',
-                border: OutlineInputBorder(),
-              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
