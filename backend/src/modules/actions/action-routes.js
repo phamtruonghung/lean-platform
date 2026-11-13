@@ -4,15 +4,17 @@
  *
  * This is the one file in the Module that talks to People, and it does so only
  * through `modules/people`'s entry point (ADR-0006): `authenticate`,
- * `requireActive`, `findSite`, `findOrgUnit`, `findEmployee`, `canAct`,
- * `canSeeSite` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
- * else about an Action is actions.js's own business.
+ * `requireActive`, `requirePermission`, `findSite`, `findOrgUnit`,
+ * `findEmployee`, `canAct`, `canSeeSite` and the shared
+ * `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything else about an Action is
+ * actions.js's own business.
  *
  * Two scope rules, and they are deliberately different (ADR-0032):
  *
  *   - The register is Site-wide. GET /sites/:siteId/actions sits behind
- *     `authenticate` + `requireActive` and a known-Site check and nothing else
- *     — no role check, no Grant filter, no per-row canAct. That is the rule the
+ *     `authenticate` + `requireActive`, a known-Site check and (since the
+ *     ADR-0061 retrofit, issue #499) `ACT_LOG_DISPLAY` — no Grant filter, no
+ *     per-row canAct. That is the rule the
  *     Work order list, the Asset register and the tier board already follow
  *     (#55, ADR-0009): Org Unit scope decides where an Account may act, not
  *     what it may know about. `?orgUnitId=` narrows the list by *area*, never
@@ -37,6 +39,29 @@
  * whether it belongs to this Site (a cross-Site Org Unit is a 404 here, the
  * same answer board-routes.js gives — from this endpoint's point of view there
  * is no such Org Unit in this Site), and only then canAct.
+ *
+ * **The ADR-0061 retrofit (issue #499).** Ten routes here ask
+ * `people.requirePermission` beside the Grant question they already asked: the
+ * register and one Action's read, the Pillar catalogue, an Action's escalation
+ * targets, the CAPA list and one CAPA's read (`ACT_LOG_DISPLAY`,
+ * `ACT_CAPA_DISPLAY`), and the four addresses that raise an Action
+ * (`ACT_RAISE`). Those three codes are seeded on every role, and every
+ * approved Account holds ROLE_STANDARD, the default group, which carries all
+ * three — so each of these gates refuses nobody who could reach the route
+ * before it. A permission says *what*, a Grant says *where*; the Grant check
+ * is untouched in every case.
+ *
+ * The other sixteen routes are left on their Grant check and recorded as
+ * findings rather than retrofitted, because the code naming each one is
+ * seeded narrowly or does not exist: `ACT_MEASURE` and `ACT_VERIFY` are
+ * supervisor-and-above and `ACT_CAPA_OPEN`, `ACT_CAPA_VERIFY` and
+ * `ACT_CAPA_EFFECTIVENESS` are engineer-and-above, where today every one of
+ * these routes is reachable by any Grant-holder — including the CAPA team
+ * member who holds no Grant at all and is exactly who `requireCapaWhyWrite`
+ * admits; and no code in the catalogue names completing a phase, escalating an
+ * Action, calling one off, or linking a Non-conformance. Adding those codes
+ * would narrow today's users, which is the owner's decision (parent card
+ * t_3271c590, comment 1308) rather than this card's.
  */
 
 const express = require('express');
@@ -303,12 +328,27 @@ async function requireCapaEffectivenessAuthority(req, res, next) {
   });
 }
 
+// The three permission codes this retrofit asks (ADR-0061, issue #499).
+//
+// Each is seeded on every role: `ROLE_STANDARD` — the default group every
+// Account holds — carries `ACT_LOG_DISPLAY`, `ACT_RAISE` and
+// `ACT_CAPA_DISPLAY`, and so do `ROLE_OPERATOR` through `ROLE_ADMIN`
+// (migration 1803400000000, the ROLE_STANDARD and ROLE_OPERATOR arrays). That
+// is what makes these gates a retrofit rather than a new decision: they refuse
+// nobody who could reach these routes before. The Grant half of every route is
+// unchanged — see this file's header for the sixteen routes where adding the
+// naming code would narrow today's users.
+const mayReadActionLog = people.requirePermission('ACT_LOG_DISPLAY');
+const mayReadCapas = people.requirePermission('ACT_CAPA_DISPLAY');
+const mayRaiseAction = people.requirePermission('ACT_RAISE');
+
 // The register: a Site's open Actions, worst first, history on request.
 router.get(
   '/sites/:siteId/actions',
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayReadActionLog,
   async (req, res, next) => {
     try {
       const status = requireQueryMemberOf('status', req.query.status, actions.ACTION_STATUSES);
@@ -403,6 +443,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayRaiseAction,
   async (req, res, next) => {
     try {
       const body = req.body ?? {};
@@ -483,6 +524,7 @@ router.post(
   '/nonconformances/:id/concern',
   people.authenticate,
   people.requireActive,
+  mayRaiseAction,
   async (req, res, next) => {
     try {
       const body = req.body ?? {};
@@ -553,6 +595,7 @@ router.post(
   '/safety-incidents/:id/concern',
   people.authenticate,
   people.requireActive,
+  mayRaiseAction,
   async (req, res, next) => {
     try {
       const body = req.body ?? {};
@@ -620,6 +663,7 @@ router.post(
   '/safety-observations/:id/action',
   people.authenticate,
   people.requireActive,
+  mayRaiseAction,
   async (req, res, next) => {
     try {
       const body = req.body ?? {};
@@ -839,13 +883,19 @@ router.post(
 // Express matches in declaration order, so a `/:id` route declared first would
 // swallow `/pillars` and answer 400 from parseId for a route that should never
 // have been reached.
-router.get('/pillars', people.authenticate, people.requireActive, async (req, res, next) => {
-  try {
-    res.json({ pillars: await actions.listPillars() });
-  } catch (error) {
-    handleError(error, res, next);
+router.get(
+  '/pillars',
+  people.authenticate,
+  people.requireActive,
+  mayReadActionLog,
+  async (req, res, next) => {
+    try {
+      res.json({ pillars: await actions.listPillars() });
+    } catch (error) {
+      handleError(error, res, next);
+    }
   }
-});
+);
 
 // The CAPA list (issue #211) — every investigation, worst first: the ones whose
 // effectiveness check has fallen due, then the ones due soonest, then the most
@@ -872,24 +922,30 @@ router.get('/pillars', people.authenticate, people.requireActive, async (req, re
 // the typo behind what looks like an investigated plant. Only the exact string
 // 'true' counts as overdue, the same convenience-filter rule `includeHistory`
 // on the register and `includeRetired` on Assets follow.
-router.get('/capas', people.authenticate, people.requireActive, async (req, res, next) => {
-  try {
-    const status = requireQueryMemberOf('status', req.query.status, actions.CAPA_STATUSES);
-    const overdue = req.query.overdue === 'true';
+router.get(
+  '/capas',
+  people.authenticate,
+  people.requireActive,
+  mayReadCapas,
+  async (req, res, next) => {
+    try {
+      const status = requireQueryMemberOf('status', req.query.status, actions.CAPA_STATUSES);
+      const overdue = req.query.overdue === 'true';
 
-    let orgUnitPath = null;
-    if (req.query.orgUnitId !== undefined) {
-      const orgUnit = await people.findOrgUnit(req.query.orgUnitId);
-      if (!orgUnit) throw notFound('Org Unit');
-      orgUnitPath = orgUnit.path;
+      let orgUnitPath = null;
+      if (req.query.orgUnitId !== undefined) {
+        const orgUnit = await people.findOrgUnit(req.query.orgUnitId);
+        if (!orgUnit) throw notFound('Org Unit');
+        orgUnitPath = orgUnit.path;
+      }
+
+      const { capas, truncated } = await actions.listCapas({ orgUnitPath, status, overdue });
+      res.json({ capas, truncated });
+    } catch (error) {
+      handleError(error, res, next);
     }
-
-    const { capas, truncated } = await actions.listCapas({ orgUnitPath, status, overdue });
-    res.json({ capas, truncated });
-  } catch (error) {
-    handleError(error, res, next);
   }
-});
+);
 
 // One CAPA, by its own id (issue #209) — the read the CAPA's Screen makes, and
 // a Site-wide read for the same reason an Action's is: which Org Unit a record
@@ -902,15 +958,21 @@ router.get('/capas', people.authenticate, people.requireActive, async (req, res,
 // load-bearing is that it is declared before nothing — this route has no
 // sibling that could swallow it, unlike `/pillars` above, whose shorter name it
 // does not share.
-router.get('/capas/:id', people.authenticate, people.requireActive, async (req, res, next) => {
-  try {
-    const capa = await actions.getCapaDetail(req.params.id);
-    if (!capa) throw notFound('CAPA');
-    res.json({ capa });
-  } catch (error) {
-    handleError(error, res, next);
+router.get(
+  '/capas/:id',
+  people.authenticate,
+  people.requireActive,
+  mayReadCapas,
+  async (req, res, next) => {
+    try {
+      const capa = await actions.getCapaDetail(req.params.id);
+      if (!capa) throw notFound('CAPA');
+      res.json({ capa });
+    } catch (error) {
+      handleError(error, res, next);
+    }
   }
-});
+);
 
 // Opening a CAPA on a Concern (issue #209, ADR-0034).
 //
@@ -1356,15 +1418,21 @@ router.post(
 // One Action, by its own id. A Site-wide read for the same reason the register
 // is: an Action's Org Unit decides where somebody may act on it, not who may
 // read it.
-router.get('/:id', people.authenticate, people.requireActive, async (req, res, next) => {
-  try {
-    const action = await actions.getActionDetail(req.params.id);
-    if (!action) throw notFound('Action');
-    res.json({ action });
-  } catch (error) {
-    handleError(error, res, next);
+router.get(
+  '/:id',
+  people.authenticate,
+  people.requireActive,
+  mayReadActionLog,
+  async (req, res, next) => {
+    try {
+      const action = await actions.getActionDetail(req.params.id);
+      if (!action) throw notFound('Action');
+      res.json({ action });
+    } catch (error) {
+      handleError(error, res, next);
+    }
   }
-});
+);
 
 // Complete the Action's open phase (issue #177) — the one door the cycle moves
 // through. ADR-0019's shape, unchanged: the route reads no `status` off the
@@ -1411,6 +1479,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownAction,
+  mayReadActionLog,
   async (req, res, next) => {
     try {
       res.json({ targets: await actions.escalationTargets(req.action.id) });
