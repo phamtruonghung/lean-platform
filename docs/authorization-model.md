@@ -182,7 +182,7 @@ groups by module, shows them inside the People group.
 
 | Role code | Name | Held automatically by | What it adds |
 | --- | --- | --- | --- |
-| `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board, the Section handover, the two self-service acts — answering the caller's own training question and raising (or cancelling) their own leave request — and, since the Actions write retrofit (issue #533) and the Quality write retrofit (issue #535), every Actions and Quality write code those slices gate, because those writes were reachable by any Grant-holder before them and the retrofit takes no act away from the shop floor |
+| `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board, the Section handover, the two self-service acts — answering the caller's own training question and raising (or cancelling) their own leave request — and, since the Actions write retrofit (issue #533), the Quality write retrofit (issue #535) and the Safety write retrofit (issue #537), every Actions, Quality and Safety write code those slices gate, because those writes were reachable by any Grant-holder before them and the retrofit takes no act away from the shop floor |
 | `ROLE_OPERATOR` | Operator | `app_users.role = operator` | Nothing beyond the default group — today an operator is offered nothing more, and the group says so rather than showing an empty list |
 | `ROLE_SUPERVISOR` | Supervisor | `app_users.role = supervisor` | The Maintenance Screens (Assets, Work orders, Parts, Stores, Triage, Downtime, PM schedules, Meters) **and the writes behind them** — add an Asset, raise/assign/start/complete/cancel a Work order, book labour and parts, record a task's meter reading, open a Store and record a stock movement, create or deactivate a PM schedule and run its sweep — plus the Insights registers, confirming Attendance, raising Training, deciding Leave, recording measures and incidents |
 | `ROLE_ENGINEER` | Engineer | `app_users.role = engineer` | A supervisor's set plus the writes behind an Asset, Work order, Part, Store and PM schedule, and opening and verifying a CAPA |
@@ -307,3 +307,45 @@ Actions slice bought — each door is visible and removable in the Roles Screen.
 administrator who decides that granting a Concession is an engineer's act takes
 `QLT_NONCONFORMANCES_DISPOSE` off `ROLE_OPERATOR` and every operator loses it at
 once, which a Grant cannot express.
+
+The Safety Module's four Safety-authority writes were retrofitted next (ADR-0061,
+issue #537). Each asks the code that names its act *and* keeps
+`requireSafetyIncidentSafetyAuthority` behind it, so the code answers which door
+and the helper still answers whose Site and whose Org Unit:
+
+| Route | Code |
+| --- | --- |
+| `POST /incidents/:id/severity`, `POST /incidents/:id/classify` | `SAF_CLASSIFY` |
+| `POST /incidents/:id/days`, `POST /incidents/:id/close` | `SAF_INCIDENTS_RECORD` |
+
+The split follows the catalogue's own sentences: `SAF_CLASSIFY` is "record or
+read an injured person's diagnosis", which is what deciding a severity and naming
+the injury are, while `SAF_INCIDENTS_RECORD` is the incident's own record, which
+the days it cost and the close are maintaining. `POST /floor/incidents` and
+`POST /floor/observations` are the one pair of Safety writes left ungated: they
+are the shared floor device's door (`requireTechnicianIdentification`,
+ADR-0016), the class §7 of ADR-0061 registers as having no code that could name
+it.
+
+The Safety module's other six routes were gated by issue #507 and are unchanged
+here: `SAF_INCIDENTS_DISPLAY` on the register, the overdue listing and one
+record's read, `SAF_INCIDENTS_RECORD` on recording, the due-date PATCH and the
+ordinary status move.
+
+`1804000000000_safety-write-codes.js` widens the one seed today's reach outgrew:
+
+- `SAF_CLASSIFY` — supervisor, engineer, manager, administrator → the default
+  group, operator, supervisor, engineer, manager, administrator.
+- `SAF_INCIDENTS_RECORD` already sat on all six roles; no row was written, so
+  the days and the close narrow nobody.
+
+Two rows, both a widening, and **no caller's answer changes**: the four writes
+were reachable by any Account holding Safety authority at the incident's Org
+Unit, whatever its role — a flag on a Grant, not a role (ADR-0035, ADR-0039) —
+and are still reachable by it. What these codes buy is the same thing the
+Actions and Quality slices bought: each door is visible and removable in the
+Roles Screen. An administrator who decides that classifying an injury is a
+supervisor's act takes `SAF_CLASSIFY` off `ROLE_STANDARD` and `ROLE_OPERATOR` and
+every operator loses it at once, which a Grant cannot express. This slice does
+not enforce the seed's original supervisor-and-above declaration on its own —
+that would take a live capability off the plant, which is the owner's decision.
