@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import 'defect_code.dart';
 import 'floor_nonconformance_bloc.dart';
@@ -133,11 +134,12 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BlocListener<FloorNonconformanceBloc, FloorNonconformanceState>(
       listener: _onChanged,
       child: BlocBuilder<FloorNonconformanceBloc, FloorNonconformanceState>(
         builder: (context, state) => AlertDialog(
-          title: const Text('Record a Non-conformance'),
+          title: Text(l10n.nonconformanceRecord),
           content: SizedBox(
             width: 420,
             child: SingleChildScrollView(
@@ -161,14 +163,14 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
             TextButton(
               key: FloorNonconformanceDialog.dismissKey,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.commonCancel),
             ),
             FilledButton(
               key: FloorNonconformanceDialog.submitKey,
               onPressed: state is FloorNonconformanceReady && _ready() && !_awaiting
                   ? _submit
                   : null,
-              child: const Text('Record it'),
+              child: Text(l10n.nonconformanceFormRecord),
             ),
           ],
         ),
@@ -178,14 +180,14 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
 
   Widget _form({required FloorNonconformanceReady state, required bool busy}) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final defaultSeverity = _chosenDefaultSeverity(state);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'What was found not to conform? Everything with a known set is chosen '
-          'from what this device can see.',
+          l10n.nonconformanceFloorIntro,
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
@@ -193,12 +195,15 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           key: FloorNonconformanceDialog.productKey,
           initialValue: _productId,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Product',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.commonProduct,
+            border: const OutlineInputBorder(),
           ),
           items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('Choose a Product')),
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text(l10n.nonconformanceFloorChooseProduct),
+            ),
             for (final product in state.products)
               DropdownMenuItem<String?>(
                 value: product.id,
@@ -212,12 +217,15 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           key: FloorNonconformanceDialog.defectCodeKey,
           initialValue: _defectCodeId,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Defect code',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.commonDefectCode,
+            border: const OutlineInputBorder(),
           ),
           items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('Choose a code')),
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text(l10n.nonconformanceFormChooseCode),
+            ),
             for (final code in state.defectCodes)
               DropdownMenuItem<String?>(
                 value: code.id,
@@ -231,12 +239,15 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           key: FloorNonconformanceDialog.detectionPointKey,
           initialValue: _detectionPoint,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Detected at',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorDetectedAt,
+            border: const OutlineInputBorder(),
           ),
           items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('Choose a point')),
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text(l10n.nonconformanceFormChoosePoint),
+            ),
             for (final point in DetectionPoint.values)
               DropdownMenuItem<String?>(
                 value: point,
@@ -249,7 +260,7 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           Padding(
             padding: const EdgeInsets.only(top: Spacing.sm),
             child: Text(
-              "Starts at ${DefectSeverity.label(defaultSeverity)} — this Defect code's own severity.",
+              l10n.nonconformanceFloorStartsAt(DefectSeverity.label(defaultSeverity)),
               style: theme.textTheme.bodySmall?.copyWith(color: AppColors.of(context).textMuted),
             ),
           ),
@@ -261,9 +272,9 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'How much of it',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorHowMuch,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
@@ -272,9 +283,9 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           controller: _lotRef,
           enabled: !busy,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'Lot or batch (if it has one)',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorLot,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
@@ -284,15 +295,14 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           enabled: !busy,
           maxLines: 3,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'What did you see?',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorWhatDidYouSee,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.lg),
         Text(
-          'Who found it? Your Employee number and PIN identify you for this record '
-          'only — it is filed as your find.',
+          l10n.nonconformanceFloorWhoFound,
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
@@ -301,9 +311,9 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           controller: _employeeNo,
           enabled: !busy,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'Employee number',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorEmployeeNumber,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
@@ -314,9 +324,9 @@ class _FloorNonconformanceDialogState extends State<FloorNonconformanceDialog> {
           obscureText: true,
           keyboardType: TextInputType.number,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'PIN',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorPin,
+            border: const OutlineInputBorder(),
           ),
         ),
         if (state.failure != null)

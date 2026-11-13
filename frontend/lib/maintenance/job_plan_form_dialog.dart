@@ -23,6 +23,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people/people.dart';
 import '../people_api.dart';
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -270,21 +271,22 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return BlocListener<JobPlansBloc, JobPlansState>(
       listener: _onJobPlansChanged,
       child: AppDialog(
-        title: 'Add a Job plan',
+        title: l10n.jobPlansAdd,
         size: AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: JobPlanFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: JobPlanFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : 'Add plan',
+            label: _awaiting ? l10n.commonSaving : l10n.jobPlanFormSubmit,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -297,7 +299,10 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               controller: _code,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Code', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: l10n.commonCode,
+                border: const OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
@@ -305,16 +310,19 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: l10n.commonName,
+                border: const OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: Spacing.md),
             DropdownButtonFormField<WorkType>(
               key: JobPlanFormDialog.workTypeKey,
               initialValue: _workType,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Kind of work',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.jobPlanFormWorkType,
+                border: const OutlineInputBorder(),
               ),
               items: [
                 for (final choice in jobPlanWorkTypes)
@@ -328,9 +336,9 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               controller: _description,
               enabled: !_awaiting,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.jobPlanFormDescriptionOptional,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: Spacing.md),
@@ -340,16 +348,16 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Estimated hours (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.jobPlanFormEstimatedHoursOptional,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: Spacing.sm),
             SwitchListTile(
               key: JobPlanFormDialog.requiresShutdownKey,
               contentPadding: EdgeInsets.zero,
-              title: const Text('Requires a shutdown'),
+              title: Text(l10n.jobPlanFormRequiresShutdown),
               value: _requiresShutdown,
               onChanged: _awaiting ? null : (value) => setState(() => _requiresShutdown = value),
             ),
@@ -359,9 +367,9 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               controller: _safetyNote,
               enabled: !_awaiting,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Safety note (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.jobPlanFormSafetyNoteOptional,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: Spacing.lg),
@@ -369,7 +377,7 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
               children: [
                 Expanded(
                   child: Text(
-                    'Steps',
+                    l10n.jobPlansSteps,
                     style: AppTypography.dense(context)
                         ?.copyWith(fontWeight: FontWeight.w600, color: palette.textPrimary),
                   ),
@@ -378,7 +386,7 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
                   key: JobPlanFormDialog.addTaskKey,
                   onPressed: _awaiting ? null : _addTask,
                   icon: const Icon(Icons.add),
-                  label: const Text('Add a step'),
+                  label: Text(l10n.jobPlanFormAddStep),
                 ),
               ],
             ),
@@ -390,13 +398,13 @@ class _JobPlanFormDialogState extends State<JobPlanFormDialog> {
                   children: [
                     Expanded(
                       child: Text(
-                        _skillsFailure ?? 'The skill catalogue could not be read.',
+                        _skillsFailure ?? l10n.jobPlanFormSkillsFailed,
                         style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
                       ),
                     ),
                     TextButton(
                       onPressed: _awaiting ? null : _loadSkills,
-                      child: const Text('Try again'),
+                      child: Text(l10n.commonTryAgain),
                     ),
                   ],
                 ),
@@ -469,6 +477,7 @@ class _TaskFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: Spacing.md),
       child: Column(
@@ -485,9 +494,9 @@ class _TaskFields extends StatelessWidget {
                   enabled: enabled,
                   keyboardType: TextInputType.number,
                   onChanged: (_) => onChanged(),
-                  decoration: const InputDecoration(
-                    labelText: 'Step',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.jobPlanFormStep,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ),
@@ -498,16 +507,16 @@ class _TaskFields extends StatelessWidget {
                   controller: task.instruction,
                   enabled: enabled,
                   onChanged: (_) => onChanged(),
-                  decoration: const InputDecoration(
-                    labelText: 'Instruction',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.jobPlanFormInstruction,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ),
               if (canRemove)
                 IconButton(
                   key: JobPlanFormDialog.removeTaskKey(index),
-                  tooltip: 'Remove this step',
+                  tooltip: l10n.jobPlanFormRemoveStep,
                   icon: const Icon(Icons.close),
                   onPressed: enabled ? onRemove : null,
                 ),
@@ -520,7 +529,7 @@ class _TaskFields extends StatelessWidget {
               Expanded(
                 child: AppSearchField<Skill>(
                   name: JobPlanFormDialog._taskSkillFieldName(index),
-                  label: 'Required skill (optional)',
+                  label: l10n.jobPlanFormRequiredSkill,
                   value: _selectedSkill,
                   // Disabled until the catalogue answers — the control is a
                   // known set, so it never falls back to free text (ADR-0023).
@@ -561,9 +570,9 @@ class _TaskFields extends StatelessWidget {
                   enabled: enabled,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   onChanged: (_) => onChanged(),
-                  decoration: const InputDecoration(
-                    labelText: 'Hours (optional)',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.jobPlanFormHoursOptional,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ),

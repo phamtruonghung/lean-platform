@@ -1308,11 +1308,13 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                               if (request == null || !request.canDecide) {
                                 return AlertDialog(
                                   key: LeaveRequestDecisionDialog.notFoundKey,
-                                  content: const Text('This leave request is not one you can decide.'),
+                                  content: Text(
+                                    AppLocalizations.of(context).routerLeaveNotDecidable,
+                                  ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.of(dialogContext).pop(),
-                                      child: const Text('Back'),
+                                      child: Text(AppLocalizations.of(context).commonBack),
                                     ),
                                   ],
                                 );
@@ -1348,11 +1350,13 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                             if (request == null || !request.canCancel) {
                               return AlertDialog(
                                 key: LeaveRequestCancelDialog.notFoundKey,
-                                content: const Text('This leave request cannot be cancelled.'),
+                                content: Text(
+                                  AppLocalizations.of(context).routerLeaveNotCancellable,
+                                ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.of(dialogContext).pop(),
-                                    child: const Text('Back'),
+                                    child: Text(AppLocalizations.of(context).commonBack),
                                   ),
                                 ],
                               );
@@ -3112,15 +3116,18 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                               if (!actionMeasureTypeOrder.contains(measureType)) {
                                 return AlertDialog(
                                   key: ActionMeasureDialog.unknownKindKey,
-                                  title: const Text('That is not a measure'),
-                                  content: const Text(
-                                    'A measure is a containment, a countermeasure or a '
-                                    'preventive action.',
+                                  title: Text(
+                                    AppLocalizations.of(dialogContext).routerNotAMeasure,
+                                  ),
+                                  content: Text(
+                                    AppLocalizations.of(dialogContext).routerNotAMeasureBody,
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => context.pop(),
-                                      child: const Text('Back to the Action'),
+                                      child: Text(
+                                        AppLocalizations.of(dialogContext).routerBackToAction,
+                                      ),
                                     ),
                                   ],
                                 );
@@ -3517,14 +3524,18 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                           if (!account.account.orgUnitScope.canWriteSomewhere) {
                             return AlertDialog(
                               key: WorkOrderDialogHost.notAvailableKey,
-                              title: const Text('You cannot do that here'),
-                              content: const Text(
-                                'You do not hold a write Grant anywhere at this Site.',
+                              title: Text(
+                                AppLocalizations.of(dialogContext).routerCannotDoThatHere,
+                              ),
+                              content: Text(
+                                AppLocalizations.of(dialogContext).routerNoWriteGrant,
                               ),
                               actions: [
                                 TextButton(
                                   onPressed: () => dialogContext.pop(),
-                                  child: const Text('Back to the list'),
+                                  child: Text(
+                                    AppLocalizations.of(dialogContext).routerBackToList,
+                                  ),
                                 ),
                               ],
                             );

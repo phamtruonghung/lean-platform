@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -229,24 +230,25 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return BlocListener<WorkOrderDetailBloc, WorkOrderDetailState>(
       listener: _onChanged,
       // The form width (520): five fields at most, one of them a picker (§11).
       // It was 560 inside the content; it does not outgrow the form width, so
       // there is no wide (640) dialog here.
       child: AppDialog(
-        title: 'Book a part',
+        title: l10n.partBookingTitle,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: PartBookingDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: PartBookingDialog._submitId,
-            label: 'Book part',
+            label: l10n.partBookingSubmit,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -258,7 +260,10 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
               key: PartBookingDialog.sourcedKey,
               initialValue: _sourced,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Sourced', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: l10n.partBookingSourced,
+                border: const OutlineInputBorder(),
+              ),
               items: [
                 for (final source in PartSource.values)
                   DropdownMenuItem<String>(value: source.wire, child: Text(source.label)),
@@ -284,16 +289,16 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _optionsFailure ?? 'The options could not be read.',
+                    _optionsFailure ?? l10n.partBookingOptionsFailed,
                     style: AppTypography.floor(context)?.copyWith(color: palette.statusDanger),
                   ),
-                  TextButton(onPressed: _awaiting ? null : _loadOptions, child: const Text('Try again')),
+                  TextButton(onPressed: _awaiting ? null : _loadOptions, child: Text(l10n.commonTryAgain)),
                 ],
               )
             else if (_sourced == PartSource.stores.wire) ...[
               AppSearchField<Part>(
                 name: PartBookingDialog._partFieldName,
-                label: 'Part',
+                label: l10n.commonPart,
                 value: _selectedPart,
                 enabled: !_awaiting,
                 // A pick sets the dialog's own id; typing over the chosen
@@ -327,7 +332,7 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
               const SizedBox(height: Spacing.md),
               AppSearchField<Store>(
                 name: PartBookingDialog._storeFieldName,
-                label: 'Store',
+                label: l10n.commonStore,
                 value: _selectedStore,
                 enabled: !_awaiting,
                 onChanged: (store) => setState(() => _storeId = store?.id),
@@ -357,9 +362,9 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
                 key: PartBookingDialog.partNoKey,
                 controller: _partNo,
                 enabled: !_awaiting,
-                decoration: const InputDecoration(
-                  labelText: 'Part number (optional)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.partBookingPartNoOptional,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: Spacing.md),
@@ -368,9 +373,9 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
                 controller: _description,
                 enabled: !_awaiting,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.commonDescription,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: Spacing.md),
@@ -378,9 +383,9 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
                 key: PartBookingDialog.uomKey,
                 initialValue: _uomCode,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Unit of measure',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.commonUnitOfMeasure,
+                  border: const OutlineInputBorder(),
                 ),
                 items: [
                   for (final unit in _units)
@@ -399,7 +404,10 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Quantity', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: l10n.commonQuantity,
+                border: const OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
@@ -408,9 +416,9 @@ class _PartBookingDialogState extends State<PartBookingDialog> {
               enabled: !_awaiting,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Unit cost (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.partBookingUnitCostOptional,
+                border: const OutlineInputBorder(),
               ),
             ),
             if (_failure != null)

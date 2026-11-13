@@ -29,6 +29,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
 import 'floor_safety_incident_bloc.dart';
@@ -123,11 +124,12 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BlocListener<FloorSafetyIncidentBloc, FloorSafetyIncidentState>(
       listener: _onChanged,
       child: BlocBuilder<FloorSafetyIncidentBloc, FloorSafetyIncidentState>(
         builder: (context, state) => AlertDialog(
-          title: const Text('Report a Safety incident'),
+          title: Text(l10n.safetyIncidentReport),
           content: SizedBox(
             width: 420,
             child: SingleChildScrollView(
@@ -147,13 +149,13 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
             TextButton(
               key: FloorSafetyIncidentDialog.dismissKey,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.commonCancel),
             ),
             FilledButton(
               key: FloorSafetyIncidentDialog.submitKey,
               onPressed:
                   state is FloorSafetyIncidentReady && _ready() && !_awaiting ? _submit : null,
-              child: const Text('Report it'),
+              child: Text(l10n.safetyReportSubmit),
             ),
           ],
         ),
@@ -163,12 +165,13 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
 
   Widget _form({required FloorSafetyIncidentReady state, required bool busy}) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'What happened? Everything with a known set is chosen from a fixed list.',
+          l10n.safetyIncidentFloorIntro,
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
@@ -176,9 +179,9 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
           key: FloorSafetyIncidentDialog.incidentTypeKey,
           initialValue: _incidentType,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Incident type',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.safetyIncidentType,
+            border: const OutlineInputBorder(),
           ),
           items: IncidentType.dropdownItems(),
           onChanged: busy ? null : (type) => setState(() => _incidentType = type),
@@ -191,9 +194,9 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
           key: FloorSafetyIncidentDialog.severityKey,
           initialValue: _severityLevel,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Severity',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.commonSeverity,
+            border: const OutlineInputBorder(),
           ),
           items: SeverityLevel.dropdownItems(),
           onChanged: busy ? null : (level) => setState(() => _severityLevel = level),
@@ -206,9 +209,9 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
           minLines: 2,
           maxLines: 4,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'What happened',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.safetyWhatHappened,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
@@ -218,24 +221,23 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
           enabled: !busy,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Immediate action (optional)',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.safetyImmediateAction,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
         AppDateTimeField(
           key: FloorSafetyIncidentDialog.occurredAtKey,
           name: 'floor-safety-incident-occurred-at',
-          label: 'Occurred at',
+          label: l10n.safetyOccurredAt,
           value: _occurredAt,
           enabled: !busy,
           onChanged: (value) => setState(() => _occurredAt = value),
         ),
         const SizedBox(height: Spacing.lg),
         Text(
-          'Who is reporting this? Your Employee number and PIN identify you for '
-          'this record only — it is filed as your report.',
+          l10n.safetyIncidentFloorWho,
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
@@ -244,9 +246,9 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
           controller: _employeeNo,
           enabled: !busy,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'Employee number',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorEmployeeNumber,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
@@ -257,9 +259,9 @@ class _FloorSafetyIncidentDialogState extends State<FloorSafetyIncidentDialog> {
           obscureText: true,
           keyboardType: TextInputType.number,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'PIN',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorPin,
+            border: const OutlineInputBorder(),
           ),
         ),
         if (state.failure != null)

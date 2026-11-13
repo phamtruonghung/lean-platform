@@ -976,4 +976,885 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get titleStoreStock => 'Tồn kho';
+
+  @override
+  String get commonTryAgain => 'Thử lại';
+
+  @override
+  String get commonAssetsFailed => 'Không đọc được danh sách tài sản.';
+
+  @override
+  String get commonJobPlan => 'Kế hoạch công việc';
+
+  @override
+  String get commonMeter => 'Đồng hồ đo';
+
+  @override
+  String get commonEmployee => 'Nhân viên';
+
+  @override
+  String get commonUnitOfMeasure => 'Đơn vị đo';
+
+  @override
+  String get commonQuantity => 'Số lượng';
+
+  @override
+  String get commonPart => 'Phụ tùng';
+
+  @override
+  String get commonStore => 'Kho';
+
+  @override
+  String get commonNoteOptional => 'Ghi chú (không bắt buộc)';
+
+  @override
+  String get commonPriorityMostUrgent => 'Khẩn cấp nhất';
+
+  @override
+  String get commonPriorityUrgent => 'Khẩn cấp';
+
+  @override
+  String get commonPriorityNormal => 'Bình thường';
+
+  @override
+  String get commonPriorityLow => 'Thấp';
+
+  @override
+  String get commonPriorityLeastUrgent => 'Ít khẩn cấp nhất';
+
+  @override
+  String get pmScheduleFormTitle => 'Lên lịch bảo trì định kỳ';
+
+  @override
+  String get pmScheduleFormSubmit => 'Lên lịch';
+
+  @override
+  String get pmScheduleFormBasisField => 'Chu kỳ tính theo';
+
+  @override
+  String get pmScheduleFormBasisElapsed => 'Thời gian đã trôi qua';
+
+  @override
+  String get pmScheduleFormBasisAccumulated => 'Lượng sử dụng tích luỹ';
+
+  @override
+  String get pmScheduleFormEveryDays => 'Bao nhiêu ngày một lần';
+
+  @override
+  String get pmScheduleFormEveryAccumulated =>
+      'Bao nhiêu lượng sử dụng tích luỹ một lần';
+
+  @override
+  String get pmScheduleFormMeterNotChosen =>
+      'Hãy chọn một đồng hồ đo tích luỹ trước.';
+
+  @override
+  String pmScheduleFormMeterIntervalHelp(String uom) {
+    return 'Tính bằng $uom, một chu kỳ sau mốc hiện tại của đồng hồ.';
+  }
+
+  @override
+  String get pmScheduleFormAnchor => 'Chu kỳ tính từ mốc';
+
+  @override
+  String get pmScheduleFormLeadTime => 'Tạo lệnh sớm bao nhiêu ngày';
+
+  @override
+  String get pmScheduleFormPriorityMostUrgent => '1 — khẩn cấp nhất';
+
+  @override
+  String get pmScheduleFormPriorityLeastUrgent => '5 — ít khẩn cấp nhất';
+
+  @override
+  String get pmScheduleFormFirstDue => 'Ngày đến hạn đầu tiên (không bắt buộc)';
+
+  @override
+  String get pmScheduleFormFirstDueHelp =>
+      'Để trống thì ngày đến hạn đầu tiên là một chu kỳ kể từ hôm nay.';
+
+  @override
+  String get pmScheduleFormJobPlansFailed =>
+      'Không đọc được danh mục kế hoạch công việc.';
+
+  @override
+  String get pmScheduleFormMetersFailed =>
+      'Không đọc được danh sách đồng hồ đo.';
+
+  @override
+  String get pmScheduleFormMeterHelp =>
+      'Chỉ đồng hồ đo tích luỹ mới đặt được lịch.';
+
+  @override
+  String get jobPlanFormSubmit => 'Thêm kế hoạch';
+
+  @override
+  String get jobPlanFormWorkType => 'Loại công việc';
+
+  @override
+  String get jobPlanFormDescriptionOptional => 'Mô tả (không bắt buộc)';
+
+  @override
+  String get jobPlanFormEstimatedHoursOptional =>
+      'Số giờ ước tính (không bắt buộc)';
+
+  @override
+  String get jobPlanFormRequiresShutdown => 'Cần dừng máy';
+
+  @override
+  String get jobPlanFormSafetyNoteOptional =>
+      'Ghi chú an toàn (không bắt buộc)';
+
+  @override
+  String get jobPlanFormAddStep => 'Thêm bước';
+
+  @override
+  String get jobPlanFormSkillsFailed => 'Không đọc được danh mục kỹ năng.';
+
+  @override
+  String get jobPlanFormStep => 'Bước';
+
+  @override
+  String get jobPlanFormInstruction => 'Hướng dẫn';
+
+  @override
+  String get jobPlanFormRemoveStep => 'Xoá bước này';
+
+  @override
+  String get jobPlanFormRequiredSkill => 'Kỹ năng yêu cầu (không bắt buộc)';
+
+  @override
+  String get jobPlanFormHoursOptional => 'Số giờ (không bắt buộc)';
+
+  @override
+  String get meterFormSubmit => 'Khai báo';
+
+  @override
+  String get meterFormCodeHelp =>
+      'Cách đồng hồ đo này được gọi trên tài sản, ví dụ RUN-HRS.';
+
+  @override
+  String get meterFormType => 'Loại đồng hồ đo';
+
+  @override
+  String get meterFormUomFailed => 'Không đọc được danh sách đơn vị đo.';
+
+  @override
+  String readingFormTitle(String meter) {
+    return 'Ghi chỉ số cho $meter';
+  }
+
+  @override
+  String get readingFormSubmitRollover => 'Ghi đặt lại';
+
+  @override
+  String get readingFormSubmit => 'Ghi chỉ số';
+
+  @override
+  String readingFormAccumulatedSoFar(String value) {
+    return 'Lượng sử dụng tích luỹ đến nay: $value';
+  }
+
+  @override
+  String get readingFormNewCounterReads => 'Đồng hồ mới đang chỉ bao nhiêu';
+
+  @override
+  String get readingFormCounterReads => 'Đồng hồ đang chỉ bao nhiêu';
+
+  @override
+  String get readingFormRolloverHelp =>
+      'Lượng sử dụng tích luỹ được chuyển sang phần bù; đồng hồ mới thường đang chỉ 0.';
+
+  @override
+  String readingFormReadingHelp(String uom) {
+    return 'Tính bằng $uom, đúng như chỉ số trên đồng hồ.';
+  }
+
+  @override
+  String get readingFormRolloverTitle =>
+      'Đồng hồ đã được đặt lại hoặc thay mới';
+
+  @override
+  String get readingFormRolloverSubtitle =>
+      'Chuyển lượng sử dụng tích luỹ sang phần bù và ghi đây là mốc bắt đầu của đồng hồ mới.';
+
+  @override
+  String requestAcceptTitle(String requestNo) {
+    return 'Chấp nhận $requestNo?';
+  }
+
+  @override
+  String get requestAcceptDismiss => 'Để chờ tiếp';
+
+  @override
+  String get requestAcceptSubmit => 'Chấp nhận yêu cầu này';
+
+  @override
+  String get requestAcceptBody =>
+      'Chấp nhận sẽ tạo một lệnh công việc cho yêu cầu này. Mức ưu tiên do bạn quyết định, không phải mức khẩn mà người báo cáo chọn.';
+
+  @override
+  String requestDeclineTitle(String requestNo) {
+    return 'Từ chối $requestNo?';
+  }
+
+  @override
+  String get requestDeclineReason => 'Vì sao từ chối yêu cầu này?';
+
+  @override
+  String get requestDeclineSubmit => 'Từ chối yêu cầu này';
+
+  @override
+  String get requestDuplicateTitle => 'Đánh dấu là trùng lặp';
+
+  @override
+  String get requestDuplicateDismiss => 'Giữ riêng';
+
+  @override
+  String get requestDuplicateNone =>
+      'Không có yêu cầu nào khác đang mở để yêu cầu này trùng vào.';
+
+  @override
+  String requestDuplicateWhich(String requestNo) {
+    return 'Yêu cầu nào được giữ lại? $requestNo sẽ rời hàng chờ.';
+  }
+
+  @override
+  String get labourBookingTitle => 'Ghi giờ công';
+
+  @override
+  String get labourBookingActivity => 'Hoạt động';
+
+  @override
+  String get labourBookingStartedAt => 'Bắt đầu lúc';
+
+  @override
+  String get labourBookingEndedAt => 'Kết thúc lúc';
+
+  @override
+  String get labourBookingOvertime => 'Ngoài giờ';
+
+  @override
+  String get labourBookingEmployeesFailed =>
+      'Không đọc được danh sách nhân viên.';
+
+  @override
+  String get partBookingTitle => 'Xuất phụ tùng';
+
+  @override
+  String get partBookingSubmit => 'Xuất phụ tùng';
+
+  @override
+  String get partBookingSourced => 'Nguồn';
+
+  @override
+  String get partBookingOptionsFailed => 'Không đọc được các lựa chọn.';
+
+  @override
+  String get partBookingPartNoOptional => 'Mã phụ tùng (không bắt buộc)';
+
+  @override
+  String get partBookingUnitCostOptional => 'Đơn giá (không bắt buộc)';
+
+  @override
+  String get nonconformancesUnavailableTitle =>
+      'Không đọc được sổ không phù hợp';
+
+  @override
+  String get nonconformancesNoSiteTitle => 'Chưa có nhà máy để hiển thị';
+
+  @override
+  String get nonconformancesNoSiteMessage =>
+      'Tài khoản của bạn chưa thấy nhà máy nào nên chưa có gì để đọc ở đây.';
+
+  @override
+  String get nonconformancesDescription =>
+      'Những gì không đạt chuẩn tại nhà máy này, phát hiện ở đâu và số lượng bao nhiêu.';
+
+  @override
+  String get nonconformanceRecord => 'Ghi nhận không phù hợp';
+
+  @override
+  String get commonAllOrgUnits => 'Tất cả đơn vị';
+
+  @override
+  String get nonconformancesAnyStatus => 'Mọi trạng thái';
+
+  @override
+  String get commonDefectCode => 'Mã lỗi';
+
+  @override
+  String get nonconformancesEveryDefectCode => 'Mọi mã lỗi';
+
+  @override
+  String get commonProduct => 'Sản phẩm';
+
+  @override
+  String get nonconformancesEveryProduct => 'Mọi sản phẩm';
+
+  @override
+  String get nonconformancesSeverity => 'Mức độ';
+
+  @override
+  String get nonconformancesAnySeverity => 'Mọi mức độ';
+
+  @override
+  String get nonconformancesDetectedFrom => 'Phát hiện từ ngày';
+
+  @override
+  String get nonconformancesDetectedTo => 'Phát hiện đến ngày';
+
+  @override
+  String get nonconformancesTruncated =>
+      'Còn nhiều không phù hợp hơn danh sách này hiển thị. Hãy thu hẹp theo đơn vị, theo trạng thái hoặc theo ngày để xem phần còn lại.';
+
+  @override
+  String get nonconformancesNoMatchTitle =>
+      'Không có bản ghi nào khớp bộ lọc này';
+
+  @override
+  String get nonconformancesNoMatchMessage =>
+      'Sổ có không phù hợp, nhưng không bản ghi nào thuộc khu vực, trạng thái, mã lỗi, sản phẩm, mức độ hay khoảng ngày bạn chọn.';
+
+  @override
+  String get nonconformancesClearTheFilters => 'Xoá bộ lọc';
+
+  @override
+  String get nonconformancesNoneExistTitle => 'Chưa phát hiện gì không phù hợp';
+
+  @override
+  String get nonconformancesNoneExistMessage =>
+      'Chưa có không phù hợp nào được ghi nhận tại nhà máy này.';
+
+  @override
+  String get nonconformancesNumberColumn => 'Không phù hợp';
+
+  @override
+  String get nonconformancesFoundColumn => 'Phát hiện gì';
+
+  @override
+  String get commonState => 'Trạng thái';
+
+  @override
+  String get nonconformancesFiledColumn => 'Đã ghi nhận';
+
+  @override
+  String get commonOpen => 'Mở';
+
+  @override
+  String nonconformanceQuantityAffected(String count, String uom) {
+    return '$count $uom bị ảnh hưởng';
+  }
+
+  @override
+  String nonconformanceQuantityRaised(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'đã tăng $count lần',
+      one: 'đã tăng 1 lần',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String nonconformanceFiledAgainst(String orgUnit, String against) {
+    return '$orgUnit · ghi nhận cho $against';
+  }
+
+  @override
+  String get nonconformanceFormRecord => 'Ghi nhận';
+
+  @override
+  String get nonconformanceFormProductHelp => 'Sản phẩm không phù hợp là gì.';
+
+  @override
+  String get nonconformanceFormDefectCodeHelp =>
+      'Sai ở chỗ nào. Mức độ bắt đầu từ giá trị mặc định của mã lỗi này.';
+
+  @override
+  String get nonconformanceFormChooseCode => 'Chọn một mã';
+
+  @override
+  String get nonconformanceFormDetectionPoint => 'Điểm phát hiện';
+
+  @override
+  String get nonconformanceFormDetectionPointHelp =>
+      'Nơi kế hoạch kiểm soát bắt được lỗi.';
+
+  @override
+  String get nonconformanceFormChoosePoint => 'Chọn một điểm';
+
+  @override
+  String get nonconformanceFormSeverityHelpUnset => 'Được chọn cùng mã lỗi.';
+
+  @override
+  String nonconformanceFormSeverityHelpSet(String severity) {
+    return 'Bắt đầu từ $severity. Có thể nâng lên; hạ xuống là một quyết định về sau.';
+  }
+
+  @override
+  String get nonconformanceFormChooseCodeFirst => 'Chọn mã lỗi trước';
+
+  @override
+  String nonconformanceFormStartsAt(String severity) {
+    return 'Bắt đầu từ $severity';
+  }
+
+  @override
+  String get nonconformanceFormQuantityHelp => 'Bao nhiêu chiếc.';
+
+  @override
+  String get nonconformanceFormLotRef => 'Tham chiếu lô (không bắt buộc)';
+
+  @override
+  String get nonconformanceFormLotRefHelp =>
+      'Còn gì bị ảnh hưởng — có số lô vẫn hơn là không.';
+
+  @override
+  String get nonconformanceFormAssetOptional => 'Tài sản (không bắt buộc)';
+
+  @override
+  String get nonconformanceFormAssetHelp =>
+      'Máy nào, nếu phát hiện trên máy. Máy đó phải thuộc đơn vị này.';
+
+  @override
+  String get nonconformanceFormDetailOptional => 'Chi tiết (không bắt buộc)';
+
+  @override
+  String get nonconformanceFormContainment =>
+      'Ngăn chặn tức thời (không bắt buộc)';
+
+  @override
+  String get nonconformanceFormContainmentHelp =>
+      'Đã làm gì ngay lúc đó. Ghi lại thì bản ghi này được coi là đã ngăn chặn.';
+
+  @override
+  String get nonconformanceFormDetectedAt => 'Phát hiện lúc (không bắt buộc)';
+
+  @override
+  String get nonconformanceFormDetectedAtHelp =>
+      'Thời điểm phát hiện, nếu không phải bây giờ. Đây là căn cứ quyết định ngày sản xuất và ca mà bản ghi thuộc về.';
+
+  @override
+  String get nonconformanceFormWhereFound => 'Phát hiện ở đâu';
+
+  @override
+  String get nonconformanceFormWhereFoundHelp =>
+      'Chọn đơn vị nơi phát hiện sản phẩm không phù hợp. Đây là căn cứ quyết định ai được xử lý bản ghi này.';
+
+  @override
+  String nonconformanceFormWillBeRecorded(String orgUnit) {
+    return 'Không phù hợp này sẽ được ghi nhận tại $orgUnit.';
+  }
+
+  @override
+  String get nonconformanceFloorIntro =>
+      'Phát hiện gì không phù hợp? Những trường có danh sách cố định đều chọn từ dữ liệu thiết bị này thấy được.';
+
+  @override
+  String get nonconformanceFloorChooseProduct => 'Chọn một sản phẩm';
+
+  @override
+  String get nonconformanceFloorDetectedAt => 'Phát hiện lúc';
+
+  @override
+  String nonconformanceFloorStartsAt(String severity) {
+    return 'Bắt đầu từ $severity — mức độ mặc định của mã lỗi này.';
+  }
+
+  @override
+  String get nonconformanceFloorHowMuch => 'Số lượng bao nhiêu';
+
+  @override
+  String get nonconformanceFloorLot => 'Số lô (nếu có)';
+
+  @override
+  String get nonconformanceFloorWhatDidYouSee => 'Bạn đã thấy gì?';
+
+  @override
+  String get nonconformanceFloorWhoFound =>
+      'Ai phát hiện? Mã nhân viên và PIN chỉ dùng để nhận diện bạn cho bản ghi này — bản ghi được ghi nhận là phát hiện của bạn.';
+
+  @override
+  String get nonconformanceFloorEmployeeNumber => 'Mã nhân viên';
+
+  @override
+  String get nonconformanceFloorPin => 'PIN';
+
+  @override
+  String get nonconformanceTitle => 'Không phù hợp';
+
+  @override
+  String get nonconformanceDetailMissingTitle => 'Không có không phù hợp này';
+
+  @override
+  String get nonconformanceDetailMissingMessage =>
+      'Không có bản ghi nào ở địa chỉ này. Có thể bản ghi đã bị xoá hoặc địa chỉ bị sai.';
+
+  @override
+  String get nonconformanceDetailBack => 'Về sổ không phù hợp';
+
+  @override
+  String get nonconformanceDetailUnavailableTitle =>
+      'Không đọc được không phù hợp này';
+
+  @override
+  String nonconformanceDetailSeverityChip(String severity) {
+    return 'Mức độ $severity';
+  }
+
+  @override
+  String nonconformanceDetailFinishedAt(String date) {
+    return 'Kết thúc $date';
+  }
+
+  @override
+  String get nonconformanceDetailDetail => 'Chi tiết';
+
+  @override
+  String get nonconformanceDetailQuantityAffected => 'Số lượng bị ảnh hưởng';
+
+  @override
+  String get nonconformanceDetailFiledAgainst => 'Ghi nhận cho';
+
+  @override
+  String get commonNoneGiven => 'Không có';
+
+  @override
+  String get commonNoneNamed => 'Không nêu';
+
+  @override
+  String get commonNotGiven => 'Không có';
+
+  @override
+  String get commonNotRecorded => 'Chưa ghi nhận';
+
+  @override
+  String get commonNoneRecorded => 'Chưa ghi nhận gì';
+
+  @override
+  String get nonconformanceDetailLotRef => 'Tham chiếu lô';
+
+  @override
+  String get nonconformanceDetailContainment => 'Ngăn chặn tức thời';
+
+  @override
+  String nonconformanceDetailDefectCodeValue(
+    String name,
+    String code,
+    String severity,
+  ) {
+    return '$name · $code · bắt đầu từ $severity';
+  }
+
+  @override
+  String get nonconformanceDetailActionsSection => 'Có thể làm gì';
+
+  @override
+  String get nonconformanceIncreaseQuantity => 'Tăng số lượng';
+
+  @override
+  String get nonconformanceUpdate => 'Nâng mức độ hoặc ngăn chặn';
+
+  @override
+  String get nonconformanceDisposition => 'Ghi nhận phương án xử lý';
+
+  @override
+  String get nonconformanceConcession => 'Cho phép nhượng bộ';
+
+  @override
+  String get nonconformanceLowerSeverity => 'Hạ mức độ';
+
+  @override
+  String get nonconformanceReopen => 'Mở lại';
+
+  @override
+  String get nonconformanceCancel => 'Huỷ vì ghi nhầm';
+
+  @override
+  String get nonconformanceDetailQuantityHistory => 'Lịch sử số lượng';
+
+  @override
+  String get nonconformanceDetailQuantityHistoryNote =>
+      'Phân loại có thể phát hiện nhiều hơn con số ban đầu. Mọi thay đổi đều được lưu, và số lượng bị ảnh hưởng không bao giờ giảm.';
+
+  @override
+  String get nonconformanceDetailNoQuantityHistory =>
+      'Số lượng bị ảnh hưởng chưa thay đổi kể từ khi được ghi nhận.';
+
+  @override
+  String get nonconformanceDetailDispositions => 'Phương án xử lý';
+
+  @override
+  String get nonconformanceDetailDispositionsNote =>
+      'Sản phẩm được xử lý theo từng phần. Không phù hợp sẽ tự đóng khi toàn bộ số lượng đã có phương án xử lý.';
+
+  @override
+  String nonconformanceDetailDispositioned(
+    String done,
+    String total,
+    String uom,
+  ) {
+    return '$done/$total $uom đã có phương án xử lý';
+  }
+
+  @override
+  String get nonconformanceDetailNoDispositions =>
+      'Chưa có quyết định nào về sản phẩm này.';
+
+  @override
+  String nonconformanceDetailReworkMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count phút làm lại',
+      one: '1 phút làm lại',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get nonconformanceDetailCorrections => 'Chỉnh sửa';
+
+  @override
+  String get nonconformanceDetailCorrectionsNote =>
+      'Những gì người có thẩm quyền Chất lượng đã thay đổi trên bản ghi này, và vì sao.';
+
+  @override
+  String get nonconformanceDetailNoCorrections =>
+      'Bản ghi này chưa được chỉnh sửa.';
+
+  @override
+  String get nonconformanceDetailCause => 'Nguyên nhân';
+
+  @override
+  String get nonconformanceDetailCauseNote =>
+      'Sản phẩm không phù hợp được xử lý ở đây; vấn đề phía sau được giải quyết trong nhật ký hành động, dưới dạng Concern. Một vấn đề xuất hiện nhiều lần vẫn chỉ là một Concern.';
+
+  @override
+  String get nonconformanceDetailNoConcerns =>
+      'Chưa có gì được làm về nguyên nhân.';
+
+  @override
+  String get nonconformanceDetailRaisedFrom => 'được nêu từ bản ghi này';
+
+  @override
+  String get nonconformanceDetailOverdue => 'quá hạn';
+
+  @override
+  String get nonconformanceRaiseConcern => 'Nêu một Concern';
+
+  @override
+  String get nonconformanceLinkConcern => 'Liên kết với một Concern';
+
+  @override
+  String get commonNoSiteTitle => 'Chưa có nhà máy để hiển thị';
+
+  @override
+  String get commonNoSiteMessage =>
+      'Tài khoản của bạn chưa thấy nhà máy nào nên chưa có gì để đọc ở đây.';
+
+  @override
+  String commonFiledAgainst(String orgUnit, String against) {
+    return '$orgUnit · ghi nhận cho $against';
+  }
+
+  @override
+  String get commonFiledAgainstColumn => 'Ghi nhận cho';
+
+  @override
+  String get commonAny => 'Tất cả';
+
+  @override
+  String get commonType => 'Loại';
+
+  @override
+  String get commonCategory => 'Hạng mục';
+
+  @override
+  String get commonAction => 'Hành động';
+
+  @override
+  String get commonSeverity => 'Mức độ';
+
+  @override
+  String get safetyIncidentsUnavailableTitle =>
+      'Không đọc được sổ sự cố an toàn';
+
+  @override
+  String get safetyIncidentsDescription =>
+      'Đã xảy ra chuyện gì tại nhà máy này, ở đâu, và nằm ở mức nào trên thang mức độ.';
+
+  @override
+  String get safetyIncidentRecord => 'Ghi nhận sự cố an toàn';
+
+  @override
+  String get safetyIncidentType => 'Loại sự cố';
+
+  @override
+  String get safetyRecordable => 'Phải khai báo';
+
+  @override
+  String get safetyNotRecordable => 'Không phải khai báo';
+
+  @override
+  String get safetyOccurredFrom => 'Xảy ra từ ngày';
+
+  @override
+  String get safetyOccurredTo => 'Xảy ra đến ngày';
+
+  @override
+  String get safetyIncidentsTruncated =>
+      'Còn nhiều sự cố an toàn hơn danh sách này hiển thị. Hãy thu hẹp theo đơn vị, theo trạng thái hoặc theo ngày để xem phần còn lại.';
+
+  @override
+  String get safetyIncidentsNoMatchMessage =>
+      'Sổ có sự cố an toàn, nhưng không sự cố nào thuộc khu vực, trạng thái, loại, mức độ, khả năng khai báo hay khoảng ngày bạn chọn.';
+
+  @override
+  String get safetyIncidentsNoneTitle =>
+      'Không có sự cố nào được ghi nhận trong kỳ này';
+
+  @override
+  String get safetyIncidentsNoneMessage =>
+      'Chưa có sự cố an toàn nào được ghi nhận tại nhà máy này trong khu vực và khoảng ngày đang hiển thị.';
+
+  @override
+  String get safetyIncidentNumberColumn => 'Số sự cố';
+
+  @override
+  String get safetyObservationsUnavailableTitle =>
+      'Không đọc được sổ quan sát an toàn';
+
+  @override
+  String get safetyObservationsDescription =>
+      'Những gì được thấy trước khi có chuyện xảy ra, xếp từ nặng nhất theo hậu quả xấu nhất có thể hình dung được.';
+
+  @override
+  String get safetyObservationRecord => 'Ghi nhận quan sát';
+
+  @override
+  String get safetyAnyType => 'Mọi loại';
+
+  @override
+  String get safetyAnyCategory => 'Mọi hạng mục';
+
+  @override
+  String get safetySeverityPotential => 'Mức độ tiềm ẩn';
+
+  @override
+  String get safetyAnyPotential => 'Mọi mức tiềm ẩn';
+
+  @override
+  String get safetyStopWork => 'Dừng việc';
+
+  @override
+  String get safetyStopWorkOnly => 'Chỉ loại dừng việc';
+
+  @override
+  String get safetyNotStopWork => 'Không phải dừng việc';
+
+  @override
+  String get safetyNoActionRaised => 'Chưa nêu hành động';
+
+  @override
+  String get safetyActionRaised => 'Đã nêu hành động';
+
+  @override
+  String get safetyObservedFrom => 'Quan sát từ ngày';
+
+  @override
+  String get safetyObservedTo => 'Quan sát đến ngày';
+
+  @override
+  String get safetyObservationsTruncated =>
+      'Còn nhiều quan sát an toàn hơn danh sách này hiển thị. Hãy thu hẹp theo đơn vị, theo loại hoặc theo ngày để xem phần còn lại.';
+
+  @override
+  String get safetyObservationsNoMatchMessage =>
+      'Sổ có quan sát an toàn, nhưng không quan sát nào thuộc khu vực, loại, hạng mục, mức tiềm ẩn, dừng việc hay khoảng ngày bạn chọn.';
+
+  @override
+  String get safetyObservationsNoneTitle =>
+      'Không có quan sát nào được ghi nhận. Chỉ số dẫn dắt đang trống.';
+
+  @override
+  String get safetyObservationsNoneMessage =>
+      'Chưa có quan sát an toàn nào được ghi nhận tại nhà máy này trong khu vực và khoảng ngày đang hiển thị.';
+
+  @override
+  String get safetyPotentialColumn => 'Mức tiềm ẩn';
+
+  @override
+  String get safetyIncidentReport => 'Báo sự cố an toàn';
+
+  @override
+  String get safetyReportSubmit => 'Báo cáo';
+
+  @override
+  String get safetyIncidentFloorIntro =>
+      'Đã xảy ra chuyện gì? Những trường có danh sách cố định đều được chọn từ danh sách.';
+
+  @override
+  String get safetyWhatHappened => 'Đã xảy ra chuyện gì';
+
+  @override
+  String get safetyImmediateAction => 'Hành động tức thời (không bắt buộc)';
+
+  @override
+  String get safetyOccurredAt => 'Xảy ra lúc';
+
+  @override
+  String get safetyIncidentFloorWho =>
+      'Ai đang báo cáo? Mã nhân viên và PIN chỉ dùng để nhận diện bạn cho bản ghi này — bản ghi được ghi nhận là báo cáo của bạn.';
+
+  @override
+  String get safetyObservationRecordTitle => 'Ghi nhận quan sát an toàn';
+
+  @override
+  String get safetyObservationFloorIntro =>
+      'Đã thấy gì? Những trường có danh sách cố định đều được chọn từ danh sách.';
+
+  @override
+  String get safetyWhatWasSeen => 'Đã thấy gì';
+
+  @override
+  String get safetyActionTaken => 'Hành động đã làm (không bắt buộc)';
+
+  @override
+  String get safetyStopWorkExercised => 'Đã dùng quyền dừng việc';
+
+  @override
+  String get safetyObservationFloorWho =>
+      'Ai đang ghi nhận? Mã nhân viên và PIN chỉ dùng để nhận diện bạn cho bản ghi này.';
+
+  @override
+  String get commonBack => 'Quay lại';
+
+  @override
+  String get routerLeaveNotDecidable =>
+      'Đơn xin nghỉ này không phải đơn bạn được quyết định.';
+
+  @override
+  String get routerLeaveNotCancellable => 'Đơn xin nghỉ này không thể huỷ.';
+
+  @override
+  String get routerNotAMeasure => 'Đây không phải một biện pháp';
+
+  @override
+  String get routerNotAMeasureBody =>
+      'Một biện pháp là hành động ngăn chặn, hành động đối phó hoặc hành động phòng ngừa.';
+
+  @override
+  String get routerBackToAction => 'Về hành động';
+
+  @override
+  String get routerCannotDoThatHere => 'Bạn không thể làm việc này ở đây';
+
+  @override
+  String get routerNoWriteGrant =>
+      'Bạn không có quyền ghi nào tại nhà máy này.';
+
+  @override
+  String get routerBackToList => 'Về danh sách';
 }

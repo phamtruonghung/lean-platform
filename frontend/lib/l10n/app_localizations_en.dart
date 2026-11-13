@@ -1002,4 +1002,881 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get titleStoreStock => 'Store stock';
+
+  @override
+  String get commonTryAgain => 'Try again';
+
+  @override
+  String get commonAssetsFailed => 'The Assets could not be read.';
+
+  @override
+  String get commonJobPlan => 'Job plan';
+
+  @override
+  String get commonMeter => 'Meter';
+
+  @override
+  String get commonEmployee => 'Employee';
+
+  @override
+  String get commonUnitOfMeasure => 'Unit of measure';
+
+  @override
+  String get commonQuantity => 'Quantity';
+
+  @override
+  String get commonPart => 'Part';
+
+  @override
+  String get commonStore => 'Store';
+
+  @override
+  String get commonNoteOptional => 'Note (optional)';
+
+  @override
+  String get commonPriorityMostUrgent => 'Most urgent';
+
+  @override
+  String get commonPriorityUrgent => 'Urgent';
+
+  @override
+  String get commonPriorityNormal => 'Normal';
+
+  @override
+  String get commonPriorityLow => 'Low';
+
+  @override
+  String get commonPriorityLeastUrgent => 'Least urgent';
+
+  @override
+  String get pmScheduleFormTitle => 'Schedule preventive maintenance';
+
+  @override
+  String get pmScheduleFormSubmit => 'Schedule';
+
+  @override
+  String get pmScheduleFormBasisField => 'Comes round on';
+
+  @override
+  String get pmScheduleFormBasisElapsed => 'Elapsed time';
+
+  @override
+  String get pmScheduleFormBasisAccumulated => 'Accumulated use';
+
+  @override
+  String get pmScheduleFormEveryDays => 'Every how many days';
+
+  @override
+  String get pmScheduleFormEveryAccumulated => 'Every how much accumulated use';
+
+  @override
+  String get pmScheduleFormMeterNotChosen => 'Choose a cumulative meter first.';
+
+  @override
+  String pmScheduleFormMeterIntervalHelp(String uom) {
+    return 'In $uom, one interval past where the meter stands now.';
+  }
+
+  @override
+  String get pmScheduleFormAnchor => 'The interval rolls from';
+
+  @override
+  String get pmScheduleFormLeadTime => 'Raise this many days early';
+
+  @override
+  String get pmScheduleFormPriorityMostUrgent => '1 — most urgent';
+
+  @override
+  String get pmScheduleFormPriorityLeastUrgent => '5 — least urgent';
+
+  @override
+  String get pmScheduleFormFirstDue => 'First due date (optional)';
+
+  @override
+  String get pmScheduleFormFirstDueHelp =>
+      'Left blank, the first due date is the interval from today.';
+
+  @override
+  String get pmScheduleFormJobPlansFailed => 'The Job plans could not be read.';
+
+  @override
+  String get pmScheduleFormMetersFailed => 'The meters could not be read.';
+
+  @override
+  String get pmScheduleFormMeterHelp =>
+      'Only cumulative meters can drive a schedule.';
+
+  @override
+  String get jobPlanFormSubmit => 'Add plan';
+
+  @override
+  String get jobPlanFormWorkType => 'Kind of work';
+
+  @override
+  String get jobPlanFormDescriptionOptional => 'Description (optional)';
+
+  @override
+  String get jobPlanFormEstimatedHoursOptional => 'Estimated hours (optional)';
+
+  @override
+  String get jobPlanFormRequiresShutdown => 'Requires a shutdown';
+
+  @override
+  String get jobPlanFormSafetyNoteOptional => 'Safety note (optional)';
+
+  @override
+  String get jobPlanFormAddStep => 'Add a step';
+
+  @override
+  String get jobPlanFormSkillsFailed =>
+      'The skill catalogue could not be read.';
+
+  @override
+  String get jobPlanFormStep => 'Step';
+
+  @override
+  String get jobPlanFormInstruction => 'Instruction';
+
+  @override
+  String get jobPlanFormRemoveStep => 'Remove this step';
+
+  @override
+  String get jobPlanFormRequiredSkill => 'Required skill (optional)';
+
+  @override
+  String get jobPlanFormHoursOptional => 'Hours (optional)';
+
+  @override
+  String get meterFormSubmit => 'Define';
+
+  @override
+  String get meterFormCodeHelp =>
+      'How this meter is known on the Asset, e.g. RUN-HRS.';
+
+  @override
+  String get meterFormType => 'Kind of meter';
+
+  @override
+  String get meterFormUomFailed => 'The units of measure could not be read.';
+
+  @override
+  String readingFormTitle(String meter) {
+    return 'Record a reading on $meter';
+  }
+
+  @override
+  String get readingFormSubmitRollover => 'Record rollover';
+
+  @override
+  String get readingFormSubmit => 'Record reading';
+
+  @override
+  String readingFormAccumulatedSoFar(String value) {
+    return 'Accumulated use so far: $value';
+  }
+
+  @override
+  String get readingFormNewCounterReads => 'What the new counter reads now';
+
+  @override
+  String get readingFormCounterReads => 'What the counter reads';
+
+  @override
+  String get readingFormRolloverHelp =>
+      'The accumulated use is carried forward into the offset; the new counter usually reads 0.';
+
+  @override
+  String readingFormReadingHelp(String uom) {
+    return 'In $uom, exactly as the counter shows.';
+  }
+
+  @override
+  String get readingFormRolloverTitle => 'The counter was reset or replaced';
+
+  @override
+  String get readingFormRolloverSubtitle =>
+      'Carries the accumulated use into the offset and records this as the new counter\'s start.';
+
+  @override
+  String requestAcceptTitle(String requestNo) {
+    return 'Accept $requestNo?';
+  }
+
+  @override
+  String get requestAcceptDismiss => 'Keep it waiting';
+
+  @override
+  String get requestAcceptSubmit => 'Accept this Request';
+
+  @override
+  String get requestAcceptBody =>
+      'Accepting raises a Work order for this Request. Its priority is your call, not the reporter\'s urgency.';
+
+  @override
+  String requestDeclineTitle(String requestNo) {
+    return 'Decline $requestNo?';
+  }
+
+  @override
+  String get requestDeclineReason => 'Why is this being declined?';
+
+  @override
+  String get requestDeclineSubmit => 'Decline this Request';
+
+  @override
+  String get requestDuplicateTitle => 'Mark as a duplicate';
+
+  @override
+  String get requestDuplicateDismiss => 'Keep it separate';
+
+  @override
+  String get requestDuplicateNone =>
+      'There is no other open Request for this one to duplicate.';
+
+  @override
+  String requestDuplicateWhich(String requestNo) {
+    return 'Which Request survives? $requestNo leaves the queue.';
+  }
+
+  @override
+  String get labourBookingTitle => 'Book labour';
+
+  @override
+  String get labourBookingActivity => 'Activity';
+
+  @override
+  String get labourBookingStartedAt => 'Started at';
+
+  @override
+  String get labourBookingEndedAt => 'Ended at';
+
+  @override
+  String get labourBookingOvertime => 'Overtime';
+
+  @override
+  String get labourBookingEmployeesFailed => 'The Employees could not be read.';
+
+  @override
+  String get partBookingTitle => 'Book a part';
+
+  @override
+  String get partBookingSubmit => 'Book part';
+
+  @override
+  String get partBookingSourced => 'Sourced';
+
+  @override
+  String get partBookingOptionsFailed => 'The options could not be read.';
+
+  @override
+  String get partBookingPartNoOptional => 'Part number (optional)';
+
+  @override
+  String get partBookingUnitCostOptional => 'Unit cost (optional)';
+
+  @override
+  String get nonconformancesUnavailableTitle =>
+      'The Non-conformance register could not be read';
+
+  @override
+  String get nonconformancesNoSiteTitle => 'No Site to show';
+
+  @override
+  String get nonconformancesNoSiteMessage =>
+      'Your Account can see no Site yet, so there is nothing to read here.';
+
+  @override
+  String get nonconformancesDescription =>
+      'What was found not to conform at this Site, where it was found, and how much of it there is.';
+
+  @override
+  String get nonconformanceRecord => 'Record a Non-conformance';
+
+  @override
+  String get commonAllOrgUnits => 'All Org Units';
+
+  @override
+  String get nonconformancesAnyStatus => 'Any status';
+
+  @override
+  String get commonDefectCode => 'Defect code';
+
+  @override
+  String get nonconformancesEveryDefectCode => 'Every Defect code';
+
+  @override
+  String get commonProduct => 'Product';
+
+  @override
+  String get nonconformancesEveryProduct => 'Every Product';
+
+  @override
+  String get nonconformancesSeverity => 'Severity';
+
+  @override
+  String get nonconformancesAnySeverity => 'Any severity';
+
+  @override
+  String get nonconformancesDetectedFrom => 'Detected from';
+
+  @override
+  String get nonconformancesDetectedTo => 'Detected to';
+
+  @override
+  String get nonconformancesTruncated =>
+      'There are more Non-conformances than this list shows. Narrow it by Org Unit, by status or by date to see the rest.';
+
+  @override
+  String get nonconformancesNoMatchTitle => 'Nothing matches these filters';
+
+  @override
+  String get nonconformancesNoMatchMessage =>
+      'The register has Non-conformances, but none of them is in the area, state, Defect code, Product, severity or dates you picked.';
+
+  @override
+  String get nonconformancesClearTheFilters => 'Clear the filters';
+
+  @override
+  String get nonconformancesNoneExistTitle =>
+      'Nothing has been found not to conform';
+
+  @override
+  String get nonconformancesNoneExistMessage =>
+      'No Non-conformance has been recorded at this Site.';
+
+  @override
+  String get nonconformancesNumberColumn => 'Non-conformance';
+
+  @override
+  String get nonconformancesFoundColumn => 'What was found';
+
+  @override
+  String get commonState => 'State';
+
+  @override
+  String get nonconformancesFiledColumn => 'Filed';
+
+  @override
+  String get commonOpen => 'Open';
+
+  @override
+  String nonconformanceQuantityAffected(String count, String uom) {
+    return '$count $uom affected';
+  }
+
+  @override
+  String nonconformanceQuantityRaised(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'raised $count times',
+      one: 'raised 1 time',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String nonconformanceFiledAgainst(String orgUnit, String against) {
+    return '$orgUnit · filed against $against';
+  }
+
+  @override
+  String get nonconformanceFormRecord => 'Record it';
+
+  @override
+  String get nonconformanceFormProductHelp =>
+      'What the nonconforming product is.';
+
+  @override
+  String get nonconformanceFormDefectCodeHelp =>
+      'What is wrong with it. The severity starts at this code own default.';
+
+  @override
+  String get nonconformanceFormChooseCode => 'Choose a code';
+
+  @override
+  String get nonconformanceFormDetectionPoint => 'Detection point';
+
+  @override
+  String get nonconformanceFormDetectionPointHelp =>
+      'Where the control plan caught it.';
+
+  @override
+  String get nonconformanceFormChoosePoint => 'Choose a point';
+
+  @override
+  String get nonconformanceFormSeverityHelpUnset =>
+      'Chosen with the Defect code.';
+
+  @override
+  String nonconformanceFormSeverityHelpSet(String severity) {
+    return 'Starts at $severity. Raising it is allowed; lowering it is a later decision.';
+  }
+
+  @override
+  String get nonconformanceFormChooseCodeFirst => 'Choose a Defect code first';
+
+  @override
+  String nonconformanceFormStartsAt(String severity) {
+    return 'Starts at $severity';
+  }
+
+  @override
+  String get nonconformanceFormQuantityHelp => 'How many pieces.';
+
+  @override
+  String get nonconformanceFormLotRef => 'Lot reference (optional)';
+
+  @override
+  String get nonconformanceFormLotRefHelp =>
+      'What else is affected — a batch number is better than nothing.';
+
+  @override
+  String get nonconformanceFormAssetOptional => 'Asset (optional)';
+
+  @override
+  String get nonconformanceFormAssetHelp =>
+      'Which machine, if the find was on one. It must sit at that Org Unit.';
+
+  @override
+  String get nonconformanceFormDetailOptional => 'Detail (optional)';
+
+  @override
+  String get nonconformanceFormContainment =>
+      'Immediate containment (optional)';
+
+  @override
+  String get nonconformanceFormContainmentHelp =>
+      'What was done at once. Recording it makes this contained.';
+
+  @override
+  String get nonconformanceFormDetectedAt => 'Detected at (optional)';
+
+  @override
+  String get nonconformanceFormDetectedAtHelp =>
+      'When it was found, if that is not now. This is what decides the production day and shift it is filed against.';
+
+  @override
+  String get nonconformanceFormWhereFound => 'Where it was found';
+
+  @override
+  String get nonconformanceFormWhereFoundHelp =>
+      'Choose the Org Unit the nonconforming product was found at. This is what decides who may act on it.';
+
+  @override
+  String nonconformanceFormWillBeRecorded(String orgUnit) {
+    return 'This Non-conformance will be recorded at $orgUnit.';
+  }
+
+  @override
+  String get nonconformanceFloorIntro =>
+      'What was found not to conform? Everything with a known set is chosen from what this device can see.';
+
+  @override
+  String get nonconformanceFloorChooseProduct => 'Choose a Product';
+
+  @override
+  String get nonconformanceFloorDetectedAt => 'Detected at';
+
+  @override
+  String nonconformanceFloorStartsAt(String severity) {
+    return 'Starts at $severity — this Defect code\'s own severity.';
+  }
+
+  @override
+  String get nonconformanceFloorHowMuch => 'How much of it';
+
+  @override
+  String get nonconformanceFloorLot => 'Lot or batch (if it has one)';
+
+  @override
+  String get nonconformanceFloorWhatDidYouSee => 'What did you see?';
+
+  @override
+  String get nonconformanceFloorWhoFound =>
+      'Who found it? Your Employee number and PIN identify you for this record only — it is filed as your find.';
+
+  @override
+  String get nonconformanceFloorEmployeeNumber => 'Employee number';
+
+  @override
+  String get nonconformanceFloorPin => 'PIN';
+
+  @override
+  String get nonconformanceTitle => 'Non-conformance';
+
+  @override
+  String get nonconformanceDetailMissingTitle => 'No such Non-conformance';
+
+  @override
+  String get nonconformanceDetailMissingMessage =>
+      'Nothing is recorded at this address. It may have been removed, or the address may be wrong.';
+
+  @override
+  String get nonconformanceDetailBack => 'Back to Non-conformances';
+
+  @override
+  String get nonconformanceDetailUnavailableTitle =>
+      'The Non-conformance could not be read';
+
+  @override
+  String nonconformanceDetailSeverityChip(String severity) {
+    return '$severity severity';
+  }
+
+  @override
+  String nonconformanceDetailFinishedAt(String date) {
+    return 'Finished $date';
+  }
+
+  @override
+  String get nonconformanceDetailDetail => 'Detail';
+
+  @override
+  String get nonconformanceDetailQuantityAffected => 'Quantity affected';
+
+  @override
+  String get nonconformanceDetailFiledAgainst => 'Filed against';
+
+  @override
+  String get commonNoneGiven => 'None given';
+
+  @override
+  String get commonNoneNamed => 'None named';
+
+  @override
+  String get commonNotGiven => 'Not given';
+
+  @override
+  String get commonNotRecorded => 'Not recorded';
+
+  @override
+  String get commonNoneRecorded => 'None recorded yet';
+
+  @override
+  String get nonconformanceDetailLotRef => 'Lot reference';
+
+  @override
+  String get nonconformanceDetailContainment => 'Immediate containment';
+
+  @override
+  String nonconformanceDetailDefectCodeValue(
+    String name,
+    String code,
+    String severity,
+  ) {
+    return '$name · $code · starts at $severity';
+  }
+
+  @override
+  String get nonconformanceDetailActionsSection => 'What can be done';
+
+  @override
+  String get nonconformanceIncreaseQuantity => 'Increase the quantity';
+
+  @override
+  String get nonconformanceUpdate => 'Raise severity or contain it';
+
+  @override
+  String get nonconformanceDisposition => 'Record a Disposition';
+
+  @override
+  String get nonconformanceConcession => 'Grant a Concession';
+
+  @override
+  String get nonconformanceLowerSeverity => 'Lower the severity';
+
+  @override
+  String get nonconformanceReopen => 'Reopen it';
+
+  @override
+  String get nonconformanceCancel => 'Cancel it in error';
+
+  @override
+  String get nonconformanceDetailQuantityHistory => 'Quantity history';
+
+  @override
+  String get nonconformanceDetailQuantityHistoryNote =>
+      'Sorting finds more than the first count. Every change is kept, and the affected quantity never shrinks.';
+
+  @override
+  String get nonconformanceDetailNoQuantityHistory =>
+      'The affected quantity has not been changed since it was recorded.';
+
+  @override
+  String get nonconformanceDetailDispositions => 'Dispositions';
+
+  @override
+  String get nonconformanceDetailDispositionsNote =>
+      'Product is dealt with in parts. A Non-conformance closes by itself once all of its quantity has a Disposition.';
+
+  @override
+  String nonconformanceDetailDispositioned(
+    String done,
+    String total,
+    String uom,
+  ) {
+    return '$done of $total $uom dispositioned';
+  }
+
+  @override
+  String get nonconformanceDetailNoDispositions =>
+      'Nothing has been decided about this product yet.';
+
+  @override
+  String nonconformanceDetailReworkMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes of rework',
+      one: '1 minute of rework',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get nonconformanceDetailCorrections => 'Corrections';
+
+  @override
+  String get nonconformanceDetailCorrectionsNote =>
+      'What a holder of Quality authority has changed about this record, and why.';
+
+  @override
+  String get nonconformanceDetailNoCorrections =>
+      'This record has not been corrected.';
+
+  @override
+  String get nonconformanceDetailCause => 'The cause';
+
+  @override
+  String get nonconformanceDetailCauseNote =>
+      'Nonconforming product is dealt with here; the problem behind it is solved in the action log, as a Concern. One problem that shows up several times stays one Concern.';
+
+  @override
+  String get nonconformanceDetailNoConcerns =>
+      'Nothing is being done about the cause yet.';
+
+  @override
+  String get nonconformanceDetailRaisedFrom => 'raised from this record';
+
+  @override
+  String get nonconformanceDetailOverdue => 'overdue';
+
+  @override
+  String get nonconformanceRaiseConcern => 'Raise a Concern';
+
+  @override
+  String get nonconformanceLinkConcern => 'Link it to a Concern';
+
+  @override
+  String get commonNoSiteTitle => 'No Site to show';
+
+  @override
+  String get commonNoSiteMessage =>
+      'Your Account can see no Site yet, so there is nothing to read here.';
+
+  @override
+  String commonFiledAgainst(String orgUnit, String against) {
+    return '$orgUnit · filed against $against';
+  }
+
+  @override
+  String get commonFiledAgainstColumn => 'Filed against';
+
+  @override
+  String get commonAny => 'Any';
+
+  @override
+  String get commonType => 'Type';
+
+  @override
+  String get commonCategory => 'Category';
+
+  @override
+  String get commonAction => 'Action';
+
+  @override
+  String get commonSeverity => 'Severity';
+
+  @override
+  String get safetyIncidentsUnavailableTitle =>
+      'The Safety incident register could not be read';
+
+  @override
+  String get safetyIncidentsDescription =>
+      'What went wrong at this Site, where it happened, and where it sits on the severity ladder.';
+
+  @override
+  String get safetyIncidentRecord => 'Record a Safety incident';
+
+  @override
+  String get safetyIncidentType => 'Incident type';
+
+  @override
+  String get safetyRecordable => 'Recordable';
+
+  @override
+  String get safetyNotRecordable => 'Not recordable';
+
+  @override
+  String get safetyOccurredFrom => 'Occurred from';
+
+  @override
+  String get safetyOccurredTo => 'Occurred to';
+
+  @override
+  String get safetyIncidentsTruncated =>
+      'There are more Safety incidents than this list shows. Narrow it by Org Unit, by status or by date to see the rest.';
+
+  @override
+  String get safetyIncidentsNoMatchMessage =>
+      'The register has Safety incidents, but none of them is in the area, state, type, severity, recordability or dates you picked.';
+
+  @override
+  String get safetyIncidentsNoneTitle =>
+      'No incidents recorded for this period';
+
+  @override
+  String get safetyIncidentsNoneMessage =>
+      'No Safety incident has been recorded at this Site for the area and dates shown.';
+
+  @override
+  String get safetyIncidentNumberColumn => 'Incident #';
+
+  @override
+  String get safetyObservationsUnavailableTitle =>
+      'The Safety observation register could not be read';
+
+  @override
+  String get safetyObservationsDescription =>
+      'What was seen before anything went wrong, ranked worst-first by the worst credible outcome.';
+
+  @override
+  String get safetyObservationRecord => 'Record an observation';
+
+  @override
+  String get safetyAnyType => 'Any type';
+
+  @override
+  String get safetyAnyCategory => 'Any category';
+
+  @override
+  String get safetySeverityPotential => 'Severity potential';
+
+  @override
+  String get safetyAnyPotential => 'Any potential';
+
+  @override
+  String get safetyStopWork => 'Stop-work';
+
+  @override
+  String get safetyStopWorkOnly => 'Stop-work only';
+
+  @override
+  String get safetyNotStopWork => 'Not stop-work';
+
+  @override
+  String get safetyNoActionRaised => 'No Action raised';
+
+  @override
+  String get safetyActionRaised => 'Action raised';
+
+  @override
+  String get safetyObservedFrom => 'Observed from';
+
+  @override
+  String get safetyObservedTo => 'Observed to';
+
+  @override
+  String get safetyObservationsTruncated =>
+      'There are more Safety observations than this list shows. Narrow it by Org Unit, by type or by date to see the rest.';
+
+  @override
+  String get safetyObservationsNoMatchMessage =>
+      'The register has Safety observations, but none of them is in the area, type, category, potential, stop-work or dates you picked.';
+
+  @override
+  String get safetyObservationsNoneTitle =>
+      'No observations recorded. The leading indicator is empty.';
+
+  @override
+  String get safetyObservationsNoneMessage =>
+      'No Safety observation has been recorded at this Site for the area and dates shown.';
+
+  @override
+  String get safetyPotentialColumn => 'Potential';
+
+  @override
+  String get safetyIncidentReport => 'Report a Safety incident';
+
+  @override
+  String get safetyReportSubmit => 'Report it';
+
+  @override
+  String get safetyIncidentFloorIntro =>
+      'What happened? Everything with a known set is chosen from a fixed list.';
+
+  @override
+  String get safetyWhatHappened => 'What happened';
+
+  @override
+  String get safetyImmediateAction => 'Immediate action (optional)';
+
+  @override
+  String get safetyOccurredAt => 'Occurred at';
+
+  @override
+  String get safetyIncidentFloorWho =>
+      'Who is reporting this? Your Employee number and PIN identify you for this record only — it is filed as your report.';
+
+  @override
+  String get safetyObservationRecordTitle => 'Record a Safety observation';
+
+  @override
+  String get safetyObservationFloorIntro =>
+      'What was seen? Everything with a known set is chosen from a fixed list.';
+
+  @override
+  String get safetyWhatWasSeen => 'What was seen';
+
+  @override
+  String get safetyActionTaken => 'Action taken (optional)';
+
+  @override
+  String get safetyStopWorkExercised => 'Stop-work authority was exercised';
+
+  @override
+  String get safetyObservationFloorWho =>
+      'Who is recording this? Your Employee number and PIN identify you for this record only.';
+
+  @override
+  String get commonBack => 'Back';
+
+  @override
+  String get routerLeaveNotDecidable =>
+      'This leave request is not one you can decide.';
+
+  @override
+  String get routerLeaveNotCancellable =>
+      'This leave request cannot be cancelled.';
+
+  @override
+  String get routerNotAMeasure => 'That is not a measure';
+
+  @override
+  String get routerNotAMeasureBody =>
+      'A measure is a containment, a countermeasure or a preventive action.';
+
+  @override
+  String get routerBackToAction => 'Back to the Action';
+
+  @override
+  String get routerCannotDoThatHere => 'You cannot do that here';
+
+  @override
+  String get routerNoWriteGrant =>
+      'You do not hold a write Grant anywhere at this Site.';
+
+  @override
+  String get routerBackToList => 'Back to the list';
 }

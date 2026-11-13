@@ -1139,5 +1139,1084 @@
   "titleStoreStock": "Tồn kho",
   "@titleStoreStock": {
     "description": "The browser tab's name for one Store's stock, which the Store's own name would otherwise stand in for."
+  },
+  "commonTryAgain": "Thử lại",
+  "@commonTryAgain": {
+    "description": "The button beside a failed read that asks again for the same list."
+  },
+  "commonAssetsFailed": "Không đọc được danh sách tài sản.",
+  "@commonAssetsFailed": {
+    "description": "Shown in place of an Asset picker when the register could not be fetched."
+  },
+  "commonJobPlan": "Kế hoạch công việc",
+  "@commonJobPlan": {
+    "description": "Label over a Job plan picker."
+  },
+  "commonMeter": "Đồng hồ đo",
+  "@commonMeter": {
+    "description": "Label over a meter picker, and the heading of the meter type field."
+  },
+  "commonEmployee": "Nhân viên",
+  "@commonEmployee": {
+    "description": "Label over an Employee picker."
+  },
+  "commonUnitOfMeasure": "Đơn vị đo",
+  "@commonUnitOfMeasure": {
+    "description": "Label over the field that chooses the unit a figure is counted in."
+  },
+  "commonQuantity": "Số lượng",
+  "@commonQuantity": {
+    "description": "Label over a field holding how many of something."
+  },
+  "commonPart": "Phụ tùng",
+  "@commonPart": {
+    "description": "Label over a Part picker."
+  },
+  "commonStore": "Kho",
+  "@commonStore": {
+    "description": "Label over a Store picker."
+  },
+  "commonNoteOptional": "Ghi chú (không bắt buộc)",
+  "@commonNoteOptional": {
+    "description": "Label over a free-text note field that may be left blank."
+  },
+  "commonPriorityMostUrgent": "Khẩn cấp nhất",
+  "@commonPriorityMostUrgent": {
+    "description": "The word beside priority level 1, the CHECK constraint's most urgent end."
+  },
+  "commonPriorityUrgent": "Khẩn cấp",
+  "@commonPriorityUrgent": {
+    "description": "The word beside priority level 2."
+  },
+  "commonPriorityNormal": "Bình thường",
+  "@commonPriorityNormal": {
+    "description": "The word beside priority level 3, the schema's own default."
+  },
+  "commonPriorityLow": "Thấp",
+  "@commonPriorityLow": {
+    "description": "The word beside priority level 4."
+  },
+  "commonPriorityLeastUrgent": "Ít khẩn cấp nhất",
+  "@commonPriorityLeastUrgent": {
+    "description": "The word beside priority level 5, the CHECK constraint's least urgent end."
+  },
+  "pmScheduleFormTitle": "Lên lịch bảo trì định kỳ",
+  "@pmScheduleFormTitle": {
+    "description": "Title of the dialog that attaches a Job plan to an Asset as a PM schedule."
+  },
+  "pmScheduleFormSubmit": "Lên lịch",
+  "@pmScheduleFormSubmit": {
+    "description": "The submit action of the PM schedule dialog."
+  },
+  "pmScheduleFormBasisField": "Chu kỳ tính theo",
+  "@pmScheduleFormBasisField": {
+    "description": "Label over the choice of what the schedule's interval counts: elapsed time or accumulated use."
+  },
+  "pmScheduleFormBasisElapsed": "Thời gian đã trôi qua",
+  "@pmScheduleFormBasisElapsed": {
+    "description": "The interval counts elapsed time, so the schedule comes round on a number of days."
+  },
+  "pmScheduleFormBasisAccumulated": "Lượng sử dụng tích luỹ",
+  "@pmScheduleFormBasisAccumulated": {
+    "description": "The interval counts accumulated use, so the schedule comes round on a cumulative meter's count."
+  },
+  "pmScheduleFormEveryDays": "Bao nhiêu ngày một lần",
+  "@pmScheduleFormEveryDays": {
+    "description": "Label over the interval in days."
+  },
+  "pmScheduleFormEveryAccumulated": "Bao nhiêu lượng sử dụng tích luỹ một lần",
+  "@pmScheduleFormEveryAccumulated": {
+    "description": "Label over the interval in accumulated use."
+  },
+  "pmScheduleFormMeterNotChosen": "Hãy chọn một đồng hồ đo tích luỹ trước.",
+  "@pmScheduleFormMeterNotChosen": {
+    "description": "Help text under the accumulated-use interval while no meter has been chosen yet."
+  },
+  "pmScheduleFormMeterIntervalHelp": "Tính bằng {uom}, một chu kỳ sau mốc hiện tại của đồng hồ.",
+  "@pmScheduleFormMeterIntervalHelp": {
+    "description": "Help text under the accumulated-use interval once a meter is chosen, naming the meter's unit.",
+    "placeholders": {
+      "uom": {"type": "String"}
+    }
+  },
+  "pmScheduleFormAnchor": "Chu kỳ tính từ mốc",
+  "@pmScheduleFormAnchor": {
+    "description": "Label over the choice of which date the next due date counts from."
+  },
+  "pmScheduleFormLeadTime": "Tạo lệnh sớm bao nhiêu ngày",
+  "@pmScheduleFormLeadTime": {
+    "description": "Label over the lead time, so many days before the due date a Work order is raised."
+  },
+  "pmScheduleFormPriorityMostUrgent": "1 — khẩn cấp nhất",
+  "@pmScheduleFormPriorityMostUrgent": {
+    "description": "Priority level 1 in the PM schedule dialog, worded for a bare digit whose direction is not obvious."
+  },
+  "pmScheduleFormPriorityLeastUrgent": "5 — ít khẩn cấp nhất",
+  "@pmScheduleFormPriorityLeastUrgent": {
+    "description": "Priority level 5 in the PM schedule dialog."
+  },
+  "pmScheduleFormFirstDue": "Ngày đến hạn đầu tiên (không bắt buộc)",
+  "@pmScheduleFormFirstDue": {
+    "description": "Label over the first due date of a day-driven PM schedule."
+  },
+  "pmScheduleFormFirstDueHelp": "Để trống thì ngày đến hạn đầu tiên là một chu kỳ kể từ hôm nay.",
+  "@pmScheduleFormFirstDueHelp": {
+    "description": "Help text under the first due date."
+  },
+  "pmScheduleFormJobPlansFailed": "Không đọc được danh mục kế hoạch công việc.",
+  "@pmScheduleFormJobPlansFailed": {
+    "description": "Shown in place of the Job plan picker when the catalogue could not be fetched."
+  },
+  "pmScheduleFormMetersFailed": "Không đọc được danh sách đồng hồ đo.",
+  "@pmScheduleFormMetersFailed": {
+    "description": "Shown in place of the meter picker when the Asset's meters could not be fetched."
+  },
+  "pmScheduleFormMeterHelp": "Chỉ đồng hồ đo tích luỹ mới đặt được lịch.",
+  "@pmScheduleFormMeterHelp": {
+    "description": "Help text under the meter picker, explaining why gauges are not offered."
+  },
+  "jobPlanFormSubmit": "Thêm kế hoạch",
+  "@jobPlanFormSubmit": {
+    "description": "The submit action of the Job plan form dialog."
+  },
+  "jobPlanFormWorkType": "Loại công việc",
+  "@jobPlanFormWorkType": {
+    "description": "Label over the Job plan's work type choice."
+  },
+  "jobPlanFormDescriptionOptional": "Mô tả (không bắt buộc)",
+  "@jobPlanFormDescriptionOptional": {
+    "description": "Label over the Job plan's optional description."
+  },
+  "jobPlanFormEstimatedHoursOptional": "Số giờ ước tính (không bắt buộc)",
+  "@jobPlanFormEstimatedHoursOptional": {
+    "description": "Label over the Job plan's optional estimate."
+  },
+  "jobPlanFormRequiresShutdown": "Cần dừng máy",
+  "@jobPlanFormRequiresShutdown": {
+    "description": "The switch on the Job plan form saying the work needs the Asset stopped."
+  },
+  "jobPlanFormSafetyNoteOptional": "Ghi chú an toàn (không bắt buộc)",
+  "@jobPlanFormSafetyNoteOptional": {
+    "description": "Label over the Job plan's optional safety note."
+  },
+  "jobPlanFormAddStep": "Thêm bước",
+  "@jobPlanFormAddStep": {
+    "description": "The button that appends one step to the Job plan being written."
+  },
+  "jobPlanFormSkillsFailed": "Không đọc được danh mục kỹ năng.",
+  "@jobPlanFormSkillsFailed": {
+    "description": "Shown over the steps when the Skill catalogue could not be fetched, so a step's required skill cannot be chosen."
+  },
+  "jobPlanFormStep": "Bước",
+  "@jobPlanFormStep": {
+    "description": "Label over one step's number."
+  },
+  "jobPlanFormInstruction": "Hướng dẫn",
+  "@jobPlanFormInstruction": {
+    "description": "Label over one step's instruction text."
+  },
+  "jobPlanFormRemoveStep": "Xoá bước này",
+  "@jobPlanFormRemoveStep": {
+    "description": "Tooltip on the button that drops one step from the Job plan being written."
+  },
+  "jobPlanFormRequiredSkill": "Kỹ năng yêu cầu (không bắt buộc)",
+  "@jobPlanFormRequiredSkill": {
+    "description": "Label over one step's optional required Skill."
+  },
+  "jobPlanFormHoursOptional": "Số giờ (không bắt buộc)",
+  "@jobPlanFormHoursOptional": {
+    "description": "Label over one step's optional estimated hours."
+  },
+  "meterFormSubmit": "Khai báo",
+  "@meterFormSubmit": {
+    "description": "The submit action of the meter form dialog."
+  },
+  "meterFormCodeHelp": "Cách đồng hồ đo này được gọi trên tài sản, ví dụ RUN-HRS.",
+  "@meterFormCodeHelp": {
+    "description": "Help text under the meter's code."
+  },
+  "meterFormType": "Loại đồng hồ đo",
+  "@meterFormType": {
+    "description": "Label over the choice between a cumulative meter and a gauge."
+  },
+  "meterFormUomFailed": "Không đọc được danh sách đơn vị đo.",
+  "@meterFormUomFailed": {
+    "description": "Shown in place of the unit picker when the catalogue could not be fetched."
+  },
+  "readingFormTitle": "Ghi chỉ số cho {meter}",
+  "@readingFormTitle": {
+    "description": "Title of the dialog that records a reading against one meter, naming it.",
+    "placeholders": {
+      "meter": {"type": "String"}
+    }
+  },
+  "readingFormSubmitRollover": "Ghi đặt lại",
+  "@readingFormSubmitRollover": {
+    "description": "The submit action of the reading dialog when the counter was reset or replaced."
+  },
+  "readingFormSubmit": "Ghi chỉ số",
+  "@readingFormSubmit": {
+    "description": "The submit action of the reading dialog for an ordinary reading."
+  },
+  "readingFormAccumulatedSoFar": "Lượng sử dụng tích luỹ đến nay: {value}",
+  "@readingFormAccumulatedSoFar": {
+    "description": "The line above the reading field showing where the meter stands now.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "readingFormNewCounterReads": "Đồng hồ mới đang chỉ bao nhiêu",
+  "@readingFormNewCounterReads": {
+    "description": "Label over the reading field when the counter was reset or replaced."
+  },
+  "readingFormCounterReads": "Đồng hồ đang chỉ bao nhiêu",
+  "@readingFormCounterReads": {
+    "description": "Label over the reading field for an ordinary reading."
+  },
+  "readingFormRolloverHelp": "Lượng sử dụng tích luỹ được chuyển sang phần bù; đồng hồ mới thường đang chỉ 0.",
+  "@readingFormRolloverHelp": {
+    "description": "Help text under the reading field when the counter was reset or replaced."
+  },
+  "readingFormReadingHelp": "Tính bằng {uom}, đúng như chỉ số trên đồng hồ.",
+  "@readingFormReadingHelp": {
+    "description": "Help text under the reading field for an ordinary reading, naming the meter's unit.",
+    "placeholders": {
+      "uom": {"type": "String"}
+    }
+  },
+  "readingFormRolloverTitle": "Đồng hồ đã được đặt lại hoặc thay mới",
+  "@readingFormRolloverTitle": {
+    "description": "The checkbox on a cumulative meter that says this reading follows a reset or a replacement."
+  },
+  "readingFormRolloverSubtitle": "Chuyển lượng sử dụng tích luỹ sang phần bù và ghi đây là mốc bắt đầu của đồng hồ mới.",
+  "@readingFormRolloverSubtitle": {
+    "description": "What the reset-or-replaced checkbox does, under its own label."
+  },
+  "requestAcceptTitle": "Chấp nhận {requestNo}?",
+  "@requestAcceptTitle": {
+    "description": "Title of the dialog that accepts one Request, naming it.",
+    "placeholders": {
+      "requestNo": {"type": "String"}
+    }
+  },
+  "requestAcceptDismiss": "Để chờ tiếp",
+  "@requestAcceptDismiss": {
+    "description": "The dismiss action of the accept dialog: the Request stays in the triage queue."
+  },
+  "requestAcceptSubmit": "Chấp nhận yêu cầu này",
+  "@requestAcceptSubmit": {
+    "description": "The submit action of the accept dialog."
+  },
+  "requestAcceptBody": "Chấp nhận sẽ tạo một lệnh công việc cho yêu cầu này. Mức ưu tiên do bạn quyết định, không phải mức khẩn mà người báo cáo chọn.",
+  "@requestAcceptBody": {
+    "description": "What accepting a Request does, above the priority choice."
+  },
+  "requestDeclineTitle": "Từ chối {requestNo}?",
+  "@requestDeclineTitle": {
+    "description": "Title of the dialog that declines one Request, naming it.",
+    "placeholders": {
+      "requestNo": {"type": "String"}
+    }
+  },
+  "requestDeclineReason": "Vì sao từ chối yêu cầu này?",
+  "@requestDeclineReason": {
+    "description": "Label over the reason the database requires before a Request may be declined."
+  },
+  "requestDeclineSubmit": "Từ chối yêu cầu này",
+  "@requestDeclineSubmit": {
+    "description": "The submit action of the decline dialog."
+  },
+  "requestDuplicateTitle": "Đánh dấu là trùng lặp",
+  "@requestDuplicateTitle": {
+    "description": "Title of the dialog that marks one Request as a duplicate of another."
+  },
+  "requestDuplicateDismiss": "Giữ riêng",
+  "@requestDuplicateDismiss": {
+    "description": "The dismiss action of the duplicate dialog: the Request stays its own."
+  },
+  "requestDuplicateNone": "Không có yêu cầu nào khác đang mở để yêu cầu này trùng vào.",
+  "@requestDuplicateNone": {
+    "description": "Stands where the candidate list would be when no other open Request exists."
+  },
+  "requestDuplicateWhich": "Yêu cầu nào được giữ lại? {requestNo} sẽ rời hàng chờ.",
+  "@requestDuplicateWhich": {
+    "description": "The question above the candidate list, naming the Request that would leave the queue.",
+    "placeholders": {
+      "requestNo": {"type": "String"}
+    }
+  },
+  "labourBookingTitle": "Ghi giờ công",
+  "@labourBookingTitle": {
+    "description": "Title of the dialog that books labour against a Work order."
+  },
+  "labourBookingActivity": "Hoạt động",
+  "@labourBookingActivity": {
+    "description": "Label over the kind of labour being booked."
+  },
+  "labourBookingStartedAt": "Bắt đầu lúc",
+  "@labourBookingStartedAt": {
+    "description": "Label over when the booked labour started."
+  },
+  "labourBookingEndedAt": "Kết thúc lúc",
+  "@labourBookingEndedAt": {
+    "description": "Label over when the booked labour ended."
+  },
+  "labourBookingOvertime": "Ngoài giờ",
+  "@labourBookingOvertime": {
+    "description": "The checkbox saying the booked labour was worked outside normal hours."
+  },
+  "labourBookingEmployeesFailed": "Không đọc được danh sách nhân viên.",
+  "@labourBookingEmployeesFailed": {
+    "description": "Shown in place of the Employee picker when the directory could not be fetched."
+  },
+  "partBookingTitle": "Xuất phụ tùng",
+  "@partBookingTitle": {
+    "description": "Title of the dialog that books a part against a Work order."
+  },
+  "partBookingSubmit": "Xuất phụ tùng",
+  "@partBookingSubmit": {
+    "description": "The submit action of the part booking dialog."
+  },
+  "partBookingSourced": "Nguồn",
+  "@partBookingSourced": {
+    "description": "Label over where the part comes from: a Store or bought in."
+  },
+  "partBookingOptionsFailed": "Không đọc được các lựa chọn.",
+  "@partBookingOptionsFailed": {
+    "description": "Shown in place of the part and store pickers when their options could not be fetched."
+  },
+  "partBookingPartNoOptional": "Mã phụ tùng (không bắt buộc)",
+  "@partBookingPartNoOptional": {
+    "description": "Label over the part number of a part bought in."
+  },
+  "partBookingUnitCostOptional": "Đơn giá (không bắt buộc)",
+  "@partBookingUnitCostOptional": {
+    "description": "Label over the cost of one unit of a part bought in."
+  },
+  "nonconformancesUnavailableTitle": "Không đọc được sổ không phù hợp",
+  "@nonconformancesUnavailableTitle": {
+    "description": "The failure state's heading when the Non-conformance register could not be fetched."
+  },
+  "nonconformancesNoSiteTitle": "Chưa có nhà máy để hiển thị",
+  "@nonconformancesNoSiteTitle": {
+    "description": "The empty state's heading when the Account can see no Site at all."
+  },
+  "nonconformancesNoSiteMessage": "Tài khoản của bạn chưa thấy nhà máy nào nên chưa có gì để đọc ở đây.",
+  "@nonconformancesNoSiteMessage": {
+    "description": "What the no-Site empty state says under its heading."
+  },
+  "nonconformancesDescription": "Những gì không đạt chuẩn tại nhà máy này, phát hiện ở đâu và số lượng bao nhiêu.",
+  "@nonconformancesDescription": {
+    "description": "One-line description under the Non-conformance register's title."
+  },
+  "nonconformanceRecord": "Ghi nhận không phù hợp",
+  "@nonconformanceRecord": {
+    "description": "The button that opens the form recording a Non-conformance, and the title of that form."
+  },
+  "commonAllOrgUnits": "Tất cả đơn vị",
+  "@commonAllOrgUnits": {
+    "description": "The Org Unit filter's own label when it narrows nothing."
+  },
+  "nonconformancesAnyStatus": "Mọi trạng thái",
+  "@nonconformancesAnyStatus": {
+    "description": "The status filter's option that narrows nothing."
+  },
+  "commonDefectCode": "Mã lỗi",
+  "@commonDefectCode": {
+    "description": "Label over a Defect code picker, and the register's own Defect code filter."
+  },
+  "nonconformancesEveryDefectCode": "Mọi mã lỗi",
+  "@nonconformancesEveryDefectCode": {
+    "description": "The Defect code filter's option that narrows nothing."
+  },
+  "commonProduct": "Sản phẩm",
+  "@commonProduct": {
+    "description": "Label over a Product picker, and the register's own Product filter."
+  },
+  "nonconformancesEveryProduct": "Mọi sản phẩm",
+  "@nonconformancesEveryProduct": {
+    "description": "The Product filter's option that narrows nothing."
+  },
+  "nonconformancesSeverity": "Mức độ",
+  "@nonconformancesSeverity": {
+    "description": "Label over the severity filter and the severity field of a Non-conformance."
+  },
+  "nonconformancesAnySeverity": "Mọi mức độ",
+  "@nonconformancesAnySeverity": {
+    "description": "The severity filter's option that narrows nothing."
+  },
+  "nonconformancesDetectedFrom": "Phát hiện từ ngày",
+  "@nonconformancesDetectedFrom": {
+    "description": "Label over the first date of the detected-between filter."
+  },
+  "nonconformancesDetectedTo": "Phát hiện đến ngày",
+  "@nonconformancesDetectedTo": {
+    "description": "Label over the last date of the detected-between filter."
+  },
+  "nonconformancesTruncated": "Còn nhiều không phù hợp hơn danh sách này hiển thị. Hãy thu hẹp theo đơn vị, theo trạng thái hoặc theo ngày để xem phần còn lại.",
+  "@nonconformancesTruncated": {
+    "description": "Said under the register when the list was capped rather than complete."
+  },
+  "nonconformancesNoMatchTitle": "Không có bản ghi nào khớp bộ lọc này",
+  "@nonconformancesNoMatchTitle": {
+    "description": "The empty state's heading when the register has records but no filter matches."
+  },
+  "nonconformancesNoMatchMessage": "Sổ có không phù hợp, nhưng không bản ghi nào thuộc khu vực, trạng thái, mã lỗi, sản phẩm, mức độ hay khoảng ngày bạn chọn.",
+  "@nonconformancesNoMatchMessage": {
+    "description": "What the filtered-empty state says under its heading."
+  },
+  "nonconformancesClearTheFilters": "Xoá bộ lọc",
+  "@nonconformancesClearTheFilters": {
+    "description": "The action on the filtered-empty state that clears every filter at once."
+  },
+  "nonconformancesNoneExistTitle": "Chưa phát hiện gì không phù hợp",
+  "@nonconformancesNoneExistTitle": {
+    "description": "The empty state's heading when the Site's register has no records at all."
+  },
+  "nonconformancesNoneExistMessage": "Chưa có không phù hợp nào được ghi nhận tại nhà máy này.",
+  "@nonconformancesNoneExistMessage": {
+    "description": "What the no-record state says under its heading."
+  },
+  "nonconformancesNumberColumn": "Không phù hợp",
+  "@nonconformancesNumberColumn": {
+    "description": "The register's column heading over each Non-conformance's own number."
+  },
+  "nonconformancesFoundColumn": "Phát hiện gì",
+  "@nonconformancesFoundColumn": {
+    "description": "The register's column heading over the Product, Defect code and detection point of one find."
+  },
+  "commonState": "Trạng thái",
+  "@commonState": {
+    "description": "The register's column heading over a record's state chip."
+  },
+  "nonconformancesFiledColumn": "Đã ghi nhận",
+  "@nonconformancesFiledColumn": {
+    "description": "The register's column heading over where a Non-conformance was filed."
+  },
+  "commonOpen": "Mở",
+  "@commonOpen": {
+    "description": "The button on a register row that opens the record itself."
+  },
+  "nonconformanceQuantityAffected": "{count} {uom} bị ảnh hưởng",
+  "@nonconformanceQuantityAffected": {
+    "description": "How much product one Non-conformance affects, with its unit.",
+    "placeholders": {
+      "count": {"type": "String"},
+      "uom": {"type": "String"}
+    }
+  },
+  "nonconformanceQuantityRaised": "{count, plural, =1{đã tăng 1 lần} other{đã tăng {count} lần}}",
+  "@nonconformanceQuantityRaised": {
+    "description": "How many times the affected quantity of one Non-conformance has been raised.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "nonconformanceFiledAgainst": "{orgUnit} · ghi nhận cho {against}",
+  "@nonconformanceFiledAgainst": {
+    "description": "The Org Unit a Non-conformance was found at, and what it was filed against.",
+    "placeholders": {
+      "orgUnit": {"type": "String"},
+      "against": {"type": "String"}
+    }
+  },
+  "nonconformanceFormRecord": "Ghi nhận",
+  "@nonconformanceFormRecord": {
+    "description": "The submit action of the form that records a Non-conformance."
+  },
+  "nonconformanceFormProductHelp": "Sản phẩm không phù hợp là gì.",
+  "@nonconformanceFormProductHelp": {
+    "description": "Help text under the Product field of the Non-conformance form."
+  },
+  "nonconformanceFormDefectCodeHelp": "Sai ở chỗ nào. Mức độ bắt đầu từ giá trị mặc định của mã lỗi này.",
+  "@nonconformanceFormDefectCodeHelp": {
+    "description": "Help text under the Defect code field of the Non-conformance form."
+  },
+  "nonconformanceFormChooseCode": "Chọn một mã",
+  "@nonconformanceFormChooseCode": {
+    "description": "The Defect code picker's option that has nothing chosen yet."
+  },
+  "nonconformanceFormDetectionPoint": "Điểm phát hiện",
+  "@nonconformanceFormDetectionPoint": {
+    "description": "Label over the detection point of a Non-conformance."
+  },
+  "nonconformanceFormDetectionPointHelp": "Nơi kế hoạch kiểm soát bắt được lỗi.",
+  "@nonconformanceFormDetectionPointHelp": {
+    "description": "Help text under the detection point field."
+  },
+  "nonconformanceFormChoosePoint": "Chọn một điểm",
+  "@nonconformanceFormChoosePoint": {
+    "description": "The detection point picker's option that has nothing chosen yet."
+  },
+  "nonconformanceFormSeverityHelpUnset": "Được chọn cùng mã lỗi.",
+  "@nonconformanceFormSeverityHelpUnset": {
+    "description": "Help text under the severity field before a Defect code is chosen."
+  },
+  "nonconformanceFormSeverityHelpSet": "Bắt đầu từ {severity}. Có thể nâng lên; hạ xuống là một quyết định về sau.",
+  "@nonconformanceFormSeverityHelpSet": {
+    "description": "Help text under the severity field once a Defect code carries a default.",
+    "placeholders": {
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceFormChooseCodeFirst": "Chọn mã lỗi trước",
+  "@nonconformanceFormChooseCodeFirst": {
+    "description": "The severity picker's option before a Defect code is chosen."
+  },
+  "nonconformanceFormStartsAt": "Bắt đầu từ {severity}",
+  "@nonconformanceFormStartsAt": {
+    "description": "The severity picker's own option once a Defect code carries a default.",
+    "placeholders": {
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceFormQuantityHelp": "Bao nhiêu chiếc.",
+  "@nonconformanceFormQuantityHelp": {
+    "description": "Help text under the quantity field of the Non-conformance form."
+  },
+  "nonconformanceFormLotRef": "Tham chiếu lô (không bắt buộc)",
+  "@nonconformanceFormLotRef": {
+    "description": "Label over the optional lot reference of a Non-conformance."
+  },
+  "nonconformanceFormLotRefHelp": "Còn gì bị ảnh hưởng — có số lô vẫn hơn là không.",
+  "@nonconformanceFormLotRefHelp": {
+    "description": "Help text under the lot reference field."
+  },
+  "nonconformanceFormAssetOptional": "Tài sản (không bắt buộc)",
+  "@nonconformanceFormAssetOptional": {
+    "description": "Label over the optional Asset a Non-conformance was found on."
+  },
+  "nonconformanceFormAssetHelp": "Máy nào, nếu phát hiện trên máy. Máy đó phải thuộc đơn vị này.",
+  "@nonconformanceFormAssetHelp": {
+    "description": "Help text under the optional Asset picker."
+  },
+  "nonconformanceFormDetailOptional": "Chi tiết (không bắt buộc)",
+  "@nonconformanceFormDetailOptional": {
+    "description": "Label over the optional free-text detail of a Non-conformance."
+  },
+  "nonconformanceFormContainment": "Ngăn chặn tức thời (không bắt buộc)",
+  "@nonconformanceFormContainment": {
+    "description": "Label over the optional immediate containment of a Non-conformance."
+  },
+  "nonconformanceFormContainmentHelp": "Đã làm gì ngay lúc đó. Ghi lại thì bản ghi này được coi là đã ngăn chặn.",
+  "@nonconformanceFormContainmentHelp": {
+    "description": "Help text under the immediate containment field."
+  },
+  "nonconformanceFormDetectedAt": "Phát hiện lúc (không bắt buộc)",
+  "@nonconformanceFormDetectedAt": {
+    "description": "Label over the optional moment a Non-conformance was detected."
+  },
+  "nonconformanceFormDetectedAtHelp": "Thời điểm phát hiện, nếu không phải bây giờ. Đây là căn cứ quyết định ngày sản xuất và ca mà bản ghi thuộc về.",
+  "@nonconformanceFormDetectedAtHelp": {
+    "description": "Help text under the detected-at field."
+  },
+  "nonconformanceFormWhereFound": "Phát hiện ở đâu",
+  "@nonconformanceFormWhereFound": {
+    "description": "Heading of the Org Unit chooser inside the Non-conformance form."
+  },
+  "nonconformanceFormWhereFoundHelp": "Chọn đơn vị nơi phát hiện sản phẩm không phù hợp. Đây là căn cứ quyết định ai được xử lý bản ghi này.",
+  "@nonconformanceFormWhereFoundHelp": {
+    "description": "What the Org Unit chooser does, under its heading."
+  },
+  "nonconformanceFormWillBeRecorded": "Không phù hợp này sẽ được ghi nhận tại {orgUnit}.",
+  "@nonconformanceFormWillBeRecorded": {
+    "description": "Confirms the Org Unit a Non-conformance will be filed at, once one is chosen.",
+    "placeholders": {
+      "orgUnit": {"type": "String"}
+    }
+  },
+  "nonconformanceFloorIntro": "Phát hiện gì không phù hợp? Những trường có danh sách cố định đều chọn từ dữ liệu thiết bị này thấy được.",
+  "@nonconformanceFloorIntro": {
+    "description": "What the floor Non-conformance dialog asks, above its fields."
+  },
+  "nonconformanceFloorChooseProduct": "Chọn một sản phẩm",
+  "@nonconformanceFloorChooseProduct": {
+    "description": "The floor form's Product picker option that has nothing chosen yet."
+  },
+  "nonconformanceFloorDetectedAt": "Phát hiện lúc",
+  "@nonconformanceFloorDetectedAt": {
+    "description": "Label over the detection point in the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorStartsAt": "Bắt đầu từ {severity} — mức độ mặc định của mã lỗi này.",
+  "@nonconformanceFloorStartsAt": {
+    "description": "Tells the floor form's caller which severity the chosen Defect code brings.",
+    "placeholders": {
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceFloorHowMuch": "Số lượng bao nhiêu",
+  "@nonconformanceFloorHowMuch": {
+    "description": "Label over the quantity in the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorLot": "Số lô (nếu có)",
+  "@nonconformanceFloorLot": {
+    "description": "Label over the lot or batch reference in the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorWhatDidYouSee": "Bạn đã thấy gì?",
+  "@nonconformanceFloorWhatDidYouSee": {
+    "description": "Label over the free-text description in the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorWhoFound": "Ai phát hiện? Mã nhân viên và PIN chỉ dùng để nhận diện bạn cho bản ghi này — bản ghi được ghi nhận là phát hiện của bạn.",
+  "@nonconformanceFloorWhoFound": {
+    "description": "What the floor Non-conformance dialog asks before the identity fields."
+  },
+  "nonconformanceFloorEmployeeNumber": "Mã nhân viên",
+  "@nonconformanceFloorEmployeeNumber": {
+    "description": "Label over the Employee number field of the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorPin": "PIN",
+  "@nonconformanceFloorPin": {
+    "description": "Label over the PIN field of the floor Non-conformance dialog."
+  },
+  "nonconformanceTitle": "Không phù hợp",
+  "@nonconformanceTitle": {
+    "description": "The page head of one Non-conformance's detail."
+  },
+  "nonconformanceDetailMissingTitle": "Không có không phù hợp này",
+  "@nonconformanceDetailMissingTitle": {
+    "description": "The empty state's heading when the address names no record."
+  },
+  "nonconformanceDetailMissingMessage": "Không có bản ghi nào ở địa chỉ này. Có thể bản ghi đã bị xoá hoặc địa chỉ bị sai.",
+  "@nonconformanceDetailMissingMessage": {
+    "description": "What the missing-record state says under its heading."
+  },
+  "nonconformanceDetailBack": "Về sổ không phù hợp",
+  "@nonconformanceDetailBack": {
+    "description": "The control that returns from one record to the register."
+  },
+  "nonconformanceDetailUnavailableTitle": "Không đọc được không phù hợp này",
+  "@nonconformanceDetailUnavailableTitle": {
+    "description": "The failure state's heading when one record could not be fetched."
+  },
+  "nonconformanceDetailSeverityChip": "Mức độ {severity}",
+  "@nonconformanceDetailSeverityChip": {
+    "description": "The severity chip on one record, naming the severity itself.",
+    "placeholders": {
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceDetailFinishedAt": "Kết thúc {date}",
+  "@nonconformanceDetailFinishedAt": {
+    "description": "The chip saying when one record was closed.",
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "nonconformanceDetailDetail": "Chi tiết",
+  "@nonconformanceDetailDetail": {
+    "description": "The summary fact over the record's own free-text detail."
+  },
+  "nonconformanceDetailQuantityAffected": "Số lượng bị ảnh hưởng",
+  "@nonconformanceDetailQuantityAffected": {
+    "description": "The summary fact over how much product the record affects."
+  },
+  "nonconformanceDetailFiledAgainst": "Ghi nhận cho",
+  "@nonconformanceDetailFiledAgainst": {
+    "description": "The summary fact over what the record was filed against."
+  },
+  "commonNoneGiven": "Không có",
+  "@commonNoneGiven": {
+    "description": "Stands where an optional free-text value was left blank."
+  },
+  "commonNoneNamed": "Không nêu",
+  "@commonNoneNamed": {
+    "description": "Stands where an optional record was never named."
+  },
+  "commonNotGiven": "Không có",
+  "@commonNotGiven": {
+    "description": "Stands where an optional field was never filled in."
+  },
+  "commonNotRecorded": "Chưa ghi nhận",
+  "@commonNotRecorded": {
+    "description": "Stands where an optional moment was never recorded."
+  },
+  "commonNoneRecorded": "Chưa ghi nhận gì",
+  "@commonNoneRecorded": {
+    "description": "Stands where nothing has been written into an optional field yet."
+  },
+  "nonconformanceDetailLotRef": "Tham chiếu lô",
+  "@nonconformanceDetailLotRef": {
+    "description": "The fact over the lot reference of one record."
+  },
+  "nonconformanceDetailContainment": "Ngăn chặn tức thời",
+  "@nonconformanceDetailContainment": {
+    "description": "The fact over what was done at once about one record."
+  },
+  "nonconformanceDetailDefectCodeValue": "{name} · {code} · bắt đầu từ {severity}",
+  "@nonconformanceDetailDefectCodeValue": {
+    "description": "The Defect code of one record, its code and the severity it starts at.",
+    "placeholders": {
+      "name": {"type": "String"},
+      "code": {"type": "String"},
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceDetailActionsSection": "Có thể làm gì",
+  "@nonconformanceDetailActionsSection": {
+    "description": "The heading over every transition one record offers."
+  },
+  "nonconformanceIncreaseQuantity": "Tăng số lượng",
+  "@nonconformanceIncreaseQuantity": {
+    "description": "The action that records more of the same nonconforming product."
+  },
+  "nonconformanceUpdate": "Nâng mức độ hoặc ngăn chặn",
+  "@nonconformanceUpdate": {
+    "description": "The action that raises a record's severity or records its containment."
+  },
+  "nonconformanceDisposition": "Ghi nhận phương án xử lý",
+  "@nonconformanceDisposition": {
+    "description": "The action that records what is done with a part of the affected quantity."
+  },
+  "nonconformanceConcession": "Cho phép nhượng bộ",
+  "@nonconformanceConcession": {
+    "description": "The Quality-authority decision to accept the nonconforming product as it is."
+  },
+  "nonconformanceLowerSeverity": "Hạ mức độ",
+  "@nonconformanceLowerSeverity": {
+    "description": "The Quality-authority decision to lower a record's severity."
+  },
+  "nonconformanceReopen": "Mở lại",
+  "@nonconformanceReopen": {
+    "description": "The Quality-authority decision to reopen a closed record."
+  },
+  "nonconformanceCancel": "Huỷ vì ghi nhầm",
+  "@nonconformanceCancel": {
+    "description": "The Quality-authority decision that a record was raised in error."
+  },
+  "nonconformanceDetailQuantityHistory": "Lịch sử số lượng",
+  "@nonconformanceDetailQuantityHistory": {
+    "description": "The heading over every change to a record's affected quantity."
+  },
+  "nonconformanceDetailQuantityHistoryNote": "Phân loại có thể phát hiện nhiều hơn con số ban đầu. Mọi thay đổi đều được lưu, và số lượng bị ảnh hưởng không bao giờ giảm.",
+  "@nonconformanceDetailQuantityHistoryNote": {
+    "description": "What the quantity history section explains about itself."
+  },
+  "nonconformanceDetailNoQuantityHistory": "Số lượng bị ảnh hưởng chưa thay đổi kể từ khi được ghi nhận.",
+  "@nonconformanceDetailNoQuantityHistory": {
+    "description": "Stands where the quantity history is empty."
+  },
+  "nonconformanceDetailDispositions": "Phương án xử lý",
+  "@nonconformanceDetailDispositions": {
+    "description": "The heading over the Dispositions recorded against one record."
+  },
+  "nonconformanceDetailDispositionsNote": "Sản phẩm được xử lý theo từng phần. Không phù hợp sẽ tự đóng khi toàn bộ số lượng đã có phương án xử lý.",
+  "@nonconformanceDetailDispositionsNote": {
+    "description": "What the Dispositions section explains about itself."
+  },
+  "nonconformanceDetailDispositioned": "{done}/{total} {uom} đã có phương án xử lý",
+  "@nonconformanceDetailDispositioned": {
+    "description": "How much of the affected quantity already has a Disposition.",
+    "placeholders": {
+      "done": {"type": "String"},
+      "total": {"type": "String"},
+      "uom": {"type": "String"}
+    }
+  },
+  "nonconformanceDetailNoDispositions": "Chưa có quyết định nào về sản phẩm này.",
+  "@nonconformanceDetailNoDispositions": {
+    "description": "Stands where no Disposition has been recorded."
+  },
+  "nonconformanceDetailReworkMinutes": "{count, plural, =1{1 phút làm lại} other{{count} phút làm lại}}",
+  "@nonconformanceDetailReworkMinutes": {
+    "description": "How much rework one Disposition took.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "nonconformanceDetailCorrections": "Chỉnh sửa",
+  "@nonconformanceDetailCorrections": {
+    "description": "The heading over the corrections a holder of Quality authority made to one record."
+  },
+  "nonconformanceDetailCorrectionsNote": "Những gì người có thẩm quyền Chất lượng đã thay đổi trên bản ghi này, và vì sao.",
+  "@nonconformanceDetailCorrectionsNote": {
+    "description": "What the Corrections section explains about itself."
+  },
+  "nonconformanceDetailNoCorrections": "Bản ghi này chưa được chỉnh sửa.",
+  "@nonconformanceDetailNoCorrections": {
+    "description": "Stands where no correction has been made."
+  },
+  "nonconformanceDetailCause": "Nguyên nhân",
+  "@nonconformanceDetailCause": {
+    "description": "The heading over the Concerns a record is evidence behind."
+  },
+  "nonconformanceDetailCauseNote": "Sản phẩm không phù hợp được xử lý ở đây; vấn đề phía sau được giải quyết trong nhật ký hành động, dưới dạng Concern. Một vấn đề xuất hiện nhiều lần vẫn chỉ là một Concern.",
+  "@nonconformanceDetailCauseNote": {
+    "description": "What the cause section explains about itself."
+  },
+  "nonconformanceDetailNoConcerns": "Chưa có gì được làm về nguyên nhân.",
+  "@nonconformanceDetailNoConcerns": {
+    "description": "Stands where the record is evidence behind no Concern."
+  },
+  "nonconformanceDetailRaisedFrom": "được nêu từ bản ghi này",
+  "@nonconformanceDetailRaisedFrom": {
+    "description": "Says which Concern this occurrence of the problem started."
+  },
+  "nonconformanceDetailOverdue": "quá hạn",
+  "@nonconformanceDetailOverdue": {
+    "description": "Says a Concern linked to this record is past its due date."
+  },
+  "nonconformanceRaiseConcern": "Nêu một Concern",
+  "@nonconformanceRaiseConcern": {
+    "description": "The action that raises a Concern from one record."
+  },
+  "nonconformanceLinkConcern": "Liên kết với một Concern",
+  "@nonconformanceLinkConcern": {
+    "description": "The action that links one record to a Concern that already exists."
+  },
+  "commonNoSiteTitle": "Chưa có nhà máy để hiển thị",
+  "@commonNoSiteTitle": {
+    "description": "An empty state's heading when the Account can see no Site at all."
+  },
+  "commonNoSiteMessage": "Tài khoản của bạn chưa thấy nhà máy nào nên chưa có gì để đọc ở đây.",
+  "@commonNoSiteMessage": {
+    "description": "What the no-Site empty state says under its heading."
+  },
+  "commonFiledAgainst": "{orgUnit} · ghi nhận cho {against}",
+  "@commonFiledAgainst": {
+    "description": "The Org Unit a record was registered at, and what it was registered against.",
+    "placeholders": {
+      "orgUnit": {"type": "String"},
+      "against": {"type": "String"}
+    }
+  },
+  "commonFiledAgainstColumn": "Ghi nhận cho",
+  "@commonFiledAgainstColumn": {
+    "description": "A register's column heading over what each record was filed against."
+  },
+  "commonAny": "Tất cả",
+  "@commonAny": {
+    "description": "A filter's option that narrows nothing."
+  },
+  "commonType": "Loại",
+  "@commonType": {
+    "description": "Label over the type filter of a register, and the register's own Type column."
+  },
+  "commonCategory": "Hạng mục",
+  "@commonCategory": {
+    "description": "Label over the category filter of the Safety observation register."
+  },
+  "commonAction": "Hành động",
+  "@commonAction": {
+    "description": "Label over the filter that narrows by whether an Action was raised."
+  },
+  "commonSeverity": "Mức độ",
+  "@commonSeverity": {
+    "description": "Label over the severity filter of a register, and its Severity column."
+  },
+  "safetyIncidentsUnavailableTitle": "Không đọc được sổ sự cố an toàn",
+  "@safetyIncidentsUnavailableTitle": {
+    "description": "The failure state's heading when the Safety incident register could not be fetched."
+  },
+  "safetyIncidentsDescription": "Đã xảy ra chuyện gì tại nhà máy này, ở đâu, và nằm ở mức nào trên thang mức độ.",
+  "@safetyIncidentsDescription": {
+    "description": "One-line description under the Safety incident register's title."
+  },
+  "safetyIncidentRecord": "Ghi nhận sự cố an toàn",
+  "@safetyIncidentRecord": {
+    "description": "The button that opens the form recording a Safety incident."
+  },
+  "safetyIncidentType": "Loại sự cố",
+  "@safetyIncidentType": {
+    "description": "Label over the incident type filter."
+  },
+  "safetyRecordable": "Phải khai báo",
+  "@safetyRecordable": {
+    "description": "Label over the filter that narrows by whether an incident is recordable, and the option that keeps only recordable ones."
+  },
+  "safetyNotRecordable": "Không phải khai báo",
+  "@safetyNotRecordable": {
+    "description": "The recordable filter's option that keeps only incidents that need not be reported."
+  },
+  "safetyOccurredFrom": "Xảy ra từ ngày",
+  "@safetyOccurredFrom": {
+    "description": "Label over the first date of the occurred-between filter."
+  },
+  "safetyOccurredTo": "Xảy ra đến ngày",
+  "@safetyOccurredTo": {
+    "description": "Label over the last date of the occurred-between filter."
+  },
+  "safetyIncidentsTruncated": "Còn nhiều sự cố an toàn hơn danh sách này hiển thị. Hãy thu hẹp theo đơn vị, theo trạng thái hoặc theo ngày để xem phần còn lại.",
+  "@safetyIncidentsTruncated": {
+    "description": "Said under the Safety incident register when the list was capped rather than complete."
+  },
+  "safetyIncidentsNoMatchMessage": "Sổ có sự cố an toàn, nhưng không sự cố nào thuộc khu vực, trạng thái, loại, mức độ, khả năng khai báo hay khoảng ngày bạn chọn.",
+  "@safetyIncidentsNoMatchMessage": {
+    "description": "What the filtered-empty state of the Safety incident register says under its heading."
+  },
+  "safetyIncidentsNoneTitle": "Không có sự cố nào được ghi nhận trong kỳ này",
+  "@safetyIncidentsNoneTitle": {
+    "description": "The empty state's heading when the Site recorded no incident at all."
+  },
+  "safetyIncidentsNoneMessage": "Chưa có sự cố an toàn nào được ghi nhận tại nhà máy này trong khu vực và khoảng ngày đang hiển thị.",
+  "@safetyIncidentsNoneMessage": {
+    "description": "What the no-incident state says under its heading."
+  },
+  "safetyIncidentNumberColumn": "Số sự cố",
+  "@safetyIncidentNumberColumn": {
+    "description": "The Safety incident register's column heading over each incident's own number."
+  },
+  "safetyObservationsUnavailableTitle": "Không đọc được sổ quan sát an toàn",
+  "@safetyObservationsUnavailableTitle": {
+    "description": "The failure state's heading when the Safety observation register could not be fetched."
+  },
+  "safetyObservationsDescription": "Những gì được thấy trước khi có chuyện xảy ra, xếp từ nặng nhất theo hậu quả xấu nhất có thể hình dung được.",
+  "@safetyObservationsDescription": {
+    "description": "One-line description under the Safety observation register's title."
+  },
+  "safetyObservationRecord": "Ghi nhận quan sát",
+  "@safetyObservationRecord": {
+    "description": "The button that opens the form recording a Safety observation."
+  },
+  "safetyAnyType": "Mọi loại",
+  "@safetyAnyType": {
+    "description": "The type filter's option that narrows nothing."
+  },
+  "safetyAnyCategory": "Mọi hạng mục",
+  "@safetyAnyCategory": {
+    "description": "The category filter's option that narrows nothing."
+  },
+  "safetySeverityPotential": "Mức độ tiềm ẩn",
+  "@safetySeverityPotential": {
+    "description": "Label over the filter that narrows observations by how bad the outcome could have been."
+  },
+  "safetyAnyPotential": "Mọi mức tiềm ẩn",
+  "@safetyAnyPotential": {
+    "description": "The severity-potential filter's option that narrows nothing."
+  },
+  "safetyStopWork": "Dừng việc",
+  "@safetyStopWork": {
+    "description": "The label of the stop-work badge on an observation, and the filter that narrows by it."
+  },
+  "safetyStopWorkOnly": "Chỉ loại dừng việc",
+  "@safetyStopWorkOnly": {
+    "description": "The stop-work filter's option that keeps only observations that stopped the work."
+  },
+  "safetyNotStopWork": "Không phải dừng việc",
+  "@safetyNotStopWork": {
+    "description": "The stop-work filter's option that keeps only observations that did not stop the work."
+  },
+  "safetyNoActionRaised": "Chưa nêu hành động",
+  "@safetyNoActionRaised": {
+    "description": "The action filter's option that keeps only observations nothing has been raised for."
+  },
+  "safetyActionRaised": "Đã nêu hành động",
+  "@safetyActionRaised": {
+    "description": "The action filter's option that keeps only observations an Action has been raised from."
+  },
+  "safetyObservedFrom": "Quan sát từ ngày",
+  "@safetyObservedFrom": {
+    "description": "Label over the first date of the observed-between filter."
+  },
+  "safetyObservedTo": "Quan sát đến ngày",
+  "@safetyObservedTo": {
+    "description": "Label over the last date of the observed-between filter."
+  },
+  "safetyObservationsTruncated": "Còn nhiều quan sát an toàn hơn danh sách này hiển thị. Hãy thu hẹp theo đơn vị, theo loại hoặc theo ngày để xem phần còn lại.",
+  "@safetyObservationsTruncated": {
+    "description": "Said under the Safety observation register when the list was capped rather than complete."
+  },
+  "safetyObservationsNoMatchMessage": "Sổ có quan sát an toàn, nhưng không quan sát nào thuộc khu vực, loại, hạng mục, mức tiềm ẩn, dừng việc hay khoảng ngày bạn chọn.",
+  "@safetyObservationsNoMatchMessage": {
+    "description": "What the filtered-empty state of the Safety observation register says under its heading."
+  },
+  "safetyObservationsNoneTitle": "Không có quan sát nào được ghi nhận. Chỉ số dẫn dắt đang trống.",
+  "@safetyObservationsNoneTitle": {
+    "description": "The empty state's heading when the Site recorded no observation at all — a register with no rows is bad news here."
+  },
+  "safetyObservationsNoneMessage": "Chưa có quan sát an toàn nào được ghi nhận tại nhà máy này trong khu vực và khoảng ngày đang hiển thị.",
+  "@safetyObservationsNoneMessage": {
+    "description": "What the no-observation state says under its heading."
+  },
+  "safetyPotentialColumn": "Mức tiềm ẩn",
+  "@safetyPotentialColumn": {
+    "description": "The Safety observation register's column heading over the worst credible outcome."
+  },
+  "safetyIncidentReport": "Báo sự cố an toàn",
+  "@safetyIncidentReport": {
+    "description": "Title of the dialog a person on the floor reports a Safety incident from."
+  },
+  "safetyReportSubmit": "Báo cáo",
+  "@safetyReportSubmit": {
+    "description": "The submit action of the floor Safety incident dialog."
+  },
+  "safetyIncidentFloorIntro": "Đã xảy ra chuyện gì? Những trường có danh sách cố định đều được chọn từ danh sách.",
+  "@safetyIncidentFloorIntro": {
+    "description": "What the floor Safety incident dialog asks, above its fields."
+  },
+  "safetyWhatHappened": "Đã xảy ra chuyện gì",
+  "@safetyWhatHappened": {
+    "description": "Label over the free-text account of a Safety incident."
+  },
+  "safetyImmediateAction": "Hành động tức thời (không bắt buộc)",
+  "@safetyImmediateAction": {
+    "description": "Label over what was done at once about a Safety incident."
+  },
+  "safetyOccurredAt": "Xảy ra lúc",
+  "@safetyOccurredAt": {
+    "description": "Label over the moment a Safety incident happened."
+  },
+  "safetyIncidentFloorWho": "Ai đang báo cáo? Mã nhân viên và PIN chỉ dùng để nhận diện bạn cho bản ghi này — bản ghi được ghi nhận là báo cáo của bạn.",
+  "@safetyIncidentFloorWho": {
+    "description": "What the floor Safety incident dialog asks before its identity fields."
+  },
+  "safetyObservationRecordTitle": "Ghi nhận quan sát an toàn",
+  "@safetyObservationRecordTitle": {
+    "description": "Title of the dialog a person on the floor records a Safety observation from."
+  },
+  "safetyObservationFloorIntro": "Đã thấy gì? Những trường có danh sách cố định đều được chọn từ danh sách.",
+  "@safetyObservationFloorIntro": {
+    "description": "What the floor Safety observation dialog asks, above its fields."
+  },
+  "safetyWhatWasSeen": "Đã thấy gì",
+  "@safetyWhatWasSeen": {
+    "description": "Label over the free-text account of a Safety observation."
+  },
+  "safetyActionTaken": "Hành động đã làm (không bắt buộc)",
+  "@safetyActionTaken": {
+    "description": "Label over what was done at once about a Safety observation."
+  },
+  "safetyStopWorkExercised": "Đã dùng quyền dừng việc",
+  "@safetyStopWorkExercised": {
+    "description": "The switch saying the observer stopped the work on the strength of the observation."
+  },
+  "safetyObservationFloorWho": "Ai đang ghi nhận? Mã nhân viên và PIN chỉ dùng để nhận diện bạn cho bản ghi này.",
+  "@safetyObservationFloorWho": {
+    "description": "What the floor Safety observation dialog asks before its identity fields."
+  },
+  "commonBack": "Quay lại",
+  "@commonBack": {
+    "description": "The one way out of a refused dialog."
+  },
+  "routerLeaveNotDecidable": "Đơn xin nghỉ này không phải đơn bạn được quyết định.",
+  "@routerLeaveNotDecidable": {
+    "description": "Said when the leave request a decision dialog was opened for is not the caller's to decide."
+  },
+  "routerLeaveNotCancellable": "Đơn xin nghỉ này không thể huỷ.",
+  "@routerLeaveNotCancellable": {
+    "description": "Said when the leave request a cancel dialog was opened for cannot be cancelled by this caller."
+  },
+  "routerNotAMeasure": "Đây không phải một biện pháp",
+  "@routerNotAMeasure": {
+    "description": "The heading of the refusal shown when a measure address names no known kind of measure."
+  },
+  "routerNotAMeasureBody": "Một biện pháp là hành động ngăn chặn, hành động đối phó hoặc hành động phòng ngừa.",
+  "@routerNotAMeasureBody": {
+    "description": "What the refusal explains, under its heading."
+  },
+  "routerBackToAction": "Về hành động",
+  "@routerBackToAction": {
+    "description": "The way out of the measure refusal back to the Action it was opened from."
+  },
+  "routerCannotDoThatHere": "Bạn không thể làm việc này ở đây",
+  "@routerCannotDoThatHere": {
+    "description": "The heading of the refusal shown when a form opens for a caller with no write Grant at this Site."
+  },
+  "routerNoWriteGrant": "Bạn không có quyền ghi nào tại nhà máy này.",
+  "@routerNoWriteGrant": {
+    "description": "Why the form was refused, under its heading."
+  },
+  "routerBackToList": "Về danh sách",
+  "@routerBackToList": {
+    "description": "The way out of the write-Grant refusal back to the register it was opened from."
   }
 }

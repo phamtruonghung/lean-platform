@@ -23,6 +23,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import 'floor_safety_observation_bloc.dart';
 import 'safety_observation.dart';
@@ -112,11 +113,12 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BlocListener<FloorSafetyObservationBloc, FloorSafetyObservationState>(
       listener: _onChanged,
       child: BlocBuilder<FloorSafetyObservationBloc, FloorSafetyObservationState>(
         builder: (context, state) => AlertDialog(
-          title: const Text('Record a Safety observation'),
+          title: Text(l10n.safetyObservationRecordTitle),
           content: SizedBox(
             width: 420,
             child: SingleChildScrollView(
@@ -136,13 +138,13 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
             TextButton(
               key: FloorSafetyObservationDialog.dismissKey,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.commonCancel),
             ),
             FilledButton(
               key: FloorSafetyObservationDialog.submitKey,
               onPressed:
                   state is FloorSafetyObservationReady && _ready() && !_awaiting ? _submit : null,
-              child: const Text('Record it'),
+              child: Text(l10n.nonconformanceFormRecord),
             ),
           ],
         ),
@@ -152,12 +154,13 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
 
   Widget _form({required FloorSafetyObservationReady state, required bool busy}) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'What was seen? Everything with a known set is chosen from a fixed list.',
+          l10n.safetyObservationFloorIntro,
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
@@ -165,7 +168,10 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           key: FloorSafetyObservationDialog.typeKey,
           initialValue: _observationType,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+          decoration: InputDecoration(
+            labelText: l10n.commonType,
+            border: const OutlineInputBorder(),
+          ),
           items: ObservationType.dropdownItems(),
           onChanged: busy ? null : (type) => setState(() => _observationType = type),
         ),
@@ -174,7 +180,10 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           key: FloorSafetyObservationDialog.categoryKey,
           initialValue: _category,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+          decoration: InputDecoration(
+            labelText: l10n.commonCategory,
+            border: const OutlineInputBorder(),
+          ),
           items: ObservationCategory.dropdownItems(),
           onChanged: busy ? null : (category) => setState(() => _category = category),
         ),
@@ -183,9 +192,9 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           key: FloorSafetyObservationDialog.severityPotentialKey,
           initialValue: _severityPotential,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Severity potential',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.safetySeverityPotential,
+            border: const OutlineInputBorder(),
           ),
           items: SeverityPotential.dropdownItems(),
           onChanged: busy ? null : (potential) => setState(() => _severityPotential = potential),
@@ -198,9 +207,9 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           minLines: 2,
           maxLines: 4,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'What was seen',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.safetyWhatWasSeen,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
@@ -210,23 +219,22 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           enabled: !busy,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Action taken (optional)',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.safetyActionTaken,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
         SwitchListTile(
           key: FloorSafetyObservationDialog.stopWorkKey,
           contentPadding: EdgeInsets.zero,
-          title: const Text('Stop-work authority was exercised'),
+          title: Text(l10n.safetyStopWorkExercised),
           value: _isStopWork,
           onChanged: busy ? null : (value) => setState(() => _isStopWork = value),
         ),
         const SizedBox(height: Spacing.lg),
         Text(
-          'Who is recording this? Your Employee number and PIN identify you for '
-          'this record only.',
+          l10n.safetyObservationFloorWho,
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
@@ -235,9 +243,9 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           controller: _employeeNo,
           enabled: !busy,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'Employee number',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorEmployeeNumber,
+            border: const OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: Spacing.md),
@@ -248,9 +256,9 @@ class _FloorSafetyObservationDialogState extends State<FloorSafetyObservationDia
           obscureText: true,
           keyboardType: TextInputType.number,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'PIN',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.nonconformanceFloorPin,
+            border: const OutlineInputBorder(),
           ),
         ),
         if (state.failure != null)

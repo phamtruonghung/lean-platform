@@ -29,6 +29,7 @@ import 'package:lean_platform/platform/destinations.dart';
 import 'package:lean_platform/platform/locale_cubit.dart';
 import 'package:lean_platform/platform/router.dart';
 import 'package:lean_platform/platform/shell.dart';
+import 'package:lean_platform/quality/nonconformances_screen.dart';
 
 import 'harness.dart';
 
@@ -43,6 +44,13 @@ FakeWire _wire() => FakeWire(
       queue: const <Map<String, dynamic>>[],
       actions: {'1': <Map<String, dynamic>>[]},
       employeeDetails: const <String, Map<String, dynamic>>{},
+      // Enough for the Non-conformance register to hold one row and for the
+      // form it opens to offer a Product and a Defect code.
+      products: [productJson('40', 'PRD-1', 'Gearbox')],
+      defectCodes: [defectCodeJson('41', 'DIM-OOT', 'Out of tolerance')],
+      nonconformances: {
+        '1': [nonconformanceJson('701', 'NC-HCM-2026-00001')],
+      },
     );
 
 /// Pumps the whole app at [at], in [language] (`null` = never chosen, so the
@@ -163,5 +171,50 @@ void main() {
     expect(find.text('1 Work order'), findsOneWidget);
     expect(find.text('Summary'), findsOneWidget);
     expect(find.text('Lệnh công việc'), findsNothing);
+  });
+
+  testWidgets('the Non-conformance register and the form it opens are Vietnamese', (tester) async {
+    await _pump(tester, at: Routes.nonConformances, language: 'vi');
+
+    // The page head (the sidebar Destination's own word), the action that opens
+    // the form, and the columns the register measures and labels itself.
+    expect(find.text('Sản phẩm không phù hợp'), findsWidgets);
+    expect(find.text('Ghi nhận không phù hợp'), findsOneWidget);
+    for (final header in const [
+      'Không phù hợp',
+      'Phát hiện gì',
+      'Số lượng',
+      'Đã ghi nhận',
+      'Thao tác',
+    ]) {
+      expect(find.text(header), findsWidgets, reason: 'column header $header');
+    }
+    expect(find.text('Record a Non-conformance'), findsNothing);
+    expect(find.text('What was found'), findsNothing);
+    expect(find.byKey(NonconformancesScreen.rowKey('701')), findsOneWidget);
+
+    // The form the register opens speaks the register's language, not the
+    // English it had before this sweep.
+    await tapIn(tester, find.byKey(NonconformancesScreen.recordKey));
+    expect(find.text('Ghi nhận không phù hợp'), findsNWidgets(2));
+    expect(find.text('Sản phẩm'), findsWidgets);
+    expect(find.text('Mã lỗi'), findsWidgets);
+    expect(find.text('Phát hiện ở đâu'), findsOneWidget);
+    expect(find.text('Huỷ'), findsOneWidget);
+    expect(find.text('Record a Non-conformance'), findsNothing);
+    expect(find.text('Cancel'), findsNothing);
+  });
+
+  testWidgets('the Non-conformance register is English by default, in the words it shipped with',
+      (tester) async {
+    await _pump(tester, at: Routes.nonConformances);
+
+    expect(find.text('Non-conformances'), findsWidgets);
+    expect(find.text('Record a Non-conformance'), findsOneWidget);
+    for (final header in const ['What was found', 'Quantity', 'Filed', 'Actions']) {
+      expect(find.text(header), findsWidgets, reason: 'column header $header');
+    }
+    expect(find.text('Sản phẩm không phù hợp'), findsNothing);
+    expect(find.text('Ghi nhận không phù hợp'), findsNothing);
   });
 }

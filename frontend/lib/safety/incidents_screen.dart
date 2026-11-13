@@ -41,6 +41,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
@@ -102,6 +103,7 @@ class SafetyIncidentsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<SafetyIncidentsBloc>().state;
+    final l10n = AppLocalizations.of(context);
 
     return _RefreshOnMount(
       child: Scaffold(
@@ -114,16 +116,16 @@ class SafetyIncidentsScreen extends StatelessWidget {
                 SafetyIncidentsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
                 SafetyIncidentsUnavailable(message: final message) => PlatformFailureState(
                     key: failedKey,
-                    title: 'The Safety incident register could not be read',
+                    title: l10n.safetyIncidentsUnavailableTitle,
                     message: message,
                     retryKey: retryKey,
                     onRetry: () =>
                         context.read<SafetyIncidentsBloc>().add(const SafetyIncidentsStarted()),
                   ),
-                SafetyIncidentsLoaded(siteId: null) => const PlatformEmptyState.noneExist(
+                SafetyIncidentsLoaded(siteId: null) => PlatformEmptyState.noneExist(
                     key: noSiteKey,
-                    title: 'No Site to show',
-                    message: 'Your Account can see no Site yet, so there is nothing to read here.',
+                    title: l10n.commonNoSiteTitle,
+                    message: l10n.commonNoSiteMessage,
                     icon: Icons.factory_outlined,
                   ),
                 SafetyIncidentsLoaded(incidents: final rows, filters: final filters)
@@ -174,6 +176,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loaded = state is SafetyIncidentsLoaded ? state as SafetyIncidentsLoaded : null;
+    final l10n = AppLocalizations.of(context);
 
     return Center(
       child: AppPageFrame(
@@ -183,10 +186,8 @@ class _Header extends StatelessWidget {
           // one left edge (`docs/frontend-layout.md` §1).
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Safety incidents',
-            description:
-                'What went wrong at this Site, where it happened, and where it sits on '
-                'the severity ladder.',
+            title: l10n.titleSafetyIncidents,
+            description: l10n.safetyIncidentsDescription,
             actions: [
               if (loaded != null)
                 FilledButton.icon(
@@ -195,7 +196,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.safetyIncidents}/record'),
                   icon: const Icon(Icons.add),
-                  label: const Text('Record a Safety incident'),
+                  label: Text(l10n.safetyIncidentRecord),
                 ),
             ],
             below: loaded == null ? null : _Filters(loaded: loaded),
@@ -218,6 +219,7 @@ class _Filters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final filters = loaded.filters;
 
     return AppToolbar(
@@ -230,7 +232,10 @@ class _Filters extends StatelessWidget {
               initialValue: loaded.siteId,
               isDense: true,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: l10n.commonSite,
+                border: const OutlineInputBorder(),
+              ),
               items: [
                 for (final site in loaded.sites)
                   DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -245,7 +250,7 @@ class _Filters extends StatelessWidget {
           key: SafetyIncidentsScreen.orgUnitFilterKey,
           onPressed: () => SafetyOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
           icon: const Icon(Icons.account_tree_outlined),
-          label: Text(filters.orgUnitName ?? 'All Org Units'),
+          label: Text(filters.orgUnitName ?? l10n.commonAllOrgUnits),
         ),
         SizedBox(
           width: AppLayout.atTextScale(context, 170),
@@ -254,9 +259,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.status,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.commonStatus,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any status')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnyStatus)),
               for (final status in SafetyIncidentStatus.values)
                 DropdownMenuItem<String?>(
                   value: status,
@@ -275,10 +283,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.incidentType,
             isDense: true,
             isExpanded: true,
-            decoration:
-                const InputDecoration(labelText: 'Incident type', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.safetyIncidentType,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any type')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.safetyAnyType)),
               for (final type in IncidentType.values)
                 DropdownMenuItem<String?>(value: type, child: Text(IncidentType.label(type))),
             ],
@@ -293,9 +303,15 @@ class _Filters extends StatelessWidget {
             initialValue: filters.severityLevel,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Severity', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.commonSeverity,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any severity')),
+              DropdownMenuItem<String?>(
+                value: null,
+                child: Text(l10n.nonconformancesAnySeverity),
+              ),
               // Ladder order, never alphabetical (the binding design comment
               // on #223) — the same order the record form's own dropdown
               // renders.
@@ -317,12 +333,14 @@ class _Filters extends StatelessWidget {
             initialValue: filters.isRecordable,
             isDense: true,
             isExpanded: true,
-            decoration:
-                const InputDecoration(labelText: 'Recordable', border: OutlineInputBorder()),
-            items: const [
-              DropdownMenuItem<bool?>(value: null, child: Text('Any')),
-              DropdownMenuItem<bool?>(value: true, child: Text('Recordable')),
-              DropdownMenuItem<bool?>(value: false, child: Text('Not recordable')),
+            decoration: InputDecoration(
+              labelText: l10n.safetyRecordable,
+              border: const OutlineInputBorder(),
+            ),
+            items: [
+              DropdownMenuItem<bool?>(value: null, child: Text(l10n.commonAny)),
+              DropdownMenuItem<bool?>(value: true, child: Text(l10n.safetyRecordable)),
+              DropdownMenuItem<bool?>(value: false, child: Text(l10n.safetyNotRecordable)),
             ],
             onChanged: (value) => context
                 .read<SafetyIncidentsBloc>()
@@ -341,7 +359,7 @@ class _Filters extends StatelessWidget {
               child: AppDateField(
                 key: SafetyIncidentsScreen.fromDateKey,
                 name: 'safety-incidents-from',
-                label: 'Occurred from',
+                label: l10n.safetyOccurredFrom,
                 value: filters.from,
                 optional: true,
                 onChanged: (value) => context
@@ -354,7 +372,7 @@ class _Filters extends StatelessWidget {
               child: AppDateField(
                 key: SafetyIncidentsScreen.toDateKey,
                 name: 'safety-incidents-to',
-                label: 'Occurred to',
+                label: l10n.safetyOccurredTo,
                 value: filters.to,
                 optional: true,
                 onChanged: (value) => context
@@ -369,7 +387,7 @@ class _Filters extends StatelessWidget {
             key: SafetyIncidentsScreen.clearFiltersKey,
             onPressed: () =>
                 context.read<SafetyIncidentsBloc>().add(const SafetyIncidentsFiltersCleared()),
-            child: Text('Clear filters', style: theme.textTheme.bodyMedium),
+            child: Text(l10n.workOrdersClearFilters, style: theme.textTheme.bodyMedium),
           ),
       ],
       count: Text(
@@ -394,6 +412,7 @@ class _Truncated extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: SafetyIncidentsScreen.maxWidth,
@@ -401,8 +420,7 @@ class _Truncated extends StatelessWidget {
           key: SafetyIncidentsScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
-            'There are more Safety incidents than this list shows. Narrow it by Org Unit, by '
-            'status or by date to see the rest.',
+            l10n.safetyIncidentsTruncated,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ),
@@ -421,13 +439,13 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (isFiltered) {
       return PlatformEmptyState.noneMatched(
         key: SafetyIncidentsScreen.emptyMatchedKey,
-        title: 'Nothing matches these filters',
-        message: 'The register has Safety incidents, but none of them is in the area, state, '
-            'type, severity, recordability or dates you picked.',
-        actionLabel: 'Clear the filters',
+        title: l10n.nonconformancesNoMatchTitle,
+        message: l10n.safetyIncidentsNoMatchMessage,
+        actionLabel: l10n.nonconformancesClearTheFilters,
         actionKey: SafetyIncidentsScreen.emptyClearFiltersKey,
         onAction: () =>
             context.read<SafetyIncidentsBloc>().add(const SafetyIncidentsFiltersCleared()),
@@ -436,10 +454,10 @@ class _Empty extends StatelessWidget {
     // Flat, deliberately — never "All clear". A plant with no incidents may
     // simply not be reporting, which is the exact failure ADR-0036 trades
     // against.
-    return const PlatformEmptyState.noneExist(
+    return PlatformEmptyState.noneExist(
       key: SafetyIncidentsScreen.emptyKey,
-      title: 'No incidents recorded for this period',
-      message: 'No Safety incident has been recorded at this Site for the area and dates shown.',
+      title: l10n.safetyIncidentsNoneTitle,
+      message: l10n.safetyIncidentsNoneMessage,
       icon: Icons.health_and_safety_outlined,
     );
   }
@@ -458,14 +476,17 @@ class _Empty extends StatelessWidget {
 /// value that clipped — `SI-HCM-2026-000…` at every window under 1440, which is
 /// a reader unable to tell `00001` from `00002`. It is the same measurement
 /// `quality/complaints_screen.dart` makes for a complaint number.
-List<AppTableColumn> _columns(BuildContext context) => [
-      AppTableColumn('Severity', width: _severityColumnWidth(context)),
-      AppTableColumn('Incident #', width: _incidentNumberColumnWidth(context)),
-      const AppTableColumn('Type', flex: 3),
-      const AppTableColumn('Org Unit', flex: 2),
-      const AppTableColumn('Filed against', flex: 3),
-      AppTableColumn('Status', width: _statusColumnWidth(context)),
-    ];
+List<AppTableColumn> _columns(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return [
+    AppTableColumn(l10n.commonSeverity, width: _severityColumnWidth(context)),
+    AppTableColumn(l10n.safetyIncidentNumberColumn, width: _incidentNumberColumnWidth(context)),
+    AppTableColumn(l10n.commonType, flex: 3),
+    AppTableColumn(l10n.commonOrgUnit, flex: 2),
+    AppTableColumn(l10n.commonFiledAgainstColumn, flex: 3),
+    AppTableColumn(l10n.commonStatus, width: _statusColumnWidth(context)),
+  ];
+}
 
 /// The Incident # column: the documented number format —
 /// `SI-HCM-2026-00001` (`safety-incidents.js`'s own header: a Site-scoped,
@@ -642,6 +663,7 @@ class _SafetyIncidentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final dense = AppTypography.dense(context);
     final row = incident;
 
@@ -691,7 +713,7 @@ class _SafetyIncidentCard extends StatelessWidget {
                     ),
                     const SizedBox(height: Spacing.xxs),
                     Text(
-                      '${row.orgUnitName} · filed against ${row.filedAgainst}',
+                      l10n.commonFiledAgainst(row.orgUnitName, row.filedAgainst),
                       key: SafetyIncidentsScreen.rowFiledKey(row.id),
                       style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                     ),

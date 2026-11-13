@@ -54,6 +54,7 @@ import 'package:go_router/go_router.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_detail_section.dart';
 import '../widgets/app_page_frame.dart';
@@ -154,6 +155,7 @@ class NonconformanceDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<NonconformanceDetailBloc>().state;
+    final l10n = AppLocalizations.of(context);
 
     // The page head sits above the state switch, so a load, a failed read, a
     // missing record and the record itself all carry the same title row and
@@ -174,17 +176,16 @@ class NonconformanceDetailScreen extends StatelessWidget {
                 const SkeletonList(rows: 4, maxWidth: maxWidth),
               NonconformanceDetailMissing() => PlatformEmptyState.noneExist(
                   key: missingKey,
-                  title: 'No such Non-conformance',
-                  message: 'Nothing is recorded at this address. It may have been removed, or the '
-                      'address may be wrong.',
+                  title: l10n.nonconformanceDetailMissingTitle,
+                  message: l10n.nonconformanceDetailMissingMessage,
                   icon: Icons.search_off_outlined,
-                  actionLabel: 'Back to Non-conformances',
+                  actionLabel: l10n.nonconformanceDetailBack,
                   actionKey: backKey,
                   onAction: () => context.go(Routes.nonConformances),
                 ),
               NonconformanceDetailUnavailable(message: final message) => PlatformFailureState(
                   key: failedKey,
-                  title: 'The Non-conformance could not be read',
+                  title: l10n.nonconformanceDetailUnavailableTitle,
                   message: message,
                   retryKey: retryKey,
                   onRetry: () => context
@@ -214,6 +215,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: NonconformanceDetailScreen.maxWidth,
@@ -227,14 +229,14 @@ class _Header extends StatelessWidget {
                   key: NonconformanceDetailScreen.backKey,
                   onPressed: () => context.go(Routes.nonConformances),
                   icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to Non-conformances'),
+                  label: Text(l10n.nonconformanceDetailBack),
                   style: TextButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
                 ),
                 const SizedBox(height: Spacing.sm),
               ],
-              const AppPageHeader(title: 'Non-conformance'),
+              AppPageHeader(title: l10n.nonconformanceTitle),
             ],
           ),
         ),
@@ -418,6 +420,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Card(
       key: NonconformanceDetailScreen.summaryKey,
@@ -448,13 +451,13 @@ class _SummaryCard extends StatelessWidget {
                 ),
                 StatusChip(
                   key: NonconformanceDetailScreen.severityKey,
-                  label: '${row.severityLabel} severity',
+                  label: l10n.nonconformanceDetailSeverityChip(row.severityLabel),
                   tone: _severityTone(row.severity),
                 ),
                 if (row.closedAt != null)
                   StatusChip(
                     key: NonconformanceDetailScreen.closedKey,
-                    label: 'Finished ${row.closedAt}',
+                    label: l10n.nonconformanceDetailFinishedAt('${row.closedAt}'),
                     tone: StatusTone.neutral,
                   ),
               ],
@@ -470,17 +473,23 @@ class _SummaryCard extends StatelessWidget {
               spacing: Spacing.xl,
               runSpacing: Spacing.md,
               children: [
-                _Fact(label: 'Detail', value: row.description ?? 'None given'),
-                _Fact(label: 'Product', value: '${row.productName} · ${row.productCode}'),
-                _Fact(label: 'Org Unit', value: row.orgUnitName),
-                _Fact(label: 'Detection point', value: row.detectionPointLabel),
                 _Fact(
-                  label: 'Quantity affected',
+                  label: l10n.nonconformanceDetailDetail,
+                  value: row.description ?? l10n.commonNoneGiven,
+                ),
+                _Fact(label: l10n.commonProduct, value: '${row.productName} · ${row.productCode}'),
+                _Fact(label: l10n.commonOrgUnit, value: row.orgUnitName),
+                _Fact(
+                  label: l10n.nonconformanceFormDetectionPoint,
+                  value: row.detectionPointLabel,
+                ),
+                _Fact(
+                  label: l10n.nonconformanceDetailQuantityAffected,
                   key: NonconformanceDetailScreen.quantityKey,
                   value: '${_number(row.quantityAffected)} ${row.uomCode}',
                 ),
                 _Fact(
-                  label: 'Filed against',
+                  label: l10n.nonconformanceDetailFiledAgainst,
                   key: NonconformanceDetailScreen.filedKey,
                   value: row.filedAgainst,
                 ),
@@ -518,27 +527,36 @@ class _FoundSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppDetailSection(
-      title: 'What was found',
+      title: l10n.nonconformancesFoundColumn,
       children: [
         Wrap(
           spacing: Spacing.xl,
           runSpacing: Spacing.md,
           children: [
             _Fact(
-              label: 'Defect code',
-              value: '${row.defectCodeName} · ${row.defectCodeCode} · starts at '
-                  '${DefectSeverity.label(row.defectCodeDefaultSeverity)}',
+              label: l10n.commonDefectCode,
+              value: l10n.nonconformanceDetailDefectCodeValue(
+                row.defectCodeName,
+                row.defectCodeCode,
+                DefectSeverity.label(row.defectCodeDefaultSeverity),
+              ),
             ),
             _Fact(
-              label: 'Asset',
-              value: row.assetName == null ? 'None named' : '${row.assetName} · ${row.assetCode}',
+              label: l10n.commonAsset,
+              value: row.assetName == null
+                  ? l10n.commonNoneNamed
+                  : '${row.assetName} · ${row.assetCode}',
             ),
-            _Fact(label: 'Lot reference', value: row.lotRef ?? 'Not given'),
-            _Fact(label: 'Detected at', value: row.detectedAt ?? 'Not recorded'),
+            _Fact(label: l10n.nonconformanceDetailLotRef, value: row.lotRef ?? l10n.commonNotGiven),
             _Fact(
-              label: 'Immediate containment',
-              value: row.immediateContainment ?? 'None recorded yet',
+              label: l10n.nonconformanceFloorDetectedAt,
+              value: row.detectedAt ?? l10n.commonNotRecorded,
+            ),
+            _Fact(
+              label: l10n.nonconformanceDetailContainment,
+              value: row.immediateContainment ?? l10n.commonNoneRecorded,
             ),
           ],
         ),
@@ -558,8 +576,9 @@ class _ActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppDetailSection(
-      title: 'What can be done',
+      title: l10n.nonconformanceDetailActionsSection,
       children: [
         Wrap(
           spacing: Spacing.md,
@@ -572,7 +591,7 @@ class _ActionsSection extends StatelessWidget {
                   ? null
                   : () => context.go('${Routes.nonConformances}/${row.id}/quantity'),
               icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Increase the quantity'),
+              label: Text(l10n.nonconformanceIncreaseQuantity),
               style: NonconformanceDetailScreen.actionStyle,
             ),
             OutlinedButton.icon(
@@ -581,7 +600,7 @@ class _ActionsSection extends StatelessWidget {
                   ? null
                   : () => context.go('${Routes.nonConformances}/${row.id}/update'),
               icon: const Icon(Icons.build_outlined),
-              label: const Text('Raise severity or contain it'),
+              label: Text(l10n.nonconformanceUpdate),
               style: NonconformanceDetailScreen.secondaryStyle,
             ),
             // A Disposition is offered wherever the record still has undecided
@@ -594,7 +613,7 @@ class _ActionsSection extends StatelessWidget {
                     ? null
                     : () => context.go('${Routes.nonConformances}/${row.id}/disposition'),
                 icon: const Icon(Icons.rule_outlined),
-                label: const Text('Record a Disposition'),
+                label: Text(l10n.nonconformanceDisposition),
                 style: NonconformanceDetailScreen.actionStyle,
               ),
             // The four decisions only a holder of Quality authority may take
@@ -609,7 +628,7 @@ class _ActionsSection extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.nonConformances}/${row.id}/concession'),
                   icon: const Icon(Icons.verified_outlined),
-                  label: const Text('Grant a Concession'),
+                  label: Text(l10n.nonconformanceConcession),
                   style: NonconformanceDetailScreen.actionStyle,
                 ),
               if (row.canBeLowered)
@@ -619,7 +638,7 @@ class _ActionsSection extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.nonConformances}/${row.id}/lower-severity'),
                   icon: const Icon(Icons.arrow_downward),
-                  label: const Text('Lower the severity'),
+                  label: Text(l10n.nonconformanceLowerSeverity),
                   style: NonconformanceDetailScreen.secondaryStyle,
                 ),
               if (row.canBeReopened)
@@ -629,7 +648,7 @@ class _ActionsSection extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.nonConformances}/${row.id}/reopen'),
                   icon: const Icon(Icons.lock_open_outlined),
-                  label: const Text('Reopen it'),
+                  label: Text(l10n.nonconformanceReopen),
                   style: NonconformanceDetailScreen.secondaryStyle,
                 ),
               if (row.canBeCancelled)
@@ -639,7 +658,7 @@ class _ActionsSection extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.nonConformances}/${row.id}/cancel'),
                   icon: const Icon(Icons.cancel_outlined),
-                  label: const Text('Cancel it in error'),
+                  label: Text(l10n.nonconformanceCancel),
                   style: NonconformanceDetailScreen.secondaryStyle,
                 ),
             ],
@@ -660,18 +679,18 @@ class _QuantityHistorySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return AppDetailSection(
-      title: 'Quantity history',
+      title: l10n.nonconformanceDetailQuantityHistory,
       children: [
         Text(
-          'Sorting finds more than the first count. Every change is kept, and the affected '
-          'quantity never shrinks.',
+          l10n.nonconformanceDetailQuantityHistoryNote,
           style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
         ),
         if (row.quantityChanges.isEmpty)
           Text(
-            'The affected quantity has not been changed since it was recorded.',
+            l10n.nonconformanceDetailNoQuantityHistory,
             key: NonconformanceDetailScreen.noHistoryKey,
             style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
           )
@@ -715,24 +734,27 @@ class _DispositionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return AppDetailSection(
-      title: 'Dispositions',
+      title: l10n.nonconformanceDetailDispositions,
       children: [
         Text(
-          'Product is dealt with in parts. A Non-conformance closes by itself once all of its '
-          'quantity has a Disposition.',
+          l10n.nonconformanceDetailDispositionsNote,
           style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
         ),
         Text(
-          '${_number(row.quantityDispositioned)} of ${_number(row.quantityAffected)} '
-          '${row.uomCode} dispositioned',
+          l10n.nonconformanceDetailDispositioned(
+            _number(row.quantityDispositioned),
+            _number(row.quantityAffected),
+            row.uomCode,
+          ),
           style: AppTypography.dense(context)
               ?.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w500),
         ),
         if (row.dispositions.isEmpty)
           Text(
-            'Nothing has been decided about this product yet.',
+            l10n.nonconformanceDetailNoDispositions,
             key: NonconformanceDetailScreen.noDispositionsKey,
             style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
           )
@@ -751,7 +773,7 @@ class _DispositionsSection extends StatelessWidget {
                       Text(
                         '${disposition.label} · ${_number(disposition.quantity)} '
                         '${disposition.uomCode}'
-                        '${disposition.reworkMinutes > 0 ? ' · ${_number(disposition.reworkMinutes)} minutes of rework' : ''}',
+                        '${disposition.reworkMinutes > 0 ? ' · ${l10n.nonconformanceDetailReworkMinutes(disposition.reworkMinutes.round())}' : ''}',
                         style: AppTypography.dense(context)
                             ?.copyWith(color: palette.textPrimary),
                       ),
@@ -785,17 +807,18 @@ class _CorrectionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return AppDetailSection(
-      title: 'Corrections',
+      title: l10n.nonconformanceDetailCorrections,
       children: [
         Text(
-          'What a holder of Quality authority has changed about this record, and why.',
+          l10n.nonconformanceDetailCorrectionsNote,
           style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
         ),
         if (row.corrections.isEmpty)
           Text(
-            'This record has not been corrected.',
+            l10n.nonconformanceDetailNoCorrections,
             key: NonconformanceDetailScreen.noCorrectionsKey,
             style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
           )
@@ -863,15 +886,15 @@ class _ConcernsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final concerns = row.concerns;
 
     return AppDetailSection(
       key: NonconformanceDetailScreen.concernsKey,
-      title: 'The cause',
+      title: l10n.nonconformanceDetailCause,
       children: [
         Text(
-          'Nonconforming product is dealt with here; the problem behind it is solved in the '
-          'action log, as a Concern. One problem that shows up several times stays one Concern.',
+          l10n.nonconformanceDetailCauseNote,
           style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
         ),
         if (notice != null)
@@ -883,7 +906,7 @@ class _ConcernsSection extends StatelessWidget {
         if (concerns.isEmpty)
           Text(
             key: NonconformanceDetailScreen.noConcernsKey,
-            'Nothing is being done about the cause yet.',
+            l10n.nonconformanceDetailNoConcerns,
             style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
           )
         else
@@ -926,9 +949,9 @@ class _ConcernsSection extends StatelessWidget {
                                       // than implied: the reader of a
                                       // Non-conformance wants to know which
                                       // Concern this occurrence started.
-                                      if (concern.isSource) 'raised from this record',
+                                      if (concern.isSource) l10n.nonconformanceDetailRaisedFrom,
                                       if (concern.ownerName != null) concern.ownerName!,
-                                      if (concern.isOverdue) 'overdue',
+                                      if (concern.isOverdue) l10n.nonconformanceDetailOverdue,
                                     ].join(' · '),
                                     style: AppTypography.floor(context)
                                         ?.copyWith(color: palette.textMuted),
@@ -960,7 +983,7 @@ class _ConcernsSection extends StatelessWidget {
                   ? null
                   : () => context.go('${Routes.nonConformances}/${row.id}/raise-concern'),
               icon: const Icon(Icons.lightbulb_outline),
-              label: const Text('Raise a Concern'),
+              label: Text(l10n.nonconformanceRaiseConcern),
               style: NonconformanceDetailScreen.actionStyle,
             ),
             OutlinedButton.icon(
@@ -969,7 +992,7 @@ class _ConcernsSection extends StatelessWidget {
                   ? null
                   : () => context.go('${Routes.nonConformances}/${row.id}/link-concern'),
               icon: const Icon(Icons.link),
-              label: const Text('Link it to a Concern'),
+              label: Text(l10n.nonconformanceLinkConcern),
               style: NonconformanceDetailScreen.secondaryStyle,
             ),
           ],

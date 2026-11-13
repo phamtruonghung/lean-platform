@@ -23,6 +23,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'request.dart';
@@ -33,7 +34,13 @@ import 'requests_bloc.dart';
 /// choosing rather than left as a bare digit whose direction is not obvious.
 /// The same labelling `WorkOrderFormDialog` offers when a Work order is raised
 /// directly.
-const List<String> _priorityLabels = ['Most urgent', 'Urgent', 'Normal', 'Low', 'Least urgent'];
+List<String> _priorityLabels(AppLocalizations l10n) => [
+      l10n.commonPriorityMostUrgent,
+      l10n.commonPriorityUrgent,
+      l10n.commonPriorityNormal,
+      l10n.commonPriorityLow,
+      l10n.commonPriorityLeastUrgent,
+    ];
 
 class RequestAcceptDialog extends StatefulWidget {
   const RequestAcceptDialog({super.key, required this.request});
@@ -90,21 +97,22 @@ class _RequestAcceptDialogState extends State<RequestAcceptDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return BlocListener<RequestsBloc, RequestsState>(
       listener: _onRequestsChanged,
       child: AppDialog(
-        title: 'Accept ${widget.request.requestNo}?',
+        title: l10n.requestAcceptTitle(widget.request.requestNo),
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: RequestAcceptDialog._dismissId,
-            label: 'Keep it waiting',
+            label: l10n.requestAcceptDismiss,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: RequestAcceptDialog._submitId,
-            label: 'Accept this Request',
+            label: l10n.requestAcceptSubmit,
             onPressed: _awaiting ? null : _submit,
           ),
         ],
@@ -113,8 +121,7 @@ class _RequestAcceptDialogState extends State<RequestAcceptDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Accepting raises a Work order for this Request. Its priority '
-              'is your call, not the reporter\'s urgency.',
+              l10n.requestAcceptBody,
               style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
             ),
             const SizedBox(height: Spacing.md),
@@ -122,15 +129,15 @@ class _RequestAcceptDialogState extends State<RequestAcceptDialog> {
               key: RequestAcceptDialog.priorityKey,
               initialValue: _priority,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Priority',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.commonPriority,
+                border: const OutlineInputBorder(),
               ),
               items: [
                 for (var level = 1; level <= 5; level++)
                   DropdownMenuItem<int>(
                     value: level,
-                    child: Text('$level - ${_priorityLabels[level - 1]}'),
+                    child: Text('$level - ${_priorityLabels(l10n)[level - 1]}'),
                   ),
               ],
               onChanged: _awaiting

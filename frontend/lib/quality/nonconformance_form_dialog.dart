@@ -34,6 +34,7 @@ import 'package:flutter/services.dart';
 
 import '../maintenance/maintenance.dart';
 import '../people/people.dart';
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
@@ -269,6 +270,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final register = context.watch<NonconformancesBloc>().state;
     final loaded = register is NonconformancesLoaded ? register : null;
     final products = loaded?.products ?? const <Product>[];
@@ -280,18 +282,18 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
         listenWhen: (previous, current) => previous.siteId != current.siteId,
         listener: (context, state) => _onOrgUnitSiteChanged(),
         child: AppDialog(
-          title: 'Record a Non-conformance',
+          title: l10n.nonconformanceRecord,
           size: AppDialogSize.wide,
           actions: [
             AppDialogAction(
               id: 'nonconformance-form-cancel',
-              label: 'Cancel',
+              label: l10n.commonCancel,
               kind: AppDialogActionKind.dismiss,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
             ),
             AppDialogAction(
               id: 'nonconformance-form-submit',
-              label: 'Record it',
+              label: l10n.nonconformanceFormRecord,
               onPressed: _complete && !_awaiting ? _submit : null,
             ),
           ],
@@ -302,8 +304,8 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                   AppSearchField<Product>(
                     key: NonconformanceFormDialog.productKey,
                     name: 'nonconformance-product',
-                    label: 'Product',
-                    helperText: 'What the nonconforming product is.',
+                    label: l10n.commonProduct,
+                    helperText: l10n.nonconformanceFormProductHelp,
                     value: _product,
                     enabled: !_awaiting,
                     onChanged: (product) => setState(() => _product = product),
@@ -334,14 +336,16 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     key: NonconformanceFormDialog.defectCodeKey,
                     initialValue: _defectCodeId,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Defect code',
-                      helperText: 'What is wrong with it. The severity starts at this code own '
-                          'default.',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.commonDefectCode,
+                      helperText: l10n.nonconformanceFormDefectCodeHelp,
+                      border: const OutlineInputBorder(),
                     ),
                     items: [
-                      const DropdownMenuItem<String?>(value: null, child: Text('Choose a code')),
+                      DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text(l10n.nonconformanceFormChooseCode),
+                      ),
                       for (final code in defectCodes)
                         DropdownMenuItem<String?>(
                           value: code.id,
@@ -369,15 +373,15 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                           key: NonconformanceFormDialog.detectionPointKey,
                           initialValue: _detectionPoint,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Detection point',
-                            helperText: 'Where the control plan caught it.',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l10n.nonconformanceFormDetectionPoint,
+                            helperText: l10n.nonconformanceFormDetectionPointHelp,
+                            border: const OutlineInputBorder(),
                           ),
                           items: [
-                            const DropdownMenuItem<String?>(
+                            DropdownMenuItem<String?>(
                               value: null,
-                              child: Text('Choose a point'),
+                              child: Text(l10n.nonconformanceFormChoosePoint),
                             ),
                             for (final point in DetectionPoint.values)
                               DropdownMenuItem<String?>(
@@ -397,11 +401,12 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                           initialValue: _severity,
                           isExpanded: true,
                           decoration: InputDecoration(
-                            labelText: 'Severity',
+                            labelText: l10n.nonconformancesSeverity,
                             helperText: _defectCode == null
-                                ? 'Chosen with the Defect code.'
-                                : 'Starts at ${DefectSeverity.label(_defectCode!.defaultSeverity)}. '
-                                    'Raising it is allowed; lowering it is a later decision.',
+                                ? l10n.nonconformanceFormSeverityHelpUnset
+                                : l10n.nonconformanceFormSeverityHelpSet(
+                                    DefectSeverity.label(_defectCode!.defaultSeverity),
+                                  ),
                             border: const OutlineInputBorder(),
                           ),
                           items: [
@@ -409,9 +414,10 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                               value: null,
                               child: Text(
                                 _defectCode == null
-                                    ? 'Choose a Defect code first'
-                                    : 'Starts at '
-                                        '${DefectSeverity.label(_defectCode!.defaultSeverity)}',
+                                    ? l10n.nonconformanceFormChooseCodeFirst
+                                    : l10n.nonconformanceFormStartsAt(
+                                        DefectSeverity.label(_defectCode!.defaultSeverity),
+                                      ),
                               ),
                             ),
                             for (final severity in _offerableSeverities)
@@ -436,10 +442,10 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                             FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                           ],
                           onChanged: (_) => setState(() {}),
-                          decoration: const InputDecoration(
-                            labelText: 'Quantity',
-                            helperText: 'How many pieces.',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l10n.commonQuantity,
+                            helperText: l10n.nonconformanceFormQuantityHelp,
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                       ),
@@ -450,10 +456,10 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     key: NonconformanceFormDialog.lotRefKey,
                     controller: _lotRef,
                     enabled: !_awaiting,
-                    decoration: const InputDecoration(
-                      labelText: 'Lot reference (optional)',
-                      helperText: 'What else is affected — a batch number is better than nothing.',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.nonconformanceFormLotRef,
+                      helperText: l10n.nonconformanceFormLotRefHelp,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: Spacing.md),
@@ -473,9 +479,9 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     enabled: !_awaiting,
                     minLines: 2,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Detail (optional)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.nonconformanceFormDetailOptional,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: Spacing.md),
@@ -485,19 +491,18 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     enabled: !_awaiting,
                     minLines: 2,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Immediate containment (optional)',
-                      helperText: 'What was done at once. Recording it makes this contained.',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.nonconformanceFormContainment,
+                      helperText: l10n.nonconformanceFormContainmentHelp,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: Spacing.md),
                   AppDateTimeField(
                     key: NonconformanceFormDialog.detectedAtKey,
                     name: 'nonconformance-detected-at',
-                    label: 'Detected at (optional)',
-                    helperText: 'When it was found, if that is not now. This is what decides the '
-                        'production day and shift it is filed against.',
+                    label: l10n.nonconformanceFormDetectedAt,
+                    helperText: l10n.nonconformanceFormDetectedAtHelp,
                     value: _detectedAt,
                     optional: true,
                     enabled: !_awaiting,
@@ -508,9 +513,8 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                     selectedId: _orgUnit?.id,
                     enabled: !_awaiting,
                     showSitePicker: false,
-                    title: 'Where it was found',
-                    description: 'Choose the Org Unit the nonconforming product was found at. '
-                        'This is what decides who may act on it.',
+                    title: l10n.nonconformanceFormWhereFound,
+                    description: l10n.nonconformanceFormWhereFoundHelp,
                     onSelected: (node) => setState(() => _orgUnit = node),
                   ),
                   if (_orgUnit != null)
@@ -518,7 +522,7 @@ class _NonconformanceFormDialogState extends State<NonconformanceFormDialog> {
                       key: NonconformanceFormDialog.chosenOrgUnitKey,
                       padding: const EdgeInsets.only(top: Spacing.sm),
                       child: Text(
-                        'This Non-conformance will be recorded at ${_orgUnit!.name}.',
+                        l10n.nonconformanceFormWillBeRecorded(_orgUnit!.name),
                         style: theme.textTheme.bodySmall
                             ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
@@ -573,6 +577,7 @@ class _AssetField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     switch (status) {
       case _AssetsStatus.loading:
         return const SizedBox(
@@ -591,17 +596,17 @@ class _AssetField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Assets could not be read.',
+              failure ?? l10n.commonAssetsFailed,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _AssetsStatus.ready:
         return AppSearchField<Asset>(
           name: NonconformanceFormDialog.assetFieldName,
-          label: 'Asset (optional)',
-          helperText: 'Which machine, if the find was on one. It must sit at that Org Unit.',
+          label: l10n.nonconformanceFormAssetOptional,
+          helperText: l10n.nonconformanceFormAssetHelp,
           value: _selected,
           enabled: enabled,
           // A pick sets the dialog's own id; typing over the chosen Asset

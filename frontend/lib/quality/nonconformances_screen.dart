@@ -36,6 +36,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -115,6 +116,7 @@ class NonconformancesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<NonconformancesBloc>().state;
+    final l10n = AppLocalizations.of(context);
 
     return _RefreshOnMount(
       child: Scaffold(
@@ -135,16 +137,16 @@ class NonconformancesScreen extends StatelessWidget {
                 NonconformancesLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
                 NonconformancesUnavailable(message: final message) => PlatformFailureState(
                     key: failedKey,
-                    title: 'The Non-conformance register could not be read',
+                    title: l10n.nonconformancesUnavailableTitle,
                     message: message,
                     retryKey: retryKey,
                     onRetry: () =>
                         context.read<NonconformancesBloc>().add(const NonconformancesStarted()),
                   ),
-                NonconformancesLoaded(siteId: null) => const PlatformEmptyState.noneExist(
+                NonconformancesLoaded(siteId: null) => PlatformEmptyState.noneExist(
                     key: noSiteKey,
-                    title: 'No Site to show',
-                    message: 'Your Account can see no Site yet, so there is nothing to read here.',
+                    title: l10n.nonconformancesNoSiteTitle,
+                    message: l10n.nonconformancesNoSiteMessage,
                     icon: Icons.factory_outlined,
                   ),
                 NonconformancesLoaded(
@@ -204,6 +206,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loaded = state is NonconformancesLoaded ? state as NonconformancesLoaded : null;
+    final l10n = AppLocalizations.of(context);
 
     return Center(
       child: AppPageFrame(
@@ -211,10 +214,8 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Non-conformances',
-            description:
-                'What was found not to conform at this Site, where it was found, and how '
-                'much of it there is.',
+            title: l10n.navNonConformances,
+            description: l10n.nonconformancesDescription,
             actions: [
               if (loaded != null)
                 FilledButton.icon(
@@ -223,7 +224,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.nonConformances}/new'),
                   icon: const Icon(Icons.add),
-                  label: const Text('Record a Non-conformance'),
+                  label: Text(l10n.nonconformanceRecord),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
@@ -249,6 +250,7 @@ class _Filters extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final filters = loaded.filters;
+    final l10n = AppLocalizations.of(context);
 
     return AppFilterRow(
       children: [
@@ -260,7 +262,10 @@ class _Filters extends StatelessWidget {
               initialValue: loaded.siteId,
               isDense: true,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: l10n.commonSite,
+                border: const OutlineInputBorder(),
+              ),
               items: [
                 for (final site in loaded.sites)
                   DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -275,7 +280,7 @@ class _Filters extends StatelessWidget {
           key: NonconformancesScreen.orgUnitFilterKey,
           onPressed: () => NonconformanceOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
           icon: const Icon(Icons.account_tree_outlined),
-          label: Text(filters.orgUnitName ?? 'All Org Units'),
+          label: Text(filters.orgUnitName ?? l10n.commonAllOrgUnits),
         ),
         SizedBox(
           width: AppLayout.atTextScale(context, 180),
@@ -284,9 +289,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.status,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.commonStatus,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any status')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnyStatus)),
               for (final status in NonconformanceStatus.values)
                 DropdownMenuItem<String?>(
                   value: status,
@@ -305,10 +313,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.defectCodeId,
             isDense: true,
             isExpanded: true,
-            decoration:
-                const InputDecoration(labelText: 'Defect code', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.commonDefectCode,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Every Defect code')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesEveryDefectCode)),
               for (final code in loaded.defectCodes)
                 DropdownMenuItem<String?>(
                   value: code.id,
@@ -327,9 +337,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.productId,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Product', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.commonProduct,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Every Product')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesEveryProduct)),
               for (final product in loaded.products)
                 DropdownMenuItem<String?>(
                   value: product.id,
@@ -347,9 +360,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.severity,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Severity', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.nonconformancesSeverity,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any severity')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.nonconformancesAnySeverity)),
               for (final severity in DefectSeverity.values)
                 DropdownMenuItem<String?>(
                   value: severity,
@@ -366,7 +382,7 @@ class _Filters extends StatelessWidget {
           child: AppDateField(
             key: NonconformancesScreen.fromDateKey,
             name: 'nonconformances-from',
-            label: 'Detected from',
+            label: l10n.nonconformancesDetectedFrom,
             value: filters.from,
             optional: true,
             onChanged: (value) => context
@@ -379,7 +395,7 @@ class _Filters extends StatelessWidget {
           child: AppDateField(
             key: NonconformancesScreen.toDateKey,
             name: 'nonconformances-to',
-            label: 'Detected to',
+            label: l10n.nonconformancesDetectedTo,
             value: filters.to,
             optional: true,
             onChanged: (value) => context
@@ -392,7 +408,7 @@ class _Filters extends StatelessWidget {
             key: NonconformancesScreen.clearFiltersKey,
             onPressed: () =>
                 context.read<NonconformancesBloc>().add(const NonconformancesFiltersCleared()),
-            child: Text('Clear filters', style: theme.textTheme.bodyMedium),
+            child: Text(l10n.workOrdersClearFilters, style: theme.textTheme.bodyMedium),
           ),
       ],
     );
@@ -408,6 +424,7 @@ class _Truncated extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: NonconformancesScreen.maxWidth,
@@ -415,8 +432,7 @@ class _Truncated extends StatelessWidget {
           key: NonconformancesScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
-            'There are more Non-conformances than this list shows. Narrow it by Org Unit, by '
-            'status or by date to see the rest.',
+            l10n.nonconformancesTruncated,
             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           ),
         ),
@@ -436,22 +452,22 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (isFiltered) {
       return PlatformEmptyState.noneMatched(
         key: NonconformancesScreen.emptyMatchedKey,
-        title: 'Nothing matches these filters',
-        message: 'The register has Non-conformances, but none of them is in the area, state, '
-            'Defect code, Product, severity or dates you picked.',
-        actionLabel: 'Clear the filters',
+        title: l10n.nonconformancesNoMatchTitle,
+        message: l10n.nonconformancesNoMatchMessage,
+        actionLabel: l10n.nonconformancesClearTheFilters,
         actionKey: NonconformancesScreen.emptyClearFiltersKey,
         onAction: () =>
             context.read<NonconformancesBloc>().add(const NonconformancesFiltersCleared()),
       );
     }
-    return const PlatformEmptyState.noneExist(
+    return PlatformEmptyState.noneExist(
       key: NonconformancesScreen.emptyKey,
-      title: 'Nothing has been found not to conform',
-      message: 'No Non-conformance has been recorded at this Site.',
+      title: l10n.nonconformancesNoneExistTitle,
+      message: l10n.nonconformancesNoneExistMessage,
       icon: Icons.fact_check_outlined,
     );
   }
@@ -505,7 +521,10 @@ double _stateColumnWidth(BuildContext context) {
 
 double _openColumnWidth(BuildContext context) {
   final painter = TextPainter(
-    text: TextSpan(text: 'Open', style: Theme.of(context).textTheme.labelLarge),
+    text: TextSpan(
+      text: AppLocalizations.of(context).commonOpen,
+      style: Theme.of(context).textTheme.labelLarge,
+    ),
     textDirection: Directionality.of(context),
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,
@@ -518,14 +537,17 @@ double _openColumnWidth(BuildContext context) {
 }
 
 /// The register's one column spec, spent by the band and by every row.
-List<AppTableColumn> _columns(BuildContext context) => [
-      AppTableColumn('Non-conformance', width: _numberColumnWidth(context)),
-      const AppTableColumn('What was found', flex: 4),
-      AppTableColumn('State', width: _stateColumnWidth(context)),
-      const AppTableColumn('Quantity', flex: 2, align: AppColumnAlign.end),
-      const AppTableColumn('Filed', flex: 3),
-      AppTableColumn('Actions', width: _openColumnWidth(context), align: AppColumnAlign.end),
-    ];
+List<AppTableColumn> _columns(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return [
+    AppTableColumn(l10n.nonconformancesNumberColumn, width: _numberColumnWidth(context)),
+    AppTableColumn(l10n.nonconformancesFoundColumn, flex: 4),
+    AppTableColumn(l10n.commonState, width: _stateColumnWidth(context)),
+    AppTableColumn(l10n.commonQuantity, flex: 2, align: AppColumnAlign.end),
+    AppTableColumn(l10n.nonconformancesFiledColumn, flex: 3),
+    AppTableColumn(l10n.commonActions, width: _openColumnWidth(context), align: AppColumnAlign.end),
+  ];
+}
 
 Widget _shrinkWrapTargets(BuildContext context, Widget child) => Theme(
       data: Theme.of(context).copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
@@ -534,10 +556,12 @@ Widget _shrinkWrapTargets(BuildContext context, Widget child) => Theme(
 
 /// The count, and whether it has grown since it was first written down — a
 /// reader deciding what to do about it needs the number that is true now.
-String _quantityLabel(Nonconformance row) =>
-    '${_number(row.quantityAffected)} ${row.uomCode} affected'
-    '${row.quantityChanged ? ' · raised ${row.quantityChanges.length} time'
-        '${row.quantityChanges.length == 1 ? '' : 's'}' : ''}';
+String _quantityLabel(BuildContext context, Nonconformance row) {
+  final l10n = AppLocalizations.of(context);
+  final affected = l10n.nonconformanceQuantityAffected(_number(row.quantityAffected), row.uomCode);
+  if (!row.quantityChanged) return affected;
+  return '$affected · ${l10n.nonconformanceQuantityRaised(row.quantityChanges.length)}';
+}
 
 class _Register extends StatelessWidget {
   const _Register({required this.rows});
@@ -585,6 +609,7 @@ class _NonconformanceTableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final dense = AppTypography.dense(context);
     final row = nonconformance;
 
@@ -619,12 +644,12 @@ class _NonconformanceTableRow extends StatelessWidget {
             ),
           ),
           DisclosingText(
-            _quantityLabel(row),
+            _quantityLabel(context, row),
             key: NonconformancesScreen.rowQuantityKey(row.id),
             style: AppTableRow.numberStyle(context)?.copyWith(color: palette.textPrimary),
           ),
           DisclosingText(
-            '${row.orgUnitName} · filed against ${row.filedAgainst}',
+            l10n.nonconformanceFiledAgainst(row.orgUnitName, row.filedAgainst),
             key: NonconformancesScreen.rowFiledKey(row.id),
             style: dense?.copyWith(color: palette.textMuted),
           ),
@@ -648,7 +673,7 @@ class _NonconformanceTableRow extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                   ),
-                  child: const Text('Open'),
+                  child: Text(l10n.commonOpen),
                 ),
               ],
             ),
@@ -667,6 +692,7 @@ class _NonconformanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final row = nonconformance;
 
     return Card(
@@ -716,13 +742,13 @@ class _NonconformanceCard extends StatelessWidget {
               ),
               const SizedBox(height: Spacing.xxs),
               Text(
-                _quantityLabel(row),
+                _quantityLabel(context, row),
                 key: NonconformancesScreen.rowQuantityKey(row.id),
                 style: AppTypography.dense(context)?.copyWith(color: palette.textPrimary),
               ),
               const SizedBox(height: Spacing.xxs),
               Text(
-                '${row.orgUnitName} · filed against ${row.filedAgainst}',
+                l10n.nonconformanceFiledAgainst(row.orgUnitName, row.filedAgainst),
                 key: NonconformancesScreen.rowFiledKey(row.id),
                 style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
               ),
@@ -739,7 +765,7 @@ class _NonconformanceCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                     ),
-                    child: const Text('Open'),
+                    child: Text(l10n.commonOpen),
                   ),
                   const SizedBox(width: Spacing.xs),
                   SlideShowToggle(
