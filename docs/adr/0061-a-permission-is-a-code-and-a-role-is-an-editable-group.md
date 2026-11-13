@@ -200,7 +200,7 @@ handover and the Assets it lists — not reference data several Screens read, so
 this section's rule gives them a code rather than a place in the table. The code
 is seeded on every role, so nothing changes for a caller today; what changed is
 that an administrator can now take the Production handover off a role. The same
-slice put the Module's eleven writes behind `PRD_HANDOVER_WRITE` and its one
+slice put the Module's ten writes behind `PRD_HANDOVER_WRITE` and its one
 acknowledgement behind `PRD_HANDOVER_ACKNOWLEDGE`.
 
 #### Reads that carry no code and are not settled by this section

@@ -336,7 +336,7 @@ test('removing PRD_HANDOVER_DISPLAY from every role refuses exactly the four rea
 });
 
 // ---------------------------------------------------------------------------
-// The writes: eleven addresses, one code.
+// The writes: ten addresses, one code.
 // ---------------------------------------------------------------------------
 
 test('removing PRD_HANDOVER_WRITE refuses the writes and leaves the reads answering', async () => {
