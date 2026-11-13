@@ -203,14 +203,29 @@ that an administrator can now take the Production handover off a role. The same
 slice put the Module's eleven writes behind `PRD_HANDOVER_WRITE` and its one
 acknowledgement behind `PRD_HANDOVER_ACKNOWLEDGE`.
 
-#### Reads that carry no code and are not settled by this section
+The last two addresses that stood here as outstanding work have settled the same
+way, and this slice is what closes the retrofit: `GET /api/people/accounts` and
+`/accounts/pending` now ask `ADM_ACCOUNTS_DISPLAY` in place of the legacy
+`requireAdmin` role comparison. The code is seeded on `ROLE_ADMIN` alone —
+exactly the set `requireAdmin` admitted — so no caller's answer changed and no
+Screen lost a door; what changed is that the Accounts register can now be taken
+off a role in the Roles Screen. The same slice put `POST
+/api/maintenance/parts` behind `MTN_PARTS_CHANGE`, and that one **widens**: the
+code is carried by engineer and manager as well as administrator, so an engineer
+can now define a Part where `requireAdmin` refused it. The seed already declared
+that an engineer maintains Part master data, and the role comparison was the
+leftover that made the model lie; an administrator who disagrees takes the code
+off `ROLE_ENGINEER` and `ROLE_MANAGER` in the Roles Screen, which is the point of
+the model.
 
-Named here so the table above is never read as approval of them. Neither group
-is shared reference data; both are retrofit work with a card of their own.
-
-| Route | What is outstanding |
-| --- | --- |
-| `GET /api/people/accounts`, `/accounts/pending` | These ask the legacy `requireAdmin` rather than `ADM_ACCOUNTS_DISPLAY`. The answer is the same today — the code is seeded on administrators only — so this is a rename waiting for its slice, not a shared read. |
+No **read** outside Production asks the role comparison any more. Some **writes**
+still do — the five Account writes in `people/routes.js` (the Approval queue's
+decisions, a role/deactivation edit, the Employee link and a password reset),
+`POST /api/people/sites`, a root Org Unit create and the technician-credential
+write — and each of those needs its own choice between the `ADM_APPROVALS_*` and
+`ADM_ACCOUNTS_CHANGE` codes rather than the read code above, so they are the next
+slice's work rather than this one's. They are writes, so this section's register
+does not list them.
 
 #### Reads no code could name
 
