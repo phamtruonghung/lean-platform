@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_scan_field.dart';
@@ -112,23 +113,24 @@ class _OrgUnitFormDialogState extends State<OrgUnitFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<OrgUnitAdminBloc, OrgUnitAdminState>(
       listener: _onAdminChanged,
       child: AppDialog(
-        title: widget.parentId == null ? 'Add root Org Unit' : 'Add Org Unit',
+        title: widget.parentId == null ? l10n.commonAddRootOrgUnit : l10n.orgUnitFormAddOrgUnit,
         size: AppDialogSize.picker,
         // `child` last, as `sort_child_properties_last` requires.
         actions: [
           AppDialogAction(
             id: 'org-unit-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'org-unit-form-submit',
-            label: _awaiting ? 'Saving…' : 'Add Org Unit',
+            label: _awaiting ? l10n.commonSaving : l10n.orgUnitFormAddOrgUnit,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -141,7 +143,7 @@ class _OrgUnitFormDialogState extends State<OrgUnitFormDialog> {
                 AppScanField(
                   key: OrgUnitFormDialog.codeKey,
                   controller: _code,
-                  label: 'Code',
+                  label: l10n.commonCode,
                   enabled: !_awaiting,
                   autofocus: true,
                   onChanged: (_) => setState(() {}),
@@ -152,13 +154,13 @@ class _OrgUnitFormDialogState extends State<OrgUnitFormDialog> {
                   controller: _name,
                   enabled: !_awaiting,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: Spacing.md),
                 DropdownButtonFormField<String>(
                   key: OrgUnitFormDialog.unitTypeKey,
                   initialValue: _unitType,
-                  decoration: const InputDecoration(labelText: 'Unit type', border: OutlineInputBorder()),
+                  decoration: InputDecoration(labelText: l10n.orgUnitFormUnitType, border: OutlineInputBorder()),
                   items: [
                     for (final unitType in OrgUnitTypes.values)
                       DropdownMenuItem<String>(value: unitType, child: Text(unitType)),
@@ -176,8 +178,8 @@ class _OrgUnitFormDialogState extends State<OrgUnitFormDialog> {
                   controller: _sortOrder,
                   enabled: !_awaiting,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Sort order (optional)',
+                  decoration: InputDecoration(
+                    labelText: l10n.orgUnitFormSortOrderOptional,
                     border: OutlineInputBorder(),
                   ),
                 ),

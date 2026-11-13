@@ -33,6 +33,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -88,6 +89,7 @@ class JobRolesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<JobRolesBloc>().state;
 
     return Scaffold(
@@ -99,7 +101,7 @@ class JobRolesScreen extends StatelessWidget {
         JobRolesLoading() => const SkeletonList(maxWidth: JobRolesScreen.maxWidth),
         JobRolesUnavailable(message: final message) => PlatformFailureState(
             key: JobRolesScreen.failedKey,
-            title: 'The job role catalogue could not be read',
+            title: l10n.jobRolesTheJobRoleCatalogueCouldNotBe,
             message: message,
             retryKey: JobRolesScreen.retryKey,
             onRetry: () => context.read<JobRolesBloc>().add(const JobRolesStarted()),
@@ -146,6 +148,7 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingJobRoles;
@@ -156,8 +159,8 @@ class _LoadedState extends State<_Loaded> {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Job roles',
-              description: 'What an Employee does — defined once, shared by every Site.',
+              title: l10n.navJobRoles,
+              description: l10n.jobRolesWhatAnEmployeeDoesDefinedOnceShared,
               actions: [
                 if (widget.isAdmin)
                   FilledButton.icon(
@@ -166,7 +169,7 @@ class _LoadedState extends State<_Loaded> {
                         ? null
                         : () => JobRoleFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add job role'),
+                    label: Text(l10n.commonAddJobRole),
                   ),
               ],
             ),
@@ -178,18 +181,18 @@ class _LoadedState extends State<_Loaded> {
               // one to tell until it has rows.
               PlatformEmptyState.noneExist(
                 key: JobRolesScreen.emptyKey,
-                title: 'No job roles yet',
-                message: 'Nothing has been defined in the catalogue.',
+                title: l10n.jobRolesNoJobRolesYet,
+                message: l10n.commonNothingHasBeenDefinedInTheCatalogue,
                 icon: Icons.badge_outlined,
-                actionLabel: widget.isAdmin ? 'Add job role' : null,
+                actionLabel: widget.isAdmin ? l10n.commonAddJobRole : null,
                 actionKey: JobRolesScreen.emptyAddKey,
                 onAction: widget.isAdmin ? () => JobRoleFormDialog.open(context) : null,
               )
             else ...[
               AppFilterField(
                 name: JobRolesScreen.filterFieldName,
-                label: 'Filter job roles',
-                helperText: 'By name or code.',
+                label: l10n.jobRolesFilterJobRoles,
+                helperText: l10n.jobRolesByNameOrCode,
                 term: _term,
                 onChanged: (term) => setState(() => _term = term),
                 shown: matches.length,
@@ -199,9 +202,8 @@ class _LoadedState extends State<_Loaded> {
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: JobRolesScreen.noMatchKey,
-                  title: 'No job roles match',
-                  message: 'Nothing in the catalogue matches "${_term.trim()}". Try a '
-                      'different name or code, or clear the filter.',
+                  title: l10n.jobRolesNoJobRolesMatch,
+                  message: l10n.jobRolesNothingInTheCatalogueMatchesTryA(_term.trim()),
                 )
               else
                 // One row per job role, ruled apart from its neighbours — the
@@ -237,6 +239,7 @@ class _JobRoleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     // The two tones of one line, not two widgets: `Text.rich` keeps the
     // sentence ("Welder · WELD") whole for a screen reader and for the string
@@ -268,7 +271,7 @@ class _JobRoleRow extends StatelessWidget {
         Flexible(child: line),
         if (!jobRole.isActive) ...[
           const SizedBox(width: Spacing.sm),
-          StatusChip(key: JobRolesScreen.inactiveChipKey(jobRole.id), label: 'Inactive', tone: StatusTone.neutral),
+          StatusChip(key: JobRolesScreen.inactiveChipKey(jobRole.id), label: l10n.commonInactive, tone: StatusTone.neutral),
         ],
       ],
     );
@@ -277,7 +280,7 @@ class _JobRoleRow extends StatelessWidget {
         ? OutlinedButton(
             key: JobRolesScreen.correctKey(jobRole.id),
             onPressed: isMutating ? null : () => JobRoleFormDialog.open(context, jobRole: jobRole),
-            child: const Text('Correct'),
+            child: Text(l10n.commonCorrect),
           )
         : null;
 

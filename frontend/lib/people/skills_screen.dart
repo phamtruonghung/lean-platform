@@ -41,6 +41,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -103,6 +104,7 @@ class SkillsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SkillsBloc>().state;
 
     return Scaffold(
@@ -113,7 +115,7 @@ class SkillsScreen extends StatelessWidget {
         SkillsLoading() => const SkeletonList(maxWidth: SkillsScreen.maxWidth),
         SkillsUnavailable(message: final message) => PlatformFailureState(
             key: SkillsScreen.failedKey,
-            title: 'The skill catalogue could not be read',
+            title: l10n.skillsTheSkillCatalogueCouldNotBeRead,
             message: message,
             retryKey: SkillsScreen.retryKey,
             onRetry: () => context.read<SkillsBloc>().add(const SkillsStarted()),
@@ -161,6 +163,7 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingSkills;
@@ -171,10 +174,9 @@ class _LoadedState extends State<_Loaded> {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Skills',
+              title: l10n.navSkills,
               description:
-                  'What the plant qualifies an Employee to do — defined once, shared by '
-                  'every Site.',
+                  l10n.skillsWhatThePlantQualifiesAnEmployeeTo,
               actions: [
                 if (widget.isAdmin)
                   FilledButton.icon(
@@ -182,7 +184,7 @@ class _LoadedState extends State<_Loaded> {
                     onPressed:
                         widget.state.isMutating ? null : () => SkillFormDialog.open(context),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add skill'),
+                    label: Text(l10n.commonAddSkill),
                   ),
               ],
             ),
@@ -194,18 +196,18 @@ class _LoadedState extends State<_Loaded> {
               // to narrow, so "no skill matches" cannot arise here.
               PlatformEmptyState.noneExist(
                 key: SkillsScreen.emptyKey,
-                title: 'No skills yet',
-                message: 'Nothing has been defined in the catalogue.',
+                title: l10n.skillsNoSkillsYet,
+                message: l10n.commonNothingHasBeenDefinedInTheCatalogue,
                 icon: Icons.school_outlined,
-                actionLabel: widget.isAdmin ? 'Add skill' : null,
+                actionLabel: widget.isAdmin ? l10n.commonAddSkill : null,
                 actionKey: SkillsScreen.emptyAddKey,
                 onAction: widget.isAdmin ? () => SkillFormDialog.open(context) : null,
               )
             else ...[
               AppFilterField(
                 name: SkillsScreen.filterFieldName,
-                label: 'Filter skills',
-                helperText: 'By name, code or category.',
+                label: l10n.skillsFilterSkills,
+                helperText: l10n.skillsByNameCodeOrCategory,
                 term: _term,
                 onChanged: (term) => setState(() => _term = term),
                 shown: matches.length,
@@ -215,9 +217,8 @@ class _LoadedState extends State<_Loaded> {
               if (matches.isEmpty)
                 PlatformEmptyState.noneMatched(
                   key: SkillsScreen.noMatchKey,
-                  title: 'No skills match',
-                  message: 'Nothing in the catalogue matches "${_term.trim()}". Try a '
-                      'different name, code or category, or clear the filter.',
+                  title: l10n.skillsNoSkillsMatch,
+                  message: l10n.skillsNothingInTheCatalogueMatchesTryA(_term.trim()),
                 )
               else
                 AppListCard(
@@ -249,6 +250,7 @@ class _SkillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     // One line, two tones: the name a reader scans for at w600 in
     // `textPrimary`, and the code with its category as the quieter tail in
@@ -280,7 +282,7 @@ class _SkillRow extends StatelessWidget {
         Flexible(child: line),
         if (!skill.isActive) ...[
           const SizedBox(width: Spacing.sm),
-          StatusChip(key: SkillsScreen.inactiveChipKey(skill.id), label: 'Inactive', tone: StatusTone.neutral),
+          StatusChip(key: SkillsScreen.inactiveChipKey(skill.id), label: l10n.commonInactive, tone: StatusTone.neutral),
         ],
       ],
     );
@@ -289,13 +291,13 @@ class _SkillRow extends StatelessWidget {
       OutlinedButton(
         key: SkillsScreen.whoHoldsKey(skill.id),
         onPressed: () => SkillQualifiedEmployeesDialog.open(context, skill),
-        child: const Text('Who holds this'),
+        child: Text(l10n.skillsWhoHoldsThis),
       ),
       if (isAdmin)
         OutlinedButton(
           key: SkillsScreen.correctKey(skill.id),
           onPressed: isMutating ? null : () => SkillFormDialog.open(context, skill: skill),
-          child: const Text('Correct'),
+          child: Text(l10n.commonCorrect),
         ),
     ];
 

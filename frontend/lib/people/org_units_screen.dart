@@ -57,6 +57,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../status_tone.dart';
@@ -191,6 +192,7 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final pickerState = context.watch<OrgUnitPickerBloc>().state;
     final adminState = context.watch<OrgUnitAdminBloc>().state;
@@ -206,10 +208,9 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
               padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
               children: [
                 AppPageHeader(
-                  title: 'Org Units',
+                  title: l10n.navOrgUnits,
                   description:
-                      "A Site's own shape — where a KPI is measured, an Account is "
-                      'granted, and an Asset sits.',
+                      l10n.orgUnitsASiteSOwnShapeWhereA,
                   actions: [
                     if (widget.isAdmin)
                       FilledButton.icon(
@@ -218,7 +219,7 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                             ? null
                             : () => SiteFormDialog.open(context),
                         icon: const Icon(Icons.add_business_outlined),
-                        label: const Text('Add Site'),
+                        label: Text(l10n.commonAddSite),
                       ),
                     if (widget.isAdmin)
                       OutlinedButton.icon(
@@ -230,7 +231,7 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                             ? null
                             : () => SiteFormDialog.open(context, site: pickerState.site),
                         icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Edit Site'),
+                        label: Text(l10n.commonEditSite),
                       ),
                   ],
                 ),
@@ -249,7 +250,7 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                 else if (pickerState.sitesStatus == SitesStatus.failed)
                   PlatformFailureState(
                     key: OrgUnitsScreen.sitesFailureKey,
-                    title: 'The Sites could not be read',
+                    title: l10n.orgUnitsTheSitesCouldNotBeRead,
                     message: pickerState.sitesFailure!,
                     retryKey: OrgUnitsScreen.sitesRetryKey,
                     onRetry: () =>
@@ -259,18 +260,18 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                   // The shared empty state (#103), so "no Sites yet" reads the
                   // same here as on every other register — the sentence this
                   // branch has always shown is its title, unchanged.
-                  const PlatformEmptyState.noneExist(
+                  PlatformEmptyState.noneExist(
                     key: OrgUnitsScreen.emptySitesKey,
-                    title: 'There are no Sites yet.',
-                    message: 'An administrator adds the first Site; every Org Unit sits beneath one.',
+                    title: l10n.orgUnitsThereAreNoSitesYet,
+                    message: l10n.orgUnitsAnAdministratorAddsTheFirstSiteEvery,
                     icon: Icons.add_business_outlined,
                   )
                 else ...[
                   if (siteId != null) ...[
                     AppSearchField<OrgUnitNode>(
                       name: OrgUnitsScreen._searchFieldName,
-                      label: 'Find an Org Unit by name',
-                      helperText: 'Picking one reveals and selects it in the tree below.',
+                      label: l10n.orgUnitsFindAnOrgUnitByName,
+                      helperText: l10n.orgUnitsPickingOneRevealsAndSelectsItIn,
                       value: null,
                       onChanged: (_) {},
                       onSelected: (orgUnit) => _onSuggestionSelected(context, orgUnit),
@@ -293,7 +294,7 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                               initialValue: siteId,
                               isDense: true,
                               decoration:
-                                  const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                                  InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
                               items: [
                                 for (final site in pickerState.sites)
                                   DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -316,13 +317,13 @@ class _OrgUnitsScreenState extends State<OrgUnitsScreen> {
                                 : () =>
                                     OrgUnitFormDialog.open(context, siteId: siteId, parentId: null),
                             icon: const Icon(Icons.add),
-                            label: const Text('Add root Org Unit'),
+                            label: Text(l10n.commonAddRootOrgUnit),
                           ),
                         OutlinedButton.icon(
                           key: OrgUnitsScreen.importKey,
                           onPressed: () => OrgUnitImportDialog.open(context, siteId: siteId),
                           icon: const Icon(Icons.upload_file_outlined),
-                          label: const Text('Import a branch'),
+                          label: Text(l10n.commonImportABranch),
                         ),
                       ],
                     ),
@@ -367,6 +368,7 @@ class _SuggestionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
@@ -379,7 +381,7 @@ class _SuggestionTile extends StatelessWidget {
                 child: Text('${orgUnit.name} · ${orgUnit.code}', style: theme.textTheme.bodyMedium),
               ),
               if (!orgUnit.isActive)
-                StatusChip(label: 'Retired', tone: StatusTone.neutral),
+                StatusChip(label: l10n.orgUnitsRetired, tone: StatusTone.neutral),
             ],
           ),
           if (ancestorNames.isNotEmpty)
@@ -402,6 +404,7 @@ class _Tree extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (state.rootsLoading) {
       // The same ghost the Site panel shows while it reads (#103): the tree is
       // an `AppListCard` of rows, so its placeholder is three of them.
@@ -417,7 +420,7 @@ class _Tree extends StatelessWidget {
     if (state.rootsFailure != null) {
       return PlatformFailureState(
         key: OrgUnitsScreen.treeFailureKey,
-        title: 'The Org Unit tree could not be read',
+        title: l10n.orgUnitsTheOrgUnitTreeCouldNotBe,
         message: state.rootsFailure!,
         retryKey: OrgUnitsScreen.treeRetryKey,
         onRetry: () => context
@@ -426,10 +429,10 @@ class _Tree extends StatelessWidget {
       );
     }
     if (state.rows.isEmpty) {
-      return const PlatformEmptyState.noneExist(
+      return PlatformEmptyState.noneExist(
         key: OrgUnitsScreen.emptyTreeKey,
-        title: 'Nothing to browse in this Site yet.',
-        message: 'An administrator adds the first Org Unit, or imports a branch.',
+        title: l10n.orgUnitsNothingToBrowseInThisSiteYet,
+        message: l10n.orgUnitsAnAdministratorAddsTheFirstOrgUnit,
         icon: Icons.account_tree_outlined,
       );
     }
@@ -473,6 +476,7 @@ class _TreeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final bloc = context.read<OrgUnitPickerBloc>();
     final node = row.node;
@@ -500,7 +504,7 @@ class _TreeRow extends StatelessWidget {
                         key: OrgUnitsScreen.expandKey(node.id),
                         padding: EdgeInsets.zero,
                         iconSize: 18,
-                        tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                        tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                         onPressed: () => bloc.add(
                           row.isExpanded
                               ? OrgUnitPickerCollapsed(node.id)
@@ -530,7 +534,7 @@ class _TreeRow extends StatelessWidget {
                     // it.
                     if (row.childrenLoaded && row.childCount > 0)
                       Text(
-                        '${row.childCount} below',
+                        l10n.orgUnitsBelow(row.childCount),
                         style: AppTypography.floor(context)
                             ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
@@ -541,11 +545,11 @@ class _TreeRow extends StatelessWidget {
                 Padding(
                   key: OrgUnitsScreen.retiredChipKey(node.id),
                   padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                  child: StatusChip(label: 'Retired', tone: StatusTone.neutral),
+                  child: StatusChip(label: l10n.orgUnitsRetired, tone: StatusTone.neutral),
                 ),
               IconButton(
                 key: OrgUnitsScreen.addChildKey(node.id),
-                tooltip: 'Add an Org Unit here',
+                tooltip: l10n.orgUnitsAddAnOrgUnitHere,
                 iconSize: 18,
                 onPressed: isMutating
                     ? null
@@ -556,7 +560,7 @@ class _TreeRow extends StatelessWidget {
                   ? OutlinedButton(
                       key: OrgUnitsScreen.retireKey(node.id),
                       onPressed: isMutating ? null : () => _retire(context, node, refreshParentId),
-                      child: const Text('Retire'),
+                      child: Text(l10n.orgUnitsRetire),
                     )
                   : OutlinedButton(
                       key: OrgUnitsScreen.reinstateKey(node.id),
@@ -569,7 +573,7 @@ class _TreeRow extends StatelessWidget {
                                   refreshParentId: refreshParentId,
                                 ),
                               ),
-                      child: const Text('Reinstate'),
+                      child: Text(l10n.commonReinstate),
                     ),
             ],
           ),
@@ -588,15 +592,15 @@ class _TreeRow extends StatelessWidget {
   }
 
   Future<void> _retire(BuildContext context, OrgUnitNode node, String? refreshParentId) async {
+    final l10n = AppLocalizations.of(context);
     final bloc = context.read<OrgUnitAdminBloc>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AppConfirmDialog(
-        title: 'Retire this Org Unit?',
+        title: l10n.orgUnitsRetireThisOrgUnit,
         description:
-            '${node.name} will read as retired rather than deleted, and can be '
-            'reinstated at any time.',
-        confirmLabel: 'Retire',
+            l10n.orgUnitsWillReadAsRetiredRatherThanDeleted(node.name),
+        confirmLabel: l10n.orgUnitsRetire,
         dismissLabel: 'Cancel',
         onConfirm: () => Navigator.of(dialogContext).pop(true),
         onDismiss: () => Navigator.of(dialogContext).pop(false),

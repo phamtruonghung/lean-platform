@@ -39,6 +39,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
@@ -94,13 +95,13 @@ class TrainingScreen extends StatelessWidget {
   /// The band, stated once: the labels and the cells are built from it, so a
   /// label and its cells start at the same x by construction
   /// (`docs/frontend-layout.md` §4).
-  static const List<AppTableColumn> columns = <AppTableColumn>[
-    AppTableColumn('Record', flex: 3),
-    AppTableColumn('Training', flex: 5),
-    AppTableColumn('Trainees', flex: 5),
-    AppTableColumn('Trained on', flex: 2),
-    AppTableColumn('Answers', flex: 2, align: AppColumnAlign.end),
-    AppTableColumn('State', width: 104),
+  static List<AppTableColumn> columns(AppLocalizations l10n) => <AppTableColumn>[
+    AppTableColumn(l10n.trainingRecord, flex: 3),
+    AppTableColumn(l10n.navTraining, flex: 5),
+    AppTableColumn(l10n.trainingTrainees, flex: 5),
+    AppTableColumn(l10n.commonTrainedOn, flex: 2),
+    AppTableColumn(l10n.trainingAnswers, flex: 2, align: AppColumnAlign.end),
+    AppTableColumn(l10n.commonState, width: 104),
     // The row's own action column: an unlabelled slot at the far end, so the
     // printed form sits at the card's right edge rather than inside another
     // cell (`docs/frontend-layout.md` §6).
@@ -149,6 +150,7 @@ class _RegisterBodyState extends State<_RegisterBody> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<TrainingBloc>().state;
     final bloc = context.read<TrainingBloc>();
@@ -157,7 +159,7 @@ class _RegisterBodyState extends State<_RegisterBody> {
     if (state.failure != null) {
       content = PlatformFailureState(
         key: TrainingScreen.failureKey,
-        title: 'Training records could not be read',
+        title: l10n.trainingTrainingRecordsCouldNotBeRead,
         message: state.failure!,
         retryKey: TrainingScreen.retryKey,
         onRetry: () => bloc.add(const TrainingStarted()),
@@ -169,19 +171,19 @@ class _RegisterBodyState extends State<_RegisterBody> {
       );
     } else if (state.records.isEmpty) {
       content = state.isFiltered
-          ? const PlatformEmptyState.noneMatched(
+          ? PlatformEmptyState.noneMatched(
               key: TrainingScreen.emptyKey,
-              title: 'No Training records match',
-              message: 'Nothing was trained under that Org Unit in those days.',
+              title: l10n.trainingNoTrainingRecordsMatch,
+              message: l10n.trainingNothingWasTrainedUnderThatOrgUnit,
             )
           : PlatformEmptyState.noneExist(
               key: TrainingScreen.emptyKey,
-              title: 'No Training records yet',
+              title: l10n.trainingNoTrainingRecordsYet,
               message: widget.canRaise
-                  ? 'Raise a Training record to start the register.'
-                  : 'Nothing has been recorded as trained yet.',
+                  ? l10n.trainingRaiseATrainingRecordToStartThe
+                  : l10n.trainingNothingHasBeenRecordedAsTrainedYet,
               icon: Icons.school_outlined,
-              actionLabel: widget.canRaise ? 'Raise training record' : null,
+              actionLabel: widget.canRaise ? l10n.commonRaiseTrainingRecord : null,
               actionKey: TrainingScreen.emptyRaiseKey,
               onAction: widget.canRaise ? () => TrainingRaiseDialog.open(context) : null,
             );
@@ -204,7 +206,7 @@ class _RegisterBodyState extends State<_RegisterBody> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const AppTableHeader(columns: TrainingScreen.columns),
+                AppTableHeader(columns: TrainingScreen.columns(l10n)),
                 for (final record in state.records) _TrainingTableRow(record: record),
               ],
             ),
@@ -221,15 +223,15 @@ class _RegisterBodyState extends State<_RegisterBody> {
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
               AppPageHeader(
-                title: 'Training records',
-                description: 'What the plant has trained people on, and when.',
+                title: l10n.titleTrainingRecords,
+                description: l10n.trainingWhatThePlantHasTrainedPeopleOn,
                 actions: [
                   if (widget.canRaise)
                     FilledButton.icon(
                       key: TrainingScreen.raiseKey,
                       onPressed: () => TrainingRaiseDialog.open(context),
                       icon: const Icon(Icons.add),
-                      label: const Text('Raise training record'),
+                      label: Text(l10n.commonRaiseTrainingRecord),
                     ),
                 ],
               ),
@@ -248,7 +250,7 @@ class _RegisterBodyState extends State<_RegisterBody> {
                     child: AppDateField(
                       key: TrainingScreen.fromFieldKey,
                       name: 'training-from',
-                      label: 'From',
+                      label: l10n.commonFrom,
                       value: state.from,
                       optional: true,
                       onChanged: (value) => bloc.add(TrainingFromChosen(value)),
@@ -259,7 +261,7 @@ class _RegisterBodyState extends State<_RegisterBody> {
                     child: AppDateField(
                       key: TrainingScreen.toFieldKey,
                       name: 'training-to',
-                      label: 'To',
+                      label: l10n.commonTo,
                       value: state.to,
                       optional: true,
                       onChanged: (value) => bloc.add(TrainingToChosen(value)),
@@ -274,8 +276,7 @@ class _RegisterBodyState extends State<_RegisterBody> {
                   key: TrainingScreen.truncatedKey,
                   padding: const EdgeInsets.only(bottom: Spacing.sm),
                   child: Text(
-                    'There are more Training records than this list shows. Narrow it by Org Unit or '
-                    'by dates to see the rest.',
+                    l10n.trainingThereAreMoreTrainingRecordsThanThis,
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
@@ -298,11 +299,12 @@ class _TrainingTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     return AppTableRow(
       key: TrainingScreen.rowKey(record.id),
-      columns: TrainingScreen.columns,
+      columns: TrainingScreen.columns(l10n),
       onTap: () => context.go('${Routes.training}/${record.id}'),
       cells: [
         DisclosingText(record.number, style: dense?.copyWith(color: palette.textMuted)),
@@ -331,7 +333,7 @@ class _TrainingTableRow extends StatelessWidget {
         // own tap target so the two never fight over one gesture.
         IconButton(
           key: TrainingScreen.formKey(record.id),
-          tooltip: 'The form for ${record.number}',
+          tooltip: l10n.trainingTheFormFor(record.number),
           icon: const Icon(Icons.description_outlined),
           onPressed: () => context.go(Routes.trainingForm(record.id)),
         ),
@@ -357,20 +359,21 @@ class _OrgUnitFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     if (state.orgUnitId != null) {
       return Row(
         children: [
           Expanded(
             child: Text(
-              'Org Unit: ${state.orgUnitName}',
+              l10n.commonOrgUnit2(state.orgUnitName ?? ''),
               key: TrainingScreen.orgUnitChosenKey,
               style: theme.textTheme.titleMedium,
             ),
           ),
           IconButton(
             key: TrainingScreen.orgUnitClearKey,
-            tooltip: 'Clear',
+            tooltip: l10n.commonClear,
             icon: const Icon(Icons.close),
             onPressed: () {
               bloc.add(const TrainingOrgUnitCleared());
@@ -390,7 +393,7 @@ class _OrgUnitFilter extends StatelessWidget {
             key: TrainingScreen.orgUnitBrowseToggleKey,
             onPressed: onToggleBrowse,
             icon: const Icon(Icons.account_tree_outlined),
-            label: Text(browsing ? 'Hide Org Units' : 'Filter by Org Unit'),
+            label: Text(browsing ? l10n.commonHideOrgUnits : l10n.commonFilterByOrgUnit),
           ),
         ),
         if (browsing) ...[
@@ -409,6 +412,7 @@ class _OrgUnitBrowser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
     final pickerBloc = context.read<OrgUnitPickerBloc>();
@@ -419,13 +423,13 @@ class _OrgUnitBrowser extends StatelessWidget {
         child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
       );
     } else if (state.sitesStatus == SitesStatus.failed) {
-      body = Text(state.sitesFailure ?? 'The Sites are unavailable.');
+      body = Text(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
     } else if (state.rootsFailure != null) {
       body = Text(state.rootsFailure!);
     } else if (state.sites.isEmpty) {
-      body = const Text('There are no Sites to browse yet.');
+      body = Text(l10n.commonThereAreNoSitesToBrowseYet);
     } else if (state.rows.isEmpty) {
-      body = const Text('Nothing to browse in this Site.');
+      body = Text(l10n.commonNothingToBrowseInThisSite);
     } else {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -440,7 +444,7 @@ class _OrgUnitBrowser extends StatelessWidget {
           DropdownButtonFormField<String>(
             initialValue: state.siteId,
             isDense: true,
-            decoration: const InputDecoration(labelText: 'Site'),
+            decoration: InputDecoration(labelText: l10n.commonSite),
             items: [
               for (final site in state.sites) DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
             ],
@@ -463,6 +467,7 @@ class _OrgUnitRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(left: row.depth * Spacing.lg),
       child: Row(
@@ -478,7 +483,7 @@ class _OrgUnitRow extends StatelessWidget {
                 : IconButton(
                     padding: EdgeInsets.zero,
                     iconSize: 18,
-                    tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                    tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                     onPressed: () => context.read<OrgUnitPickerBloc>().add(
                           row.isExpanded
                               ? OrgUnitPickerCollapsed(row.node.id)
@@ -514,6 +519,7 @@ class _TrainingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     final trainerName = record.trainerName;
@@ -563,7 +569,7 @@ class _TrainingRow extends StatelessWidget {
         // own tap target so the two never fight over one gesture.
         IconButton(
           key: TrainingScreen.formKey(record.id),
-          tooltip: 'The form for ${record.number}',
+          tooltip: l10n.trainingTheFormFor(record.number),
           icon: const Icon(Icons.description_outlined),
           onPressed: () => context.go(Routes.trainingForm(record.id)),
         ),

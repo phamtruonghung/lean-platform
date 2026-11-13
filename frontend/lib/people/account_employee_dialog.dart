@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'accounts_bloc.dart';
@@ -79,24 +80,25 @@ class _AccountEmployeeDialogState extends State<AccountEmployeeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocConsumer<AccountsBloc, AccountsState>(
       listener: _onAccountsChanged,
       builder: (context, state) {
         return AppDialog(
-          title: 'Change Employee link',
+          title: l10n.commonChangeEmployeeLink,
           size: AppDialogSize.form,
           // `child` last, as `sort_child_properties_last` requires.
           actions: [
             AppDialogAction(
               id: 'account-employee-cancel',
-              label: 'Cancel',
+              label: l10n.commonCancel,
               kind: AppDialogActionKind.dismiss,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
             ),
             AppDialogAction(
               id: 'account-employee-submit',
-              label: _awaiting ? 'Saving…' : 'Save',
+              label: _awaiting ? l10n.commonSaving : l10n.commonSave,
               onPressed: _awaiting ? null : _submit,
             ),
           ],
@@ -107,8 +109,7 @@ class _AccountEmployeeDialogState extends State<AccountEmployeeDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${widget.account.email} will be linked to the Employee chosen here, '
-                    'or to none.',
+                    l10n.accountEmployeeWillBeLinkedToTheEmployeeChosen(widget.account.email),
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),

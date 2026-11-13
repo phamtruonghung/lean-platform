@@ -21,6 +21,7 @@
 /// would be a second answer to the same question.
 library;
 
+import '../l10n/app_localizations.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -116,6 +117,7 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<RolesBloc>().state;
     final palette = AppColors.of(context);
     final failure = _failure;
@@ -130,18 +132,18 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
     return BlocListener<RolesBloc, RolesState>(
       listener: _onRolesChanged,
       child: AppDialog(
-        title: 'What ${widget.role.code} carries',
+        title: l10n.rolePermissionsWhatCarries(widget.role.code),
         size: AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: RolePermissionsDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: RolePermissionsDialog._submitId,
-            label: _awaiting ? 'Saving…' : 'Save',
+            label: _awaiting ? l10n.commonSaving : l10n.commonSave,
             onPressed: !_awaiting && _changed ? _submit : null,
           ),
         ],
@@ -150,7 +152,7 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${_selected.length} of $total permissions',
+              l10n.rolePermissionsOfPermissions(_selected.length, total),
               key: RolePermissionsDialog.countKey,
               style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
             ),

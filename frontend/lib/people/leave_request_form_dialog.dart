@@ -25,6 +25,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
@@ -97,6 +98,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<LeaveRequestsBloc>().state;
     final loaded = state is LeaveRequestsLoaded ? state : null;
@@ -105,25 +107,25 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
     return BlocListener<LeaveRequestsBloc, LeaveRequestsState>(
       listener: _onStateChanged,
       child: AppDialog(
-        title: 'Request leave',
+        title: l10n.commonRequestLeave,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: 'cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'submit',
-            label: _awaiting ? 'Requesting…' : 'Request leave',
+            label: _awaiting ? l10n.leaveRequestFormRequesting : l10n.commonRequestLeave,
             onPressed: _awaiting || !_complete || typesFailure != null ? null : _submit,
           ),
         ],
         child: typesFailure != null
             ? PlatformFailureState(
                 key: LeaveRequestFormDialog.typesFailedKey,
-                title: 'Leave types could not be read',
+                title: l10n.leaveRequestFormLeaveTypesCouldNotBeRead,
                 message: typesFailure,
                 retryKey: LeaveRequestFormDialog.typesRetryKey,
                 onRetry: () => context.read<LeaveRequestsBloc>().add(const LeaveTypesRequested()),
@@ -135,7 +137,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                   DropdownButtonFormField<String>(
                     key: LeaveRequestFormDialog.typeFieldKey,
                     initialValue: _typeId,
-                    decoration: const InputDecoration(labelText: 'Leave type'),
+                    decoration: InputDecoration(labelText: l10n.leaveRequestFormLeaveType),
                     items: [
                       for (final type in types)
                         DropdownMenuItem(value: type.id, child: Text(type.name)),
@@ -145,7 +147,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                   const SizedBox(height: Spacing.md),
                   AppDateField(
                     name: LeaveRequestFormDialog.startsOnName,
-                    label: 'First day',
+                    label: l10n.leaveRequestFormFirstDay,
                     value: _startsOn,
                     enabled: !_awaiting,
                     onChanged: (value) => setState(() => _startsOn = value),
@@ -153,7 +155,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                   const SizedBox(height: Spacing.md),
                   AppDateField(
                     name: LeaveRequestFormDialog.endsOnName,
-                    label: 'Last day',
+                    label: l10n.leaveRequestFormLastDay,
                     value: _endsOn,
                     enabled: !_awaiting,
                     onChanged: (value) => setState(() => _endsOn = value),
@@ -163,7 +165,7 @@ class _LeaveRequestFormDialogState extends State<LeaveRequestFormDialog> {
                     key: LeaveRequestFormDialog.noteKey,
                     controller: _note,
                     enabled: !_awaiting,
-                    decoration: const InputDecoration(labelText: 'Note (optional)'),
+                    decoration: InputDecoration(labelText: l10n.commonNoteOptional),
                   ),
                   if (_failure != null)
                     Padding(

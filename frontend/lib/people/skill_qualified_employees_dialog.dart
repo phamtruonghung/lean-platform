@@ -41,6 +41,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../status_tone.dart';
@@ -119,17 +120,18 @@ class _SkillQualifiedEmployeesDialogState extends State<SkillQualifiedEmployeesD
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final skillsState = context.watch<SkillsBloc>().state;
     final query = skillsState is SkillsLoaded ? skillsState.query : null;
 
     return AppDialog(
-      title: 'Who holds ${widget.skill.name}',
+      title: l10n.skillQualifiedEmployeesWhoHolds(widget.skill.name),
       size: AppDialogSize.wide,
       actions: [
         AppDialogAction(
           id: SkillQualifiedEmployeesDialog._closeId,
-          label: 'Close',
+          label: l10n.commonClose,
           kind: AppDialogActionKind.dismiss,
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -142,7 +144,7 @@ class _SkillQualifiedEmployeesDialogState extends State<SkillQualifiedEmployeesD
             header: true,
             container: true,
             child: Text(
-              'Scoped to',
+              l10n.skillQualifiedEmployeesScopedTo,
               style: AppTypography.dense(context)?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: palette.textPrimary,
@@ -158,12 +160,12 @@ class _SkillQualifiedEmployeesDialogState extends State<SkillQualifiedEmployeesD
           DropdownButtonFormField<int?>(
             key: SkillQualifiedEmployeesDialog.minimumLevelKey,
             initialValue: _minimumLevel,
-            decoration: const InputDecoration(
-              labelText: 'Minimum proficiency',
+            decoration: InputDecoration(
+              labelText: l10n.skillQualifiedEmployeesMinimumProficiency,
               border: OutlineInputBorder(),
             ),
-            items: const [
-              DropdownMenuItem<int?>(value: null, child: Text('Any')),
+            items: [
+              DropdownMenuItem<int?>(value: null, child: Text(l10n.commonAny)),
               DropdownMenuItem<int?>(value: 1, child: Text('1')),
               DropdownMenuItem<int?>(value: 2, child: Text('2')),
               DropdownMenuItem<int?>(value: 3, child: Text('3')),
@@ -177,7 +179,7 @@ class _SkillQualifiedEmployeesDialogState extends State<SkillQualifiedEmployeesD
             child: FilledButton(
               key: SkillQualifiedEmployeesDialog.searchKey,
               onPressed: _orgUnitId == null ? null : _search,
-              child: const Text('Search'),
+              child: Text(l10n.skillQualifiedEmployeesSearch),
             ),
           ),
           const SizedBox(height: Spacing.md),
@@ -195,11 +197,12 @@ class _Results extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final floor = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     if (query == null) {
       return Text(
-        'Choose an Org Unit, then search.',
+        l10n.skillQualifiedEmployeesChooseAnOrgUnitThenSearch,
         key: SkillQualifiedEmployeesDialog.hintKey,
         style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
       );
@@ -219,7 +222,7 @@ class _Results extends StatelessWidget {
       case QualifiedEmployeesStatus.ready:
         if (query!.employees.isEmpty) {
           return Text(
-            'Nobody currently qualifies at this Org Unit.',
+            l10n.skillQualifiedEmployeesNobodyCurrentlyQualifiesAtThisOrgUnit,
             key: SkillQualifiedEmployeesDialog.emptyKey,
             style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
           );
@@ -234,7 +237,7 @@ class _Results extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(child: Text('${employee.displayName} · ${employee.employeeNo}')),
-                    Text('Level ${employee.proficiencyLevel}', style: floor),
+                    Text(l10n.skillQualifiedEmployeesLevel(employee.proficiencyLevel), style: floor),
                   ],
                 ),
               ),
@@ -257,6 +260,7 @@ class _ScopePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
     final bloc = context.read<OrgUnitPickerBloc>();
@@ -277,7 +281,7 @@ class _ScopePicker extends StatelessWidget {
         onRetry: () => bloc.add(OrgUnitPickerSiteSelected(state.siteId!)),
       );
     } else if (state.rows.isEmpty) {
-      body = const _PickerMessage(message: 'Nothing to browse in this Site.');
+      body = _PickerMessage(message: l10n.commonNothingToBrowseInThisSite);
     } else {
       body = ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
@@ -299,7 +303,7 @@ class _ScopePicker extends StatelessWidget {
             key: SkillQualifiedEmployeesDialog.siteKey,
             initialValue: state.siteId,
             isDense: true,
-            decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
             items: [
               for (final site in state.sites)
                 DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -333,6 +337,7 @@ class _ScopeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final bloc = context.read<OrgUnitPickerBloc>();
 
@@ -352,7 +357,7 @@ class _ScopeRow extends StatelessWidget {
                     key: SkillQualifiedEmployeesDialog.expandKey(row.node.id),
                     padding: EdgeInsets.zero,
                     iconSize: 18,
-                    tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                    tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                     onPressed: () => bloc.add(
                       row.isExpanded
                           ? OrgUnitPickerCollapsed(row.node.id)
@@ -395,6 +400,7 @@ class _PickerMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.all(Spacing.md),
       child: Column(
@@ -408,7 +414,7 @@ class _PickerMessage extends StatelessWidget {
           ),
           if (onRetry != null) ...[
             const SizedBox(height: Spacing.xs),
-            TextButton(onPressed: onRetry, child: const Text('Try again')),
+            TextButton(onPressed: onRetry, child: Text(l10n.commonTryAgain)),
           ],
         ],
       ),

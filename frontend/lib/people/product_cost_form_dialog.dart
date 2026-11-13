@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
 import '../widgets/app_dialog.dart';
@@ -114,7 +115,7 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
     text: widget.mode == ProductCostFormMode.correct ? '${widget.productCost!.standardCost}' : '',
   );
   late final TextEditingController _currency =
-      TextEditingController(text: widget.productCost?.currency ?? 'USD');
+      TextEditingController(text: widget.productCost?.currency ?? AppLocalizations.of(context).commonUsd);
   late final TextEditingController _note = TextEditingController(
     text: widget.mode == ProductCostFormMode.correct ? (widget.productCost?.note ?? '') : '',
   );
@@ -254,6 +255,7 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final existing = widget.productCost;
 
@@ -266,13 +268,13 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
         actions: [
           AppDialogAction(
             id: 'product-cost-form-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'product-cost-form-submit',
-            label: _awaiting ? 'Saving…' : _submitLabel,
+            label: _awaiting ? l10n.commonSaving : _submitLabel,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -286,8 +288,7 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: Spacing.md),
                     child: Text(
-                      'The cost below is closed on the day the new one takes effect. It stays '
-                      'readable, and scrap already costed at it keeps that figure.',
+                      l10n.productCostFormTheCostBelowIsClosedOnThe,
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
@@ -297,15 +298,15 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                     key: ProductCostFormDialog.productsFailureKey,
                     padding: const EdgeInsets.only(bottom: Spacing.md),
                     child: Text(
-                      'The Product list could not be read, so a Product cannot be chosen: '
-                      '${widget.productsFailure}',
+                      l10n.productCostFormTheProductListCouldNotBeRead(
+                          widget.productsFailure ?? ''),
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
                     ),
                   ),
                 if (_isAdd)
                   AppSearchField<CostableProduct>(
                     name: ProductCostFormDialog._productFieldName,
-                    label: 'Product',
+                    label: l10n.commonProduct,
                     value: _product,
                     enabled: !_awaiting && widget.productsFailure == null,
                     onChanged: (product) => setState(() => _product = product),
@@ -331,11 +332,10 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                   )
                 else
                   InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Product',
+                    decoration: InputDecoration(
+                      labelText: l10n.commonProduct,
                       border: OutlineInputBorder(),
-                      helperText: 'The Product a standard cost belongs to cannot be corrected — '
-                          'record a cost against the other Product instead',
+                      helperText: l10n.productCostFormTheProductAStandardCostBelongsTo,
                     ),
                     child: Text(existing!.productLabel),
                   ),
@@ -348,9 +348,9 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    labelText: 'Standard cost, per unit',
+                    labelText: l10n.productCostFormStandardCostPerUnit,
                     border: const OutlineInputBorder(),
-                    helperText: _isRevision ? 'The new cost, from the date below' : null,
+                    helperText: _isRevision ? l10n.productCostFormTheNewCostFromTheDateBelow : null,
                   ),
                 ),
                 const SizedBox(height: Spacing.md),
@@ -361,19 +361,19 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                   maxLength: 3,
                   textCapitalization: TextCapitalization.characters,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Currency',
+                  decoration: InputDecoration(
+                    labelText: l10n.commonCurrency,
                     border: OutlineInputBorder(),
                     counterText: '',
-                    helperText: 'A three-letter code, such as USD',
+                    helperText: l10n.commonAThreeLetterCodeSuchAsUsd,
                   ),
                 ),
                 const SizedBox(height: Spacing.md),
                 AppDateField(
                   name: ProductCostFormDialog._effectiveFromFieldName,
-                  label: _isRevision ? 'New cost takes effect on' : 'Takes effect on',
+                  label: _isRevision ? l10n.productCostFormNewCostTakesEffectOn : l10n.commonTakesEffectOn,
                   helperText: _isRevision
-                      ? 'The old cost is closed on this day, and the new one starts'
+                      ? l10n.productCostFormTheOldCostIsClosedOnThis
                       : null,
                   value: _effectiveFrom,
                   onChanged: (value) => setState(() => _effectiveFrom = value),
@@ -383,9 +383,8 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                   const SizedBox(height: Spacing.md),
                   AppDateField(
                     name: ProductCostFormDialog._effectiveToFieldName,
-                    label: 'Applies until (optional)',
-                    helperText: 'Left blank, this cost is the current one. Setting it closes the '
-                        'cost on that day, which is the exclusive end of the period.',
+                    label: l10n.commonAppliesUntilOptional,
+                    helperText: l10n.productCostFormLeftBlankThisCostIsTheCurrent,
                     value: _effectiveTo,
                     onChanged: (value) => setState(() => _effectiveTo = value),
                     optional: true,
@@ -398,8 +397,8 @@ class _ProductCostFormDialogState extends State<ProductCostFormDialog> {
                   controller: _note,
                   enabled: !_awaiting,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
+                  decoration: InputDecoration(
+                    labelText: l10n.commonNoteOptional,
                     border: OutlineInputBorder(),
                   ),
                 ),

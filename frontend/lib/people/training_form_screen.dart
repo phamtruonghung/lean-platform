@@ -45,6 +45,7 @@
 /// colour is a theme token.
 library;
 
+import '../l10n/app_localizations.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -107,6 +108,7 @@ class TrainingFormScreen extends StatelessWidget {
   /// form rather than the navigation around it.
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<TrainingDetailBloc>().state;
 
     return Scaffold(
@@ -115,17 +117,16 @@ class TrainingFormScreen extends StatelessWidget {
         TrainingDetailLoading() => const SkeletonList(rows: 5, maxWidth: maxWidth),
         TrainingDetailUnavailable(isMissing: true) => PlatformEmptyState.noneExist(
             key: missingKey,
-            title: 'No such Training record',
-            message: 'Nothing is recorded at this address. It may have been removed, or '
-                'the address may be wrong.',
+            title: l10n.commonNoSuchTrainingRecord,
+            message: l10n.nonconformanceDetailMissingMessage,
             icon: Icons.search_off_outlined,
-            actionLabel: 'Back to Training records',
+            actionLabel: l10n.commonBackToTrainingRecords,
             actionKey: backKey,
             onAction: () => context.go(Routes.training),
           ),
         TrainingDetailUnavailable(message: final message) => PlatformFailureState(
             key: failedKey,
-            title: 'That training form could not be read',
+            title: l10n.trainingFormThatTrainingFormCouldNotBeRead,
             message: message,
             retryKey: retryKey,
             onRetry: () =>
@@ -148,6 +149,7 @@ class _Form extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final ink = theme.colorScheme.onSurface;
     final side = BorderSide(color: ink);
@@ -174,9 +176,9 @@ class _Form extends StatelessWidget {
                   side: side,
                   child: Column(
                     children: [
-                      Text('Training Record', style: title),
+                      Text(l10n.trainingFormTrainingRecord, style: title),
                       Text(
-                        'Biên bản ghi nhận đào tạo',
+                        l10n.trainingFormBiNBNGhiNhN,
                         style: theme.textTheme.titleMedium?.copyWith(fontStyle: FontStyle.italic),
                       ),
                       const SizedBox(height: Spacing.xs),
@@ -218,7 +220,7 @@ class _Form extends StatelessWidget {
                   side: side,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Attendance list/ danh sách tham gia :',
+                    l10n.trainingFormAttendanceListDanhSChThamGia,
                     style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -346,6 +348,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     Widget center(String text) => Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium);
     final italic = theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic);
@@ -386,7 +389,7 @@ class _Header extends StatelessWidget {
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(Spacing.xs),
-                      child: Text('Evaluation', textAlign: TextAlign.center, style: italic),
+                      child: Text(l10n.commonEvaluation, textAlign: TextAlign.center, style: italic),
                     ),
                     DecoratedBox(
                       decoration: BoxDecoration(border: Border(top: side)),

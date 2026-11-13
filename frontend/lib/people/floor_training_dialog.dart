@@ -21,6 +21,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_scan_field.dart';
 import 'floor_training_bloc.dart';
@@ -69,9 +70,12 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BlocBuilder<FloorTrainingBloc, FloorTrainingState>(
       builder: (context, state) => AlertDialog(
-        title: Text(state.isIdentified ? 'Training for ${state.employeeName}' : 'Your training'),
+        title: Text(state.isIdentified
+            ? l10n.floorTrainingTrainingFor(state.employeeName ?? '')
+            : l10n.floorTrainingYourTraining),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
@@ -82,13 +86,13 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
           TextButton(
             key: FloorTrainingDialog.doneKey,
             onPressed: state.isBusy ? null : () => Navigator.of(context).pop(),
-            child: Text(state.isIdentified ? 'Done' : 'Cancel'),
+            child: Text(state.isIdentified ? l10n.floorTrainingDone : l10n.commonCancel),
           ),
           if (!state.isIdentified)
             FilledButton(
               key: FloorTrainingDialog.submitKey,
               onPressed: _ready && !state.isBusy ? _identify : null,
-              child: const Text('Show my training'),
+              child: Text(l10n.floorTrainingShowMyTraining),
             ),
         ],
       ),
@@ -125,15 +129,15 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Who are you? Your Employee number and PIN show the training waiting on you at this device.',
+          AppLocalizations.of(context).floorTrainingWhoAreYouYourEmployeeNumberAnd,
           style: AppTypography.body(context)?.copyWith(color: AppColors.of(context).textMuted),
         ),
         const SizedBox(height: Spacing.md),
         AppScanField(
           key: FloorTrainingDialog.employeeNoKey,
           controller: _employeeNo,
-          label: 'Employee number',
-          helperText: 'Scan the badge or type the number.',
+          label: AppLocalizations.of(context).commonEmployeeNumber,
+          helperText: AppLocalizations.of(context).floorTrainingScanTheBadgeOrTypeTheNumber,
           enabled: !state.isBusy,
           autofocus: true,
           advanceFocusOnScan: true,
@@ -147,7 +151,7 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
           obscureText: true,
           keyboardType: TextInputType.number,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(labelText: 'PIN', border: OutlineInputBorder()),
+          decoration: InputDecoration(labelText: AppLocalizations.of(context).commonPin, border: OutlineInputBorder()),
         ),
         _failure(state),
       ],
@@ -164,7 +168,7 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
           Padding(
             key: FloorTrainingDialog.emptyKey,
             padding: const EdgeInsets.symmetric(vertical: Spacing.lg),
-            child: Text('Nothing is waiting on you at this device.', style: theme.textTheme.bodyLarge),
+            child: Text(AppLocalizations.of(context).floorTrainingNothingIsWaitingOnYouAtThis, style: theme.textTheme.bodyLarge),
           ),
           _failure(state),
         ],
@@ -214,7 +218,7 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
                   key: FloorTrainingDialog.confirmKey(entry.traineeId),
                   onPressed: isBusy ? null : () => _confirm(entry, state),
                   style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
-                  child: const Text('Confirm'),
+                  child: Text(AppLocalizations.of(context).commonConfirm),
                 ),
                 OutlinedButton(
                   key: FloorTrainingDialog.declineKey(entry.traineeId),
@@ -222,7 +226,7 @@ class _FloorTrainingDialogState extends State<FloorTrainingDialog> {
                       ? null
                       : () => context.read<FloorTrainingBloc>().add(FloorTrainingAnswered(entry.traineeId, 'declined')),
                   style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
-                  child: const Text('Decline'),
+                  child: Text(AppLocalizations.of(context).commonDecline),
                 ),
               ],
             ),

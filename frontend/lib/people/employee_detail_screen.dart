@@ -43,6 +43,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../status_tone.dart';
 import '../theme.dart';
@@ -120,6 +121,7 @@ class EmployeeDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<EmployeeDetailBloc>().state;
 
     return Scaffold(
@@ -131,7 +133,7 @@ class EmployeeDetailScreen extends StatelessWidget {
         EmployeeDetailLoading() => const SkeletonDetail(maxWidth: EmployeeDetailScreen.maxWidth),
         EmployeeDetailUnavailable(message: final message) => PlatformFailureState(
             key: failedKey,
-            title: 'This record could not be read',
+            title: l10n.employeeDetailThisRecordCouldNotBeRead,
             message: message,
             retryKey: retryKey,
             onRetry: () => context
@@ -164,6 +166,7 @@ class _Detail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final theme = Theme.of(context);
     final employee = state.employee;
@@ -217,11 +220,11 @@ class _Detail extends StatelessWidget {
             _SectionPair(
               wide: wide,
               first: AppDetailSection(
-                  title: 'Assignment history',
+                  title: l10n.employeeDetailAssignmentHistory,
                   children: [
                     if (employee.assignments.isEmpty)
                       Text(
-                        'No Assignment has been recorded.',
+                        l10n.employeeDetailNoAssignmentHasBeenRecorded,
                         key: EmployeeDetailScreen.noAssignmentsKey,
                         style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                       )
@@ -231,7 +234,7 @@ class _Detail extends StatelessWidget {
                   ],
                 ),
               second: AppDetailSection(
-                  title: 'Skills',
+                  title: l10n.navSkills,
                   trailing: isAdmin
                       // Administrator only (issue #89) — `PUT .../skills/:skillId`
                       // sits behind `requireAdmin`, not the destination-scoped
@@ -246,13 +249,13 @@ class _Detail extends StatelessWidget {
                                     employee: employee,
                                     skills: state.skills,
                                   ),
-                          child: const Text('Record skill'),
+                          child: Text(l10n.employeeDetailRecordSkill),
                         )
                       : null,
                   children: [
                     if (employee.qualifications.isEmpty)
                       Text(
-                        'No qualifications recorded.',
+                        l10n.employeeDetailNoQualificationsRecorded,
                         key: EmployeeDetailScreen.noSkillsKey,
                         style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                       )
@@ -331,22 +334,23 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final theme = Theme.of(context);
     final employee = state.employee;
 
     final facts = <Widget>[
-      _Fact(label: 'Employee number', value: employee.employeeNo),
-      _Fact(label: 'Job role', value: employee.jobRoleName ?? 'No job role'),
-      _Fact(label: 'Org Unit', value: _currentOrgUnit(employee)),
-      _Fact(label: 'Employment', value: employmentTypeLabel(employee.employmentType)),
+      _Fact(label: l10n.commonEmployeeNumber, value: employee.employeeNo),
+      _Fact(label: l10n.commonJobRole, value: employee.jobRoleName ?? 'No job role'),
+      _Fact(label: l10n.commonOrgUnit, value: _currentOrgUnit(employee)),
+      _Fact(label: l10n.commonEmployment, value: employmentTypeLabel(employee.employmentType)),
       _Fact(
-        label: 'Hired',
+        label: l10n.employeeDetailHired,
         value: employee.hiredOn == null ? '—' : formatWireDate(employee.hiredOn),
       ),
-      _Fact(label: 'Work email', value: employee.workEmail ?? '—'),
+      _Fact(label: l10n.employeeDetailWorkEmail, value: employee.workEmail ?? '—'),
       if (employee.terminatedOn != null)
-        _Fact(label: 'Departed', value: formatWireDate(employee.terminatedOn)),
+        _Fact(label: l10n.commonDeparted, value: formatWireDate(employee.terminatedOn)),
     ];
 
     return Card(
@@ -387,11 +391,11 @@ class _SummaryCard extends StatelessWidget {
                 if (!employee.isActive)
                   StatusChip(
                     key: EmployeeDetailScreen.departedKey,
-                    label: 'Departed',
+                    label: l10n.commonDeparted,
                     tone: StatusTone.neutral,
                   )
                 else
-                  const StatusChip(label: 'Active', tone: StatusTone.success),
+                  StatusChip(label: l10n.commonActive, tone: StatusTone.success),
               ],
             ),
             const SizedBox(height: Spacing.lg),
@@ -532,6 +536,7 @@ class _Actions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (!(isAdmin || (canAssign && employee.isActive))) return const SizedBox.shrink();
 
     return Padding(
@@ -546,7 +551,7 @@ class _Actions extends StatelessWidget {
               onPressed: state.isMutating
                   ? null
                   : () => EmployeeCorrectionDialog.open(context, employee),
-              child: const Text('Correct record'),
+              child: Text(l10n.commonCorrectRecord),
             ),
             // A Departed Employee has no Signature to set (the server answers
             // 404), so the door is left off, as Assign is.
@@ -556,7 +561,7 @@ class _Actions extends StatelessWidget {
                 onPressed: state.isMutating
                     ? null
                     : () => EmployeeSignatureDialog.open(context, employee),
-                child: const Text('Signature'),
+                child: Text(l10n.employeeDetailSignature),
               ),
             if (employee.isActive)
               OutlinedButton(
@@ -564,7 +569,7 @@ class _Actions extends StatelessWidget {
                 onPressed: state.isMutating
                     ? null
                     : () => EmployeeDepartureDialog.open(context, employee),
-                child: const Text('Record departure'),
+                child: Text(l10n.commonRecordDeparture),
               )
             else
               OutlinedButton(
@@ -574,7 +579,7 @@ class _Actions extends StatelessWidget {
                     : () => context
                         .read<EmployeeDetailBloc>()
                         .add(const EmployeeDetailReinstatementConfirmed()),
-                child: const Text('Reinstate'),
+                child: Text(l10n.commonReinstate),
               ),
           ],
           // A Departed Employee cannot be assigned (issue #88's own criterion) —
@@ -587,7 +592,7 @@ class _Actions extends StatelessWidget {
               onPressed: state.isMutating
                   ? null
                   : () => EmployeeAssignmentDialog.open(context, employee),
-              child: const Text('Assign'),
+              child: Text(l10n.commonAssign),
             ),
           // Worked hours (issue #263) is offered to every approved Account, the
           // same openness the directory detail route itself has (see
@@ -597,7 +602,7 @@ class _Actions extends StatelessWidget {
           OutlinedButton(
             key: EmployeeDetailScreen.workedHoursKey,
             onPressed: () => context.go('${Routes.directory}/${employee.id}/work-hours'),
-            child: const Text('Worked hours'),
+            child: Text(l10n.titleWorkedHours),
           ),
         ],
       ),
@@ -612,6 +617,7 @@ class _AssignmentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Padding(
       key: EmployeeDetailScreen.assignmentRowKey(assignment.id),
@@ -644,7 +650,7 @@ class _AssignmentRow extends StatelessWidget {
             const SizedBox(width: Spacing.sm),
             StatusChip(
               key: EmployeeDetailScreen.currentAssignmentKey(assignment.id),
-              label: 'Current',
+              label: l10n.employeeDetailCurrent,
               tone: StatusTone.info,
             ),
           ],
@@ -679,6 +685,7 @@ class _SkillChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // A lapsed qualification is stated, not judged (issues #168/#169, and the
     // same rule ADR-0018 records for the assign dialog: the tone and the
     // trailing "· Lapsed" state a fact about what somebody holds, never a claim
@@ -688,7 +695,7 @@ class _SkillChip extends StatelessWidget {
     final chip = skill.isLapsed
         ? StatusChip(
             key: EmployeeDetailScreen.skillChipKey(skill.skillId),
-            label: '${skill.name} · Lapsed',
+            label: l10n.employeeDetailLapsed(skill.name),
             tone: StatusTone.neutral,
           )
         : Chip(
@@ -707,7 +714,7 @@ class _SkillChip extends StatelessWidget {
         IconButton(
           key: EmployeeDetailScreen.reassessSkillKey(skill.skillId),
           icon: const Icon(Icons.edit_outlined, size: 16),
-          tooltip: 'Re-assess',
+          tooltip: l10n.employeeDetailReAssess,
           visualDensity: VisualDensity.compact,
           onPressed: () => EmployeeSkillFormDialog.open(
             context,

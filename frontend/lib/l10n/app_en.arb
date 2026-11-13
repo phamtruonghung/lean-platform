@@ -2218,5 +2218,753 @@
   "routerBackToList": "Back to the list",
   "@routerBackToList": {
     "description": "The way out of the write-Grant refusal back to the register it was opened from."
-  }
+  },
+  "accountCorrectionChangeRoleAndGrants": "Change role and Grants",
+  "commonSave": "Save",
+  "accountCorrectionHoldsTheRoleAndTheOrgUnit": "{email} holds the role and the Org Unit Grants chosen here. Whatever is set below replaces what it has now.",
+  "@accountCorrectionHoldsTheRoleAndTheOrgUnit": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "accountCorrectionAnAdministratorCanActEverywhereThisAccount": "An administrator can act everywhere. This Account will be able to see and change every Site and every Org Unit, and to admit other Accounts. Every Org Unit Grant it holds now is removed, and none are needed.",
+  "accountCorrectionThisAccountWasTurnedAwaySavingThis": "This Account was turned away. Saving this admits it to the Platform and lets it sign in.",
+  "accountCorrectionThisAccountIsDeactivatedSavingThisReactivates": "This Account is deactivated. Saving this reactivates it and lets it sign in again.",
+  "commonChangeEmployeeLink": "Change Employee link",
+  "accountEmployeeWillBeLinkedToTheEmployeeChosen": "{email} will be linked to the Employee chosen here, or to none.",
+  "@accountEmployeeWillBeLinkedToTheEmployeeChosen": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "commonResetPassword": "Reset password",
+  "accountPasswordChooseANewPasswordForTellThem": "Choose a new password for {email}. Tell them what it is yourself; it is not shown again.",
+  "@accountPasswordChooseANewPasswordForTellThem": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "accountPasswordAtLeastCharacters": "At least {minimumPasswordLength} characters.",
+  "@accountPasswordAtLeastCharacters": {
+    "placeholders": {
+      "minimumPasswordLength": {"type": "Object"}
+    }
+  },
+  "accountRolesRolesFor": "Roles for {accountName}",
+  "@accountRolesRolesFor": {
+    "placeholders": {
+      "accountName": {"type": "Object"}
+    }
+  },
+  "commonAssigning": "Assigning…",
+  "accountRolesRoleAssigned": "{length, plural, =1{1 role assigned} other{{length} roles assigned}}",
+  "@accountRolesRoleAssigned": {
+    "placeholders": {
+      "length": {"type": "int"}
+    }
+  },
+  "accountRolesEveryAccountHoldsThis": "{code} — every Account holds this",
+  "@accountRolesEveryAccountHoldsThis": {
+    "placeholders": {
+      "code": {"type": "Object"}
+    }
+  },
+  "accountRolesEveryAccountWhoseOwnRoleIs": "{code} — every Account whose own role is {legacyRole}",
+  "@accountRolesEveryAccountWhoseOwnRoleIs": {
+    "placeholders": {
+      "code": {"type": "Object"},
+      "legacyRole": {"type": "Object"}
+    }
+  },
+  "accountRolesPermission": "{code} — {length, plural, =1{1 permission} other{{length} permissions}}",
+  "@accountRolesPermission": {
+    "placeholders": {
+      "code": {"type": "String"},
+      "length": {"type": "int"}
+    }
+  },
+  "accountsTheAccountsCouldNotBeLoaded": "The Accounts could not be loaded",
+  "accountsNoAccountsYet": "No Accounts yet",
+  "accountsAccountsAppearHereAsSoonAsSomebody": "Accounts appear here as soon as somebody signs in for the first time.",
+  "accountsEveryAccountOnThisPlantWhatIt": "Every Account on this plant: what it holds, and whether it can sign in.",
+  "commonFilterAccounts": "Filter Accounts",
+  "accountsByNameEmailOrRole": "By name, email or role.",
+  "commonNoAccountsMatch": "No Accounts match",
+  "accountsThisPlantHasAccountsButNoneMatches": "This plant has Accounts, but none matches \"{term}\". Try a different name, email or role, or clear the filter.",
+  "@accountsThisPlantHasAccountsButNoneMatches": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "accountsEmail": "Email",
+  "accountsRole": "Role",
+  "accountsStanding": "Standing",
+  "accountsSince": "Since",
+  "accountsGrants": "Grants",
+  "accountsReviewInApprovals": "Review in Approvals",
+  "accountsChange": "Change",
+  "accountsLinkAnEmployee": "Link an Employee",
+  "accountsEverywhere": "Everywhere",
+  "accountsNone": "None",
+  "accountsOrgUnit": "{count, plural, =1{1 Org Unit} other{{count} Org Units}}",
+  "@accountsOrgUnit": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "accountsActsEverywhereInEverySiteNoOrg": "Acts everywhere, in every Site. No Org Unit Grants, and none needed.",
+  "accountsNoOrgUnitGrantsCanSignIn": "No Org Unit Grants. Can sign in, but cannot act in any Org Unit.",
+  "accountsDeactivateThisAccount": "Deactivate this Account?",
+  "accountsWillNotBeAbleToSignIn": "{email} will not be able to sign in. Nothing is deleted — the role and the Org Unit Grants stay exactly as they are, and an administrator can reactivate the Account at any time.",
+  "@accountsWillNotBeAbleToSignIn": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "admissionAdmitThisAccount": "Admit this Account",
+  "commonAdmitting": "Admitting…",
+  "commonAdmit": "Admit",
+  "admissionWillBeLetInToThePlatform": "{email} will be let in to the Platform with the role chosen here.",
+  "@admissionWillBeLetInToThePlatform": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "admissionAnAdministratorCanActEverywhereThisAccount": "An administrator can act everywhere. This Account will be able to see and change every Site and every Org Unit, and to admit other Accounts. No Org Unit Grants are given, and none are needed.",
+  "admissionThisAccountWillBeAdmittedWithNo": "This Account will be admitted with no Org Unit Grants, so it can sign in but cannot yet act in any Org Unit.",
+  "approvalQueueTheQueueCouldNotBeLoaded": "The queue could not be loaded",
+  "approvalQueueNobodyIsWaiting": "Nobody is waiting",
+  "approvalQueueEveryAccountHasBeenDealtWithNew": "Every Account has been dealt with. New requests appear here.",
+  "approvalQueueEveryoneWaitingToBeLetInTo": "Everyone waiting to be let in to the Platform.",
+  "approvalQueueByEmailAddress": "By email address.",
+  "approvalQueueAccountsAreWaitingButNoneMatchesTry": "Accounts are waiting, but none matches \"{term}\". Try a different email address, or clear the filter.",
+  "@approvalQueueAccountsAreWaitingButNoneMatchesTry": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "approvalQueueAccount": "Account",
+  "approvalQueueSuggestedEmployee": "Suggested Employee",
+  "approvalQueueWaiting": "Waiting",
+  "approvalQueueRejecting": "Rejecting…",
+  "commonReject": "Reject",
+  "approvalQueueRejectThisAccount": "Reject this Account?",
+  "approvalQueueWillNotBeLetInToThe": "{email} will not be let in to the Platform, and will be told their request was turned down. An administrator can still admit them later.",
+  "@approvalQueueWillNotBeLetInToThe": {
+    "placeholders": {
+      "email": {"type": "Object"}
+    }
+  },
+  "attendancePickerChooseAnOrgUnitAndAProduction": "Choose an Org Unit and a production day to open that shift's attendance sheet.",
+  "attendancePickerProductionDay": "Production day",
+  "attendancePickerTheShiftsCouldNotBeRead": "The shifts could not be read",
+  "attendancePickerNoShiftsAreScheduledHereOnThat": "No shifts are scheduled here on that day.",
+  "attendancePickerChooseAnotherProductionDayOrAnotherOrg": "Choose another production day, or another Org Unit.",
+  "commonTheSitesAreUnavailable": "The Sites are unavailable.",
+  "commonThereAreNoSitesToBrowseYet": "There are no Sites to browse yet.",
+  "commonNothingToBrowseInThisSite": "Nothing to browse in this Site.",
+  "commonCollapse": "Collapse",
+  "commonExpand": "Expand",
+  "attendanceRecordMark": "Mark {displayName}",
+  "@attendanceRecordMark": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "attendanceRecordWorkedMinutes": "Worked minutes",
+  "attendanceRecordOvertimeMinutes": "Overtime minutes",
+  "attendanceSheetTheAttendanceSheetCouldNotBeRead": "The attendance sheet could not be read",
+  "attendanceSheetNobodyWithAnEditGrantHereHas": "Nobody with an edit Grant here has opened this sheet yet, so there is nothing to show. Only a supervisor holding an edit Grant reaching this shift — or an administrator — can start it.",
+  "attendanceSheetConfirmed": "Confirmed",
+  "attendanceSheetConfirming": "Confirming…",
+  "commonConfirm": "Confirm",
+  "attendanceSheetNobodyIsOnThisSheetYet": "Nobody is on this sheet yet.",
+  "attendanceSheetAddAStandInFromTheDirectory": "Add a stand-in from the Directory below to open the sheet with somebody on it.",
+  "attendanceSheetASupervisorHoldingAnEditGrantReaching": "A supervisor holding an edit Grant reaching this shift adds the people who were on it.",
+  "attendanceSheetMarkAnException": "Mark an exception",
+  "attendanceSheetRemoveFromTheSheet": "Remove from the sheet",
+  "attendanceSheetAddAStandIn": "Add a stand-in",
+  "commonSearchTheDirectory": "Search the Directory",
+  "attendanceSheetWorkedMin": "Worked (min)",
+  "attendanceSheetOvertimeMin": "Overtime (min)",
+  "attendanceToConfirmPastShiftsWhoseSheetIsMissingOr": "Past shifts whose sheet is missing or hasn't been confirmed yet, oldest first, across the Org Units you can confirm one at.",
+  "attendanceToConfirmTheWorklistCouldNotBeRead": "The worklist could not be read",
+  "attendanceToConfirmNothingToConfirmHere": "Nothing to confirm here.",
+  "attendanceToConfirmEveryPastShiftYouCanConfirmHas": "Every past shift you can confirm has a confirmed sheet.",
+  "attendanceToConfirmNoShiftInThisWindowNeedsConfirming": "No shift in this window needs confirming. Widen the window, or clear the Org Unit.",
+  "commonFrom": "From",
+  "commonOrgUnit2": "Org Unit: {orgUnitName}",
+  "@commonOrgUnit2": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "commonClear": "Clear",
+  "commonHideOrgUnits": "Hide Org Units",
+  "commonFilterByOrgUnit": "Filter by Org Unit",
+  "attendanceToConfirmOpenSheet": "Open sheet",
+  "commonUsd": "USD",
+  "costRateFormTheRateBelowIsClosedOnThe": "The rate below is closed on the day the new one takes effect. It stays readable, and a cost asked for an earlier date still resolves it.",
+  "costRateFormTheListOfSitesOrgUnitsAssets": "The list of Sites, Org Units, Assets and cost centres could not be read, so a scope cannot be chosen: {scopesFailure}",
+  "@costRateFormTheListOfSitesOrgUnitsAssets": {
+    "placeholders": {
+      "scopesFailure": {"type": "Object"}
+    }
+  },
+  "commonScope": "Scope",
+  "costRateFormWhich": "Which {value}",
+  "@costRateFormWhich": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "costRateFormRateType": "Rate type",
+  "costRateFormScopeAndRateType": "Scope and rate type",
+  "costRateFormARateSScopeAndRateType": "A rate's scope and rate type cannot be corrected — add a rate for the new scope instead",
+  "costRateFormMultiplier15ForTimeAndA": "Multiplier (1.5 for time-and-a-half)",
+  "costRateFormAmountPerHour": "Amount per hour",
+  "costRateFormTheNewAmountFromTheDateBelow": "The new amount, from the date below",
+  "commonCurrency": "Currency",
+  "commonAThreeLetterCodeSuchAsUsd": "A three-letter code, such as USD",
+  "costRateFormNewRateTakesEffectOn": "New rate takes effect on",
+  "commonTakesEffectOn": "Takes effect on",
+  "costRateFormTheOldRateIsClosedOnThis": "The old rate is closed on this day, and the new one starts",
+  "commonAppliesUntilOptional": "Applies until (optional)",
+  "costRateFormLeftBlankThisRateIsTheCurrent": "Left blank, this rate is the current one. Setting it closes the rate on that day, which is the exclusive end of the period.",
+  "costRatesTheCostRateCatalogueCouldNotBe": "The cost rate catalogue could not be read",
+  "costRatesWhatAnHourCostsOneCatalogueShared": "What an hour costs — one catalogue shared by every Site, and what the Cost numbers on the tier board are worked out from. A rate is never overwritten: it is closed, and a new one opened, so a cost reported for an earlier month stays what it was.",
+  "costRatesAddCostRate": "Add cost rate",
+  "costRatesNoCostRatesYet": "No cost rates yet",
+  "costRatesUntilARateIsSetEveryCost": "Until a rate is set, every Cost number resolves to nothing.",
+  "costRatesRate": "Rate",
+  "commonPeriod": "Period",
+  "commonCorrect": "Correct",
+  "commonRevise": "Revise",
+  "commonClosed": "Closed",
+  "directoryTheDirectoryCouldNotBeRead": "The Directory could not be read",
+  "directoryNobodyMatchesThisSearch": "Nobody matches this search",
+  "directoryTryADifferentNameOrClearA": "Try a different name, or clear a filter.",
+  "directoryWhoWorksHereSearchedFilteredAndDeparted": "Who works here — searched, filtered, and Departed Employees kept out of sight until asked for.",
+  "commonAddEmployee": "Add Employee",
+  "directoryMyRecord": "My record",
+  "directorySearchByName": "Search by name",
+  "commonJobRole": "Job role",
+  "directoryAllJobRoles": "All job roles",
+  "directoryIncludeDeparted": "Include Departed",
+  "commonEmployment": "Employment",
+  "commonDeparted": "Departed",
+  "commonActive": "Active",
+  "employeeAssignmentAssignToAnOrgUnit": "Assign {displayName} to an Org Unit",
+  "@employeeAssignmentAssignToAnOrgUnit": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeAssignmentWhereItWorksNow": "Where it works now",
+  "employeeAssignmentJobRoleOptional": "Job role (optional)",
+  "employeeAssignmentNoJobRole": "No job role",
+  "employeeAssignmentEffectiveDate": "Effective date",
+  "employeeCorrectionCorrectSRecord": "Correct {displayName}'s record",
+  "@employeeCorrectionCorrectSRecord": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "commonFirstName": "First name",
+  "commonLastName": "Last name",
+  "commonEmploymentType": "Employment type",
+  "commonWorkEmailOptional": "Work email (optional)",
+  "employeeDepartureRecordThatHasLeft": "Record that {displayName} has left",
+  "@employeeDepartureRecordThatHasLeft": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeDepartureAccountStillLinked": "Account still linked",
+  "employeeDepartureTheRecordStaysNothingIsDeletedAnd": "The record stays — nothing is deleted, and this can be undone by reinstating the record at any time.",
+  "employeeDepartureEffectiveDateOptional": "Effective date (optional)",
+  "commonLeftBlankTodayIsRecorded": "Left blank, today is recorded.",
+  "employeeDepartureRecording": "Recording…",
+  "commonRecordDeparture": "Record departure",
+  "employeeDepartureHasLeftAndTheirAccountCanStill": "{displayName} has left, and their Account ({email}) can still sign in. The departure is already recorded either way — deactivating the Account is a separate, optional step.",
+  "@employeeDepartureHasLeftAndTheirAccountCanStill": {
+    "placeholders": {
+      "displayName": {"type": "Object"},
+      "email": {"type": "Object"}
+    }
+  },
+  "employeeDepartureNotNow": "Not now",
+  "employeeDepartureDeactivating": "Deactivating…",
+  "employeeDepartureDeactivateAccount": "Deactivate Account",
+  "employeeDetailThisRecordCouldNotBeRead": "This record could not be read",
+  "employeeDetailAssignmentHistory": "Assignment history",
+  "employeeDetailNoAssignmentHasBeenRecorded": "No Assignment has been recorded.",
+  "employeeDetailRecordSkill": "Record skill",
+  "employeeDetailNoQualificationsRecorded": "No qualifications recorded.",
+  "employeeDetailHired": "Hired",
+  "employeeDetailWorkEmail": "Work email",
+  "commonCorrectRecord": "Correct record",
+  "employeeDetailSignature": "Signature",
+  "commonReinstate": "Reinstate",
+  "employeeDetailCurrent": "Current",
+  "employeeDetailLapsed": "{name} · Lapsed",
+  "@employeeDetailLapsed": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "employeeDetailReAssess": "Re-assess",
+  "commonAdding": "Adding…",
+  "employeeLinkPickerSuggestedMatch": "Suggested match: {value}",
+  "@employeeLinkPickerSuggestedMatch": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "employeeLinkPickerLinkedTo": "Linked to: {value}",
+  "@employeeLinkPickerLinkedTo": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "commonRemove": "Remove",
+  "employeeLinkPickerNoEmployeeWillBeLinked": "No Employee will be linked.",
+  "employeeSignatureNoSignatureIsKeptForUploadA": "No Signature is kept for {displayName}. Upload a picture of it, or draw it here.",
+  "@employeeSignatureNoSignatureIsKeptForUploadA": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "commonThisSignatureCouldNotBeShown": "This Signature could not be shown.",
+  "employeeSignatureSetForBy": "Set for {displayName} by {who}",
+  "@employeeSignatureSetForBy": {
+    "placeholders": {
+      "displayName": {"type": "Object"},
+      "who": {"type": "Object"}
+    }
+  },
+  "employeeSignatureSetBy": "Set by {displayName}",
+  "@employeeSignatureSetBy": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeSignatureSignatureOf": "Signature of {displayName}",
+  "@employeeSignatureSignatureOf": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "commonUploadAPicture": "Upload a picture",
+  "commonReplaceWithAPicture": "Replace with a picture",
+  "commonDrawIt": "Draw it",
+  "commonDrawANewOne": "Draw a new one",
+  "commonKeepThisSignature": "Keep this Signature",
+  "employeeSkillFormReAssessFor": "Re-assess {value} for {displayName}",
+  "@employeeSkillFormReAssessFor": {
+    "placeholders": {
+      "value": {"type": "Object"},
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeSkillFormRecordASkillFor": "Record a skill for {displayName}",
+  "@employeeSkillFormRecordASkillFor": {
+    "placeholders": {
+      "displayName": {"type": "Object"}
+    }
+  },
+  "employeeSkillFormSkill": "Skill",
+  "employeeSkillFormProficiency04Iluo": "Proficiency (0–4, ILUO)",
+  "employeeSkillForm0None": "0 — none",
+  "employeeSkillFormAssessedOnOptional": "Assessed on (optional)",
+  "employeeSkillFormExpiresOnOptional": "Expires on (optional)",
+  "employeeSkillFormLeftBlankNeverExpiresOrIsRe": "Left blank, never expires (or is re-derived from the skill's own revalidation period).",
+  "employeeSkillFormEvidenceReferenceOptional": "Evidence reference (optional)",
+  "floorTrainingTrainingFor": "Training for {employeeName}",
+  "@floorTrainingTrainingFor": {
+    "placeholders": {
+      "employeeName": {"type": "Object"}
+    }
+  },
+  "floorTrainingYourTraining": "Your training",
+  "floorTrainingDone": "Done",
+  "floorTrainingShowMyTraining": "Show my training",
+  "floorTrainingWhoAreYouYourEmployeeNumberAnd": "Who are you? Your Employee number and PIN show the training waiting on you at this device.",
+  "floorTrainingScanTheBadgeOrTypeTheNumber": "Scan the badge or type the number.",
+  "floorTrainingNothingIsWaitingOnYouAtThis": "Nothing is waiting on you at this device.",
+  "jobRoleFormCorrectJobRole": "Correct job role",
+  "commonAddJobRole": "Add job role",
+  "jobRolesTheJobRoleCatalogueCouldNotBe": "The job role catalogue could not be read",
+  "jobRolesWhatAnEmployeeDoesDefinedOnceShared": "What an Employee does — defined once, shared by every Site.",
+  "jobRolesNoJobRolesYet": "No job roles yet",
+  "commonNothingHasBeenDefinedInTheCatalogue": "Nothing has been defined in the catalogue.",
+  "jobRolesFilterJobRoles": "Filter job roles",
+  "jobRolesByNameOrCode": "By name or code.",
+  "jobRolesNoJobRolesMatch": "No job roles match",
+  "jobRolesNothingInTheCatalogueMatchesTryA": "Nothing in the catalogue matches \"{term}\". Try a different name or code, or clear the filter.",
+  "@jobRolesNothingInTheCatalogueMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "leaveRequestCancelCancelLeaveRequest": "Cancel leave request",
+  "leaveRequestCancelCancelTheRequestFor": "Cancel the {leaveTypeName} request for {displayName}, {periodLabel} ({daysLabel})?",
+  "@leaveRequestCancelCancelTheRequestFor": {
+    "placeholders": {
+      "leaveTypeName": {"type": "Object"},
+      "displayName": {"type": "Object"},
+      "periodLabel": {"type": "Object"},
+      "daysLabel": {"type": "Object"}
+    }
+  },
+  "leaveRequestCancelKeepRequest": "Keep request",
+  "leaveRequestCancelCancelling": "Cancelling…",
+  "commonCancelRequest": "Cancel request",
+  "commonRequestLeave": "Request leave",
+  "leaveRequestFormRequesting": "Requesting…",
+  "leaveRequestFormLeaveTypesCouldNotBeRead": "Leave types could not be read",
+  "leaveRequestFormLeaveType": "Leave type",
+  "leaveRequestFormFirstDay": "First day",
+  "leaveRequestFormLastDay": "Last day",
+  "leaveRequestsLeaveRequestsCouldNotBeRead": "Leave requests could not be read",
+  "leaveRequestsAskToBeAwayFromWorkAnd": "Ask to be away from work, and follow what became of it.",
+  "leaveRequestsMine": "Mine",
+  "leaveRequestsToDecide": "To decide",
+  "leaveRequestsNoLeaveRequestsYet": "No leave requests yet",
+  "leaveRequestsNothingToDecide": "Nothing to decide",
+  "leaveRequestsRequestLeaveToAskForTimeAway": "Request leave to ask for time away.",
+  "leaveRequestsNoPendingLeaveRequestsAreWaitingFor": "No pending leave requests are waiting for you.",
+  "leaveRequestsNote": "Note: {note}",
+  "@leaveRequestsNote": {
+    "placeholders": {
+      "note": {"type": "Object"}
+    }
+  },
+  "leaveRequestsDecisionNote": "Decision note: {decisionNote}",
+  "@leaveRequestsDecisionNote": {
+    "placeholders": {
+      "decisionNote": {"type": "Object"}
+    }
+  },
+  "leaveRequestsApprove": "Approve",
+  "mySignatureYourSignatureCouldNotBeRead": "Your Signature could not be read",
+  "mySignatureNoSignatureKept": "No Signature kept",
+  "mySignatureYouHaveNotKeptASignatureYet": "You have not kept a Signature yet. Upload a picture of it, or draw it here.",
+  "mySignatureYourSignature": "Your Signature",
+  "mySignatureYourOwnMarkKeptOnceAndApplied": "Your own mark, kept once and applied wherever you would otherwise sign a sheet by hand. Replacing it never changes a sheet you have already signed.",
+  "mySignatureDrawYourSignature": "Draw your Signature",
+  "commonAddRootOrgUnit": "Add root Org Unit",
+  "orgUnitFormAddOrgUnit": "Add Org Unit",
+  "orgUnitFormUnitType": "Unit type",
+  "orgUnitFormSortOrderOptional": "Sort order (optional)",
+  "commonImportABranch": "Import a branch",
+  "orgUnitImportImporting": "Importing…",
+  "orgUnitImportImport": "Import",
+  "orgUnitImportAJsonArrayOfRowsEachRow": "A JSON array of rows. Each row references its own parent by \"parentCode\" — another row in this same array, or an existing code at this Site — never by id.",
+  "orgUnitImportRow": "Row {row}{code}{field}: {message}",
+  "@orgUnitImportRow": {
+    "placeholders": {
+      "row": {"type": "String"},
+      "code": {"type": "String"},
+      "field": {"type": "String"},
+      "message": {"type": "String"}
+    }
+  },
+  "orgUnitPickerOrgUnitGrants": "Org Unit Grants",
+  "orgUnitPickerEverythingOnTheRightIsWhatThis": "Everything on the right is what this Account will hold. Nothing is added to what it has now — this is the whole set.",
+  "orgUnitPickerQualityAuthorityAndSafetyAuthorityAreEach": "Quality authority and Safety authority are each separate from the level and from each other — a view-only Grant may carry either, and an edit Grant need not — and each reaches everything beneath the Org Unit it is given on.",
+  "orgUnitPickerBrowse": "Browse",
+  "orgUnitPickerGranted": "Granted",
+  "orgUnitPickerGrantThisOrgUnit": "Grant this Org Unit",
+  "orgUnitPickerNothingBeneathThis": "Nothing beneath this",
+  "orgUnitPickerGranted2": "Granted ({length})",
+  "@orgUnitPickerGranted2": {
+    "placeholders": {
+      "length": {"type": "Object"}
+    }
+  },
+  "orgUnitPickerNoOrgUnitsGrantedThisAccountWill": "No Org Units granted. This Account will be able to sign in but not act anywhere.",
+  "orgUnitPickerQualityAuthority": "Quality authority",
+  "orgUnitPickerSafetyAuthority": "Safety authority",
+  "orgUnitPickerRemoveThisGrant": "Remove this Grant",
+  "orgUnitsASiteSOwnShapeWhereA": "A Site's own shape — where a KPI is measured, an Account is granted, and an Asset sits.",
+  "commonAddSite": "Add Site",
+  "commonEditSite": "Edit Site",
+  "orgUnitsTheSitesCouldNotBeRead": "The Sites could not be read",
+  "orgUnitsThereAreNoSitesYet": "There are no Sites yet.",
+  "orgUnitsAnAdministratorAddsTheFirstSiteEvery": "An administrator adds the first Site; every Org Unit sits beneath one.",
+  "orgUnitsFindAnOrgUnitByName": "Find an Org Unit by name",
+  "orgUnitsPickingOneRevealsAndSelectsItIn": "Picking one reveals and selects it in the tree below.",
+  "orgUnitsRetired": "Retired",
+  "orgUnitsTheOrgUnitTreeCouldNotBe": "The Org Unit tree could not be read",
+  "orgUnitsNothingToBrowseInThisSiteYet": "Nothing to browse in this Site yet.",
+  "orgUnitsAnAdministratorAddsTheFirstOrgUnit": "An administrator adds the first Org Unit, or imports a branch.",
+  "orgUnitsBelow": "{childCount} below",
+  "@orgUnitsBelow": {
+    "placeholders": {
+      "childCount": {"type": "Object"}
+    }
+  },
+  "orgUnitsAddAnOrgUnitHere": "Add an Org Unit here",
+  "orgUnitsRetire": "Retire",
+  "orgUnitsRetireThisOrgUnit": "Retire this Org Unit?",
+  "orgUnitsWillReadAsRetiredRatherThanDeleted": "{name} will read as retired rather than deleted, and can be reinstated at any time.",
+  "@orgUnitsWillReadAsRetiredRatherThanDeleted": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "productCostFormTheCostBelowIsClosedOnThe": "The cost below is closed on the day the new one takes effect. It stays readable, and scrap already costed at it keeps that figure.",
+  "productCostFormTheProductListCouldNotBeRead": "The Product list could not be read, so a Product cannot be chosen: {productsFailure}",
+  "@productCostFormTheProductListCouldNotBeRead": {
+    "placeholders": {
+      "productsFailure": {"type": "Object"}
+    }
+  },
+  "productCostFormTheProductAStandardCostBelongsTo": "The Product a standard cost belongs to cannot be corrected — record a cost against the other Product instead",
+  "productCostFormStandardCostPerUnit": "Standard cost, per unit",
+  "productCostFormTheNewCostFromTheDateBelow": "The new cost, from the date below",
+  "productCostFormNewCostTakesEffectOn": "New cost takes effect on",
+  "productCostFormTheOldCostIsClosedOnThis": "The old cost is closed on this day, and the new one starts",
+  "productCostFormLeftBlankThisCostIsTheCurrent": "Left blank, this cost is the current one. Setting it closes the cost on that day, which is the exclusive end of the period.",
+  "productCostsTheStandardCostCatalogueCouldNotBe": "The standard cost catalogue could not be read",
+  "productCostsWhatAUnitIsCostedAtOne": "What a unit is costed at — one catalogue shared by every Site, and what scrap and rework are priced with. A cost is never overwritten: it is closed, and a new one opened, so a cost reported for an earlier month stays what it was.",
+  "productCostsAddStandardCost": "Add standard cost",
+  "productCostsNoStandardCostsYet": "No standard costs yet",
+  "productCostsUntilACostIsSetScrapAnd": "Until a cost is set, scrap and rework are priced at nothing.",
+  "roleFormCorrectRole": "Correct role",
+  "commonAddRole": "Add role",
+  "roleForm330CharactersAZ09": "3–30 characters: A–Z, 0–9 and underscore, e.g. ROLE_STORE_ROOM",
+  "roleFormWhatItIsFor": "What it is for",
+  "roleFormInActiveUse": "In active use",
+  "roleFormARetiredRoleKeepsItsHistoryAnd": "A retired role keeps its history and can be assigned to nobody.",
+  "rolePermissionsWhatCarries": "What {code} carries",
+  "@rolePermissionsWhatCarries": {
+    "placeholders": {
+      "code": {"type": "Object"}
+    }
+  },
+  "rolePermissionsOfPermissions": "{length} of {total} permissions",
+  "@rolePermissionsOfPermissions": {
+    "placeholders": {
+      "length": {"type": "Object"},
+      "total": {"type": "Object"}
+    }
+  },
+  "rolesTheRolesCouldNotBeRead": "The roles could not be read",
+  "rolesWhatAnAccountMayDoEachRole": "What an Account may do. Each role is a group of permissions; every Account holds the default group, and a role marked automatic is earned by the Account's own role.",
+  "rolesNoRoles": "No roles",
+  "rolesNothingIsCarryingAPermissionThatShould": "Nothing is carrying a permission. That should not happen: the seed creates the default group, so this means the deployment is incomplete.",
+  "rolesDefaultGroup": "Default group",
+  "rolesAutomatic": "Automatic: {legacyRole}",
+  "@rolesAutomatic": {
+    "placeholders": {
+      "legacyRole": {"type": "Object"}
+    }
+  },
+  "rolesReaches": "{length, plural, =1{1 permission} other{{length} permissions}} · reaches {holderCount, plural, =1{1 Account} other{{holderCount} Accounts}}",
+  "@rolesReaches": {
+    "placeholders": {
+      "length": {"type": "int"},
+      "holderCount": {"type": "int"}
+    }
+  },
+  "rolesPermissions": "Permissions",
+  "siteFormTimezonesUnavailable": "Timezones unavailable",
+  "siteFormTheTimezoneListCouldNotBeLoaded": "The timezone list could not be loaded.",
+  "siteFormTimezone": "Timezone",
+  "siteFormCountryCodeOptional": "Country code (optional)",
+  "skillCoverageOrgUnitAndSkill": "Org Unit and skill",
+  "skillCoverageRequired": "Required",
+  "skillCoverageQualified": "Qualified",
+  "skillCoverageLapsed": "Lapsed",
+  "skillCoverageShortfall": "Shortfall",
+  "skillCoverageSkillCoverageCouldNotBeRead": "Skill coverage could not be read",
+  "skillCoverageWhereThisSiteFallsShortOfIts": "Where this Site falls short of its own skill requirements.",
+  "skillCoverageEveryRequirementIsMet": "Every requirement is met",
+  "skillCoverageThisSiteHasNoShortfallAgainstThe": "This Site has no shortfall against the skill requirements it has set for itself.",
+  "skillCoverageFilterSkillCoverage": "Filter skill coverage",
+  "skillCoverageByOrgUnitOrSkill": "By Org Unit or skill.",
+  "skillCoverageNoShortfallsMatch": "No shortfalls match",
+  "skillCoverageThisSiteIsShortSomewhereButNothing": "This Site is short somewhere, but nothing matches \"{term}\". Try a different Org Unit or skill, or clear the filter.",
+  "@skillCoverageThisSiteIsShortSomewhereButNothing": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "skillCoverageNeedsAtLevelQualifiedLapsed": "Needs {minimumQualifiedHeadcount} at level {minimumLevel}+, {qualifiedHeadcount} qualified, {expiredHeadcount} lapsed",
+  "@skillCoverageNeedsAtLevelQualifiedLapsed": {
+    "placeholders": {
+      "minimumQualifiedHeadcount": {"type": "Object"},
+      "minimumLevel": {"type": "Object"},
+      "qualifiedHeadcount": {"type": "Object"},
+      "expiredHeadcount": {"type": "Object"}
+    }
+  },
+  "skillCoverageShort": "Short {shortfall}",
+  "@skillCoverageShort": {
+    "placeholders": {
+      "shortfall": {"type": "Object"}
+    }
+  },
+  "skillFormCorrectSkill": "Correct skill",
+  "commonAddSkill": "Add skill",
+  "skillFormRequiresCertification": "Requires certification",
+  "skillFormRevalidationPeriodInMonthsOptional": "Revalidation period, in months (optional)",
+  "skillFormLeftBlankThisSkillNeverNeedsRevalidating": "Left blank, this skill never needs revalidating.",
+  "skillQualifiedEmployeesWhoHolds": "Who holds {name}",
+  "@skillQualifiedEmployeesWhoHolds": {
+    "placeholders": {
+      "name": {"type": "Object"}
+    }
+  },
+  "skillQualifiedEmployeesScopedTo": "Scoped to",
+  "skillQualifiedEmployeesMinimumProficiency": "Minimum proficiency",
+  "skillQualifiedEmployeesSearch": "Search",
+  "skillQualifiedEmployeesChooseAnOrgUnitThenSearch": "Choose an Org Unit, then search.",
+  "skillQualifiedEmployeesNobodyCurrentlyQualifiesAtThisOrgUnit": "Nobody currently qualifies at this Org Unit.",
+  "skillQualifiedEmployeesLevel": "Level {proficiencyLevel}",
+  "@skillQualifiedEmployeesLevel": {
+    "placeholders": {
+      "proficiencyLevel": {"type": "Object"}
+    }
+  },
+  "skillsTheSkillCatalogueCouldNotBeRead": "The skill catalogue could not be read",
+  "skillsWhatThePlantQualifiesAnEmployeeTo": "What the plant qualifies an Employee to do — defined once, shared by every Site.",
+  "skillsNoSkillsYet": "No skills yet",
+  "skillsFilterSkills": "Filter skills",
+  "skillsByNameCodeOrCategory": "By name, code or category.",
+  "skillsNoSkillsMatch": "No skills match",
+  "skillsNothingInTheCatalogueMatchesTryA": "Nothing in the catalogue matches \"{term}\". Try a different name, code or category, or clear the filter.",
+  "@skillsNothingInTheCatalogueMatchesTryA": {
+    "placeholders": {
+      "term": {"type": "Object"}
+    }
+  },
+  "skillsWhoHoldsThis": "Who holds this",
+  "trainingAnswerSignYourConfirmation": "Sign your confirmation",
+  "trainingAnswerChooseWhatYourAnswerIsSignedWith": "Choose what your answer is signed with. You can also confirm without a Signature.",
+  "trainingAnswerYouKeepNoSignatureDrawOneNow": "You keep no Signature. Draw one now for this answer, or confirm without a Signature.",
+  "trainingAnswerYourSignatureWhichUseMySignatureApplies": "Your Signature, which \"Use my Signature\" applies:",
+  "trainingAnswerUseMySignature": "Use my Signature",
+  "trainingAnswerDrawOneNow": "Draw one now",
+  "trainingAnswerNoSignature": "No Signature",
+  "trainingAnswerConfirmWithThisSignature": "Confirm with this Signature",
+  "commonNoSuchTrainingRecord": "No such Training record",
+  "commonBackToTrainingRecords": "Back to Training records",
+  "trainingDetailTheTrainingRecordCouldNotBeRead": "The Training record could not be read",
+  "trainingDetailTheForm": "The form",
+  "trainingDetailTheTraining": "The training",
+  "commonTrainedOn": "Trained on",
+  "trainingDetailDuration": "Duration",
+  "trainingDetailTrainer": "Trainer",
+  "trainingDetailObjective": "Objective",
+  "trainingDetailTrainees": "Trainees ({traineeCount})",
+  "@trainingDetailTrainees": {
+    "placeholders": {
+      "traineeCount": {"type": "Object"}
+    }
+  },
+  "commonAddTrainee": "Add Trainee",
+  "trainingDetailNoTraineesAreOnThisTrainingRecord": "No Trainees are on this Training record yet.",
+  "trainingDetailSendToTrainees": "Send to Trainees",
+  "trainingDetailDiscardDraft": "Discard draft",
+  "trainingDetailEvaluated": "Evaluated: {value}",
+  "@trainingDetailEvaluated": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "trainingDetailRemove": "Remove {employeeName}",
+  "@trainingDetailRemove": {
+    "placeholders": {
+      "employeeName": {"type": "Object"}
+    }
+  },
+  "trainingDetailDiscardThisDraft": "Discard this draft?",
+  "trainingDetailTheDraftAndTheTraineesListedOn": "The draft and the Trainees listed on it will be deleted, and it cannot be brought back. Nobody has been asked about it yet.",
+  "trainingDetailDiscard": "Discard",
+  "commonEvaluation": "Evaluation",
+  "trainingFormThatTrainingFormCouldNotBeRead": "That training form could not be read",
+  "trainingFormTrainingRecord": "Training Record",
+  "trainingFormBiNBNGhiNhN": "Biên bản ghi nhận đào tạo",
+  "trainingFormAttendanceListDanhSChThamGia": "Attendance list/ danh sách tham gia :",
+  "trainingRaiseCorrectTrainingRecord": "Correct training record",
+  "commonRaiseTrainingRecord": "Raise training record",
+  "trainingRaiseCorrecting": "Correcting…",
+  "trainingRaiseRaising": "Raising…",
+  "trainingRaiseTitle": "Title",
+  "trainingRaiseWhatTheTrainingWas": "What the training was.",
+  "trainingRaiseTheDayItWasGiven": "The day it was given.",
+  "trainingRaiseDurationHours": "Duration (hours)",
+  "trainingRaiseHowLongItLastedEG1": "How long it lasted, e.g. 1.5.",
+  "trainingRaiseTrainerOptional": "Trainer (optional)",
+  "trainingRaiseWhoGaveItFoundInTheDirectory": "Who gave it, found in the Directory.",
+  "trainingRaiseObjectiveOptional": "Objective (optional)",
+  "trainingRaiseWhatTheTrainingSetOutToTeach": "What the training set out to teach.",
+  "trainingRecord": "Record",
+  "trainingTrainees": "Trainees",
+  "trainingAnswers": "Answers",
+  "trainingTrainingRecordsCouldNotBeRead": "Training records could not be read",
+  "trainingNoTrainingRecordsMatch": "No Training records match",
+  "trainingNothingWasTrainedUnderThatOrgUnit": "Nothing was trained under that Org Unit in those days.",
+  "trainingNoTrainingRecordsYet": "No Training records yet",
+  "trainingRaiseATrainingRecordToStartThe": "Raise a Training record to start the register.",
+  "trainingNothingHasBeenRecordedAsTrainedYet": "Nothing has been recorded as trained yet.",
+  "trainingWhatThePlantHasTrainedPeopleOn": "What the plant has trained people on, and when.",
+  "trainingThereAreMoreTrainingRecordsThanThis": "There are more Training records than this list shows. Narrow it by Org Unit or by dates to see the rest.",
+  "trainingTheFormFor": "The form for {number}",
+  "@trainingTheFormFor": {
+    "placeholders": {
+      "number": {"type": "Object"}
+    }
+  },
+  "trainingToConfirmYourTrainingToConfirmCouldNotBe": "Your Training to confirm could not be read",
+  "trainingToConfirmNothingWaitingOnYou": "Nothing waiting on you",
+  "trainingToConfirmNoTrainingRecordHasBeenSentTo": "No Training record has been sent to you that you have not answered.",
+  "trainingToConfirmTrainingRecordsSentToYouThatYou": "Training records sent to you that you have not answered yet, oldest first. Confirm that you attended, or decline because the record is wrong.",
+  "trainingToConfirmYourAnswer": "Your answer",
+  "trainingTraineeEmployeesOf": "Employees of {orgUnitName}",
+  "@trainingTraineeEmployeesOf": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "trainingTraineeWholeDirectory": "Whole Directory",
+  "trainingTraineeAnyoneInTheDirectoryFoundByName": "Anyone in the Directory, found by name or number.",
+  "trainingTraineeAnEmployeeOfFoundByNameOr": "An Employee of {orgUnitName}, found by name or number.",
+  "@trainingTraineeAnEmployeeOfFoundByNameOr": {
+    "placeholders": {
+      "orgUnitName": {"type": "Object"}
+    }
+  },
+  "workedHoursDay": "Day",
+  "workedHoursWorked": "Worked",
+  "workedHoursBackToEmployee": "Back to Employee",
+  "workedHoursTheConfirmedHoursThisEmployeeActuallyWorked": "The confirmed hours this Employee actually worked, day by day. Only confirmed attendance counts — an unconfirmed sheet is a draft.",
+  "workedHoursTheWorkedHoursSummaryCouldNotBe": "The worked-hours summary could not be read",
+  "workedHoursNoConfirmedWorkedHoursInThisWindow": "No confirmed worked hours in this window.",
+  "workedHoursWidenTheWindowOrConfirmTheShift": "Widen the window, or confirm the shift sheets for the days this Employee worked.",
+  "workedHoursTotals": "Totals",
+  "workedHoursOfScheduled": "of {value} scheduled",
+  "@workedHoursOfScheduled": {
+    "placeholders": {
+      "value": {"type": "Object"}
+    }
+  },
+  "leaveRequestDecisionApproveLeaveRequest": "Approve leave request",
+  "leaveRequestDecisionRejectLeaveRequest": "Reject leave request",
+  "commonTo": "To",
+  "commonEmployeeNumber": "Employee number",
+  "commonPin": "PIN",
+  "commonInactive": "Inactive",
+  "commonDeactivate": "Deactivate",
+  "commonReactivate": "Reactivate",
+  "commonClose": "Close",
+  "commonReason": "Reason",
+  "commonAssign": "Assign",
+  "commonDecline": "Decline",
+  "commonOvertime": "Overtime",
+  "commonSessionEnded": "This session has ended. Sign in again to continue.",
+  "attendanceRecordChooseAReasonForThisAbsence": "Choose a reason for this absence."
 }

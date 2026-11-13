@@ -14,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'employee.dart';
@@ -128,23 +129,24 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<EmployeeDetailBloc, EmployeeDetailState>(
       listener: _onDetailChanged,
       child: AppDialog(
-        title: 'Correct ${widget.employee.displayName}\'s record',
+        title: l10n.employeeCorrectionCorrectSRecord(widget.employee.displayName),
         size: AppDialogSize.form,
         // `child` last, as `sort_child_properties_last` requires.
         actions: [
           AppDialogAction(
             id: 'employee-correction-cancel',
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: 'employee-correction-submit',
-            label: _awaiting ? 'Saving…' : 'Save',
+            label: _awaiting ? l10n.commonSaving : l10n.commonSave,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -160,7 +162,7 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
                   enabled: !_awaiting,
                   onChanged: (_) => setState(() {}),
                   decoration:
-                      const InputDecoration(labelText: 'Employee number', border: OutlineInputBorder()),
+                      InputDecoration(labelText: l10n.commonEmployeeNumber, border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: Spacing.md),
                 Row(
@@ -172,7 +174,7 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
                         enabled: !_awaiting,
                         onChanged: (_) => setState(() {}),
                         decoration:
-                            const InputDecoration(labelText: 'First name', border: OutlineInputBorder()),
+                            InputDecoration(labelText: l10n.commonFirstName, border: OutlineInputBorder()),
                       ),
                     ),
                     const SizedBox(width: Spacing.md),
@@ -183,7 +185,7 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
                         enabled: !_awaiting,
                         onChanged: (_) => setState(() {}),
                         decoration:
-                            const InputDecoration(labelText: 'Last name', border: OutlineInputBorder()),
+                            InputDecoration(labelText: l10n.commonLastName, border: OutlineInputBorder()),
                       ),
                     ),
                   ],
@@ -193,7 +195,7 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
                   key: EmployeeCorrectionDialog.employmentTypeKey,
                   initialValue: _employmentType,
                   decoration:
-                      const InputDecoration(labelText: 'Employment type', border: OutlineInputBorder()),
+                      InputDecoration(labelText: l10n.commonEmploymentType, border: OutlineInputBorder()),
                   items: [
                     for (final type in employmentTypes)
                       DropdownMenuItem<String>(value: type, child: Text(employmentTypeLabel(type))),
@@ -207,8 +209,8 @@ class _EmployeeCorrectionDialogState extends State<EmployeeCorrectionDialog> {
                   key: EmployeeCorrectionDialog.workEmailKey,
                   controller: _workEmail,
                   enabled: !_awaiting,
-                  decoration: const InputDecoration(
-                    labelText: 'Work email (optional)',
+                  decoration: InputDecoration(
+                    labelText: l10n.commonWorkEmailOptional,
                     border: OutlineInputBorder(),
                   ),
                 ),

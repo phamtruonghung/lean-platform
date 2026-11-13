@@ -45,6 +45,7 @@
 /// from the records rather than from a fixed set (section 13).
 library;
 
+import '../l10n/app_localizations.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -110,13 +111,14 @@ class AttendanceSheetScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<AttendanceSheetBloc>().state;
     return Scaffold(
       body: switch (state) {
         AttendanceSheetLoading() => const SkeletonList(maxWidth: AttendanceSheetScreen.maxWidth),
         AttendanceSheetUnavailable(message: final message) => PlatformFailureState(
             key: AttendanceSheetScreen.failedKey,
-            title: 'The attendance sheet could not be read',
+            title: l10n.attendanceSheetTheAttendanceSheetCouldNotBeRead,
             message: message,
             retryKey: AttendanceSheetScreen.retryKey,
             onRetry: () => context
@@ -139,18 +141,17 @@ class _NotStarted extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: AttendanceSheetScreen.maxWidth,
         child: Padding(
           key: AttendanceSheetScreen.notStartedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
-          child: const AppPageHeader(
-            title: 'Attendance sheet',
+          child: AppPageHeader(
+            title: l10n.titleAttendanceSheet,
             description:
-                'Nobody with an edit Grant here has opened this sheet yet, so there '
-                'is nothing to show. Only a supervisor holding an edit Grant reaching '
-                'this shift — or an administrator — can start it.',
+                l10n.attendanceSheetNobodyWithAnEditGrantHereHas,
           ),
         ),
       ),
@@ -166,6 +167,7 @@ class _Sheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Non-null: this widget is only reached when `state.started` is true
     // (`AttendanceSheetScreen.build`'s own switch), and the server never
     // answers `started: true` with a null `sheet`.
@@ -177,12 +179,12 @@ class _Sheet extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Attendance sheet',
+              title: l10n.titleAttendanceSheet,
               actions: [
                 if (sheet.isConfirmed)
                   Chip(
                     key: AttendanceSheetScreen.confirmedChipKey,
-                    label: const Text('Confirmed'),
+                    label: Text(l10n.attendanceSheetConfirmed),
                     avatar: const Icon(Icons.check_circle_outline, size: 18),
                   )
                 else if (canRecord)
@@ -191,7 +193,7 @@ class _Sheet extends StatelessWidget {
                     onPressed: state.isMutating
                         ? null
                         : () => context.read<AttendanceSheetBloc>().add(const AttendanceSheetConfirmed()),
-                    child: Text(state.isMutating ? 'Confirming…' : 'Confirm'),
+                    child: Text(state.isMutating ? l10n.attendanceSheetConfirming : l10n.commonConfirm),
                   ),
               ],
             ),
@@ -203,12 +205,10 @@ class _Sheet extends StatelessWidget {
             if (state.records.isEmpty)
               PlatformEmptyState.noneExist(
                 key: AttendanceSheetScreen.emptyKey,
-                title: 'Nobody is on this sheet yet.',
+                title: l10n.attendanceSheetNobodyIsOnThisSheetYet,
                 message: canRecord
-                    ? 'Add a stand-in from the Directory below to open the sheet with '
-                        'somebody on it.'
-                    : 'A supervisor holding an edit Grant reaching this shift adds the '
-                        'people who were on it.',
+                    ? l10n.attendanceSheetAddAStandInFromTheDirectory
+                    : l10n.attendanceSheetASupervisorHoldingAnEditGrantReaching,
                 icon: Icons.groups_outlined,
               )
             else ...[
@@ -460,6 +460,7 @@ class _RecordCells extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final reason = record.absenceReason;
     final cells = <Widget>[
@@ -497,7 +498,7 @@ class _RecordCells extends StatelessWidget {
           if (canRecord) ...[
             _RowIcon(
               key: AttendanceSheetScreen.markKey(record.id),
-              tooltip: 'Mark an exception',
+              tooltip: l10n.attendanceSheetMarkAnException,
               icon: Icons.edit_outlined,
               onPressed: state.isMutating
                   ? null
@@ -505,7 +506,7 @@ class _RecordCells extends StatelessWidget {
             ),
             _RowIcon(
               key: AttendanceSheetScreen.removeKey(record.id),
-              tooltip: 'Remove from the sheet',
+              tooltip: l10n.attendanceSheetRemoveFromTheSheet,
               icon: Icons.remove_circle_outline,
               onPressed: state.isMutating
                   ? null
@@ -588,6 +589,7 @@ class _StandIn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Card(
       margin: EdgeInsets.zero,
@@ -597,7 +599,7 @@ class _StandIn extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Add a stand-in',
+              l10n.attendanceSheetAddAStandIn,
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -606,7 +608,7 @@ class _StandIn extends StatelessWidget {
             const SizedBox(height: Spacing.sm),
             AppSearchField<Employee>(
               name: AttendanceSheetScreen.standInFieldName,
-              label: 'Search the Directory',
+              label: l10n.commonSearchTheDirectory,
               value: null,
               enabled: enabled,
               onChanged: (_) {},
@@ -684,7 +686,7 @@ List<AppTableColumn> _columns(
   final floor = AppTypography.floor(context);
   return [
     AppTableColumn(
-      'Status',
+      AppLocalizations.of(context).commonStatus,
       // The widest chip on the sheet — a chip's own horizontal padding is
       // `Spacing.xxl`, the measure the maintenance registers use — plus the
       // reason beside it when the record names one.
@@ -702,7 +704,7 @@ List<AppTableColumn> _columns(
       ),
     ),
     AppTableColumn(
-      'Worked (min)',
+      AppLocalizations.of(context).attendanceSheetWorkedMin,
       width: sized(
         records.fold<double>(0, (width, record) {
           final minutes = _widthOf(context, formatAttendanceMinutes(record.workedMinutes), numeric);
@@ -713,7 +715,7 @@ List<AppTableColumn> _columns(
       align: AppColumnAlign.end,
     ),
     AppTableColumn(
-      'Overtime (min)',
+      AppLocalizations.of(context).attendanceSheetOvertimeMin,
       width: sized(
         records.fold<double>(0, (width, record) {
           final minutes = _widthOf(context, formatAttendanceMinutes(record.overtimeMinutes), numeric);
@@ -725,7 +727,7 @@ List<AppTableColumn> _columns(
     ),
     if (canRecord)
       AppTableColumn(
-        'Actions',
+        AppLocalizations.of(context).commonActions,
         // Two icon controls at the tap floor, `Spacing.sm` apart.
         width: 2 * AppTouchTarget.min + Spacing.sm + Spacing.sm,
         align: AppColumnAlign.end,

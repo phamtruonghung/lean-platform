@@ -24,6 +24,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -152,22 +153,23 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final failure = _failure;
     return BlocListener<RolesBloc, RolesState>(
       listener: _onRolesChanged,
       child: AppDialog(
-        title: _isCorrection ? 'Correct role' : 'Add role',
+        title: _isCorrection ? l10n.roleFormCorrectRole : l10n.commonAddRole,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: RoleFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: RoleFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : (_isCorrection ? 'Save' : 'Add role'),
+            label: _awaiting ? l10n.commonSaving : (_isCorrection ? l10n.commonSave : l10n.commonAddRole),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -183,9 +185,9 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
               enabled: !_isCorrection && !_awaiting,
               onChanged: (_) => setState(() {}),
               textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(
-                labelText: 'Code',
-                helperText: '3–30 characters: A–Z, 0–9 and underscore, e.g. ROLE_STORE_ROOM',
+              decoration: InputDecoration(
+                labelText: l10n.commonCode,
+                helperText: l10n.roleForm330CharactersAZ09,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -195,7 +197,7 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: l10n.commonName, border: OutlineInputBorder()),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
@@ -203,8 +205,8 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
               controller: _description,
               enabled: !_awaiting,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'What it is for',
+              decoration: InputDecoration(
+                labelText: l10n.roleFormWhatItIsFor,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -213,8 +215,8 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
               SwitchListTile(
                 key: RoleFormDialog.activeKey,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('In active use'),
-                subtitle: const Text('A retired role keeps its history and can be assigned to nobody.'),
+                title: Text(l10n.roleFormInActiveUse),
+                subtitle: Text(l10n.roleFormARetiredRoleKeepsItsHistoryAnd),
                 value: _isActive,
                 onChanged: _awaiting ? null : (value) => setState(() => _isActive = value),
               ),

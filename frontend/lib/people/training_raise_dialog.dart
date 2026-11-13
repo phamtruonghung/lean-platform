@@ -50,6 +50,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../status_tone.dart';
@@ -254,22 +255,23 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
   }
 
   Widget _buildDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final failure = _failure;
     return AppDialog(
-      title: _correcting ? 'Correct training record' : 'Raise training record',
+      title: _correcting ? l10n.trainingRaiseCorrectTrainingRecord : l10n.commonRaiseTrainingRecord,
       size: AppDialogSize.wide,
       actions: [
         AppDialogAction(
           id: TrainingRaiseDialog._cancelId,
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: TrainingRaiseDialog._submitId,
           label: _correcting
-              ? (_awaiting ? 'Correcting…' : 'Correct training record')
-              : (_awaiting ? 'Raising…' : 'Raise training record'),
+              ? (_awaiting ? l10n.trainingRaiseCorrecting : l10n.trainingRaiseCorrectTrainingRecord)
+              : (_awaiting ? l10n.trainingRaiseRaising : l10n.commonRaiseTrainingRecord),
           onPressed: _complete && !_awaiting ? _submit : null,
         ),
       ],
@@ -283,9 +285,9 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
             controller: _title,
             enabled: !_awaiting,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Title',
-              helperText: 'What the training was.',
+            decoration: InputDecoration(
+              labelText: l10n.trainingRaiseTitle,
+              helperText: l10n.trainingRaiseWhatTheTrainingWas,
               border: OutlineInputBorder(),
             ),
           ),
@@ -293,8 +295,8 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
           AppDateField(
             key: TrainingRaiseDialog.trainedOnKey,
             name: 'training-raise-trained-on',
-            label: 'Trained on',
-            helperText: 'The day it was given.',
+            label: l10n.commonTrainedOn,
+            helperText: l10n.trainingRaiseTheDayItWasGiven,
             value: _trainedOn,
             enabled: !_awaiting,
             onChanged: (value) => setState(() => _trainedOn = value),
@@ -306,9 +308,9 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
             enabled: !_awaiting,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Duration (hours)',
-              helperText: 'How long it lasted, e.g. 1.5.',
+            decoration: InputDecoration(
+              labelText: l10n.trainingRaiseDurationHours,
+              helperText: l10n.trainingRaiseHowLongItLastedEG1,
               border: OutlineInputBorder(),
             ),
           ),
@@ -316,8 +318,8 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
           const _SectionHeading('Who gave it, and why'),
           AppSearchField<Employee>(
             name: TrainingRaiseDialog.trainerFieldName,
-            label: 'Trainer (optional)',
-            helperText: 'Who gave it, found in the Directory.',
+            label: l10n.trainingRaiseTrainerOptional,
+            helperText: l10n.trainingRaiseWhoGaveItFoundInTheDirectory,
             value: _trainer,
             enabled: !_awaiting,
             onChanged: (employee) => setState(() => _trainer = employee),
@@ -341,9 +343,9 @@ class _TrainingRaiseDialogState extends State<TrainingRaiseDialog> {
             enabled: !_awaiting,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Objective (optional)',
-              helperText: 'What the training set out to teach.',
+            decoration: InputDecoration(
+              labelText: l10n.trainingRaiseObjectiveOptional,
+              helperText: l10n.trainingRaiseWhatTheTrainingSetOutToTeach,
               border: OutlineInputBorder(),
             ),
           ),
@@ -412,6 +414,7 @@ class _OrgUnitPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
     final bloc = context.read<OrgUnitPickerBloc>();
@@ -432,7 +435,7 @@ class _OrgUnitPicker extends StatelessWidget {
         onRetry: enabled ? () => bloc.add(OrgUnitPickerSiteSelected(state.siteId!)) : null,
       );
     } else if (state.rows.isEmpty) {
-      body = const _PickerMessage(message: 'Nothing to browse in this Site.');
+      body = _PickerMessage(message: l10n.commonNothingToBrowseInThisSite);
     } else {
       body = ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
@@ -455,7 +458,7 @@ class _OrgUnitPicker extends StatelessWidget {
             key: TrainingRaiseDialog.siteKey,
             initialValue: state.siteId,
             isDense: true,
-            decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
             items: [
               for (final site in state.sites)
                 DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -497,6 +500,7 @@ class _OrgUnitPickerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final bloc = context.read<OrgUnitPickerBloc>();
 
@@ -516,7 +520,7 @@ class _OrgUnitPickerRow extends StatelessWidget {
                     key: TrainingRaiseDialog.expandKey(row.node.id),
                     padding: EdgeInsets.zero,
                     iconSize: 18,
-                    tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                    tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                     onPressed: enabled
                         ? () => bloc.add(
                               row.isExpanded
@@ -561,6 +565,7 @@ class _PickerMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.all(Spacing.md),
@@ -574,7 +579,7 @@ class _PickerMessage extends StatelessWidget {
           ),
           if (onRetry != null) ...[
             const SizedBox(height: Spacing.xs),
-            TextButton(onPressed: onRetry, child: const Text('Try again')),
+            TextButton(onPressed: onRetry, child: Text(l10n.commonTryAgain)),
           ],
         ],
       ),

@@ -40,6 +40,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../status_tone.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
@@ -95,12 +96,12 @@ class SkillCoverageScreen extends StatelessWidget {
   /// The band, stated once: the rows and the labels are built from it, so a
   /// label and its cells start at the same x by construction
   /// (`docs/frontend-layout.md` §4).
-  static const List<AppTableColumn> columns = <AppTableColumn>[
-    AppTableColumn('Org Unit and skill', flex: 5),
-    AppTableColumn('Required', flex: 3),
-    AppTableColumn('Qualified', flex: 2, align: AppColumnAlign.end),
-    AppTableColumn('Lapsed', flex: 2, align: AppColumnAlign.end),
-    AppTableColumn('Shortfall', width: 128),
+  static List<AppTableColumn> columns(AppLocalizations l10n) => <AppTableColumn>[
+    AppTableColumn(l10n.skillCoverageOrgUnitAndSkill, flex: 5),
+    AppTableColumn(l10n.skillCoverageRequired, flex: 3),
+    AppTableColumn(l10n.skillCoverageQualified, flex: 2, align: AppColumnAlign.end),
+    AppTableColumn(l10n.skillCoverageLapsed, flex: 2, align: AppColumnAlign.end),
+    AppTableColumn(l10n.skillCoverageShortfall, width: 128),
   ];
 
   /// What a row's shortfall means, in the payload's own terms: nobody qualified
@@ -118,6 +119,7 @@ class SkillCoverageScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<SkillCoverageBloc>().state;
 
     return Scaffold(
@@ -127,7 +129,7 @@ class SkillCoverageScreen extends StatelessWidget {
         SkillCoverageLoading() => const SkeletonList(maxWidth: SkillCoverageScreen.maxWidth),
         SkillCoverageUnavailable(message: final message) => PlatformFailureState(
             key: SkillCoverageScreen.failedKey,
-            title: 'Skill coverage could not be read',
+            title: l10n.skillCoverageSkillCoverageCouldNotBeRead,
             message: message,
             retryKey: SkillCoverageScreen.retryKey,
             onRetry: () => context.read<SkillCoverageBloc>().add(const SkillCoverageStarted()),
@@ -178,6 +180,7 @@ class _LoadedState extends State<_Loaded> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = widget.state;
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
@@ -189,8 +192,8 @@ class _LoadedState extends State<_Loaded> {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Skill coverage',
-              description: 'Where this Site falls short of its own skill requirements.',
+              title: l10n.navSkillCoverage,
+              description: l10n.skillCoverageWhereThisSiteFallsShortOfIts,
               below: state.sites.length > 1
                   ? SizedBox(
                       width: 280,
@@ -199,7 +202,7 @@ class _LoadedState extends State<_Loaded> {
                         initialValue: state.siteId,
                         isDense: true,
                         decoration:
-                            const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+                            InputDecoration(labelText: l10n.commonSite, border: OutlineInputBorder()),
                         items: [
                           for (final site in state.sites)
                             DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -232,9 +235,8 @@ class _LoadedState extends State<_Loaded> {
               // create, and no filter to clear (issue #103).
               PlatformEmptyState.noneExist(
                 key: SkillCoverageScreen.emptyKey,
-                title: 'Every requirement is met',
-                message: 'This Site has no shortfall against the skill requirements it has set '
-                    'for itself.',
+                title: l10n.skillCoverageEveryRequirementIsMet,
+                message: l10n.skillCoverageThisSiteHasNoShortfallAgainstThe,
                 icon: Icons.task_alt_outlined,
               )
             else ..._body(context, matches),
@@ -245,6 +247,7 @@ class _LoadedState extends State<_Loaded> {
   }
 
   List<Widget> _body(BuildContext context, List<SkillCoverageEntry> matches) {
+    final l10n = AppLocalizations.of(context);
     final state = widget.state;
     return [
       // A filter box over a Site with no shortfall would be a control
@@ -253,8 +256,8 @@ class _LoadedState extends State<_Loaded> {
       // to be able to clear it.
       AppFilterField(
         name: SkillCoverageScreen.filterFieldName,
-        label: 'Filter skill coverage',
-        helperText: 'By Org Unit or skill.',
+        label: l10n.skillCoverageFilterSkillCoverage,
+        helperText: l10n.skillCoverageByOrgUnitOrSkill,
         term: _term,
         onChanged: (term) => setState(() => _term = term),
         shown: matches.length,
@@ -264,10 +267,8 @@ class _LoadedState extends State<_Loaded> {
       if (matches.isEmpty)
         PlatformEmptyState.noneMatched(
           key: SkillCoverageScreen.noMatchKey,
-          title: 'No shortfalls match',
-          message: 'This Site is short somewhere, but nothing matches '
-              '"${_term.trim()}". Try a different Org Unit or skill, or clear the '
-              'filter.',
+          title: l10n.skillCoverageNoShortfallsMatch,
+          message: l10n.skillCoverageThisSiteIsShortSomewhereButNothing(_term.trim()),
         )
       else ...[
         _Legend(entries: matches),
@@ -290,7 +291,7 @@ class _LoadedState extends State<_Loaded> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const AppTableHeader(columns: SkillCoverageScreen.columns),
+                  AppTableHeader(columns: SkillCoverageScreen.columns(l10n)),
                   for (final entry in matches) _CoverageRow(entry: entry),
                 ],
               ),
@@ -315,13 +316,14 @@ class _CoverageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final number = AppTableRow.numberStyle(context);
     final dense = AppTypography.dense(context);
     final id = SkillCoverageScreen.rowKey(entry.orgUnitId, entry.skillId);
     return AppTableRow(
       key: id,
-      columns: SkillCoverageScreen.columns,
+      columns: SkillCoverageScreen.columns(l10n),
       cells: [
         DisclosingText(
           '${entry.orgUnitName} · ${entry.skillName}',
@@ -351,6 +353,7 @@ class _CoverageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Padding(
       key: SkillCoverageScreen.cardKey(entry.orgUnitId, entry.skillId),
@@ -371,8 +374,12 @@ class _CoverageCard extends StatelessWidget {
                 ),
                 const SizedBox(height: Spacing.xxs),
                 Text(
-                  'Needs ${entry.minimumQualifiedHeadcount} at level ${entry.minimumLevel}+, '
-                  '${entry.qualifiedHeadcount} qualified, ${entry.expiredHeadcount} lapsed',
+                  l10n.skillCoverageNeedsAtLevelQualifiedLapsed(
+                    entry.minimumQualifiedHeadcount,
+                    entry.minimumLevel,
+                    entry.qualifiedHeadcount,
+                    entry.expiredHeadcount,
+                  ),
                   style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                 ),
               ],
@@ -395,9 +402,10 @@ class _ShortfallChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return StatusChip(
       key: SkillCoverageScreen.shortfallKey(entry.orgUnitId, entry.skillId),
-      label: 'Short ${entry.shortfall}',
+      label: l10n.skillCoverageShort(entry.shortfall),
       tone: SkillCoverageScreen.toneOf(entry),
     );
   }

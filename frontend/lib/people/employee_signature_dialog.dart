@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
@@ -97,6 +98,7 @@ class _BodyState extends State<_Body> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final state = context.watch<EmployeeSignatureBloc>().state;
     final bloc = context.read<EmployeeSignatureBloc>();
@@ -117,7 +119,7 @@ class _BodyState extends State<_Body> {
       );
     } else if (signature == null) {
       content = Text(
-        'No Signature is kept for ${widget.employee.displayName}. Upload a picture of it, or draw it here.',
+        l10n.employeeSignatureNoSignatureIsKeptForUploadA(widget.employee.displayName),
         key: EmployeeSignatureDialog.emptyKey,
         style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.of(context).textMuted),
       );
@@ -139,7 +141,7 @@ class _BodyState extends State<_Body> {
                 key: EmployeeSignatureDialog.imageKey,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => Text(
-                  'This Signature could not be shown.',
+                  l10n.commonThisSignatureCouldNotBeShown,
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: AppColors.of(context).onSignatureBackdrop),
                 ),
@@ -149,8 +151,8 @@ class _BodyState extends State<_Body> {
           const SizedBox(height: Spacing.sm),
           Text(
             signature.setForEmployee
-                ? 'Set for ${widget.employee.displayName} by $who'
-                : 'Set by ${widget.employee.displayName}',
+                ? l10n.employeeSignatureSetForBy(widget.employee.displayName, who)
+                : l10n.employeeSignatureSetBy(widget.employee.displayName),
             key: EmployeeSignatureDialog.setByKey,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -159,13 +161,13 @@ class _BodyState extends State<_Body> {
     }
 
     return AppDialog(
-      title: 'Signature of ${widget.employee.displayName}',
+      title: l10n.employeeSignatureSignatureOf(widget.employee.displayName),
       size: AppDialogSize.form,
       // `child` last, as `sort_child_properties_last` requires.
       actions: [
         AppDialogAction(
           id: 'employee-signature-close',
-          label: 'Close',
+          label: l10n.commonClose,
           kind: AppDialogActionKind.dismiss,
           onPressed: state.isWriting ? null : () => Navigator.of(context).pop(),
         ),
@@ -205,20 +207,20 @@ class _BodyState extends State<_Body> {
                       key: EmployeeSignatureDialog.uploadKey,
                       onPressed: canWrite ? _upload : null,
                       icon: const Icon(Icons.upload_file_outlined),
-                      label: Text(signature == null ? 'Upload a picture' : 'Replace with a picture'),
+                      label: Text(signature == null ? l10n.commonUploadAPicture : l10n.commonReplaceWithAPicture),
                     ),
                     OutlinedButton.icon(
                       key: EmployeeSignatureDialog.drawKey,
                       onPressed: canWrite && !_drawing ? () => setState(() => _drawing = true) : null,
                       icon: const Icon(Icons.draw_outlined),
-                      label: Text(signature == null ? 'Draw it' : 'Draw a new one'),
+                      label: Text(signature == null ? l10n.commonDrawIt : l10n.commonDrawANewOne),
                     ),
                     if (signature != null)
                       OutlinedButton.icon(
                         key: EmployeeSignatureDialog.removeKey,
                         onPressed: canWrite ? () => bloc.add(const EmployeeSignatureRemoved()) : null,
                         icon: const Icon(Icons.delete_outline),
-                        label: const Text('Remove'),
+                        label: Text(l10n.commonRemove),
                       ),
                   ],
                 ),
@@ -236,12 +238,12 @@ class _BodyState extends State<_Body> {
                       FilledButton(
                         key: EmployeeSignatureDialog.saveDrawnKey,
                         onPressed: canWrite && !_pad.isEmpty ? _saveDrawn : null,
-                        child: const Text('Keep this Signature'),
+                        child: Text(l10n.commonKeepThisSignature),
                       ),
                       OutlinedButton(
                         key: EmployeeSignatureDialog.clearDrawnKey,
                         onPressed: _pad.isEmpty ? null : _pad.clear,
-                        child: const Text('Clear'),
+                        child: Text(l10n.commonClear),
                       ),
                       TextButton(
                         key: EmployeeSignatureDialog.cancelDrawnKey,
@@ -249,7 +251,7 @@ class _BodyState extends State<_Body> {
                           _pad.clear();
                           setState(() => _drawing = false);
                         },
-                        child: const Text('Cancel'),
+                        child: Text(l10n.commonCancel),
                       ),
                     ],
                   ),

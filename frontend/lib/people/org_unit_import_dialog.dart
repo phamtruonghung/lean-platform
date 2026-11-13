@@ -18,6 +18,7 @@
 /// carries.
 library;
 
+import '../l10n/app_localizations.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -119,6 +120,7 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return BlocListener<OrgUnitAdminBloc, OrgUnitAdminState>(
       listener: _onAdminChanged,
@@ -126,19 +128,19 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
         builder: (context) {
           final state = context.watch<OrgUnitAdminBloc>().state;
           return AppDialog(
-            title: 'Import a branch',
+            title: l10n.commonImportABranch,
             size: AppDialogSize.form,
             // `child` last, as `sort_child_properties_last` requires.
             actions: [
               AppDialogAction(
                 id: 'org-unit-import-cancel',
-                label: 'Cancel',
+                label: l10n.commonCancel,
                 kind: AppDialogActionKind.dismiss,
                 onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
               ),
               AppDialogAction(
                 id: 'org-unit-import-submit',
-                label: _awaiting ? 'Importing…' : 'Import',
+                label: _awaiting ? l10n.orgUnitImportImporting : l10n.orgUnitImportImport,
                 onPressed: _awaiting ? null : _submit,
               ),
             ],
@@ -149,9 +151,7 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'A JSON array of rows. Each row references its own parent by '
-                      '"parentCode" — another row in this same array, or an existing '
-                      'code at this Site — never by id.',
+                      l10n.orgUnitImportAJsonArrayOfRowsEachRow,
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
@@ -194,10 +194,12 @@ class _OrgUnitImportDialogState extends State<OrgUnitImportDialog> {
                           key: OrgUnitImportDialog.rowErrorKey(rowError.row),
                           padding: const EdgeInsets.only(top: Spacing.xs),
                           child: Text(
-                            'Row ${rowError.row + 1}'
-                            '${rowError.code == null ? '' : ' (${rowError.code})'}'
-                            '${rowError.field == null ? '' : ', ${rowError.field}'}: '
-                            '${rowError.message}',
+                            l10n.orgUnitImportRow(
+                              '${rowError.row + 1}',
+                              rowError.code == null ? '' : ' (${rowError.code})',
+                              rowError.field == null ? '' : ', ${rowError.field}',
+                              rowError.message,
+                            ),
                             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
                           ),
                         ),

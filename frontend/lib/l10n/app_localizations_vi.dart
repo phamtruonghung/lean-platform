@@ -1857,4 +1857,1613 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get routerBackToList => 'Về danh sách';
+
+  @override
+  String get accountCorrectionChangeRoleAndGrants => 'Đổi vai trò và quyền';
+
+  @override
+  String get commonSave => 'Lưu';
+
+  @override
+  String accountCorrectionHoldsTheRoleAndTheOrgUnit(Object email) {
+    return '$email đang giữ vai trò và các quyền trên Đơn vị tổ chức được chọn ở đây. Những gì đặt bên dưới sẽ thay thế toàn bộ những gì tài khoản đang có.';
+  }
+
+  @override
+  String get accountCorrectionAnAdministratorCanActEverywhereThisAccount =>
+      'Quản trị viên thao tác được ở mọi nơi. Tài khoản này sẽ thấy và thay đổi được mọi Nhà máy và mọi Đơn vị tổ chức, và chấp nhận được các Tài khoản khác. Mọi quyền trên Đơn vị tổ chức mà tài khoản đang giữ đều bị bỏ, và không cần quyền nào.';
+
+  @override
+  String get accountCorrectionThisAccountWasTurnedAwaySavingThis =>
+      'Tài khoản này đã bị từ chối. Lưu lại sẽ chấp nhận tài khoản vào Nền tảng và cho phép đăng nhập.';
+
+  @override
+  String get accountCorrectionThisAccountIsDeactivatedSavingThisReactivates =>
+      'Tài khoản này đang bị vô hiệu. Lưu lại sẽ kích hoạt lại và cho phép đăng nhập trở lại.';
+
+  @override
+  String get commonChangeEmployeeLink => 'Đổi liên kết Nhân viên';
+
+  @override
+  String accountEmployeeWillBeLinkedToTheEmployeeChosen(Object email) {
+    return '$email sẽ được liên kết với Nhân viên được chọn ở đây, hoặc không liên kết với ai.';
+  }
+
+  @override
+  String get commonResetPassword => 'Đặt lại mật khẩu';
+
+  @override
+  String accountPasswordChooseANewPasswordForTellThem(Object email) {
+    return 'Chọn mật khẩu mới cho $email. Hãy tự báo mật khẩu cho họ; mật khẩu không hiển thị lại lần nữa.';
+  }
+
+  @override
+  String accountPasswordAtLeastCharacters(Object minimumPasswordLength) {
+    return 'Ít nhất $minimumPasswordLength ký tự.';
+  }
+
+  @override
+  String accountRolesRolesFor(Object accountName) {
+    return 'Vai trò của $accountName';
+  }
+
+  @override
+  String get commonAssigning => 'Đang gán…';
+
+  @override
+  String accountRolesRoleAssigned(int length) {
+    String _temp0 = intl.Intl.pluralLogic(
+      length,
+      locale: localeName,
+      other: 'đã gán $length vai trò',
+      one: 'đã gán 1 vai trò',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String accountRolesEveryAccountHoldsThis(Object code) {
+    return '$code — mọi tài khoản đều có';
+  }
+
+  @override
+  String accountRolesEveryAccountWhoseOwnRoleIs(
+    Object code,
+    Object legacyRole,
+  ) {
+    return '$code — mọi tài khoản có vai trò riêng là $legacyRole';
+  }
+
+  @override
+  String accountRolesPermission(String code, int length) {
+    String _temp0 = intl.Intl.pluralLogic(
+      length,
+      locale: localeName,
+      other: '$length quyền',
+      one: '1 quyền',
+    );
+    return '$code — $_temp0';
+  }
+
+  @override
+  String get accountsTheAccountsCouldNotBeLoaded =>
+      'Không đọc được danh sách tài khoản';
+
+  @override
+  String get accountsNoAccountsYet => 'Chưa có tài khoản nào';
+
+  @override
+  String get accountsAccountsAppearHereAsSoonAsSomebody =>
+      'Tài khoản sẽ hiện ở đây ngay khi có người đăng nhập lần đầu.';
+
+  @override
+  String get accountsEveryAccountOnThisPlantWhatIt =>
+      'Mọi tài khoản tại nhà máy này: tài khoản giữ gì và có đăng nhập được hay không.';
+
+  @override
+  String get commonFilterAccounts => 'Lọc tài khoản';
+
+  @override
+  String get accountsByNameEmailOrRole => 'Theo tên, email hoặc vai trò.';
+
+  @override
+  String get commonNoAccountsMatch => 'Không có tài khoản nào khớp';
+
+  @override
+  String accountsThisPlantHasAccountsButNoneMatches(Object term) {
+    return 'Nhà máy có tài khoản, nhưng không tài khoản nào khớp “$term”. Hãy thử tên, email hay vai trò khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get accountsEmail => 'Email';
+
+  @override
+  String get accountsRole => 'Vai trò';
+
+  @override
+  String get accountsStanding => 'Tình trạng';
+
+  @override
+  String get accountsSince => 'Từ ngày';
+
+  @override
+  String get accountsGrants => 'Quyền';
+
+  @override
+  String get accountsReviewInApprovals => 'Xem trong Phê duyệt';
+
+  @override
+  String get accountsChange => 'Đổi';
+
+  @override
+  String get accountsLinkAnEmployee => 'Liên kết Nhân viên';
+
+  @override
+  String get accountsEverywhere => 'Mọi nơi';
+
+  @override
+  String get accountsNone => 'Không có';
+
+  @override
+  String accountsOrgUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Đơn vị tổ chức',
+      one: '1 Đơn vị tổ chức',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountsActsEverywhereInEverySiteNoOrg =>
+      'Thao tác ở mọi nơi, trong mọi Nhà máy. Không có quyền trên Đơn vị tổ chức nào, và không cần.';
+
+  @override
+  String get accountsNoOrgUnitGrantsCanSignIn =>
+      'Không có quyền trên Đơn vị tổ chức nào. Đăng nhập được nhưng chưa thao tác được ở đâu.';
+
+  @override
+  String get accountsDeactivateThisAccount => 'Vô hiệu tài khoản này?';
+
+  @override
+  String accountsWillNotBeAbleToSignIn(Object email) {
+    return '$email sẽ không đăng nhập được. Không có gì bị xoá — vai trò và các quyền trên Đơn vị tổ chức vẫn giữ nguyên, và quản trị viên có thể kích hoạt lại tài khoản bất cứ lúc nào.';
+  }
+
+  @override
+  String get admissionAdmitThisAccount => 'Chấp nhận tài khoản này';
+
+  @override
+  String get commonAdmitting => 'Đang chấp nhận…';
+
+  @override
+  String get commonAdmit => 'Chấp nhận';
+
+  @override
+  String admissionWillBeLetInToThePlatform(Object email) {
+    return '$email sẽ được vào Nền tảng với vai trò được chọn ở đây.';
+  }
+
+  @override
+  String get admissionAnAdministratorCanActEverywhereThisAccount =>
+      'Quản trị viên thao tác được ở mọi nơi. Tài khoản này sẽ thấy và thay đổi được mọi Nhà máy và mọi Đơn vị tổ chức, và chấp nhận được các Tài khoản khác. Không cấp quyền nào trên Đơn vị tổ chức, và không cần.';
+
+  @override
+  String get admissionThisAccountWillBeAdmittedWithNo =>
+      'Tài khoản này sẽ được chấp nhận mà không có quyền nào trên Đơn vị tổ chức, nên đăng nhập được nhưng chưa thao tác được ở đơn vị nào.';
+
+  @override
+  String get approvalQueueTheQueueCouldNotBeLoaded => 'Không đọc được hàng chờ';
+
+  @override
+  String get approvalQueueNobodyIsWaiting => 'Không có ai đang chờ';
+
+  @override
+  String get approvalQueueEveryAccountHasBeenDealtWithNew =>
+      'Mọi tài khoản đã được xử lý. Yêu cầu mới sẽ hiện ở đây.';
+
+  @override
+  String get approvalQueueEveryoneWaitingToBeLetInTo =>
+      'Mọi người đang chờ được vào Nền tảng.';
+
+  @override
+  String get approvalQueueByEmailAddress => 'Theo địa chỉ email.';
+
+  @override
+  String approvalQueueAccountsAreWaitingButNoneMatchesTry(Object term) {
+    return 'Có tài khoản đang chờ, nhưng không tài khoản nào khớp “$term”. Hãy thử địa chỉ email khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get approvalQueueAccount => 'Tài khoản';
+
+  @override
+  String get approvalQueueSuggestedEmployee => 'Nhân viên gợi ý';
+
+  @override
+  String get approvalQueueWaiting => 'Đang chờ';
+
+  @override
+  String get approvalQueueRejecting => 'Đang từ chối…';
+
+  @override
+  String get commonReject => 'Từ chối';
+
+  @override
+  String get approvalQueueRejectThisAccount => 'Từ chối tài khoản này?';
+
+  @override
+  String approvalQueueWillNotBeLetInToThe(Object email) {
+    return '$email sẽ không được vào Nền tảng, và sẽ được báo là yêu cầu đã bị từ chối. Quản trị viên vẫn có thể chấp nhận sau.';
+  }
+
+  @override
+  String get attendancePickerChooseAnOrgUnitAndAProduction =>
+      'Chọn một Đơn vị tổ chức và một ngày sản xuất để mở bảng chấm công của ca đó.';
+
+  @override
+  String get attendancePickerProductionDay => 'Ngày sản xuất';
+
+  @override
+  String get attendancePickerTheShiftsCouldNotBeRead =>
+      'Không đọc được danh sách ca';
+
+  @override
+  String get attendancePickerNoShiftsAreScheduledHereOnThat =>
+      'Ngày đó không có ca nào được xếp ở đây.';
+
+  @override
+  String get attendancePickerChooseAnotherProductionDayOrAnotherOrg =>
+      'Chọn ngày sản xuất khác, hoặc Đơn vị tổ chức khác.';
+
+  @override
+  String get commonTheSitesAreUnavailable =>
+      'Không tải được danh sách Nhà máy.';
+
+  @override
+  String get commonThereAreNoSitesToBrowseYet => 'Chưa có Nhà máy nào để xem.';
+
+  @override
+  String get commonNothingToBrowseInThisSite =>
+      'Nhà máy này chưa có gì để xem.';
+
+  @override
+  String get commonCollapse => 'Thu gọn';
+
+  @override
+  String get commonExpand => 'Mở rộng';
+
+  @override
+  String attendanceRecordMark(Object displayName) {
+    return 'Chấm công cho $displayName';
+  }
+
+  @override
+  String get attendanceRecordWorkedMinutes => 'Số phút đã làm';
+
+  @override
+  String get attendanceRecordOvertimeMinutes => 'Số phút ngoài giờ';
+
+  @override
+  String get attendanceSheetTheAttendanceSheetCouldNotBeRead =>
+      'Không đọc được bảng chấm công';
+
+  @override
+  String get attendanceSheetNobodyWithAnEditGrantHereHas =>
+      'Chưa có ai có quyền sửa ở đây mở bảng này, nên chưa có gì để hiển thị. Chỉ giám sát có quyền sửa bao trùm ca này — hoặc quản trị viên — mới mở được bảng.';
+
+  @override
+  String get attendanceSheetConfirmed => 'Đã xác nhận';
+
+  @override
+  String get attendanceSheetConfirming => 'Đang xác nhận…';
+
+  @override
+  String get commonConfirm => 'Xác nhận';
+
+  @override
+  String get attendanceSheetNobodyIsOnThisSheetYet => 'Bảng này chưa có ai.';
+
+  @override
+  String get attendanceSheetAddAStandInFromTheDirectory =>
+      'Thêm một người thay ca từ Danh bạ bên dưới để mở bảng với ít nhất một người.';
+
+  @override
+  String get attendanceSheetASupervisorHoldingAnEditGrantReaching =>
+      'Giám sát có quyền sửa bao trùm ca này thêm những người đã có mặt trong ca.';
+
+  @override
+  String get attendanceSheetMarkAnException => 'Đánh dấu ngoại lệ';
+
+  @override
+  String get attendanceSheetRemoveFromTheSheet => 'Bỏ khỏi bảng';
+
+  @override
+  String get attendanceSheetAddAStandIn => 'Thêm người thay ca';
+
+  @override
+  String get commonSearchTheDirectory => 'Tìm trong Danh bạ';
+
+  @override
+  String get attendanceSheetWorkedMin => 'Đã làm (phút)';
+
+  @override
+  String get attendanceSheetOvertimeMin => 'Ngoài giờ (phút)';
+
+  @override
+  String get attendanceToConfirmPastShiftsWhoseSheetIsMissingOr =>
+      'Các ca đã qua có bảng chấm công còn thiếu hoặc chưa được xác nhận, cũ nhất trước, trong các Đơn vị tổ chức mà bạn xác nhận được.';
+
+  @override
+  String get attendanceToConfirmTheWorklistCouldNotBeRead =>
+      'Không đọc được danh sách cần làm';
+
+  @override
+  String get attendanceToConfirmNothingToConfirmHere =>
+      'Ở đây không có gì cần xác nhận.';
+
+  @override
+  String get attendanceToConfirmEveryPastShiftYouCanConfirmHas =>
+      'Mọi ca đã qua mà bạn xác nhận được đều đã có bảng chấm công được xác nhận.';
+
+  @override
+  String get attendanceToConfirmNoShiftInThisWindowNeedsConfirming =>
+      'Không có ca nào trong khoảng này cần xác nhận. Hãy mở rộng khoảng ngày, hoặc xoá Đơn vị tổ chức.';
+
+  @override
+  String get commonFrom => 'Từ';
+
+  @override
+  String commonOrgUnit2(Object orgUnitName) {
+    return 'Đơn vị tổ chức: $orgUnitName';
+  }
+
+  @override
+  String get commonClear => 'Xoá';
+
+  @override
+  String get commonHideOrgUnits => 'Ẩn Đơn vị tổ chức';
+
+  @override
+  String get commonFilterByOrgUnit => 'Lọc theo Đơn vị tổ chức';
+
+  @override
+  String get attendanceToConfirmOpenSheet => 'Mở bảng chấm công';
+
+  @override
+  String get commonUsd => 'USD';
+
+  @override
+  String get costRateFormTheRateBelowIsClosedOnThe =>
+      'Đơn giá bên dưới sẽ được đóng vào ngày đơn giá mới có hiệu lực. Đơn giá này vẫn đọc được, và một chi phí hỏi cho ngày sớm hơn vẫn dùng đơn giá này.';
+
+  @override
+  String costRateFormTheListOfSitesOrgUnitsAssets(Object scopesFailure) {
+    return 'Không đọc được danh sách Nhà máy, Đơn vị tổ chức, Tài sản và trung tâm chi phí, nên không chọn được phạm vi: $scopesFailure';
+  }
+
+  @override
+  String get commonScope => 'Phạm vi';
+
+  @override
+  String costRateFormWhich(Object value) {
+    return 'Loại $value nào';
+  }
+
+  @override
+  String get costRateFormRateType => 'Loại đơn giá';
+
+  @override
+  String get costRateFormScopeAndRateType => 'Phạm vi và loại đơn giá';
+
+  @override
+  String get costRateFormARateSScopeAndRateType =>
+      'Không sửa được phạm vi và loại đơn giá của một đơn giá — hãy thêm đơn giá cho phạm vi mới';
+
+  @override
+  String get costRateFormMultiplier15ForTimeAndA =>
+      'Hệ số (1,5 cho giờ làm thêm gấp rưỡi)';
+
+  @override
+  String get costRateFormAmountPerHour => 'Số tiền mỗi giờ';
+
+  @override
+  String get costRateFormTheNewAmountFromTheDateBelow =>
+      'Số tiền mới, áp dụng từ ngày bên dưới';
+
+  @override
+  String get commonCurrency => 'Tiền tệ';
+
+  @override
+  String get commonAThreeLetterCodeSuchAsUsd => 'Mã ba chữ cái, ví dụ USD';
+
+  @override
+  String get costRateFormNewRateTakesEffectOn => 'Đơn giá mới có hiệu lực từ';
+
+  @override
+  String get commonTakesEffectOn => 'Có hiệu lực từ';
+
+  @override
+  String get costRateFormTheOldRateIsClosedOnThis =>
+      'Đơn giá cũ được đóng vào ngày này, và đơn giá mới bắt đầu';
+
+  @override
+  String get commonAppliesUntilOptional => 'Áp dụng đến (không bắt buộc)';
+
+  @override
+  String get costRateFormLeftBlankThisRateIsTheCurrent =>
+      'Để trống thì đây là đơn giá hiện hành. Đặt ngày sẽ đóng đơn giá vào ngày đó, là mốc kết thúc không tính ngày ấy.';
+
+  @override
+  String get costRatesTheCostRateCatalogueCouldNotBe =>
+      'Không đọc được danh mục đơn giá giờ';
+
+  @override
+  String get costRatesWhatAnHourCostsOneCatalogueShared =>
+      'Một giờ tốn bao nhiêu — một danh mục dùng chung cho mọi Nhà máy, và là căn cứ tính các số Chi phí trên bảng phân cấp. Đơn giá không bao giờ bị ghi đè: đơn giá được đóng lại và mở đơn giá mới, nên chi phí đã báo cho tháng trước vẫn giữ nguyên.';
+
+  @override
+  String get costRatesAddCostRate => 'Thêm đơn giá giờ';
+
+  @override
+  String get costRatesNoCostRatesYet => 'Chưa có đơn giá giờ';
+
+  @override
+  String get costRatesUntilARateIsSetEveryCost =>
+      'Chưa đặt đơn giá thì mọi số Chi phí đều không có giá trị.';
+
+  @override
+  String get costRatesRate => 'Đơn giá';
+
+  @override
+  String get commonPeriod => 'Kỳ';
+
+  @override
+  String get commonCorrect => 'Điều chỉnh';
+
+  @override
+  String get commonRevise => 'Thay thế';
+
+  @override
+  String get commonClosed => 'Đã đóng';
+
+  @override
+  String get directoryTheDirectoryCouldNotBeRead => 'Không đọc được Danh bạ';
+
+  @override
+  String get directoryNobodyMatchesThisSearch => 'Không ai khớp tìm kiếm này';
+
+  @override
+  String get directoryTryADifferentNameOrClearA =>
+      'Hãy thử tên khác, hoặc xoá bộ lọc.';
+
+  @override
+  String get directoryWhoWorksHereSearchedFilteredAndDeparted =>
+      'Ai làm việc ở đây — tìm kiếm, lọc, và Nhân viên đã rời được ẩn đi cho tới khi cần xem.';
+
+  @override
+  String get commonAddEmployee => 'Thêm Nhân viên';
+
+  @override
+  String get directoryMyRecord => 'Hồ sơ của tôi';
+
+  @override
+  String get directorySearchByName => 'Tìm theo tên';
+
+  @override
+  String get commonJobRole => 'Chức danh công việc';
+
+  @override
+  String get directoryAllJobRoles => 'Mọi chức danh';
+
+  @override
+  String get directoryIncludeDeparted => 'Gồm cả người đã rời';
+
+  @override
+  String get commonEmployment => 'Hình thức làm việc';
+
+  @override
+  String get commonDeparted => 'Đã rời';
+
+  @override
+  String get commonActive => 'Đang làm';
+
+  @override
+  String employeeAssignmentAssignToAnOrgUnit(Object displayName) {
+    return 'Gán $displayName vào một Đơn vị tổ chức';
+  }
+
+  @override
+  String get employeeAssignmentWhereItWorksNow => 'Đang làm ở đâu';
+
+  @override
+  String get employeeAssignmentJobRoleOptional =>
+      'Chức danh công việc (không bắt buộc)';
+
+  @override
+  String get employeeAssignmentNoJobRole => 'Không có chức danh';
+
+  @override
+  String get employeeAssignmentEffectiveDate => 'Ngày hiệu lực';
+
+  @override
+  String employeeCorrectionCorrectSRecord(Object displayName) {
+    return 'Sửa hồ sơ của $displayName';
+  }
+
+  @override
+  String get commonFirstName => 'Tên';
+
+  @override
+  String get commonLastName => 'Họ';
+
+  @override
+  String get commonEmploymentType => 'Loại hình làm việc';
+
+  @override
+  String get commonWorkEmailOptional => 'Email công việc (không bắt buộc)';
+
+  @override
+  String employeeDepartureRecordThatHasLeft(Object displayName) {
+    return 'Ghi nhận $displayName đã rời';
+  }
+
+  @override
+  String get employeeDepartureAccountStillLinked =>
+      'Tài khoản vẫn được liên kết';
+
+  @override
+  String get employeeDepartureTheRecordStaysNothingIsDeletedAnd =>
+      'Hồ sơ vẫn còn — không có gì bị xoá, và có thể hoàn tác bằng cách dùng lại hồ sơ bất cứ lúc nào.';
+
+  @override
+  String get employeeDepartureEffectiveDateOptional =>
+      'Ngày hiệu lực (không bắt buộc)';
+
+  @override
+  String get commonLeftBlankTodayIsRecorded => 'Để trống thì ghi nhận hôm nay.';
+
+  @override
+  String get employeeDepartureRecording => 'Đang ghi nhận…';
+
+  @override
+  String get commonRecordDeparture => 'Ghi nhận đã rời';
+
+  @override
+  String employeeDepartureHasLeftAndTheirAccountCanStill(
+    Object displayName,
+    Object email,
+  ) {
+    return '$displayName đã rời, và Tài khoản của họ ($email) vẫn đăng nhập được. Dù sao việc rời đi cũng đã được ghi nhận — vô hiệu tài khoản là bước riêng và không bắt buộc.';
+  }
+
+  @override
+  String get employeeDepartureNotNow => 'Để sau';
+
+  @override
+  String get employeeDepartureDeactivating => 'Đang vô hiệu…';
+
+  @override
+  String get employeeDepartureDeactivateAccount => 'Vô hiệu tài khoản';
+
+  @override
+  String get employeeDetailThisRecordCouldNotBeRead =>
+      'Không đọc được hồ sơ này';
+
+  @override
+  String get employeeDetailAssignmentHistory => 'Lịch sử phân công';
+
+  @override
+  String get employeeDetailNoAssignmentHasBeenRecorded =>
+      'Chưa ghi nhận phân công nào.';
+
+  @override
+  String get employeeDetailRecordSkill => 'Ghi nhận kỹ năng';
+
+  @override
+  String get employeeDetailNoQualificationsRecorded =>
+      'Chưa ghi nhận chứng nhận nào.';
+
+  @override
+  String get employeeDetailHired => 'Ngày vào làm';
+
+  @override
+  String get employeeDetailWorkEmail => 'Email công việc';
+
+  @override
+  String get commonCorrectRecord => 'Sửa hồ sơ';
+
+  @override
+  String get employeeDetailSignature => 'Chữ ký';
+
+  @override
+  String get commonReinstate => 'Khôi phục';
+
+  @override
+  String get employeeDetailCurrent => 'Hiện tại';
+
+  @override
+  String employeeDetailLapsed(Object name) {
+    return '$name · Hết hạn';
+  }
+
+  @override
+  String get employeeDetailReAssess => 'Đánh giá lại';
+
+  @override
+  String get commonAdding => 'Đang thêm…';
+
+  @override
+  String employeeLinkPickerSuggestedMatch(Object value) {
+    return 'Gợi ý: $value';
+  }
+
+  @override
+  String employeeLinkPickerLinkedTo(Object value) {
+    return 'Đang liên kết với: $value';
+  }
+
+  @override
+  String get commonRemove => 'Bỏ';
+
+  @override
+  String get employeeLinkPickerNoEmployeeWillBeLinked =>
+      'Không liên kết với Nhân viên nào.';
+
+  @override
+  String employeeSignatureNoSignatureIsKeptForUploadA(Object displayName) {
+    return 'Chưa lưu chữ ký nào của $displayName. Hãy tải ảnh chữ ký lên, hoặc vẽ tại đây.';
+  }
+
+  @override
+  String get commonThisSignatureCouldNotBeShown =>
+      'Không hiển thị được chữ ký này.';
+
+  @override
+  String employeeSignatureSetForBy(Object displayName, Object who) {
+    return 'Đặt cho $displayName bởi $who';
+  }
+
+  @override
+  String employeeSignatureSetBy(Object displayName) {
+    return 'Do $displayName đặt';
+  }
+
+  @override
+  String employeeSignatureSignatureOf(Object displayName) {
+    return 'Chữ ký của $displayName';
+  }
+
+  @override
+  String get commonUploadAPicture => 'Tải ảnh lên';
+
+  @override
+  String get commonReplaceWithAPicture => 'Thay bằng ảnh';
+
+  @override
+  String get commonDrawIt => 'Vẽ tại đây';
+
+  @override
+  String get commonDrawANewOne => 'Vẽ chữ ký mới';
+
+  @override
+  String get commonKeepThisSignature => 'Giữ chữ ký này';
+
+  @override
+  String employeeSkillFormReAssessFor(Object value, Object displayName) {
+    return 'Đánh giá lại $value cho $displayName';
+  }
+
+  @override
+  String employeeSkillFormRecordASkillFor(Object displayName) {
+    return 'Ghi nhận kỹ năng cho $displayName';
+  }
+
+  @override
+  String get employeeSkillFormSkill => 'Kỹ năng';
+
+  @override
+  String get employeeSkillFormProficiency04Iluo => 'Mức thành thạo (0–4, ILUO)';
+
+  @override
+  String get employeeSkillForm0None => '0 — không có';
+
+  @override
+  String get employeeSkillFormAssessedOnOptional =>
+      'Đánh giá ngày (không bắt buộc)';
+
+  @override
+  String get employeeSkillFormExpiresOnOptional =>
+      'Hết hạn ngày (không bắt buộc)';
+
+  @override
+  String get employeeSkillFormLeftBlankNeverExpiresOrIsRe =>
+      'Để trống thì không bao giờ hết hạn (hoặc được tính lại từ chu kỳ đánh giá lại của kỹ năng đó).';
+
+  @override
+  String get employeeSkillFormEvidenceReferenceOptional =>
+      'Tham chiếu minh chứng (không bắt buộc)';
+
+  @override
+  String floorTrainingTrainingFor(Object employeeName) {
+    return 'Đào tạo của $employeeName';
+  }
+
+  @override
+  String get floorTrainingYourTraining => 'Đào tạo của bạn';
+
+  @override
+  String get floorTrainingDone => 'Xong';
+
+  @override
+  String get floorTrainingShowMyTraining => 'Xem đào tạo của tôi';
+
+  @override
+  String get floorTrainingWhoAreYouYourEmployeeNumberAnd =>
+      'Bạn là ai? Mã nhân viên và PIN cho thấy buổi đào tạo đang chờ bạn ở thiết bị này.';
+
+  @override
+  String get floorTrainingScanTheBadgeOrTypeTheNumber =>
+      'Quét thẻ hoặc nhập số.';
+
+  @override
+  String get floorTrainingNothingIsWaitingOnYouAtThis =>
+      'Không có gì đang chờ bạn ở thiết bị này.';
+
+  @override
+  String get jobRoleFormCorrectJobRole => 'Sửa chức danh công việc';
+
+  @override
+  String get commonAddJobRole => 'Thêm chức danh';
+
+  @override
+  String get jobRolesTheJobRoleCatalogueCouldNotBe =>
+      'Không đọc được danh mục chức danh công việc';
+
+  @override
+  String get jobRolesWhatAnEmployeeDoesDefinedOnceShared =>
+      'Nhân viên làm gì — khai báo một lần, dùng chung cho mọi Nhà máy.';
+
+  @override
+  String get jobRolesNoJobRolesYet => 'Chưa có chức danh nào';
+
+  @override
+  String get commonNothingHasBeenDefinedInTheCatalogue =>
+      'Danh mục chưa có gì.';
+
+  @override
+  String get jobRolesFilterJobRoles => 'Lọc chức danh công việc';
+
+  @override
+  String get jobRolesByNameOrCode => 'Theo tên hoặc mã.';
+
+  @override
+  String get jobRolesNoJobRolesMatch => 'Không có chức danh nào khớp';
+
+  @override
+  String jobRolesNothingInTheCatalogueMatchesTryA(Object term) {
+    return 'Danh mục không có gì khớp “$term”. Hãy thử tên hoặc mã khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get leaveRequestCancelCancelLeaveRequest => 'Huỷ đơn xin nghỉ';
+
+  @override
+  String leaveRequestCancelCancelTheRequestFor(
+    Object leaveTypeName,
+    Object displayName,
+    Object periodLabel,
+    Object daysLabel,
+  ) {
+    return 'Huỷ đơn $leaveTypeName của $displayName, $periodLabel ($daysLabel)?';
+  }
+
+  @override
+  String get leaveRequestCancelKeepRequest => 'Giữ đơn';
+
+  @override
+  String get leaveRequestCancelCancelling => 'Đang huỷ…';
+
+  @override
+  String get commonCancelRequest => 'Huỷ đơn';
+
+  @override
+  String get commonRequestLeave => 'Xin nghỉ';
+
+  @override
+  String get leaveRequestFormRequesting => 'Đang gửi…';
+
+  @override
+  String get leaveRequestFormLeaveTypesCouldNotBeRead =>
+      'Không đọc được các loại nghỉ';
+
+  @override
+  String get leaveRequestFormLeaveType => 'Loại nghỉ';
+
+  @override
+  String get leaveRequestFormFirstDay => 'Ngày đầu';
+
+  @override
+  String get leaveRequestFormLastDay => 'Ngày cuối';
+
+  @override
+  String get leaveRequestsLeaveRequestsCouldNotBeRead =>
+      'Không đọc được các đơn xin nghỉ';
+
+  @override
+  String get leaveRequestsAskToBeAwayFromWorkAnd =>
+      'Xin nghỉ việc và theo dõi kết quả của đơn.';
+
+  @override
+  String get leaveRequestsMine => 'Của tôi';
+
+  @override
+  String get leaveRequestsToDecide => 'Cần quyết định';
+
+  @override
+  String get leaveRequestsNoLeaveRequestsYet => 'Chưa có đơn xin nghỉ nào';
+
+  @override
+  String get leaveRequestsNothingToDecide => 'Không có gì cần quyết định';
+
+  @override
+  String get leaveRequestsRequestLeaveToAskForTimeAway =>
+      'Gửi đơn xin nghỉ để xin thời gian vắng mặt.';
+
+  @override
+  String get leaveRequestsNoPendingLeaveRequestsAreWaitingFor =>
+      'Không có đơn xin nghỉ nào đang chờ bạn quyết định.';
+
+  @override
+  String leaveRequestsNote(Object note) {
+    return 'Ghi chú: $note';
+  }
+
+  @override
+  String leaveRequestsDecisionNote(Object decisionNote) {
+    return 'Ghi chú quyết định: $decisionNote';
+  }
+
+  @override
+  String get leaveRequestsApprove => 'Duyệt';
+
+  @override
+  String get mySignatureYourSignatureCouldNotBeRead =>
+      'Không đọc được chữ ký của bạn';
+
+  @override
+  String get mySignatureNoSignatureKept => 'Chưa lưu chữ ký nào';
+
+  @override
+  String get mySignatureYouHaveNotKeptASignatureYet =>
+      'Bạn chưa lưu chữ ký nào. Hãy tải ảnh chữ ký lên, hoặc vẽ tại đây.';
+
+  @override
+  String get mySignatureYourSignature => 'Chữ ký của bạn';
+
+  @override
+  String get mySignatureYourOwnMarkKeptOnceAndApplied =>
+      'Dấu của chính bạn, lưu một lần và dùng ở mọi nơi mà bạn phải ký tay lên giấy tờ. Thay chữ ký không làm thay đổi bảng nào bạn đã ký.';
+
+  @override
+  String get mySignatureDrawYourSignature => 'Vẽ chữ ký của bạn';
+
+  @override
+  String get commonAddRootOrgUnit => 'Thêm Đơn vị tổ chức gốc';
+
+  @override
+  String get orgUnitFormAddOrgUnit => 'Thêm Đơn vị tổ chức';
+
+  @override
+  String get orgUnitFormUnitType => 'Loại đơn vị';
+
+  @override
+  String get orgUnitFormSortOrderOptional => 'Thứ tự sắp xếp (không bắt buộc)';
+
+  @override
+  String get commonImportABranch => 'Nhập một nhánh';
+
+  @override
+  String get orgUnitImportImporting => 'Đang nhập…';
+
+  @override
+  String get orgUnitImportImport => 'Nhập';
+
+  @override
+  String get orgUnitImportAJsonArrayOfRowsEachRow =>
+      'Một mảng JSON các dòng. Mỗi dòng tham chiếu cha của nó bằng \"parentCode\" — một dòng khác trong cùng mảng này, hoặc một mã đã có ở Nhà máy này — không bao giờ bằng id.';
+
+  @override
+  String orgUnitImportRow(
+    String row,
+    String code,
+    String field,
+    String message,
+  ) {
+    return 'Dòng $row$code$field: $message';
+  }
+
+  @override
+  String get orgUnitPickerOrgUnitGrants => 'Quyền trên Đơn vị tổ chức';
+
+  @override
+  String get orgUnitPickerEverythingOnTheRightIsWhatThis =>
+      'Mọi thứ bên phải là những gì Tài khoản này sẽ giữ. Không cộng thêm vào những gì đang có — đây là toàn bộ danh sách.';
+
+  @override
+  String get orgUnitPickerQualityAuthorityAndSafetyAuthorityAreEach =>
+      'Thẩm quyền Chất lượng và thẩm quyền An toàn độc lập với cấp quyền và độc lập với nhau — quyền chỉ đọc có thể có một trong hai, quyền sửa không cần có — và mỗi thẩm quyền bao trùm mọi thứ bên dưới Đơn vị tổ chức được cấp.';
+
+  @override
+  String get orgUnitPickerBrowse => 'Duyệt';
+
+  @override
+  String get orgUnitPickerGranted => 'Đã cấp';
+
+  @override
+  String get orgUnitPickerGrantThisOrgUnit => 'Cấp quyền đơn vị này';
+
+  @override
+  String get orgUnitPickerNothingBeneathThis => 'Không có đơn vị bên dưới';
+
+  @override
+  String orgUnitPickerGranted2(Object length) {
+    return 'Đã cấp ($length)';
+  }
+
+  @override
+  String get orgUnitPickerNoOrgUnitsGrantedThisAccountWill =>
+      'Không cấp Đơn vị tổ chức nào. Tài khoản này đăng nhập được nhưng không thao tác được ở đâu.';
+
+  @override
+  String get orgUnitPickerQualityAuthority => 'Thẩm quyền Chất lượng';
+
+  @override
+  String get orgUnitPickerSafetyAuthority => 'Thẩm quyền An toàn';
+
+  @override
+  String get orgUnitPickerRemoveThisGrant => 'Bỏ quyền này';
+
+  @override
+  String get orgUnitsASiteSOwnShapeWhereA =>
+      'Hình thù của một Nhà máy — nơi KPI được đo, nơi Tài khoản được cấp quyền, và nơi một Tài sản nằm.';
+
+  @override
+  String get commonAddSite => 'Thêm Nhà máy';
+
+  @override
+  String get commonEditSite => 'Sửa Nhà máy';
+
+  @override
+  String get orgUnitsTheSitesCouldNotBeRead =>
+      'Không đọc được danh sách Nhà máy';
+
+  @override
+  String get orgUnitsThereAreNoSitesYet => 'Chưa có Nhà máy nào.';
+
+  @override
+  String get orgUnitsAnAdministratorAddsTheFirstSiteEvery =>
+      'Quản trị viên thêm Nhà máy đầu tiên; mọi Đơn vị tổ chức đều nằm dưới một Nhà máy.';
+
+  @override
+  String get orgUnitsFindAnOrgUnitByName => 'Tìm Đơn vị tổ chức theo tên';
+
+  @override
+  String get orgUnitsPickingOneRevealsAndSelectsItIn =>
+      'Chọn một đơn vị sẽ hiện và chọn nó trong cây bên dưới.';
+
+  @override
+  String get orgUnitsRetired => 'Đã ngừng sử dụng';
+
+  @override
+  String get orgUnitsTheOrgUnitTreeCouldNotBe =>
+      'Không đọc được cây Đơn vị tổ chức';
+
+  @override
+  String get orgUnitsNothingToBrowseInThisSiteYet =>
+      'Nhà máy này chưa có gì để xem.';
+
+  @override
+  String get orgUnitsAnAdministratorAddsTheFirstOrgUnit =>
+      'Quản trị viên thêm Đơn vị tổ chức đầu tiên, hoặc nhập một nhánh.';
+
+  @override
+  String orgUnitsBelow(Object childCount) {
+    return '$childCount bên dưới';
+  }
+
+  @override
+  String get orgUnitsAddAnOrgUnitHere => 'Thêm Đơn vị tổ chức ở đây';
+
+  @override
+  String get orgUnitsRetire => 'Ngừng sử dụng';
+
+  @override
+  String get orgUnitsRetireThisOrgUnit => 'Ngừng sử dụng Đơn vị tổ chức này?';
+
+  @override
+  String orgUnitsWillReadAsRetiredRatherThanDeleted(Object name) {
+    return '$name sẽ được ghi là đã ngừng sử dụng thay vì bị xoá, và có thể khôi phục bất cứ lúc nào.';
+  }
+
+  @override
+  String get productCostFormTheCostBelowIsClosedOnThe =>
+      'Chi phí bên dưới sẽ được đóng vào ngày chi phí mới có hiệu lực. Chi phí này vẫn đọc được, và hàng lỗi đã tính theo nó vẫn giữ nguyên con số đó.';
+
+  @override
+  String productCostFormTheProductListCouldNotBeRead(Object productsFailure) {
+    return 'Không đọc được danh sách Sản phẩm, nên không chọn được Sản phẩm: $productsFailure';
+  }
+
+  @override
+  String get productCostFormTheProductAStandardCostBelongsTo =>
+      'Không sửa được Sản phẩm mà một chi phí chuẩn thuộc về — hãy ghi chi phí cho Sản phẩm kia';
+
+  @override
+  String get productCostFormStandardCostPerUnit => 'Chi phí chuẩn, mỗi đơn vị';
+
+  @override
+  String get productCostFormTheNewCostFromTheDateBelow =>
+      'Chi phí mới, áp dụng từ ngày bên dưới';
+
+  @override
+  String get productCostFormNewCostTakesEffectOn =>
+      'Chi phí mới có hiệu lực từ';
+
+  @override
+  String get productCostFormTheOldCostIsClosedOnThis =>
+      'Chi phí cũ được đóng vào ngày này, và chi phí mới bắt đầu';
+
+  @override
+  String get productCostFormLeftBlankThisCostIsTheCurrent =>
+      'Để trống thì đây là chi phí hiện hành. Đặt ngày sẽ đóng chi phí vào ngày đó, là mốc kết thúc không tính ngày ấy.';
+
+  @override
+  String get productCostsTheStandardCostCatalogueCouldNotBe =>
+      'Không đọc được danh mục chi phí chuẩn';
+
+  @override
+  String get productCostsWhatAUnitIsCostedAtOne =>
+      'Một đơn vị sản phẩm tốn bao nhiêu — một danh mục dùng chung cho mọi Nhà máy, và là căn cứ tính hàng lỗi và làm lại. Chi phí không bao giờ bị ghi đè: chi phí được đóng lại và mở chi phí mới, nên chi phí đã báo cho tháng trước vẫn giữ nguyên.';
+
+  @override
+  String get productCostsAddStandardCost => 'Thêm chi phí chuẩn';
+
+  @override
+  String get productCostsNoStandardCostsYet => 'Chưa có chi phí chuẩn';
+
+  @override
+  String get productCostsUntilACostIsSetScrapAnd =>
+      'Chưa đặt chi phí thì hàng lỗi và làm lại không được tính giá.';
+
+  @override
+  String get roleFormCorrectRole => 'Sửa vai trò';
+
+  @override
+  String get commonAddRole => 'Thêm vai trò';
+
+  @override
+  String get roleForm330CharactersAZ09 =>
+      '3–30 ký tự: A–Z, 0–9 và dấu gạch dưới, ví dụ ROLE_STORE_ROOM';
+
+  @override
+  String get roleFormWhatItIsFor => 'Dùng để làm gì';
+
+  @override
+  String get roleFormInActiveUse => 'Đang dùng';
+
+  @override
+  String get roleFormARetiredRoleKeepsItsHistoryAnd =>
+      'Vai trò đã ngừng dùng vẫn giữ lịch sử và không gán được cho ai.';
+
+  @override
+  String rolePermissionsWhatCarries(Object code) {
+    return '$code gồm những quyền gì';
+  }
+
+  @override
+  String rolePermissionsOfPermissions(Object length, Object total) {
+    return '$length trên $total quyền';
+  }
+
+  @override
+  String get rolesTheRolesCouldNotBeRead => 'Không đọc được các vai trò';
+
+  @override
+  String get rolesWhatAnAccountMayDoEachRole =>
+      'Tài khoản được làm gì. Mỗi vai trò là một nhóm quyền; mọi Tài khoản đều có nhóm mặc định, và vai trò được đánh dấu tự động thì do vai trò riêng của Tài khoản quyết định.';
+
+  @override
+  String get rolesNoRoles => 'Không có vai trò nào';
+
+  @override
+  String get rolesNothingIsCarryingAPermissionThatShould =>
+      'Không có vai trò nào mang quyền. Điều này không nên xảy ra: bước khởi tạo dữ liệu tạo nhóm mặc định, nên nghĩa là bản triển khai chưa đầy đủ.';
+
+  @override
+  String get rolesDefaultGroup => 'Nhóm mặc định';
+
+  @override
+  String rolesAutomatic(Object legacyRole) {
+    return 'Tự động: $legacyRole';
+  }
+
+  @override
+  String rolesReaches(int length, int holderCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      length,
+      locale: localeName,
+      other: '$length quyền',
+      one: '1 quyền',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      holderCount,
+      locale: localeName,
+      other: '$holderCount tài khoản',
+      one: '1 tài khoản',
+    );
+    return '$_temp0 · đến $_temp1';
+  }
+
+  @override
+  String get rolesPermissions => 'Quyền';
+
+  @override
+  String get siteFormTimezonesUnavailable => 'Không tải được múi giờ';
+
+  @override
+  String get siteFormTheTimezoneListCouldNotBeLoaded =>
+      'Không tải được danh sách múi giờ.';
+
+  @override
+  String get siteFormTimezone => 'Múi giờ';
+
+  @override
+  String get siteFormCountryCodeOptional => 'Mã quốc gia (không bắt buộc)';
+
+  @override
+  String get skillCoverageOrgUnitAndSkill => 'Đơn vị tổ chức và kỹ năng';
+
+  @override
+  String get skillCoverageRequired => 'Yêu cầu';
+
+  @override
+  String get skillCoverageQualified => 'Đủ điều kiện';
+
+  @override
+  String get skillCoverageLapsed => 'Hết hạn';
+
+  @override
+  String get skillCoverageShortfall => 'Thiếu hụt';
+
+  @override
+  String get skillCoverageSkillCoverageCouldNotBeRead =>
+      'Không đọc được độ phủ kỹ năng';
+
+  @override
+  String get skillCoverageWhereThisSiteFallsShortOfIts =>
+      'Nơi Nhà máy này chưa đạt yêu cầu kỹ năng của chính nó.';
+
+  @override
+  String get skillCoverageEveryRequirementIsMet => 'Mọi yêu cầu đều đạt';
+
+  @override
+  String get skillCoverageThisSiteHasNoShortfallAgainstThe =>
+      'Nhà máy này không thiếu hụt so với các yêu cầu kỹ năng mà chính nó đặt ra.';
+
+  @override
+  String get skillCoverageFilterSkillCoverage => 'Lọc độ phủ kỹ năng';
+
+  @override
+  String get skillCoverageByOrgUnitOrSkill =>
+      'Theo Đơn vị tổ chức hoặc kỹ năng.';
+
+  @override
+  String get skillCoverageNoShortfallsMatch => 'Không có thiếu hụt nào khớp';
+
+  @override
+  String skillCoverageThisSiteIsShortSomewhereButNothing(Object term) {
+    return 'Nhà máy này có chỗ thiếu, nhưng không mục nào khớp “$term”. Hãy thử Đơn vị tổ chức hay kỹ năng khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String skillCoverageNeedsAtLevelQualifiedLapsed(
+    Object minimumQualifiedHeadcount,
+    Object minimumLevel,
+    Object qualifiedHeadcount,
+    Object expiredHeadcount,
+  ) {
+    return 'Cần $minimumQualifiedHeadcount ở mức $minimumLevel+, $qualifiedHeadcount đủ điều kiện, $expiredHeadcount hết hạn';
+  }
+
+  @override
+  String skillCoverageShort(Object shortfall) {
+    return 'Thiếu $shortfall';
+  }
+
+  @override
+  String get skillFormCorrectSkill => 'Sửa kỹ năng';
+
+  @override
+  String get commonAddSkill => 'Thêm kỹ năng';
+
+  @override
+  String get skillFormRequiresCertification => 'Cần chứng nhận';
+
+  @override
+  String get skillFormRevalidationPeriodInMonthsOptional =>
+      'Chu kỳ đánh giá lại, tính bằng tháng (không bắt buộc)';
+
+  @override
+  String get skillFormLeftBlankThisSkillNeverNeedsRevalidating =>
+      'Để trống thì kỹ năng này không bao giờ cần đánh giá lại.';
+
+  @override
+  String skillQualifiedEmployeesWhoHolds(Object name) {
+    return 'Ai có $name';
+  }
+
+  @override
+  String get skillQualifiedEmployeesScopedTo => 'Phạm vi';
+
+  @override
+  String get skillQualifiedEmployeesMinimumProficiency =>
+      'Mức thành thạo tối thiểu';
+
+  @override
+  String get skillQualifiedEmployeesSearch => 'Tìm';
+
+  @override
+  String get skillQualifiedEmployeesChooseAnOrgUnitThenSearch =>
+      'Chọn một Đơn vị tổ chức, rồi tìm.';
+
+  @override
+  String get skillQualifiedEmployeesNobodyCurrentlyQualifiesAtThisOrgUnit =>
+      'Hiện không có ai đủ điều kiện ở Đơn vị tổ chức này.';
+
+  @override
+  String skillQualifiedEmployeesLevel(Object proficiencyLevel) {
+    return 'Mức $proficiencyLevel';
+  }
+
+  @override
+  String get skillsTheSkillCatalogueCouldNotBeRead =>
+      'Không đọc được danh mục kỹ năng';
+
+  @override
+  String get skillsWhatThePlantQualifiesAnEmployeeTo =>
+      'Nhà máy công nhận Nhân viên làm được gì — khai báo một lần, dùng chung cho mọi Nhà máy.';
+
+  @override
+  String get skillsNoSkillsYet => 'Chưa có kỹ năng nào';
+
+  @override
+  String get skillsFilterSkills => 'Lọc kỹ năng';
+
+  @override
+  String get skillsByNameCodeOrCategory => 'Theo tên, mã hoặc hạng mục.';
+
+  @override
+  String get skillsNoSkillsMatch => 'Không có kỹ năng nào khớp';
+
+  @override
+  String skillsNothingInTheCatalogueMatchesTryA(Object term) {
+    return 'Danh mục không có gì khớp “$term”. Hãy thử tên, mã hoặc hạng mục khác, hoặc xoá bộ lọc.';
+  }
+
+  @override
+  String get skillsWhoHoldsThis => 'Ai đang có kỹ năng này';
+
+  @override
+  String get trainingAnswerSignYourConfirmation => 'Ký xác nhận của bạn';
+
+  @override
+  String get trainingAnswerChooseWhatYourAnswerIsSignedWith =>
+      'Chọn cách ký cho câu trả lời của bạn. Bạn cũng có thể xác nhận mà không cần chữ ký.';
+
+  @override
+  String get trainingAnswerYouKeepNoSignatureDrawOneNow =>
+      'Bạn chưa lưu chữ ký nào. Hãy vẽ ngay cho câu trả lời này, hoặc xác nhận mà không cần chữ ký.';
+
+  @override
+  String get trainingAnswerYourSignatureWhichUseMySignatureApplies =>
+      'Chữ ký của bạn, được “Dùng chữ ký của tôi” áp dụng:';
+
+  @override
+  String get trainingAnswerUseMySignature => 'Dùng chữ ký của tôi';
+
+  @override
+  String get trainingAnswerDrawOneNow => 'Vẽ ngay';
+
+  @override
+  String get trainingAnswerNoSignature => 'Không có chữ ký';
+
+  @override
+  String get trainingAnswerConfirmWithThisSignature =>
+      'Xác nhận bằng chữ ký này';
+
+  @override
+  String get commonNoSuchTrainingRecord => 'Không có bản ghi đào tạo này';
+
+  @override
+  String get commonBackToTrainingRecords => 'Về danh sách bản ghi đào tạo';
+
+  @override
+  String get trainingDetailTheTrainingRecordCouldNotBeRead =>
+      'Không đọc được bản ghi đào tạo này';
+
+  @override
+  String get trainingDetailTheForm => 'Biểu mẫu';
+
+  @override
+  String get trainingDetailTheTraining => 'Buổi đào tạo';
+
+  @override
+  String get commonTrainedOn => 'Đào tạo ngày';
+
+  @override
+  String get trainingDetailDuration => 'Thời lượng';
+
+  @override
+  String get trainingDetailTrainer => 'Người đào tạo';
+
+  @override
+  String get trainingDetailObjective => 'Mục tiêu';
+
+  @override
+  String trainingDetailTrainees(Object traineeCount) {
+    return 'Học viên ($traineeCount)';
+  }
+
+  @override
+  String get commonAddTrainee => 'Thêm học viên';
+
+  @override
+  String get trainingDetailNoTraineesAreOnThisTrainingRecord =>
+      'Bản ghi đào tạo này chưa có học viên nào.';
+
+  @override
+  String get trainingDetailSendToTrainees => 'Gửi cho học viên';
+
+  @override
+  String get trainingDetailDiscardDraft => 'Bỏ bản nháp';
+
+  @override
+  String trainingDetailEvaluated(Object value) {
+    return 'Đã đánh giá: $value';
+  }
+
+  @override
+  String trainingDetailRemove(Object employeeName) {
+    return 'Bỏ $employeeName';
+  }
+
+  @override
+  String get trainingDetailDiscardThisDraft => 'Bỏ bản nháp này?';
+
+  @override
+  String get trainingDetailTheDraftAndTheTraineesListedOn =>
+      'Bản nháp và các học viên ghi trên đó sẽ bị xoá, không khôi phục được. Chưa ai được hỏi về bản nháp này.';
+
+  @override
+  String get trainingDetailDiscard => 'Bỏ';
+
+  @override
+  String get commonEvaluation => 'Đánh giá';
+
+  @override
+  String get trainingFormThatTrainingFormCouldNotBeRead =>
+      'Không đọc được biểu mẫu đào tạo đó';
+
+  @override
+  String get trainingFormTrainingRecord => 'Bản ghi đào tạo';
+
+  @override
+  String get trainingFormBiNBNGhiNhN => 'Biên bản ghi nhận đào tạo';
+
+  @override
+  String get trainingFormAttendanceListDanhSChThamGia => 'Danh sách tham gia:';
+
+  @override
+  String get trainingRaiseCorrectTrainingRecord => 'Sửa bản ghi đào tạo';
+
+  @override
+  String get commonRaiseTrainingRecord => 'Tạo bản ghi đào tạo';
+
+  @override
+  String get trainingRaiseCorrecting => 'Đang sửa…';
+
+  @override
+  String get trainingRaiseRaising => 'Đang tạo…';
+
+  @override
+  String get trainingRaiseTitle => 'Tiêu đề';
+
+  @override
+  String get trainingRaiseWhatTheTrainingWas => 'Buổi đào tạo là gì.';
+
+  @override
+  String get trainingRaiseTheDayItWasGiven => 'Ngày buổi đào tạo diễn ra.';
+
+  @override
+  String get trainingRaiseDurationHours => 'Thời lượng (giờ)';
+
+  @override
+  String get trainingRaiseHowLongItLastedEG1 =>
+      'Buổi đào tạo kéo dài bao lâu, ví dụ 1,5.';
+
+  @override
+  String get trainingRaiseTrainerOptional => 'Người đào tạo (không bắt buộc)';
+
+  @override
+  String get trainingRaiseWhoGaveItFoundInTheDirectory =>
+      'Ai đã đào tạo, tìm trong Danh bạ.';
+
+  @override
+  String get trainingRaiseObjectiveOptional => 'Mục tiêu (không bắt buộc)';
+
+  @override
+  String get trainingRaiseWhatTheTrainingSetOutToTeach =>
+      'Buổi đào tạo nhằm dạy điều gì.';
+
+  @override
+  String get trainingRecord => 'Bản ghi';
+
+  @override
+  String get trainingTrainees => 'Học viên';
+
+  @override
+  String get trainingAnswers => 'Câu trả lời';
+
+  @override
+  String get trainingTrainingRecordsCouldNotBeRead =>
+      'Không đọc được các bản ghi đào tạo';
+
+  @override
+  String get trainingNoTrainingRecordsMatch =>
+      'Không có bản ghi đào tạo nào khớp';
+
+  @override
+  String get trainingNothingWasTrainedUnderThatOrgUnit =>
+      'Không có buổi đào tạo nào dưới Đơn vị tổ chức đó trong những ngày ấy.';
+
+  @override
+  String get trainingNoTrainingRecordsYet => 'Chưa có bản ghi đào tạo nào';
+
+  @override
+  String get trainingRaiseATrainingRecordToStartThe =>
+      'Tạo một bản ghi đào tạo để bắt đầu sổ.';
+
+  @override
+  String get trainingNothingHasBeenRecordedAsTrainedYet =>
+      'Chưa ghi nhận ai được đào tạo điều gì.';
+
+  @override
+  String get trainingWhatThePlantHasTrainedPeopleOn =>
+      'Nhà máy đã đào tạo người ta những gì, và khi nào.';
+
+  @override
+  String get trainingThereAreMoreTrainingRecordsThanThis =>
+      'Còn nhiều bản ghi đào tạo hơn danh sách này hiển thị. Hãy thu hẹp theo Đơn vị tổ chức hoặc theo ngày để xem phần còn lại.';
+
+  @override
+  String trainingTheFormFor(Object number) {
+    return 'Biểu mẫu của $number';
+  }
+
+  @override
+  String get trainingToConfirmYourTrainingToConfirmCouldNotBe =>
+      'Không đọc được các buổi đào tạo cần bạn xác nhận';
+
+  @override
+  String get trainingToConfirmNothingWaitingOnYou => 'Không có gì đang chờ bạn';
+
+  @override
+  String get trainingToConfirmNoTrainingRecordHasBeenSentTo =>
+      'Không có bản ghi đào tạo nào gửi cho bạn mà bạn chưa trả lời.';
+
+  @override
+  String get trainingToConfirmTrainingRecordsSentToYouThatYou =>
+      'Các bản ghi đào tạo gửi cho bạn mà bạn chưa trả lời, cũ nhất trước. Hãy xác nhận bạn đã tham gia, hoặc từ chối vì bản ghi sai.';
+
+  @override
+  String get trainingToConfirmYourAnswer => 'Câu trả lời của bạn';
+
+  @override
+  String trainingTraineeEmployeesOf(Object orgUnitName) {
+    return 'Nhân viên của $orgUnitName';
+  }
+
+  @override
+  String get trainingTraineeWholeDirectory => 'Toàn bộ Danh bạ';
+
+  @override
+  String get trainingTraineeAnyoneInTheDirectoryFoundByName =>
+      'Bất kỳ ai trong Danh bạ, tìm theo tên hoặc mã số.';
+
+  @override
+  String trainingTraineeAnEmployeeOfFoundByNameOr(Object orgUnitName) {
+    return 'Một Nhân viên của $orgUnitName, tìm theo tên hoặc mã số.';
+  }
+
+  @override
+  String get workedHoursDay => 'Ngày';
+
+  @override
+  String get workedHoursWorked => 'Đã làm';
+
+  @override
+  String get workedHoursBackToEmployee => 'Về hồ sơ nhân viên';
+
+  @override
+  String get workedHoursTheConfirmedHoursThisEmployeeActuallyWorked =>
+      'Số giờ đã xác nhận mà Nhân viên này thực sự làm, theo từng ngày. Chỉ chấm công đã xác nhận mới được tính — bảng chưa xác nhận chỉ là bản nháp.';
+
+  @override
+  String get workedHoursTheWorkedHoursSummaryCouldNotBe =>
+      'Không đọc được tổng hợp giờ đã làm';
+
+  @override
+  String get workedHoursNoConfirmedWorkedHoursInThisWindow =>
+      'Không có giờ đã làm nào được xác nhận trong khoảng này.';
+
+  @override
+  String get workedHoursWidenTheWindowOrConfirmTheShift =>
+      'Hãy mở rộng khoảng ngày, hoặc xác nhận bảng chấm công của những ngày Nhân viên này đã làm.';
+
+  @override
+  String get workedHoursTotals => 'Tổng cộng';
+
+  @override
+  String workedHoursOfScheduled(Object value) {
+    return 'trên $value theo lịch';
+  }
+
+  @override
+  String get leaveRequestDecisionApproveLeaveRequest => 'Duyệt đơn xin nghỉ';
+
+  @override
+  String get leaveRequestDecisionRejectLeaveRequest => 'Từ chối đơn xin nghỉ';
+
+  @override
+  String get commonTo => 'Đến';
+
+  @override
+  String get commonEmployeeNumber => 'Mã nhân viên';
+
+  @override
+  String get commonPin => 'PIN';
+
+  @override
+  String get commonInactive => 'Ngừng dùng';
+
+  @override
+  String get commonDeactivate => 'Ngừng kích hoạt';
+
+  @override
+  String get commonReactivate => 'Kích hoạt lại';
+
+  @override
+  String get commonClose => 'Đóng';
+
+  @override
+  String get commonReason => 'Lý do';
+
+  @override
+  String get commonAssign => 'Phân công';
+
+  @override
+  String get commonDecline => 'Từ chối';
+
+  @override
+  String get commonOvertime => 'Ngoài giờ';
+
+  @override
+  String get commonSessionEnded =>
+      'Phiên làm việc đã kết thúc. Hãy đăng nhập lại để tiếp tục.';
+
+  @override
+  String get attendanceRecordChooseAReasonForThisAbsence =>
+      'Hãy chọn lý do cho lần vắng này.';
 }

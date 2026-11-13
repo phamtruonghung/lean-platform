@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/destinations.dart';
@@ -137,13 +138,14 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return BlocConsumer<ApprovalQueueBloc, ApprovalQueueState>(
       listener: _onQueueChanged,
       builder: (context, state) {
         return AppDialog(
-          title: 'Admit this Account',
+          title: l10n.admissionAdmitThisAccount,
           size: AppDialogSize.wide,
           // `child` last, as `sort_child_properties_last` requires. The 880 the
           // old box computed is now the shell's `wide` width (#398, #392); the
@@ -151,13 +153,13 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
           actions: [
             AppDialogAction(
               id: 'admission-cancel',
-              label: 'Cancel',
+              label: l10n.commonCancel,
               kind: AppDialogActionKind.dismiss,
               onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
             ),
             AppDialogAction(
               id: 'admission-submit',
-              label: _awaiting ? 'Admitting…' : 'Admit',
+              label: _awaiting ? l10n.commonAdmitting : l10n.commonAdmit,
               // Disabled, not merely refused on tap: nothing is sent, and the
               // reason is visible before anybody tries.
               onPressed: _role == null || _awaiting ? null : _submit,
@@ -170,8 +172,7 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${widget.account.email} will be let in to the Platform with '
-                    'the role chosen here.',
+                    l10n.admissionWillBeLetInToThePlatform(widget.account.email),
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
@@ -213,10 +214,7 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
                       icon: Icons.warning_amber_outlined,
                       background: theme.colorScheme.errorContainer,
                       foreground: theme.colorScheme.onErrorContainer,
-                      message: 'An administrator can act everywhere. This Account will '
-                          'be able to see and change every Site and every Org Unit, and '
-                          'to admit other Accounts. No Org Unit Grants are given, and '
-                          'none are needed.',
+                      message: l10n.admissionAnAdministratorCanActEverywhereThisAccount,
                     )
                   else ...[
                     const SizedBox(height: Spacing.md),
@@ -234,8 +232,7 @@ class _AdmissionDialogState extends State<AdmissionDialog> {
                         icon: Icons.info_outline,
                         background: theme.colorScheme.secondaryContainer,
                         foreground: theme.colorScheme.onSecondaryContainer,
-                        message: 'This Account will be admitted with no Org Unit Grants, '
-                            'so it can sign in but cannot yet act in any Org Unit.',
+                        message: l10n.admissionThisAccountWillBeAdmittedWithNo,
                       ),
                   ],
                   if (_failure != null)

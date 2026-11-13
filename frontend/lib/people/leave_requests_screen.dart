@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_list_card.dart';
@@ -55,13 +56,14 @@ class LeaveRequestsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<LeaveRequestsBloc>().state;
     return Scaffold(
       body: switch (state) {
         LeaveRequestsLoading() => const SkeletonList(maxWidth: LeaveRequestsScreen.maxWidth),
         LeaveRequestsUnavailable(message: final message) => PlatformFailureState(
             key: LeaveRequestsScreen.failedKey,
-            title: 'Leave requests could not be read',
+            title: l10n.leaveRequestsLeaveRequestsCouldNotBeRead,
             message: message,
             retryKey: LeaveRequestsScreen.retryKey,
             onRetry: () => context.read<LeaveRequestsBloc>().add(const LeaveRequestsStarted()),
@@ -82,6 +84,7 @@ class _Loaded extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final bloc = context.read<LeaveRequestsBloc>();
     final isMine = state.view == LeaveRequestView.mine;
     return Center(
@@ -91,14 +94,14 @@ class _Loaded extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
           children: [
             AppPageHeader(
-              title: 'Leave requests',
-              description: 'Ask to be away from work, and follow what became of it.',
+              title: l10n.navLeaveRequests,
+              description: l10n.leaveRequestsAskToBeAwayFromWorkAnd,
               actions: [
                 FilledButton.icon(
                   key: LeaveRequestsScreen.requestKey,
                   onPressed: state.isMutating ? null : () => _request(context),
                   icon: const Icon(Icons.add),
-                  label: const Text('Request leave'),
+                  label: Text(l10n.commonRequestLeave),
                 ),
               ],
               below: canDecide
@@ -107,14 +110,14 @@ class _Loaded extends StatelessWidget {
                       children: [
                         ChoiceChip(
                           key: LeaveRequestsScreen.viewMineKey,
-                          label: const Text('Mine'),
+                          label: Text(l10n.leaveRequestsMine),
                           selected: isMine,
                           onSelected: (_) =>
                               bloc.add(const LeaveRequestsViewSelected(LeaveRequestView.mine)),
                         ),
                         ChoiceChip(
                           key: LeaveRequestsScreen.viewToDecideKey,
-                          label: const Text('To decide'),
+                          label: Text(l10n.leaveRequestsToDecide),
                           selected: !isMine,
                           onSelected: (_) => bloc
                               .add(const LeaveRequestsViewSelected(LeaveRequestView.toDecide)),
@@ -127,12 +130,12 @@ class _Loaded extends StatelessWidget {
             if (state.requests.isEmpty)
               PlatformEmptyState.noneExist(
                 key: LeaveRequestsScreen.emptyKey,
-                title: isMine ? 'No leave requests yet' : 'Nothing to decide',
+                title: isMine ? l10n.leaveRequestsNoLeaveRequestsYet : l10n.leaveRequestsNothingToDecide,
                 message: isMine
-                    ? 'Request leave to ask for time away.'
-                    : 'No pending leave requests are waiting for you.',
+                    ? l10n.leaveRequestsRequestLeaveToAskForTimeAway
+                    : l10n.leaveRequestsNoPendingLeaveRequestsAreWaitingFor,
                 icon: Icons.beach_access_outlined,
-                actionLabel: isMine ? 'Request leave' : null,
+                actionLabel: isMine ? l10n.commonRequestLeave : null,
                 actionKey: LeaveRequestsScreen.emptyRequestKey,
                 onAction: isMine ? () => _request(context) : null,
               )
@@ -158,6 +161,7 @@ class _LeaveRequestRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: palette.textMuted);
     final decisionNote = request.decisionNote;
@@ -192,11 +196,11 @@ class _LeaveRequestRow extends StatelessWidget {
         ),
         if (note != null && note.isNotEmpty) ...[
           const SizedBox(height: Spacing.xs),
-          Text('Note: $note', style: muted),
+          Text(l10n.leaveRequestsNote(note), style: muted),
         ],
         if (decisionNote != null && decisionNote.isNotEmpty) ...[
           const SizedBox(height: Spacing.xs),
-          Text('Decision note: $decisionNote', style: muted),
+          Text(l10n.leaveRequestsDecisionNote(decisionNote), style: muted),
         ],
       ],
     );
@@ -207,13 +211,13 @@ class _LeaveRequestRow extends StatelessWidget {
           key: LeaveRequestsScreen.approveKey(request.id),
           style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
           onPressed: isMutating ? null : () => context.go('$address/approve'),
-          child: const Text('Approve'),
+          child: Text(l10n.leaveRequestsApprove),
         ),
         OutlinedButton(
           key: LeaveRequestsScreen.rejectKey(request.id),
           style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
           onPressed: isMutating ? null : () => context.go('$address/reject'),
-          child: const Text('Reject'),
+          child: Text(l10n.commonReject),
         ),
       ],
       if (request.canCancel)
@@ -221,7 +225,7 @@ class _LeaveRequestRow extends StatelessWidget {
           key: LeaveRequestsScreen.cancelKey(request.id),
           style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouchTarget.min)),
           onPressed: isMutating ? null : () => context.go('$address/cancel'),
-          child: const Text('Cancel request'),
+          child: Text(l10n.commonCancelRequest),
         ),
     ];
 

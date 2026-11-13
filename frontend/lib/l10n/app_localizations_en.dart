@@ -1879,4 +1879,1608 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routerBackToList => 'Back to the list';
+
+  @override
+  String get accountCorrectionChangeRoleAndGrants => 'Change role and Grants';
+
+  @override
+  String get commonSave => 'Save';
+
+  @override
+  String accountCorrectionHoldsTheRoleAndTheOrgUnit(Object email) {
+    return '$email holds the role and the Org Unit Grants chosen here. Whatever is set below replaces what it has now.';
+  }
+
+  @override
+  String get accountCorrectionAnAdministratorCanActEverywhereThisAccount =>
+      'An administrator can act everywhere. This Account will be able to see and change every Site and every Org Unit, and to admit other Accounts. Every Org Unit Grant it holds now is removed, and none are needed.';
+
+  @override
+  String get accountCorrectionThisAccountWasTurnedAwaySavingThis =>
+      'This Account was turned away. Saving this admits it to the Platform and lets it sign in.';
+
+  @override
+  String get accountCorrectionThisAccountIsDeactivatedSavingThisReactivates =>
+      'This Account is deactivated. Saving this reactivates it and lets it sign in again.';
+
+  @override
+  String get commonChangeEmployeeLink => 'Change Employee link';
+
+  @override
+  String accountEmployeeWillBeLinkedToTheEmployeeChosen(Object email) {
+    return '$email will be linked to the Employee chosen here, or to none.';
+  }
+
+  @override
+  String get commonResetPassword => 'Reset password';
+
+  @override
+  String accountPasswordChooseANewPasswordForTellThem(Object email) {
+    return 'Choose a new password for $email. Tell them what it is yourself; it is not shown again.';
+  }
+
+  @override
+  String accountPasswordAtLeastCharacters(Object minimumPasswordLength) {
+    return 'At least $minimumPasswordLength characters.';
+  }
+
+  @override
+  String accountRolesRolesFor(Object accountName) {
+    return 'Roles for $accountName';
+  }
+
+  @override
+  String get commonAssigning => 'Assigning…';
+
+  @override
+  String accountRolesRoleAssigned(int length) {
+    String _temp0 = intl.Intl.pluralLogic(
+      length,
+      locale: localeName,
+      other: '$length roles assigned',
+      one: '1 role assigned',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String accountRolesEveryAccountHoldsThis(Object code) {
+    return '$code — every Account holds this';
+  }
+
+  @override
+  String accountRolesEveryAccountWhoseOwnRoleIs(
+    Object code,
+    Object legacyRole,
+  ) {
+    return '$code — every Account whose own role is $legacyRole';
+  }
+
+  @override
+  String accountRolesPermission(String code, int length) {
+    String _temp0 = intl.Intl.pluralLogic(
+      length,
+      locale: localeName,
+      other: '$length permissions',
+      one: '1 permission',
+    );
+    return '$code — $_temp0';
+  }
+
+  @override
+  String get accountsTheAccountsCouldNotBeLoaded =>
+      'The Accounts could not be loaded';
+
+  @override
+  String get accountsNoAccountsYet => 'No Accounts yet';
+
+  @override
+  String get accountsAccountsAppearHereAsSoonAsSomebody =>
+      'Accounts appear here as soon as somebody signs in for the first time.';
+
+  @override
+  String get accountsEveryAccountOnThisPlantWhatIt =>
+      'Every Account on this plant: what it holds, and whether it can sign in.';
+
+  @override
+  String get commonFilterAccounts => 'Filter Accounts';
+
+  @override
+  String get accountsByNameEmailOrRole => 'By name, email or role.';
+
+  @override
+  String get commonNoAccountsMatch => 'No Accounts match';
+
+  @override
+  String accountsThisPlantHasAccountsButNoneMatches(Object term) {
+    return 'This plant has Accounts, but none matches \"$term\". Try a different name, email or role, or clear the filter.';
+  }
+
+  @override
+  String get accountsEmail => 'Email';
+
+  @override
+  String get accountsRole => 'Role';
+
+  @override
+  String get accountsStanding => 'Standing';
+
+  @override
+  String get accountsSince => 'Since';
+
+  @override
+  String get accountsGrants => 'Grants';
+
+  @override
+  String get accountsReviewInApprovals => 'Review in Approvals';
+
+  @override
+  String get accountsChange => 'Change';
+
+  @override
+  String get accountsLinkAnEmployee => 'Link an Employee';
+
+  @override
+  String get accountsEverywhere => 'Everywhere';
+
+  @override
+  String get accountsNone => 'None';
+
+  @override
+  String accountsOrgUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Org Units',
+      one: '1 Org Unit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountsActsEverywhereInEverySiteNoOrg =>
+      'Acts everywhere, in every Site. No Org Unit Grants, and none needed.';
+
+  @override
+  String get accountsNoOrgUnitGrantsCanSignIn =>
+      'No Org Unit Grants. Can sign in, but cannot act in any Org Unit.';
+
+  @override
+  String get accountsDeactivateThisAccount => 'Deactivate this Account?';
+
+  @override
+  String accountsWillNotBeAbleToSignIn(Object email) {
+    return '$email will not be able to sign in. Nothing is deleted — the role and the Org Unit Grants stay exactly as they are, and an administrator can reactivate the Account at any time.';
+  }
+
+  @override
+  String get admissionAdmitThisAccount => 'Admit this Account';
+
+  @override
+  String get commonAdmitting => 'Admitting…';
+
+  @override
+  String get commonAdmit => 'Admit';
+
+  @override
+  String admissionWillBeLetInToThePlatform(Object email) {
+    return '$email will be let in to the Platform with the role chosen here.';
+  }
+
+  @override
+  String get admissionAnAdministratorCanActEverywhereThisAccount =>
+      'An administrator can act everywhere. This Account will be able to see and change every Site and every Org Unit, and to admit other Accounts. No Org Unit Grants are given, and none are needed.';
+
+  @override
+  String get admissionThisAccountWillBeAdmittedWithNo =>
+      'This Account will be admitted with no Org Unit Grants, so it can sign in but cannot yet act in any Org Unit.';
+
+  @override
+  String get approvalQueueTheQueueCouldNotBeLoaded =>
+      'The queue could not be loaded';
+
+  @override
+  String get approvalQueueNobodyIsWaiting => 'Nobody is waiting';
+
+  @override
+  String get approvalQueueEveryAccountHasBeenDealtWithNew =>
+      'Every Account has been dealt with. New requests appear here.';
+
+  @override
+  String get approvalQueueEveryoneWaitingToBeLetInTo =>
+      'Everyone waiting to be let in to the Platform.';
+
+  @override
+  String get approvalQueueByEmailAddress => 'By email address.';
+
+  @override
+  String approvalQueueAccountsAreWaitingButNoneMatchesTry(Object term) {
+    return 'Accounts are waiting, but none matches \"$term\". Try a different email address, or clear the filter.';
+  }
+
+  @override
+  String get approvalQueueAccount => 'Account';
+
+  @override
+  String get approvalQueueSuggestedEmployee => 'Suggested Employee';
+
+  @override
+  String get approvalQueueWaiting => 'Waiting';
+
+  @override
+  String get approvalQueueRejecting => 'Rejecting…';
+
+  @override
+  String get commonReject => 'Reject';
+
+  @override
+  String get approvalQueueRejectThisAccount => 'Reject this Account?';
+
+  @override
+  String approvalQueueWillNotBeLetInToThe(Object email) {
+    return '$email will not be let in to the Platform, and will be told their request was turned down. An administrator can still admit them later.';
+  }
+
+  @override
+  String get attendancePickerChooseAnOrgUnitAndAProduction =>
+      'Choose an Org Unit and a production day to open that shift\'s attendance sheet.';
+
+  @override
+  String get attendancePickerProductionDay => 'Production day';
+
+  @override
+  String get attendancePickerTheShiftsCouldNotBeRead =>
+      'The shifts could not be read';
+
+  @override
+  String get attendancePickerNoShiftsAreScheduledHereOnThat =>
+      'No shifts are scheduled here on that day.';
+
+  @override
+  String get attendancePickerChooseAnotherProductionDayOrAnotherOrg =>
+      'Choose another production day, or another Org Unit.';
+
+  @override
+  String get commonTheSitesAreUnavailable => 'The Sites are unavailable.';
+
+  @override
+  String get commonThereAreNoSitesToBrowseYet =>
+      'There are no Sites to browse yet.';
+
+  @override
+  String get commonNothingToBrowseInThisSite =>
+      'Nothing to browse in this Site.';
+
+  @override
+  String get commonCollapse => 'Collapse';
+
+  @override
+  String get commonExpand => 'Expand';
+
+  @override
+  String attendanceRecordMark(Object displayName) {
+    return 'Mark $displayName';
+  }
+
+  @override
+  String get attendanceRecordWorkedMinutes => 'Worked minutes';
+
+  @override
+  String get attendanceRecordOvertimeMinutes => 'Overtime minutes';
+
+  @override
+  String get attendanceSheetTheAttendanceSheetCouldNotBeRead =>
+      'The attendance sheet could not be read';
+
+  @override
+  String get attendanceSheetNobodyWithAnEditGrantHereHas =>
+      'Nobody with an edit Grant here has opened this sheet yet, so there is nothing to show. Only a supervisor holding an edit Grant reaching this shift — or an administrator — can start it.';
+
+  @override
+  String get attendanceSheetConfirmed => 'Confirmed';
+
+  @override
+  String get attendanceSheetConfirming => 'Confirming…';
+
+  @override
+  String get commonConfirm => 'Confirm';
+
+  @override
+  String get attendanceSheetNobodyIsOnThisSheetYet =>
+      'Nobody is on this sheet yet.';
+
+  @override
+  String get attendanceSheetAddAStandInFromTheDirectory =>
+      'Add a stand-in from the Directory below to open the sheet with somebody on it.';
+
+  @override
+  String get attendanceSheetASupervisorHoldingAnEditGrantReaching =>
+      'A supervisor holding an edit Grant reaching this shift adds the people who were on it.';
+
+  @override
+  String get attendanceSheetMarkAnException => 'Mark an exception';
+
+  @override
+  String get attendanceSheetRemoveFromTheSheet => 'Remove from the sheet';
+
+  @override
+  String get attendanceSheetAddAStandIn => 'Add a stand-in';
+
+  @override
+  String get commonSearchTheDirectory => 'Search the Directory';
+
+  @override
+  String get attendanceSheetWorkedMin => 'Worked (min)';
+
+  @override
+  String get attendanceSheetOvertimeMin => 'Overtime (min)';
+
+  @override
+  String get attendanceToConfirmPastShiftsWhoseSheetIsMissingOr =>
+      'Past shifts whose sheet is missing or hasn\'t been confirmed yet, oldest first, across the Org Units you can confirm one at.';
+
+  @override
+  String get attendanceToConfirmTheWorklistCouldNotBeRead =>
+      'The worklist could not be read';
+
+  @override
+  String get attendanceToConfirmNothingToConfirmHere =>
+      'Nothing to confirm here.';
+
+  @override
+  String get attendanceToConfirmEveryPastShiftYouCanConfirmHas =>
+      'Every past shift you can confirm has a confirmed sheet.';
+
+  @override
+  String get attendanceToConfirmNoShiftInThisWindowNeedsConfirming =>
+      'No shift in this window needs confirming. Widen the window, or clear the Org Unit.';
+
+  @override
+  String get commonFrom => 'From';
+
+  @override
+  String commonOrgUnit2(Object orgUnitName) {
+    return 'Org Unit: $orgUnitName';
+  }
+
+  @override
+  String get commonClear => 'Clear';
+
+  @override
+  String get commonHideOrgUnits => 'Hide Org Units';
+
+  @override
+  String get commonFilterByOrgUnit => 'Filter by Org Unit';
+
+  @override
+  String get attendanceToConfirmOpenSheet => 'Open sheet';
+
+  @override
+  String get commonUsd => 'USD';
+
+  @override
+  String get costRateFormTheRateBelowIsClosedOnThe =>
+      'The rate below is closed on the day the new one takes effect. It stays readable, and a cost asked for an earlier date still resolves it.';
+
+  @override
+  String costRateFormTheListOfSitesOrgUnitsAssets(Object scopesFailure) {
+    return 'The list of Sites, Org Units, Assets and cost centres could not be read, so a scope cannot be chosen: $scopesFailure';
+  }
+
+  @override
+  String get commonScope => 'Scope';
+
+  @override
+  String costRateFormWhich(Object value) {
+    return 'Which $value';
+  }
+
+  @override
+  String get costRateFormRateType => 'Rate type';
+
+  @override
+  String get costRateFormScopeAndRateType => 'Scope and rate type';
+
+  @override
+  String get costRateFormARateSScopeAndRateType =>
+      'A rate\'s scope and rate type cannot be corrected — add a rate for the new scope instead';
+
+  @override
+  String get costRateFormMultiplier15ForTimeAndA =>
+      'Multiplier (1.5 for time-and-a-half)';
+
+  @override
+  String get costRateFormAmountPerHour => 'Amount per hour';
+
+  @override
+  String get costRateFormTheNewAmountFromTheDateBelow =>
+      'The new amount, from the date below';
+
+  @override
+  String get commonCurrency => 'Currency';
+
+  @override
+  String get commonAThreeLetterCodeSuchAsUsd =>
+      'A three-letter code, such as USD';
+
+  @override
+  String get costRateFormNewRateTakesEffectOn => 'New rate takes effect on';
+
+  @override
+  String get commonTakesEffectOn => 'Takes effect on';
+
+  @override
+  String get costRateFormTheOldRateIsClosedOnThis =>
+      'The old rate is closed on this day, and the new one starts';
+
+  @override
+  String get commonAppliesUntilOptional => 'Applies until (optional)';
+
+  @override
+  String get costRateFormLeftBlankThisRateIsTheCurrent =>
+      'Left blank, this rate is the current one. Setting it closes the rate on that day, which is the exclusive end of the period.';
+
+  @override
+  String get costRatesTheCostRateCatalogueCouldNotBe =>
+      'The cost rate catalogue could not be read';
+
+  @override
+  String get costRatesWhatAnHourCostsOneCatalogueShared =>
+      'What an hour costs — one catalogue shared by every Site, and what the Cost numbers on the tier board are worked out from. A rate is never overwritten: it is closed, and a new one opened, so a cost reported for an earlier month stays what it was.';
+
+  @override
+  String get costRatesAddCostRate => 'Add cost rate';
+
+  @override
+  String get costRatesNoCostRatesYet => 'No cost rates yet';
+
+  @override
+  String get costRatesUntilARateIsSetEveryCost =>
+      'Until a rate is set, every Cost number resolves to nothing.';
+
+  @override
+  String get costRatesRate => 'Rate';
+
+  @override
+  String get commonPeriod => 'Period';
+
+  @override
+  String get commonCorrect => 'Correct';
+
+  @override
+  String get commonRevise => 'Revise';
+
+  @override
+  String get commonClosed => 'Closed';
+
+  @override
+  String get directoryTheDirectoryCouldNotBeRead =>
+      'The Directory could not be read';
+
+  @override
+  String get directoryNobodyMatchesThisSearch => 'Nobody matches this search';
+
+  @override
+  String get directoryTryADifferentNameOrClearA =>
+      'Try a different name, or clear a filter.';
+
+  @override
+  String get directoryWhoWorksHereSearchedFilteredAndDeparted =>
+      'Who works here — searched, filtered, and Departed Employees kept out of sight until asked for.';
+
+  @override
+  String get commonAddEmployee => 'Add Employee';
+
+  @override
+  String get directoryMyRecord => 'My record';
+
+  @override
+  String get directorySearchByName => 'Search by name';
+
+  @override
+  String get commonJobRole => 'Job role';
+
+  @override
+  String get directoryAllJobRoles => 'All job roles';
+
+  @override
+  String get directoryIncludeDeparted => 'Include Departed';
+
+  @override
+  String get commonEmployment => 'Employment';
+
+  @override
+  String get commonDeparted => 'Departed';
+
+  @override
+  String get commonActive => 'Active';
+
+  @override
+  String employeeAssignmentAssignToAnOrgUnit(Object displayName) {
+    return 'Assign $displayName to an Org Unit';
+  }
+
+  @override
+  String get employeeAssignmentWhereItWorksNow => 'Where it works now';
+
+  @override
+  String get employeeAssignmentJobRoleOptional => 'Job role (optional)';
+
+  @override
+  String get employeeAssignmentNoJobRole => 'No job role';
+
+  @override
+  String get employeeAssignmentEffectiveDate => 'Effective date';
+
+  @override
+  String employeeCorrectionCorrectSRecord(Object displayName) {
+    return 'Correct $displayName\'s record';
+  }
+
+  @override
+  String get commonFirstName => 'First name';
+
+  @override
+  String get commonLastName => 'Last name';
+
+  @override
+  String get commonEmploymentType => 'Employment type';
+
+  @override
+  String get commonWorkEmailOptional => 'Work email (optional)';
+
+  @override
+  String employeeDepartureRecordThatHasLeft(Object displayName) {
+    return 'Record that $displayName has left';
+  }
+
+  @override
+  String get employeeDepartureAccountStillLinked => 'Account still linked';
+
+  @override
+  String get employeeDepartureTheRecordStaysNothingIsDeletedAnd =>
+      'The record stays — nothing is deleted, and this can be undone by reinstating the record at any time.';
+
+  @override
+  String get employeeDepartureEffectiveDateOptional =>
+      'Effective date (optional)';
+
+  @override
+  String get commonLeftBlankTodayIsRecorded => 'Left blank, today is recorded.';
+
+  @override
+  String get employeeDepartureRecording => 'Recording…';
+
+  @override
+  String get commonRecordDeparture => 'Record departure';
+
+  @override
+  String employeeDepartureHasLeftAndTheirAccountCanStill(
+    Object displayName,
+    Object email,
+  ) {
+    return '$displayName has left, and their Account ($email) can still sign in. The departure is already recorded either way — deactivating the Account is a separate, optional step.';
+  }
+
+  @override
+  String get employeeDepartureNotNow => 'Not now';
+
+  @override
+  String get employeeDepartureDeactivating => 'Deactivating…';
+
+  @override
+  String get employeeDepartureDeactivateAccount => 'Deactivate Account';
+
+  @override
+  String get employeeDetailThisRecordCouldNotBeRead =>
+      'This record could not be read';
+
+  @override
+  String get employeeDetailAssignmentHistory => 'Assignment history';
+
+  @override
+  String get employeeDetailNoAssignmentHasBeenRecorded =>
+      'No Assignment has been recorded.';
+
+  @override
+  String get employeeDetailRecordSkill => 'Record skill';
+
+  @override
+  String get employeeDetailNoQualificationsRecorded =>
+      'No qualifications recorded.';
+
+  @override
+  String get employeeDetailHired => 'Hired';
+
+  @override
+  String get employeeDetailWorkEmail => 'Work email';
+
+  @override
+  String get commonCorrectRecord => 'Correct record';
+
+  @override
+  String get employeeDetailSignature => 'Signature';
+
+  @override
+  String get commonReinstate => 'Reinstate';
+
+  @override
+  String get employeeDetailCurrent => 'Current';
+
+  @override
+  String employeeDetailLapsed(Object name) {
+    return '$name · Lapsed';
+  }
+
+  @override
+  String get employeeDetailReAssess => 'Re-assess';
+
+  @override
+  String get commonAdding => 'Adding…';
+
+  @override
+  String employeeLinkPickerSuggestedMatch(Object value) {
+    return 'Suggested match: $value';
+  }
+
+  @override
+  String employeeLinkPickerLinkedTo(Object value) {
+    return 'Linked to: $value';
+  }
+
+  @override
+  String get commonRemove => 'Remove';
+
+  @override
+  String get employeeLinkPickerNoEmployeeWillBeLinked =>
+      'No Employee will be linked.';
+
+  @override
+  String employeeSignatureNoSignatureIsKeptForUploadA(Object displayName) {
+    return 'No Signature is kept for $displayName. Upload a picture of it, or draw it here.';
+  }
+
+  @override
+  String get commonThisSignatureCouldNotBeShown =>
+      'This Signature could not be shown.';
+
+  @override
+  String employeeSignatureSetForBy(Object displayName, Object who) {
+    return 'Set for $displayName by $who';
+  }
+
+  @override
+  String employeeSignatureSetBy(Object displayName) {
+    return 'Set by $displayName';
+  }
+
+  @override
+  String employeeSignatureSignatureOf(Object displayName) {
+    return 'Signature of $displayName';
+  }
+
+  @override
+  String get commonUploadAPicture => 'Upload a picture';
+
+  @override
+  String get commonReplaceWithAPicture => 'Replace with a picture';
+
+  @override
+  String get commonDrawIt => 'Draw it';
+
+  @override
+  String get commonDrawANewOne => 'Draw a new one';
+
+  @override
+  String get commonKeepThisSignature => 'Keep this Signature';
+
+  @override
+  String employeeSkillFormReAssessFor(Object value, Object displayName) {
+    return 'Re-assess $value for $displayName';
+  }
+
+  @override
+  String employeeSkillFormRecordASkillFor(Object displayName) {
+    return 'Record a skill for $displayName';
+  }
+
+  @override
+  String get employeeSkillFormSkill => 'Skill';
+
+  @override
+  String get employeeSkillFormProficiency04Iluo => 'Proficiency (0–4, ILUO)';
+
+  @override
+  String get employeeSkillForm0None => '0 — none';
+
+  @override
+  String get employeeSkillFormAssessedOnOptional => 'Assessed on (optional)';
+
+  @override
+  String get employeeSkillFormExpiresOnOptional => 'Expires on (optional)';
+
+  @override
+  String get employeeSkillFormLeftBlankNeverExpiresOrIsRe =>
+      'Left blank, never expires (or is re-derived from the skill\'s own revalidation period).';
+
+  @override
+  String get employeeSkillFormEvidenceReferenceOptional =>
+      'Evidence reference (optional)';
+
+  @override
+  String floorTrainingTrainingFor(Object employeeName) {
+    return 'Training for $employeeName';
+  }
+
+  @override
+  String get floorTrainingYourTraining => 'Your training';
+
+  @override
+  String get floorTrainingDone => 'Done';
+
+  @override
+  String get floorTrainingShowMyTraining => 'Show my training';
+
+  @override
+  String get floorTrainingWhoAreYouYourEmployeeNumberAnd =>
+      'Who are you? Your Employee number and PIN show the training waiting on you at this device.';
+
+  @override
+  String get floorTrainingScanTheBadgeOrTypeTheNumber =>
+      'Scan the badge or type the number.';
+
+  @override
+  String get floorTrainingNothingIsWaitingOnYouAtThis =>
+      'Nothing is waiting on you at this device.';
+
+  @override
+  String get jobRoleFormCorrectJobRole => 'Correct job role';
+
+  @override
+  String get commonAddJobRole => 'Add job role';
+
+  @override
+  String get jobRolesTheJobRoleCatalogueCouldNotBe =>
+      'The job role catalogue could not be read';
+
+  @override
+  String get jobRolesWhatAnEmployeeDoesDefinedOnceShared =>
+      'What an Employee does — defined once, shared by every Site.';
+
+  @override
+  String get jobRolesNoJobRolesYet => 'No job roles yet';
+
+  @override
+  String get commonNothingHasBeenDefinedInTheCatalogue =>
+      'Nothing has been defined in the catalogue.';
+
+  @override
+  String get jobRolesFilterJobRoles => 'Filter job roles';
+
+  @override
+  String get jobRolesByNameOrCode => 'By name or code.';
+
+  @override
+  String get jobRolesNoJobRolesMatch => 'No job roles match';
+
+  @override
+  String jobRolesNothingInTheCatalogueMatchesTryA(Object term) {
+    return 'Nothing in the catalogue matches \"$term\". Try a different name or code, or clear the filter.';
+  }
+
+  @override
+  String get leaveRequestCancelCancelLeaveRequest => 'Cancel leave request';
+
+  @override
+  String leaveRequestCancelCancelTheRequestFor(
+    Object leaveTypeName,
+    Object displayName,
+    Object periodLabel,
+    Object daysLabel,
+  ) {
+    return 'Cancel the $leaveTypeName request for $displayName, $periodLabel ($daysLabel)?';
+  }
+
+  @override
+  String get leaveRequestCancelKeepRequest => 'Keep request';
+
+  @override
+  String get leaveRequestCancelCancelling => 'Cancelling…';
+
+  @override
+  String get commonCancelRequest => 'Cancel request';
+
+  @override
+  String get commonRequestLeave => 'Request leave';
+
+  @override
+  String get leaveRequestFormRequesting => 'Requesting…';
+
+  @override
+  String get leaveRequestFormLeaveTypesCouldNotBeRead =>
+      'Leave types could not be read';
+
+  @override
+  String get leaveRequestFormLeaveType => 'Leave type';
+
+  @override
+  String get leaveRequestFormFirstDay => 'First day';
+
+  @override
+  String get leaveRequestFormLastDay => 'Last day';
+
+  @override
+  String get leaveRequestsLeaveRequestsCouldNotBeRead =>
+      'Leave requests could not be read';
+
+  @override
+  String get leaveRequestsAskToBeAwayFromWorkAnd =>
+      'Ask to be away from work, and follow what became of it.';
+
+  @override
+  String get leaveRequestsMine => 'Mine';
+
+  @override
+  String get leaveRequestsToDecide => 'To decide';
+
+  @override
+  String get leaveRequestsNoLeaveRequestsYet => 'No leave requests yet';
+
+  @override
+  String get leaveRequestsNothingToDecide => 'Nothing to decide';
+
+  @override
+  String get leaveRequestsRequestLeaveToAskForTimeAway =>
+      'Request leave to ask for time away.';
+
+  @override
+  String get leaveRequestsNoPendingLeaveRequestsAreWaitingFor =>
+      'No pending leave requests are waiting for you.';
+
+  @override
+  String leaveRequestsNote(Object note) {
+    return 'Note: $note';
+  }
+
+  @override
+  String leaveRequestsDecisionNote(Object decisionNote) {
+    return 'Decision note: $decisionNote';
+  }
+
+  @override
+  String get leaveRequestsApprove => 'Approve';
+
+  @override
+  String get mySignatureYourSignatureCouldNotBeRead =>
+      'Your Signature could not be read';
+
+  @override
+  String get mySignatureNoSignatureKept => 'No Signature kept';
+
+  @override
+  String get mySignatureYouHaveNotKeptASignatureYet =>
+      'You have not kept a Signature yet. Upload a picture of it, or draw it here.';
+
+  @override
+  String get mySignatureYourSignature => 'Your Signature';
+
+  @override
+  String get mySignatureYourOwnMarkKeptOnceAndApplied =>
+      'Your own mark, kept once and applied wherever you would otherwise sign a sheet by hand. Replacing it never changes a sheet you have already signed.';
+
+  @override
+  String get mySignatureDrawYourSignature => 'Draw your Signature';
+
+  @override
+  String get commonAddRootOrgUnit => 'Add root Org Unit';
+
+  @override
+  String get orgUnitFormAddOrgUnit => 'Add Org Unit';
+
+  @override
+  String get orgUnitFormUnitType => 'Unit type';
+
+  @override
+  String get orgUnitFormSortOrderOptional => 'Sort order (optional)';
+
+  @override
+  String get commonImportABranch => 'Import a branch';
+
+  @override
+  String get orgUnitImportImporting => 'Importing…';
+
+  @override
+  String get orgUnitImportImport => 'Import';
+
+  @override
+  String get orgUnitImportAJsonArrayOfRowsEachRow =>
+      'A JSON array of rows. Each row references its own parent by \"parentCode\" — another row in this same array, or an existing code at this Site — never by id.';
+
+  @override
+  String orgUnitImportRow(
+    String row,
+    String code,
+    String field,
+    String message,
+  ) {
+    return 'Row $row$code$field: $message';
+  }
+
+  @override
+  String get orgUnitPickerOrgUnitGrants => 'Org Unit Grants';
+
+  @override
+  String get orgUnitPickerEverythingOnTheRightIsWhatThis =>
+      'Everything on the right is what this Account will hold. Nothing is added to what it has now — this is the whole set.';
+
+  @override
+  String get orgUnitPickerQualityAuthorityAndSafetyAuthorityAreEach =>
+      'Quality authority and Safety authority are each separate from the level and from each other — a view-only Grant may carry either, and an edit Grant need not — and each reaches everything beneath the Org Unit it is given on.';
+
+  @override
+  String get orgUnitPickerBrowse => 'Browse';
+
+  @override
+  String get orgUnitPickerGranted => 'Granted';
+
+  @override
+  String get orgUnitPickerGrantThisOrgUnit => 'Grant this Org Unit';
+
+  @override
+  String get orgUnitPickerNothingBeneathThis => 'Nothing beneath this';
+
+  @override
+  String orgUnitPickerGranted2(Object length) {
+    return 'Granted ($length)';
+  }
+
+  @override
+  String get orgUnitPickerNoOrgUnitsGrantedThisAccountWill =>
+      'No Org Units granted. This Account will be able to sign in but not act anywhere.';
+
+  @override
+  String get orgUnitPickerQualityAuthority => 'Quality authority';
+
+  @override
+  String get orgUnitPickerSafetyAuthority => 'Safety authority';
+
+  @override
+  String get orgUnitPickerRemoveThisGrant => 'Remove this Grant';
+
+  @override
+  String get orgUnitsASiteSOwnShapeWhereA =>
+      'A Site\'s own shape — where a KPI is measured, an Account is granted, and an Asset sits.';
+
+  @override
+  String get commonAddSite => 'Add Site';
+
+  @override
+  String get commonEditSite => 'Edit Site';
+
+  @override
+  String get orgUnitsTheSitesCouldNotBeRead => 'The Sites could not be read';
+
+  @override
+  String get orgUnitsThereAreNoSitesYet => 'There are no Sites yet.';
+
+  @override
+  String get orgUnitsAnAdministratorAddsTheFirstSiteEvery =>
+      'An administrator adds the first Site; every Org Unit sits beneath one.';
+
+  @override
+  String get orgUnitsFindAnOrgUnitByName => 'Find an Org Unit by name';
+
+  @override
+  String get orgUnitsPickingOneRevealsAndSelectsItIn =>
+      'Picking one reveals and selects it in the tree below.';
+
+  @override
+  String get orgUnitsRetired => 'Retired';
+
+  @override
+  String get orgUnitsTheOrgUnitTreeCouldNotBe =>
+      'The Org Unit tree could not be read';
+
+  @override
+  String get orgUnitsNothingToBrowseInThisSiteYet =>
+      'Nothing to browse in this Site yet.';
+
+  @override
+  String get orgUnitsAnAdministratorAddsTheFirstOrgUnit =>
+      'An administrator adds the first Org Unit, or imports a branch.';
+
+  @override
+  String orgUnitsBelow(Object childCount) {
+    return '$childCount below';
+  }
+
+  @override
+  String get orgUnitsAddAnOrgUnitHere => 'Add an Org Unit here';
+
+  @override
+  String get orgUnitsRetire => 'Retire';
+
+  @override
+  String get orgUnitsRetireThisOrgUnit => 'Retire this Org Unit?';
+
+  @override
+  String orgUnitsWillReadAsRetiredRatherThanDeleted(Object name) {
+    return '$name will read as retired rather than deleted, and can be reinstated at any time.';
+  }
+
+  @override
+  String get productCostFormTheCostBelowIsClosedOnThe =>
+      'The cost below is closed on the day the new one takes effect. It stays readable, and scrap already costed at it keeps that figure.';
+
+  @override
+  String productCostFormTheProductListCouldNotBeRead(Object productsFailure) {
+    return 'The Product list could not be read, so a Product cannot be chosen: $productsFailure';
+  }
+
+  @override
+  String get productCostFormTheProductAStandardCostBelongsTo =>
+      'The Product a standard cost belongs to cannot be corrected — record a cost against the other Product instead';
+
+  @override
+  String get productCostFormStandardCostPerUnit => 'Standard cost, per unit';
+
+  @override
+  String get productCostFormTheNewCostFromTheDateBelow =>
+      'The new cost, from the date below';
+
+  @override
+  String get productCostFormNewCostTakesEffectOn => 'New cost takes effect on';
+
+  @override
+  String get productCostFormTheOldCostIsClosedOnThis =>
+      'The old cost is closed on this day, and the new one starts';
+
+  @override
+  String get productCostFormLeftBlankThisCostIsTheCurrent =>
+      'Left blank, this cost is the current one. Setting it closes the cost on that day, which is the exclusive end of the period.';
+
+  @override
+  String get productCostsTheStandardCostCatalogueCouldNotBe =>
+      'The standard cost catalogue could not be read';
+
+  @override
+  String get productCostsWhatAUnitIsCostedAtOne =>
+      'What a unit is costed at — one catalogue shared by every Site, and what scrap and rework are priced with. A cost is never overwritten: it is closed, and a new one opened, so a cost reported for an earlier month stays what it was.';
+
+  @override
+  String get productCostsAddStandardCost => 'Add standard cost';
+
+  @override
+  String get productCostsNoStandardCostsYet => 'No standard costs yet';
+
+  @override
+  String get productCostsUntilACostIsSetScrapAnd =>
+      'Until a cost is set, scrap and rework are priced at nothing.';
+
+  @override
+  String get roleFormCorrectRole => 'Correct role';
+
+  @override
+  String get commonAddRole => 'Add role';
+
+  @override
+  String get roleForm330CharactersAZ09 =>
+      '3–30 characters: A–Z, 0–9 and underscore, e.g. ROLE_STORE_ROOM';
+
+  @override
+  String get roleFormWhatItIsFor => 'What it is for';
+
+  @override
+  String get roleFormInActiveUse => 'In active use';
+
+  @override
+  String get roleFormARetiredRoleKeepsItsHistoryAnd =>
+      'A retired role keeps its history and can be assigned to nobody.';
+
+  @override
+  String rolePermissionsWhatCarries(Object code) {
+    return 'What $code carries';
+  }
+
+  @override
+  String rolePermissionsOfPermissions(Object length, Object total) {
+    return '$length of $total permissions';
+  }
+
+  @override
+  String get rolesTheRolesCouldNotBeRead => 'The roles could not be read';
+
+  @override
+  String get rolesWhatAnAccountMayDoEachRole =>
+      'What an Account may do. Each role is a group of permissions; every Account holds the default group, and a role marked automatic is earned by the Account\'s own role.';
+
+  @override
+  String get rolesNoRoles => 'No roles';
+
+  @override
+  String get rolesNothingIsCarryingAPermissionThatShould =>
+      'Nothing is carrying a permission. That should not happen: the seed creates the default group, so this means the deployment is incomplete.';
+
+  @override
+  String get rolesDefaultGroup => 'Default group';
+
+  @override
+  String rolesAutomatic(Object legacyRole) {
+    return 'Automatic: $legacyRole';
+  }
+
+  @override
+  String rolesReaches(int length, int holderCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      length,
+      locale: localeName,
+      other: '$length permissions',
+      one: '1 permission',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      holderCount,
+      locale: localeName,
+      other: '$holderCount Accounts',
+      one: '1 Account',
+    );
+    return '$_temp0 · reaches $_temp1';
+  }
+
+  @override
+  String get rolesPermissions => 'Permissions';
+
+  @override
+  String get siteFormTimezonesUnavailable => 'Timezones unavailable';
+
+  @override
+  String get siteFormTheTimezoneListCouldNotBeLoaded =>
+      'The timezone list could not be loaded.';
+
+  @override
+  String get siteFormTimezone => 'Timezone';
+
+  @override
+  String get siteFormCountryCodeOptional => 'Country code (optional)';
+
+  @override
+  String get skillCoverageOrgUnitAndSkill => 'Org Unit and skill';
+
+  @override
+  String get skillCoverageRequired => 'Required';
+
+  @override
+  String get skillCoverageQualified => 'Qualified';
+
+  @override
+  String get skillCoverageLapsed => 'Lapsed';
+
+  @override
+  String get skillCoverageShortfall => 'Shortfall';
+
+  @override
+  String get skillCoverageSkillCoverageCouldNotBeRead =>
+      'Skill coverage could not be read';
+
+  @override
+  String get skillCoverageWhereThisSiteFallsShortOfIts =>
+      'Where this Site falls short of its own skill requirements.';
+
+  @override
+  String get skillCoverageEveryRequirementIsMet => 'Every requirement is met';
+
+  @override
+  String get skillCoverageThisSiteHasNoShortfallAgainstThe =>
+      'This Site has no shortfall against the skill requirements it has set for itself.';
+
+  @override
+  String get skillCoverageFilterSkillCoverage => 'Filter skill coverage';
+
+  @override
+  String get skillCoverageByOrgUnitOrSkill => 'By Org Unit or skill.';
+
+  @override
+  String get skillCoverageNoShortfallsMatch => 'No shortfalls match';
+
+  @override
+  String skillCoverageThisSiteIsShortSomewhereButNothing(Object term) {
+    return 'This Site is short somewhere, but nothing matches \"$term\". Try a different Org Unit or skill, or clear the filter.';
+  }
+
+  @override
+  String skillCoverageNeedsAtLevelQualifiedLapsed(
+    Object minimumQualifiedHeadcount,
+    Object minimumLevel,
+    Object qualifiedHeadcount,
+    Object expiredHeadcount,
+  ) {
+    return 'Needs $minimumQualifiedHeadcount at level $minimumLevel+, $qualifiedHeadcount qualified, $expiredHeadcount lapsed';
+  }
+
+  @override
+  String skillCoverageShort(Object shortfall) {
+    return 'Short $shortfall';
+  }
+
+  @override
+  String get skillFormCorrectSkill => 'Correct skill';
+
+  @override
+  String get commonAddSkill => 'Add skill';
+
+  @override
+  String get skillFormRequiresCertification => 'Requires certification';
+
+  @override
+  String get skillFormRevalidationPeriodInMonthsOptional =>
+      'Revalidation period, in months (optional)';
+
+  @override
+  String get skillFormLeftBlankThisSkillNeverNeedsRevalidating =>
+      'Left blank, this skill never needs revalidating.';
+
+  @override
+  String skillQualifiedEmployeesWhoHolds(Object name) {
+    return 'Who holds $name';
+  }
+
+  @override
+  String get skillQualifiedEmployeesScopedTo => 'Scoped to';
+
+  @override
+  String get skillQualifiedEmployeesMinimumProficiency => 'Minimum proficiency';
+
+  @override
+  String get skillQualifiedEmployeesSearch => 'Search';
+
+  @override
+  String get skillQualifiedEmployeesChooseAnOrgUnitThenSearch =>
+      'Choose an Org Unit, then search.';
+
+  @override
+  String get skillQualifiedEmployeesNobodyCurrentlyQualifiesAtThisOrgUnit =>
+      'Nobody currently qualifies at this Org Unit.';
+
+  @override
+  String skillQualifiedEmployeesLevel(Object proficiencyLevel) {
+    return 'Level $proficiencyLevel';
+  }
+
+  @override
+  String get skillsTheSkillCatalogueCouldNotBeRead =>
+      'The skill catalogue could not be read';
+
+  @override
+  String get skillsWhatThePlantQualifiesAnEmployeeTo =>
+      'What the plant qualifies an Employee to do — defined once, shared by every Site.';
+
+  @override
+  String get skillsNoSkillsYet => 'No skills yet';
+
+  @override
+  String get skillsFilterSkills => 'Filter skills';
+
+  @override
+  String get skillsByNameCodeOrCategory => 'By name, code or category.';
+
+  @override
+  String get skillsNoSkillsMatch => 'No skills match';
+
+  @override
+  String skillsNothingInTheCatalogueMatchesTryA(Object term) {
+    return 'Nothing in the catalogue matches \"$term\". Try a different name, code or category, or clear the filter.';
+  }
+
+  @override
+  String get skillsWhoHoldsThis => 'Who holds this';
+
+  @override
+  String get trainingAnswerSignYourConfirmation => 'Sign your confirmation';
+
+  @override
+  String get trainingAnswerChooseWhatYourAnswerIsSignedWith =>
+      'Choose what your answer is signed with. You can also confirm without a Signature.';
+
+  @override
+  String get trainingAnswerYouKeepNoSignatureDrawOneNow =>
+      'You keep no Signature. Draw one now for this answer, or confirm without a Signature.';
+
+  @override
+  String get trainingAnswerYourSignatureWhichUseMySignatureApplies =>
+      'Your Signature, which \"Use my Signature\" applies:';
+
+  @override
+  String get trainingAnswerUseMySignature => 'Use my Signature';
+
+  @override
+  String get trainingAnswerDrawOneNow => 'Draw one now';
+
+  @override
+  String get trainingAnswerNoSignature => 'No Signature';
+
+  @override
+  String get trainingAnswerConfirmWithThisSignature =>
+      'Confirm with this Signature';
+
+  @override
+  String get commonNoSuchTrainingRecord => 'No such Training record';
+
+  @override
+  String get commonBackToTrainingRecords => 'Back to Training records';
+
+  @override
+  String get trainingDetailTheTrainingRecordCouldNotBeRead =>
+      'The Training record could not be read';
+
+  @override
+  String get trainingDetailTheForm => 'The form';
+
+  @override
+  String get trainingDetailTheTraining => 'The training';
+
+  @override
+  String get commonTrainedOn => 'Trained on';
+
+  @override
+  String get trainingDetailDuration => 'Duration';
+
+  @override
+  String get trainingDetailTrainer => 'Trainer';
+
+  @override
+  String get trainingDetailObjective => 'Objective';
+
+  @override
+  String trainingDetailTrainees(Object traineeCount) {
+    return 'Trainees ($traineeCount)';
+  }
+
+  @override
+  String get commonAddTrainee => 'Add Trainee';
+
+  @override
+  String get trainingDetailNoTraineesAreOnThisTrainingRecord =>
+      'No Trainees are on this Training record yet.';
+
+  @override
+  String get trainingDetailSendToTrainees => 'Send to Trainees';
+
+  @override
+  String get trainingDetailDiscardDraft => 'Discard draft';
+
+  @override
+  String trainingDetailEvaluated(Object value) {
+    return 'Evaluated: $value';
+  }
+
+  @override
+  String trainingDetailRemove(Object employeeName) {
+    return 'Remove $employeeName';
+  }
+
+  @override
+  String get trainingDetailDiscardThisDraft => 'Discard this draft?';
+
+  @override
+  String get trainingDetailTheDraftAndTheTraineesListedOn =>
+      'The draft and the Trainees listed on it will be deleted, and it cannot be brought back. Nobody has been asked about it yet.';
+
+  @override
+  String get trainingDetailDiscard => 'Discard';
+
+  @override
+  String get commonEvaluation => 'Evaluation';
+
+  @override
+  String get trainingFormThatTrainingFormCouldNotBeRead =>
+      'That training form could not be read';
+
+  @override
+  String get trainingFormTrainingRecord => 'Training Record';
+
+  @override
+  String get trainingFormBiNBNGhiNhN => 'Biên bản ghi nhận đào tạo';
+
+  @override
+  String get trainingFormAttendanceListDanhSChThamGia =>
+      'Attendance list/ danh sách tham gia :';
+
+  @override
+  String get trainingRaiseCorrectTrainingRecord => 'Correct training record';
+
+  @override
+  String get commonRaiseTrainingRecord => 'Raise training record';
+
+  @override
+  String get trainingRaiseCorrecting => 'Correcting…';
+
+  @override
+  String get trainingRaiseRaising => 'Raising…';
+
+  @override
+  String get trainingRaiseTitle => 'Title';
+
+  @override
+  String get trainingRaiseWhatTheTrainingWas => 'What the training was.';
+
+  @override
+  String get trainingRaiseTheDayItWasGiven => 'The day it was given.';
+
+  @override
+  String get trainingRaiseDurationHours => 'Duration (hours)';
+
+  @override
+  String get trainingRaiseHowLongItLastedEG1 => 'How long it lasted, e.g. 1.5.';
+
+  @override
+  String get trainingRaiseTrainerOptional => 'Trainer (optional)';
+
+  @override
+  String get trainingRaiseWhoGaveItFoundInTheDirectory =>
+      'Who gave it, found in the Directory.';
+
+  @override
+  String get trainingRaiseObjectiveOptional => 'Objective (optional)';
+
+  @override
+  String get trainingRaiseWhatTheTrainingSetOutToTeach =>
+      'What the training set out to teach.';
+
+  @override
+  String get trainingRecord => 'Record';
+
+  @override
+  String get trainingTrainees => 'Trainees';
+
+  @override
+  String get trainingAnswers => 'Answers';
+
+  @override
+  String get trainingTrainingRecordsCouldNotBeRead =>
+      'Training records could not be read';
+
+  @override
+  String get trainingNoTrainingRecordsMatch => 'No Training records match';
+
+  @override
+  String get trainingNothingWasTrainedUnderThatOrgUnit =>
+      'Nothing was trained under that Org Unit in those days.';
+
+  @override
+  String get trainingNoTrainingRecordsYet => 'No Training records yet';
+
+  @override
+  String get trainingRaiseATrainingRecordToStartThe =>
+      'Raise a Training record to start the register.';
+
+  @override
+  String get trainingNothingHasBeenRecordedAsTrainedYet =>
+      'Nothing has been recorded as trained yet.';
+
+  @override
+  String get trainingWhatThePlantHasTrainedPeopleOn =>
+      'What the plant has trained people on, and when.';
+
+  @override
+  String get trainingThereAreMoreTrainingRecordsThanThis =>
+      'There are more Training records than this list shows. Narrow it by Org Unit or by dates to see the rest.';
+
+  @override
+  String trainingTheFormFor(Object number) {
+    return 'The form for $number';
+  }
+
+  @override
+  String get trainingToConfirmYourTrainingToConfirmCouldNotBe =>
+      'Your Training to confirm could not be read';
+
+  @override
+  String get trainingToConfirmNothingWaitingOnYou => 'Nothing waiting on you';
+
+  @override
+  String get trainingToConfirmNoTrainingRecordHasBeenSentTo =>
+      'No Training record has been sent to you that you have not answered.';
+
+  @override
+  String get trainingToConfirmTrainingRecordsSentToYouThatYou =>
+      'Training records sent to you that you have not answered yet, oldest first. Confirm that you attended, or decline because the record is wrong.';
+
+  @override
+  String get trainingToConfirmYourAnswer => 'Your answer';
+
+  @override
+  String trainingTraineeEmployeesOf(Object orgUnitName) {
+    return 'Employees of $orgUnitName';
+  }
+
+  @override
+  String get trainingTraineeWholeDirectory => 'Whole Directory';
+
+  @override
+  String get trainingTraineeAnyoneInTheDirectoryFoundByName =>
+      'Anyone in the Directory, found by name or number.';
+
+  @override
+  String trainingTraineeAnEmployeeOfFoundByNameOr(Object orgUnitName) {
+    return 'An Employee of $orgUnitName, found by name or number.';
+  }
+
+  @override
+  String get workedHoursDay => 'Day';
+
+  @override
+  String get workedHoursWorked => 'Worked';
+
+  @override
+  String get workedHoursBackToEmployee => 'Back to Employee';
+
+  @override
+  String get workedHoursTheConfirmedHoursThisEmployeeActuallyWorked =>
+      'The confirmed hours this Employee actually worked, day by day. Only confirmed attendance counts — an unconfirmed sheet is a draft.';
+
+  @override
+  String get workedHoursTheWorkedHoursSummaryCouldNotBe =>
+      'The worked-hours summary could not be read';
+
+  @override
+  String get workedHoursNoConfirmedWorkedHoursInThisWindow =>
+      'No confirmed worked hours in this window.';
+
+  @override
+  String get workedHoursWidenTheWindowOrConfirmTheShift =>
+      'Widen the window, or confirm the shift sheets for the days this Employee worked.';
+
+  @override
+  String get workedHoursTotals => 'Totals';
+
+  @override
+  String workedHoursOfScheduled(Object value) {
+    return 'of $value scheduled';
+  }
+
+  @override
+  String get leaveRequestDecisionApproveLeaveRequest => 'Approve leave request';
+
+  @override
+  String get leaveRequestDecisionRejectLeaveRequest => 'Reject leave request';
+
+  @override
+  String get commonTo => 'To';
+
+  @override
+  String get commonEmployeeNumber => 'Employee number';
+
+  @override
+  String get commonPin => 'PIN';
+
+  @override
+  String get commonInactive => 'Inactive';
+
+  @override
+  String get commonDeactivate => 'Deactivate';
+
+  @override
+  String get commonReactivate => 'Reactivate';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
+  String get commonReason => 'Reason';
+
+  @override
+  String get commonAssign => 'Assign';
+
+  @override
+  String get commonDecline => 'Decline';
+
+  @override
+  String get commonOvertime => 'Overtime';
+
+  @override
+  String get commonSessionEnded =>
+      'This session has ended. Sign in again to continue.';
+
+  @override
+  String get attendanceRecordChooseAReasonForThisAbsence =>
+      'Choose a reason for this absence.';
 }

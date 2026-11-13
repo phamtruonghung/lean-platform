@@ -3339,6 +3339,2646 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to the list'**
   String get routerBackToList;
+
+  /// No description provided for @accountCorrectionChangeRoleAndGrants.
+  ///
+  /// In en, this message translates to:
+  /// **'Change role and Grants'**
+  String get accountCorrectionChangeRoleAndGrants;
+
+  /// No description provided for @commonSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get commonSave;
+
+  /// No description provided for @accountCorrectionHoldsTheRoleAndTheOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} holds the role and the Org Unit Grants chosen here. Whatever is set below replaces what it has now.'**
+  String accountCorrectionHoldsTheRoleAndTheOrgUnit(Object email);
+
+  /// No description provided for @accountCorrectionAnAdministratorCanActEverywhereThisAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'An administrator can act everywhere. This Account will be able to see and change every Site and every Org Unit, and to admit other Accounts. Every Org Unit Grant it holds now is removed, and none are needed.'**
+  String get accountCorrectionAnAdministratorCanActEverywhereThisAccount;
+
+  /// No description provided for @accountCorrectionThisAccountWasTurnedAwaySavingThis.
+  ///
+  /// In en, this message translates to:
+  /// **'This Account was turned away. Saving this admits it to the Platform and lets it sign in.'**
+  String get accountCorrectionThisAccountWasTurnedAwaySavingThis;
+
+  /// No description provided for @accountCorrectionThisAccountIsDeactivatedSavingThisReactivates.
+  ///
+  /// In en, this message translates to:
+  /// **'This Account is deactivated. Saving this reactivates it and lets it sign in again.'**
+  String get accountCorrectionThisAccountIsDeactivatedSavingThisReactivates;
+
+  /// No description provided for @commonChangeEmployeeLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Employee link'**
+  String get commonChangeEmployeeLink;
+
+  /// No description provided for @accountEmployeeWillBeLinkedToTheEmployeeChosen.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} will be linked to the Employee chosen here, or to none.'**
+  String accountEmployeeWillBeLinkedToTheEmployeeChosen(Object email);
+
+  /// No description provided for @commonResetPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get commonResetPassword;
+
+  /// No description provided for @accountPasswordChooseANewPasswordForTellThem.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a new password for {email}. Tell them what it is yourself; it is not shown again.'**
+  String accountPasswordChooseANewPasswordForTellThem(Object email);
+
+  /// No description provided for @accountPasswordAtLeastCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'At least {minimumPasswordLength} characters.'**
+  String accountPasswordAtLeastCharacters(Object minimumPasswordLength);
+
+  /// No description provided for @accountRolesRolesFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles for {accountName}'**
+  String accountRolesRolesFor(Object accountName);
+
+  /// No description provided for @commonAssigning.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigning…'**
+  String get commonAssigning;
+
+  /// No description provided for @accountRolesRoleAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'{length, plural, =1{1 role assigned} other{{length} roles assigned}}'**
+  String accountRolesRoleAssigned(int length);
+
+  /// No description provided for @accountRolesEveryAccountHoldsThis.
+  ///
+  /// In en, this message translates to:
+  /// **'{code} — every Account holds this'**
+  String accountRolesEveryAccountHoldsThis(Object code);
+
+  /// No description provided for @accountRolesEveryAccountWhoseOwnRoleIs.
+  ///
+  /// In en, this message translates to:
+  /// **'{code} — every Account whose own role is {legacyRole}'**
+  String accountRolesEveryAccountWhoseOwnRoleIs(Object code, Object legacyRole);
+
+  /// No description provided for @accountRolesPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'{code} — {length, plural, =1{1 permission} other{{length} permissions}}'**
+  String accountRolesPermission(String code, int length);
+
+  /// No description provided for @accountsTheAccountsCouldNotBeLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'The Accounts could not be loaded'**
+  String get accountsTheAccountsCouldNotBeLoaded;
+
+  /// No description provided for @accountsNoAccountsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Accounts yet'**
+  String get accountsNoAccountsYet;
+
+  /// No description provided for @accountsAccountsAppearHereAsSoonAsSomebody.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts appear here as soon as somebody signs in for the first time.'**
+  String get accountsAccountsAppearHereAsSoonAsSomebody;
+
+  /// No description provided for @accountsEveryAccountOnThisPlantWhatIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Every Account on this plant: what it holds, and whether it can sign in.'**
+  String get accountsEveryAccountOnThisPlantWhatIt;
+
+  /// No description provided for @commonFilterAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Accounts'**
+  String get commonFilterAccounts;
+
+  /// No description provided for @accountsByNameEmailOrRole.
+  ///
+  /// In en, this message translates to:
+  /// **'By name, email or role.'**
+  String get accountsByNameEmailOrRole;
+
+  /// No description provided for @commonNoAccountsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No Accounts match'**
+  String get commonNoAccountsMatch;
+
+  /// No description provided for @accountsThisPlantHasAccountsButNoneMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'This plant has Accounts, but none matches \"{term}\". Try a different name, email or role, or clear the filter.'**
+  String accountsThisPlantHasAccountsButNoneMatches(Object term);
+
+  /// No description provided for @accountsEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get accountsEmail;
+
+  /// No description provided for @accountsRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get accountsRole;
+
+  /// No description provided for @accountsStanding.
+  ///
+  /// In en, this message translates to:
+  /// **'Standing'**
+  String get accountsStanding;
+
+  /// No description provided for @accountsSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Since'**
+  String get accountsSince;
+
+  /// No description provided for @accountsGrants.
+  ///
+  /// In en, this message translates to:
+  /// **'Grants'**
+  String get accountsGrants;
+
+  /// No description provided for @accountsReviewInApprovals.
+  ///
+  /// In en, this message translates to:
+  /// **'Review in Approvals'**
+  String get accountsReviewInApprovals;
+
+  /// No description provided for @accountsChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get accountsChange;
+
+  /// No description provided for @accountsLinkAnEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Link an Employee'**
+  String get accountsLinkAnEmployee;
+
+  /// No description provided for @accountsEverywhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Everywhere'**
+  String get accountsEverywhere;
+
+  /// No description provided for @accountsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get accountsNone;
+
+  /// No description provided for @accountsOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 Org Unit} other{{count} Org Units}}'**
+  String accountsOrgUnit(int count);
+
+  /// No description provided for @accountsActsEverywhereInEverySiteNoOrg.
+  ///
+  /// In en, this message translates to:
+  /// **'Acts everywhere, in every Site. No Org Unit Grants, and none needed.'**
+  String get accountsActsEverywhereInEverySiteNoOrg;
+
+  /// No description provided for @accountsNoOrgUnitGrantsCanSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'No Org Unit Grants. Can sign in, but cannot act in any Org Unit.'**
+  String get accountsNoOrgUnitGrantsCanSignIn;
+
+  /// No description provided for @accountsDeactivateThisAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate this Account?'**
+  String get accountsDeactivateThisAccount;
+
+  /// No description provided for @accountsWillNotBeAbleToSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} will not be able to sign in. Nothing is deleted — the role and the Org Unit Grants stay exactly as they are, and an administrator can reactivate the Account at any time.'**
+  String accountsWillNotBeAbleToSignIn(Object email);
+
+  /// No description provided for @admissionAdmitThisAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Admit this Account'**
+  String get admissionAdmitThisAccount;
+
+  /// No description provided for @commonAdmitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Admitting…'**
+  String get commonAdmitting;
+
+  /// No description provided for @commonAdmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Admit'**
+  String get commonAdmit;
+
+  /// No description provided for @admissionWillBeLetInToThePlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} will be let in to the Platform with the role chosen here.'**
+  String admissionWillBeLetInToThePlatform(Object email);
+
+  /// No description provided for @admissionAnAdministratorCanActEverywhereThisAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'An administrator can act everywhere. This Account will be able to see and change every Site and every Org Unit, and to admit other Accounts. No Org Unit Grants are given, and none are needed.'**
+  String get admissionAnAdministratorCanActEverywhereThisAccount;
+
+  /// No description provided for @admissionThisAccountWillBeAdmittedWithNo.
+  ///
+  /// In en, this message translates to:
+  /// **'This Account will be admitted with no Org Unit Grants, so it can sign in but cannot yet act in any Org Unit.'**
+  String get admissionThisAccountWillBeAdmittedWithNo;
+
+  /// No description provided for @approvalQueueTheQueueCouldNotBeLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'The queue could not be loaded'**
+  String get approvalQueueTheQueueCouldNotBeLoaded;
+
+  /// No description provided for @approvalQueueNobodyIsWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is waiting'**
+  String get approvalQueueNobodyIsWaiting;
+
+  /// No description provided for @approvalQueueEveryAccountHasBeenDealtWithNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Every Account has been dealt with. New requests appear here.'**
+  String get approvalQueueEveryAccountHasBeenDealtWithNew;
+
+  /// No description provided for @approvalQueueEveryoneWaitingToBeLetInTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone waiting to be let in to the Platform.'**
+  String get approvalQueueEveryoneWaitingToBeLetInTo;
+
+  /// No description provided for @approvalQueueByEmailAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'By email address.'**
+  String get approvalQueueByEmailAddress;
+
+  /// No description provided for @approvalQueueAccountsAreWaitingButNoneMatchesTry.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts are waiting, but none matches \"{term}\". Try a different email address, or clear the filter.'**
+  String approvalQueueAccountsAreWaitingButNoneMatchesTry(Object term);
+
+  /// No description provided for @approvalQueueAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get approvalQueueAccount;
+
+  /// No description provided for @approvalQueueSuggestedEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested Employee'**
+  String get approvalQueueSuggestedEmployee;
+
+  /// No description provided for @approvalQueueWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get approvalQueueWaiting;
+
+  /// No description provided for @approvalQueueRejecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejecting…'**
+  String get approvalQueueRejecting;
+
+  /// No description provided for @commonReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get commonReject;
+
+  /// No description provided for @approvalQueueRejectThisAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject this Account?'**
+  String get approvalQueueRejectThisAccount;
+
+  /// No description provided for @approvalQueueWillNotBeLetInToThe.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} will not be let in to the Platform, and will be told their request was turned down. An administrator can still admit them later.'**
+  String approvalQueueWillNotBeLetInToThe(Object email);
+
+  /// No description provided for @attendancePickerChooseAnOrgUnitAndAProduction.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an Org Unit and a production day to open that shift\'s attendance sheet.'**
+  String get attendancePickerChooseAnOrgUnitAndAProduction;
+
+  /// No description provided for @attendancePickerProductionDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Production day'**
+  String get attendancePickerProductionDay;
+
+  /// No description provided for @attendancePickerTheShiftsCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The shifts could not be read'**
+  String get attendancePickerTheShiftsCouldNotBeRead;
+
+  /// No description provided for @attendancePickerNoShiftsAreScheduledHereOnThat.
+  ///
+  /// In en, this message translates to:
+  /// **'No shifts are scheduled here on that day.'**
+  String get attendancePickerNoShiftsAreScheduledHereOnThat;
+
+  /// No description provided for @attendancePickerChooseAnotherProductionDayOrAnotherOrg.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another production day, or another Org Unit.'**
+  String get attendancePickerChooseAnotherProductionDayOrAnotherOrg;
+
+  /// No description provided for @commonTheSitesAreUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The Sites are unavailable.'**
+  String get commonTheSitesAreUnavailable;
+
+  /// No description provided for @commonThereAreNoSitesToBrowseYet.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites to browse yet.'**
+  String get commonThereAreNoSitesToBrowseYet;
+
+  /// No description provided for @commonNothingToBrowseInThisSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to browse in this Site.'**
+  String get commonNothingToBrowseInThisSite;
+
+  /// No description provided for @commonCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get commonCollapse;
+
+  /// No description provided for @commonExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get commonExpand;
+
+  /// No description provided for @attendanceRecordMark.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark {displayName}'**
+  String attendanceRecordMark(Object displayName);
+
+  /// No description provided for @attendanceRecordWorkedMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Worked minutes'**
+  String get attendanceRecordWorkedMinutes;
+
+  /// No description provided for @attendanceRecordOvertimeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Overtime minutes'**
+  String get attendanceRecordOvertimeMinutes;
+
+  /// No description provided for @attendanceSheetTheAttendanceSheetCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The attendance sheet could not be read'**
+  String get attendanceSheetTheAttendanceSheetCouldNotBeRead;
+
+  /// No description provided for @attendanceSheetNobodyWithAnEditGrantHereHas.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody with an edit Grant here has opened this sheet yet, so there is nothing to show. Only a supervisor holding an edit Grant reaching this shift — or an administrator — can start it.'**
+  String get attendanceSheetNobodyWithAnEditGrantHereHas;
+
+  /// No description provided for @attendanceSheetConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed'**
+  String get attendanceSheetConfirmed;
+
+  /// No description provided for @attendanceSheetConfirming.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirming…'**
+  String get attendanceSheetConfirming;
+
+  /// No description provided for @commonConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get commonConfirm;
+
+  /// No description provided for @attendanceSheetNobodyIsOnThisSheetYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is on this sheet yet.'**
+  String get attendanceSheetNobodyIsOnThisSheetYet;
+
+  /// No description provided for @attendanceSheetAddAStandInFromTheDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a stand-in from the Directory below to open the sheet with somebody on it.'**
+  String get attendanceSheetAddAStandInFromTheDirectory;
+
+  /// No description provided for @attendanceSheetASupervisorHoldingAnEditGrantReaching.
+  ///
+  /// In en, this message translates to:
+  /// **'A supervisor holding an edit Grant reaching this shift adds the people who were on it.'**
+  String get attendanceSheetASupervisorHoldingAnEditGrantReaching;
+
+  /// No description provided for @attendanceSheetMarkAnException.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark an exception'**
+  String get attendanceSheetMarkAnException;
+
+  /// No description provided for @attendanceSheetRemoveFromTheSheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from the sheet'**
+  String get attendanceSheetRemoveFromTheSheet;
+
+  /// No description provided for @attendanceSheetAddAStandIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a stand-in'**
+  String get attendanceSheetAddAStandIn;
+
+  /// No description provided for @commonSearchTheDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Search the Directory'**
+  String get commonSearchTheDirectory;
+
+  /// No description provided for @attendanceSheetWorkedMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Worked (min)'**
+  String get attendanceSheetWorkedMin;
+
+  /// No description provided for @attendanceSheetOvertimeMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Overtime (min)'**
+  String get attendanceSheetOvertimeMin;
+
+  /// No description provided for @attendanceToConfirmPastShiftsWhoseSheetIsMissingOr.
+  ///
+  /// In en, this message translates to:
+  /// **'Past shifts whose sheet is missing or hasn\'t been confirmed yet, oldest first, across the Org Units you can confirm one at.'**
+  String get attendanceToConfirmPastShiftsWhoseSheetIsMissingOr;
+
+  /// No description provided for @attendanceToConfirmTheWorklistCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The worklist could not be read'**
+  String get attendanceToConfirmTheWorklistCouldNotBeRead;
+
+  /// No description provided for @attendanceToConfirmNothingToConfirmHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to confirm here.'**
+  String get attendanceToConfirmNothingToConfirmHere;
+
+  /// No description provided for @attendanceToConfirmEveryPastShiftYouCanConfirmHas.
+  ///
+  /// In en, this message translates to:
+  /// **'Every past shift you can confirm has a confirmed sheet.'**
+  String get attendanceToConfirmEveryPastShiftYouCanConfirmHas;
+
+  /// No description provided for @attendanceToConfirmNoShiftInThisWindowNeedsConfirming.
+  ///
+  /// In en, this message translates to:
+  /// **'No shift in this window needs confirming. Widen the window, or clear the Org Unit.'**
+  String get attendanceToConfirmNoShiftInThisWindowNeedsConfirming;
+
+  /// No description provided for @commonFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get commonFrom;
+
+  /// No description provided for @commonOrgUnit2.
+  ///
+  /// In en, this message translates to:
+  /// **'Org Unit: {orgUnitName}'**
+  String commonOrgUnit2(Object orgUnitName);
+
+  /// No description provided for @commonClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get commonClear;
+
+  /// No description provided for @commonHideOrgUnits.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide Org Units'**
+  String get commonHideOrgUnits;
+
+  /// No description provided for @commonFilterByOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by Org Unit'**
+  String get commonFilterByOrgUnit;
+
+  /// No description provided for @attendanceToConfirmOpenSheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Open sheet'**
+  String get attendanceToConfirmOpenSheet;
+
+  /// No description provided for @commonUsd.
+  ///
+  /// In en, this message translates to:
+  /// **'USD'**
+  String get commonUsd;
+
+  /// No description provided for @costRateFormTheRateBelowIsClosedOnThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The rate below is closed on the day the new one takes effect. It stays readable, and a cost asked for an earlier date still resolves it.'**
+  String get costRateFormTheRateBelowIsClosedOnThe;
+
+  /// No description provided for @costRateFormTheListOfSitesOrgUnitsAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'The list of Sites, Org Units, Assets and cost centres could not be read, so a scope cannot be chosen: {scopesFailure}'**
+  String costRateFormTheListOfSitesOrgUnitsAssets(Object scopesFailure);
+
+  /// No description provided for @commonScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Scope'**
+  String get commonScope;
+
+  /// No description provided for @costRateFormWhich.
+  ///
+  /// In en, this message translates to:
+  /// **'Which {value}'**
+  String costRateFormWhich(Object value);
+
+  /// No description provided for @costRateFormRateType.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate type'**
+  String get costRateFormRateType;
+
+  /// No description provided for @costRateFormScopeAndRateType.
+  ///
+  /// In en, this message translates to:
+  /// **'Scope and rate type'**
+  String get costRateFormScopeAndRateType;
+
+  /// No description provided for @costRateFormARateSScopeAndRateType.
+  ///
+  /// In en, this message translates to:
+  /// **'A rate\'s scope and rate type cannot be corrected — add a rate for the new scope instead'**
+  String get costRateFormARateSScopeAndRateType;
+
+  /// No description provided for @costRateFormMultiplier15ForTimeAndA.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiplier (1.5 for time-and-a-half)'**
+  String get costRateFormMultiplier15ForTimeAndA;
+
+  /// No description provided for @costRateFormAmountPerHour.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount per hour'**
+  String get costRateFormAmountPerHour;
+
+  /// No description provided for @costRateFormTheNewAmountFromTheDateBelow.
+  ///
+  /// In en, this message translates to:
+  /// **'The new amount, from the date below'**
+  String get costRateFormTheNewAmountFromTheDateBelow;
+
+  /// No description provided for @commonCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get commonCurrency;
+
+  /// No description provided for @commonAThreeLetterCodeSuchAsUsd.
+  ///
+  /// In en, this message translates to:
+  /// **'A three-letter code, such as USD'**
+  String get commonAThreeLetterCodeSuchAsUsd;
+
+  /// No description provided for @costRateFormNewRateTakesEffectOn.
+  ///
+  /// In en, this message translates to:
+  /// **'New rate takes effect on'**
+  String get costRateFormNewRateTakesEffectOn;
+
+  /// No description provided for @commonTakesEffectOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Takes effect on'**
+  String get commonTakesEffectOn;
+
+  /// No description provided for @costRateFormTheOldRateIsClosedOnThis.
+  ///
+  /// In en, this message translates to:
+  /// **'The old rate is closed on this day, and the new one starts'**
+  String get costRateFormTheOldRateIsClosedOnThis;
+
+  /// No description provided for @commonAppliesUntilOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies until (optional)'**
+  String get commonAppliesUntilOptional;
+
+  /// No description provided for @costRateFormLeftBlankThisRateIsTheCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Left blank, this rate is the current one. Setting it closes the rate on that day, which is the exclusive end of the period.'**
+  String get costRateFormLeftBlankThisRateIsTheCurrent;
+
+  /// No description provided for @costRatesTheCostRateCatalogueCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The cost rate catalogue could not be read'**
+  String get costRatesTheCostRateCatalogueCouldNotBe;
+
+  /// No description provided for @costRatesWhatAnHourCostsOneCatalogueShared.
+  ///
+  /// In en, this message translates to:
+  /// **'What an hour costs — one catalogue shared by every Site, and what the Cost numbers on the tier board are worked out from. A rate is never overwritten: it is closed, and a new one opened, so a cost reported for an earlier month stays what it was.'**
+  String get costRatesWhatAnHourCostsOneCatalogueShared;
+
+  /// No description provided for @costRatesAddCostRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Add cost rate'**
+  String get costRatesAddCostRate;
+
+  /// No description provided for @costRatesNoCostRatesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No cost rates yet'**
+  String get costRatesNoCostRatesYet;
+
+  /// No description provided for @costRatesUntilARateIsSetEveryCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Until a rate is set, every Cost number resolves to nothing.'**
+  String get costRatesUntilARateIsSetEveryCost;
+
+  /// No description provided for @costRatesRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get costRatesRate;
+
+  /// No description provided for @commonPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Period'**
+  String get commonPeriod;
+
+  /// No description provided for @commonCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct'**
+  String get commonCorrect;
+
+  /// No description provided for @commonRevise.
+  ///
+  /// In en, this message translates to:
+  /// **'Revise'**
+  String get commonRevise;
+
+  /// No description provided for @commonClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get commonClosed;
+
+  /// No description provided for @directoryTheDirectoryCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Directory could not be read'**
+  String get directoryTheDirectoryCouldNotBeRead;
+
+  /// No description provided for @directoryNobodyMatchesThisSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody matches this search'**
+  String get directoryNobodyMatchesThisSearch;
+
+  /// No description provided for @directoryTryADifferentNameOrClearA.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different name, or clear a filter.'**
+  String get directoryTryADifferentNameOrClearA;
+
+  /// No description provided for @directoryWhoWorksHereSearchedFilteredAndDeparted.
+  ///
+  /// In en, this message translates to:
+  /// **'Who works here — searched, filtered, and Departed Employees kept out of sight until asked for.'**
+  String get directoryWhoWorksHereSearchedFilteredAndDeparted;
+
+  /// No description provided for @commonAddEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Employee'**
+  String get commonAddEmployee;
+
+  /// No description provided for @directoryMyRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'My record'**
+  String get directoryMyRecord;
+
+  /// No description provided for @directorySearchByName.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name'**
+  String get directorySearchByName;
+
+  /// No description provided for @commonJobRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Job role'**
+  String get commonJobRole;
+
+  /// No description provided for @directoryAllJobRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'All job roles'**
+  String get directoryAllJobRoles;
+
+  /// No description provided for @directoryIncludeDeparted.
+  ///
+  /// In en, this message translates to:
+  /// **'Include Departed'**
+  String get directoryIncludeDeparted;
+
+  /// No description provided for @commonEmployment.
+  ///
+  /// In en, this message translates to:
+  /// **'Employment'**
+  String get commonEmployment;
+
+  /// No description provided for @commonDeparted.
+  ///
+  /// In en, this message translates to:
+  /// **'Departed'**
+  String get commonDeparted;
+
+  /// No description provided for @commonActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get commonActive;
+
+  /// No description provided for @employeeAssignmentAssignToAnOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign {displayName} to an Org Unit'**
+  String employeeAssignmentAssignToAnOrgUnit(Object displayName);
+
+  /// No description provided for @employeeAssignmentWhereItWorksNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Where it works now'**
+  String get employeeAssignmentWhereItWorksNow;
+
+  /// No description provided for @employeeAssignmentJobRoleOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Job role (optional)'**
+  String get employeeAssignmentJobRoleOptional;
+
+  /// No description provided for @employeeAssignmentNoJobRole.
+  ///
+  /// In en, this message translates to:
+  /// **'No job role'**
+  String get employeeAssignmentNoJobRole;
+
+  /// No description provided for @employeeAssignmentEffectiveDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Effective date'**
+  String get employeeAssignmentEffectiveDate;
+
+  /// No description provided for @employeeCorrectionCorrectSRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct {displayName}\'s record'**
+  String employeeCorrectionCorrectSRecord(Object displayName);
+
+  /// No description provided for @commonFirstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get commonFirstName;
+
+  /// No description provided for @commonLastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name'**
+  String get commonLastName;
+
+  /// No description provided for @commonEmploymentType.
+  ///
+  /// In en, this message translates to:
+  /// **'Employment type'**
+  String get commonEmploymentType;
+
+  /// No description provided for @commonWorkEmailOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Work email (optional)'**
+  String get commonWorkEmailOptional;
+
+  /// No description provided for @employeeDepartureRecordThatHasLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Record that {displayName} has left'**
+  String employeeDepartureRecordThatHasLeft(Object displayName);
+
+  /// No description provided for @employeeDepartureAccountStillLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Account still linked'**
+  String get employeeDepartureAccountStillLinked;
+
+  /// No description provided for @employeeDepartureTheRecordStaysNothingIsDeletedAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'The record stays — nothing is deleted, and this can be undone by reinstating the record at any time.'**
+  String get employeeDepartureTheRecordStaysNothingIsDeletedAnd;
+
+  /// No description provided for @employeeDepartureEffectiveDateOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Effective date (optional)'**
+  String get employeeDepartureEffectiveDateOptional;
+
+  /// No description provided for @commonLeftBlankTodayIsRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Left blank, today is recorded.'**
+  String get commonLeftBlankTodayIsRecorded;
+
+  /// No description provided for @employeeDepartureRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording…'**
+  String get employeeDepartureRecording;
+
+  /// No description provided for @commonRecordDeparture.
+  ///
+  /// In en, this message translates to:
+  /// **'Record departure'**
+  String get commonRecordDeparture;
+
+  /// No description provided for @employeeDepartureHasLeftAndTheirAccountCanStill.
+  ///
+  /// In en, this message translates to:
+  /// **'{displayName} has left, and their Account ({email}) can still sign in. The departure is already recorded either way — deactivating the Account is a separate, optional step.'**
+  String employeeDepartureHasLeftAndTheirAccountCanStill(
+    Object displayName,
+    Object email,
+  );
+
+  /// No description provided for @employeeDepartureNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get employeeDepartureNotNow;
+
+  /// No description provided for @employeeDepartureDeactivating.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivating…'**
+  String get employeeDepartureDeactivating;
+
+  /// No description provided for @employeeDepartureDeactivateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate Account'**
+  String get employeeDepartureDeactivateAccount;
+
+  /// No description provided for @employeeDetailThisRecordCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'This record could not be read'**
+  String get employeeDetailThisRecordCouldNotBeRead;
+
+  /// No description provided for @employeeDetailAssignmentHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignment history'**
+  String get employeeDetailAssignmentHistory;
+
+  /// No description provided for @employeeDetailNoAssignmentHasBeenRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No Assignment has been recorded.'**
+  String get employeeDetailNoAssignmentHasBeenRecorded;
+
+  /// No description provided for @employeeDetailRecordSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Record skill'**
+  String get employeeDetailRecordSkill;
+
+  /// No description provided for @employeeDetailNoQualificationsRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No qualifications recorded.'**
+  String get employeeDetailNoQualificationsRecorded;
+
+  /// No description provided for @employeeDetailHired.
+  ///
+  /// In en, this message translates to:
+  /// **'Hired'**
+  String get employeeDetailHired;
+
+  /// No description provided for @employeeDetailWorkEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Work email'**
+  String get employeeDetailWorkEmail;
+
+  /// No description provided for @commonCorrectRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct record'**
+  String get commonCorrectRecord;
+
+  /// No description provided for @employeeDetailSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature'**
+  String get employeeDetailSignature;
+
+  /// No description provided for @commonReinstate.
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstate'**
+  String get commonReinstate;
+
+  /// No description provided for @employeeDetailCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get employeeDetailCurrent;
+
+  /// No description provided for @employeeDetailLapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · Lapsed'**
+  String employeeDetailLapsed(Object name);
+
+  /// No description provided for @employeeDetailReAssess.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-assess'**
+  String get employeeDetailReAssess;
+
+  /// No description provided for @commonAdding.
+  ///
+  /// In en, this message translates to:
+  /// **'Adding…'**
+  String get commonAdding;
+
+  /// No description provided for @employeeLinkPickerSuggestedMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested match: {value}'**
+  String employeeLinkPickerSuggestedMatch(Object value);
+
+  /// No description provided for @employeeLinkPickerLinkedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked to: {value}'**
+  String employeeLinkPickerLinkedTo(Object value);
+
+  /// No description provided for @commonRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get commonRemove;
+
+  /// No description provided for @employeeLinkPickerNoEmployeeWillBeLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'No Employee will be linked.'**
+  String get employeeLinkPickerNoEmployeeWillBeLinked;
+
+  /// No description provided for @employeeSignatureNoSignatureIsKeptForUploadA.
+  ///
+  /// In en, this message translates to:
+  /// **'No Signature is kept for {displayName}. Upload a picture of it, or draw it here.'**
+  String employeeSignatureNoSignatureIsKeptForUploadA(Object displayName);
+
+  /// No description provided for @commonThisSignatureCouldNotBeShown.
+  ///
+  /// In en, this message translates to:
+  /// **'This Signature could not be shown.'**
+  String get commonThisSignatureCouldNotBeShown;
+
+  /// No description provided for @employeeSignatureSetForBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Set for {displayName} by {who}'**
+  String employeeSignatureSetForBy(Object displayName, Object who);
+
+  /// No description provided for @employeeSignatureSetBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Set by {displayName}'**
+  String employeeSignatureSetBy(Object displayName);
+
+  /// No description provided for @employeeSignatureSignatureOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature of {displayName}'**
+  String employeeSignatureSignatureOf(Object displayName);
+
+  /// No description provided for @commonUploadAPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload a picture'**
+  String get commonUploadAPicture;
+
+  /// No description provided for @commonReplaceWithAPicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace with a picture'**
+  String get commonReplaceWithAPicture;
+
+  /// No description provided for @commonDrawIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw it'**
+  String get commonDrawIt;
+
+  /// No description provided for @commonDrawANewOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw a new one'**
+  String get commonDrawANewOne;
+
+  /// No description provided for @commonKeepThisSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this Signature'**
+  String get commonKeepThisSignature;
+
+  /// No description provided for @employeeSkillFormReAssessFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-assess {value} for {displayName}'**
+  String employeeSkillFormReAssessFor(Object value, Object displayName);
+
+  /// No description provided for @employeeSkillFormRecordASkillFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a skill for {displayName}'**
+  String employeeSkillFormRecordASkillFor(Object displayName);
+
+  /// No description provided for @employeeSkillFormSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill'**
+  String get employeeSkillFormSkill;
+
+  /// No description provided for @employeeSkillFormProficiency04Iluo.
+  ///
+  /// In en, this message translates to:
+  /// **'Proficiency (0–4, ILUO)'**
+  String get employeeSkillFormProficiency04Iluo;
+
+  /// No description provided for @employeeSkillForm0None.
+  ///
+  /// In en, this message translates to:
+  /// **'0 — none'**
+  String get employeeSkillForm0None;
+
+  /// No description provided for @employeeSkillFormAssessedOnOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Assessed on (optional)'**
+  String get employeeSkillFormAssessedOnOptional;
+
+  /// No description provided for @employeeSkillFormExpiresOnOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires on (optional)'**
+  String get employeeSkillFormExpiresOnOptional;
+
+  /// No description provided for @employeeSkillFormLeftBlankNeverExpiresOrIsRe.
+  ///
+  /// In en, this message translates to:
+  /// **'Left blank, never expires (or is re-derived from the skill\'s own revalidation period).'**
+  String get employeeSkillFormLeftBlankNeverExpiresOrIsRe;
+
+  /// No description provided for @employeeSkillFormEvidenceReferenceOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence reference (optional)'**
+  String get employeeSkillFormEvidenceReferenceOptional;
+
+  /// No description provided for @floorTrainingTrainingFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Training for {employeeName}'**
+  String floorTrainingTrainingFor(Object employeeName);
+
+  /// No description provided for @floorTrainingYourTraining.
+  ///
+  /// In en, this message translates to:
+  /// **'Your training'**
+  String get floorTrainingYourTraining;
+
+  /// No description provided for @floorTrainingDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get floorTrainingDone;
+
+  /// No description provided for @floorTrainingShowMyTraining.
+  ///
+  /// In en, this message translates to:
+  /// **'Show my training'**
+  String get floorTrainingShowMyTraining;
+
+  /// No description provided for @floorTrainingWhoAreYouYourEmployeeNumberAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Who are you? Your Employee number and PIN show the training waiting on you at this device.'**
+  String get floorTrainingWhoAreYouYourEmployeeNumberAnd;
+
+  /// No description provided for @floorTrainingScanTheBadgeOrTypeTheNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the badge or type the number.'**
+  String get floorTrainingScanTheBadgeOrTypeTheNumber;
+
+  /// No description provided for @floorTrainingNothingIsWaitingOnYouAtThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is waiting on you at this device.'**
+  String get floorTrainingNothingIsWaitingOnYouAtThis;
+
+  /// No description provided for @jobRoleFormCorrectJobRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct job role'**
+  String get jobRoleFormCorrectJobRole;
+
+  /// No description provided for @commonAddJobRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Add job role'**
+  String get commonAddJobRole;
+
+  /// No description provided for @jobRolesTheJobRoleCatalogueCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The job role catalogue could not be read'**
+  String get jobRolesTheJobRoleCatalogueCouldNotBe;
+
+  /// No description provided for @jobRolesWhatAnEmployeeDoesDefinedOnceShared.
+  ///
+  /// In en, this message translates to:
+  /// **'What an Employee does — defined once, shared by every Site.'**
+  String get jobRolesWhatAnEmployeeDoesDefinedOnceShared;
+
+  /// No description provided for @jobRolesNoJobRolesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No job roles yet'**
+  String get jobRolesNoJobRolesYet;
+
+  /// No description provided for @commonNothingHasBeenDefinedInTheCatalogue.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been defined in the catalogue.'**
+  String get commonNothingHasBeenDefinedInTheCatalogue;
+
+  /// No description provided for @jobRolesFilterJobRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter job roles'**
+  String get jobRolesFilterJobRoles;
+
+  /// No description provided for @jobRolesByNameOrCode.
+  ///
+  /// In en, this message translates to:
+  /// **'By name or code.'**
+  String get jobRolesByNameOrCode;
+
+  /// No description provided for @jobRolesNoJobRolesMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No job roles match'**
+  String get jobRolesNoJobRolesMatch;
+
+  /// No description provided for @jobRolesNothingInTheCatalogueMatchesTryA.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in the catalogue matches \"{term}\". Try a different name or code, or clear the filter.'**
+  String jobRolesNothingInTheCatalogueMatchesTryA(Object term);
+
+  /// No description provided for @leaveRequestCancelCancelLeaveRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel leave request'**
+  String get leaveRequestCancelCancelLeaveRequest;
+
+  /// No description provided for @leaveRequestCancelCancelTheRequestFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel the {leaveTypeName} request for {displayName}, {periodLabel} ({daysLabel})?'**
+  String leaveRequestCancelCancelTheRequestFor(
+    Object leaveTypeName,
+    Object displayName,
+    Object periodLabel,
+    Object daysLabel,
+  );
+
+  /// No description provided for @leaveRequestCancelKeepRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep request'**
+  String get leaveRequestCancelKeepRequest;
+
+  /// No description provided for @leaveRequestCancelCancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling…'**
+  String get leaveRequestCancelCancelling;
+
+  /// No description provided for @commonCancelRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel request'**
+  String get commonCancelRequest;
+
+  /// No description provided for @commonRequestLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Request leave'**
+  String get commonRequestLeave;
+
+  /// No description provided for @leaveRequestFormRequesting.
+  ///
+  /// In en, this message translates to:
+  /// **'Requesting…'**
+  String get leaveRequestFormRequesting;
+
+  /// No description provided for @leaveRequestFormLeaveTypesCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave types could not be read'**
+  String get leaveRequestFormLeaveTypesCouldNotBeRead;
+
+  /// No description provided for @leaveRequestFormLeaveType.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave type'**
+  String get leaveRequestFormLeaveType;
+
+  /// No description provided for @leaveRequestFormFirstDay.
+  ///
+  /// In en, this message translates to:
+  /// **'First day'**
+  String get leaveRequestFormFirstDay;
+
+  /// No description provided for @leaveRequestFormLastDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Last day'**
+  String get leaveRequestFormLastDay;
+
+  /// No description provided for @leaveRequestsLeaveRequestsCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave requests could not be read'**
+  String get leaveRequestsLeaveRequestsCouldNotBeRead;
+
+  /// No description provided for @leaveRequestsAskToBeAwayFromWorkAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask to be away from work, and follow what became of it.'**
+  String get leaveRequestsAskToBeAwayFromWorkAnd;
+
+  /// No description provided for @leaveRequestsMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get leaveRequestsMine;
+
+  /// No description provided for @leaveRequestsToDecide.
+  ///
+  /// In en, this message translates to:
+  /// **'To decide'**
+  String get leaveRequestsToDecide;
+
+  /// No description provided for @leaveRequestsNoLeaveRequestsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No leave requests yet'**
+  String get leaveRequestsNoLeaveRequestsYet;
+
+  /// No description provided for @leaveRequestsNothingToDecide.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to decide'**
+  String get leaveRequestsNothingToDecide;
+
+  /// No description provided for @leaveRequestsRequestLeaveToAskForTimeAway.
+  ///
+  /// In en, this message translates to:
+  /// **'Request leave to ask for time away.'**
+  String get leaveRequestsRequestLeaveToAskForTimeAway;
+
+  /// No description provided for @leaveRequestsNoPendingLeaveRequestsAreWaitingFor.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending leave requests are waiting for you.'**
+  String get leaveRequestsNoPendingLeaveRequestsAreWaitingFor;
+
+  /// No description provided for @leaveRequestsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note: {note}'**
+  String leaveRequestsNote(Object note);
+
+  /// No description provided for @leaveRequestsDecisionNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Decision note: {decisionNote}'**
+  String leaveRequestsDecisionNote(Object decisionNote);
+
+  /// No description provided for @leaveRequestsApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get leaveRequestsApprove;
+
+  /// No description provided for @mySignatureYourSignatureCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Signature could not be read'**
+  String get mySignatureYourSignatureCouldNotBeRead;
+
+  /// No description provided for @mySignatureNoSignatureKept.
+  ///
+  /// In en, this message translates to:
+  /// **'No Signature kept'**
+  String get mySignatureNoSignatureKept;
+
+  /// No description provided for @mySignatureYouHaveNotKeptASignatureYet.
+  ///
+  /// In en, this message translates to:
+  /// **'You have not kept a Signature yet. Upload a picture of it, or draw it here.'**
+  String get mySignatureYouHaveNotKeptASignatureYet;
+
+  /// No description provided for @mySignatureYourSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Signature'**
+  String get mySignatureYourSignature;
+
+  /// No description provided for @mySignatureYourOwnMarkKeptOnceAndApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own mark, kept once and applied wherever you would otherwise sign a sheet by hand. Replacing it never changes a sheet you have already signed.'**
+  String get mySignatureYourOwnMarkKeptOnceAndApplied;
+
+  /// No description provided for @mySignatureDrawYourSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw your Signature'**
+  String get mySignatureDrawYourSignature;
+
+  /// No description provided for @commonAddRootOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Add root Org Unit'**
+  String get commonAddRootOrgUnit;
+
+  /// No description provided for @orgUnitFormAddOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Org Unit'**
+  String get orgUnitFormAddOrgUnit;
+
+  /// No description provided for @orgUnitFormUnitType.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit type'**
+  String get orgUnitFormUnitType;
+
+  /// No description provided for @orgUnitFormSortOrderOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort order (optional)'**
+  String get orgUnitFormSortOrderOptional;
+
+  /// No description provided for @commonImportABranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a branch'**
+  String get commonImportABranch;
+
+  /// No description provided for @orgUnitImportImporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing…'**
+  String get orgUnitImportImporting;
+
+  /// No description provided for @orgUnitImportImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get orgUnitImportImport;
+
+  /// No description provided for @orgUnitImportAJsonArrayOfRowsEachRow.
+  ///
+  /// In en, this message translates to:
+  /// **'A JSON array of rows. Each row references its own parent by \"parentCode\" — another row in this same array, or an existing code at this Site — never by id.'**
+  String get orgUnitImportAJsonArrayOfRowsEachRow;
+
+  /// No description provided for @orgUnitImportRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Row {row}{code}{field}: {message}'**
+  String orgUnitImportRow(
+    String row,
+    String code,
+    String field,
+    String message,
+  );
+
+  /// No description provided for @orgUnitPickerOrgUnitGrants.
+  ///
+  /// In en, this message translates to:
+  /// **'Org Unit Grants'**
+  String get orgUnitPickerOrgUnitGrants;
+
+  /// No description provided for @orgUnitPickerEverythingOnTheRightIsWhatThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything on the right is what this Account will hold. Nothing is added to what it has now — this is the whole set.'**
+  String get orgUnitPickerEverythingOnTheRightIsWhatThis;
+
+  /// No description provided for @orgUnitPickerQualityAuthorityAndSafetyAuthorityAreEach.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality authority and Safety authority are each separate from the level and from each other — a view-only Grant may carry either, and an edit Grant need not — and each reaches everything beneath the Org Unit it is given on.'**
+  String get orgUnitPickerQualityAuthorityAndSafetyAuthorityAreEach;
+
+  /// No description provided for @orgUnitPickerBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse'**
+  String get orgUnitPickerBrowse;
+
+  /// No description provided for @orgUnitPickerGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Granted'**
+  String get orgUnitPickerGranted;
+
+  /// No description provided for @orgUnitPickerGrantThisOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant this Org Unit'**
+  String get orgUnitPickerGrantThisOrgUnit;
+
+  /// No description provided for @orgUnitPickerNothingBeneathThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing beneath this'**
+  String get orgUnitPickerNothingBeneathThis;
+
+  /// No description provided for @orgUnitPickerGranted2.
+  ///
+  /// In en, this message translates to:
+  /// **'Granted ({length})'**
+  String orgUnitPickerGranted2(Object length);
+
+  /// No description provided for @orgUnitPickerNoOrgUnitsGrantedThisAccountWill.
+  ///
+  /// In en, this message translates to:
+  /// **'No Org Units granted. This Account will be able to sign in but not act anywhere.'**
+  String get orgUnitPickerNoOrgUnitsGrantedThisAccountWill;
+
+  /// No description provided for @orgUnitPickerQualityAuthority.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality authority'**
+  String get orgUnitPickerQualityAuthority;
+
+  /// No description provided for @orgUnitPickerSafetyAuthority.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety authority'**
+  String get orgUnitPickerSafetyAuthority;
+
+  /// No description provided for @orgUnitPickerRemoveThisGrant.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this Grant'**
+  String get orgUnitPickerRemoveThisGrant;
+
+  /// No description provided for @orgUnitsASiteSOwnShapeWhereA.
+  ///
+  /// In en, this message translates to:
+  /// **'A Site\'s own shape — where a KPI is measured, an Account is granted, and an Asset sits.'**
+  String get orgUnitsASiteSOwnShapeWhereA;
+
+  /// No description provided for @commonAddSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Site'**
+  String get commonAddSite;
+
+  /// No description provided for @commonEditSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Site'**
+  String get commonEditSite;
+
+  /// No description provided for @orgUnitsTheSitesCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Sites could not be read'**
+  String get orgUnitsTheSitesCouldNotBeRead;
+
+  /// No description provided for @orgUnitsThereAreNoSitesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no Sites yet.'**
+  String get orgUnitsThereAreNoSitesYet;
+
+  /// No description provided for @orgUnitsAnAdministratorAddsTheFirstSiteEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'An administrator adds the first Site; every Org Unit sits beneath one.'**
+  String get orgUnitsAnAdministratorAddsTheFirstSiteEvery;
+
+  /// No description provided for @orgUnitsFindAnOrgUnitByName.
+  ///
+  /// In en, this message translates to:
+  /// **'Find an Org Unit by name'**
+  String get orgUnitsFindAnOrgUnitByName;
+
+  /// No description provided for @orgUnitsPickingOneRevealsAndSelectsItIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Picking one reveals and selects it in the tree below.'**
+  String get orgUnitsPickingOneRevealsAndSelectsItIn;
+
+  /// No description provided for @orgUnitsRetired.
+  ///
+  /// In en, this message translates to:
+  /// **'Retired'**
+  String get orgUnitsRetired;
+
+  /// No description provided for @orgUnitsTheOrgUnitTreeCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The Org Unit tree could not be read'**
+  String get orgUnitsTheOrgUnitTreeCouldNotBe;
+
+  /// No description provided for @orgUnitsNothingToBrowseInThisSiteYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to browse in this Site yet.'**
+  String get orgUnitsNothingToBrowseInThisSiteYet;
+
+  /// No description provided for @orgUnitsAnAdministratorAddsTheFirstOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'An administrator adds the first Org Unit, or imports a branch.'**
+  String get orgUnitsAnAdministratorAddsTheFirstOrgUnit;
+
+  /// No description provided for @orgUnitsBelow.
+  ///
+  /// In en, this message translates to:
+  /// **'{childCount} below'**
+  String orgUnitsBelow(Object childCount);
+
+  /// No description provided for @orgUnitsAddAnOrgUnitHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an Org Unit here'**
+  String get orgUnitsAddAnOrgUnitHere;
+
+  /// No description provided for @orgUnitsRetire.
+  ///
+  /// In en, this message translates to:
+  /// **'Retire'**
+  String get orgUnitsRetire;
+
+  /// No description provided for @orgUnitsRetireThisOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Retire this Org Unit?'**
+  String get orgUnitsRetireThisOrgUnit;
+
+  /// No description provided for @orgUnitsWillReadAsRetiredRatherThanDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will read as retired rather than deleted, and can be reinstated at any time.'**
+  String orgUnitsWillReadAsRetiredRatherThanDeleted(Object name);
+
+  /// No description provided for @productCostFormTheCostBelowIsClosedOnThe.
+  ///
+  /// In en, this message translates to:
+  /// **'The cost below is closed on the day the new one takes effect. It stays readable, and scrap already costed at it keeps that figure.'**
+  String get productCostFormTheCostBelowIsClosedOnThe;
+
+  /// No description provided for @productCostFormTheProductListCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Product list could not be read, so a Product cannot be chosen: {productsFailure}'**
+  String productCostFormTheProductListCouldNotBeRead(Object productsFailure);
+
+  /// No description provided for @productCostFormTheProductAStandardCostBelongsTo.
+  ///
+  /// In en, this message translates to:
+  /// **'The Product a standard cost belongs to cannot be corrected — record a cost against the other Product instead'**
+  String get productCostFormTheProductAStandardCostBelongsTo;
+
+  /// No description provided for @productCostFormStandardCostPerUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard cost, per unit'**
+  String get productCostFormStandardCostPerUnit;
+
+  /// No description provided for @productCostFormTheNewCostFromTheDateBelow.
+  ///
+  /// In en, this message translates to:
+  /// **'The new cost, from the date below'**
+  String get productCostFormTheNewCostFromTheDateBelow;
+
+  /// No description provided for @productCostFormNewCostTakesEffectOn.
+  ///
+  /// In en, this message translates to:
+  /// **'New cost takes effect on'**
+  String get productCostFormNewCostTakesEffectOn;
+
+  /// No description provided for @productCostFormTheOldCostIsClosedOnThis.
+  ///
+  /// In en, this message translates to:
+  /// **'The old cost is closed on this day, and the new one starts'**
+  String get productCostFormTheOldCostIsClosedOnThis;
+
+  /// No description provided for @productCostFormLeftBlankThisCostIsTheCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Left blank, this cost is the current one. Setting it closes the cost on that day, which is the exclusive end of the period.'**
+  String get productCostFormLeftBlankThisCostIsTheCurrent;
+
+  /// No description provided for @productCostsTheStandardCostCatalogueCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The standard cost catalogue could not be read'**
+  String get productCostsTheStandardCostCatalogueCouldNotBe;
+
+  /// No description provided for @productCostsWhatAUnitIsCostedAtOne.
+  ///
+  /// In en, this message translates to:
+  /// **'What a unit is costed at — one catalogue shared by every Site, and what scrap and rework are priced with. A cost is never overwritten: it is closed, and a new one opened, so a cost reported for an earlier month stays what it was.'**
+  String get productCostsWhatAUnitIsCostedAtOne;
+
+  /// No description provided for @productCostsAddStandardCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Add standard cost'**
+  String get productCostsAddStandardCost;
+
+  /// No description provided for @productCostsNoStandardCostsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No standard costs yet'**
+  String get productCostsNoStandardCostsYet;
+
+  /// No description provided for @productCostsUntilACostIsSetScrapAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Until a cost is set, scrap and rework are priced at nothing.'**
+  String get productCostsUntilACostIsSetScrapAnd;
+
+  /// No description provided for @roleFormCorrectRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct role'**
+  String get roleFormCorrectRole;
+
+  /// No description provided for @commonAddRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Add role'**
+  String get commonAddRole;
+
+  /// No description provided for @roleForm330CharactersAZ09.
+  ///
+  /// In en, this message translates to:
+  /// **'3–30 characters: A–Z, 0–9 and underscore, e.g. ROLE_STORE_ROOM'**
+  String get roleForm330CharactersAZ09;
+
+  /// No description provided for @roleFormWhatItIsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'What it is for'**
+  String get roleFormWhatItIsFor;
+
+  /// No description provided for @roleFormInActiveUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In active use'**
+  String get roleFormInActiveUse;
+
+  /// No description provided for @roleFormARetiredRoleKeepsItsHistoryAnd.
+  ///
+  /// In en, this message translates to:
+  /// **'A retired role keeps its history and can be assigned to nobody.'**
+  String get roleFormARetiredRoleKeepsItsHistoryAnd;
+
+  /// No description provided for @rolePermissionsWhatCarries.
+  ///
+  /// In en, this message translates to:
+  /// **'What {code} carries'**
+  String rolePermissionsWhatCarries(Object code);
+
+  /// No description provided for @rolePermissionsOfPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'{length} of {total} permissions'**
+  String rolePermissionsOfPermissions(Object length, Object total);
+
+  /// No description provided for @rolesTheRolesCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The roles could not be read'**
+  String get rolesTheRolesCouldNotBeRead;
+
+  /// No description provided for @rolesWhatAnAccountMayDoEachRole.
+  ///
+  /// In en, this message translates to:
+  /// **'What an Account may do. Each role is a group of permissions; every Account holds the default group, and a role marked automatic is earned by the Account\'s own role.'**
+  String get rolesWhatAnAccountMayDoEachRole;
+
+  /// No description provided for @rolesNoRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'No roles'**
+  String get rolesNoRoles;
+
+  /// No description provided for @rolesNothingIsCarryingAPermissionThatShould.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is carrying a permission. That should not happen: the seed creates the default group, so this means the deployment is incomplete.'**
+  String get rolesNothingIsCarryingAPermissionThatShould;
+
+  /// No description provided for @rolesDefaultGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Default group'**
+  String get rolesDefaultGroup;
+
+  /// No description provided for @rolesAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic: {legacyRole}'**
+  String rolesAutomatic(Object legacyRole);
+
+  /// No description provided for @rolesReaches.
+  ///
+  /// In en, this message translates to:
+  /// **'{length, plural, =1{1 permission} other{{length} permissions}} · reaches {holderCount, plural, =1{1 Account} other{{holderCount} Accounts}}'**
+  String rolesReaches(int length, int holderCount);
+
+  /// No description provided for @rolesPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get rolesPermissions;
+
+  /// No description provided for @siteFormTimezonesUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Timezones unavailable'**
+  String get siteFormTimezonesUnavailable;
+
+  /// No description provided for @siteFormTheTimezoneListCouldNotBeLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'The timezone list could not be loaded.'**
+  String get siteFormTheTimezoneListCouldNotBeLoaded;
+
+  /// No description provided for @siteFormTimezone.
+  ///
+  /// In en, this message translates to:
+  /// **'Timezone'**
+  String get siteFormTimezone;
+
+  /// No description provided for @siteFormCountryCodeOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Country code (optional)'**
+  String get siteFormCountryCodeOptional;
+
+  /// No description provided for @skillCoverageOrgUnitAndSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Org Unit and skill'**
+  String get skillCoverageOrgUnitAndSkill;
+
+  /// No description provided for @skillCoverageRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get skillCoverageRequired;
+
+  /// No description provided for @skillCoverageQualified.
+  ///
+  /// In en, this message translates to:
+  /// **'Qualified'**
+  String get skillCoverageQualified;
+
+  /// No description provided for @skillCoverageLapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Lapsed'**
+  String get skillCoverageLapsed;
+
+  /// No description provided for @skillCoverageShortfall.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortfall'**
+  String get skillCoverageShortfall;
+
+  /// No description provided for @skillCoverageSkillCoverageCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill coverage could not be read'**
+  String get skillCoverageSkillCoverageCouldNotBeRead;
+
+  /// No description provided for @skillCoverageWhereThisSiteFallsShortOfIts.
+  ///
+  /// In en, this message translates to:
+  /// **'Where this Site falls short of its own skill requirements.'**
+  String get skillCoverageWhereThisSiteFallsShortOfIts;
+
+  /// No description provided for @skillCoverageEveryRequirementIsMet.
+  ///
+  /// In en, this message translates to:
+  /// **'Every requirement is met'**
+  String get skillCoverageEveryRequirementIsMet;
+
+  /// No description provided for @skillCoverageThisSiteHasNoShortfallAgainstThe.
+  ///
+  /// In en, this message translates to:
+  /// **'This Site has no shortfall against the skill requirements it has set for itself.'**
+  String get skillCoverageThisSiteHasNoShortfallAgainstThe;
+
+  /// No description provided for @skillCoverageFilterSkillCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter skill coverage'**
+  String get skillCoverageFilterSkillCoverage;
+
+  /// No description provided for @skillCoverageByOrgUnitOrSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'By Org Unit or skill.'**
+  String get skillCoverageByOrgUnitOrSkill;
+
+  /// No description provided for @skillCoverageNoShortfallsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No shortfalls match'**
+  String get skillCoverageNoShortfallsMatch;
+
+  /// No description provided for @skillCoverageThisSiteIsShortSomewhereButNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'This Site is short somewhere, but nothing matches \"{term}\". Try a different Org Unit or skill, or clear the filter.'**
+  String skillCoverageThisSiteIsShortSomewhereButNothing(Object term);
+
+  /// No description provided for @skillCoverageNeedsAtLevelQualifiedLapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs {minimumQualifiedHeadcount} at level {minimumLevel}+, {qualifiedHeadcount} qualified, {expiredHeadcount} lapsed'**
+  String skillCoverageNeedsAtLevelQualifiedLapsed(
+    Object minimumQualifiedHeadcount,
+    Object minimumLevel,
+    Object qualifiedHeadcount,
+    Object expiredHeadcount,
+  );
+
+  /// No description provided for @skillCoverageShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Short {shortfall}'**
+  String skillCoverageShort(Object shortfall);
+
+  /// No description provided for @skillFormCorrectSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct skill'**
+  String get skillFormCorrectSkill;
+
+  /// No description provided for @commonAddSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Add skill'**
+  String get commonAddSkill;
+
+  /// No description provided for @skillFormRequiresCertification.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires certification'**
+  String get skillFormRequiresCertification;
+
+  /// No description provided for @skillFormRevalidationPeriodInMonthsOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Revalidation period, in months (optional)'**
+  String get skillFormRevalidationPeriodInMonthsOptional;
+
+  /// No description provided for @skillFormLeftBlankThisSkillNeverNeedsRevalidating.
+  ///
+  /// In en, this message translates to:
+  /// **'Left blank, this skill never needs revalidating.'**
+  String get skillFormLeftBlankThisSkillNeverNeedsRevalidating;
+
+  /// No description provided for @skillQualifiedEmployeesWhoHolds.
+  ///
+  /// In en, this message translates to:
+  /// **'Who holds {name}'**
+  String skillQualifiedEmployeesWhoHolds(Object name);
+
+  /// No description provided for @skillQualifiedEmployeesScopedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoped to'**
+  String get skillQualifiedEmployeesScopedTo;
+
+  /// No description provided for @skillQualifiedEmployeesMinimumProficiency.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum proficiency'**
+  String get skillQualifiedEmployeesMinimumProficiency;
+
+  /// No description provided for @skillQualifiedEmployeesSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get skillQualifiedEmployeesSearch;
+
+  /// No description provided for @skillQualifiedEmployeesChooseAnOrgUnitThenSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an Org Unit, then search.'**
+  String get skillQualifiedEmployeesChooseAnOrgUnitThenSearch;
+
+  /// No description provided for @skillQualifiedEmployeesNobodyCurrentlyQualifiesAtThisOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody currently qualifies at this Org Unit.'**
+  String get skillQualifiedEmployeesNobodyCurrentlyQualifiesAtThisOrgUnit;
+
+  /// No description provided for @skillQualifiedEmployeesLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {proficiencyLevel}'**
+  String skillQualifiedEmployeesLevel(Object proficiencyLevel);
+
+  /// No description provided for @skillsTheSkillCatalogueCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The skill catalogue could not be read'**
+  String get skillsTheSkillCatalogueCouldNotBeRead;
+
+  /// No description provided for @skillsWhatThePlantQualifiesAnEmployeeTo.
+  ///
+  /// In en, this message translates to:
+  /// **'What the plant qualifies an Employee to do — defined once, shared by every Site.'**
+  String get skillsWhatThePlantQualifiesAnEmployeeTo;
+
+  /// No description provided for @skillsNoSkillsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No skills yet'**
+  String get skillsNoSkillsYet;
+
+  /// No description provided for @skillsFilterSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter skills'**
+  String get skillsFilterSkills;
+
+  /// No description provided for @skillsByNameCodeOrCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'By name, code or category.'**
+  String get skillsByNameCodeOrCategory;
+
+  /// No description provided for @skillsNoSkillsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No skills match'**
+  String get skillsNoSkillsMatch;
+
+  /// No description provided for @skillsNothingInTheCatalogueMatchesTryA.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in the catalogue matches \"{term}\". Try a different name, code or category, or clear the filter.'**
+  String skillsNothingInTheCatalogueMatchesTryA(Object term);
+
+  /// No description provided for @skillsWhoHoldsThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Who holds this'**
+  String get skillsWhoHoldsThis;
+
+  /// No description provided for @trainingAnswerSignYourConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign your confirmation'**
+  String get trainingAnswerSignYourConfirmation;
+
+  /// No description provided for @trainingAnswerChooseWhatYourAnswerIsSignedWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what your answer is signed with. You can also confirm without a Signature.'**
+  String get trainingAnswerChooseWhatYourAnswerIsSignedWith;
+
+  /// No description provided for @trainingAnswerYouKeepNoSignatureDrawOneNow.
+  ///
+  /// In en, this message translates to:
+  /// **'You keep no Signature. Draw one now for this answer, or confirm without a Signature.'**
+  String get trainingAnswerYouKeepNoSignatureDrawOneNow;
+
+  /// No description provided for @trainingAnswerYourSignatureWhichUseMySignatureApplies.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Signature, which \"Use my Signature\" applies:'**
+  String get trainingAnswerYourSignatureWhichUseMySignatureApplies;
+
+  /// No description provided for @trainingAnswerUseMySignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Use my Signature'**
+  String get trainingAnswerUseMySignature;
+
+  /// No description provided for @trainingAnswerDrawOneNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw one now'**
+  String get trainingAnswerDrawOneNow;
+
+  /// No description provided for @trainingAnswerNoSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'No Signature'**
+  String get trainingAnswerNoSignature;
+
+  /// No description provided for @trainingAnswerConfirmWithThisSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with this Signature'**
+  String get trainingAnswerConfirmWithThisSignature;
+
+  /// No description provided for @commonNoSuchTrainingRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'No such Training record'**
+  String get commonNoSuchTrainingRecord;
+
+  /// No description provided for @commonBackToTrainingRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Training records'**
+  String get commonBackToTrainingRecords;
+
+  /// No description provided for @trainingDetailTheTrainingRecordCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'The Training record could not be read'**
+  String get trainingDetailTheTrainingRecordCouldNotBeRead;
+
+  /// No description provided for @trainingDetailTheForm.
+  ///
+  /// In en, this message translates to:
+  /// **'The form'**
+  String get trainingDetailTheForm;
+
+  /// No description provided for @trainingDetailTheTraining.
+  ///
+  /// In en, this message translates to:
+  /// **'The training'**
+  String get trainingDetailTheTraining;
+
+  /// No description provided for @commonTrainedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Trained on'**
+  String get commonTrainedOn;
+
+  /// No description provided for @trainingDetailDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get trainingDetailDuration;
+
+  /// No description provided for @trainingDetailTrainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Trainer'**
+  String get trainingDetailTrainer;
+
+  /// No description provided for @trainingDetailObjective.
+  ///
+  /// In en, this message translates to:
+  /// **'Objective'**
+  String get trainingDetailObjective;
+
+  /// No description provided for @trainingDetailTrainees.
+  ///
+  /// In en, this message translates to:
+  /// **'Trainees ({traineeCount})'**
+  String trainingDetailTrainees(Object traineeCount);
+
+  /// No description provided for @commonAddTrainee.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Trainee'**
+  String get commonAddTrainee;
+
+  /// No description provided for @trainingDetailNoTraineesAreOnThisTrainingRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'No Trainees are on this Training record yet.'**
+  String get trainingDetailNoTraineesAreOnThisTrainingRecord;
+
+  /// No description provided for @trainingDetailSendToTrainees.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to Trainees'**
+  String get trainingDetailSendToTrainees;
+
+  /// No description provided for @trainingDetailDiscardDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard draft'**
+  String get trainingDetailDiscardDraft;
+
+  /// No description provided for @trainingDetailEvaluated.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluated: {value}'**
+  String trainingDetailEvaluated(Object value);
+
+  /// No description provided for @trainingDetailRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {employeeName}'**
+  String trainingDetailRemove(Object employeeName);
+
+  /// No description provided for @trainingDetailDiscardThisDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this draft?'**
+  String get trainingDetailDiscardThisDraft;
+
+  /// No description provided for @trainingDetailTheDraftAndTheTraineesListedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'The draft and the Trainees listed on it will be deleted, and it cannot be brought back. Nobody has been asked about it yet.'**
+  String get trainingDetailTheDraftAndTheTraineesListedOn;
+
+  /// No description provided for @trainingDetailDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get trainingDetailDiscard;
+
+  /// No description provided for @commonEvaluation.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluation'**
+  String get commonEvaluation;
+
+  /// No description provided for @trainingFormThatTrainingFormCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'That training form could not be read'**
+  String get trainingFormThatTrainingFormCouldNotBeRead;
+
+  /// No description provided for @trainingFormTrainingRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Training Record'**
+  String get trainingFormTrainingRecord;
+
+  /// No description provided for @trainingFormBiNBNGhiNhN.
+  ///
+  /// In en, this message translates to:
+  /// **'Biên bản ghi nhận đào tạo'**
+  String get trainingFormBiNBNGhiNhN;
+
+  /// No description provided for @trainingFormAttendanceListDanhSChThamGia.
+  ///
+  /// In en, this message translates to:
+  /// **'Attendance list/ danh sách tham gia :'**
+  String get trainingFormAttendanceListDanhSChThamGia;
+
+  /// No description provided for @trainingRaiseCorrectTrainingRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct training record'**
+  String get trainingRaiseCorrectTrainingRecord;
+
+  /// No description provided for @commonRaiseTrainingRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise training record'**
+  String get commonRaiseTrainingRecord;
+
+  /// No description provided for @trainingRaiseCorrecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Correcting…'**
+  String get trainingRaiseCorrecting;
+
+  /// No description provided for @trainingRaiseRaising.
+  ///
+  /// In en, this message translates to:
+  /// **'Raising…'**
+  String get trainingRaiseRaising;
+
+  /// No description provided for @trainingRaiseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get trainingRaiseTitle;
+
+  /// No description provided for @trainingRaiseWhatTheTrainingWas.
+  ///
+  /// In en, this message translates to:
+  /// **'What the training was.'**
+  String get trainingRaiseWhatTheTrainingWas;
+
+  /// No description provided for @trainingRaiseTheDayItWasGiven.
+  ///
+  /// In en, this message translates to:
+  /// **'The day it was given.'**
+  String get trainingRaiseTheDayItWasGiven;
+
+  /// No description provided for @trainingRaiseDurationHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration (hours)'**
+  String get trainingRaiseDurationHours;
+
+  /// No description provided for @trainingRaiseHowLongItLastedEG1.
+  ///
+  /// In en, this message translates to:
+  /// **'How long it lasted, e.g. 1.5.'**
+  String get trainingRaiseHowLongItLastedEG1;
+
+  /// No description provided for @trainingRaiseTrainerOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Trainer (optional)'**
+  String get trainingRaiseTrainerOptional;
+
+  /// No description provided for @trainingRaiseWhoGaveItFoundInTheDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Who gave it, found in the Directory.'**
+  String get trainingRaiseWhoGaveItFoundInTheDirectory;
+
+  /// No description provided for @trainingRaiseObjectiveOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Objective (optional)'**
+  String get trainingRaiseObjectiveOptional;
+
+  /// No description provided for @trainingRaiseWhatTheTrainingSetOutToTeach.
+  ///
+  /// In en, this message translates to:
+  /// **'What the training set out to teach.'**
+  String get trainingRaiseWhatTheTrainingSetOutToTeach;
+
+  /// No description provided for @trainingRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get trainingRecord;
+
+  /// No description provided for @trainingTrainees.
+  ///
+  /// In en, this message translates to:
+  /// **'Trainees'**
+  String get trainingTrainees;
+
+  /// No description provided for @trainingAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers'**
+  String get trainingAnswers;
+
+  /// No description provided for @trainingTrainingRecordsCouldNotBeRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Training records could not be read'**
+  String get trainingTrainingRecordsCouldNotBeRead;
+
+  /// No description provided for @trainingNoTrainingRecordsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No Training records match'**
+  String get trainingNoTrainingRecordsMatch;
+
+  /// No description provided for @trainingNothingWasTrainedUnderThatOrgUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was trained under that Org Unit in those days.'**
+  String get trainingNothingWasTrainedUnderThatOrgUnit;
+
+  /// No description provided for @trainingNoTrainingRecordsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Training records yet'**
+  String get trainingNoTrainingRecordsYet;
+
+  /// No description provided for @trainingRaiseATrainingRecordToStartThe.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise a Training record to start the register.'**
+  String get trainingRaiseATrainingRecordToStartThe;
+
+  /// No description provided for @trainingNothingHasBeenRecordedAsTrainedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been recorded as trained yet.'**
+  String get trainingNothingHasBeenRecordedAsTrainedYet;
+
+  /// No description provided for @trainingWhatThePlantHasTrainedPeopleOn.
+  ///
+  /// In en, this message translates to:
+  /// **'What the plant has trained people on, and when.'**
+  String get trainingWhatThePlantHasTrainedPeopleOn;
+
+  /// No description provided for @trainingThereAreMoreTrainingRecordsThanThis.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more Training records than this list shows. Narrow it by Org Unit or by dates to see the rest.'**
+  String get trainingThereAreMoreTrainingRecordsThanThis;
+
+  /// No description provided for @trainingTheFormFor.
+  ///
+  /// In en, this message translates to:
+  /// **'The form for {number}'**
+  String trainingTheFormFor(Object number);
+
+  /// No description provided for @trainingToConfirmYourTrainingToConfirmCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Training to confirm could not be read'**
+  String get trainingToConfirmYourTrainingToConfirmCouldNotBe;
+
+  /// No description provided for @trainingToConfirmNothingWaitingOnYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing waiting on you'**
+  String get trainingToConfirmNothingWaitingOnYou;
+
+  /// No description provided for @trainingToConfirmNoTrainingRecordHasBeenSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'No Training record has been sent to you that you have not answered.'**
+  String get trainingToConfirmNoTrainingRecordHasBeenSentTo;
+
+  /// No description provided for @trainingToConfirmTrainingRecordsSentToYouThatYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Training records sent to you that you have not answered yet, oldest first. Confirm that you attended, or decline because the record is wrong.'**
+  String get trainingToConfirmTrainingRecordsSentToYouThatYou;
+
+  /// No description provided for @trainingToConfirmYourAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Your answer'**
+  String get trainingToConfirmYourAnswer;
+
+  /// No description provided for @trainingTraineeEmployeesOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Employees of {orgUnitName}'**
+  String trainingTraineeEmployeesOf(Object orgUnitName);
+
+  /// No description provided for @trainingTraineeWholeDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole Directory'**
+  String get trainingTraineeWholeDirectory;
+
+  /// No description provided for @trainingTraineeAnyoneInTheDirectoryFoundByName.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone in the Directory, found by name or number.'**
+  String get trainingTraineeAnyoneInTheDirectoryFoundByName;
+
+  /// No description provided for @trainingTraineeAnEmployeeOfFoundByNameOr.
+  ///
+  /// In en, this message translates to:
+  /// **'An Employee of {orgUnitName}, found by name or number.'**
+  String trainingTraineeAnEmployeeOfFoundByNameOr(Object orgUnitName);
+
+  /// No description provided for @workedHoursDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get workedHoursDay;
+
+  /// No description provided for @workedHoursWorked.
+  ///
+  /// In en, this message translates to:
+  /// **'Worked'**
+  String get workedHoursWorked;
+
+  /// No description provided for @workedHoursBackToEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Employee'**
+  String get workedHoursBackToEmployee;
+
+  /// No description provided for @workedHoursTheConfirmedHoursThisEmployeeActuallyWorked.
+  ///
+  /// In en, this message translates to:
+  /// **'The confirmed hours this Employee actually worked, day by day. Only confirmed attendance counts — an unconfirmed sheet is a draft.'**
+  String get workedHoursTheConfirmedHoursThisEmployeeActuallyWorked;
+
+  /// No description provided for @workedHoursTheWorkedHoursSummaryCouldNotBe.
+  ///
+  /// In en, this message translates to:
+  /// **'The worked-hours summary could not be read'**
+  String get workedHoursTheWorkedHoursSummaryCouldNotBe;
+
+  /// No description provided for @workedHoursNoConfirmedWorkedHoursInThisWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'No confirmed worked hours in this window.'**
+  String get workedHoursNoConfirmedWorkedHoursInThisWindow;
+
+  /// No description provided for @workedHoursWidenTheWindowOrConfirmTheShift.
+  ///
+  /// In en, this message translates to:
+  /// **'Widen the window, or confirm the shift sheets for the days this Employee worked.'**
+  String get workedHoursWidenTheWindowOrConfirmTheShift;
+
+  /// No description provided for @workedHoursTotals.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals'**
+  String get workedHoursTotals;
+
+  /// No description provided for @workedHoursOfScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'of {value} scheduled'**
+  String workedHoursOfScheduled(Object value);
+
+  /// No description provided for @leaveRequestDecisionApproveLeaveRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve leave request'**
+  String get leaveRequestDecisionApproveLeaveRequest;
+
+  /// No description provided for @leaveRequestDecisionRejectLeaveRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject leave request'**
+  String get leaveRequestDecisionRejectLeaveRequest;
+
+  /// No description provided for @commonTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get commonTo;
+
+  /// No description provided for @commonEmployeeNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee number'**
+  String get commonEmployeeNumber;
+
+  /// No description provided for @commonPin.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN'**
+  String get commonPin;
+
+  /// No description provided for @commonInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get commonInactive;
+
+  /// No description provided for @commonDeactivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate'**
+  String get commonDeactivate;
+
+  /// No description provided for @commonReactivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Reactivate'**
+  String get commonReactivate;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get commonClose;
+
+  /// No description provided for @commonReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get commonReason;
+
+  /// No description provided for @commonAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get commonAssign;
+
+  /// No description provided for @commonDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get commonDecline;
+
+  /// No description provided for @commonOvertime.
+  ///
+  /// In en, this message translates to:
+  /// **'Overtime'**
+  String get commonOvertime;
+
+  /// No description provided for @commonSessionEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'This session has ended. Sign in again to continue.'**
+  String get commonSessionEnded;
+
+  /// No description provided for @attendanceRecordChooseAReasonForThisAbsence.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a reason for this absence.'**
+  String get attendanceRecordChooseAReasonForThisAbsence;
 }
 
 class _AppLocalizationsDelegate

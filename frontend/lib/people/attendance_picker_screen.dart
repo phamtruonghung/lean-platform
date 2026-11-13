@@ -35,6 +35,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../platform/router.dart';
@@ -96,6 +97,7 @@ class _PickerBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<AttendancePickerBloc>().state;
 
     return Scaffold(
@@ -106,9 +108,8 @@ class _PickerBody extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.xl),
             children: [
               AppPageHeader(
-                title: 'Attendance',
-                description: 'Choose an Org Unit and a production day to open that '
-                    "shift's attendance sheet.",
+                title: l10n.navAttendance,
+                description: l10n.attendancePickerChooseAnOrgUnitAndAProduction,
                 actions: [
                   // The worklist (issue #250): every past shift this caller
                   // could confirm whose sheet is missing or unconfirmed —
@@ -122,7 +123,7 @@ class _PickerBody extends StatelessWidget {
                     ),
                     onPressed: () => context.go('${Routes.attendance}/to-confirm'),
                     icon: const Icon(Icons.fact_check_outlined, size: 18),
-                    label: const Text('Attendance to confirm'),
+                    label: Text(l10n.titleAttendanceToConfirm),
                   ),
                 ],
               ),
@@ -135,7 +136,7 @@ class _PickerBody extends StatelessWidget {
               AppDateField(
                 key: AttendancePickerScreen.dateFieldKey,
                 name: 'attendance-picker-date',
-                label: 'Production day',
+                label: l10n.attendancePickerProductionDay,
                 value: state.date,
                 onChanged: (value) {
                   if (value != null) {
@@ -147,7 +148,7 @@ class _PickerBody extends StatelessWidget {
               if (state.failure != null)
                 PlatformFailureState(
                   key: AttendancePickerScreen.failureKey,
-                  title: 'The shifts could not be read',
+                  title: l10n.attendancePickerTheShiftsCouldNotBeRead,
                   message: state.failure!,
                   // The same read again, with the Org Unit and day the caller
                   // already chose: `_reload` reads both off the state, so this
@@ -169,8 +170,8 @@ class _PickerBody extends StatelessWidget {
               else if (state.orgUnitId != null && state.date != null && state.shiftInstances.isEmpty)
                 PlatformEmptyState.noneExist(
                   key: AttendancePickerScreen.emptyKey,
-                  title: 'No shifts are scheduled here on that day.',
-                  message: 'Choose another production day, or another Org Unit.',
+                  title: l10n.attendancePickerNoShiftsAreScheduledHereOnThat,
+                  message: l10n.attendancePickerChooseAnotherProductionDayOrAnotherOrg,
                   icon: Icons.event_busy_outlined,
                 )
               else
@@ -273,6 +274,7 @@ class _OrgUnitBrowser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final palette = AppColors.of(context);
     final state = context.watch<OrgUnitPickerBloc>().state;
@@ -296,13 +298,13 @@ class _OrgUnitBrowser extends StatelessWidget {
         ),
       );
     } else if (state.sitesStatus == SitesStatus.failed) {
-      body = Text(state.sitesFailure ?? 'The Sites are unavailable.');
+      body = Text(state.sitesFailure ?? l10n.commonTheSitesAreUnavailable);
     } else if (state.rootsFailure != null) {
       body = Text(state.rootsFailure!);
     } else if (state.sites.isEmpty) {
-      body = const Text('There are no Sites to browse yet.');
+      body = Text(l10n.commonThereAreNoSitesToBrowseYet);
     } else if (state.rows.isEmpty) {
-      body = const Text('Nothing to browse in this Site.');
+      body = Text(l10n.commonNothingToBrowseInThisSite);
     } else {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -318,7 +320,7 @@ class _OrgUnitBrowser extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Org Unit',
+              l10n.commonOrgUnit,
               style: AppTypography.floor(context)?.copyWith(
                 color: palette.textMuted,
                 fontWeight: FontWeight.w600,
@@ -330,7 +332,7 @@ class _OrgUnitBrowser extends StatelessWidget {
               DropdownButtonFormField<String>(
                 initialValue: state.siteId,
                 isDense: true,
-                decoration: const InputDecoration(labelText: 'Site'),
+                decoration: InputDecoration(labelText: l10n.commonSite),
                 items: [
                   for (final site in state.sites)
                     DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -356,6 +358,7 @@ class _OrgUnitRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     return Padding(
       padding: EdgeInsets.only(left: row.depth * Spacing.lg),
@@ -374,7 +377,7 @@ class _OrgUnitRow extends StatelessWidget {
                   : IconButton(
                       padding: EdgeInsets.zero,
                       iconSize: 18,
-                      tooltip: row.isExpanded ? 'Collapse' : 'Expand',
+                      tooltip: row.isExpanded ? l10n.commonCollapse : l10n.commonExpand,
                       onPressed: () => bloc.add(
                         row.isExpanded
                             ? OrgUnitPickerCollapsed(row.node.id)

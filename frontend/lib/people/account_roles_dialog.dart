@@ -27,6 +27,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../people_api.dart';
 import '../platform/auth_gateway.dart';
 import '../status_tone.dart';
@@ -102,7 +103,7 @@ class _AccountRolesDialogState extends State<AccountRolesDialog> {
   Future<void> _read() async {
     final token = widget.authGateway.currentAccessToken;
     if (token == null) {
-      setState(() => _failure = 'This session has ended. Sign in again to continue.');
+      setState(() => _failure = AppLocalizations.of(context).commonSessionEnded);
       return;
     }
     try {
@@ -130,7 +131,7 @@ class _AccountRolesDialogState extends State<AccountRolesDialog> {
 
     final token = widget.authGateway.currentAccessToken;
     if (token == null) {
-      setState(() => _failure = 'This session has ended. Sign in again to continue.');
+      setState(() => _failure = AppLocalizations.of(context).commonSessionEnded);
       return;
     }
 
@@ -173,23 +174,24 @@ class _AccountRolesDialogState extends State<AccountRolesDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final held = _held;
     final failure = _failure;
 
     return AppDialog(
-      title: 'Roles for ${widget.accountName}',
+      title: l10n.accountRolesRolesFor(widget.accountName),
       size: AppDialogSize.form,
       actions: [
         AppDialogAction(
           id: AccountRolesDialog._cancelId,
-          label: 'Cancel',
+          label: l10n.commonCancel,
           kind: AppDialogActionKind.dismiss,
           onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
         ),
         AppDialogAction(
           id: AccountRolesDialog._submitId,
-          label: _awaiting ? 'Assigning…' : 'Assign',
+          label: _awaiting ? l10n.commonAssigning : l10n.commonAssign,
           onPressed: !_awaiting && held != null && _changed ? _submit : null,
         ),
       ],
@@ -211,7 +213,7 @@ class _AccountRolesDialogState extends State<AccountRolesDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '${_selected.length} role${_selected.length == 1 ? '' : 's'} assigned',
+                  l10n.accountRolesRoleAssigned(_selected.length),
                   key: AccountRolesDialog.countKey,
                   style: AppTypography.dense(context)?.copyWith(color: palette.textMuted),
                 ),
@@ -228,8 +230,9 @@ class _AccountRolesDialogState extends State<AccountRolesDialog> {
                       title: Text(role.name),
                       subtitle: Text(
                         role.isDefault
-                            ? '${role.code} — every Account holds this'
-                            : '${role.code} — every Account whose own role is ${role.legacyRole}',
+                            ? l10n.accountRolesEveryAccountHoldsThis(role.code)
+                            : l10n.accountRolesEveryAccountWhoseOwnRoleIs(
+                                role.code, role.legacyRole ?? ''),
                       ),
                     )
                   else
@@ -250,8 +253,7 @@ class _AccountRolesDialogState extends State<AccountRolesDialog> {
                       dense: true,
                       title: Text(role.name),
                       subtitle: Text(
-                        '${role.code} — ${role.permissionCodes.length} '
-                        'permission${role.permissionCodes.length == 1 ? '' : 's'}',
+                        l10n.accountRolesPermission(role.code, role.permissionCodes.length),
                       ),
                     ),
                 if (failure != null)
