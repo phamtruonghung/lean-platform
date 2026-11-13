@@ -763,13 +763,14 @@ written only here is a rule nobody can be held to.
   (`lib/widgets/app_camera_scan.dart`) — one icon, one dialog with the camera
   live, and the first code recognised is written in and committed exactly as a
   reader's burst is: a code field fills, a picker picks what it names. It decodes
-  with the browser's own `BarcodeDetector` and **nothing else** — the package
-  behind it would otherwise fall back to a decoder script fetched from a public
-  CDN, which is a reader that works in the office and not on the plant's own
-  network. On a browser without that API (Firefox) the dialog says so in words
-  and the code is typed or read, rather than the app quietly reaching the
-  internet. What a QR code carries beyond a code — a URL, a contact card, a
-  Wi-Fi credential — is never followed: the widget reads `rawValue` only.
+  with ZXing, **copied into the app's own `web/vendor/`** rather than fetched —
+  the package would otherwise load its decoder from unpkg and its WebAssembly
+  variant from jsDelivr, which is a reader that works in the office and not on
+  the plant's network. The browser's own `BarcodeDetector` was the first choice
+  and is not used: it is behind an off-by-default flag in Safari on iPhone, so it
+  would make the feature work on one phone and not another. What a QR code
+  carries beyond a code — a URL, a contact card, a Wi-Fi credential — is never
+  followed: the widget reads `rawValue` only.
 - **The skip control comes before the Shell's own chrome.** "Skip to content" is
   drawn at the top-left of the Shell in a `Stack`, invisible until it takes
   focus (`Opacity` 0 plus `IgnorePointer`, so it never eats a click on the brand
