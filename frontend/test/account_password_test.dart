@@ -143,7 +143,10 @@ void main() {
         {'currentPassword': 'old-secret', 'newPassword': 'new-secret-1'},
       ]);
       expect(find.byKey(ChangePasswordDialog.submitKey), findsNothing);
-      expect(find.text(ChangePasswordDialog.changedMessage), findsOneWidget);
+      // The shipped English, asserted as rendered text — the catalogue's value
+      // for `accountPasswordChanged` (the dialog no longer carries the string as
+      // a constant, because it is now translated).
+      expect(find.text('Your password was changed.'), findsOneWidget);
       expect(gateway.currentAccessToken, 'a-token');
     });
   });

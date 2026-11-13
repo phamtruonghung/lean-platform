@@ -30,6 +30,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
@@ -110,6 +111,7 @@ class DowntimeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<DowntimeBloc>().state;
 
     return Scaffold(
@@ -124,7 +126,7 @@ class DowntimeScreen extends StatelessWidget {
               DowntimeLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               DowntimeUnavailable(message: final message) => PlatformFailureState(
                 key: DowntimeScreen.failedKey,
-                title: 'The downtime events could not be read',
+                title: l10n.downtimeUnavailableTitle,
                 message: message,
                 retryKey: DowntimeScreen.retryKey,
                 onRetry: () => context.read<DowntimeBloc>().add(const DowntimeStarted()),
@@ -151,6 +153,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is DowntimeLoaded ? state as DowntimeLoaded : null;
 
     return Center(
@@ -159,10 +162,8 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Downtime',
-            description:
-                'The machines not running at this Site, the reasons they stopped, '
-                'and how long they have been down.',
+            title: l10n.navDowntime,
+            description: l10n.downtimeDescription,
             actions: [
               if (canAct && loaded != null)
                 FilledButton.icon(
@@ -171,7 +172,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => _openReport(context, loaded.siteId!),
                   icon: const Icon(Icons.warning_amber_outlined),
-                  label: const Text('Report a breakdown'),
+                  label: Text(l10n.downtimeReport),
                   style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
                 ),
             ],
@@ -182,9 +183,9 @@ class _Header extends StatelessWidget {
                       key: DowntimeScreen.siteKey,
                       initialValue: loaded.siteId,
                       isDense: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Site',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.commonSite,
+                        border: const OutlineInputBorder(),
                       ),
                       items: [
                         for (final site in loaded.sites)
@@ -225,6 +226,7 @@ class _Truncated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: DowntimeScreen.maxWidth,
@@ -232,7 +234,7 @@ class _Truncated extends StatelessWidget {
           key: DowntimeScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
-            'There are more downtime events than this list shows.',
+            l10n.downtimeTruncated,
             style: AppTypography.dense(context)?.copyWith(color: AppColors.of(context).textMuted),
           ),
         ),
@@ -323,6 +325,7 @@ class _DowntimeListState extends State<_DowntimeList> {
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingEvents;
+    final l10n = AppLocalizations.of(context);
     // The box this Screen actually got from its parent, scaled by the reader's
     // text size (design-language §10) — never the window.
     return LayoutBuilder(
@@ -348,8 +351,8 @@ class _DowntimeListState extends State<_DowntimeList> {
                           width: box.maxWidth,
                           child: AppFilterField(
                             name: DowntimeScreen.filterFieldName,
-                            label: 'Filter downtime',
-                            helperText: 'By Asset, reason or description.',
+                            label: l10n.downtimeFilter,
+                            helperText: l10n.downtimeFilterHelp,
                             term: _term,
                             onChanged: (term) => setState(() => _term = term),
                             shown: matches.length,
@@ -365,10 +368,8 @@ class _DowntimeListState extends State<_DowntimeList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: DowntimeScreen.noMatchKey,
-                          title: 'No downtime matches',
-                          message:
-                              'This Site has downtime recorded, but none matches '
-                              '"${_term.trim()}". Try a different Asset, reason or description.',
+                          title: l10n.downtimeNoMatch,
+                          message: l10n.downtimeNoMatchMessage(_term.trim()),
                         )
                       : narrow
                       ? ListView.separated(
@@ -448,10 +449,11 @@ List<AppTableColumn> _columns(BuildContext context, {required bool canAct}) {
   }
 
   final dense = AppTypography.dense(context);
+  final l10n = AppLocalizations.of(context);
   return [
-    const AppTableColumn('Asset', flex: 3),
+    AppTableColumn(l10n.commonAsset, flex: 3),
     AppTableColumn(
-      'Status',
+      l10n.commonStatus,
       // A chip's own padding and label padding (`Spacing.xxl`).
       width: sized(
         _widest(context, const [
@@ -460,31 +462,32 @@ List<AppTableColumn> _columns(BuildContext context, {required bool canAct}) {
               'Closed',
             ], Theme.of(context).textTheme.labelLarge) +
             Spacing.xxl,
-        'Status',
+        l10n.commonStatus,
       ),
     ),
     AppTableColumn(
-      'Started',
-      width: sized(_widest(context, const ['0000-00-00 00:00'], dense), 'Started'),
+      l10n.downtimeStarted,
+      width: sized(
+          _widest(context, const ['0000-00-00 00:00'], dense), l10n.downtimeStarted),
     ),
-    const AppTableColumn('Reason', flex: 2),
-    const AppTableColumn('Reported by', flex: 2),
+    AppTableColumn(l10n.downtimeReason, flex: 2),
+    AppTableColumn(l10n.downtimeReportedByColumn, flex: 2),
     AppTableColumn(
-      'Details',
+      l10n.commonDetails,
       // The toggle's label, its gap and chevron (`Spacing.xl` square), at least a
       // 44px target.
       width: sized(
-        _widest(context, const ['Description'], dense) + Spacing.xs + Spacing.xl,
-        'Details',
+        _widest(context, [l10n.commonDescription], dense) + Spacing.xs + Spacing.xl,
+        l10n.commonDetails,
       ),
     ),
     if (canAct)
       AppTableColumn(
-        'Actions',
+        l10n.commonActions,
         // Close (its label and the button's horizontal padding either side, in
         // `Spacing.xl`), the gap, and the kebab at the 44px floor.
         width:
-            _widest(context, const ['Close'], Theme.of(context).textTheme.labelLarge) +
+            _widest(context, [l10n.downtimeClose], Theme.of(context).textTheme.labelLarge) +
             2 * Spacing.xl +
             Spacing.sm +
             AppTouchTarget.min +
@@ -511,6 +514,7 @@ class _DowntimeTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final dense = AppTypography.dense(context);
     final muted = dense?.copyWith(color: palette.textMuted);
@@ -536,7 +540,7 @@ class _DowntimeTableRow extends StatelessWidget {
           ),
           shrinkWrapTargets(StatusChip(label: event.statusLabel, tone: event.statusTone)),
           Text(
-            _formatInstant(event.startedAt),
+            _formatInstant(event.startedAt, l10n),
             maxLines: 1,
             style: dense?.copyWith(color: palette.textPrimary),
           ),
@@ -553,7 +557,7 @@ class _DowntimeTableRow extends StatelessWidget {
     if (description == null || description.isEmpty) return row(const SizedBox.shrink());
     return RowDisclosure(
       toggleKey: DowntimeScreen.detailsKey(event.id),
-      label: 'Description',
+      label: AppLocalizations.of(context).commonDescription,
       rowBuilder: (context, toggle) => row(toggle),
       child: Text(description, style: dense?.copyWith(color: palette.textPrimary)),
     );
@@ -573,6 +577,7 @@ class _DowntimeRowActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<DowntimeBloc>().state;
     final busy = state is DowntimeLoaded && state.isActing;
     const size = Size(AppTouchTarget.min, AppTouchTarget.min);
@@ -585,14 +590,14 @@ class _DowntimeRowActions extends StatelessWidget {
             key: DowntimeScreen.closeKey(event.id),
             onPressed: busy ? null : () => _openClose(context, event),
             style: FilledButton.styleFrom(minimumSize: size),
-            child: const Text('Close'),
+            child: Text(l10n.downtimeClose),
           ),
         if (event.isOpen && !event.isClassified) const SizedBox(width: Spacing.sm),
         if (!event.isClassified)
           Builder(
             builder: (buttonContext) => IconButton(
               key: DowntimeScreen.rowActionsKey(event.id),
-              tooltip: 'More actions',
+              tooltip: l10n.commonMoreActions,
               icon: const Icon(Icons.more_vert),
               style: IconButton.styleFrom(minimumSize: size),
               onPressed: busy ? null : () => _openMenu(buttonContext),
@@ -619,7 +624,7 @@ class _DowntimeRowActions extends StatelessWidget {
         PopupMenuItem<Key>(
           key: DowntimeScreen.classifyKey(event.id),
           value: DowntimeScreen.classifyKey(event.id),
-          child: const Text('Classify'),
+          child: Text(AppLocalizations.of(context).downtimeClassify),
         ),
       ],
     );
@@ -658,6 +663,7 @@ class _DowntimeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final state = context.watch<DowntimeBloc>().state;
     final busy = state is DowntimeLoaded && state.isActing;
@@ -696,11 +702,12 @@ class _DowntimeCard extends StatelessWidget {
               runSpacing: Spacing.xxs,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text('Started ${_formatInstant(event.startedAt)}', style: muted),
+                Text(l10n.downtimeStartedAt(_formatInstant(event.startedAt, l10n)),
+                    style: muted),
                 if (event.downtimeReasonName != null)
-                  Text('Reason: ${event.downtimeReasonName}', style: muted),
+                  Text(l10n.downtimeReasonLine(event.downtimeReasonName!), style: muted),
                 if (event.reporterName != null)
-                  Text('Reported by ${event.reporterName}', style: muted),
+                  Text(l10n.downtimeReportedByPerson(event.reporterName!), style: muted),
               ],
             ),
             if (canAct && (event.isOpen || !event.isClassified)) ...[
@@ -714,14 +721,14 @@ class _DowntimeCard extends StatelessWidget {
                       key: DowntimeScreen.closeKey(event.id),
                       onPressed: busy ? null : () => _openClose(context),
                       style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
-                      child: const Text('Close'),
+                      child: Text(l10n.downtimeClose),
                     ),
                   if (!event.isClassified)
                     OutlinedButton(
                       key: DowntimeScreen.classifyKey(event.id),
                       onPressed: busy ? null : () => _openClassify(context),
                       style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                      child: const Text('Classify'),
+                      child: Text(l10n.downtimeClassify),
                     ),
                 ],
               ),
@@ -760,19 +767,20 @@ class _DowntimeEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const PlatformEmptyState.noneExist(
+    final l10n = AppLocalizations.of(context);
+    return PlatformEmptyState.noneExist(
       key: DowntimeScreen.emptyKey,
-      title: 'Nothing is down',
-      message: 'No machine is recorded as down at this Site.',
+      title: l10n.downtimeNoneExistTitle,
+      message: l10n.downtimeNoneExistMessage,
     );
   }
 }
 
 /// A wire `timestamptz` shown in the device's own local time, formatted by
 /// hand the way `AppDateField`/`AppDateTimeField` format theirs (no `intl`).
-String _formatInstant(String? value) {
+String _formatInstant(String? value, AppLocalizations l10n) {
   final parsed = value == null ? null : DateTime.tryParse(value);
-  if (parsed == null) return 'now';
+  if (parsed == null) return l10n.commonNow;
   final local = parsed.toLocal();
   String pad(int n) => n.toString().padLeft(2, '0');
   return '${local.year}-${pad(local.month)}-${pad(local.day)} '

@@ -25,6 +25,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_filter_field.dart';
 import '../widgets/app_page_frame.dart';
@@ -90,6 +91,7 @@ class MetersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = context.watch<MetersBloc>().state;
 
     return Scaffold(
@@ -103,7 +105,7 @@ class MetersScreen extends StatelessWidget {
               MetersLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
               MetersUnavailable(message: final message) => PlatformFailureState(
                 key: MetersScreen.failedKey,
-                title: 'The meters could not be read',
+                title: l10n.metersUnavailableTitle,
                 message: message,
                 retryKey: MetersScreen.retryKey,
                 onRetry: () => context.read<MetersBloc>().add(const MetersStarted()),
@@ -130,6 +132,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final loaded = state is MetersLoaded ? state as MetersLoaded : null;
 
     return Center(
@@ -138,10 +141,8 @@ class _Header extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Meters',
-            description:
-                'The running counts a PM schedule can come due on, and the readings taken '
-                'against them.',
+            title: l10n.navMeters,
+            description: l10n.metersDescription,
             actions: [
               if (canAct && loaded != null)
                 FilledButton.icon(
@@ -150,7 +151,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => MeterFormDialog.open(context, siteId: loaded.siteId!),
                   icon: const Icon(Icons.speed_outlined),
-                  label: const Text('Define a meter'),
+                  label: Text(l10n.metersDefine),
                   style: FilledButton.styleFrom(minimumSize: const Size(44, 44)),
                 ),
             ],
@@ -161,9 +162,9 @@ class _Header extends StatelessWidget {
                       key: MetersScreen.siteKey,
                       initialValue: loaded.siteId,
                       isDense: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Site',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.commonSite,
+                        border: const OutlineInputBorder(),
                       ),
                       items: [
                         for (final site in loaded.sites)
@@ -265,6 +266,7 @@ class _MetersListState extends State<_MetersList> {
     // Filtered here, immediately before the row widgets are built, so a term
     // can only ever narrow rows this Screen already read (issue #191).
     final matches = _matchingMeters;
+    final l10n = AppLocalizations.of(context);
     // The box this Screen actually got from its parent, scaled by the reader's
     // text size (design-language §10) — never the window.
     return LayoutBuilder(
@@ -289,8 +291,8 @@ class _MetersListState extends State<_MetersList> {
                           width: box.maxWidth,
                           child: AppFilterField(
                             name: MetersScreen.filterFieldName,
-                            label: 'Filter meters',
-                            helperText: 'By meter name, code or Asset.',
+                            label: l10n.metersFilter,
+                            helperText: l10n.metersFilterHelp,
                             term: _term,
                             onChanged: (term) => setState(() => _term = term),
                             shown: matches.length,
@@ -306,10 +308,8 @@ class _MetersListState extends State<_MetersList> {
                   child: matches.isEmpty
                       ? PlatformEmptyState.noneMatched(
                           key: MetersScreen.noMatchKey,
-                          title: 'No meters match',
-                          message:
-                              'This Site has meters, but none matches "${_term.trim()}". '
-                              'Try a different name, code or Asset.',
+                          title: l10n.metersNoMatch,
+                          message: l10n.metersNoMatchMessage(_term.trim()),
                         )
                       : narrow
                       ? ListView.separated(
@@ -373,13 +373,14 @@ double _bandLabelWidth(BuildContext context, String label) {
 /// The Latest reading column's width: the wider of its band label and the
 /// "No reading yet" a meter with no reading shows, plus the slot's gutter.
 double _latestColumnWidth(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   final painter = TextPainter(
-    text: TextSpan(text: 'No reading yet', style: AppTypography.dense(context)),
+    text: TextSpan(text: l10n.metersNoReading, style: AppTypography.dense(context)),
     textDirection: Directionality.of(context),
     textScaler: MediaQuery.textScalerOf(context),
     maxLines: 1,
   )..layout();
-  final label = _bandLabelWidth(context, 'Latest reading');
+  final label = _bandLabelWidth(context, l10n.metersLatestReading);
   return (painter.width > label ? painter.width : label) + Spacing.sm;
 }
 
@@ -390,36 +391,41 @@ double _latestColumnWidth(BuildContext context) {
 /// the accumulated use (both numbers, so end-aligned in tabular figures), then the
 /// one action. A caller who cannot act has no Actions column at all, as the card
 /// has no button.
-List<AppTableColumn> _columns(BuildContext context, {required bool canAct}) => [
-  const AppTableColumn('Code', flex: 2),
-  const AppTableColumn('Name', flex: 3),
-  const AppTableColumn('Asset', flex: 4),
-  // A compact `Chip`'s padding and label padding (`Spacing.xxl`), then the gutter.
-  AppTableColumn(
-    'Type',
-    width:
-        _widestLabel(context, [for (final type in MeterType.values) type.label]) +
-        Spacing.xxl +
-        Spacing.sm,
-  ),
-  const AppTableColumn('Unit', flex: 1),
-  // The number columns are sized to their label, which is wider than their
-  // digits; the latest reading is also sized to its "No reading yet" words.
-  AppTableColumn('Latest reading', width: _latestColumnWidth(context), align: AppColumnAlign.end),
-  AppTableColumn(
-    'Accumulated use',
-    width: _bandLabelWidth(context, 'Accumulated use') + Spacing.sm,
-    align: AppColumnAlign.end,
-  ),
-  if (canAct)
+List<AppTableColumn> _columns(BuildContext context, {required bool canAct}) {
+  final l10n = AppLocalizations.of(context);
+  return [
+    AppTableColumn(l10n.commonCode, flex: 2),
+    AppTableColumn(l10n.commonName, flex: 3),
+    AppTableColumn(l10n.commonAsset, flex: 4),
+    // A compact `Chip`'s padding and label padding (`Spacing.xxl`), then the gutter.
     AppTableColumn(
-      'Actions',
-      // The button's label, its own horizontal padding either side (`Spacing.xl`),
-      // and the slot's gutter.
-      width: _widestLabel(context, const ['Record a reading']) + 2 * Spacing.xl + Spacing.sm,
+      l10n.metersType,
+      width:
+          _widestLabel(context, [for (final type in MeterType.values) type.label]) +
+          Spacing.xxl +
+          Spacing.sm,
+    ),
+    AppTableColumn(l10n.metersUnit, flex: 1),
+    // The number columns are sized to their label, which is wider than their
+    // digits; the latest reading is also sized to its "No reading yet" words.
+    AppTableColumn(l10n.metersLatestReading,
+        width: _latestColumnWidth(context), align: AppColumnAlign.end),
+    AppTableColumn(
+      l10n.metersAccumulated,
+      width: _bandLabelWidth(context, l10n.metersAccumulated) + Spacing.sm,
       align: AppColumnAlign.end,
     ),
-];
+    if (canAct)
+      AppTableColumn(
+        l10n.commonActions,
+        // The button's label, its own horizontal padding either side (`Spacing.xl`),
+        // and the slot's gutter.
+        width:
+            _widestLabel(context, [l10n.workOrderRecordReading]) + 2 * Spacing.xl + Spacing.sm,
+        align: AppColumnAlign.end,
+      ),
+  ];
+}
 
 /// A reading as the card words it: a whole number without its `.0`.
 String _number(num value) =>
@@ -434,6 +440,7 @@ class _MeterTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final palette = AppColors.of(context);
     final state = context.watch<MetersBloc>().state;
     final busy = state is MetersLoaded && state.isMutating;
@@ -464,7 +471,8 @@ class _MeterTableRow extends StatelessWidget {
           ),
           DisclosingText(meter.uomCode, style: muted),
           meter.latestReading == null
-              ? Text('No reading yet', maxLines: 1, overflow: TextOverflow.ellipsis, style: muted)
+              ? Text(l10n.metersNoReading,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: muted)
               : Text(_number(meter.latestReading!), maxLines: 1, style: number),
           // The carried-forward total is part of the card's story, so it stays,
           // under the accumulated number, and only on a meter that has one.
@@ -475,7 +483,7 @@ class _MeterTableRow extends StatelessWidget {
               Text(_number(meter.accumulatedUse), maxLines: 1, style: number),
               if (meter.rolloverOffset > 0)
                 DisclosingText(
-                  'Carried forward: ${meter.rolloverOffset} ${meter.uomCode}',
+                  l10n.metersCarriedForward('${meter.rolloverOffset}', meter.uomCode),
                   style: muted,
                 ),
             ],
@@ -488,7 +496,7 @@ class _MeterTableRow extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(AppTouchTarget.min, AppTouchTarget.min),
                 ),
-                child: const Text('Record a reading'),
+                child: Text(l10n.workOrderRecordReading),
               ),
             ),
         ],
@@ -505,6 +513,7 @@ class _MeterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final muted = AppTypography.floor(context)?.copyWith(color: AppColors.of(context).textMuted);
     final state = context.watch<MetersBloc>().state;
     final busy = state is MetersLoaded && state.isMutating;
@@ -546,10 +555,11 @@ class _MeterCard extends StatelessWidget {
               runSpacing: Spacing.xxs,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text('Latest: ${meter.latestReadingLabel}', style: muted),
-                Text('Accumulated use: ${meter.accumulatedLabel}', style: muted),
+                Text(l10n.metersLatestLine(meter.latestReadingLabel), style: muted),
+                Text(l10n.metersAccumulatedLine(meter.accumulatedLabel), style: muted),
                 if (meter.rolloverOffset > 0)
-                  Text('Carried forward: ${meter.rolloverOffset} ${meter.uomCode}', style: muted),
+                  Text(l10n.metersCarriedForward('${meter.rolloverOffset}', meter.uomCode),
+                      style: muted),
               ],
             ),
             if (canAct) ...[
@@ -558,7 +568,7 @@ class _MeterCard extends StatelessWidget {
                 key: MetersScreen.readingKey(meter.id),
                 onPressed: busy ? null : () => ReadingFormDialog.open(context, meter: meter),
                 style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
-                child: const Text('Record a reading'),
+                child: Text(l10n.workOrderRecordReading),
               ),
             ],
           ],
@@ -573,10 +583,11 @@ class _MetersEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const PlatformEmptyState.noneExist(
+    final l10n = AppLocalizations.of(context);
+    return PlatformEmptyState.noneExist(
       key: MetersScreen.emptyKey,
-      title: 'No meters yet',
-      message: 'No meter is defined on this Site\'s Assets yet.',
+      title: l10n.metersNoneExistTitle,
+      message: l10n.metersNoneExistMessage,
     );
   }
 }
