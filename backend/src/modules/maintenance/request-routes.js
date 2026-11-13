@@ -4,23 +4,29 @@
  *
  * This is the one file in this pairing that talks to People, and only through
  * `modules/people`'s entry point (ADR-0006): `authenticate`, `requireActive`,
- * `findSite`, `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording.
+ * `requirePermission`, `findSite`, `canAct` and the shared
+ * `OUTSIDE_GRANTED_ORG_UNITS` wording.
  * Everything about a Request's own fields, including whether it is still
  * awaiting a decision, is requests.js's business. The Asset is resolved
  * through Maintenance's own `assets.findAsset`, not through People.
  *
  * Same two scope rules as Assets (#55) and Work orders (#57), applied to
- * Requests:
+ * Requests, plus the permission code that names each function (ADR-0061):
  *
- *   - Reads are Site-wide. The triage queue and the requester's own list sit
- *     behind `authenticate` + `requireActive` and a known-Site check only —
- *     no role check, no Grant filter (ADR-0009: scope decides where an
- *     Account may act, not what it may know about).
+ *   - Reads are Site-wide and gated by the code of the Screen that asks. The
+ *     triage queue sits behind `MTN_REQUESTS_TRIAGE` (supervisor, engineer,
+ *     manager, administrator — the roles the sidebar offers that Screen to);
+ *     the requester's own list sits behind `MTN_REQUESTS_RAISE`, which the
+ *     default group carries so every approved Account holds it. Neither asks
+ *     for a Grant: ADR-0009's rule stands, scope decides where an Account may
+ *     act, not what it may know about.
  *   - Writes are branch-scoped. Raising asks a question, so it needs only a
- *     READ Grant reaching the Asset's Org Unit (`write: false`); triaging
- *     commits maintenance to something, so accepting, declining and marking
- *     duplicate each need a WRITE Grant reaching the Request's own
- *     `org_unit_id` (`write: true`).
+ *     READ Grant reaching the Asset's Org Unit (`write: false`) and
+ *     `MTN_REQUESTS_RAISE`; triaging commits maintenance to something, so
+ *     accepting, declining and marking duplicate each need a WRITE Grant
+ *     reaching the Request's own `org_unit_id` (`write: true`) **and**
+ *     `MTN_REQUESTS_TRIAGE`. Both questions are asked and neither implies the
+ *     other: a Grant says where, a code says what.
  *
  * Existence before scope, the ordering every write route in this Module
  * follows (AGENTS.md §6). It is load-bearing here for the same reason it is
@@ -104,6 +110,20 @@ async function requireRequestWriteScope(req, res, next) {
   }
 }
 
+// The two permission codes this file asks (ADR-0061). Between them they are the
+// narrowest pair the catalogue offers for what these routes do, and each is
+// carried by exactly the roles the sidebar offers the matching Screen to:
+//
+//   - `MTN_REQUESTS_RAISE` — "Raise a Maintenance Request and follow the ones
+//     the caller raised". The default group carries it, so every approved
+//     Account holds it, which is exactly today's reach: raising asks a question
+//     and following your own is the un-gated `My requests` Screen.
+//   - `MTN_REQUESTS_TRIAGE` — "read the triage queue and accept or decline a
+//     Request". Seeded on supervisor/engineer/manager/administrator, the four
+//     roles `ModuleRoles.maintenance` offers the Triage queue to.
+const mayRaiseRequest = people.requirePermission('MTN_REQUESTS_RAISE');
+const mayTriageRequests = people.requirePermission('MTN_REQUESTS_TRIAGE');
+
 // Raise. `orgUnitId` is never read off the body even if a caller sent one:
 // maintenance_requests.org_unit_id is filled by trigger from asset_id.
 // `reportedBy` is the caller's linked Employee, or null when the Account
@@ -114,6 +134,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireAssetReadScope,
+  mayRaiseRequest,
   async (req, res, next) => {
     try {
       const request = await requests.createRequest(
@@ -140,6 +161,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayTriageRequests,
   async (req, res, next) => {
     try {
       res.json({ requests: await requests.listTriageQueueAtSite(req.site.id) });
@@ -158,6 +180,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayRaiseRequest,
   async (req, res, next) => {
     try {
       res.json({
@@ -181,6 +204,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireRequestWriteScope,
+  mayTriageRequests,
   async (req, res, next) => {
     try {
       const { request, workOrder } = await requests.acceptRequest(
@@ -202,6 +226,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireRequestWriteScope,
+  mayTriageRequests,
   async (req, res, next) => {
     try {
       const request = await requests.declineRequest(
@@ -223,6 +248,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireRequestWriteScope,
+  mayTriageRequests,
   async (req, res, next) => {
     try {
       const request = await requests.duplicateRequest(

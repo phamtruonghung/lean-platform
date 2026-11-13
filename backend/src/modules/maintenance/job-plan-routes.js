@@ -5,27 +5,26 @@
  *
  * Like asset-routes.js, this is the one file in this pairing that talks to
  * People, and only through `modules/people`'s entry point (ADR-0006):
- * `authenticate` and `requireActive`. Everything about a plan's own fields —
+ * `authenticate`, `requireActive` and `requirePermission`. Everything about a
+ * plan's own fields —
  * a required string, the work_type enum, the task list — is job-plans.js's
  * business.
  *
  * Scope rules, and why they differ from every other write in this Module:
  * a job plan is an administrator-managed shared catalogue (ADR-0005), NOT
  * Org-Unit scoped. There is no Asset and no Org Unit in play, so there is no
- * Grant to check — the write is gated on the administrator role alone
- * (`requireAdmin` below), the same gate People's own Site creation uses.
+ * Grant to check — the write is gated on `MTN_JOB_PLANS_MAINTAIN` alone
+ * (ADR-0061), the code that names maintaining this catalogue. The seed gives
+ * that code to ROLE_ADMIN only, which is exactly the pass/fail set the
+ * administrator-role comparison it replaced produced, so the retrofit refuses
+ * nobody it used to admit; what changes is the refusal's own body, which is now
+ * the catalogue code's (`code: 'PERMISSION_REQUIRED'`) rather than the role
+ * sentence — the same change People's roles surface already made.
  * Reads are open to any approved Account, exactly like the downtime reason
  * catalogue, because the plan feeds pickers and work orders every role may
- * need to see.
- *
- * `requireAdmin` is defined here rather than imported from People: People's
- * entry point deliberately does not export `requireAdmin`/`isAdmin` (see
- * people/index.js's own "deliberately NOT exported" list — no Maintenance
- * route was path-param-keyed on an Org Unit, so `canAct` was the only
- * authorization export needed). This Module may not reach past that entry
- * point (ADR-0006), so it carries its own copy of the role check, matching
- * People's own refusal sentence word for word so the same refusal reads the
- * same wherever it is produced.
+ * need to see; the catalogue has no `MTN_JOB_PLANS_DISPLAY` code to ask, which
+ * is recorded on the retrofit card (t_3271c590) rather than papered over with
+ * the maintain code.
  */
 
 const express = require('express');
@@ -35,7 +34,11 @@ const { notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-const { requireAdmin } = require('./admin');
+// "May this Account maintain the Job plan catalogue at all?" — the role half of
+// the model (ADR-0061), replacing the `req.account.role !== 'admin'` copy this
+// Module used to carry in ./admin. The seed gives `MTN_JOB_PLANS_MAINTAIN` to
+// ROLE_ADMIN only, so the set of Accounts that pass is unchanged.
+const mayMaintainJobPlans = people.requirePermission('MTN_JOB_PLANS_MAINTAIN');
 
 // The shared catalogue: every plan by default, active-only when a caller asks
 // for that by name (`?includeInactive=false`). Only the exact string 'false'
@@ -67,7 +70,7 @@ router.get('/job-plans/:id', people.authenticate, people.requireActive, async (r
 // validation (code/name required, workType in the catalogue's four, each task
 // instruction required with a unique stepNo) live in job-plans.js; the plan
 // and its tasks are inserted in one transaction there.
-router.post('/job-plans', people.authenticate, people.requireActive, requireAdmin, async (req, res, next) => {
+router.post('/job-plans', people.authenticate, people.requireActive, mayMaintainJobPlans, async (req, res, next) => {
   try {
     const jobPlan = await jobPlans.createJobPlan(
       {
@@ -91,7 +94,7 @@ router.post('/job-plans', people.authenticate, people.requireActive, requireAdmi
 // Deactivate or reactivate a plan — administrator-only, deactivation never
 // deletion. A single field, so no PATCH-versus-put ceremony beyond requiring
 // the boolean; setJobPlanActive owns that check.
-router.patch('/job-plans/:id', people.authenticate, people.requireActive, requireAdmin, async (req, res, next) => {
+router.patch('/job-plans/:id', people.authenticate, people.requireActive, mayMaintainJobPlans, async (req, res, next) => {
   try {
     const jobPlan = await jobPlans.setJobPlanActive(req.params.id, req.body?.isActive, req.account.id);
     res.json({ jobPlan });

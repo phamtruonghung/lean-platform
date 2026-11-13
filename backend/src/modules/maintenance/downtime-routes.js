@@ -4,25 +4,30 @@
  *
  * Like work-order-routes.js and request-routes.js, this is the one file in
  * this pairing that talks to People, and only through `modules/people`'s
- * entry point (ADR-0006): `authenticate`, `requireActive`, `findSite`,
- * `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything
+ * entry point (ADR-0006): `authenticate`, `requireActive`, `requirePermission`,
+ * `findSite`, `canAct` and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording.
+ * Everything
  * about a stop's own fields, including whether it is still open and what
  * `requires_comment` means, is downtime.js's business. The Asset is resolved
  * through Maintenance's own `assets.findAsset`, not through People.
  *
- * Three scope rules, following the same split as Assets (#55), Work orders
- * (#57) and Requests (#72):
+ * Three rules, following the same split as Assets (#55), Work orders (#57) and
+ * Requests (#72), plus the permission code that names each function (ADR-0061):
  *
- *   - The reason catalogue is readable by any approved Account. It is a
- *     shared global catalogue (ADR-0005), not an Org-Unit-scoped record, and
- *     it feeds the classify picker, which every writer needs to render.
- *   - Reads are Site-wide. GET /sites/:siteId/downtime sits behind
- *     `authenticate` + `requireActive` and a known-Site check only — no role
- *     check, no Grant filter (ADR-0009: scope decides where an Account may
- *     act, not what it may know about). `?includeClosed=true` widens what is
+ *   - The reason catalogue asks only the Downtime Screen's own code
+ *     (`MTN_DOWNTIME_DISPLAY`). It is a shared global catalogue (ADR-0005),
+ *     not an Org-Unit-scoped record, and it feeds the classify picker, which
+ *     every role that can reach that Screen holds the code for.
+ *   - Reads are Site-wide and gated by `MTN_DOWNTIME_DISPLAY`, with no Grant
+ *     filter. GET /sites/:siteId/downtime sits behind `authenticate` +
+ *     `requireActive`, a known-Site check and the code (ADR-0009: scope decides
+ *     where an Account may act, not what it may know about).
+ *     `?includeClosed=true` widens what is
  *     returned, not who may ask.
- *   - Writes are branch-scoped and need a WRITE Grant, because both reporting
- *     and classifying commit maintenance to something. Reporting a Breakdown
+ *   - Writes are branch-scoped, need a WRITE Grant because both reporting
+ *     and classifying commit maintenance to something, **and** need
+ *     `MTN_DOWNTIME_CHANGE`: a Grant says where, a code says what, and neither
+ *     implies the other. Reporting a Breakdown
  *     needs one reaching the Org Unit the named Asset already sits at;
  *     closing and classifying need one reaching the stop's own
  *     `org_unit_id`, which the `downtime_events_fill_org` trigger derived
@@ -112,10 +117,21 @@ async function requireDowntimeWriteScope(req, res, next) {
   }
 }
 
-// The classify picker's catalogue. Any approved Account may read it — it is a
-// global catalogue, not a scoped record — and it is mounted before the
+// The two permission codes this file asks (ADR-0061). `MTN_DOWNTIME_CHANGE` is
+// seeded on supervisor/engineer/manager/administrator and `MTN_DOWNTIME_DISPLAY`
+// on the same four — exactly the roles the sidebar offers the Downtime Screen
+// to (ModuleRoles.maintenance) — so the pair refuses nobody who could reach
+// these routes through that Screen before the retrofit. The Grant question each
+// write already asked stays where it is: a code says what, a Grant says where.
+const mayReadDowntime = people.requirePermission('MTN_DOWNTIME_DISPLAY');
+const mayRecordDowntime = people.requirePermission('MTN_DOWNTIME_CHANGE');
+
+// The classify picker's catalogue. A global catalogue, not a scoped record, so
+// it asks only the Downtime Screen's own code — no Grant filter, and every role
+// that can reach the Screen holds `MTN_DOWNTIME_DISPLAY`, which the picker
+// needs in order to render for a writer. Mounted before the
 // `/sites/:siteId/downtime` read because it has no Site in its path at all.
-router.get('/downtime-reasons', people.authenticate, people.requireActive, async (req, res, next) => {
+router.get('/downtime-reasons', people.authenticate, people.requireActive, mayReadDowntime, async (req, res, next) => {
   try {
     res.json({ downtimeReasons: await downtime.listDowntimeReasons() });
   } catch (error) {
@@ -133,6 +149,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireAssetWriteScope,
+  mayRecordDowntime,
   async (req, res, next) => {
     try {
       const result = await downtime.reportBreakdown(
@@ -162,6 +179,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayReadDowntime,
   async (req, res, next) => {
     try {
       const includeClosed = req.query.includeClosed === 'true';
@@ -183,6 +201,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireDowntimeWriteScope,
+  mayRecordDowntime,
   async (req, res, next) => {
     try {
       const downtimeEvent = await downtime.closeDowntimeEvent(
@@ -206,6 +225,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireDowntimeWriteScope,
+  mayRecordDowntime,
   async (req, res, next) => {
     try {
       const downtimeEvent = await downtime.classifyDowntimeEvent(

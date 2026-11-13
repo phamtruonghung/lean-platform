@@ -202,6 +202,17 @@
  *     findCredentialForEmployeeNo and createIdentification, this Module's own
  *     writes and the secrets they handle (clause 1) — floor-routes.js reaches
  *     them directly, as a People route reaches any People service.
+ *   - requirePermission — the role half of the authorisation model, as a
+ *     middleware factory: `requirePermission('MTN_ASSETS_DISPLAY')` answers
+ *     "may this Account use this function at all?" against the catalogue
+ *     (ADR-0061). It crosses this boundary for the same reason `canAct` does
+ *     and for no other: which functions an Account holds is People's own
+ *     question, and a Module asking it must not reach into `./authorization`
+ *     to ask. It is a middleware rather than a lookup because that is how a
+ *     route uses it, exactly as `authenticate` and `requireActive` are — and
+ *     it is *not* `requireAdmin` wearing a new name: requireAdmin still stays
+ *     here (see below) because it reads a column, while this reads the
+ *     editable roles and their codes.
  *   - OUTSIDE_GRANTED_ORG_UNITS — the exact 403 body every scope refusal
  *     already shares inside People (authorization.js, plant-routes.js); the
  *     one deliberate exception to "domain, not utility" (ADR-0006): it reads
@@ -248,7 +259,7 @@ const floorTrainingRoutes = require('./floor-training-routes');
 const authRoutes = require('./auth-routes');
 const roleRoutes = require('./role-routes');
 const { authenticate, requireActive } = require('./middleware');
-const { canAct, canSeeSite, safetyAuthorityOrgUnitIds, writeReachOrgUnitIds } = require('./authorization');
+const { canAct, canSeeSite, safetyAuthorityOrgUnitIds, writeReachOrgUnitIds, requirePermission } = require('./authorization');
 const { findOrgUnit, findSite } = require('./plant');
 const { findEmployee } = require('./directory');
 const {
@@ -299,6 +310,9 @@ module.exports = {
   requireActive,
   canAct,
   canSeeSite,
+  // ADR-0061's role half, for the Modules retrofitting `requirePermission`
+  // onto the routes that still decide with a role comparison or a Grant alone.
+  requirePermission,
   safetyAuthorityOrgUnitIds,
   writeReachOrgUnitIds,
   findOrgUnit,

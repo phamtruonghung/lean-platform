@@ -16,9 +16,14 @@
  *
  * Same two scope rules as Assets (#55), applied to work orders:
  *
- *   - Reads are Site-wide. GET /sites/:siteId/work-orders sits behind
- *     `authenticate` + `requireActive` and a known-Site check only — no role
- *     check, no Grant filter. ADR-0009's addendum for the Asset register
+ *   - Reads are Site-wide, and the only role question asked of them is the
+ *     code that names the Screen. GET /sites/:siteId/work-orders and GET
+ *     /work-orders/:id sit behind `authenticate` + `requireActive`, a
+ *     known-Site check where there is a Site to know, and
+ *     `MTN_WORK_ORDERS_DISPLAY` (ADR-0061) — no Grant filter. The seed carries
+ *     that code on exactly the four roles the sidebar offers this Screen to,
+ *     so nobody who could read a Work order before it is refused by it.
+ *     ADR-0009's addendum for the Asset register
  *     applies here unchanged: Org Unit scope decides where an Account may
  *     act, not what it may know about. `?includeHistory=true` widens the
  *     statuses returned (see work-orders.js's listWorkOrdersAtSite) but does
@@ -67,6 +72,22 @@ const workOrderCost = require('./work-order-cost');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
+
+// "May this Account use the Work orders Screen at all?" — the role half of the
+// model (ADR-0061), on both of this file's reads. The seed carries
+// `MTN_WORK_ORDERS_DISPLAY` on exactly the four roles the sidebar offers that
+// Screen to (supervisor, engineer, manager, administrator), so no one who could
+// read a Work order before this code can be refused by it.
+//
+// The writes below do NOT take a code yet, and that is deliberate: every one of
+// them is reachable today by a supervisor holding a write Grant, while
+// `MTN_WORK_ORDERS_CHANGE` is seeded on engineer/manager/administrator only.
+// Adding it would refuse a role that uses these routes — the retrofit card's
+// finding (t_3271c590), not a change to make blind here. The two floor-device
+// transitions (/start, /complete) have a second reason: their actor is a
+// device with an identified technician and no `req.account` at all, so a
+// permission check keyed on an Account would refuse the floor outright.
+const mayReadWorkOrders = people.requirePermission('MTN_WORK_ORDERS_DISPLAY');
 
 // Mirrors asset-routes.js's own requireKnownSite exactly — see that file's
 // header for why an unknown Site is a 404, never a silently empty 200.
@@ -442,6 +463,7 @@ router.get(
   '/work-orders/:id',
   people.authenticate,
   people.requireActive,
+  mayReadWorkOrders,
   async (req, res, next) => {
     try {
       const workOrder = await workOrders.findWorkOrderWithTasks(req.params.id);
@@ -533,6 +555,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayReadWorkOrders,
   async (req, res, next) => {
     try {
       let orgUnitPath = null;
