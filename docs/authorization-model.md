@@ -176,7 +176,7 @@ write behind that Screen.
 | --- | --- | --- | --- |
 | `ROLE_STANDARD` | Standard | every Account | The default group: the directory, the registers every Account reads, raising a Concern or a Request, the tier board and the Section handover |
 | `ROLE_OPERATOR` | Operator | `app_users.role = operator` | Nothing beyond the default group — today an operator is offered nothing more, and the group says so rather than showing an empty list |
-| `ROLE_SUPERVISOR` | Supervisor | `app_users.role = supervisor` | The Maintenance Screens (Assets, Work orders, Parts, Stores, Triage, Downtime, PM schedules, Meters), the Insights registers, confirming Attendance, raising Training, deciding Leave, recording measures and incidents |
+| `ROLE_SUPERVISOR` | Supervisor | `app_users.role = supervisor` | The Maintenance Screens (Assets, Work orders, Parts, Stores, Triage, Downtime, PM schedules, Meters) **and the writes behind them** — add an Asset, raise/assign/start/complete/cancel a Work order, book labour and parts, record a task's meter reading, open a Store and record a stock movement, create or deactivate a PM schedule and run its sweep — plus the Insights registers, confirming Attendance, raising Training, deciding Leave, recording measures and incidents |
 | `ROLE_ENGINEER` | Engineer | `app_users.role = engineer` | A supervisor's set plus the writes behind an Asset, Work order, Part, Store and PM schedule, opening and verifying a CAPA, and disposing of nonconforming product |
 | `ROLE_MANAGER` | Manager | `app_users.role = manager` | An engineer's set — the two are seamed apart so they can diverge without another release |
 | `ROLE_ADMIN` | Administrator | `app_users.role = admin` | Every permission (see §5 of ADR-0061 for the short-circuit that makes this true regardless) |
@@ -203,7 +203,19 @@ everybody in that account role may do.
 ## What is not enforced yet
 
 The codes decide the **sidebar** and the **roles surface**
-(`ADM_ROLES_DISPLAY` / `ADM_ROLES_CHANGE`). The other forty-odd routes are
-still guarded by their original role/Grant checks. Retrofitting
-`requirePermission` onto them is a follow-on card, because each write needs its
-own code chosen against the ADR that governs that Module's authority.
+(`ADM_ROLES_DISPLAY` / `ADM_ROLES_CHANGE`). The Maintenance Module's sixteen
+write routes were retrofitted in ADR-0061's slice 2b: each asks its `…_CHANGE`
+code *and* keeps the Grant check behind it, because the code answers which door
+and the Grant answers which Org Units. Two deliberate gaps remain:
+
+- **`POST /parts` stays administrator-only.** `MTN_PARTS_CHANGE` is carried by
+  engineer and manager too, so gating the route with it would *widen* the write
+  to two roles that are refused it today — a decision of its own, not a
+  retrofit.
+- **The Maintenance reads stay open** (`GET /sites/:siteId/assets`, the parts
+  and store reads). Several Screens read the same endpoints, so a read gate
+  would narrow Screens that never asked for it.
+
+Retrofitting `requirePermission` onto the other Modules' routes is a follow-on
+card per Module, because each write needs its own code chosen against the ADR
+that governs that Module's authority.

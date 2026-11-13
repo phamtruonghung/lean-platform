@@ -4,8 +4,8 @@
  *
  * This is the one file in the Module that talks to People, and it does so
  * only through `modules/people`'s entry point (ADR-0006): `authenticate`,
- * `requireActive`, `findSite`, `findOrgUnit`, `canAct` and
- * the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything else about an
+ * `requireActive`, `requirePermission`, `findSite`, `findOrgUnit`, `canAct`
+ * and the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything else about an
  * Asset is assets.js's own business.
  *
  * Two scope rules, and they are deliberately different (#55):
@@ -27,12 +27,17 @@
  *     those Screens, not just the Assets Screen — ADR-0061's own "several
  *     Screens read one endpoint". Recorded as a finding on the retrofit card
  *     (t_3271c590) rather than decided in passing.
- *   - Writes are branch-scoped. POST /assets requires a write Grant reaching
- *     the Org Unit the Asset is placed at. It does NOT take a permission code
- *     yet: `MTN_ASSETS_CHANGE` is seeded on engineer/manager/administrator
- *     only, while a supervisor holding a write Grant can add an Asset today,
- *     so adding the code would refuse a role that uses this route — that is
- *     the retrofit card's finding (t_3271c590), not a change made blind here.
+ *   - Writes are branch-scoped and ask the Screen's code. POST /assets and
+ *     PATCH /assets/:id require a write Grant reaching the Org Unit the Asset
+ *     is placed at (or already sits at), and `MTN_ASSETS_CHANGE` before that.
+ *     The two answer different questions and both are needed: the code says
+ *     *which door* (may this Account maintain Assets at all), the Grant says
+ *     *which Org Units* (ADR-0061). `MTN_ASSETS_CHANGE` is seeded on
+ *     supervisor/engineer/manager/administrator, which is every role that
+ *     could reach this write before the code existed — see the seed migration
+ *     `1803500000000_supervisor-holds-maintenance-writes.js` and its own
+ *     comment on the one Account it does narrow (an operator holding an edit
+ *     Grant, until an administrator adds the code to a role it holds).
  *
  * `requireKnownSite` and `requireOrgUnitWriteScope` below are the two
  * middlewares that carry those rules. Both resolve existence BEFORE asking
@@ -60,6 +65,17 @@ const assets = require('./assets');
 const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
+
+// "May this Account maintain Assets at all?" — the role half of the model
+// (ADR-0061), on this file's two writes. It answers *which door*; the Grant
+// checks below still answer *which Org Units*, and both run on every write:
+// the code first, because a caller who does not hold it is refused before any
+// row is looked up, and a caller who does hold it then meets exactly the
+// existence-then-scope ordering this file's middlewares have always used.
+//
+// The refusal names the code (`PERMISSION_REQUIRED` + `permission`), never a
+// role: an Account may hold the function through any of its roles.
+const mayChangeAssets = people.requirePermission('MTN_ASSETS_CHANGE');
 
 // The Site a listing names must exist, whoever is asking — a 404, never a
 // silently empty 200. Two reasons, both about consistency rather than
@@ -164,6 +180,7 @@ router.post(
   '/assets',
   people.authenticate,
   people.requireActive,
+  mayChangeAssets,
   requireOrgUnitWriteScope,
   async (req, res, next) => {
     try {
@@ -229,6 +246,7 @@ router.patch(
   '/assets/:id',
   people.authenticate,
   people.requireActive,
+  mayChangeAssets,
   requireAssetWriteScope,
   async (req, res, next) => {
     try {
