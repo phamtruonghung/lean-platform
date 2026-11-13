@@ -5,20 +5,23 @@
  *
  * Like asset-routes.js, this is the one file in this pairing that talks to
  * People, and only through `modules/people`'s entry point (ADR-0006):
- * `authenticate`, `requireActive`, `findSite`, `canAct` and the shared
+ * `authenticate`, `requireActive`, `requirePermission`, `findSite`, `canAct`
+ * and the shared
  * `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything about a meter's or a
  * reading's own fields — the enum membership, the numeric range, the
  * backward-reading refusal — is meters.js's business.
  *
- * Same two scope rules as Assets (#55) and PM schedules (#74):
+ * Same two rules as Assets (#55) and PM schedules (#74), plus the permission
+ * code that names each function (ADR-0061):
  *
- *   - Reads are Site-wide. GET /sites/:siteId/meters sits behind
- *     `authenticate` + `requireActive` and a known-Site check only — no role
- *     check, no Grant filter (ADR-0009: scope decides where an Account may
- *     act, not what it may know about). GET /units-of-measure is a shared
- *     reference catalogue, readable by any approved Account, the same
- *     openness the downtime-reason catalogue already has (ADR-0005).
- *   - Writes are branch-scoped. A meter is placed on an Asset, so creating
+ *   - Reads are Site-wide and gated by `MTN_METERS_DISPLAY`, with no Grant
+ *     filter (ADR-0009: scope decides where an Account may act, not what it may
+ *     know about). GET /units-of-measure is an exception on purpose: it is a
+ *     shared reference catalogue (ADR-0005) read by Quality and by every form
+ *     that picks a unit, so it asks no code at all — one Screen's code cannot
+ *     answer for the other Screens reading the same address.
+ *   - Writes are branch-scoped **and** gated by `MTN_METERS_CHANGE` — a Grant
+ *     says where, a code says what. A meter is placed on an Asset, so creating
  *     one needs a WRITE Grant reaching the Org Unit that Asset sits at;
  *     recording a reading or a rollover needs a WRITE Grant reaching the Org
  *     Unit the meter's own Asset sits at.
@@ -89,9 +92,25 @@ async function requireMeterWriteScope(req, res, next) {
   }
 }
 
+// The two permission codes this file asks (ADR-0061): the Meters Screen's own
+// read and write, both seeded on supervisor/engineer/manager/administrator —
+// the four roles `ModuleRoles.maintenance` offers that Screen to — so no role
+// that can reach the Screen today is refused by either. A Grant still decides
+// *where* every write may happen; the code decides whether the Account may
+// record meter data at all.
+//
+// The read code is deliberately not on `GET /units-of-measure`: that is a
+// shared catalogue Quality also reads, so the question "may you use the Meters
+// Screen" would answer for a Screen that is not asking (t_3271c590's finding).
+const mayReadMeters = people.requirePermission('MTN_METERS_DISPLAY');
+const mayRecordMeters = people.requirePermission('MTN_METERS_CHANGE');
+
 // The unit-of-measure catalogue the meter form chooses from (ADR-0023).
 // Readable by any approved Account — it is a shared reference table, not an
-// Org-Unit-scoped record.
+// Org-Unit-scoped record, and Quality reads this same address on purpose. It
+// deliberately does not ask `MTN_METERS_DISPLAY`: that code names the Meters
+// Screen, and gating the shared catalogue refused Accounts that could read it
+// before the retrofit (the card's finding, t_3271c590).
 router.get('/units-of-measure', people.authenticate, people.requireActive, async (req, res, next) => {
   try {
     res.json({ unitsOfMeasure: await meters.listUnitsOfMeasure() });
@@ -109,6 +128,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayReadMeters,
   async (req, res, next) => {
     try {
       const includeInactive = req.query.includeInactive === 'true';
@@ -137,6 +157,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireAssetWriteScope,
+  mayRecordMeters,
   async (req, res, next) => {
     try {
       const meter = await meters.createMeter(
@@ -165,6 +186,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireMeterWriteScope,
+  mayRecordMeters,
   async (req, res, next) => {
     try {
       const result = await meters.recordReading(
@@ -192,6 +214,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireMeterWriteScope,
+  mayRecordMeters,
   async (req, res, next) => {
     try {
       const result = await meters.rolloverMeter(

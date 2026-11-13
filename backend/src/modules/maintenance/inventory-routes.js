@@ -11,14 +11,21 @@
  * `authenticate`, `requireActive`, `findSite`, `findOrgUnit`, `canAct` and
  * the shared `OUTSIDE_GRANTED_ORG_UNITS` wording.
  *
- * Two scope rules, deliberately different, the same asymmetry ADR-0009 gives
+ * Two rules, deliberately different, the same asymmetry ADR-0009 gives
  * the Asset register:
  *
  *   - Reads are Site-wide. `GET /sites/:siteId/stores`,
- *     `GET /stores/:storeId/stock` and `GET /stores/:storeId/movements` sit
- *     behind `authenticate` + `requireActive` and nothing else. Org Unit
+ *     `GET /stores/:storeId` (and its `/stock` and `/movements`), the parts
+ *     catalogue and the unit picker's list sit behind `authenticate` +
+ *     `requireActive` and nothing else. Org Unit
  *     scope decides where an Account may act, not what it may know about, and
  *     "what is on the shelf" is a thing a supervisor plans around.
+ *
+ *     They deliberately do NOT ask `MTN_PARTS_DISPLAY` / `MTN_STORES_DISPLAY`,
+ *     which name the Screens rather than the data: the unit-of-measure
+ *     catalogue is read by Quality as well as Maintenance, and gating these
+ *     shared reads refused Accounts that could read them before the retrofit
+ *     — the card's finding (t_3271c590), not a policy chosen in passing.
  *   - Writes are branch-scoped. Creating a store and recording a movement
  *     each require a write Grant reaching the relevant Org Unit.
  *
@@ -119,6 +126,24 @@ async function requireStoreWriteScope(req, res, next) {
     return handleError(error, res, next);
   }
 }
+
+// The two permission codes this file's writes will eventually ask (ADR-0061),
+// and the reason neither is wired to a read here yet. Both belong to the
+// retrofit card (t_3271c590):
+//   - `MTN_PARTS_DISPLAY` / `MTN_STORES_DISPLAY` gate the Screens of those
+//     names, but neither surface is private to its Screen: the unit-of-measure
+//     catalogue is shared reference data (Quality reads this same address) and
+//     nothing that read the parts catalogue or a store before this card held
+//     only an Account. Gating the reads narrowed Accounts that use them today,
+//     so the reads stay open and the narrowing is the card's finding.
+//   - POST /parts is administrator-only today. `MTN_PARTS_CHANGE` is seeded on
+//     engineer/manager/administrator, so adding it would *widen* the write to
+//     two roles that are refused it today — a behaviour change, not a
+//     retrofit.
+//   - POST /stores, /receipts and /adjustments are reachable today by a
+//     supervisor holding a write Grant, while `MTN_STORES_CHANGE` is seeded on
+//     engineer/manager/administrator only; adding it would *narrow* a role that
+//     uses these routes.
 
 // ---------------------------------------------------------------------------
 // Parts — the shared catalogue.

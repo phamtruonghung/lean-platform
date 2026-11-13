@@ -379,7 +379,15 @@ test('job plan validation refuses a bad workType, a missing name, and duplicate 
 test('creating or deactivating a job plan is administrator-only', async () => {
   const created = await postJobPlan(writerAccount.token, planBody());
   assert.strictEqual(created.response.status, 403);
-  assert.strictEqual(created.payload.message, 'This action requires the administrator role.');
+  // The gate is `MTN_JOB_PLANS_MAINTAIN` since the ADR-0061 retrofit, so the
+  // refusal carries the catalogue code's own body. The pass/fail set is
+  // unchanged: the seed gives that code to ROLE_ADMIN alone, exactly the
+  // accounts the administrator-role comparison used to admit.
+  assert.strictEqual(
+    created.payload.message,
+    'This action requires the MTN_JOB_PLANS_MAINTAIN permission.'
+  );
+  assert.strictEqual(created.payload.code, 'PERMISSION_REQUIRED');
 
   const plan = await createPlan();
   const patched = await patchJobPlan(writerAccount.token, plan.id, { isActive: false });

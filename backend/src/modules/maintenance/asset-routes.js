@@ -4,9 +4,9 @@
  *
  * This is the one file in the Module that talks to People, and it does so
  * only through `modules/people`'s entry point (ADR-0006): `authenticate`,
- * `requireActive`, `findSite`, `findOrgUnit`, `canAct` and the shared
- * `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything else about an Asset is
- * assets.js's own business.
+ * `requireActive`, `findSite`, `findOrgUnit`, `canAct` and
+ * the shared `OUTSIDE_GRANTED_ORG_UNITS` wording. Everything else about an
+ * Asset is assets.js's own business.
  *
  * Two scope rules, and they are deliberately different (#55):
  *
@@ -18,8 +18,21 @@
  *     cannot see the line beside theirs cannot plan around it. Note this is
  *     NOT how People's own GET /sites/:siteId/org-units behaves, which is
  *     requireSiteScope'd — the difference is the point, not an oversight.
+ *
+ *     It deliberately does NOT ask `MTN_ASSETS_DISPLAY`, even though that code
+ *     names the Assets Screen: this endpoint is shared reference data, read by
+ *     the Maintenance Request form (an operator must name an Asset to raise
+ *     one), the Safety incident form and the Quality non-conformance form, all
+ *     of them offered to every approved Account. A read gate here narrows
+ *     those Screens, not just the Assets Screen — ADR-0061's own "several
+ *     Screens read one endpoint". Recorded as a finding on the retrofit card
+ *     (t_3271c590) rather than decided in passing.
  *   - Writes are branch-scoped. POST /assets requires a write Grant reaching
- *     the Org Unit the Asset is placed at.
+ *     the Org Unit the Asset is placed at. It does NOT take a permission code
+ *     yet: `MTN_ASSETS_CHANGE` is seeded on engineer/manager/administrator
+ *     only, while a supervisor holding a write Grant can add an Asset today,
+ *     so adding the code would refuse a role that uses this route — that is
+ *     the retrofit card's finding (t_3271c590), not a change made blind here.
  *
  * `requireKnownSite` and `requireOrgUnitWriteScope` below are the two
  * middlewares that carry those rules. Both resolve existence BEFORE asking
