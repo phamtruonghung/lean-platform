@@ -75,10 +75,10 @@ const UNCODED_GETS = [
   'GET /api/safety/injury-types',
   'GET /api/safety/body-parts',
 
-  // Module-owned reads whose code is still outstanding — named here so the
-  // register above is not read as approval of them (ADR-0061 §7, second list).
-  'GET /api/people/accounts',
-  'GET /api/people/accounts/pending',
+  // Module-owned reads that once stood here as outstanding work (the two
+  // Accounts reads, ADR-0061 §7) now ask `ADM_ACCOUNTS_DISPLAY` and are
+  // therefore absent from this register — as is every other read outside
+  // Production that used to compare the role string.
 
   // Not a door a code could ever name: the caller's own identity, the sign-in
   // mode a client asks about before it has a session, and the shared floor

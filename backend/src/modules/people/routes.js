@@ -12,7 +12,7 @@
 
 const express = require('express');
 const { authenticate, requireActive, statusFor } = require('./middleware');
-const { requireAdmin, orgUnitScopeFor, permissionsForAccount } = require('./authorization');
+const { requireAdmin, requirePermission, orgUnitScopeFor, permissionsForAccount } = require('./authorization');
 const { parseId, httpError, handleError } = require('./errors');
 const {
   listAccounts,
@@ -92,17 +92,27 @@ router.get('/me', authenticate, async (req, res, next) => {
   }
 });
 
+// "May this Account read every Account, and the Grants each holds?" — ADR-0061's
+// model, asked as the code rather than as a role comparison. `requireAdmin`
+// answered this door until slice 8; `ADM_ACCOUNTS_DISPLAY` is seeded on
+// `ROLE_ADMIN` alone, so the answer is unchanged for every caller — what
+// changed is that an administrator can now take the Accounts register off a
+// role, which is the point of the model. The five writes below still ask
+// `requireAdmin`: each needs its own choice between `ADM_APPROVALS_DECIDE` and
+// `ADM_ACCOUNTS_CHANGE`, and that is a decision this slice does not make.
+const mayDisplayAccounts = requirePermission('ADM_ACCOUNTS_DISPLAY');
+
 // Everything else sits behind requireActive. A directory listing is the
 // first thing worth protecting this way: real, useful once approved, and
 // exactly what an inactive Account must not see.
 //
-// requireAdmin (issue #8 review): every Account's email, role and
-// external_subject (the identity-provider subject) is not something a
-// non-admin should be able to enumerate — narrowed here to admin-only rather
-// than left open to any active Account. This is a lockdown, not the final
-// design; issue #9 ("The directory") is where a wider, deliberate visibility
-// rule belongs.
-router.get('/accounts', authenticate, requireActive, requireAdmin, async (_req, res, next) => {
+// The code (issue #8 review, ADR-0061 slice 8): every Account's email, role
+// and external_subject (the identity-provider subject) is not something an
+// ordinary Account should be able to enumerate — narrowed here to
+// administrators rather than left open to any active Account. This is a
+// lockdown, not the final design; issue #9 ("The directory") is where a
+// wider, deliberate visibility rule belongs.
+router.get('/accounts', authenticate, requireActive, mayDisplayAccounts, async (_req, res, next) => {
   try {
     const accounts = await listAccounts();
     res.json({ accounts });
@@ -117,8 +127,9 @@ router.get('/accounts', authenticate, requireActive, requireAdmin, async (_req, 
 // problem than an unapproved caller reaching any of these.
 // ---------------------------------------------------------------------------
 
-// The Approval queue itself.
-router.get('/accounts/pending', authenticate, requireActive, requireAdmin, async (_req, res, next) => {
+// The Approval queue itself — the same `ADM_ACCOUNTS_DISPLAY` door as the
+// register above: it lists Accounts and the role each was admitted with.
+router.get('/accounts/pending', authenticate, requireActive, mayDisplayAccounts, async (_req, res, next) => {
   try {
     res.json({ accounts: await listPendingAccounts() });
   } catch (error) {
