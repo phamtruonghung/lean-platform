@@ -103,24 +103,35 @@
  *     weaker rule sitting beside the ADR's one rule, and it is the one a later
  *     change would copy to the eleventh route.
  *
- * **The ADR-0061 retrofit (issue #507).** Six of these ten routes ask
- * `people.requirePermission` beside the standing they already asked: the
- * register, the overdue listing and one record's read (`SAF_INCIDENTS_DISPLAY`),
- * and recording, the due-date PATCH and the ordinary status move
- * (`SAF_INCIDENTS_RECORD`). Both codes are seeded on ROLE_STANDARD, the default
- * group every approved Account holds, so neither gate refuses anybody who could
- * reach its route before it — and every Grant question those routes already
- * asked is untouched, because a permission says *what* and a Grant says *where*.
+ * **The ADR-0061 retrofit (issue #507, completed by issue #537).** All ten
+ * routes ask `people.requirePermission` beside the standing they already asked:
+ * the register, the overdue listing and one record's read
+ * (`SAF_INCIDENTS_DISPLAY`), recording, the due-date PATCH, the ordinary status
+ * move, the days and the close (`SAF_INCIDENTS_RECORD`), and the severity
+ * correction and the classification (`SAF_CLASSIFY`). Every one of those codes
+ * is seeded on ROLE_STANDARD, the default group every approved Account holds,
+ * so no gate refuses anybody who could reach its route before it — and every
+ * Grant question those routes already asked is untouched, because a permission
+ * says *what* and a Grant says *where*.
  *
- * The other four are recorded as findings rather than retrofitted: a severity
- * correction, the classification, the days and the close would ask
- * `SAF_CLASSIFY`, which the seed gives to supervisor-and-above, while the
- * standing they ask today is `canAct({ safety: true })` — Safety authority on a
- * Grant, a flag any role may carry. Adding that code would narrow today's users,
- * which is the owner's decision (parent card t_3271c590, comment 1308). It is
- * also why classification is not folded into `SAF_INCIDENTS_RECORD`: recording
- * an incident and deciding what the injury was are two different standings, and
- * the one code names only the first.
+ * The two codes are not decoration and they do not replace the standing: the
+ * code answers **which door**, `requireSafetyIncidentSafetyAuthority` behind it
+ * answers **whose Site and whose Org Unit**. `SAF_CLASSIFY` is the code the
+ * catalogue already had for "record or read an injured person's diagnosis", and
+ * a severity correction plus a classification are exactly that act; the days and
+ * the close are maintaining the recorded incident, which is
+ * `SAF_INCIDENTS_RECORD`'s sentence. Classification is still not folded into
+ * the amend code — recording an incident and deciding what the injury was are
+ * two different standings — it is `SAF_CLASSIFY` that names the second.
+ *
+ * `1804000000000_safety-write-codes.js` widens `SAF_CLASSIFY` onto the default
+ * group and ROLE_OPERATOR: the seed gave it to supervisor-and-above, while the
+ * reach it sits in front of is `canAct({ safety: true })` — Safety authority on
+ * a Grant, a flag any role may carry (ADR-0035, ADR-0039) — so gating without
+ * that widening would have taken the act from an operator holding the authority
+ * on its own line. `SAF_INCIDENTS_RECORD` already sat on all six roles and needs
+ * no row. No caller's answer changes; what the codes buy is that each door is
+ * now visible and removable in the Roles Screen, which a Grant cannot express.
  */
 
 const express = require('express');
@@ -130,25 +141,27 @@ const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
 
-// The two codes this file asks (ADR-0061, issue #507). Both are seeded on
-// ROLE_STANDARD — the default group every approved Account carries — so
-// neither gate refuses anybody the route admitted before the retrofit: the
-// registers and the one-record read were open to any Account that can see the
-// Site, and the writes were open to any Account holding an edit Grant reaching
-// the Org Unit. What the retrofit adds is a code an administrator can revoke
-// per role, read from `roles.effectivePermissions` on every request rather
-// than cached, so an edit takes effect on the affected Account's next call.
+// The three codes this file asks (ADR-0061, issues #507 and #537). All three
+// are seeded on ROLE_STANDARD — the default group every approved Account
+// carries — so no gate refuses anybody the route admitted before the retrofit:
+// the registers and the one-record read were open to any Account that can see
+// the Site, the amend writes to any Account holding an edit Grant reaching the
+// Org Unit, and the authority writes to any Account holding Safety authority
+// there. What the retrofit adds is a code an administrator can revoke per role,
+// read from `roles.effectivePermissions` on every request rather than cached,
+// so an edit takes effect on the affected Account's next call.
 //
-// The four Safety-authority writes below (severity, classify, days, close) do
-// **not** ask `SAF_CLASSIFY`, and that is a finding rather than an oversight:
-// the code is seeded on supervisor-and-above, while the standing those routes
-// ask is `canAct({ safety: true })` — a flag on a Grant that any role may
-// carry (ADR-0035, ADR-0039). Adding the code would refuse an operator holding
-// Safety authority on its own line, which is a narrowing an owner decides, not
-// a retrofit. See the card handoff, and the same reasoning
-// nonconformance-routes.js records for `QLT_NONCONFORMANCES_DISPOSE`.
+// `SAF_CLASSIFY` sits in front of the severity correction and the
+// classification — the act that decides how serious an injury was — and
+// `SAF_INCIDENTS_RECORD` in front of the days and the close, which are
+// maintaining the recorded incident. Both keep
+// `requireSafetyIncidentSafetyAuthority` **behind** them: the code answers which
+// door, the helper answers whose Site and whose Org Unit. The seed widened
+// `SAF_CLASSIFY` onto the default group and ROLE_OPERATOR for the reason the
+// header states; `SAF_INCIDENTS_RECORD` already sat on all six roles.
 const mayReadIncidents = people.requirePermission('SAF_INCIDENTS_DISPLAY');
 const mayRecordIncidents = people.requirePermission('SAF_INCIDENTS_RECORD');
+const mayClassifyIncidents = people.requirePermission('SAF_CLASSIFY');
 
 // Mirrors nonconformance-routes.js's own requireKnownSite exactly: an unknown
 // Site is a 404, never a silently empty 200.
@@ -569,12 +582,14 @@ router.post(
   }
 );
 
-// Correcting the severity level (issue #228, #223 decision 5). Safety
-// authority and a note.
+// Correcting the severity level (issue #228, #223 decision 5). `SAF_CLASSIFY`
+// — the act that decides how serious an injury was — then Safety authority and
+// a note.
 router.post(
   '/incidents/:id/severity',
   people.authenticate,
   people.requireActive,
+  mayClassifyIncidents,
   requireSafetyIncidentSafetyAuthority,
   async (req, res, next) => {
     try {
@@ -591,7 +606,8 @@ router.post(
 );
 
 // Classifying the injury (issue #224, ADR-0037): the identified Employee, the
-// Injury type and the Body part. Safety authority reaching the incident's Org
+// Injury type and the Body part. `SAF_CLASSIFY` — the code the catalogue gives
+// this act — in front of Safety authority reaching the incident's Org
 // Unit — naming who was hurt and what the injury was is a judgement about a
 // person, not a piece of work on the record, so it takes the same standing a
 // severity correction does rather than the edit Grant recording itself needs.
@@ -608,6 +624,7 @@ router.post(
   '/incidents/:id/classify',
   people.authenticate,
   people.requireActive,
+  mayClassifyIncidents,
   requireSafetyIncidentSafetyAuthority,
   async (req, res, next) => {
     try {
@@ -624,12 +641,14 @@ router.post(
 );
 
 // Recording what the injury cost (issue #228): the lost-time and restricted
-// days. Safety authority — the same standing that classifies an injury and
-// closes the record.
+// days. `SAF_INCIDENTS_RECORD` — maintaining the recorded incident — then
+// Safety authority, the same standing that classifies an injury and closes the
+// record.
 router.post(
   '/incidents/:id/days',
   people.authenticate,
   people.requireActive,
+  mayRecordIncidents,
   requireSafetyIncidentSafetyAuthority,
   async (req, res, next) => {
     try {
@@ -646,12 +665,14 @@ router.post(
 );
 
 // Closing (issue #228, #223 decision 4) — the judgement of someone
-// accountable for the place. Safety authority, a note, and the days settled
+// accountable for the place. `SAF_INCIDENTS_RECORD` (maintaining the incident),
+// then Safety authority, a note, and the days settled
 // for any rung above the no-injury one; never refused for an open Concern.
 router.post(
   '/incidents/:id/close',
   people.authenticate,
   people.requireActive,
+  mayRecordIncidents,
   requireSafetyIncidentSafetyAuthority,
   async (req, res, next) => {
     try {

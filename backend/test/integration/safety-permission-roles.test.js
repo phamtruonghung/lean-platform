@@ -8,9 +8,11 @@
  * the default group every approved Account carries, so "the existing suite still
  * passes" cannot on its own show the retrofit refused nobody: a gate that only
  * admitted supervisors would leave that suite green. And the routes this round
- * left on their standing — the four Safety-authority writes, the two catalogue
- * reads, the two floor-device doors — must still admit who they admitted before,
- * which is the other half of "behaviour changes for nobody".
+ * left on their standing — the two catalogue reads and the two floor-device
+ * doors — must still admit who they admitted before, which is the other half of
+ * "behaviour changes for nobody". The four Safety-authority writes have since
+ * been gated (issue #537) and their own suite,
+ * safety-write-permission-roles.test.js, measures them per code.
  *
  * So both questions are asked here as the Account that would notice first: an
  * `operator`, holding the default group and an edit Grant on its own area. The
@@ -225,11 +227,12 @@ test.after(async () => {
 const retrofittedCodes = [
   'SAF_INCIDENTS_DISPLAY',
   'SAF_INCIDENTS_RECORD',
+  'SAF_CLASSIFY',
   'SAF_OBSERVATIONS_DISPLAY',
   'SAF_OBSERVATIONS_RECORD'
 ];
 
-test('an operator holds every code the retrofit asks, and none of the three the findings would ask', async () => {
+test('an operator holds every code the retrofit asks, and none of the two catalogue codes the findings would ask', async () => {
   const { status, body } = await get('/api/people/me', operator.token);
   assert.strictEqual(status, 200, JSON.stringify(body));
 
@@ -237,10 +240,13 @@ test('an operator holds every code the retrofit asks, and none of the three the 
     assert.ok(body.permissions.includes(code), `an operator must hold ${code}`);
   }
 
-  // The findings, measured: SAF_CLASSIFY is seeded supervisor-and-above and the
-  // two catalogue codes on the administrator alone, which is exactly why those
-  // routes were left on the standing they had.
-  for (const code of ['SAF_CLASSIFY', 'SAF_INJURY_TYPES_MAINTAIN', 'SAF_BODY_PARTS_MAINTAIN']) {
+  // The findings still standing, measured: the two catalogue codes are seeded on
+  // the administrator alone, which is why those routes keep `requireAdmin`.
+  // `SAF_CLASSIFY` left this list with issue #537: 1804000000000 widens it onto
+  // the default group and ROLE_OPERATOR, because the four Safety-authority
+  // writes sit in front of `canAct({ safety: true })` and gating them without
+  // that widening would have narrowed an operator holding the authority.
+  for (const code of ['SAF_INJURY_TYPES_MAINTAIN', 'SAF_BODY_PARTS_MAINTAIN']) {
     assert.ok(!body.permissions.includes(code), `an operator must not hold ${code}`);
   }
   assert.ok(body.roles.includes('ROLE_STANDARD'));
@@ -350,13 +356,15 @@ test('an operator is refused both catalogue writes naming the code, and still re
 });
 
 // ---------------------------------------------------------------------------
-// The four Safety-authority writes keep the standing they had: `SAF_CLASSIFY` is
-// seeded supervisor-and-above, while Safety authority is a flag any role's Grant
-// may carry — so adding the code would narrow an operator that holds it. The
-// finding is measured here rather than argued.
+// The four Safety-authority writes now ask a code in front of that standing
+// (issue #537): `SAF_CLASSIFY` on the severity and the classification,
+// `SAF_INCIDENTS_RECORD` on the days and the close. The classification test
+// below still measures the half a code cannot express — an operator holding the
+// code (every role does, after 1804000000000) and no Safety authority is
+// refused by the helper, with the helper's own sentence.
 // ---------------------------------------------------------------------------
 
-test('the classification keeps its Safety-authority standing: an operator without it is refused, a supervisor with it is not', async () => {
+test('the classification keeps its Safety-authority standing behind its code: an operator without it is refused, a supervisor with it is not', async () => {
   const refused = await post(`/api/safety/incidents/${incidentId}/classify`, operator.token, {
     injuryTypeId: injuryType.id
   });
