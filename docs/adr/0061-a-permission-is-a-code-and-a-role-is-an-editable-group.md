@@ -134,11 +134,92 @@ Destination's path to its code — instead of the old `ModuleRoles` sets. The
 sets are kept and are used when the response carries no `permissions`, so a
 cached client outliving a deploy still draws a usable sidebar.
 
+### 7. A read several Screens legitimately read carries no code
+
+The retrofit asks every read one question: which code names this door? For a
+read that belongs to one Module's own Screen the answer is that Screen's
+`*_DISPLAY` code. For **reference data several Screens legitimately read** the
+answer is none. `GET /api/maintenance/sites/:siteId/assets` is read by the
+Maintenance Request form — an operator must name an Asset to raise one — by the
+Safety incident form and by the Quality non-conformance form, all of them
+offered to every approved Account. `MTN_ASSETS_DISPLAY` names one Screen among
+those four. A code every caller must hold is ceremony that buys nothing until an
+administrator removes it from a role, and then it breaks a Screen nobody
+realised was connected to it.
+
+So: **a read several Screens legitimately read stays authenticated-but-ungated;
+a read that belongs to one Module's own Screen keeps that Screen's `*_DISPLAY`
+code.** The question a shared lookup actually asks is *whose rows may this
+caller see*, and the containment test already answers it — `requireSiteScope`
+for a Site, `requireOrgUnitScope` for an Org Unit branch, `canAct` where a row's
+Grant matters. **Writes are unaffected:** every write carries a code, because a
+write is always one Screen's act. This section records a rule the code already
+followed in four slices, each time as a finding rather than a decision
+(`t_3271c590`).
+
+The register below is the whole of it, and it is checked rather than trusted:
+`backend/test/shared-reference-reads.test.js` walks every Module router, collects
+the `GET` routes that ask neither `requirePermission` nor a `may…` derivation of
+it, and fails unless the set is exactly this list. A new shared read cannot join
+it silently; a route here that gains a code cannot leave it silently.
+
+#### Reads that carry no code because several Screens read them
+
+| Route | Why it is shared |
+| --- | --- |
+| `GET /api/people/timezones` | The valid values for a Site's `timezone`: a non-administrator opening the Site form must see the list, and the list carries no plant data of its own (ADR-0023). |
+| `GET /api/people/sites` | Filtered to the Sites the caller can see, so there is nothing to 403 on; every Screen that names a Site reads it (ADR-0008). |
+| `GET /api/people/sites/:siteId` | Behind `requireSiteScope`, which is exactly "may this caller see this Site"; read by the Site picker, the Org Unit register and the KPI context. |
+| `GET /api/people/sites/:siteId/org-units` | The same gate, then a per-row `canAct`; the Directory, Attendance, Training, Leave and the KPI views all read it. |
+| `GET /api/people/sites/:siteId/org-units/search` | The same list, searched — the one control every Org Unit picker uses. |
+| `GET /api/people/org-units/:id` | Behind `requireOrgUnitScope`, which answers whose row it is; the Asset form, the Work order form and People's own register read it. |
+| `GET /api/people/org-units/:id/subtree` | The same gate, as the branch picker under a caller's own area. |
+| `GET /api/people/cost-rates`, `/cost-rates/scopes`, `/cost-rates/resolution` | A rate is shared reference data (ADR-0005), and the resolution read is how a reader learns what a cost view will use — a number the tier board already shows them. The catalogue's only code is its administrator-only *maintenance* code, which would refuse those readers. |
+| `GET /api/people/product-costs`, `/product-costs/products` | The same shape for the standard-cost catalogue and its Product picker. |
+| `GET /api/maintenance/sites/:siteId/assets` | Read by the Maintenance Request form, the Safety incident form and the Quality non-conformance form — not only by the Assets Screen (see this section's opening). |
+| `GET /api/maintenance/units-of-measure` | The one catalogue every unit picker draws from, read by Quality as well as Maintenance; it is registered in both `meter-routes.js` and `inventory-routes.js`. |
+| `GET /api/maintenance/parts` | The parts catalogue the Work order and Stock movement forms pick from; the Parts Screen is one reader of it. |
+| `GET /api/maintenance/sites/:siteId/stores`, `/stores/:storeId`, `/stores/:storeId/stock`, `/stores/:storeId/movements` | "What is on the shelf" is what a supervisor plans around, and the Request and Stock movement forms pick from it: Org Unit scope decides where an Account may act, not what it may know (ADR-0009). |
+| `GET /api/maintenance/job-plans`, `/job-plans/:id` | The plan feeds pickers every role may need; no `MTN_JOB_PLANS_DISPLAY` code exists to ask, and inventing one for a read would refuse the pickers. |
+| `GET /api/safety/injury-types` | Whoever classifies an injury needs the list as a set of choices (ADR-0023), and it names nobody — ADR-0037's restriction is about three fields on an *incident*. |
+| `GET /api/safety/body-parts` | The same set of choices, for the body part an injury names. |
+
+One address the card behind this section expected here is not: the job-role
+lookup asks `PPL_JOB_ROLES_DISPLAY`, and the seed gives that code
+to `ROLE_STANDARD` — the default group every Account holds — so the read is open
+to every Account in effect, reached by a code nobody can lose by accident. That
+is the same answer this rule gives, arrived at from the other end, and it is
+left as the code says rather than moved into this table.
+
+#### Reads that carry no code and are not settled by this section
+
+Named here so the table above is never read as approval of them. Neither group
+is shared reference data; both are retrofit work with a card of their own.
+
+| Route | What is outstanding |
+| --- | --- |
+| `GET /api/production/handovers/:id`, `/handovers/:id/versions`, `/sections/:orgUnitId/assets`, `/sections/:orgUnitId/handovers` | Production's retrofit has not run: these reads ask `canAct` on the Section and no code, while the seed already carries `PRD_HANDOVER_DISPLAY`. |
+| `GET /api/people/accounts`, `/accounts/pending` | These ask the legacy `requireAdmin` rather than `ADM_ACCOUNTS_DISPLAY`. The answer is the same today — the code is seeded on administrators only — so this is a rename waiting for its slice, not a shared read. |
+
+#### Reads no code could name
+
+| Route | Why no code applies |
+| --- | --- |
+| `GET /api/people/me` | The caller's own identity and effective codes; `authenticate` alone is the whole question. |
+| `GET /api/auth/mode` | Which sign-in doors this deployment offers, asked before a session exists. |
+| `GET /api/maintenance/floor/training/to-confirm`, `/floor/signature`, `/floor/work-orders`, `GET /api/quality/floor/products`, `/floor/defect-codes` | The shared floor device's door is `requireFloorDevice` plus a technician identification (ADR-0016): a device holds no Account, so no code can name it. |
+
 ## Consequences
 
 - **A new Screen needs one line in `destinationPermissions` and one code in the
   catalogue.** Its absence is visible as an ungated door rather than a build
   error, which is why the two are reviewed together.
+- **A route that gains or loses a code is a documentation change too.** §7's
+  register is compared exactly by `test/shared-reference-reads.test.js`, so a
+  new ungated read fails the suite until someone writes down why it is shared,
+  and a listed route that gains a code fails it until the entry is removed.
+  That is the whole point of writing the rule down: the list is short enough to
+  read and enforced often enough to stay true.
 - **Enforcement today is the roles surface.** `GET`/`POST`/`PUT` on
   `/roles`, `/permissions` and `/accounts/:id/roles` are gated with
   `requirePermission` (`ADM_ROLES_DISPLAY`, `ADM_ROLES_CHANGE`), which answers

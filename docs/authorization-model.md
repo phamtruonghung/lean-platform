@@ -214,7 +214,8 @@ and the Grant answers which Org Units. Two deliberate gaps remain:
   retrofit.
 - **The Maintenance reads stay open** (`GET /sites/:siteId/assets`, the parts
   and store reads). Several Screens read the same endpoints, so a read gate
-  would narrow Screens that never asked for it.
+  would narrow Screens that never asked for it — the rule, its exception list
+  and the test that holds it are ADR-0061 §7.
 
 Retrofitting `requirePermission` onto the other Modules' routes is a follow-on
 card per Module, because each write needs its own code chosen against the ADR
