@@ -161,3 +161,8 @@ at. The reason this belongs here rather than in a decision of its own: the
 rule "a value with a known set is chosen, never typed" was being satisfied by
 a mouse. A person who had to tap the row a reader had just named had not
 chosen it — they had re-typed it with a pointer.
+
+The camera is the same argument one step further: the field a phone can point at
+a code carries the button that does it (`lib/widgets/app_camera_scan.dart`), and
+what it reads is committed through that same scan path, so a camera pick and a
+reader pick are one pick.

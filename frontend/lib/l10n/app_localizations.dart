@@ -3339,6 +3339,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to the list'**
   String get routerBackToList;
+
+  /// The tooltip of the button on a code field or a picker that opens the camera to read a code.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan with the camera'**
+  String get cameraScanButton;
+
+  /// The camera dialog's own title, and the screen reader's name for its preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a code'**
+  String get cameraScanTitle;
+
+  /// What to do with the camera, under the camera dialog's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at the code — it is read as soon as it is recognised.'**
+  String get cameraScanPointAtCode;
+
+  /// The camera dialog's one way out that changes nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get cameraScanClose;
+
+  /// The camera dialog's heading when the browser refuses the camera or the permission was denied.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera could not be opened'**
+  String get cameraScanRefusedTitle;
+
+  /// Why the camera did not open, and what the person can do about it in the browser's own chrome.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow this site to use the camera in the browser, then try again.'**
+  String get cameraScanRefusedBody;
+
+  /// The camera dialog's heading when the browser has no code decoder at all.
+  ///
+  /// In en, this message translates to:
+  /// **'This browser cannot read a code with the camera'**
+  String get cameraScanUnsupportedTitle;
+
+  /// What a person does instead when their browser cannot decode a code from the camera.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the code instead, or use the shop-floor reader.'**
+  String get cameraScanUnsupportedBody;
 }
 
 class _AppLocalizationsDelegate

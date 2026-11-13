@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme.dart';
+import 'app_camera_scan.dart';
 import 'app_scan_field.dart';
 import 'empty_state.dart';
 import 'failure_state.dart';
@@ -577,6 +578,19 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
     _commitScan(term);
   }
 
+  /// A code a phone's camera read (see `app_camera_scan.dart`): written into the
+  /// field and committed on the spot. A camera scan is a commit for exactly the
+  /// reason the reader's `Enter` is one — the person has finished naming the
+  /// record, and there is nothing left to type.
+  void _handleCameraScan(String code) {
+    if (!widget.enabled || code.isEmpty) return;
+    _controller.value = TextEditingValue(
+      text: code,
+      selection: TextSelection.collapsed(offset: code.length),
+    );
+    _handleSubmitted(code);
+  }
+
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
@@ -629,6 +643,12 @@ class _AppSearchFieldState<T> extends State<AppSearchField<T>> {
                 labelText: widget.label,
                 helperText: widget.helperText,
                 prefixIcon: const Icon(Icons.search),
+                // The camera, beside the search: a phone can read the code a
+                // person would otherwise type or tap for (see
+                // `app_camera_scan.dart`).
+                suffixIcon: widget.enabled
+                    ? AppCameraScanButton(name: widget.name, onScanned: _handleCameraScan)
+                    : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
                 ),

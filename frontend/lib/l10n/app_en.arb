@@ -2218,5 +2218,37 @@
   "routerBackToList": "Back to the list",
   "@routerBackToList": {
     "description": "The way out of the write-Grant refusal back to the register it was opened from."
+  },
+  "cameraScanButton": "Scan with the camera",
+  "@cameraScanButton": {
+    "description": "The tooltip of the button on a code field or a picker that opens the camera to read a code."
+  },
+  "cameraScanTitle": "Scan a code",
+  "@cameraScanTitle": {
+    "description": "The camera dialog's own title, and the screen reader's name for its preview."
+  },
+  "cameraScanPointAtCode": "Point the camera at the code — it is read as soon as it is recognised.",
+  "@cameraScanPointAtCode": {
+    "description": "What to do with the camera, under the camera dialog's title."
+  },
+  "cameraScanClose": "Close",
+  "@cameraScanClose": {
+    "description": "The camera dialog's one way out that changes nothing."
+  },
+  "cameraScanRefusedTitle": "The camera could not be opened",
+  "@cameraScanRefusedTitle": {
+    "description": "The camera dialog's heading when the browser refuses the camera or the permission was denied."
+  },
+  "cameraScanRefusedBody": "Allow this site to use the camera in the browser, then try again.",
+  "@cameraScanRefusedBody": {
+    "description": "Why the camera did not open, and what the person can do about it in the browser's own chrome."
+  },
+  "cameraScanUnsupportedTitle": "This browser cannot read a code with the camera",
+  "@cameraScanUnsupportedTitle": {
+    "description": "The camera dialog's heading when the browser has no code decoder at all."
+  },
+  "cameraScanUnsupportedBody": "Type the code instead, or use the shop-floor reader.",
+  "@cameraScanUnsupportedBody": {
+    "description": "What a person does instead when their browser cannot decode a code from the camera."
   }
 }
