@@ -16,7 +16,12 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-const { requireAdmin } = require('./admin');
+// The catalogue's own code (ADR-0061, issue #507), seeded on ROLE_ADMIN alone —
+// the exact set the administrator check it replaces admitted (see
+// injury-type-routes.js's header for the reasoning this mirrors). The `GET`
+// deliberately keeps no gate: the classify dialog reads this list as a set of
+// choices, and its readers are supervisors as well as administrators.
+const mayMaintainBodyParts = people.requirePermission('SAF_BODY_PARTS_MAINTAIN');
 
 async function requireKnownBodyPart(req, res, next) {
   try {
@@ -52,7 +57,7 @@ router.post(
   '/body-parts',
   people.authenticate,
   people.requireActive,
-  requireAdmin,
+  mayMaintainBodyParts,
   async (req, res, next) => {
     try {
       const bodyPart = await bodyParts.createBodyPart(req.body ?? {}, req.account.id);
@@ -70,7 +75,7 @@ router.patch(
   people.authenticate,
   people.requireActive,
   requireKnownBodyPart,
-  requireAdmin,
+  mayMaintainBodyParts,
   async (req, res, next) => {
     try {
       const bodyPart = await bodyParts.updateBodyPart(
