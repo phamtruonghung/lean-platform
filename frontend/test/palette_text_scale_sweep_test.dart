@@ -360,6 +360,10 @@ final List<_Screen> _screens = [
   // carry chips and a code tail at the far end — the two things a text scale
   // and a dark palette break first.
   const _Screen('RolesScreen', 'lib/people/roles_screen.dart', route: '/roles'),
+  // Settings (issue t_c68dfd6e): the language switch's own Screen — two
+  // segments whose labels are the longest words in either language, which is
+  // exactly what a 200% text scale and a 700px window break first.
+  const _Screen('SettingsScreen', 'lib/platform/settings_screen.dart', route: '/settings'),
   const _Screen('ApprovalQueueScreen', 'lib/people/approval_queue_screen.dart',
       route: '/approvals'),
   const _Screen('ActionsScreen', 'lib/actions/actions_screen.dart', route: '/actions'),

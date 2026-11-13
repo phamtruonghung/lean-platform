@@ -10,12 +10,20 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # The Framework's own localizations (Material's own tooltips, date formats and
+  # `vi` support) — a language switch needs these beside the Platform's own
+  # `lib/l10n` catalogue. Both are the SDK's, not a third-party package.
+  flutter_localizations:
+    sdk: flutter
 
   flutter_bloc: ^9.1.1
   flutter_web_plugins:
     sdk: flutter
   go_router: ^18.0.0
   http: ^1.2.2
+  # Pinned to the version `flutter_localizations` itself resolves; `gen-l10n`'s
+  # generated code imports it.
+  intl: ^0.20.2
   shared_preferences: ^2.5.5
   web: ^1.1.1
 
@@ -27,6 +35,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Runs `gen-l10n` (settings in `l10n.yaml`) on `pub get` and a build, so the
+  # generated `lib/l10n/app_localizations*.dart` can never drift from the ARB
+  # files they came from. The generated files are committed — `flutter test`
+  # and `flutter analyze` then need no code-generation step of their own.
+  generate: true
 
   # Roboto is bundled rather than left to the engine, which would otherwise
   # fetch it from fonts.gstatic.com on first paint. See assets/fonts/README.md.

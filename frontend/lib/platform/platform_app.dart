@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../kpi/kpi_api.dart';
+import '../l10n/app_localizations.dart';
 import '../maintenance/maintenance_api.dart';
 import '../actions/actions_api.dart';
 import '../people_api.dart';
@@ -16,6 +17,7 @@ import 'account_bloc.dart';
 import 'auth_gateway.dart';
 import 'document_chrome.dart';
 import 'floor_device_gateway.dart';
+import 'locale_cubit.dart';
 import 'router.dart';
 import 'session_error_screen.dart';
 import 'theme_mode_cubit.dart';
@@ -94,6 +96,7 @@ class _PlatformAppState extends State<PlatformApp> {
   late final SignatureFilePicker _signatureFilePicker;
   late final QualityPhotoPicker _qualityPhotoPicker;
   late final ThemeModeCubit _themeModeCubit;
+  late final LocaleCubit _localeCubit;
   late final DocumentChrome _documentChrome;
 
   // Built once, not per rebuild: a mode change rebuilds `MaterialApp.router`,
@@ -110,6 +113,11 @@ class _PlatformAppState extends State<PlatformApp> {
     _qualityPhotoPicker = widget.qualityPhotoPicker ?? createQualityPhotoPicker();
     _accountBloc = AccountBloc(authGateway: widget.authGateway, peopleApi: widget.peopleApi);
     _themeModeCubit = ThemeModeCubit();
+    // Which language the Platform speaks (issue t_c68dfd6e). Restored from
+    // `shared_preferences` asynchronously, so the first frame is the shipped
+    // default and a stored choice lands a frame or two later — never a blank
+    // app waiting on a disk read.
+    _localeCubit = LocaleCubit();
     _lightTheme = buildAppTheme();
     _darkTheme = buildAppTheme(Brightness.dark);
     _router = buildRouter(accountBloc: _accountBloc, initialLocation: widget.initialLocation);
@@ -136,6 +144,7 @@ class _PlatformAppState extends State<PlatformApp> {
     _router.dispose();
     _accountBloc.close();
     _themeModeCubit.close();
+    _localeCubit.close();
     super.dispose();
   }
 
@@ -164,39 +173,57 @@ class _PlatformAppState extends State<PlatformApp> {
           // above `MaterialApp` because the mode is what `MaterialApp` is
           // built from, and the Shell's account menu reads it.
           BlocProvider<ThemeModeCubit>.value(value: _themeModeCubit),
+          // Which language the Platform speaks (issue t_c68dfd6e). Provided
+          // above `MaterialApp` for the same reason, and read by the Settings
+          // Screen's own control — the only control that writes it.
+          BlocProvider<LocaleCubit>.value(value: _localeCubit),
         ],
-        child: BlocBuilder<ThemeModeCubit, ThemeMode>(
-          builder: (context, themeMode) => MaterialApp.router(
-            // The name the platform switcher shows, and what the document says
-            // for the instant before the router titles the address — the same
-            // word `index.html` and `manifest.json` carry. Every address's own
-            // title is written through `DocumentChrome` (see
-            // `_applyDocumentTitle`); issue #399.
-            title: 'Platform',
-            debugShowCheckedModeBanner: false,
-            theme: _lightTheme,
-            darkTheme: _darkTheme,
-            themeMode: themeMode,
-            // A field, so the rebuild a mode change causes keeps navigation
-            // history.
-            routerConfig: _router,
-            builder: (context, child) {
-              final account = context.watch<AccountBloc>().state;
-              // This overlay — not a `/loading` or `/error` route — is why the
-              // redirect table returns null (no redirect) for both of these
-              // states: the caller's real URL stays intact underneath while
-              // this renders on top, and no protected route ever gets built
-              // while the state is unresolved.
-              return _PaletteThemeColor(
-                chrome: _documentChrome,
-                child: switch (account) {
-                  AccountResolving() =>
-                    const Scaffold(body: Center(child: CircularProgressIndicator())),
-                  AccountUnavailable(message: final message) => SessionErrorScreen(message: message),
-                  _ => child ?? const SizedBox.shrink(),
-                },
-              );
-            },
+        // Two settings decide what `MaterialApp` is built from, so two
+        // builders: the language outermost (a language change re-reads every
+        // catalogue) and the palette inside it. Both rebuild only the app
+        // widget; `_router` is a field, so navigation history survives either.
+        child: BlocBuilder<LocaleCubit, Locale>(
+          builder: (context, locale) => BlocBuilder<ThemeModeCubit, ThemeMode>(
+            builder: (context, themeMode) => MaterialApp.router(
+              // The name the platform switcher shows, and what the document says
+              // for the instant before the router titles the address — the same
+              // word `index.html` and `manifest.json` carry. Every address's own
+              // title is written through `DocumentChrome` (see
+              // `_applyDocumentTitle`); issue #399.
+              title: 'Platform',
+              debugShowCheckedModeBanner: false,
+              theme: _lightTheme,
+              darkTheme: _darkTheme,
+              themeMode: themeMode,
+              // The language the Platform speaks (issue t_c68dfd6e). Always one
+              // of `supportedLocales`, so a catalogue is always found: the
+              // shipped default is English, exactly the words this client
+              // carried before it could speak twice.
+              locale: locale,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              // A field, so the rebuild a mode change causes keeps navigation
+              // history.
+              routerConfig: _router,
+              builder: (context, child) {
+                final account = context.watch<AccountBloc>().state;
+                // This overlay — not a `/loading` or `/error` route — is why the
+                // redirect table returns null (no redirect) for both of these
+                // states: the caller's real URL stays intact underneath while
+                // this renders on top, and no protected route ever gets built
+                // while the state is unresolved.
+                return _PaletteThemeColor(
+                  chrome: _documentChrome,
+                  child: switch (account) {
+                    AccountResolving() =>
+                      const Scaffold(body: Center(child: CircularProgressIndicator())),
+                    AccountUnavailable(message: final message) =>
+                      SessionErrorScreen(message: message),
+                    _ => child ?? const SizedBox.shrink(),
+                  },
+                );
+              },
+            ),
           ),
         ),
       ),

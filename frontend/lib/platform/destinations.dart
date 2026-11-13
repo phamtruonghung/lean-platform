@@ -159,7 +159,7 @@ abstract final class DestinationGroupNames {
 ///
 /// A group is a label and nothing more: it has no address, cannot be
 /// selected, and opens nothing (#100, ADR-0020). [name] is null only for the
-/// ungrouped bucket at the top of the sidebar, which today holds Home alone
+/// ungrouped bucket at the top of the sidebar, which holds Home and Settings
 /// and renders no heading of its own.
 @immutable
 class DestinationGroup {
@@ -208,6 +208,14 @@ List<DestinationGroup> groupDestinations(List<Destination> destinations) {
 // readable as the spec it implements.
 const List<Destination> platformDestinations = [
   Destination(label: 'Home', icon: Icons.home_outlined, path: Routes.home),
+  // Settings (issue t_c68dfd6e): the personal choices no Module owns — today,
+  // the language the Platform speaks. Ungrouped beside Home rather than filed
+  // under Administration, and offered to every admitted Account, because which
+  // language a person reads is not an administrative privilege. Its `label`
+  // stays the English identity the key `nav-item-Settings` and the tab title
+  // are built from; the sidebar renders `l10n/destination_labels.dart`'s word
+  // for it instead.
+  Destination(label: 'Settings', icon: Icons.settings_outlined, path: Routes.settings),
   // Offered to every approved Account — no `roles` set, the same "everyone
   // admitted may reach this" shape Home already uses. ADR-0009 is exactly
   // the decision that a plant directory is not a secret gated by role.

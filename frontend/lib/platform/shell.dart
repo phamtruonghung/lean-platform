@@ -41,6 +41,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_version.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/destination_labels.dart';
 import '../people_api.dart';
 import '../theme.dart';
 import '../widgets/app_focus_ring.dart';
@@ -410,7 +412,7 @@ class _SkipToContentState extends State<_SkipToContent> {
                   padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
                 ),
                 icon: const Icon(Icons.keyboard_tab),
-                label: const Text('Skip to content'),
+                label: Text(AppLocalizations.of(context).shellSkipToContent),
               ),
             ),
           ),
@@ -449,6 +451,11 @@ class _Sidebar extends StatelessWidget {
     // CAPA list lives under the action log's own `/actions` (issue #211).
     final selectedPath = selectedDestinationPath(destinations, currentLocation);
     final palette = AppColors.of(context);
+    // The sidebar's own words, in the reader's language (issue t_c68dfd6e).
+    // `Destination.label` stays the table's English identity — tests key on
+    // it — so the heading and each entry are translated at the point they are
+    // drawn, from the address that identifies them.
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       key: PlatformShell.sidebarKey,
@@ -488,7 +495,7 @@ class _Sidebar extends StatelessWidget {
                               child: Divider(height: 1, color: palette.edge),
                             )
                           else if (group.name != null)
-                            _GroupHeading(name: group.name!),
+                            _GroupHeading(name: destinationGroupLabel(l10n, group.name!)),
                         for (final destination in group.destinations)
                           _NavItem(
                             destination: destination,
@@ -539,7 +546,7 @@ class _Brand extends StatelessWidget {
             const SizedBox(width: Spacing.sm),
             Expanded(
               child: Text(
-                'Platform',
+                AppLocalizations.of(context).shellBrand,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: theme.colorScheme.onSurface,
@@ -611,6 +618,11 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // The label the reader sees (issue t_c68dfd6e) — English by default, the
+    // catalogue's own word once they have chosen another language. The
+    // `nav-item-<English label>` key below deliberately keeps the English
+    // identity, which is what a test finds.
+    final label = destinationLabel(AppLocalizations.of(context), destination);
     // The selected state's fill and foreground are a component binding
     // (issue #102's AppComponentColors) — this exact pairing repeats
     // nowhere else yet, but it is the shape #102 named the token for.
@@ -672,10 +684,10 @@ class _NavItem extends StatelessWidget {
                 // `DisclosingText` gives a clipped table cell (hover, long press,
                 // and the label read out to assistive technology).
                 child: Tooltip(
-                  message: destination.label,
+                  message: label,
                   waitDuration: const Duration(milliseconds: 500),
                   child: Text(
-                    destination.label,
+                    label,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -703,8 +715,11 @@ class _NavItem extends StatelessWidget {
     );
 
     // On the rail the icon is all there is, so the label has to come back as a
-    // tooltip or the destination is a guess.
-    if (collapsed) item = Tooltip(message: destination.label, child: item);
+    // tooltip or the destination is a guess — in the language the reader chose,
+    // the same word the expanded sidebar draws (issue t_c68dfd6e's review):
+    // handing `destination.label` here left all 44 rail tooltips English while
+    // the sidebar beside them spoke Vietnamese.
+    if (collapsed) item = Tooltip(message: label, child: item);
 
     return KeyedSubtree(
       key: ValueKey('nav-item-${destination.label}'),
@@ -740,6 +755,7 @@ class _AccountFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final name = account.displayName.trim();
     final initial = name.isEmpty ? '?' : name[0].toUpperCase();
 
@@ -757,7 +773,7 @@ class _AccountFooter extends StatelessWidget {
     // control beside it, so the footer looks exactly as it did (issue #270).
     Widget menu(Widget child) => PopupMenuButton<String>(
           key: PlatformShell.accountMenuKey,
-          tooltip: 'Account menu',
+          tooltip: l10n.shellAccountMenu,
           padding: EdgeInsets.zero,
           onSelected: (value) {
             switch (value) {
@@ -768,10 +784,10 @@ class _AccountFooter extends StatelessWidget {
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem<String>(
+            PopupMenuItem<String>(
               key: PlatformShell.changePasswordKey,
               value: _changePasswordValue,
-              child: Text('Change password'),
+              child: Text(l10n.shellChangePassword),
             ),
             // One item that switches between the two palettes (issue #366),
             // checked while the dark one is on screen.
@@ -780,7 +796,7 @@ class _AccountFooter extends StatelessWidget {
               value: _themeToggleValue,
               child: Row(
                 children: [
-                  const Expanded(child: Text('Dark palette')),
+                  Expanded(child: Text(l10n.shellDarkPalette)),
                   if (darkPalette) const Icon(Icons.check, size: 20),
                 ],
               ),
@@ -789,7 +805,7 @@ class _AccountFooter extends StatelessWidget {
           child: child,
         );
     final signOut = IconButton(
-      tooltip: 'Sign out',
+      tooltip: l10n.shellSignOut,
       onPressed: onSignOut,
       icon: const Icon(Icons.logout, size: 20),
       color: theme.colorScheme.onSurfaceVariant,
@@ -797,10 +813,14 @@ class _AccountFooter extends StatelessWidget {
     // The palette switch, beside sign-out (issue #415). The menu item below is
     // still there; this is the visible route to the same cubit, because a
     // setting a person has to find under their own name is one they report as
-    // missing.
+    // missing. Its words come from the catalogue, like the menu item beside it
+    // (issue t_c68dfd6e's review): a hardcoded English tooltip was the last
+    // English surface in a Shell that had already learned to speak Vietnamese.
     final paletteToggle = PaletteToggle(
       darkPalette: darkPalette,
       onPressed: onToggleDarkPalette,
+      darkTooltip: l10n.shellDarkPalette,
+      lightTooltip: l10n.shellLightPalette,
     );
 
     return Column(

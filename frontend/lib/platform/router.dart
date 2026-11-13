@@ -192,6 +192,7 @@ import 'destinations.dart';
 import 'dialog_page.dart';
 import 'floor_device_gateway.dart';
 import 'not_found_screen.dart';
+import 'settings_screen.dart';
 import 'shell.dart';
 import 'theme_mode_cubit.dart';
 
@@ -203,6 +204,12 @@ abstract final class Routes {
   static const String approvals = '/approvals';
   static const String accounts = '/accounts';
   static const String roles = '/roles';
+
+  /// Settings (issue t_c68dfd6e): the personal choices that belong to no
+  /// Module — today, the language the Platform speaks. An address of its own,
+  /// like every Screen (ADR-0019/ADR-0021), so it can be linked to and
+  /// bookmarked.
+  static const String settings = '/settings';
   static const String assets = '/assets';
   static const String workOrders = '/work-orders';
   static const String requests = '/requests';
@@ -579,6 +586,7 @@ const Map<String, String> _screenTitles = <String, String>{
   '/meters': 'Meters',
   '/job-plans': 'Job plans',
   '/accounts': 'Accounts',
+  '/settings': 'Settings',
 };
 
 /// The app's own name, and the tail every title carries — the same word
@@ -823,6 +831,15 @@ GoRouter buildRouter({required AccountBloc accountBloc, String? initialLocation}
                 child: HomeScreen(account: account.account),
               );
             },
+          ),
+          // Settings (issue t_c68dfd6e): the personal choices that belong to no
+          // Module — today, the language the Platform speaks. Offered to every
+          // approved Account, like Home above and the Directory below, so there
+          // is no per-Screen permission check here and none on its Destination:
+          // which language a person reads is not an administrative privilege.
+          GoRoute(
+            path: Routes.settings,
+            builder: (context, state) => const SettingsScreen(),
           ),
           // Offered to every approved Account (AC1) — unlike every other
           // route below, there is no per-Screen role check here at all:

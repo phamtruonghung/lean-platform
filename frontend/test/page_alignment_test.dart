@@ -74,6 +74,7 @@ const _pages = <_Page>[
   // What an Account may do (issue #492, ADR-0061): title, description and the
   // first role row all start at the card's own inset, like the job role
   // catalogue it is laid out after.
+  _Page('/settings', 'lib/platform/settings_screen.dart', 'Settings', 'How the Platform looks'),
   _Page('/roles', 'lib/people/roles_screen.dart', 'Roles', 'What an Account may do'),
   _Page('/skills', 'lib/people/skills_screen.dart', 'Skills', 'What the plant qualifies'),
   // The two cost catalogues (issue #252). Flat lists of rows at the card's own

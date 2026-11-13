@@ -1,0 +1,130 @@
+{
+  "@@locale": "en",
+  "shellBrand": "Platform",
+  "@shellBrand": {
+    "description": "The app's own name, drawn in the sidebar's brand row."
+  },
+  "shellSkipToContent": "Skip to content",
+  "@shellSkipToContent": {
+    "description": "The skip link that appears at the top of the Shell when it takes keyboard focus."
+  },
+  "shellAccountMenu": "Account menu",
+  "@shellAccountMenu": {
+    "description": "Tooltip on the account footer, which opens the account menu."
+  },
+  "shellChangePassword": "Change password",
+  "@shellChangePassword": {
+    "description": "Account menu item that opens the change-password dialog."
+  },
+  "shellDarkPalette": "Dark palette",
+  "@shellDarkPalette": {
+    "description": "Account menu item that switches between the light and dark palettes, and the tooltip on the Shell's palette switch when a tap gives the dark palette."
+  },
+  "shellLightPalette": "Light palette",
+  "@shellLightPalette": {
+    "description": "Tooltip on the Shell's palette switch when a tap gives the light palette."
+  },
+  "shellSignOut": "Sign out",
+  "@shellSignOut": {
+    "description": "Tooltip on the sign-out button in the Shell's footer."
+  },
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Title of the Settings Screen, and its Destination in the sidebar."
+  },
+  "settingsDescription": "How the Platform looks, and the language it speaks.",
+  "@settingsDescription": {
+    "description": "One-line description under the Settings title."
+  },
+  "settingsLanguage": "Language",
+  "@settingsLanguage": {
+    "description": "Heading of the Settings row that chooses the interface language."
+  },
+  "settingsLanguageHelp": "Applies across the whole Platform at once, and is remembered on this browser.",
+  "@settingsLanguageHelp": {
+    "description": "What the language control does, under its heading."
+  },
+  "settingsLanguageEnglish": "English",
+  "@settingsLanguageEnglish": {
+    "description": "The English option of the language control. Written in the language it names, so a reader who cannot read the current language can still find their own."
+  },
+  "settingsLanguageVietnamese": "Vietnamese",
+  "@settingsLanguageVietnamese": {
+    "description": "The Vietnamese option of the language control. Written in the language it names, so a reader who cannot read the current language can still find their own."
+  },
+  "groupPeople": "People",
+  "@groupPeople": {
+    "description": "Sidebar heading over the People Module's Destinations."
+  },
+  "groupMaintenance": "Maintenance",
+  "@groupMaintenance": {
+    "description": "Sidebar heading over the Maintenance Module's Destinations."
+  },
+  "groupQuality": "Quality",
+  "@groupQuality": {
+    "description": "Sidebar heading over the Quality Module's Destinations."
+  },
+  "groupActions": "Actions",
+  "@groupActions": {
+    "description": "Sidebar heading over the Actions Module's Destinations."
+  },
+  "groupSafety": "Safety",
+  "@groupSafety": {
+    "description": "Sidebar heading over the Safety Module's Destinations."
+  },
+  "groupProduction": "Production",
+  "@groupProduction": {
+    "description": "Sidebar heading over the Production Module's Destinations."
+  },
+  "groupInsights": "Insights",
+  "@groupInsights": {
+    "description": "Sidebar heading over the KPI Module's Destinations."
+  },
+  "groupAdministration": "Administration",
+  "@groupAdministration": {
+    "description": "Sidebar heading over accounts and roles."
+  },
+  "navHome": "Home",
+  "navDirectory": "Directory",
+  "navJobRoles": "Job roles",
+  "navSkills": "Skills",
+  "navOrgUnits": "Org Units",
+  "navAttendance": "Attendance",
+  "navTraining": "Training",
+  "navMySignature": "My signature",
+  "navLeaveRequests": "Leave requests",
+  "navCostRates": "Cost rates",
+  "navProductStandardCosts": "Product standard costs",
+  "navAssets": "Assets",
+  "navParts": "Parts",
+  "navStores": "Stores",
+  "navWorkOrders": "Work orders",
+  "navMyRequests": "My requests",
+  "navTriageQueue": "Triage queue",
+  "navDowntime": "Downtime",
+  "navPmSchedules": "PM schedules",
+  "navMeters": "Meters",
+  "navJobPlans": "Job plans",
+  "navTierBoard": "Tier board",
+  "navSkillCoverage": "Skill coverage",
+  "navKpiCatalogue": "KPI catalogue",
+  "navKpiReview": "KPI review",
+  "navActionLog": "Action log",
+  "navProducts": "Products",
+  "navDefectCodes": "Defect codes",
+  "navNonConformances": "Non-conformances",
+  "navCapas": "CAPAs",
+  "navCustomers": "Customers",
+  "navCustomerComplaints": "Customer complaints",
+  "navSlideShow": "Slide show",
+  "navSuppliers": "Suppliers",
+  "navSupplierNcrs": "Supplier NCRs",
+  "navIncidents": "Incidents",
+  "navObservations": "Observations",
+  "navInjuryTypes": "Injury types",
+  "navBodyParts": "Body parts",
+  "navShiftHandovers": "Shift handovers",
+  "navApprovals": "Approvals",
+  "navAccounts": "Accounts",
+  "navRoles": "Roles"
+}
