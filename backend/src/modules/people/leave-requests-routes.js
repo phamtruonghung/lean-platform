@@ -30,6 +30,23 @@
  *
  * `canDecide` and `canCancel` ride on every serialised request, computed for
  * the calling Account, so a client never re-implements these rules.
+ *
+ * **The ADR-0061 retrofit (issue #509), and the trap this file sets.** The two
+ * reads ask `PPL_LEAVE_REQUESTS_DISPLAY`, which is seeded on ROLE_STANDARD — the
+ * default group every approved Account carries — so the list and the one-request
+ * read admit exactly the Accounts they admitted before, and the reach filter
+ * inside them (not the permission) is still what hides another person's note.
+ * That code's own description says "the caller's own leave requests **and those
+ * they decide**" — one code for two audiences — and gating the read with it is
+ * right precisely because these routes serve *one* read: the list is a single
+ * query filtered by reach, not two endpoints with two audiences, and everybody
+ * holds the code. The decision routes are the other half: approving and
+ * rejecting would ask `PPL_LEAVE_REQUESTS_DECIDE`, seeded on supervisor-and-above,
+ * while ADR-0042 admits any role holding an edit Grant on the request's Org Unit
+ * (an operator's edit Grant can approve today) — a finding on the retrofit card,
+ * so no code is added there. Submitting and cancelling name no code at all:
+ * submitting is the person's own act or an edit-Grant one, and cancelling is the
+ * requester's or the subject's by construction.
  */
 
 const express = require('express');
@@ -40,6 +57,12 @@ const leave = require('./leave-requests');
 const { notFound, parseId, handleError, httpError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
+
+// The list-and-one-request read code (ADR-0061, issue #509), seeded on
+// ROLE_STANDARD — the default group every approved Account carries — so it
+// refuses nobody. The reach filter inside the handlers stays what hides a
+// note, and the decision routes keep their edit-Grant standing (finding).
+const mayReadLeaveRequests = authorization.requirePermission('PPL_LEAVE_REQUESTS_DISPLAY');
 
 // The Org Units the caller's edit Grants reach, as a Set of id strings — or
 // null for "everywhere" (an administrator). A read-only Grant contributes
@@ -136,7 +159,7 @@ router.post('/leave-requests', authenticate, requireActive, async (req, res, nex
   }
 });
 
-router.get('/leave-requests', authenticate, requireActive, async (req, res, next) => {
+router.get('/leave-requests', authenticate, requireActive, mayReadLeaveRequests, async (req, res, next) => {
   try {
     const view = leave.requireView(req.query.view);
     const status = leave.requireStatus(req.query.status);
@@ -165,7 +188,7 @@ async function loadVisible(req) {
   return { leaveRequest, reach };
 }
 
-router.get('/leave-requests/:id', authenticate, requireActive, async (req, res, next) => {
+router.get('/leave-requests/:id', authenticate, requireActive, mayReadLeaveRequests, async (req, res, next) => {
   try {
     const { leaveRequest, reach } = await loadVisible(req);
     res.json({ leaveRequest: withCallerFlags(req.account, reach, leaveRequest) });

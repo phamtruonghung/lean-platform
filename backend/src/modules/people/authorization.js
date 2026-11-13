@@ -383,17 +383,11 @@ function requireAdmin(req, res, next) {
 // requireAdmin plus a stable machine-readable `code` beside the unchanged
 // sentence, so a client can match the refusal without matching its wording
 // (issue #252: every cost catalogue write refusal carries one).
-const ADMIN_ROLE_REQUIRED = 'ADMIN_ROLE_REQUIRED';
-
-function requireAdminWithCode(req, res, next) {
-  if (!isAdmin(req.account)) {
-    return res.status(403).json({
-      message: 'This action requires the administrator role.',
-      code: ADMIN_ROLE_REQUIRED
-    });
-  }
-  return next();
-}
+//
+// Deleted by the ADR-0061 retrofit (issue #509): its only two callers — the two
+// cost-catalogue route files — now ask `PPL_COST_RATES_MAINTAIN` /
+// `PPL_PRODUCT_COSTS_MAINTAIN`, whose refusal already carries
+// `PERMISSION_REQUIRED` and the code, so this wrapper has no importer left.
 
 // "May this Account use this function at all?" — the role half of the model,
 // asked with a permission code from `permissions.js` (issue #492, ADR-0061).
@@ -538,7 +532,6 @@ module.exports = {
   permissionsForAccount,
   requirePermission,
   requireAdmin,
-  requireAdminWithCode,
   requireOrgUnitScope,
   requireSiteScope,
   requireSiteAdmin

@@ -724,35 +724,43 @@ test('a non-administrator is refused 403 with a stable code on every write, and 
   });
   assert.strictEqual(seedCost.status, 201, JSON.stringify(seedCost.body));
 
+  // Each refusal now names the permission code rather than the role (ADR-0061,
+  // issue #509): same 403, same caller, same six writes. The cost-rate trio asks
+  // PPL_COST_RATES_MAINTAIN, the product-cost trio PPL_PRODUCT_COSTS_MAINTAIN —
+  // both seeded on ROLE_ADMIN alone, the exact set the old comparison admitted.
   const refusals = [
-    await createCostRate(memberToken, {
+    ['PPL_COST_RATES_MAINTAIN', await createCostRate(memberToken, {
       scopeType: 'site',
       scopeId: site.id,
       rateType: 'labor_per_hour',
       amount: 1,
       effectiveFrom: '2030-01-01'
-    }),
-    await correctCostRate(memberToken, seedRate.body.costRate.id, { amount: 2 }),
-    await reviseCostRate(memberToken, seedRate.body.costRate.id, {
+    })],
+    ['PPL_COST_RATES_MAINTAIN', await correctCostRate(memberToken, seedRate.body.costRate.id, { amount: 2 })],
+    ['PPL_COST_RATES_MAINTAIN', await reviseCostRate(memberToken, seedRate.body.costRate.id, {
       amount: 2,
       effectiveFrom: '2026-06-01'
-    }),
-    await createProductCost(memberToken, {
+    })],
+    ['PPL_PRODUCT_COSTS_MAINTAIN', await createProductCost(memberToken, {
       productId: product.id,
       standardCost: 1,
       effectiveFrom: '2030-01-01'
-    }),
-    await correctProductCost(memberToken, seedCost.body.productCost.id, { standardCost: 2 }),
-    await reviseProductCost(memberToken, seedCost.body.productCost.id, {
+    })],
+    ['PPL_PRODUCT_COSTS_MAINTAIN', await correctProductCost(memberToken, seedCost.body.productCost.id, { standardCost: 2 })],
+    ['PPL_PRODUCT_COSTS_MAINTAIN', await reviseProductCost(memberToken, seedCost.body.productCost.id, {
       standardCost: 2,
       effectiveFrom: '2027-06-01'
-    })
+    })]
   ];
 
-  for (const refusal of refusals) {
+  for (const [permission, refusal] of refusals) {
     assert.strictEqual(refusal.status, 403, JSON.stringify(refusal.body));
-    assert.strictEqual(refusal.body.message, 'This action requires the administrator role.');
-    assert.strictEqual(refusal.body.code, 'ADMIN_ROLE_REQUIRED');
+    assert.strictEqual(
+      refusal.body.message,
+      `This action requires the ${permission} permission.`
+    );
+    assert.strictEqual(refusal.body.code, 'PERMISSION_REQUIRED');
+    assert.strictEqual(refusal.body.permission, permission);
   }
 
   // Nothing the operator tried actually landed.

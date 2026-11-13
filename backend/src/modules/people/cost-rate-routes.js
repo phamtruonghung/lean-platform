@@ -18,19 +18,22 @@
  *     Rates are commercially sensitive and change rarely, so issue #252 takes
  *     ADR-0005's shared-catalogue shape rather than adding an authority to a
  *     Grant. There is no Org Unit to scope a catalogue write by, so the scope
- *     half of "existence before scope" is the role check.
+ *     half of "existence before scope" is the permission check.
  *
- * `requireAdmin` is defined here rather than imported from `./authorization`,
- * matching floor-routes.js's own local copy in this same Module and
- * injury-type-routes.js's in Safety. It adds one thing those do not: a stable
- * `code` beside the unchanged sentence, so a client can match the refusal
- * without matching its wording (issue #119's own reasoning for `httpError`'s
- * third argument, and issue #252's criterion that every write refusal carries
- * one).
+ * **The ADR-0061 retrofit (issue #509).** The three writes ask
+ * `PPL_COST_RATES_MAINTAIN` in place of a role comparison — seeded on ROLE_ADMIN
+ * alone, the exact set that comparison admitted, so no Account gained or lost
+ * access; the refusal now carries `PERMISSION_REQUIRED` and the code instead of
+ * `ADMIN_ROLE_REQUIRED` (the one place in the suite that pinned the old code).
+ * The three reads keep no gate, and that is a finding on the card rather than a
+ * retrofit: the only code naming this catalogue is its *maintenance* code, which
+ * is administrator-only, while `GET /cost-rates/resolution` is how a
+ * non-administrator reads the cost the tier board already shows them — applying
+ * it would refuse those readers.
  *
  * Existence before scope on every write (AGENTS.md §6): the cost rate named in
  * the URL is resolved first — a 404 naming it, malformed id included — and only
- * then is `requireAdmin` asked, so the same address answers 404 for a rate that
+ * then is the permission asked, so the same address answers 404 for a rate that
  * is not there and 403 for one that is.
  */
 
@@ -41,7 +44,12 @@ const { parseId, notFound, handleError } = require('./errors');
 
 const router = express.Router();
 
-const { requireAdminWithCode: requireAdmin } = require('./authorization');
+const { requirePermission } = require('./authorization');
+
+// The catalogue's own maintenance code (ADR-0061, issue #509), seeded on
+// ROLE_ADMIN alone — the exact set the administrator comparison it replaces
+// admitted — and read fresh from the roles tables on every request.
+const mayMaintainCostRates = requirePermission('PPL_COST_RATES_MAINTAIN');
 
 // The cost rate named in the URL must exist before anything else — a clean 404,
 // even for an administrator, and even for a malformed id (`parseId` answers null
@@ -108,7 +116,7 @@ router.get('/cost-rates/resolution', authenticate, requireActive, async (req, re
 // takes effect. An overlapping period is the one refusal this route can raise
 // with no rate of its own to name, which is why it is mapped in the service
 // (the EXCLUDE constraint's 23P01) rather than resolved here.
-router.post('/cost-rates', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.post('/cost-rates', authenticate, requireActive, mayMaintainCostRates, async (req, res, next) => {
   try {
     const costRate = await costRates.createCostRate(req.body ?? {}, req.account.id);
     res.status(201).json({ costRate });
@@ -126,7 +134,7 @@ router.patch(
   authenticate,
   requireActive,
   requireKnownCostRate,
-  requireAdmin,
+  mayMaintainCostRates,
   async (req, res, next) => {
     try {
       const costRate = await costRates.updateCostRate(
@@ -151,7 +159,7 @@ router.post(
   authenticate,
   requireActive,
   requireKnownCostRate,
-  requireAdmin,
+  mayMaintainCostRates,
   async (req, res, next) => {
     try {
       const { closed, opened } = await costRates.reviseCostRate(

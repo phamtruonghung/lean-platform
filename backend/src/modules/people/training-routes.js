@@ -48,6 +48,19 @@
  * value (400, a decline carrying one included); `stored` resolves the caller's
  * own current Signature and `image` writes a one-off row for the caller's own
  * Employee, so no Signature id is ever taken from the request.
+ *
+ * **The ADR-0061 retrofit (issue #509).** The four reads ask
+ * `PPL_TRAINING_DISPLAY`, seeded on ROLE_STANDARD — the default group every
+ * approved Account carries — so the register, one record, the caller's own
+ * to-confirm list and a Trainee's Signature image admit exactly the Accounts
+ * they admitted before; the draft rule inside them is unchanged. The seven
+ * writes (raise, correct, discard, add and remove a Trainee, evaluate one, send)
+ * and the Trainee's own answer keep their edit-Grant standing: `PPL_TRAINING_CHANGE`
+ * is seeded on supervisor-and-above, while ADR-0043's rule admits any role
+ * holding an edit Grant on the record's Org Unit, so adding the code would
+ * refuse an operator's edit Grant today. Findings on the retrofit card, not
+ * changes made here — and the answer route must never take a code at all: it is
+ * the Trainee's own act, not an authority over a record.
  */
 
 const express = require('express');
@@ -60,6 +73,13 @@ const { parseApplied } = require('./signatures');
 const { notFound, parseId, handleError, httpError, OUTSIDE_GRANTED_ORG_UNITS } = require('./errors');
 
 const router = express.Router();
+
+// The register's own read code (ADR-0061, issue #509), seeded on ROLE_STANDARD —
+// the default group every approved Account carries — so it refuses nobody who
+// could read the register before. The writes keep their edit-Grant standing:
+// `PPL_TRAINING_CHANGE` is supervisor-and-above, ADR-0043's rule is any write
+// Grant, so that is a finding on the card rather than a gate here.
+const mayReadTraining = authorization.requirePermission('PPL_TRAINING_DISPLAY');
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -280,7 +300,7 @@ router.post('/training/trainees/:traineeId/answer', authenticate, requireActive,
 // The Signature applied to a Trainee's answer, as the image itself. Under the
 // record's own read rule (any approved Account, ADR-0009 and ADR-0052): a
 // Signature is not a secret, and this is the only door that returns one.
-router.get('/training/trainees/:traineeId/signature', authenticate, requireActive, async (req, res, next) => {
+router.get('/training/trainees/:traineeId/signature', authenticate, requireActive, mayReadTraining, async (req, res, next) => {
   try {
     const image = await training.getTraineeSignatureImage(req.params.traineeId);
     res.set('Cache-Control', 'private, no-cache');
@@ -292,7 +312,7 @@ router.get('/training/trainees/:traineeId/signature', authenticate, requireActiv
 
 // Declared before GET /training/:id on purpose: Express matches in
 // declaration order, so the other order reads `to-confirm` as a record id.
-router.get('/training/to-confirm', authenticate, requireActive, async (req, res, next) => {
+router.get('/training/to-confirm', authenticate, requireActive, mayReadTraining, async (req, res, next) => {
   try {
     // A caller whose Account is linked to no Employee has nothing waiting on
     // them: an empty list, not an error.
@@ -303,7 +323,7 @@ router.get('/training/to-confirm', authenticate, requireActive, async (req, res,
   }
 });
 
-router.get('/training', authenticate, requireActive, async (req, res, next) => {
+router.get('/training', authenticate, requireActive, mayReadTraining, async (req, res, next) => {
   try {
     const from = requireQueryDate('from', req.query.from);
     const to = requireQueryDate('to', req.query.to);
@@ -338,7 +358,7 @@ router.get('/training', authenticate, requireActive, async (req, res, next) => {
   }
 });
 
-router.get('/training/:id', authenticate, requireActive, async (req, res, next) => {
+router.get('/training/:id', authenticate, requireActive, mayReadTraining, async (req, res, next) => {
   try {
     const record = await training.getTrainingRecord(req.params.id); // 404s.
     if (record.status === 'draft') {

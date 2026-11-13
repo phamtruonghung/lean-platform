@@ -9,11 +9,24 @@
  * needed - the Signature is the person's own, not a record at an Org Unit.
  * An Account linked to no Employee (an administrator need not be one) has no
  * Signature to keep: every route answers 404 for it.
+ *
+ * **The ADR-0061 retrofit (issue #509), and the trap this file sets.** The three
+ * `PUT`/`GET`/`DELETE /me/signature` routes ask `PPL_SIGNATURE_OWN` — a
+ * self-service code, not a role door: it is seeded on every role including
+ * ROLE_STANDARD, the default group every approved Account carries, so it refuses
+ * nobody who could keep a Signature before, and applying an administrator check
+ * or a maintain code here would be the wrong shape entirely (a person's own mark
+ * is not an authority over a record). The administrator's four
+ * `/employees/:id/signature` routes are the other shape: they change somebody
+ * else's record on behalf of an Employee with no Account, so they ask
+ * `PPL_DIRECTORY_CHANGE` — seeded on ROLE_ADMIN alone, the same set
+ * `requireAdmin` admitted — and they must never ask `PPL_SIGNATURE_OWN`, which
+ * says nothing about acting for another person.
  */
 
 const express = require('express');
 const { authenticate, requireActive } = require('./middleware');
-const { requireAdmin } = require('./authorization');
+const { requirePermission } = require('./authorization');
 const { getEmployee } = require('./directory');
 const { notFound, httpError, parseId, handleError } = require('./errors');
 const {
@@ -26,6 +39,13 @@ const {
 
 const router = express.Router();
 
+// The self-service code for a person's own mark, and the administrator's
+// directory-maintenance code for somebody else's record (ADR-0061, issue #509).
+// Each is seeded on exactly the set its old rule admitted — OWN on every role
+// including the default group, DIRECTORY_CHANGE on ROLE_ADMIN alone.
+const mayKeepOwnSignature = requirePermission('PPL_SIGNATURE_OWN');
+const mayMaintainEmployeeSignatures = requirePermission('PPL_DIRECTORY_CHANGE');
+
 function ownEmployeeId(req) {
   const employeeId = req.account.employeeId;
   if (employeeId === null || employeeId === undefined) {
@@ -34,7 +54,7 @@ function ownEmployeeId(req) {
   return employeeId;
 }
 
-router.put('/me/signature', authenticate, requireActive, async (req, res, next) => {
+router.put('/me/signature', authenticate, requireActive, mayKeepOwnSignature, async (req, res, next) => {
   try {
     const signature = await keepSignature(req.account.id, ownEmployeeId(req), req.body ?? {});
     res.json({ signature });
@@ -43,7 +63,7 @@ router.put('/me/signature', authenticate, requireActive, async (req, res, next) 
   }
 });
 
-router.get('/me/signature', authenticate, requireActive, async (req, res, next) => {
+router.get('/me/signature', authenticate, requireActive, mayKeepOwnSignature, async (req, res, next) => {
   try {
     const image = await getCurrentSignature(ownEmployeeId(req));
     res.set('Cache-Control', 'private, no-cache');
@@ -53,7 +73,7 @@ router.get('/me/signature', authenticate, requireActive, async (req, res, next) 
   }
 });
 
-router.delete('/me/signature', authenticate, requireActive, async (req, res, next) => {
+router.delete('/me/signature', authenticate, requireActive, mayKeepOwnSignature, async (req, res, next) => {
   try {
     await removeSignature(req.account.id, ownEmployeeId(req));
     res.status(204).end();
@@ -74,7 +94,7 @@ async function activeEmployeeId(req) {
   return id;
 }
 
-router.put('/employees/:id/signature', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.put('/employees/:id/signature', authenticate, requireActive, mayMaintainEmployeeSignatures, async (req, res, next) => {
   try {
     const employeeId = await activeEmployeeId(req);
     await requireNoAccount(employeeId);
@@ -85,7 +105,7 @@ router.put('/employees/:id/signature', authenticate, requireActive, requireAdmin
   }
 });
 
-router.get('/employees/:id/signature', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.get('/employees/:id/signature', authenticate, requireActive, mayMaintainEmployeeSignatures, async (req, res, next) => {
   try {
     const image = await getCurrentSignature(await activeEmployeeId(req));
     res.set('Cache-Control', 'private, no-cache');
@@ -96,7 +116,7 @@ router.get('/employees/:id/signature', authenticate, requireActive, requireAdmin
 });
 
 // Who set the current Signature and whether for the Employee or by them.
-router.get('/employees/:id/signature/details', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.get('/employees/:id/signature/details', authenticate, requireActive, mayMaintainEmployeeSignatures, async (req, res, next) => {
   try {
     const signature = await getCurrentSignatureDetails(await activeEmployeeId(req));
     res.json({ signature });
@@ -105,7 +125,7 @@ router.get('/employees/:id/signature/details', authenticate, requireActive, requ
   }
 });
 
-router.delete('/employees/:id/signature', authenticate, requireActive, requireAdmin, async (req, res, next) => {
+router.delete('/employees/:id/signature', authenticate, requireActive, mayMaintainEmployeeSignatures, async (req, res, next) => {
   try {
     const employeeId = await activeEmployeeId(req);
     await requireNoAccount(employeeId);
