@@ -7,17 +7,19 @@
  * read and written by the same people:
  *
  *   - Reading is Site-wide: `GET /sites/:siteId/complaints` sits behind
- *     `authenticate` + `requireActive`, a known-Site check and
+ *     `authenticate` + `requireActive`, a known-Site check,
  *     `people.canSeeSite` — any Grant, read or write, on any Org Unit within
- *     the Site — and nothing else. One complaint's own read asks the same
- *     question about its own Site. Org Unit scope decides where an Account may
- *     act, not what it may know about (ADR-0009).
- *   - Recording a complaint is an edit Grant reaching its Org Unit, which is
- *     the ticket's own sentence: `people.canAct({ …, write: true })` at the Org
- *     Unit the complaint is filed at, or an administrator's role. `write: true`
- *     is spelled out because it defaults to FALSE, and a recording route that
- *     forgot it would be authorised by any read Grant with no error anywhere to
- *     notice.
+ *     the Site — and `QLT_COMPLAINTS_DISPLAY` (seeded on ROLE_STANDARD, the
+ *     default group every approved Account carries, so it refuses nobody who
+ *     could reach the register before it). One complaint's own read asks the
+ *     same question about its own Site. Org Unit scope decides where an Account
+ *     may act, not what it may know about (ADR-0009).
+ *   - Recording a complaint asks `QLT_COMPLAINTS_RECORD` beside an edit Grant
+ *     reaching its Org Unit, which is the ticket's own sentence:
+ *     `people.canAct({ …, write: true })` at the Org Unit the complaint is filed
+ *     at. `write: true` is spelled out because it defaults to FALSE, and a
+ *     recording route that forgot it would be authorised by any read Grant with
+ *     no error anywhere to notice.
  *   - Closing one with its response, linking an existing Non-conformance and
  *     recording one from the complaint are the same write, gated on the same
  *     Grant: they are work on the record, not decisions about the product. The
@@ -36,6 +38,22 @@
  * `canAct`. On the routes that act on one complaint the record is resolved
  * before the Grant question for the same reason.
  *
+ * **The ADR-0061 retrofit (issue #503).** Four routes ask
+ * `people.requirePermission` beside the Grant question they already asked: the
+ * register and one complaint's read (`QLT_COMPLAINTS_DISPLAY`), recording a
+ * complaint (`QLT_COMPLAINTS_RECORD`), and recording a Non-conformance from one
+ * (`QLT_NONCONFORMANCES_RECORD` — the act that route performs is recording a
+ * Non-conformance, so that is the code that names it). All three are seeded on
+ * ROLE_STANDARD, so none refuses an Account that could reach its route before
+ * it, and the Grant half of every route is untouched.
+ *
+ * Closing a complaint with its response and linking an existing Non-conformance
+ * are left on their Grant check and recorded as findings: no code in the
+ * catalogue names responding to a complaint or linking one to a Non-conformance
+ * (`QLT_COMPLAINTS_RECORD` names recording one, which is the POST above).
+ * Adding a code that names something else would change what the route means
+ * rather than record what it does.
+ *
  * A query value that names a closed set is checked, not forwarded (ADR-0023's
  * rule read the other way round): `?status=opne` is a mistake the caller can
  * fix, and answering it with an empty list would hide the typo behind what looks
@@ -48,6 +66,13 @@ const customerComplaints = require('./customer-complaints');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
+
+// The three codes this retrofit asks (ADR-0061, issue #503). All are seeded on
+// ROLE_STANDARD — the default group every approved Account carries — which is
+// what makes them a retrofit rather than a narrowing.
+const mayReadComplaints = people.requirePermission('QLT_COMPLAINTS_DISPLAY');
+const mayRecordComplaint = people.requirePermission('QLT_COMPLAINTS_RECORD');
+const mayRecordNonconformance = people.requirePermission('QLT_NONCONFORMANCES_RECORD');
 
 // Mirrors asset-routes.js's, action-routes.js's and
 // nonconformance-routes.js's own requireKnownSite exactly: an unknown Site is a
@@ -136,6 +161,7 @@ router.get(
   people.requireActive,
   requireKnownSite,
   requireSiteVisible,
+  mayReadComplaints,
   async (req, res, next) => {
     try {
       const status = requireQueryMemberOf(
@@ -176,6 +202,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireKnownSite,
+  mayRecordComplaint,
   async (req, res, next) => {
     try {
       const body = req.body ?? {};
@@ -217,6 +244,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireComplaintVisible,
+  mayReadComplaints,
   (req, res) => res.json({ complaint: req.complaint })
 );
 
@@ -252,6 +280,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireComplaintWriteScope,
+  mayRecordNonconformance,
   async (req, res, next) => {
     try {
       const { nonconformance, complaint } =

@@ -15,8 +15,9 @@
  * one catalogue shared by every Site (ADR-0005).
  *
  * Mirrors job-roles.js/products.js: no HTTP, no caller awareness, no other
- * Module. defect-code-routes.js owns authenticate/requireActive/requireAdmin
- * and the 404s that precede them.
+ * Module. defect-code-routes.js owns authenticate/requireActive/
+ * `QLT_DEFECT_CODES_DISPLAY` / `QLT_DEFECT_CODES_CHANGE` and the 404s that
+ * precede them.
  *
  * Deactivation, never deletion, and more strongly here than anywhere: a
  * deactivated Defect code is what an old Non-conformance still points at.

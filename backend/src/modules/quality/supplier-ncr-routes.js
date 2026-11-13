@@ -42,6 +42,21 @@
  * rule read the other way round): `?status=oppen` is a mistake the caller can
  * fix, and answering it with an empty list would hide the typo behind what looks
  * like a quiet fortnight.
+ *
+ * **The ADR-0061 retrofit (issue #503).** Three of these seven routes ask
+ * `people.requirePermission` beside the Grant question they already asked: the
+ * register and one NCR's read (`QLT_SUPPLIER_NCRS_DISPLAY`, seeded on
+ * ROLE_STANDARD so it refuses nobody who could read the register before), and
+ * recording a Non-conformance from an NCR (`QLT_NONCONFORMANCES_RECORD` — the act
+ * is recording a Non-conformance, and that is the code that names it).
+ *
+ * The other four are recorded as findings rather than retrofitted. Recording an
+ * NCR would ask `QLT_SUPPLIER_NCRS_RECORD`, which the seed gives to ROLE_ADMIN
+ * alone, where today any edit Grant reaching the Org Unit may record one — that
+ * would narrow every recorder in the plant to the administrator. Recording the
+ * disposition, closing and linking an existing Non-conformance would ask the same
+ * code, and no code in the catalogue names a disposition, a close or a link at
+ * all. The Grant question these four ask is untouched.
  */
 
 const express = require('express');
@@ -51,6 +66,13 @@ const suppliers = require('./suppliers');
 const { httpError, notFound, parseId, handleError } = require('./errors');
 
 const router = express.Router();
+
+// The two codes this retrofit asks (ADR-0061, issue #503). `QLT_SUPPLIER_NCRS_DISPLAY`
+// is seeded on ROLE_STANDARD, so the register's gate refuses nobody who could
+// reach it before; `QLT_NONCONFORMANCES_RECORD` is the code that names recording
+// a Non-conformance, which is what the one retrofitted write below performs.
+const mayReadSupplierNcrs = people.requirePermission('QLT_SUPPLIER_NCRS_DISPLAY');
+const mayRecordNonconformance = people.requirePermission('QLT_NONCONFORMANCES_RECORD');
 
 // Mirrors customer-complaint-routes.js's own requireKnownSite exactly: an
 // unknown Site is a 404, never a silently empty 200.
@@ -137,6 +159,7 @@ router.get(
   people.requireActive,
   requireKnownSite,
   requireSiteVisible,
+  mayReadSupplierNcrs,
   async (req, res, next) => {
     try {
       const status = requireQueryMemberOf(
@@ -231,6 +254,7 @@ router.get(
   people.authenticate,
   people.requireActive,
   requireSupplierNcrVisible,
+  mayReadSupplierNcrs,
   (req, res) => res.json({ supplierNcr: req.supplierNcr })
 );
 
@@ -285,6 +309,7 @@ router.post(
   people.authenticate,
   people.requireActive,
   requireSupplierNcrWriteScope,
+  mayRecordNonconformance,
   async (req, res, next) => {
     try {
       const { nonconformance, supplierNcr } =

@@ -49,6 +49,14 @@
  *     decision — the same line nonconformance-routes.js draws — so it is the
  *     one write the floor door has, which is why this file has exactly one.
  *
+ * The ADR-0061 retrofit (issue #503) leaves these three routes alone, and they
+ * are recorded as findings rather than retrofitted: a permission is asked of an
+ * Account (`requirePermission` reads `req.account`), and the floor door is the
+ * one door in this Module reached with a device credential and a technician's
+ * identification instead — ADR-0016's whole point is that the device is not an
+ * Account, and the technician's window is not a session. The device's
+ * Org Unit reach is the authorisation this door has, and it is unchanged.
+ *
  * ## The door, and the ordering behind it
  *
  * `x-floor-device` selects this door and `x-technician-identification` says

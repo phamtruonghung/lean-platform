@@ -33,6 +33,14 @@
  *
  * Existence before scope, in the order AGENTS.md §6 fixes: the record (404), then
  * its Site's visibility (403 with People's own sentence), then the write scope.
+ *
+ * **The ADR-0061 retrofit (issue #503).** Every one of these eight routes asks
+ * `people.requirePermission` beside the Grant question it already asked: each
+ * read asks the record kind's own `*_DISPLAY` code and each write its
+ * `*_RECORD` code, because a picture is part of the record it hangs off. All four
+ * codes are seeded on ROLE_STANDARD — the default group every approved Account
+ * carries — so no gate here refuses an Account that could reach these addresses
+ * before it, and the Grant half is untouched.
  */
 
 const express = require('express');
@@ -64,12 +72,19 @@ const MOUNTS = [
     kind: 'nonconformance',
     base: '/nonconformances',
     label: 'Non-conformance',
+    // The register's own codes (ADR-0061, issue #503). Both are seeded on
+    // ROLE_STANDARD, so neither gate refuses an Account that could reach these
+    // pictures before it: a picture is part of the record it is attached to.
+    readCode: 'QLT_NONCONFORMANCES_DISPLAY',
+    writeCode: 'QLT_NONCONFORMANCES_RECORD',
     find: (id) => nonconformances.findNonconformance(id)
   },
   {
     kind: 'complaint',
     base: '/complaints',
     label: 'Customer complaint',
+    readCode: 'QLT_COMPLAINTS_DISPLAY',
+    writeCode: 'QLT_COMPLAINTS_RECORD',
     find: (id) => customerComplaints.findComplaint(id)
   }
 ];
@@ -119,6 +134,8 @@ function scopeFor(mount) {
 
 for (const mount of MOUNTS) {
   const { requireIssue, requireVisible, requireWrite } = scopeFor(mount);
+  const mayRead = people.requirePermission(mount.readCode);
+  const mayWrite = people.requirePermission(mount.writeCode);
 
   const list = async (req, res, next) => {
     try {
@@ -186,6 +203,7 @@ for (const mount of MOUNTS) {
     people.requireActive,
     requireIssue,
     requireVisible,
+    mayRead,
     list
   );
 
@@ -196,6 +214,7 @@ for (const mount of MOUNTS) {
     requireIssue,
     requireVisible,
     requireWrite,
+    mayWrite,
     parseImageBody,
     upload
   );
@@ -206,6 +225,7 @@ for (const mount of MOUNTS) {
     people.requireActive,
     requireIssue,
     requireVisible,
+    mayRead,
     read
   );
 
@@ -216,6 +236,7 @@ for (const mount of MOUNTS) {
     requireIssue,
     requireVisible,
     requireWrite,
+    mayWrite,
     remove
   );
 }

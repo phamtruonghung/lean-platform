@@ -57,9 +57,11 @@
  * What this Module requires from outside itself is People's entry point and
  * nothing else (issue #203's own acceptance criterion, and what
  * `npm run lint`'s boundary checker enforces): product-routes.js and
- * defect-code-routes.js ask `people.authenticate` and `people.requireActive`
- * and carry their own copy of the administrator check, since People
- * deliberately does not export `requireAdmin`; nonconformance-routes.js asks
+ * defect-code-routes.js ask `people.authenticate`, `people.requireActive` and
+ * `people.requirePermission` — the catalogue's own codes (ADR-0061, issue #503),
+ * which replaced the local administrator check this Module used to copy:
+ * `admin.js` is gone, and its last four importers now ask `QLT_*_CHANGE`;
+ * nonconformance-routes.js asks
  * the same two plus `findSite`, `findOrgUnit`, `canAct` and `canSeeSite`, the
  * Grant questions issue #205 needs (any Grant on any Org Unit of the Site to
  * read one, a write Grant reaching a Non-conformance's own Org Unit to record
