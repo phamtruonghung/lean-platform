@@ -17,6 +17,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'meter.dart';
@@ -106,24 +107,27 @@ class _ReadingFormDialogState extends State<ReadingFormDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final muted = AppTypography.dense(context)?.copyWith(color: palette.textMuted);
     final meter = widget.meter;
     final isRollover = meter.isCumulative && _rollover;
     return BlocListener<MetersBloc, MetersState>(
       listener: _onMetersChanged,
       child: AppDialog(
-        title: 'Record a reading on ${meter.name}',
+        title: l10n.readingFormTitle(meter.name),
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: ReadingFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: ReadingFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : (isRollover ? 'Record rollover' : 'Record reading'),
+            label: _awaiting
+                ? l10n.commonSaving
+                : (isRollover ? l10n.readingFormSubmitRollover : l10n.readingFormSubmit),
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -133,7 +137,7 @@ class _ReadingFormDialogState extends State<ReadingFormDialog> {
           children: [
             Text('${meter.assetName} (${meter.assetCode}) · ${meter.code}', style: muted),
             const SizedBox(height: Spacing.xs),
-            Text('Accumulated use so far: ${meter.accumulatedLabel}', style: muted),
+            Text(l10n.readingFormAccumulatedSoFar(meter.accumulatedLabel), style: muted),
             const SizedBox(height: Spacing.md),
             TextField(
               key: ReadingFormDialog.readingKey,
@@ -142,10 +146,11 @@ class _ReadingFormDialogState extends State<ReadingFormDialog> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: isRollover ? 'What the new counter reads now' : 'What the counter reads',
+                labelText:
+                    isRollover ? l10n.readingFormNewCounterReads : l10n.readingFormCounterReads,
                 helperText: isRollover
-                    ? 'The accumulated use is carried forward into the offset; the new counter usually reads 0.'
-                    : 'In ${meter.uomCode}, exactly as the counter shows.',
+                    ? l10n.readingFormRolloverHelp
+                    : l10n.readingFormReadingHelp(meter.uomCode),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -154,9 +159,9 @@ class _ReadingFormDialogState extends State<ReadingFormDialog> {
               key: ReadingFormDialog.noteKey,
               controller: _note,
               enabled: !_awaiting,
-              decoration: const InputDecoration(
-                labelText: 'Note (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.commonNoteOptional,
+                border: const OutlineInputBorder(),
               ),
             ),
             if (meter.isCumulative) ...[
@@ -167,10 +172,8 @@ class _ReadingFormDialogState extends State<ReadingFormDialog> {
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
                 onChanged: _awaiting ? null : (value) => setState(() => _rollover = value ?? false),
-                title: const Text('The counter was reset or replaced'),
-                subtitle: const Text(
-                  'Carries the accumulated use into the offset and records this as the new counter\'s start.',
-                ),
+                title: Text(l10n.readingFormRolloverTitle),
+                subtitle: Text(l10n.readingFormRolloverSubtitle),
               ),
             ],
             if (_failure != null)

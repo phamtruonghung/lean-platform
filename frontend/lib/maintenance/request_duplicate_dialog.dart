@@ -19,6 +19,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'request.dart';
@@ -83,22 +84,23 @@ class _RequestDuplicateDialogState extends State<RequestDuplicateDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final dense = AppTypography.dense(context);
     return BlocListener<RequestsBloc, RequestsState>(
       listener: _onRequestsChanged,
       child: AppDialog(
-        title: 'Mark as a duplicate',
+        title: l10n.requestDuplicateTitle,
         size: AppDialogSize.picker,
         actions: [
           AppDialogAction(
             id: RequestDuplicateDialog._dismissId,
-            label: 'Keep it separate',
+            label: l10n.requestDuplicateDismiss,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: RequestDuplicateDialog._submitId,
-            label: 'Mark duplicate',
+            label: l10n.requestsMarkDuplicate,
             onPressed: _duplicateOfId != null && !_awaiting ? _submit : null,
           ),
         ],
@@ -110,14 +112,14 @@ class _RequestDuplicateDialogState extends State<RequestDuplicateDialog> {
               Center(
                 key: RequestDuplicateDialog.noneKey,
                 child: Text(
-                  'There is no other open Request for this one to duplicate.',
+                  l10n.requestDuplicateNone,
                   textAlign: TextAlign.center,
                   style: dense?.copyWith(color: palette.textPrimary),
                 ),
               )
             else ...[
               Text(
-                'Which Request survives? ${widget.request.requestNo} leaves the queue.',
+                l10n.requestDuplicateWhich(widget.request.requestNo),
                 style: dense?.copyWith(color: palette.textPrimary),
               ),
               const SizedBox(height: Spacing.sm),

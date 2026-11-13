@@ -39,6 +39,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/router.dart';
 import '../theme.dart';
 import '../widgets/app_date_field.dart';
@@ -107,6 +108,7 @@ class SafetyObservationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<SafetyObservationsBloc>().state;
+    final l10n = AppLocalizations.of(context);
 
     return _RefreshOnMount(
       child: Scaffold(
@@ -119,16 +121,16 @@ class SafetyObservationsScreen extends StatelessWidget {
                 SafetyObservationsLoading() => const SkeletonList(rows: 4, maxWidth: maxWidth),
                 SafetyObservationsUnavailable(message: final message) => PlatformFailureState(
                     key: failedKey,
-                    title: 'The Safety observation register could not be read',
+                    title: l10n.safetyObservationsUnavailableTitle,
                     message: message,
                     retryKey: retryKey,
                     onRetry: () =>
                         context.read<SafetyObservationsBloc>().add(const SafetyObservationsStarted()),
                   ),
-                SafetyObservationsLoaded(siteId: null) => const PlatformEmptyState.noneExist(
+                SafetyObservationsLoaded(siteId: null) => PlatformEmptyState.noneExist(
                     key: noSiteKey,
-                    title: 'No Site to show',
-                    message: 'Your Account can see no Site yet, so there is nothing to read here.',
+                    title: l10n.commonNoSiteTitle,
+                    message: l10n.commonNoSiteMessage,
                     icon: Icons.factory_outlined,
                   ),
                 SafetyObservationsLoaded(observations: final rows, filters: final filters)
@@ -178,6 +180,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loaded = state is SafetyObservationsLoaded ? state as SafetyObservationsLoaded : null;
+    final l10n = AppLocalizations.of(context);
 
     return Center(
       child: AppPageFrame(
@@ -187,10 +190,8 @@ class _Header extends StatelessWidget {
           // one left edge (`docs/frontend-layout.md` §1).
           padding: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xl, Spacing.lg, Spacing.lg),
           child: AppPageHeader(
-            title: 'Safety observations',
-            description:
-                'What was seen before anything went wrong, ranked worst-first by the '
-                'worst credible outcome.',
+            title: l10n.titleSafetyObservations,
+            description: l10n.safetyObservationsDescription,
             actions: [
               if (loaded != null)
                 FilledButton.icon(
@@ -199,7 +200,7 @@ class _Header extends StatelessWidget {
                       ? null
                       : () => context.go('${Routes.safetyObservations}/record'),
                   icon: const Icon(Icons.add),
-                  label: const Text('Record an observation'),
+                  label: Text(l10n.safetyObservationRecord),
                 ),
             ],
             below: loaded == null ? null : _Filters(loaded: loaded),
@@ -222,6 +223,7 @@ class _Filters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final filters = loaded.filters;
 
     return AppToolbar(
@@ -234,7 +236,10 @@ class _Filters extends StatelessWidget {
               initialValue: loaded.siteId,
               isDense: true,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Site', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: l10n.commonSite,
+                border: const OutlineInputBorder(),
+              ),
               items: [
                 for (final site in loaded.sites)
                   DropdownMenuItem<String>(value: site.id, child: Text(site.name)),
@@ -250,7 +255,7 @@ class _Filters extends StatelessWidget {
           onPressed: () =>
               SafetyObservationOrgUnitFilterDialog.open(context, siteId: loaded.siteId),
           icon: const Icon(Icons.account_tree_outlined),
-          label: Text(filters.orgUnitName ?? 'All Org Units'),
+          label: Text(filters.orgUnitName ?? l10n.commonAllOrgUnits),
         ),
         SizedBox(
           width: AppLayout.atTextScale(context, 190),
@@ -259,9 +264,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.observationType,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.commonType,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any type')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.safetyAnyType)),
               for (final type in ObservationType.values)
                 DropdownMenuItem<String?>(value: type, child: Text(ObservationType.label(type))),
             ],
@@ -277,9 +285,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.category,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.commonCategory,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any category')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.safetyAnyCategory)),
               for (final category in ObservationCategory.values)
                 DropdownMenuItem<String?>(
                   value: category,
@@ -298,10 +309,12 @@ class _Filters extends StatelessWidget {
             initialValue: filters.severityPotential,
             isDense: true,
             isExpanded: true,
-            decoration:
-                const InputDecoration(labelText: 'Severity potential', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: l10n.safetySeverityPotential,
+              border: const OutlineInputBorder(),
+            ),
             items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('Any potential')),
+              DropdownMenuItem<String?>(value: null, child: Text(l10n.safetyAnyPotential)),
               // Worst-first order is the register's own order; the filter's
               // own dropdown renders `SeverityPotential.values`' ascending
               // order for the same reason the record form does — the picker
@@ -325,11 +338,14 @@ class _Filters extends StatelessWidget {
             initialValue: filters.isStopWork,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Stop-work', border: OutlineInputBorder()),
-            items: const [
-              DropdownMenuItem<bool?>(value: null, child: Text('Any')),
-              DropdownMenuItem<bool?>(value: true, child: Text('Stop-work only')),
-              DropdownMenuItem<bool?>(value: false, child: Text('Not stop-work')),
+            decoration: InputDecoration(
+              labelText: l10n.safetyStopWork,
+              border: const OutlineInputBorder(),
+            ),
+            items: [
+              DropdownMenuItem<bool?>(value: null, child: Text(l10n.commonAny)),
+              DropdownMenuItem<bool?>(value: true, child: Text(l10n.safetyStopWorkOnly)),
+              DropdownMenuItem<bool?>(value: false, child: Text(l10n.safetyNotStopWork)),
             ],
             onChanged: (value) => context
                 .read<SafetyObservationsBloc>()
@@ -346,11 +362,14 @@ class _Filters extends StatelessWidget {
             initialValue: filters.hasAction,
             isDense: true,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Action', border: OutlineInputBorder()),
-            items: const [
-              DropdownMenuItem<bool?>(value: null, child: Text('Any')),
-              DropdownMenuItem<bool?>(value: false, child: Text('No Action raised')),
-              DropdownMenuItem<bool?>(value: true, child: Text('Action raised')),
+            decoration: InputDecoration(
+              labelText: l10n.commonAction,
+              border: const OutlineInputBorder(),
+            ),
+            items: [
+              DropdownMenuItem<bool?>(value: null, child: Text(l10n.commonAny)),
+              DropdownMenuItem<bool?>(value: false, child: Text(l10n.safetyNoActionRaised)),
+              DropdownMenuItem<bool?>(value: true, child: Text(l10n.safetyActionRaised)),
             ],
             onChanged: (value) => context
                 .read<SafetyObservationsBloc>()
@@ -369,7 +388,7 @@ class _Filters extends StatelessWidget {
               child: AppDateField(
                 key: SafetyObservationsScreen.fromDateKey,
                 name: 'safety-observations-from',
-                label: 'Observed from',
+                label: l10n.safetyObservedFrom,
                 value: filters.from,
                 optional: true,
                 onChanged: (value) => context
@@ -382,7 +401,7 @@ class _Filters extends StatelessWidget {
               child: AppDateField(
                 key: SafetyObservationsScreen.toDateKey,
                 name: 'safety-observations-to',
-                label: 'Observed to',
+                label: l10n.safetyObservedTo,
                 value: filters.to,
                 optional: true,
                 onChanged: (value) => context
@@ -398,7 +417,7 @@ class _Filters extends StatelessWidget {
             onPressed: () => context
                 .read<SafetyObservationsBloc>()
                 .add(const SafetyObservationsFiltersCleared()),
-            child: Text('Clear filters', style: theme.textTheme.bodyMedium),
+            child: Text(l10n.workOrdersClearFilters, style: theme.textTheme.bodyMedium),
           ),
       ],
       count: Text(
@@ -421,6 +440,7 @@ class _Truncated extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: AppPageFrame(
         maxWidth: SafetyObservationsScreen.maxWidth,
@@ -428,8 +448,7 @@ class _Truncated extends StatelessWidget {
           key: SafetyObservationsScreen.truncatedKey,
           padding: const EdgeInsets.fromLTRB(Spacing.lg, 0, Spacing.lg, Spacing.sm),
           child: Text(
-            'There are more Safety observations than this list shows. Narrow it by Org Unit, '
-            'by type or by date to see the rest.',
+            l10n.safetyObservationsTruncated,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ),
@@ -449,23 +468,22 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (isFiltered) {
       return PlatformEmptyState.noneMatched(
         key: SafetyObservationsScreen.emptyMatchedKey,
-        title: 'Nothing matches these filters',
-        message: 'The register has Safety observations, but none of them is in the area, type, '
-            'category, potential, stop-work or dates you picked.',
-        actionLabel: 'Clear the filters',
+        title: l10n.nonconformancesNoMatchTitle,
+        message: l10n.safetyObservationsNoMatchMessage,
+        actionLabel: l10n.nonconformancesClearTheFilters,
         actionKey: SafetyObservationsScreen.emptyClearFiltersKey,
         onAction: () =>
             context.read<SafetyObservationsBloc>().add(const SafetyObservationsFiltersCleared()),
       );
     }
-    return const PlatformEmptyState.noneExist(
+    return PlatformEmptyState.noneExist(
       key: SafetyObservationsScreen.emptyKey,
-      title: 'No observations recorded. The leading indicator is empty.',
-      message: 'No Safety observation has been recorded at this Site for the area and dates '
-          'shown.',
+      title: l10n.safetyObservationsNoneTitle,
+      message: l10n.safetyObservationsNoneMessage,
       icon: Icons.visibility_outlined,
     );
   }
@@ -475,14 +493,20 @@ class _Empty extends StatelessWidget {
 /// built from it, so a label and its cells start at the same x. The two chip
 /// columns state a measured width; the three text columns flex and disclose
 /// what they clip.
-List<AppTableColumn> _columns(BuildContext context) => [
-      AppTableColumn('Potential', width: _chipColumnWidth(context, _potentialLabels)),
-      const AppTableColumn('Type', flex: 2),
-      const AppTableColumn('Category', flex: 3),
-      const AppTableColumn('Org Unit', flex: 2),
-      const AppTableColumn('Filed against', flex: 3),
-      AppTableColumn('Stop-work', width: _chipColumnWidth(context, const ['Stop-work'])),
-    ];
+List<AppTableColumn> _columns(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  return [
+    AppTableColumn(l10n.safetyPotentialColumn, width: _chipColumnWidth(context, _potentialLabels)),
+    AppTableColumn(l10n.commonType, flex: 2),
+    AppTableColumn(l10n.commonCategory, flex: 3),
+    AppTableColumn(l10n.commonOrgUnit, flex: 2),
+    AppTableColumn(l10n.commonFiledAgainstColumn, flex: 3),
+    AppTableColumn(
+      l10n.safetyStopWork,
+      width: _chipColumnWidth(context, [l10n.safetyStopWork]),
+    ),
+  ];
+}
 
 List<String> get _potentialLabels =>
     [for (final potential in SeverityPotential.values) SeverityPotential.label(potential)];
@@ -563,6 +587,7 @@ class _SafetyObservationTableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final dense = AppTypography.dense(context);
     final muted = dense?.copyWith(color: palette.textMuted);
 
@@ -609,7 +634,7 @@ class _SafetyObservationTableRow extends StatelessWidget {
             shrinkWrapTargets(
               Chip(
                 key: SafetyObservationsScreen.rowStopWorkKey(observation.id),
-                label: const Text('Stop-work'),
+                label: Text(l10n.safetyStopWork),
                 visualDensity: VisualDensity.compact,
               ),
             )
@@ -630,6 +655,7 @@ class _SafetyObservationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final dense = AppTypography.dense(context);
     final row = observation;
 
@@ -665,7 +691,7 @@ class _SafetyObservationCard extends StatelessWidget {
                         if (row.isStopWork)
                           Chip(
                             key: SafetyObservationsScreen.rowStopWorkKey(row.id),
-                            label: const Text('Stop-work'),
+                            label: Text(l10n.safetyStopWork),
                             visualDensity: VisualDensity.compact,
                           ),
                         Text(
@@ -684,7 +710,7 @@ class _SafetyObservationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: Spacing.xxs),
                     Text(
-                      '${row.orgUnitName} · filed against ${row.filedAgainst}',
+                      l10n.commonFiledAgainst(row.orgUnitName, row.filedAgainst),
                       key: SafetyObservationsScreen.rowFiledKey(row.id),
                       style: AppTypography.floor(context)?.copyWith(color: palette.textMuted),
                     ),

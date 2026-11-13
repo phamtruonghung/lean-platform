@@ -1139,5 +1139,1084 @@
   "titleStoreStock": "Store stock",
   "@titleStoreStock": {
     "description": "The browser tab's name for one Store's stock, which the Store's own name would otherwise stand in for."
+  },
+  "commonTryAgain": "Try again",
+  "@commonTryAgain": {
+    "description": "The button beside a failed read that asks again for the same list."
+  },
+  "commonAssetsFailed": "The Assets could not be read.",
+  "@commonAssetsFailed": {
+    "description": "Shown in place of an Asset picker when the register could not be fetched."
+  },
+  "commonJobPlan": "Job plan",
+  "@commonJobPlan": {
+    "description": "Label over a Job plan picker."
+  },
+  "commonMeter": "Meter",
+  "@commonMeter": {
+    "description": "Label over a meter picker, and the heading of the meter type field."
+  },
+  "commonEmployee": "Employee",
+  "@commonEmployee": {
+    "description": "Label over an Employee picker."
+  },
+  "commonUnitOfMeasure": "Unit of measure",
+  "@commonUnitOfMeasure": {
+    "description": "Label over the field that chooses the unit a figure is counted in."
+  },
+  "commonQuantity": "Quantity",
+  "@commonQuantity": {
+    "description": "Label over a field holding how many of something."
+  },
+  "commonPart": "Part",
+  "@commonPart": {
+    "description": "Label over a Part picker."
+  },
+  "commonStore": "Store",
+  "@commonStore": {
+    "description": "Label over a Store picker."
+  },
+  "commonNoteOptional": "Note (optional)",
+  "@commonNoteOptional": {
+    "description": "Label over a free-text note field that may be left blank."
+  },
+  "commonPriorityMostUrgent": "Most urgent",
+  "@commonPriorityMostUrgent": {
+    "description": "The word beside priority level 1, the CHECK constraint's most urgent end."
+  },
+  "commonPriorityUrgent": "Urgent",
+  "@commonPriorityUrgent": {
+    "description": "The word beside priority level 2."
+  },
+  "commonPriorityNormal": "Normal",
+  "@commonPriorityNormal": {
+    "description": "The word beside priority level 3, the schema's own default."
+  },
+  "commonPriorityLow": "Low",
+  "@commonPriorityLow": {
+    "description": "The word beside priority level 4."
+  },
+  "commonPriorityLeastUrgent": "Least urgent",
+  "@commonPriorityLeastUrgent": {
+    "description": "The word beside priority level 5, the CHECK constraint's least urgent end."
+  },
+  "pmScheduleFormTitle": "Schedule preventive maintenance",
+  "@pmScheduleFormTitle": {
+    "description": "Title of the dialog that attaches a Job plan to an Asset as a PM schedule."
+  },
+  "pmScheduleFormSubmit": "Schedule",
+  "@pmScheduleFormSubmit": {
+    "description": "The submit action of the PM schedule dialog."
+  },
+  "pmScheduleFormBasisField": "Comes round on",
+  "@pmScheduleFormBasisField": {
+    "description": "Label over the choice of what the schedule's interval counts: elapsed time or accumulated use."
+  },
+  "pmScheduleFormBasisElapsed": "Elapsed time",
+  "@pmScheduleFormBasisElapsed": {
+    "description": "The interval counts elapsed time, so the schedule comes round on a number of days."
+  },
+  "pmScheduleFormBasisAccumulated": "Accumulated use",
+  "@pmScheduleFormBasisAccumulated": {
+    "description": "The interval counts accumulated use, so the schedule comes round on a cumulative meter's count."
+  },
+  "pmScheduleFormEveryDays": "Every how many days",
+  "@pmScheduleFormEveryDays": {
+    "description": "Label over the interval in days."
+  },
+  "pmScheduleFormEveryAccumulated": "Every how much accumulated use",
+  "@pmScheduleFormEveryAccumulated": {
+    "description": "Label over the interval in accumulated use."
+  },
+  "pmScheduleFormMeterNotChosen": "Choose a cumulative meter first.",
+  "@pmScheduleFormMeterNotChosen": {
+    "description": "Help text under the accumulated-use interval while no meter has been chosen yet."
+  },
+  "pmScheduleFormMeterIntervalHelp": "In {uom}, one interval past where the meter stands now.",
+  "@pmScheduleFormMeterIntervalHelp": {
+    "description": "Help text under the accumulated-use interval once a meter is chosen, naming the meter's unit.",
+    "placeholders": {
+      "uom": {"type": "String"}
+    }
+  },
+  "pmScheduleFormAnchor": "The interval rolls from",
+  "@pmScheduleFormAnchor": {
+    "description": "Label over the choice of which date the next due date counts from."
+  },
+  "pmScheduleFormLeadTime": "Raise this many days early",
+  "@pmScheduleFormLeadTime": {
+    "description": "Label over the lead time, so many days before the due date a Work order is raised."
+  },
+  "pmScheduleFormPriorityMostUrgent": "1 — most urgent",
+  "@pmScheduleFormPriorityMostUrgent": {
+    "description": "Priority level 1 in the PM schedule dialog, worded for a bare digit whose direction is not obvious."
+  },
+  "pmScheduleFormPriorityLeastUrgent": "5 — least urgent",
+  "@pmScheduleFormPriorityLeastUrgent": {
+    "description": "Priority level 5 in the PM schedule dialog."
+  },
+  "pmScheduleFormFirstDue": "First due date (optional)",
+  "@pmScheduleFormFirstDue": {
+    "description": "Label over the first due date of a day-driven PM schedule."
+  },
+  "pmScheduleFormFirstDueHelp": "Left blank, the first due date is the interval from today.",
+  "@pmScheduleFormFirstDueHelp": {
+    "description": "Help text under the first due date."
+  },
+  "pmScheduleFormJobPlansFailed": "The Job plans could not be read.",
+  "@pmScheduleFormJobPlansFailed": {
+    "description": "Shown in place of the Job plan picker when the catalogue could not be fetched."
+  },
+  "pmScheduleFormMetersFailed": "The meters could not be read.",
+  "@pmScheduleFormMetersFailed": {
+    "description": "Shown in place of the meter picker when the Asset's meters could not be fetched."
+  },
+  "pmScheduleFormMeterHelp": "Only cumulative meters can drive a schedule.",
+  "@pmScheduleFormMeterHelp": {
+    "description": "Help text under the meter picker, explaining why gauges are not offered."
+  },
+  "jobPlanFormSubmit": "Add plan",
+  "@jobPlanFormSubmit": {
+    "description": "The submit action of the Job plan form dialog."
+  },
+  "jobPlanFormWorkType": "Kind of work",
+  "@jobPlanFormWorkType": {
+    "description": "Label over the Job plan's work type choice."
+  },
+  "jobPlanFormDescriptionOptional": "Description (optional)",
+  "@jobPlanFormDescriptionOptional": {
+    "description": "Label over the Job plan's optional description."
+  },
+  "jobPlanFormEstimatedHoursOptional": "Estimated hours (optional)",
+  "@jobPlanFormEstimatedHoursOptional": {
+    "description": "Label over the Job plan's optional estimate."
+  },
+  "jobPlanFormRequiresShutdown": "Requires a shutdown",
+  "@jobPlanFormRequiresShutdown": {
+    "description": "The switch on the Job plan form saying the work needs the Asset stopped."
+  },
+  "jobPlanFormSafetyNoteOptional": "Safety note (optional)",
+  "@jobPlanFormSafetyNoteOptional": {
+    "description": "Label over the Job plan's optional safety note."
+  },
+  "jobPlanFormAddStep": "Add a step",
+  "@jobPlanFormAddStep": {
+    "description": "The button that appends one step to the Job plan being written."
+  },
+  "jobPlanFormSkillsFailed": "The skill catalogue could not be read.",
+  "@jobPlanFormSkillsFailed": {
+    "description": "Shown over the steps when the Skill catalogue could not be fetched, so a step's required skill cannot be chosen."
+  },
+  "jobPlanFormStep": "Step",
+  "@jobPlanFormStep": {
+    "description": "Label over one step's number."
+  },
+  "jobPlanFormInstruction": "Instruction",
+  "@jobPlanFormInstruction": {
+    "description": "Label over one step's instruction text."
+  },
+  "jobPlanFormRemoveStep": "Remove this step",
+  "@jobPlanFormRemoveStep": {
+    "description": "Tooltip on the button that drops one step from the Job plan being written."
+  },
+  "jobPlanFormRequiredSkill": "Required skill (optional)",
+  "@jobPlanFormRequiredSkill": {
+    "description": "Label over one step's optional required Skill."
+  },
+  "jobPlanFormHoursOptional": "Hours (optional)",
+  "@jobPlanFormHoursOptional": {
+    "description": "Label over one step's optional estimated hours."
+  },
+  "meterFormSubmit": "Define",
+  "@meterFormSubmit": {
+    "description": "The submit action of the meter form dialog."
+  },
+  "meterFormCodeHelp": "How this meter is known on the Asset, e.g. RUN-HRS.",
+  "@meterFormCodeHelp": {
+    "description": "Help text under the meter's code."
+  },
+  "meterFormType": "Kind of meter",
+  "@meterFormType": {
+    "description": "Label over the choice between a cumulative meter and a gauge."
+  },
+  "meterFormUomFailed": "The units of measure could not be read.",
+  "@meterFormUomFailed": {
+    "description": "Shown in place of the unit picker when the catalogue could not be fetched."
+  },
+  "readingFormTitle": "Record a reading on {meter}",
+  "@readingFormTitle": {
+    "description": "Title of the dialog that records a reading against one meter, naming it.",
+    "placeholders": {
+      "meter": {"type": "String"}
+    }
+  },
+  "readingFormSubmitRollover": "Record rollover",
+  "@readingFormSubmitRollover": {
+    "description": "The submit action of the reading dialog when the counter was reset or replaced."
+  },
+  "readingFormSubmit": "Record reading",
+  "@readingFormSubmit": {
+    "description": "The submit action of the reading dialog for an ordinary reading."
+  },
+  "readingFormAccumulatedSoFar": "Accumulated use so far: {value}",
+  "@readingFormAccumulatedSoFar": {
+    "description": "The line above the reading field showing where the meter stands now.",
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "readingFormNewCounterReads": "What the new counter reads now",
+  "@readingFormNewCounterReads": {
+    "description": "Label over the reading field when the counter was reset or replaced."
+  },
+  "readingFormCounterReads": "What the counter reads",
+  "@readingFormCounterReads": {
+    "description": "Label over the reading field for an ordinary reading."
+  },
+  "readingFormRolloverHelp": "The accumulated use is carried forward into the offset; the new counter usually reads 0.",
+  "@readingFormRolloverHelp": {
+    "description": "Help text under the reading field when the counter was reset or replaced."
+  },
+  "readingFormReadingHelp": "In {uom}, exactly as the counter shows.",
+  "@readingFormReadingHelp": {
+    "description": "Help text under the reading field for an ordinary reading, naming the meter's unit.",
+    "placeholders": {
+      "uom": {"type": "String"}
+    }
+  },
+  "readingFormRolloverTitle": "The counter was reset or replaced",
+  "@readingFormRolloverTitle": {
+    "description": "The checkbox on a cumulative meter that says this reading follows a reset or a replacement."
+  },
+  "readingFormRolloverSubtitle": "Carries the accumulated use into the offset and records this as the new counter's start.",
+  "@readingFormRolloverSubtitle": {
+    "description": "What the reset-or-replaced checkbox does, under its own label."
+  },
+  "requestAcceptTitle": "Accept {requestNo}?",
+  "@requestAcceptTitle": {
+    "description": "Title of the dialog that accepts one Request, naming it.",
+    "placeholders": {
+      "requestNo": {"type": "String"}
+    }
+  },
+  "requestAcceptDismiss": "Keep it waiting",
+  "@requestAcceptDismiss": {
+    "description": "The dismiss action of the accept dialog: the Request stays in the triage queue."
+  },
+  "requestAcceptSubmit": "Accept this Request",
+  "@requestAcceptSubmit": {
+    "description": "The submit action of the accept dialog."
+  },
+  "requestAcceptBody": "Accepting raises a Work order for this Request. Its priority is your call, not the reporter's urgency.",
+  "@requestAcceptBody": {
+    "description": "What accepting a Request does, above the priority choice."
+  },
+  "requestDeclineTitle": "Decline {requestNo}?",
+  "@requestDeclineTitle": {
+    "description": "Title of the dialog that declines one Request, naming it.",
+    "placeholders": {
+      "requestNo": {"type": "String"}
+    }
+  },
+  "requestDeclineReason": "Why is this being declined?",
+  "@requestDeclineReason": {
+    "description": "Label over the reason the database requires before a Request may be declined."
+  },
+  "requestDeclineSubmit": "Decline this Request",
+  "@requestDeclineSubmit": {
+    "description": "The submit action of the decline dialog."
+  },
+  "requestDuplicateTitle": "Mark as a duplicate",
+  "@requestDuplicateTitle": {
+    "description": "Title of the dialog that marks one Request as a duplicate of another."
+  },
+  "requestDuplicateDismiss": "Keep it separate",
+  "@requestDuplicateDismiss": {
+    "description": "The dismiss action of the duplicate dialog: the Request stays its own."
+  },
+  "requestDuplicateNone": "There is no other open Request for this one to duplicate.",
+  "@requestDuplicateNone": {
+    "description": "Stands where the candidate list would be when no other open Request exists."
+  },
+  "requestDuplicateWhich": "Which Request survives? {requestNo} leaves the queue.",
+  "@requestDuplicateWhich": {
+    "description": "The question above the candidate list, naming the Request that would leave the queue.",
+    "placeholders": {
+      "requestNo": {"type": "String"}
+    }
+  },
+  "labourBookingTitle": "Book labour",
+  "@labourBookingTitle": {
+    "description": "Title of the dialog that books labour against a Work order."
+  },
+  "labourBookingActivity": "Activity",
+  "@labourBookingActivity": {
+    "description": "Label over the kind of labour being booked."
+  },
+  "labourBookingStartedAt": "Started at",
+  "@labourBookingStartedAt": {
+    "description": "Label over when the booked labour started."
+  },
+  "labourBookingEndedAt": "Ended at",
+  "@labourBookingEndedAt": {
+    "description": "Label over when the booked labour ended."
+  },
+  "labourBookingOvertime": "Overtime",
+  "@labourBookingOvertime": {
+    "description": "The checkbox saying the booked labour was worked outside normal hours."
+  },
+  "labourBookingEmployeesFailed": "The Employees could not be read.",
+  "@labourBookingEmployeesFailed": {
+    "description": "Shown in place of the Employee picker when the directory could not be fetched."
+  },
+  "partBookingTitle": "Book a part",
+  "@partBookingTitle": {
+    "description": "Title of the dialog that books a part against a Work order."
+  },
+  "partBookingSubmit": "Book part",
+  "@partBookingSubmit": {
+    "description": "The submit action of the part booking dialog."
+  },
+  "partBookingSourced": "Sourced",
+  "@partBookingSourced": {
+    "description": "Label over where the part comes from: a Store or bought in."
+  },
+  "partBookingOptionsFailed": "The options could not be read.",
+  "@partBookingOptionsFailed": {
+    "description": "Shown in place of the part and store pickers when their options could not be fetched."
+  },
+  "partBookingPartNoOptional": "Part number (optional)",
+  "@partBookingPartNoOptional": {
+    "description": "Label over the part number of a part bought in."
+  },
+  "partBookingUnitCostOptional": "Unit cost (optional)",
+  "@partBookingUnitCostOptional": {
+    "description": "Label over the cost of one unit of a part bought in."
+  },
+  "nonconformancesUnavailableTitle": "The Non-conformance register could not be read",
+  "@nonconformancesUnavailableTitle": {
+    "description": "The failure state's heading when the Non-conformance register could not be fetched."
+  },
+  "nonconformancesNoSiteTitle": "No Site to show",
+  "@nonconformancesNoSiteTitle": {
+    "description": "The empty state's heading when the Account can see no Site at all."
+  },
+  "nonconformancesNoSiteMessage": "Your Account can see no Site yet, so there is nothing to read here.",
+  "@nonconformancesNoSiteMessage": {
+    "description": "What the no-Site empty state says under its heading."
+  },
+  "nonconformancesDescription": "What was found not to conform at this Site, where it was found, and how much of it there is.",
+  "@nonconformancesDescription": {
+    "description": "One-line description under the Non-conformance register's title."
+  },
+  "nonconformanceRecord": "Record a Non-conformance",
+  "@nonconformanceRecord": {
+    "description": "The button that opens the form recording a Non-conformance, and the title of that form."
+  },
+  "commonAllOrgUnits": "All Org Units",
+  "@commonAllOrgUnits": {
+    "description": "The Org Unit filter's own label when it narrows nothing."
+  },
+  "nonconformancesAnyStatus": "Any status",
+  "@nonconformancesAnyStatus": {
+    "description": "The status filter's option that narrows nothing."
+  },
+  "commonDefectCode": "Defect code",
+  "@commonDefectCode": {
+    "description": "Label over a Defect code picker, and the register's own Defect code filter."
+  },
+  "nonconformancesEveryDefectCode": "Every Defect code",
+  "@nonconformancesEveryDefectCode": {
+    "description": "The Defect code filter's option that narrows nothing."
+  },
+  "commonProduct": "Product",
+  "@commonProduct": {
+    "description": "Label over a Product picker, and the register's own Product filter."
+  },
+  "nonconformancesEveryProduct": "Every Product",
+  "@nonconformancesEveryProduct": {
+    "description": "The Product filter's option that narrows nothing."
+  },
+  "nonconformancesSeverity": "Severity",
+  "@nonconformancesSeverity": {
+    "description": "Label over the severity filter and the severity field of a Non-conformance."
+  },
+  "nonconformancesAnySeverity": "Any severity",
+  "@nonconformancesAnySeverity": {
+    "description": "The severity filter's option that narrows nothing."
+  },
+  "nonconformancesDetectedFrom": "Detected from",
+  "@nonconformancesDetectedFrom": {
+    "description": "Label over the first date of the detected-between filter."
+  },
+  "nonconformancesDetectedTo": "Detected to",
+  "@nonconformancesDetectedTo": {
+    "description": "Label over the last date of the detected-between filter."
+  },
+  "nonconformancesTruncated": "There are more Non-conformances than this list shows. Narrow it by Org Unit, by status or by date to see the rest.",
+  "@nonconformancesTruncated": {
+    "description": "Said under the register when the list was capped rather than complete."
+  },
+  "nonconformancesNoMatchTitle": "Nothing matches these filters",
+  "@nonconformancesNoMatchTitle": {
+    "description": "The empty state's heading when the register has records but no filter matches."
+  },
+  "nonconformancesNoMatchMessage": "The register has Non-conformances, but none of them is in the area, state, Defect code, Product, severity or dates you picked.",
+  "@nonconformancesNoMatchMessage": {
+    "description": "What the filtered-empty state says under its heading."
+  },
+  "nonconformancesClearTheFilters": "Clear the filters",
+  "@nonconformancesClearTheFilters": {
+    "description": "The action on the filtered-empty state that clears every filter at once."
+  },
+  "nonconformancesNoneExistTitle": "Nothing has been found not to conform",
+  "@nonconformancesNoneExistTitle": {
+    "description": "The empty state's heading when the Site's register has no records at all."
+  },
+  "nonconformancesNoneExistMessage": "No Non-conformance has been recorded at this Site.",
+  "@nonconformancesNoneExistMessage": {
+    "description": "What the no-record state says under its heading."
+  },
+  "nonconformancesNumberColumn": "Non-conformance",
+  "@nonconformancesNumberColumn": {
+    "description": "The register's column heading over each Non-conformance's own number."
+  },
+  "nonconformancesFoundColumn": "What was found",
+  "@nonconformancesFoundColumn": {
+    "description": "The register's column heading over the Product, Defect code and detection point of one find."
+  },
+  "commonState": "State",
+  "@commonState": {
+    "description": "The register's column heading over a record's state chip."
+  },
+  "nonconformancesFiledColumn": "Filed",
+  "@nonconformancesFiledColumn": {
+    "description": "The register's column heading over where a Non-conformance was filed."
+  },
+  "commonOpen": "Open",
+  "@commonOpen": {
+    "description": "The button on a register row that opens the record itself."
+  },
+  "nonconformanceQuantityAffected": "{count} {uom} affected",
+  "@nonconformanceQuantityAffected": {
+    "description": "How much product one Non-conformance affects, with its unit.",
+    "placeholders": {
+      "count": {"type": "String"},
+      "uom": {"type": "String"}
+    }
+  },
+  "nonconformanceQuantityRaised": "{count, plural, =1{raised 1 time} other{raised {count} times}}",
+  "@nonconformanceQuantityRaised": {
+    "description": "How many times the affected quantity of one Non-conformance has been raised.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "nonconformanceFiledAgainst": "{orgUnit} · filed against {against}",
+  "@nonconformanceFiledAgainst": {
+    "description": "The Org Unit a Non-conformance was found at, and what it was filed against.",
+    "placeholders": {
+      "orgUnit": {"type": "String"},
+      "against": {"type": "String"}
+    }
+  },
+  "nonconformanceFormRecord": "Record it",
+  "@nonconformanceFormRecord": {
+    "description": "The submit action of the form that records a Non-conformance."
+  },
+  "nonconformanceFormProductHelp": "What the nonconforming product is.",
+  "@nonconformanceFormProductHelp": {
+    "description": "Help text under the Product field of the Non-conformance form."
+  },
+  "nonconformanceFormDefectCodeHelp": "What is wrong with it. The severity starts at this code own default.",
+  "@nonconformanceFormDefectCodeHelp": {
+    "description": "Help text under the Defect code field of the Non-conformance form."
+  },
+  "nonconformanceFormChooseCode": "Choose a code",
+  "@nonconformanceFormChooseCode": {
+    "description": "The Defect code picker's option that has nothing chosen yet."
+  },
+  "nonconformanceFormDetectionPoint": "Detection point",
+  "@nonconformanceFormDetectionPoint": {
+    "description": "Label over the detection point of a Non-conformance."
+  },
+  "nonconformanceFormDetectionPointHelp": "Where the control plan caught it.",
+  "@nonconformanceFormDetectionPointHelp": {
+    "description": "Help text under the detection point field."
+  },
+  "nonconformanceFormChoosePoint": "Choose a point",
+  "@nonconformanceFormChoosePoint": {
+    "description": "The detection point picker's option that has nothing chosen yet."
+  },
+  "nonconformanceFormSeverityHelpUnset": "Chosen with the Defect code.",
+  "@nonconformanceFormSeverityHelpUnset": {
+    "description": "Help text under the severity field before a Defect code is chosen."
+  },
+  "nonconformanceFormSeverityHelpSet": "Starts at {severity}. Raising it is allowed; lowering it is a later decision.",
+  "@nonconformanceFormSeverityHelpSet": {
+    "description": "Help text under the severity field once a Defect code carries a default.",
+    "placeholders": {
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceFormChooseCodeFirst": "Choose a Defect code first",
+  "@nonconformanceFormChooseCodeFirst": {
+    "description": "The severity picker's option before a Defect code is chosen."
+  },
+  "nonconformanceFormStartsAt": "Starts at {severity}",
+  "@nonconformanceFormStartsAt": {
+    "description": "The severity picker's own option once a Defect code carries a default.",
+    "placeholders": {
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceFormQuantityHelp": "How many pieces.",
+  "@nonconformanceFormQuantityHelp": {
+    "description": "Help text under the quantity field of the Non-conformance form."
+  },
+  "nonconformanceFormLotRef": "Lot reference (optional)",
+  "@nonconformanceFormLotRef": {
+    "description": "Label over the optional lot reference of a Non-conformance."
+  },
+  "nonconformanceFormLotRefHelp": "What else is affected — a batch number is better than nothing.",
+  "@nonconformanceFormLotRefHelp": {
+    "description": "Help text under the lot reference field."
+  },
+  "nonconformanceFormAssetOptional": "Asset (optional)",
+  "@nonconformanceFormAssetOptional": {
+    "description": "Label over the optional Asset a Non-conformance was found on."
+  },
+  "nonconformanceFormAssetHelp": "Which machine, if the find was on one. It must sit at that Org Unit.",
+  "@nonconformanceFormAssetHelp": {
+    "description": "Help text under the optional Asset picker."
+  },
+  "nonconformanceFormDetailOptional": "Detail (optional)",
+  "@nonconformanceFormDetailOptional": {
+    "description": "Label over the optional free-text detail of a Non-conformance."
+  },
+  "nonconformanceFormContainment": "Immediate containment (optional)",
+  "@nonconformanceFormContainment": {
+    "description": "Label over the optional immediate containment of a Non-conformance."
+  },
+  "nonconformanceFormContainmentHelp": "What was done at once. Recording it makes this contained.",
+  "@nonconformanceFormContainmentHelp": {
+    "description": "Help text under the immediate containment field."
+  },
+  "nonconformanceFormDetectedAt": "Detected at (optional)",
+  "@nonconformanceFormDetectedAt": {
+    "description": "Label over the optional moment a Non-conformance was detected."
+  },
+  "nonconformanceFormDetectedAtHelp": "When it was found, if that is not now. This is what decides the production day and shift it is filed against.",
+  "@nonconformanceFormDetectedAtHelp": {
+    "description": "Help text under the detected-at field."
+  },
+  "nonconformanceFormWhereFound": "Where it was found",
+  "@nonconformanceFormWhereFound": {
+    "description": "Heading of the Org Unit chooser inside the Non-conformance form."
+  },
+  "nonconformanceFormWhereFoundHelp": "Choose the Org Unit the nonconforming product was found at. This is what decides who may act on it.",
+  "@nonconformanceFormWhereFoundHelp": {
+    "description": "What the Org Unit chooser does, under its heading."
+  },
+  "nonconformanceFormWillBeRecorded": "This Non-conformance will be recorded at {orgUnit}.",
+  "@nonconformanceFormWillBeRecorded": {
+    "description": "Confirms the Org Unit a Non-conformance will be filed at, once one is chosen.",
+    "placeholders": {
+      "orgUnit": {"type": "String"}
+    }
+  },
+  "nonconformanceFloorIntro": "What was found not to conform? Everything with a known set is chosen from what this device can see.",
+  "@nonconformanceFloorIntro": {
+    "description": "What the floor Non-conformance dialog asks, above its fields."
+  },
+  "nonconformanceFloorChooseProduct": "Choose a Product",
+  "@nonconformanceFloorChooseProduct": {
+    "description": "The floor form's Product picker option that has nothing chosen yet."
+  },
+  "nonconformanceFloorDetectedAt": "Detected at",
+  "@nonconformanceFloorDetectedAt": {
+    "description": "Label over the detection point in the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorStartsAt": "Starts at {severity} — this Defect code's own severity.",
+  "@nonconformanceFloorStartsAt": {
+    "description": "Tells the floor form's caller which severity the chosen Defect code brings.",
+    "placeholders": {
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceFloorHowMuch": "How much of it",
+  "@nonconformanceFloorHowMuch": {
+    "description": "Label over the quantity in the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorLot": "Lot or batch (if it has one)",
+  "@nonconformanceFloorLot": {
+    "description": "Label over the lot or batch reference in the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorWhatDidYouSee": "What did you see?",
+  "@nonconformanceFloorWhatDidYouSee": {
+    "description": "Label over the free-text description in the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorWhoFound": "Who found it? Your Employee number and PIN identify you for this record only — it is filed as your find.",
+  "@nonconformanceFloorWhoFound": {
+    "description": "What the floor Non-conformance dialog asks before the identity fields."
+  },
+  "nonconformanceFloorEmployeeNumber": "Employee number",
+  "@nonconformanceFloorEmployeeNumber": {
+    "description": "Label over the Employee number field of the floor Non-conformance dialog."
+  },
+  "nonconformanceFloorPin": "PIN",
+  "@nonconformanceFloorPin": {
+    "description": "Label over the PIN field of the floor Non-conformance dialog."
+  },
+  "nonconformanceTitle": "Non-conformance",
+  "@nonconformanceTitle": {
+    "description": "The page head of one Non-conformance's detail."
+  },
+  "nonconformanceDetailMissingTitle": "No such Non-conformance",
+  "@nonconformanceDetailMissingTitle": {
+    "description": "The empty state's heading when the address names no record."
+  },
+  "nonconformanceDetailMissingMessage": "Nothing is recorded at this address. It may have been removed, or the address may be wrong.",
+  "@nonconformanceDetailMissingMessage": {
+    "description": "What the missing-record state says under its heading."
+  },
+  "nonconformanceDetailBack": "Back to Non-conformances",
+  "@nonconformanceDetailBack": {
+    "description": "The control that returns from one record to the register."
+  },
+  "nonconformanceDetailUnavailableTitle": "The Non-conformance could not be read",
+  "@nonconformanceDetailUnavailableTitle": {
+    "description": "The failure state's heading when one record could not be fetched."
+  },
+  "nonconformanceDetailSeverityChip": "{severity} severity",
+  "@nonconformanceDetailSeverityChip": {
+    "description": "The severity chip on one record, naming the severity itself.",
+    "placeholders": {
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceDetailFinishedAt": "Finished {date}",
+  "@nonconformanceDetailFinishedAt": {
+    "description": "The chip saying when one record was closed.",
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "nonconformanceDetailDetail": "Detail",
+  "@nonconformanceDetailDetail": {
+    "description": "The summary fact over the record's own free-text detail."
+  },
+  "nonconformanceDetailQuantityAffected": "Quantity affected",
+  "@nonconformanceDetailQuantityAffected": {
+    "description": "The summary fact over how much product the record affects."
+  },
+  "nonconformanceDetailFiledAgainst": "Filed against",
+  "@nonconformanceDetailFiledAgainst": {
+    "description": "The summary fact over what the record was filed against."
+  },
+  "commonNoneGiven": "None given",
+  "@commonNoneGiven": {
+    "description": "Stands where an optional free-text value was left blank."
+  },
+  "commonNoneNamed": "None named",
+  "@commonNoneNamed": {
+    "description": "Stands where an optional record was never named."
+  },
+  "commonNotGiven": "Not given",
+  "@commonNotGiven": {
+    "description": "Stands where an optional field was never filled in."
+  },
+  "commonNotRecorded": "Not recorded",
+  "@commonNotRecorded": {
+    "description": "Stands where an optional moment was never recorded."
+  },
+  "commonNoneRecorded": "None recorded yet",
+  "@commonNoneRecorded": {
+    "description": "Stands where nothing has been written into an optional field yet."
+  },
+  "nonconformanceDetailLotRef": "Lot reference",
+  "@nonconformanceDetailLotRef": {
+    "description": "The fact over the lot reference of one record."
+  },
+  "nonconformanceDetailContainment": "Immediate containment",
+  "@nonconformanceDetailContainment": {
+    "description": "The fact over what was done at once about one record."
+  },
+  "nonconformanceDetailDefectCodeValue": "{name} · {code} · starts at {severity}",
+  "@nonconformanceDetailDefectCodeValue": {
+    "description": "The Defect code of one record, its code and the severity it starts at.",
+    "placeholders": {
+      "name": {"type": "String"},
+      "code": {"type": "String"},
+      "severity": {"type": "String"}
+    }
+  },
+  "nonconformanceDetailActionsSection": "What can be done",
+  "@nonconformanceDetailActionsSection": {
+    "description": "The heading over every transition one record offers."
+  },
+  "nonconformanceIncreaseQuantity": "Increase the quantity",
+  "@nonconformanceIncreaseQuantity": {
+    "description": "The action that records more of the same nonconforming product."
+  },
+  "nonconformanceUpdate": "Raise severity or contain it",
+  "@nonconformanceUpdate": {
+    "description": "The action that raises a record's severity or records its containment."
+  },
+  "nonconformanceDisposition": "Record a Disposition",
+  "@nonconformanceDisposition": {
+    "description": "The action that records what is done with a part of the affected quantity."
+  },
+  "nonconformanceConcession": "Grant a Concession",
+  "@nonconformanceConcession": {
+    "description": "The Quality-authority decision to accept the nonconforming product as it is."
+  },
+  "nonconformanceLowerSeverity": "Lower the severity",
+  "@nonconformanceLowerSeverity": {
+    "description": "The Quality-authority decision to lower a record's severity."
+  },
+  "nonconformanceReopen": "Reopen it",
+  "@nonconformanceReopen": {
+    "description": "The Quality-authority decision to reopen a closed record."
+  },
+  "nonconformanceCancel": "Cancel it in error",
+  "@nonconformanceCancel": {
+    "description": "The Quality-authority decision that a record was raised in error."
+  },
+  "nonconformanceDetailQuantityHistory": "Quantity history",
+  "@nonconformanceDetailQuantityHistory": {
+    "description": "The heading over every change to a record's affected quantity."
+  },
+  "nonconformanceDetailQuantityHistoryNote": "Sorting finds more than the first count. Every change is kept, and the affected quantity never shrinks.",
+  "@nonconformanceDetailQuantityHistoryNote": {
+    "description": "What the quantity history section explains about itself."
+  },
+  "nonconformanceDetailNoQuantityHistory": "The affected quantity has not been changed since it was recorded.",
+  "@nonconformanceDetailNoQuantityHistory": {
+    "description": "Stands where the quantity history is empty."
+  },
+  "nonconformanceDetailDispositions": "Dispositions",
+  "@nonconformanceDetailDispositions": {
+    "description": "The heading over the Dispositions recorded against one record."
+  },
+  "nonconformanceDetailDispositionsNote": "Product is dealt with in parts. A Non-conformance closes by itself once all of its quantity has a Disposition.",
+  "@nonconformanceDetailDispositionsNote": {
+    "description": "What the Dispositions section explains about itself."
+  },
+  "nonconformanceDetailDispositioned": "{done} of {total} {uom} dispositioned",
+  "@nonconformanceDetailDispositioned": {
+    "description": "How much of the affected quantity already has a Disposition.",
+    "placeholders": {
+      "done": {"type": "String"},
+      "total": {"type": "String"},
+      "uom": {"type": "String"}
+    }
+  },
+  "nonconformanceDetailNoDispositions": "Nothing has been decided about this product yet.",
+  "@nonconformanceDetailNoDispositions": {
+    "description": "Stands where no Disposition has been recorded."
+  },
+  "nonconformanceDetailReworkMinutes": "{count, plural, =1{1 minute of rework} other{{count} minutes of rework}}",
+  "@nonconformanceDetailReworkMinutes": {
+    "description": "How much rework one Disposition took.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "nonconformanceDetailCorrections": "Corrections",
+  "@nonconformanceDetailCorrections": {
+    "description": "The heading over the corrections a holder of Quality authority made to one record."
+  },
+  "nonconformanceDetailCorrectionsNote": "What a holder of Quality authority has changed about this record, and why.",
+  "@nonconformanceDetailCorrectionsNote": {
+    "description": "What the Corrections section explains about itself."
+  },
+  "nonconformanceDetailNoCorrections": "This record has not been corrected.",
+  "@nonconformanceDetailNoCorrections": {
+    "description": "Stands where no correction has been made."
+  },
+  "nonconformanceDetailCause": "The cause",
+  "@nonconformanceDetailCause": {
+    "description": "The heading over the Concerns a record is evidence behind."
+  },
+  "nonconformanceDetailCauseNote": "Nonconforming product is dealt with here; the problem behind it is solved in the action log, as a Concern. One problem that shows up several times stays one Concern.",
+  "@nonconformanceDetailCauseNote": {
+    "description": "What the cause section explains about itself."
+  },
+  "nonconformanceDetailNoConcerns": "Nothing is being done about the cause yet.",
+  "@nonconformanceDetailNoConcerns": {
+    "description": "Stands where the record is evidence behind no Concern."
+  },
+  "nonconformanceDetailRaisedFrom": "raised from this record",
+  "@nonconformanceDetailRaisedFrom": {
+    "description": "Says which Concern this occurrence of the problem started."
+  },
+  "nonconformanceDetailOverdue": "overdue",
+  "@nonconformanceDetailOverdue": {
+    "description": "Says a Concern linked to this record is past its due date."
+  },
+  "nonconformanceRaiseConcern": "Raise a Concern",
+  "@nonconformanceRaiseConcern": {
+    "description": "The action that raises a Concern from one record."
+  },
+  "nonconformanceLinkConcern": "Link it to a Concern",
+  "@nonconformanceLinkConcern": {
+    "description": "The action that links one record to a Concern that already exists."
+  },
+  "commonNoSiteTitle": "No Site to show",
+  "@commonNoSiteTitle": {
+    "description": "An empty state's heading when the Account can see no Site at all."
+  },
+  "commonNoSiteMessage": "Your Account can see no Site yet, so there is nothing to read here.",
+  "@commonNoSiteMessage": {
+    "description": "What the no-Site empty state says under its heading."
+  },
+  "commonFiledAgainst": "{orgUnit} · filed against {against}",
+  "@commonFiledAgainst": {
+    "description": "The Org Unit a record was registered at, and what it was registered against.",
+    "placeholders": {
+      "orgUnit": {"type": "String"},
+      "against": {"type": "String"}
+    }
+  },
+  "commonFiledAgainstColumn": "Filed against",
+  "@commonFiledAgainstColumn": {
+    "description": "A register's column heading over what each record was filed against."
+  },
+  "commonAny": "Any",
+  "@commonAny": {
+    "description": "A filter's option that narrows nothing."
+  },
+  "commonType": "Type",
+  "@commonType": {
+    "description": "Label over the type filter of a register, and the register's own Type column."
+  },
+  "commonCategory": "Category",
+  "@commonCategory": {
+    "description": "Label over the category filter of the Safety observation register."
+  },
+  "commonAction": "Action",
+  "@commonAction": {
+    "description": "Label over the filter that narrows by whether an Action was raised."
+  },
+  "commonSeverity": "Severity",
+  "@commonSeverity": {
+    "description": "Label over the severity filter of a register, and its Severity column."
+  },
+  "safetyIncidentsUnavailableTitle": "The Safety incident register could not be read",
+  "@safetyIncidentsUnavailableTitle": {
+    "description": "The failure state's heading when the Safety incident register could not be fetched."
+  },
+  "safetyIncidentsDescription": "What went wrong at this Site, where it happened, and where it sits on the severity ladder.",
+  "@safetyIncidentsDescription": {
+    "description": "One-line description under the Safety incident register's title."
+  },
+  "safetyIncidentRecord": "Record a Safety incident",
+  "@safetyIncidentRecord": {
+    "description": "The button that opens the form recording a Safety incident."
+  },
+  "safetyIncidentType": "Incident type",
+  "@safetyIncidentType": {
+    "description": "Label over the incident type filter."
+  },
+  "safetyRecordable": "Recordable",
+  "@safetyRecordable": {
+    "description": "Label over the filter that narrows by whether an incident is recordable, and the option that keeps only recordable ones."
+  },
+  "safetyNotRecordable": "Not recordable",
+  "@safetyNotRecordable": {
+    "description": "The recordable filter's option that keeps only incidents that need not be reported."
+  },
+  "safetyOccurredFrom": "Occurred from",
+  "@safetyOccurredFrom": {
+    "description": "Label over the first date of the occurred-between filter."
+  },
+  "safetyOccurredTo": "Occurred to",
+  "@safetyOccurredTo": {
+    "description": "Label over the last date of the occurred-between filter."
+  },
+  "safetyIncidentsTruncated": "There are more Safety incidents than this list shows. Narrow it by Org Unit, by status or by date to see the rest.",
+  "@safetyIncidentsTruncated": {
+    "description": "Said under the Safety incident register when the list was capped rather than complete."
+  },
+  "safetyIncidentsNoMatchMessage": "The register has Safety incidents, but none of them is in the area, state, type, severity, recordability or dates you picked.",
+  "@safetyIncidentsNoMatchMessage": {
+    "description": "What the filtered-empty state of the Safety incident register says under its heading."
+  },
+  "safetyIncidentsNoneTitle": "No incidents recorded for this period",
+  "@safetyIncidentsNoneTitle": {
+    "description": "The empty state's heading when the Site recorded no incident at all."
+  },
+  "safetyIncidentsNoneMessage": "No Safety incident has been recorded at this Site for the area and dates shown.",
+  "@safetyIncidentsNoneMessage": {
+    "description": "What the no-incident state says under its heading."
+  },
+  "safetyIncidentNumberColumn": "Incident #",
+  "@safetyIncidentNumberColumn": {
+    "description": "The Safety incident register's column heading over each incident's own number."
+  },
+  "safetyObservationsUnavailableTitle": "The Safety observation register could not be read",
+  "@safetyObservationsUnavailableTitle": {
+    "description": "The failure state's heading when the Safety observation register could not be fetched."
+  },
+  "safetyObservationsDescription": "What was seen before anything went wrong, ranked worst-first by the worst credible outcome.",
+  "@safetyObservationsDescription": {
+    "description": "One-line description under the Safety observation register's title."
+  },
+  "safetyObservationRecord": "Record an observation",
+  "@safetyObservationRecord": {
+    "description": "The button that opens the form recording a Safety observation."
+  },
+  "safetyAnyType": "Any type",
+  "@safetyAnyType": {
+    "description": "The type filter's option that narrows nothing."
+  },
+  "safetyAnyCategory": "Any category",
+  "@safetyAnyCategory": {
+    "description": "The category filter's option that narrows nothing."
+  },
+  "safetySeverityPotential": "Severity potential",
+  "@safetySeverityPotential": {
+    "description": "Label over the filter that narrows observations by how bad the outcome could have been."
+  },
+  "safetyAnyPotential": "Any potential",
+  "@safetyAnyPotential": {
+    "description": "The severity-potential filter's option that narrows nothing."
+  },
+  "safetyStopWork": "Stop-work",
+  "@safetyStopWork": {
+    "description": "The label of the stop-work badge on an observation, and the filter that narrows by it."
+  },
+  "safetyStopWorkOnly": "Stop-work only",
+  "@safetyStopWorkOnly": {
+    "description": "The stop-work filter's option that keeps only observations that stopped the work."
+  },
+  "safetyNotStopWork": "Not stop-work",
+  "@safetyNotStopWork": {
+    "description": "The stop-work filter's option that keeps only observations that did not stop the work."
+  },
+  "safetyNoActionRaised": "No Action raised",
+  "@safetyNoActionRaised": {
+    "description": "The action filter's option that keeps only observations nothing has been raised for."
+  },
+  "safetyActionRaised": "Action raised",
+  "@safetyActionRaised": {
+    "description": "The action filter's option that keeps only observations an Action has been raised from."
+  },
+  "safetyObservedFrom": "Observed from",
+  "@safetyObservedFrom": {
+    "description": "Label over the first date of the observed-between filter."
+  },
+  "safetyObservedTo": "Observed to",
+  "@safetyObservedTo": {
+    "description": "Label over the last date of the observed-between filter."
+  },
+  "safetyObservationsTruncated": "There are more Safety observations than this list shows. Narrow it by Org Unit, by type or by date to see the rest.",
+  "@safetyObservationsTruncated": {
+    "description": "Said under the Safety observation register when the list was capped rather than complete."
+  },
+  "safetyObservationsNoMatchMessage": "The register has Safety observations, but none of them is in the area, type, category, potential, stop-work or dates you picked.",
+  "@safetyObservationsNoMatchMessage": {
+    "description": "What the filtered-empty state of the Safety observation register says under its heading."
+  },
+  "safetyObservationsNoneTitle": "No observations recorded. The leading indicator is empty.",
+  "@safetyObservationsNoneTitle": {
+    "description": "The empty state's heading when the Site recorded no observation at all — a register with no rows is bad news here."
+  },
+  "safetyObservationsNoneMessage": "No Safety observation has been recorded at this Site for the area and dates shown.",
+  "@safetyObservationsNoneMessage": {
+    "description": "What the no-observation state says under its heading."
+  },
+  "safetyPotentialColumn": "Potential",
+  "@safetyPotentialColumn": {
+    "description": "The Safety observation register's column heading over the worst credible outcome."
+  },
+  "safetyIncidentReport": "Report a Safety incident",
+  "@safetyIncidentReport": {
+    "description": "Title of the dialog a person on the floor reports a Safety incident from."
+  },
+  "safetyReportSubmit": "Report it",
+  "@safetyReportSubmit": {
+    "description": "The submit action of the floor Safety incident dialog."
+  },
+  "safetyIncidentFloorIntro": "What happened? Everything with a known set is chosen from a fixed list.",
+  "@safetyIncidentFloorIntro": {
+    "description": "What the floor Safety incident dialog asks, above its fields."
+  },
+  "safetyWhatHappened": "What happened",
+  "@safetyWhatHappened": {
+    "description": "Label over the free-text account of a Safety incident."
+  },
+  "safetyImmediateAction": "Immediate action (optional)",
+  "@safetyImmediateAction": {
+    "description": "Label over what was done at once about a Safety incident."
+  },
+  "safetyOccurredAt": "Occurred at",
+  "@safetyOccurredAt": {
+    "description": "Label over the moment a Safety incident happened."
+  },
+  "safetyIncidentFloorWho": "Who is reporting this? Your Employee number and PIN identify you for this record only — it is filed as your report.",
+  "@safetyIncidentFloorWho": {
+    "description": "What the floor Safety incident dialog asks before its identity fields."
+  },
+  "safetyObservationRecordTitle": "Record a Safety observation",
+  "@safetyObservationRecordTitle": {
+    "description": "Title of the dialog a person on the floor records a Safety observation from."
+  },
+  "safetyObservationFloorIntro": "What was seen? Everything with a known set is chosen from a fixed list.",
+  "@safetyObservationFloorIntro": {
+    "description": "What the floor Safety observation dialog asks, above its fields."
+  },
+  "safetyWhatWasSeen": "What was seen",
+  "@safetyWhatWasSeen": {
+    "description": "Label over the free-text account of a Safety observation."
+  },
+  "safetyActionTaken": "Action taken (optional)",
+  "@safetyActionTaken": {
+    "description": "Label over what was done at once about a Safety observation."
+  },
+  "safetyStopWorkExercised": "Stop-work authority was exercised",
+  "@safetyStopWorkExercised": {
+    "description": "The switch saying the observer stopped the work on the strength of the observation."
+  },
+  "safetyObservationFloorWho": "Who is recording this? Your Employee number and PIN identify you for this record only.",
+  "@safetyObservationFloorWho": {
+    "description": "What the floor Safety observation dialog asks before its identity fields."
+  },
+  "commonBack": "Back",
+  "@commonBack": {
+    "description": "The one way out of a refused dialog."
+  },
+  "routerLeaveNotDecidable": "This leave request is not one you can decide.",
+  "@routerLeaveNotDecidable": {
+    "description": "Said when the leave request a decision dialog was opened for is not the caller's to decide."
+  },
+  "routerLeaveNotCancellable": "This leave request cannot be cancelled.",
+  "@routerLeaveNotCancellable": {
+    "description": "Said when the leave request a cancel dialog was opened for cannot be cancelled by this caller."
+  },
+  "routerNotAMeasure": "That is not a measure",
+  "@routerNotAMeasure": {
+    "description": "The heading of the refusal shown when a measure address names no known kind of measure."
+  },
+  "routerNotAMeasureBody": "A measure is a containment, a countermeasure or a preventive action.",
+  "@routerNotAMeasureBody": {
+    "description": "What the refusal explains, under its heading."
+  },
+  "routerBackToAction": "Back to the Action",
+  "@routerBackToAction": {
+    "description": "The way out of the measure refusal back to the Action it was opened from."
+  },
+  "routerCannotDoThatHere": "You cannot do that here",
+  "@routerCannotDoThatHere": {
+    "description": "The heading of the refusal shown when a form opens for a caller with no write Grant at this Site."
+  },
+  "routerNoWriteGrant": "You do not hold a write Grant anywhere at this Site.",
+  "@routerNoWriteGrant": {
+    "description": "Why the form was refused, under its heading."
+  },
+  "routerBackToList": "Back to the list",
+  "@routerBackToList": {
+    "description": "The way out of the write-Grant refusal back to the register it was opened from."
   }
 }

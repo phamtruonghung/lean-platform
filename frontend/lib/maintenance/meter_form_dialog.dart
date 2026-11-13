@@ -14,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -207,21 +208,22 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return BlocListener<MetersBloc, MetersState>(
       listener: _onMetersChanged,
       child: AppDialog(
-        title: 'Define a meter',
+        title: l10n.metersDefine,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: MeterFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: MeterFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : 'Define',
+            label: _awaiting ? l10n.commonSaving : l10n.meterFormSubmit,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -244,10 +246,10 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
               controller: _code,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Code',
-                helperText: 'How this meter is known on the Asset, e.g. RUN-HRS.',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.commonCode,
+                helperText: l10n.meterFormCodeHelp,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: Spacing.md),
@@ -256,7 +258,10 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
               controller: _name,
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: l10n.commonName,
+                border: const OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: Spacing.md),
             _UomField(
@@ -273,9 +278,9 @@ class _MeterFormDialogState extends State<MeterFormDialog> {
               key: MeterFormDialog.typeKey,
               initialValue: _type,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Kind of meter',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.meterFormType,
+                border: const OutlineInputBorder(),
               ),
               items: [
                 for (final type in MeterType.values)
@@ -338,6 +343,7 @@ class _AssetField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
@@ -356,16 +362,16 @@ class _AssetField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Assets could not be read.',
+              failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _LoadStatus.ready:
         return AppSearchField<Asset>(
           name: MeterFormDialog._assetFieldName,
-          label: 'Asset',
+          label: l10n.commonAsset,
           value: _selected,
           enabled: enabled,
           // A pick sets the dialog's own id; typing over the chosen Asset
@@ -419,6 +425,7 @@ class _UomField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
@@ -437,10 +444,10 @@ class _UomField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The units of measure could not be read.',
+              failure ?? l10n.meterFormUomFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _LoadStatus.ready:
@@ -448,9 +455,9 @@ class _UomField extends StatelessWidget {
           key: MeterFormDialog.uomKey,
           initialValue: selectedCode,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Unit of measure',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.commonUnitOfMeasure,
+            border: const OutlineInputBorder(),
           ),
           items: [
             for (final uom in uoms)

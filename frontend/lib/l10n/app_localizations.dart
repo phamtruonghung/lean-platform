@@ -1813,6 +1813,1532 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Store stock'**
   String get titleStoreStock;
+
+  /// The button beside a failed read that asks again for the same list.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get commonTryAgain;
+
+  /// Shown in place of an Asset picker when the register could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The Assets could not be read.'**
+  String get commonAssetsFailed;
+
+  /// Label over a Job plan picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Job plan'**
+  String get commonJobPlan;
+
+  /// Label over a meter picker, and the heading of the meter type field.
+  ///
+  /// In en, this message translates to:
+  /// **'Meter'**
+  String get commonMeter;
+
+  /// Label over an Employee picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee'**
+  String get commonEmployee;
+
+  /// Label over the field that chooses the unit a figure is counted in.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit of measure'**
+  String get commonUnitOfMeasure;
+
+  /// Label over a field holding how many of something.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get commonQuantity;
+
+  /// Label over a Part picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Part'**
+  String get commonPart;
+
+  /// Label over a Store picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Store'**
+  String get commonStore;
+
+  /// Label over a free-text note field that may be left blank.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get commonNoteOptional;
+
+  /// The word beside priority level 1, the CHECK constraint's most urgent end.
+  ///
+  /// In en, this message translates to:
+  /// **'Most urgent'**
+  String get commonPriorityMostUrgent;
+
+  /// The word beside priority level 2.
+  ///
+  /// In en, this message translates to:
+  /// **'Urgent'**
+  String get commonPriorityUrgent;
+
+  /// The word beside priority level 3, the schema's own default.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get commonPriorityNormal;
+
+  /// The word beside priority level 4.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get commonPriorityLow;
+
+  /// The word beside priority level 5, the CHECK constraint's least urgent end.
+  ///
+  /// In en, this message translates to:
+  /// **'Least urgent'**
+  String get commonPriorityLeastUrgent;
+
+  /// Title of the dialog that attaches a Job plan to an Asset as a PM schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule preventive maintenance'**
+  String get pmScheduleFormTitle;
+
+  /// The submit action of the PM schedule dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get pmScheduleFormSubmit;
+
+  /// Label over the choice of what the schedule's interval counts: elapsed time or accumulated use.
+  ///
+  /// In en, this message translates to:
+  /// **'Comes round on'**
+  String get pmScheduleFormBasisField;
+
+  /// The interval counts elapsed time, so the schedule comes round on a number of days.
+  ///
+  /// In en, this message translates to:
+  /// **'Elapsed time'**
+  String get pmScheduleFormBasisElapsed;
+
+  /// The interval counts accumulated use, so the schedule comes round on a cumulative meter's count.
+  ///
+  /// In en, this message translates to:
+  /// **'Accumulated use'**
+  String get pmScheduleFormBasisAccumulated;
+
+  /// Label over the interval in days.
+  ///
+  /// In en, this message translates to:
+  /// **'Every how many days'**
+  String get pmScheduleFormEveryDays;
+
+  /// Label over the interval in accumulated use.
+  ///
+  /// In en, this message translates to:
+  /// **'Every how much accumulated use'**
+  String get pmScheduleFormEveryAccumulated;
+
+  /// Help text under the accumulated-use interval while no meter has been chosen yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a cumulative meter first.'**
+  String get pmScheduleFormMeterNotChosen;
+
+  /// Help text under the accumulated-use interval once a meter is chosen, naming the meter's unit.
+  ///
+  /// In en, this message translates to:
+  /// **'In {uom}, one interval past where the meter stands now.'**
+  String pmScheduleFormMeterIntervalHelp(String uom);
+
+  /// Label over the choice of which date the next due date counts from.
+  ///
+  /// In en, this message translates to:
+  /// **'The interval rolls from'**
+  String get pmScheduleFormAnchor;
+
+  /// Label over the lead time, so many days before the due date a Work order is raised.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise this many days early'**
+  String get pmScheduleFormLeadTime;
+
+  /// Priority level 1 in the PM schedule dialog, worded for a bare digit whose direction is not obvious.
+  ///
+  /// In en, this message translates to:
+  /// **'1 — most urgent'**
+  String get pmScheduleFormPriorityMostUrgent;
+
+  /// Priority level 5 in the PM schedule dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'5 — least urgent'**
+  String get pmScheduleFormPriorityLeastUrgent;
+
+  /// Label over the first due date of a day-driven PM schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'First due date (optional)'**
+  String get pmScheduleFormFirstDue;
+
+  /// Help text under the first due date.
+  ///
+  /// In en, this message translates to:
+  /// **'Left blank, the first due date is the interval from today.'**
+  String get pmScheduleFormFirstDueHelp;
+
+  /// Shown in place of the Job plan picker when the catalogue could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The Job plans could not be read.'**
+  String get pmScheduleFormJobPlansFailed;
+
+  /// Shown in place of the meter picker when the Asset's meters could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The meters could not be read.'**
+  String get pmScheduleFormMetersFailed;
+
+  /// Help text under the meter picker, explaining why gauges are not offered.
+  ///
+  /// In en, this message translates to:
+  /// **'Only cumulative meters can drive a schedule.'**
+  String get pmScheduleFormMeterHelp;
+
+  /// The submit action of the Job plan form dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Add plan'**
+  String get jobPlanFormSubmit;
+
+  /// Label over the Job plan's work type choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind of work'**
+  String get jobPlanFormWorkType;
+
+  /// Label over the Job plan's optional description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (optional)'**
+  String get jobPlanFormDescriptionOptional;
+
+  /// Label over the Job plan's optional estimate.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated hours (optional)'**
+  String get jobPlanFormEstimatedHoursOptional;
+
+  /// The switch on the Job plan form saying the work needs the Asset stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires a shutdown'**
+  String get jobPlanFormRequiresShutdown;
+
+  /// Label over the Job plan's optional safety note.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety note (optional)'**
+  String get jobPlanFormSafetyNoteOptional;
+
+  /// The button that appends one step to the Job plan being written.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a step'**
+  String get jobPlanFormAddStep;
+
+  /// Shown over the steps when the Skill catalogue could not be fetched, so a step's required skill cannot be chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'The skill catalogue could not be read.'**
+  String get jobPlanFormSkillsFailed;
+
+  /// Label over one step's number.
+  ///
+  /// In en, this message translates to:
+  /// **'Step'**
+  String get jobPlanFormStep;
+
+  /// Label over one step's instruction text.
+  ///
+  /// In en, this message translates to:
+  /// **'Instruction'**
+  String get jobPlanFormInstruction;
+
+  /// Tooltip on the button that drops one step from the Job plan being written.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this step'**
+  String get jobPlanFormRemoveStep;
+
+  /// Label over one step's optional required Skill.
+  ///
+  /// In en, this message translates to:
+  /// **'Required skill (optional)'**
+  String get jobPlanFormRequiredSkill;
+
+  /// Label over one step's optional estimated hours.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours (optional)'**
+  String get jobPlanFormHoursOptional;
+
+  /// The submit action of the meter form dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Define'**
+  String get meterFormSubmit;
+
+  /// Help text under the meter's code.
+  ///
+  /// In en, this message translates to:
+  /// **'How this meter is known on the Asset, e.g. RUN-HRS.'**
+  String get meterFormCodeHelp;
+
+  /// Label over the choice between a cumulative meter and a gauge.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind of meter'**
+  String get meterFormType;
+
+  /// Shown in place of the unit picker when the catalogue could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The units of measure could not be read.'**
+  String get meterFormUomFailed;
+
+  /// Title of the dialog that records a reading against one meter, naming it.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a reading on {meter}'**
+  String readingFormTitle(String meter);
+
+  /// The submit action of the reading dialog when the counter was reset or replaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Record rollover'**
+  String get readingFormSubmitRollover;
+
+  /// The submit action of the reading dialog for an ordinary reading.
+  ///
+  /// In en, this message translates to:
+  /// **'Record reading'**
+  String get readingFormSubmit;
+
+  /// The line above the reading field showing where the meter stands now.
+  ///
+  /// In en, this message translates to:
+  /// **'Accumulated use so far: {value}'**
+  String readingFormAccumulatedSoFar(String value);
+
+  /// Label over the reading field when the counter was reset or replaced.
+  ///
+  /// In en, this message translates to:
+  /// **'What the new counter reads now'**
+  String get readingFormNewCounterReads;
+
+  /// Label over the reading field for an ordinary reading.
+  ///
+  /// In en, this message translates to:
+  /// **'What the counter reads'**
+  String get readingFormCounterReads;
+
+  /// Help text under the reading field when the counter was reset or replaced.
+  ///
+  /// In en, this message translates to:
+  /// **'The accumulated use is carried forward into the offset; the new counter usually reads 0.'**
+  String get readingFormRolloverHelp;
+
+  /// Help text under the reading field for an ordinary reading, naming the meter's unit.
+  ///
+  /// In en, this message translates to:
+  /// **'In {uom}, exactly as the counter shows.'**
+  String readingFormReadingHelp(String uom);
+
+  /// The checkbox on a cumulative meter that says this reading follows a reset or a replacement.
+  ///
+  /// In en, this message translates to:
+  /// **'The counter was reset or replaced'**
+  String get readingFormRolloverTitle;
+
+  /// What the reset-or-replaced checkbox does, under its own label.
+  ///
+  /// In en, this message translates to:
+  /// **'Carries the accumulated use into the offset and records this as the new counter\'s start.'**
+  String get readingFormRolloverSubtitle;
+
+  /// Title of the dialog that accepts one Request, naming it.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept {requestNo}?'**
+  String requestAcceptTitle(String requestNo);
+
+  /// The dismiss action of the accept dialog: the Request stays in the triage queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it waiting'**
+  String get requestAcceptDismiss;
+
+  /// The submit action of the accept dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept this Request'**
+  String get requestAcceptSubmit;
+
+  /// What accepting a Request does, above the priority choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepting raises a Work order for this Request. Its priority is your call, not the reporter\'s urgency.'**
+  String get requestAcceptBody;
+
+  /// Title of the dialog that declines one Request, naming it.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline {requestNo}?'**
+  String requestDeclineTitle(String requestNo);
+
+  /// Label over the reason the database requires before a Request may be declined.
+  ///
+  /// In en, this message translates to:
+  /// **'Why is this being declined?'**
+  String get requestDeclineReason;
+
+  /// The submit action of the decline dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline this Request'**
+  String get requestDeclineSubmit;
+
+  /// Title of the dialog that marks one Request as a duplicate of another.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as a duplicate'**
+  String get requestDuplicateTitle;
+
+  /// The dismiss action of the duplicate dialog: the Request stays its own.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it separate'**
+  String get requestDuplicateDismiss;
+
+  /// Stands where the candidate list would be when no other open Request exists.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no other open Request for this one to duplicate.'**
+  String get requestDuplicateNone;
+
+  /// The question above the candidate list, naming the Request that would leave the queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Which Request survives? {requestNo} leaves the queue.'**
+  String requestDuplicateWhich(String requestNo);
+
+  /// Title of the dialog that books labour against a Work order.
+  ///
+  /// In en, this message translates to:
+  /// **'Book labour'**
+  String get labourBookingTitle;
+
+  /// Label over the kind of labour being booked.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get labourBookingActivity;
+
+  /// Label over when the booked labour started.
+  ///
+  /// In en, this message translates to:
+  /// **'Started at'**
+  String get labourBookingStartedAt;
+
+  /// Label over when the booked labour ended.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended at'**
+  String get labourBookingEndedAt;
+
+  /// The checkbox saying the booked labour was worked outside normal hours.
+  ///
+  /// In en, this message translates to:
+  /// **'Overtime'**
+  String get labourBookingOvertime;
+
+  /// Shown in place of the Employee picker when the directory could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The Employees could not be read.'**
+  String get labourBookingEmployeesFailed;
+
+  /// Title of the dialog that books a part against a Work order.
+  ///
+  /// In en, this message translates to:
+  /// **'Book a part'**
+  String get partBookingTitle;
+
+  /// The submit action of the part booking dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Book part'**
+  String get partBookingSubmit;
+
+  /// Label over where the part comes from: a Store or bought in.
+  ///
+  /// In en, this message translates to:
+  /// **'Sourced'**
+  String get partBookingSourced;
+
+  /// Shown in place of the part and store pickers when their options could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The options could not be read.'**
+  String get partBookingOptionsFailed;
+
+  /// Label over the part number of a part bought in.
+  ///
+  /// In en, this message translates to:
+  /// **'Part number (optional)'**
+  String get partBookingPartNoOptional;
+
+  /// Label over the cost of one unit of a part bought in.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit cost (optional)'**
+  String get partBookingUnitCostOptional;
+
+  /// The failure state's heading when the Non-conformance register could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The Non-conformance register could not be read'**
+  String get nonconformancesUnavailableTitle;
+
+  /// The empty state's heading when the Account can see no Site at all.
+  ///
+  /// In en, this message translates to:
+  /// **'No Site to show'**
+  String get nonconformancesNoSiteTitle;
+
+  /// What the no-Site empty state says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Account can see no Site yet, so there is nothing to read here.'**
+  String get nonconformancesNoSiteMessage;
+
+  /// One-line description under the Non-conformance register's title.
+  ///
+  /// In en, this message translates to:
+  /// **'What was found not to conform at this Site, where it was found, and how much of it there is.'**
+  String get nonconformancesDescription;
+
+  /// The button that opens the form recording a Non-conformance, and the title of that form.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a Non-conformance'**
+  String get nonconformanceRecord;
+
+  /// The Org Unit filter's own label when it narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'All Org Units'**
+  String get commonAllOrgUnits;
+
+  /// The status filter's option that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Any status'**
+  String get nonconformancesAnyStatus;
+
+  /// Label over a Defect code picker, and the register's own Defect code filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Defect code'**
+  String get commonDefectCode;
+
+  /// The Defect code filter's option that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Every Defect code'**
+  String get nonconformancesEveryDefectCode;
+
+  /// Label over a Product picker, and the register's own Product filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Product'**
+  String get commonProduct;
+
+  /// The Product filter's option that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Every Product'**
+  String get nonconformancesEveryProduct;
+
+  /// Label over the severity filter and the severity field of a Non-conformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Severity'**
+  String get nonconformancesSeverity;
+
+  /// The severity filter's option that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Any severity'**
+  String get nonconformancesAnySeverity;
+
+  /// Label over the first date of the detected-between filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected from'**
+  String get nonconformancesDetectedFrom;
+
+  /// Label over the last date of the detected-between filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected to'**
+  String get nonconformancesDetectedTo;
+
+  /// Said under the register when the list was capped rather than complete.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more Non-conformances than this list shows. Narrow it by Org Unit, by status or by date to see the rest.'**
+  String get nonconformancesTruncated;
+
+  /// The empty state's heading when the register has records but no filter matches.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches these filters'**
+  String get nonconformancesNoMatchTitle;
+
+  /// What the filtered-empty state says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'The register has Non-conformances, but none of them is in the area, state, Defect code, Product, severity or dates you picked.'**
+  String get nonconformancesNoMatchMessage;
+
+  /// The action on the filtered-empty state that clears every filter at once.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the filters'**
+  String get nonconformancesClearTheFilters;
+
+  /// The empty state's heading when the Site's register has no records at all.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been found not to conform'**
+  String get nonconformancesNoneExistTitle;
+
+  /// What the no-record state says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'No Non-conformance has been recorded at this Site.'**
+  String get nonconformancesNoneExistMessage;
+
+  /// The register's column heading over each Non-conformance's own number.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-conformance'**
+  String get nonconformancesNumberColumn;
+
+  /// The register's column heading over the Product, Defect code and detection point of one find.
+  ///
+  /// In en, this message translates to:
+  /// **'What was found'**
+  String get nonconformancesFoundColumn;
+
+  /// The register's column heading over a record's state chip.
+  ///
+  /// In en, this message translates to:
+  /// **'State'**
+  String get commonState;
+
+  /// The register's column heading over where a Non-conformance was filed.
+  ///
+  /// In en, this message translates to:
+  /// **'Filed'**
+  String get nonconformancesFiledColumn;
+
+  /// The button on a register row that opens the record itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get commonOpen;
+
+  /// How much product one Non-conformance affects, with its unit.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} {uom} affected'**
+  String nonconformanceQuantityAffected(String count, String uom);
+
+  /// How many times the affected quantity of one Non-conformance has been raised.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{raised 1 time} other{raised {count} times}}'**
+  String nonconformanceQuantityRaised(int count);
+
+  /// The Org Unit a Non-conformance was found at, and what it was filed against.
+  ///
+  /// In en, this message translates to:
+  /// **'{orgUnit} · filed against {against}'**
+  String nonconformanceFiledAgainst(String orgUnit, String against);
+
+  /// The submit action of the form that records a Non-conformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Record it'**
+  String get nonconformanceFormRecord;
+
+  /// Help text under the Product field of the Non-conformance form.
+  ///
+  /// In en, this message translates to:
+  /// **'What the nonconforming product is.'**
+  String get nonconformanceFormProductHelp;
+
+  /// Help text under the Defect code field of the Non-conformance form.
+  ///
+  /// In en, this message translates to:
+  /// **'What is wrong with it. The severity starts at this code own default.'**
+  String get nonconformanceFormDefectCodeHelp;
+
+  /// The Defect code picker's option that has nothing chosen yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a code'**
+  String get nonconformanceFormChooseCode;
+
+  /// Label over the detection point of a Non-conformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Detection point'**
+  String get nonconformanceFormDetectionPoint;
+
+  /// Help text under the detection point field.
+  ///
+  /// In en, this message translates to:
+  /// **'Where the control plan caught it.'**
+  String get nonconformanceFormDetectionPointHelp;
+
+  /// The detection point picker's option that has nothing chosen yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a point'**
+  String get nonconformanceFormChoosePoint;
+
+  /// Help text under the severity field before a Defect code is chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Chosen with the Defect code.'**
+  String get nonconformanceFormSeverityHelpUnset;
+
+  /// Help text under the severity field once a Defect code carries a default.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts at {severity}. Raising it is allowed; lowering it is a later decision.'**
+  String nonconformanceFormSeverityHelpSet(String severity);
+
+  /// The severity picker's option before a Defect code is chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Defect code first'**
+  String get nonconformanceFormChooseCodeFirst;
+
+  /// The severity picker's own option once a Defect code carries a default.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts at {severity}'**
+  String nonconformanceFormStartsAt(String severity);
+
+  /// Help text under the quantity field of the Non-conformance form.
+  ///
+  /// In en, this message translates to:
+  /// **'How many pieces.'**
+  String get nonconformanceFormQuantityHelp;
+
+  /// Label over the optional lot reference of a Non-conformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Lot reference (optional)'**
+  String get nonconformanceFormLotRef;
+
+  /// Help text under the lot reference field.
+  ///
+  /// In en, this message translates to:
+  /// **'What else is affected — a batch number is better than nothing.'**
+  String get nonconformanceFormLotRefHelp;
+
+  /// Label over the optional Asset a Non-conformance was found on.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset (optional)'**
+  String get nonconformanceFormAssetOptional;
+
+  /// Help text under the optional Asset picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Which machine, if the find was on one. It must sit at that Org Unit.'**
+  String get nonconformanceFormAssetHelp;
+
+  /// Label over the optional free-text detail of a Non-conformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Detail (optional)'**
+  String get nonconformanceFormDetailOptional;
+
+  /// Label over the optional immediate containment of a Non-conformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediate containment (optional)'**
+  String get nonconformanceFormContainment;
+
+  /// Help text under the immediate containment field.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done at once. Recording it makes this contained.'**
+  String get nonconformanceFormContainmentHelp;
+
+  /// Label over the optional moment a Non-conformance was detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected at (optional)'**
+  String get nonconformanceFormDetectedAt;
+
+  /// Help text under the detected-at field.
+  ///
+  /// In en, this message translates to:
+  /// **'When it was found, if that is not now. This is what decides the production day and shift it is filed against.'**
+  String get nonconformanceFormDetectedAtHelp;
+
+  /// Heading of the Org Unit chooser inside the Non-conformance form.
+  ///
+  /// In en, this message translates to:
+  /// **'Where it was found'**
+  String get nonconformanceFormWhereFound;
+
+  /// What the Org Unit chooser does, under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the Org Unit the nonconforming product was found at. This is what decides who may act on it.'**
+  String get nonconformanceFormWhereFoundHelp;
+
+  /// Confirms the Org Unit a Non-conformance will be filed at, once one is chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'This Non-conformance will be recorded at {orgUnit}.'**
+  String nonconformanceFormWillBeRecorded(String orgUnit);
+
+  /// What the floor Non-conformance dialog asks, above its fields.
+  ///
+  /// In en, this message translates to:
+  /// **'What was found not to conform? Everything with a known set is chosen from what this device can see.'**
+  String get nonconformanceFloorIntro;
+
+  /// The floor form's Product picker option that has nothing chosen yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Product'**
+  String get nonconformanceFloorChooseProduct;
+
+  /// Label over the detection point in the floor Non-conformance dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected at'**
+  String get nonconformanceFloorDetectedAt;
+
+  /// Tells the floor form's caller which severity the chosen Defect code brings.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts at {severity} — this Defect code\'s own severity.'**
+  String nonconformanceFloorStartsAt(String severity);
+
+  /// Label over the quantity in the floor Non-conformance dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'How much of it'**
+  String get nonconformanceFloorHowMuch;
+
+  /// Label over the lot or batch reference in the floor Non-conformance dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Lot or batch (if it has one)'**
+  String get nonconformanceFloorLot;
+
+  /// Label over the free-text description in the floor Non-conformance dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'What did you see?'**
+  String get nonconformanceFloorWhatDidYouSee;
+
+  /// What the floor Non-conformance dialog asks before the identity fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Who found it? Your Employee number and PIN identify you for this record only — it is filed as your find.'**
+  String get nonconformanceFloorWhoFound;
+
+  /// Label over the Employee number field of the floor Non-conformance dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee number'**
+  String get nonconformanceFloorEmployeeNumber;
+
+  /// Label over the PIN field of the floor Non-conformance dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN'**
+  String get nonconformanceFloorPin;
+
+  /// The page head of one Non-conformance's detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-conformance'**
+  String get nonconformanceTitle;
+
+  /// The empty state's heading when the address names no record.
+  ///
+  /// In en, this message translates to:
+  /// **'No such Non-conformance'**
+  String get nonconformanceDetailMissingTitle;
+
+  /// What the missing-record state says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is recorded at this address. It may have been removed, or the address may be wrong.'**
+  String get nonconformanceDetailMissingMessage;
+
+  /// The control that returns from one record to the register.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Non-conformances'**
+  String get nonconformanceDetailBack;
+
+  /// The failure state's heading when one record could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The Non-conformance could not be read'**
+  String get nonconformanceDetailUnavailableTitle;
+
+  /// The severity chip on one record, naming the severity itself.
+  ///
+  /// In en, this message translates to:
+  /// **'{severity} severity'**
+  String nonconformanceDetailSeverityChip(String severity);
+
+  /// The chip saying when one record was closed.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished {date}'**
+  String nonconformanceDetailFinishedAt(String date);
+
+  /// The summary fact over the record's own free-text detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Detail'**
+  String get nonconformanceDetailDetail;
+
+  /// The summary fact over how much product the record affects.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity affected'**
+  String get nonconformanceDetailQuantityAffected;
+
+  /// The summary fact over what the record was filed against.
+  ///
+  /// In en, this message translates to:
+  /// **'Filed against'**
+  String get nonconformanceDetailFiledAgainst;
+
+  /// Stands where an optional free-text value was left blank.
+  ///
+  /// In en, this message translates to:
+  /// **'None given'**
+  String get commonNoneGiven;
+
+  /// Stands where an optional record was never named.
+  ///
+  /// In en, this message translates to:
+  /// **'None named'**
+  String get commonNoneNamed;
+
+  /// Stands where an optional field was never filled in.
+  ///
+  /// In en, this message translates to:
+  /// **'Not given'**
+  String get commonNotGiven;
+
+  /// Stands where an optional moment was never recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recorded'**
+  String get commonNotRecorded;
+
+  /// Stands where nothing has been written into an optional field yet.
+  ///
+  /// In en, this message translates to:
+  /// **'None recorded yet'**
+  String get commonNoneRecorded;
+
+  /// The fact over the lot reference of one record.
+  ///
+  /// In en, this message translates to:
+  /// **'Lot reference'**
+  String get nonconformanceDetailLotRef;
+
+  /// The fact over what was done at once about one record.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediate containment'**
+  String get nonconformanceDetailContainment;
+
+  /// The Defect code of one record, its code and the severity it starts at.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · {code} · starts at {severity}'**
+  String nonconformanceDetailDefectCodeValue(
+    String name,
+    String code,
+    String severity,
+  );
+
+  /// The heading over every transition one record offers.
+  ///
+  /// In en, this message translates to:
+  /// **'What can be done'**
+  String get nonconformanceDetailActionsSection;
+
+  /// The action that records more of the same nonconforming product.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase the quantity'**
+  String get nonconformanceIncreaseQuantity;
+
+  /// The action that raises a record's severity or records its containment.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise severity or contain it'**
+  String get nonconformanceUpdate;
+
+  /// The action that records what is done with a part of the affected quantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a Disposition'**
+  String get nonconformanceDisposition;
+
+  /// The Quality-authority decision to accept the nonconforming product as it is.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant a Concession'**
+  String get nonconformanceConcession;
+
+  /// The Quality-authority decision to lower a record's severity.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower the severity'**
+  String get nonconformanceLowerSeverity;
+
+  /// The Quality-authority decision to reopen a closed record.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen it'**
+  String get nonconformanceReopen;
+
+  /// The Quality-authority decision that a record was raised in error.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel it in error'**
+  String get nonconformanceCancel;
+
+  /// The heading over every change to a record's affected quantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity history'**
+  String get nonconformanceDetailQuantityHistory;
+
+  /// What the quantity history section explains about itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorting finds more than the first count. Every change is kept, and the affected quantity never shrinks.'**
+  String get nonconformanceDetailQuantityHistoryNote;
+
+  /// Stands where the quantity history is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'The affected quantity has not been changed since it was recorded.'**
+  String get nonconformanceDetailNoQuantityHistory;
+
+  /// The heading over the Dispositions recorded against one record.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispositions'**
+  String get nonconformanceDetailDispositions;
+
+  /// What the Dispositions section explains about itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Product is dealt with in parts. A Non-conformance closes by itself once all of its quantity has a Disposition.'**
+  String get nonconformanceDetailDispositionsNote;
+
+  /// How much of the affected quantity already has a Disposition.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} {uom} dispositioned'**
+  String nonconformanceDetailDispositioned(
+    String done,
+    String total,
+    String uom,
+  );
+
+  /// Stands where no Disposition has been recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been decided about this product yet.'**
+  String get nonconformanceDetailNoDispositions;
+
+  /// How much rework one Disposition took.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute of rework} other{{count} minutes of rework}}'**
+  String nonconformanceDetailReworkMinutes(int count);
+
+  /// The heading over the corrections a holder of Quality authority made to one record.
+  ///
+  /// In en, this message translates to:
+  /// **'Corrections'**
+  String get nonconformanceDetailCorrections;
+
+  /// What the Corrections section explains about itself.
+  ///
+  /// In en, this message translates to:
+  /// **'What a holder of Quality authority has changed about this record, and why.'**
+  String get nonconformanceDetailCorrectionsNote;
+
+  /// Stands where no correction has been made.
+  ///
+  /// In en, this message translates to:
+  /// **'This record has not been corrected.'**
+  String get nonconformanceDetailNoCorrections;
+
+  /// The heading over the Concerns a record is evidence behind.
+  ///
+  /// In en, this message translates to:
+  /// **'The cause'**
+  String get nonconformanceDetailCause;
+
+  /// What the cause section explains about itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Nonconforming product is dealt with here; the problem behind it is solved in the action log, as a Concern. One problem that shows up several times stays one Concern.'**
+  String get nonconformanceDetailCauseNote;
+
+  /// Stands where the record is evidence behind no Concern.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is being done about the cause yet.'**
+  String get nonconformanceDetailNoConcerns;
+
+  /// Says which Concern this occurrence of the problem started.
+  ///
+  /// In en, this message translates to:
+  /// **'raised from this record'**
+  String get nonconformanceDetailRaisedFrom;
+
+  /// Says a Concern linked to this record is past its due date.
+  ///
+  /// In en, this message translates to:
+  /// **'overdue'**
+  String get nonconformanceDetailOverdue;
+
+  /// The action that raises a Concern from one record.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise a Concern'**
+  String get nonconformanceRaiseConcern;
+
+  /// The action that links one record to a Concern that already exists.
+  ///
+  /// In en, this message translates to:
+  /// **'Link it to a Concern'**
+  String get nonconformanceLinkConcern;
+
+  /// An empty state's heading when the Account can see no Site at all.
+  ///
+  /// In en, this message translates to:
+  /// **'No Site to show'**
+  String get commonNoSiteTitle;
+
+  /// What the no-Site empty state says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Account can see no Site yet, so there is nothing to read here.'**
+  String get commonNoSiteMessage;
+
+  /// The Org Unit a record was registered at, and what it was registered against.
+  ///
+  /// In en, this message translates to:
+  /// **'{orgUnit} · filed against {against}'**
+  String commonFiledAgainst(String orgUnit, String against);
+
+  /// A register's column heading over what each record was filed against.
+  ///
+  /// In en, this message translates to:
+  /// **'Filed against'**
+  String get commonFiledAgainstColumn;
+
+  /// A filter's option that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Any'**
+  String get commonAny;
+
+  /// Label over the type filter of a register, and the register's own Type column.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get commonType;
+
+  /// Label over the category filter of the Safety observation register.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get commonCategory;
+
+  /// Label over the filter that narrows by whether an Action was raised.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get commonAction;
+
+  /// Label over the severity filter of a register, and its Severity column.
+  ///
+  /// In en, this message translates to:
+  /// **'Severity'**
+  String get commonSeverity;
+
+  /// The failure state's heading when the Safety incident register could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The Safety incident register could not be read'**
+  String get safetyIncidentsUnavailableTitle;
+
+  /// One-line description under the Safety incident register's title.
+  ///
+  /// In en, this message translates to:
+  /// **'What went wrong at this Site, where it happened, and where it sits on the severity ladder.'**
+  String get safetyIncidentsDescription;
+
+  /// The button that opens the form recording a Safety incident.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a Safety incident'**
+  String get safetyIncidentRecord;
+
+  /// Label over the incident type filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Incident type'**
+  String get safetyIncidentType;
+
+  /// Label over the filter that narrows by whether an incident is recordable, and the option that keeps only recordable ones.
+  ///
+  /// In en, this message translates to:
+  /// **'Recordable'**
+  String get safetyRecordable;
+
+  /// The recordable filter's option that keeps only incidents that need not be reported.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recordable'**
+  String get safetyNotRecordable;
+
+  /// Label over the first date of the occurred-between filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Occurred from'**
+  String get safetyOccurredFrom;
+
+  /// Label over the last date of the occurred-between filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Occurred to'**
+  String get safetyOccurredTo;
+
+  /// Said under the Safety incident register when the list was capped rather than complete.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more Safety incidents than this list shows. Narrow it by Org Unit, by status or by date to see the rest.'**
+  String get safetyIncidentsTruncated;
+
+  /// What the filtered-empty state of the Safety incident register says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'The register has Safety incidents, but none of them is in the area, state, type, severity, recordability or dates you picked.'**
+  String get safetyIncidentsNoMatchMessage;
+
+  /// The empty state's heading when the Site recorded no incident at all.
+  ///
+  /// In en, this message translates to:
+  /// **'No incidents recorded for this period'**
+  String get safetyIncidentsNoneTitle;
+
+  /// What the no-incident state says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'No Safety incident has been recorded at this Site for the area and dates shown.'**
+  String get safetyIncidentsNoneMessage;
+
+  /// The Safety incident register's column heading over each incident's own number.
+  ///
+  /// In en, this message translates to:
+  /// **'Incident #'**
+  String get safetyIncidentNumberColumn;
+
+  /// The failure state's heading when the Safety observation register could not be fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'The Safety observation register could not be read'**
+  String get safetyObservationsUnavailableTitle;
+
+  /// One-line description under the Safety observation register's title.
+  ///
+  /// In en, this message translates to:
+  /// **'What was seen before anything went wrong, ranked worst-first by the worst credible outcome.'**
+  String get safetyObservationsDescription;
+
+  /// The button that opens the form recording a Safety observation.
+  ///
+  /// In en, this message translates to:
+  /// **'Record an observation'**
+  String get safetyObservationRecord;
+
+  /// The type filter's option that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Any type'**
+  String get safetyAnyType;
+
+  /// The category filter's option that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Any category'**
+  String get safetyAnyCategory;
+
+  /// Label over the filter that narrows observations by how bad the outcome could have been.
+  ///
+  /// In en, this message translates to:
+  /// **'Severity potential'**
+  String get safetySeverityPotential;
+
+  /// The severity-potential filter's option that narrows nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Any potential'**
+  String get safetyAnyPotential;
+
+  /// The label of the stop-work badge on an observation, and the filter that narrows by it.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop-work'**
+  String get safetyStopWork;
+
+  /// The stop-work filter's option that keeps only observations that stopped the work.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop-work only'**
+  String get safetyStopWorkOnly;
+
+  /// The stop-work filter's option that keeps only observations that did not stop the work.
+  ///
+  /// In en, this message translates to:
+  /// **'Not stop-work'**
+  String get safetyNotStopWork;
+
+  /// The action filter's option that keeps only observations nothing has been raised for.
+  ///
+  /// In en, this message translates to:
+  /// **'No Action raised'**
+  String get safetyNoActionRaised;
+
+  /// The action filter's option that keeps only observations an Action has been raised from.
+  ///
+  /// In en, this message translates to:
+  /// **'Action raised'**
+  String get safetyActionRaised;
+
+  /// Label over the first date of the observed-between filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed from'**
+  String get safetyObservedFrom;
+
+  /// Label over the last date of the observed-between filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed to'**
+  String get safetyObservedTo;
+
+  /// Said under the Safety observation register when the list was capped rather than complete.
+  ///
+  /// In en, this message translates to:
+  /// **'There are more Safety observations than this list shows. Narrow it by Org Unit, by type or by date to see the rest.'**
+  String get safetyObservationsTruncated;
+
+  /// What the filtered-empty state of the Safety observation register says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'The register has Safety observations, but none of them is in the area, type, category, potential, stop-work or dates you picked.'**
+  String get safetyObservationsNoMatchMessage;
+
+  /// The empty state's heading when the Site recorded no observation at all — a register with no rows is bad news here.
+  ///
+  /// In en, this message translates to:
+  /// **'No observations recorded. The leading indicator is empty.'**
+  String get safetyObservationsNoneTitle;
+
+  /// What the no-observation state says under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'No Safety observation has been recorded at this Site for the area and dates shown.'**
+  String get safetyObservationsNoneMessage;
+
+  /// The Safety observation register's column heading over the worst credible outcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Potential'**
+  String get safetyPotentialColumn;
+
+  /// Title of the dialog a person on the floor reports a Safety incident from.
+  ///
+  /// In en, this message translates to:
+  /// **'Report a Safety incident'**
+  String get safetyIncidentReport;
+
+  /// The submit action of the floor Safety incident dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Report it'**
+  String get safetyReportSubmit;
+
+  /// What the floor Safety incident dialog asks, above its fields.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened? Everything with a known set is chosen from a fixed list.'**
+  String get safetyIncidentFloorIntro;
+
+  /// Label over the free-text account of a Safety incident.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened'**
+  String get safetyWhatHappened;
+
+  /// Label over what was done at once about a Safety incident.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediate action (optional)'**
+  String get safetyImmediateAction;
+
+  /// Label over the moment a Safety incident happened.
+  ///
+  /// In en, this message translates to:
+  /// **'Occurred at'**
+  String get safetyOccurredAt;
+
+  /// What the floor Safety incident dialog asks before its identity fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Who is reporting this? Your Employee number and PIN identify you for this record only — it is filed as your report.'**
+  String get safetyIncidentFloorWho;
+
+  /// Title of the dialog a person on the floor records a Safety observation from.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a Safety observation'**
+  String get safetyObservationRecordTitle;
+
+  /// What the floor Safety observation dialog asks, above its fields.
+  ///
+  /// In en, this message translates to:
+  /// **'What was seen? Everything with a known set is chosen from a fixed list.'**
+  String get safetyObservationFloorIntro;
+
+  /// Label over the free-text account of a Safety observation.
+  ///
+  /// In en, this message translates to:
+  /// **'What was seen'**
+  String get safetyWhatWasSeen;
+
+  /// Label over what was done at once about a Safety observation.
+  ///
+  /// In en, this message translates to:
+  /// **'Action taken (optional)'**
+  String get safetyActionTaken;
+
+  /// The switch saying the observer stopped the work on the strength of the observation.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop-work authority was exercised'**
+  String get safetyStopWorkExercised;
+
+  /// What the floor Safety observation dialog asks before its identity fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Who is recording this? Your Employee number and PIN identify you for this record only.'**
+  String get safetyObservationFloorWho;
+
+  /// The one way out of a refused dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get commonBack;
+
+  /// Said when the leave request a decision dialog was opened for is not the caller's to decide.
+  ///
+  /// In en, this message translates to:
+  /// **'This leave request is not one you can decide.'**
+  String get routerLeaveNotDecidable;
+
+  /// Said when the leave request a cancel dialog was opened for cannot be cancelled by this caller.
+  ///
+  /// In en, this message translates to:
+  /// **'This leave request cannot be cancelled.'**
+  String get routerLeaveNotCancellable;
+
+  /// The heading of the refusal shown when a measure address names no known kind of measure.
+  ///
+  /// In en, this message translates to:
+  /// **'That is not a measure'**
+  String get routerNotAMeasure;
+
+  /// What the refusal explains, under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'A measure is a containment, a countermeasure or a preventive action.'**
+  String get routerNotAMeasureBody;
+
+  /// The way out of the measure refusal back to the Action it was opened from.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the Action'**
+  String get routerBackToAction;
+
+  /// The heading of the refusal shown when a form opens for a caller with no write Grant at this Site.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot do that here'**
+  String get routerCannotDoThatHere;
+
+  /// Why the form was refused, under its heading.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not hold a write Grant anywhere at this Site.'**
+  String get routerNoWriteGrant;
+
+  /// The way out of the write-Grant refusal back to the register it was opened from.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the list'**
+  String get routerBackToList;
 }
 
 class _AppLocalizationsDelegate

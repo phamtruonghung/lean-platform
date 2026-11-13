@@ -20,6 +20,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
@@ -337,21 +338,22 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return BlocListener<PmSchedulesBloc, PmSchedulesState>(
       listener: _onSchedulesChanged,
       child: AppDialog(
-        title: 'Schedule preventive maintenance',
+        title: l10n.pmScheduleFormTitle,
         size: AppDialogSize.wide,
         actions: [
           AppDialogAction(
             id: PmScheduleFormDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: PmScheduleFormDialog._submitId,
-            label: _awaiting ? 'Saving…' : 'Schedule',
+            label: _awaiting ? l10n.commonSaving : l10n.pmScheduleFormSubmit,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -383,18 +385,18 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               key: PmScheduleFormDialog.basisKey,
               initialValue: _basis,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Comes round on',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.pmScheduleFormBasisField,
+                border: const OutlineInputBorder(),
               ),
-              items: const [
+              items: [
                 DropdownMenuItem<_IntervalBasis>(
                   value: _IntervalBasis.days,
-                  child: Text('Elapsed time'),
+                  child: Text(l10n.pmScheduleFormBasisElapsed),
                 ),
                 DropdownMenuItem<_IntervalBasis>(
                   value: _IntervalBasis.meter,
-                  child: Text('Accumulated use'),
+                  child: Text(l10n.pmScheduleFormBasisAccumulated),
                 ),
               ],
               onChanged: _awaiting
@@ -412,9 +414,9 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
                 enabled: !_awaiting,
                 keyboardType: TextInputType.number,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Every how many days',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.pmScheduleFormEveryDays,
+                  border: const OutlineInputBorder(),
                 ),
               )
             else ...[
@@ -438,10 +440,10 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
                 keyboardType: TextInputType.number,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  labelText: 'Every how much accumulated use',
+                  labelText: l10n.pmScheduleFormEveryAccumulated,
                   helperText: _selectedMeter == null
-                      ? 'Choose a cumulative meter first.'
-                      : 'In ${_selectedMeter!.uomCode}, one interval past where the meter stands now.',
+                      ? l10n.pmScheduleFormMeterNotChosen
+                      : l10n.pmScheduleFormMeterIntervalHelp(_selectedMeter!.uomCode),
                   border: const OutlineInputBorder(),
                 ),
               ),
@@ -451,9 +453,9 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               key: PmScheduleFormDialog.anchorKey,
               initialValue: _anchor,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'The interval rolls from',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.pmScheduleFormAnchor,
+                border: const OutlineInputBorder(),
               ),
               items: [
                 for (final anchor in PmScheduleAnchor.values)
@@ -479,9 +481,9 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
                     enabled: !_awaiting,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Raise this many days early',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.pmScheduleFormLeadTime,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -491,16 +493,22 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
                     key: PmScheduleFormDialog.priorityKey,
                     isExpanded: true,
                     initialValue: _priority,
-                    decoration: const InputDecoration(
-                      labelText: 'Priority',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: l10n.commonPriority,
+                      border: const OutlineInputBorder(),
                     ),
-                    items: const [
-                      DropdownMenuItem<int>(value: 1, child: Text('1 — most urgent')),
-                      DropdownMenuItem<int>(value: 2, child: Text('2')),
-                      DropdownMenuItem<int>(value: 3, child: Text('3')),
-                      DropdownMenuItem<int>(value: 4, child: Text('4')),
-                      DropdownMenuItem<int>(value: 5, child: Text('5 — least urgent')),
+                    items: [
+                      DropdownMenuItem<int>(
+                        value: 1,
+                        child: Text(l10n.pmScheduleFormPriorityMostUrgent),
+                      ),
+                      const DropdownMenuItem<int>(value: 2, child: Text('2')),
+                      const DropdownMenuItem<int>(value: 3, child: Text('3')),
+                      const DropdownMenuItem<int>(value: 4, child: Text('4')),
+                      DropdownMenuItem<int>(
+                        value: 5,
+                        child: Text(l10n.pmScheduleFormPriorityLeastUrgent),
+                      ),
                     ],
                     onChanged: _awaiting
                         ? null
@@ -517,8 +525,8 @@ class _PmScheduleFormDialogState extends State<PmScheduleFormDialog> {
               AppDateField(
                 key: PmScheduleFormDialog.nextDueKey,
                 name: 'pm-schedule-next-due',
-                label: 'First due date (optional)',
-                helperText: 'Left blank, the first due date is the interval from today.',
+                label: l10n.pmScheduleFormFirstDue,
+                helperText: l10n.pmScheduleFormFirstDueHelp,
                 value: _nextDueOn,
                 onChanged: (value) => setState(() => _nextDueOn = value),
                 optional: true,
@@ -573,6 +581,7 @@ class _AssetField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
@@ -591,16 +600,16 @@ class _AssetField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Assets could not be read.',
+              failure ?? l10n.commonAssetsFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _LoadStatus.ready:
         return AppSearchField<Asset>(
           name: PmScheduleFormDialog._assetFieldName,
-          label: 'Asset',
+          label: l10n.commonAsset,
           value: _selected,
           enabled: enabled,
           // A pick sets the dialog's own id — which also re-reads that Asset's
@@ -664,6 +673,7 @@ class _JobPlanField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
@@ -682,16 +692,16 @@ class _JobPlanField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Job plans could not be read.',
+              failure ?? l10n.pmScheduleFormJobPlansFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _LoadStatus.ready:
         return AppSearchField<JobPlan>(
           name: PmScheduleFormDialog._jobPlanFieldName,
-          label: 'Job plan',
+          label: l10n.commonJobPlan,
           value: _selected,
           enabled: enabled,
           onChanged: (plan) => onChanged(plan?.id),
@@ -744,6 +754,7 @@ class _MeterField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     switch (status) {
       case _LoadStatus.loading:
         return const SizedBox(
@@ -762,10 +773,10 @@ class _MeterField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The meters could not be read.',
+              failure ?? l10n.pmScheduleFormMetersFailed,
               style: AppTypography.dense(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _LoadStatus.ready:
@@ -773,10 +784,10 @@ class _MeterField extends StatelessWidget {
           key: PmScheduleFormDialog.meterKey,
           initialValue: selectedId,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Meter',
-            helperText: 'Only cumulative meters can drive a schedule.',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.commonMeter,
+            helperText: l10n.pmScheduleFormMeterHelp,
+            border: const OutlineInputBorder(),
           ),
           items: [
             for (final meter in meters)

@@ -21,6 +21,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import '../widgets/app_dialog.dart';
 import 'request.dart';
@@ -87,21 +88,22 @@ class _RequestDeclineDialogState extends State<RequestDeclineDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return BlocListener<RequestsBloc, RequestsState>(
       listener: _onRequestsChanged,
       child: AppDialog(
-        title: 'Decline ${widget.request.requestNo}?',
+        title: l10n.requestDeclineTitle(widget.request.requestNo),
         size: AppDialogSize.decision,
         actions: [
           AppDialogAction(
             id: RequestDeclineDialog._dismissId,
-            label: 'Keep it waiting',
+            label: l10n.requestAcceptDismiss,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: RequestDeclineDialog._submitId,
-            label: 'Decline this Request',
+            label: l10n.requestDeclineSubmit,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -115,9 +117,9 @@ class _RequestDeclineDialogState extends State<RequestDeclineDialog> {
               enabled: !_awaiting,
               onChanged: (_) => setState(() {}),
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Why is this being declined?',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.requestDeclineReason,
+                border: const OutlineInputBorder(),
               ),
             ),
             if (_failure != null)

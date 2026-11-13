@@ -20,6 +20,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../people/people.dart';
 import '../people_api.dart';
+import '../l10n/app_localizations.dart';
 import '../platform/auth_gateway.dart';
 import '../theme.dart';
 import '../widgets/app_date_time_field.dart';
@@ -173,23 +174,24 @@ class _LabourBookingDialogState extends State<LabourBookingDialog> {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     return BlocListener<WorkOrderDetailBloc, WorkOrderDetailState>(
       listener: _onChanged,
       // The form width (520): six fields, one of them a picker (§11). It does
       // not outgrow it, so there is no wide (640) dialog here.
       child: AppDialog(
-        title: 'Book labour',
+        title: l10n.labourBookingTitle,
         size: AppDialogSize.form,
         actions: [
           AppDialogAction(
             id: LabourBookingDialog._cancelId,
-            label: 'Cancel',
+            label: l10n.commonCancel,
             kind: AppDialogActionKind.dismiss,
             onPressed: _awaiting ? null : () => Navigator.of(context).pop(),
           ),
           AppDialogAction(
             id: LabourBookingDialog._submitId,
-            label: 'Book labour',
+            label: l10n.labourBookingTitle,
             onPressed: _complete && !_awaiting ? _submit : null,
           ),
         ],
@@ -211,9 +213,9 @@ class _LabourBookingDialogState extends State<LabourBookingDialog> {
               key: LabourBookingDialog.activityKey,
               initialValue: _activity,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Activity',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.labourBookingActivity,
+                border: const OutlineInputBorder(),
               ),
               items: [
                 for (final activity in LabourActivity.values)
@@ -224,7 +226,7 @@ class _LabourBookingDialogState extends State<LabourBookingDialog> {
             const SizedBox(height: Spacing.md),
             AppDateTimeField(
               name: 'labour-started-at',
-              label: 'Started at',
+              label: l10n.labourBookingStartedAt,
               value: _startedAt,
               enabled: !_awaiting,
               onChanged: (value) {
@@ -234,7 +236,7 @@ class _LabourBookingDialogState extends State<LabourBookingDialog> {
             const SizedBox(height: Spacing.md),
             AppDateTimeField(
               name: 'labour-ended-at',
-              label: 'Ended at',
+              label: l10n.labourBookingEndedAt,
               value: _endedAt,
               enabled: !_awaiting,
               onChanged: (value) {
@@ -248,16 +250,16 @@ class _LabourBookingDialogState extends State<LabourBookingDialog> {
               onChanged: _awaiting ? null : (value) => setState(() => _isOvertime = value ?? false),
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
-              title: const Text('Overtime'),
+              title: Text(l10n.labourBookingOvertime),
             ),
             TextField(
               key: LabourBookingDialog.noteKey,
               controller: _note,
               enabled: !_awaiting,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Note (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.commonNoteOptional,
+                border: const OutlineInputBorder(),
               ),
             ),
             if (_failure != null)
@@ -308,6 +310,7 @@ class _EmployeeField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     switch (status) {
       case _EmployeesStatus.loading:
         return const SizedBox(
@@ -322,16 +325,16 @@ class _EmployeeField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              failure ?? 'The Employees could not be read.',
+              failure ?? l10n.labourBookingEmployeesFailed,
               style: AppTypography.floor(context)?.copyWith(color: palette.statusDanger),
             ),
-            TextButton(onPressed: enabled ? onRetry : null, child: const Text('Try again')),
+            TextButton(onPressed: enabled ? onRetry : null, child: Text(l10n.commonTryAgain)),
           ],
         );
       case _EmployeesStatus.ready:
         return AppSearchField<Employee>(
           name: LabourBookingDialog._employeeFieldName,
-          label: 'Employee',
+          label: l10n.commonEmployee,
           value: _selected,
           enabled: enabled,
           // A pick sets the dialog's own id; typing over the chosen person
